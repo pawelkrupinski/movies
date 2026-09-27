@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pl-PL">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        (function () {
+            try {
+                var root = document.documentElement;
+                var palette = window.localStorage.getItem('base_a11y_palette') || '';
+                var motion = window.localStorage.getItem('base_a11y_motion') || '';
+                var textSize = window.localStorage.getItem('base_a11y_text_size') || '';
+
+                if (palette === 'high-contrast' || palette === 'grayscale') {
+                    root.setAttribute('data-palette', palette);
+                }
+
+                if (motion === 'reduced') {
+                    root.setAttribute('data-motion', motion);
+                }
+
+                if (textSize === 'sm' || textSize === 'md' || textSize === 'lg' || textSize === 'xl') {
+                    root.setAttribute('data-text-size', textSize);
+                }
+            } catch (e) {
+                // ignore
+            }
+        })();
+    </script>
+    <link rel="profile" href="https://gmpg.org/xfn/11">
+    <meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
+
+	<!-- This site is optimized with the Yoast SEO plugin v28.4 - https://yoast.com/product/yoast-seo-wordpress/ -->
+	<title>SUPERMOCNI - Kino Bajka w Błoniu</title>
+	<link rel="canonical" href="https://kino.blonie.pl/film/supermocni/" />
+	<meta property="og:locale" content="pl_PL" />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content="SUPERMOCNI - Kino Bajka w Błoniu" />
+	<meta property="og:url" content="https://kino.blonie.pl/film/supermocni/" />
+	<meta property="og:site_name" content="Kino Bajka w Błoniu" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:label1" content="Szacowany czas czytania" />
+	<meta name="twitter:data1" content="2 minuty" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https:\/\/schema.org","@graph":[{"@type":"WebPage","@id":"https:\/\/kino.blonie.pl\/film\/supermocni\/","url":"https:\/\/kino.blonie.pl\/film\/supermocni\/","name":"SUPERMOCNI - Kino Bajka w Błoniu","isPartOf":{"@id":"https:\/\/kino.blonie.pl\/#website"},"datePublished":"2026-09-18T14:53:19+00:00","breadcrumb":{"@id":"https:\/\/kino.blonie.pl\/film\/supermocni\/#breadcrumb"},"inLanguage":"pl-PL","potentialAction":[{"@type":"ReadAction","target":["https:\/\/kino.blonie.pl\/film\/supermocni\/"]}]},{"@type":"BreadcrumbList","@id":"https:\/\/kino.blonie.pl\/film\/supermocni\/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https:\/\/kino.blonie.pl\/"},{"@type":"ListItem","position":2,"name":"Filmy","item":"https:\/\/kino.blonie.pl\/film\/"},{"@type":"ListItem","position":3,"name":"SUPERMOCNI"}]},{"@type":"WebSite","@id":"https:\/\/kino.blonie.pl\/#website","url":"https:\/\/kino.blonie.pl\/","name":"Kino Bajka w Błoniu","description":"Kino Bajka w Błoniu – aktualny repertuar, bilety, premiery filmowe i wydarzenia. Sprawdź seanse w Kinie Bajka w Błoniu.","potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https:\/\/kino.blonie.pl\/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"pl-PL"}]}</script>
+	<!-- / Yoast SEO plugin. -->
+
+
+<link rel='dns-prefetch' href='//fonts.googleapis.com' />
+<link href='https://fonts.googleapis.com' crossorigin='' rel='preconnect' />
+<link href='https://fonts.gstatic.com' crossorigin='anonymous' rel='preconnect' />
+<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+
+<style id="global-styles-inline-css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #0f172a;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--primary: #0ea5e9;--wp--preset--color--primary-light: #e0f2fe;--wp--preset--color--primary-dark: #0369a1;--wp--preset--color--secondary: #64748b;--wp--preset--color--secondary-light: #f1f5f9;--wp--preset--color--secondary-dark: #1e293b;--wp--preset--color--accent: #f59e0b;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--font-size--xx-large: 2.25rem;--wp--preset--font-family--inter: "Inter", system-ui, -apple-system, sans-serif;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}.wp-block-button{--wp--preset--dimension--25: 25%;--wp--preset--dimension--50: 50%;--wp--preset--dimension--75: 75%;--wp--preset--dimension--100: 100%;}:root { --wp--style--global--content-size: 768px;--wp--style--global--wide-size: 1280px; }:where(body) { margin: 0; }.wp-site-blocks { padding-top: var(--wp--style--root--padding-top); padding-bottom: var(--wp--style--root--padding-bottom); }.has-global-padding { padding-right: var(--wp--style--root--padding-right); padding-left: var(--wp--style--root--padding-left); }.has-global-padding > .alignfull { margin-right: calc(var(--wp--style--root--padding-right) * -1); margin-left: calc(var(--wp--style--root--padding-left) * -1); }.has-global-padding :where(:not(.alignfull.is-layout-flow) > .has-global-padding:not(.wp-block-block, .alignfull)) { padding-right: 0; padding-left: 0; }.has-global-padding :where(:not(.alignfull.is-layout-flow) > .has-global-padding:not(.wp-block-block, .alignfull)) > .alignfull { margin-left: 0; margin-right: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:where(.wp-site-blocks) > * { margin-block-start: 1.5rem; margin-block-end: 0; }:where(.wp-site-blocks) > :first-child { margin-block-start: 0; }:where(.wp-site-blocks) > :last-child { margin-block-end: 0; }:root { --wp--style--block-gap: 1.5rem; }:root :where(.is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.is-layout-flow) > *{margin-block-start: 1.5rem;margin-block-end: 0;}:root :where(.is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.is-layout-constrained) > *{margin-block-start: 1.5rem;margin-block-end: 0;}:root :where(.is-layout-flex){gap: 1.5rem;}:root :where(.is-layout-grid){gap: 1.5rem;}.is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{--wp--style--root--padding-top: 0px;--wp--style--root--padding-right: 0px;--wp--style--root--padding-bottom: 0px;--wp--style--root--padding-left: 0px;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-color{color: var(--wp--preset--color--primary) !important;}.has-primary-light-color{color: var(--wp--preset--color--primary-light) !important;}.has-primary-dark-color{color: var(--wp--preset--color--primary-dark) !important;}.has-secondary-color{color: var(--wp--preset--color--secondary) !important;}.has-secondary-light-color{color: var(--wp--preset--color--secondary-light) !important;}.has-secondary-dark-color{color: var(--wp--preset--color--secondary-dark) !important;}.has-accent-color{color: var(--wp--preset--color--accent) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-background-color{background-color: var(--wp--preset--color--primary) !important;}.has-primary-light-background-color{background-color: var(--wp--preset--color--primary-light) !important;}.has-primary-dark-background-color{background-color: var(--wp--preset--color--primary-dark) !important;}.has-secondary-background-color{background-color: var(--wp--preset--color--secondary) !important;}.has-secondary-light-background-color{background-color: var(--wp--preset--color--secondary-light) !important;}.has-secondary-dark-background-color{background-color: var(--wp--preset--color--secondary-dark) !important;}.has-accent-background-color{background-color: var(--wp--preset--color--accent) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-border-color{border-color: var(--wp--preset--color--primary) !important;}.has-primary-light-border-color{border-color: var(--wp--preset--color--primary-light) !important;}.has-primary-dark-border-color{border-color: var(--wp--preset--color--primary-dark) !important;}.has-secondary-border-color{border-color: var(--wp--preset--color--secondary) !important;}.has-secondary-light-border-color{border-color: var(--wp--preset--color--secondary-light) !important;}.has-secondary-dark-border-color{border-color: var(--wp--preset--color--secondary-dark) !important;}.has-accent-border-color{border-color: var(--wp--preset--color--accent) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}.has-xx-large-font-size{font-size: var(--wp--preset--font-size--xx-large) !important;}.has-inter-font-family{font-family: var(--wp--preset--font-family--inter) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link rel='stylesheet' id='contact-form-7-css' href='https://kino.blonie.pl/wp-content/plugins/contact-form-7/includes/css/styles.css' media='all' />
+<link rel='stylesheet' id='base-app-css-0-css' href='https://kino.blonie.pl/wp-content/themes/base-tamplate/dist/assets/app-BX1Y9vU5.css' media='all' />
+<link rel='stylesheet' id='google-fonts-inter-css' href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&#038;display=swap' media='all' />
+<script id="cookie-law-info-js-extra">
+var _ckyConfig = {"_ipData":[],"_assetsURL":"https://kino.blonie.pl/wp-content/plugins/cookie-law-info/lite/frontend/images/","_publicURL":"https://kino.blonie.pl","_expiry":"365","_categories":[{"name":"Necessary","slug":"necessary","isNecessary":true,"ccpaDoNotSell":true,"cookies":[],"active":true,"defaultConsent":{"gdpr":true,"ccpa":true}},{"name":"Functional","slug":"functional","isNecessary":false,"ccpaDoNotSell":true,"cookies":[],"active":true,"defaultConsent":{"gdpr":false,"ccpa":false}},{"name":"Analytics","slug":"analytics","isNecessary":false,"ccpaDoNotSell":true,"cookies":[],"active":true,"defaultConsent":{"gdpr":false,"ccpa":false}},{"name":"Performance","slug":"performance","isNecessary":false,"ccpaDoNotSell":true,"cookies":[],"active":true,"defaultConsent":{"gdpr":false,"ccpa":false}},{"name":"Advertisement","slug":"advertisement","isNecessary":false,"ccpaDoNotSell":true,"cookies":[],"active":true,"defaultConsent":{"gdpr":false,"ccpa":false}}],"_activeLaw":"gdpr","_rootDomain":"","_block":"1","_showBanner":"1","_bannerConfig":{"settings":{"type":"box","preferenceCenterType":"popup","position":"bottom-left","applicableLaw":"gdpr"},"behaviours":{"reloadBannerOnAccept":false,"loadAnalyticsByDefault":false,"animations":{"onLoad":"animate","onHide":"sticky"}},"config":{"revisitConsent":{"status":true,"tag":"revisit-consent","position":"bottom-left","meta":{"url":"#"},"styles":{"background-color":"#0056A7"},"elements":{"title":{"type":"text","tag":"revisit-consent-title","status":true,"styles":{"color":"#0056a7"}}}},"preferenceCenter":{"toggle":{"status":true,"tag":"detail-category-toggle","type":"toggle","states":{"active":{"styles":{"background-color":"#1863DC"}},"inactive":{"styles":{"background-color":"#D0D5D2"}}}}},"categoryPreview":{"status":false,"toggle":{"status":true,"tag":"detail-category-preview-toggle","type":"toggle","states":{"active":{"styles":{"background-color":"#1863DC"}},"inactive":{"styles":{"background-color":"#D0D5D2"}}}}},"videoPlaceholder":{"status":true,"styles":{"background-color":"#000000","border-color":"#000000","color":"#ffffff"}},"readMore":{"status":false,"tag":"readmore-button","type":"link","meta":{"noFollow":true,"newTab":true},"styles":{"color":"#1863DC","background-color":"transparent","border-color":"transparent"}},"showMore":{"status":true,"tag":"show-desc-button","type":"button","styles":{"color":"#1863DC"}},"showLess":{"status":true,"tag":"hide-desc-button","type":"button","styles":{"color":"#1863DC"}},"alwaysActive":{"status":true,"tag":"always-active","styles":{"color":"#008000"}},"manualLinks":{"status":true,"tag":"manual-links","type":"link","styles":{"color":"#1863DC"}},"auditTable":{"status":true},"optOption":{"status":true,"toggle":{"status":true,"tag":"optout-option-toggle","type":"toggle","states":{"active":{"styles":{"background-color":"#1863dc"}},"inactive":{"styles":{"background-color":"#FFFFFF"}}}}}}},"_version":"3.5.6","_logConsent":"1","_tags":[{"tag":"accept-button","styles":{"color":"#FFFFFF","background-color":"#1863DC","border-color":"#1863DC"}},{"tag":"reject-button","styles":{"color":"#1863DC","background-color":"transparent","border-color":"#1863DC"}},{"tag":"settings-button","styles":{"color":"#1863DC","background-color":"transparent","border-color":"#1863DC"}},{"tag":"readmore-button","styles":{"color":"#1863DC","background-color":"transparent","border-color":"transparent"}},{"tag":"donotsell-button","styles":{"color":"#1863DC","background-color":"transparent","border-color":"transparent"}},{"tag":"show-desc-button","styles":{"color":"#1863DC"}},{"tag":"hide-desc-button","styles":{"color":"#1863DC"}},{"tag":"cky-always-active","styles":[]},{"tag":"cky-link","styles":[]},{"tag":"accept-button","styles":{"color":"#FFFFFF","background-color":"#1863DC","border-color":"#1863DC"}},{"tag":"revisit-consent","styles":{"background-color":"#0056A7"}}],"_shortCodes":[{"key":"cky_readmore","content":"\u003Ca href=\"#\" class=\"cky-policy\" aria-label=\"Cookie Policy\" target=\"_blank\" rel=\"noopener\" data-cky-tag=\"readmore-button\"\u003ECookie Policy\u003C/a\u003E","tag":"readmore-button","status":false,"attributes":{"rel":"nofollow","target":"_blank"}},{"key":"cky_show_desc","content":"\u003Cbutton class=\"cky-show-desc-btn\" data-cky-tag=\"show-desc-button\" aria-label=\"Show more\"\u003EShow more\u003C/button\u003E","tag":"show-desc-button","status":true,"attributes":[]},{"key":"cky_hide_desc","content":"\u003Cbutton class=\"cky-show-desc-btn\" data-cky-tag=\"hide-desc-button\" aria-label=\"Show less\"\u003EShow less\u003C/button\u003E","tag":"hide-desc-button","status":true,"attributes":[]},{"key":"cky_optout_show_desc","content":"[cky_optout_show_desc]","tag":"optout-show-desc-button","status":true,"attributes":[]},{"key":"cky_optout_hide_desc","content":"[cky_optout_hide_desc]","tag":"optout-hide-desc-button","status":true,"attributes":[]},{"key":"cky_category_toggle_label","content":"[cky_{{status}}_category_label] [cky_preference_{{category_slug}}_title]","tag":"","status":true,"attributes":[]},{"key":"cky_enable_category_label","content":"Enable","tag":"","status":true,"attributes":[]},{"key":"cky_disable_category_label","content":"Disable","tag":"","status":true,"attributes":[]},{"key":"cky_video_placeholder","content":"\u003Cdiv class=\"video-placeholder-normal\" data-cky-tag=\"video-placeholder\" id=\"[UNIQUEID]\"\u003E\u003Cp class=\"video-placeholder-text-normal\" data-cky-tag=\"placeholder-title\"\u003EPlease accept cookies to access this content\u003C/p\u003E\u003C/div\u003E","tag":"","status":true,"attributes":[]},{"key":"cky_enable_optout_label","content":"Enable","tag":"","status":true,"attributes":[]},{"key":"cky_disable_optout_label","content":"Disable","tag":"","status":true,"attributes":[]},{"key":"cky_optout_toggle_label","content":"[cky_{{status}}_optout_label] [cky_optout_option_title]","tag":"","status":true,"attributes":[]},{"key":"cky_optout_option_title","content":"Do Not Sell or Share My Personal Information","tag":"","status":true,"attributes":[]},{"key":"cky_optout_close_label","content":"Close","tag":"","status":true,"attributes":[]},{"key":"cky_preference_close_label","content":"Close","tag":"","status":true,"attributes":[]}],"_rtl":"","_language":"en","_providersToBlock":[]};
+var _ckyStyles = {"css":".cky-overlay{background: #000000; opacity: 0.4; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999999;}.cky-hide{display: none;}.cky-btn-revisit-wrapper{display: flex; align-items: center; justify-content: center; background: #0056a7; width: 45px; height: 45px; border-radius: 50%; position: fixed; z-index: 999999; cursor: pointer;}.cky-revisit-bottom-left{bottom: 15px; left: 15px;}.cky-revisit-bottom-right{bottom: 15px; right: 15px;}.cky-btn-revisit-wrapper .cky-btn-revisit{display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; position: relative; margin: 0; padding: 0;}.cky-btn-revisit-wrapper .cky-btn-revisit img{max-width: fit-content; margin: 0; height: 30px; width: 30px;}.cky-revisit-bottom-left:hover::before{content: attr(data-tooltip); position: absolute; background: #4e4b66; color: #ffffff; left: calc(100% + 7px); font-size: 12px; line-height: 16px; width: max-content; padding: 4px 8px; border-radius: 4px;}.cky-revisit-bottom-left:hover::after{position: absolute; content: \"\"; border: 5px solid transparent; left: calc(100% + 2px); border-left-width: 0; border-right-color: #4e4b66;}.cky-revisit-bottom-right:hover::before{content: attr(data-tooltip); position: absolute; background: #4e4b66; color: #ffffff; right: calc(100% + 7px); font-size: 12px; line-height: 16px; width: max-content; padding: 4px 8px; border-radius: 4px;}.cky-revisit-bottom-right:hover::after{position: absolute; content: \"\"; border: 5px solid transparent; right: calc(100% + 2px); border-right-width: 0; border-left-color: #4e4b66;}.cky-revisit-hide{display: none;}.cky-consent-container{position: fixed; width: 440px; box-sizing: border-box; z-index: 9999999; border-radius: 6px;}.cky-consent-container .cky-consent-bar{background: #ffffff; border: 1px solid; padding: 20px 26px; box-shadow: 0 -1px 10px 0 #acabab4d; border-radius: 6px;}.cky-box-bottom-left{bottom: 40px; left: 40px;}.cky-box-bottom-right{bottom: 40px; right: 40px;}.cky-box-top-left{top: 40px; left: 40px;}.cky-box-top-right{top: 40px; right: 40px;}.cky-custom-brand-logo-wrapper .cky-custom-brand-logo{width: 100px; height: auto; margin: 0 0 12px 0;}.cky-notice .cky-title{color: #212121; font-weight: 700; font-size: 18px; line-height: 24px; margin: 0 0 12px 0;}.cky-notice-des *,.cky-preference-content-wrapper *,.cky-accordion-header-des *,.cky-gpc-wrapper .cky-gpc-desc *{font-size: 14px;}.cky-notice-des{color: #212121; font-size: 14px; line-height: 24px; font-weight: 400;}.cky-notice-des img{height: 25px; width: 25px;}.cky-consent-bar .cky-notice-des p,.cky-gpc-wrapper .cky-gpc-desc p,.cky-preference-body-wrapper .cky-preference-content-wrapper p,.cky-accordion-header-wrapper .cky-accordion-header-des p,.cky-cookie-des-table li div:last-child p{color: inherit; margin-top: 0; overflow-wrap: break-word;}.cky-notice-des P:last-child,.cky-preference-content-wrapper p:last-child,.cky-cookie-des-table li div:last-child p:last-child,.cky-gpc-wrapper .cky-gpc-desc p:last-child{margin-bottom: 0;}.cky-notice-des a.cky-policy,.cky-notice-des button.cky-policy{font-size: 14px; color: #1863dc; white-space: nowrap; cursor: pointer; background: transparent; border: 1px solid; text-decoration: underline;}.cky-notice-des button.cky-policy{padding: 0;}.cky-notice-des a.cky-policy:focus-visible,.cky-notice-des button.cky-policy:focus-visible,.cky-preference-content-wrapper .cky-show-desc-btn:focus-visible,.cky-accordion-header .cky-accordion-btn:focus-visible,.cky-preference-header .cky-btn-close:focus-visible,.cky-switch input[type=\"checkbox\"]:focus-visible,.cky-footer-wrapper a:focus-visible,.cky-btn:focus-visible{outline: 2px solid #1863dc; outline-offset: 2px;}.cky-btn:focus:not(:focus-visible),.cky-accordion-header .cky-accordion-btn:focus:not(:focus-visible),.cky-preference-content-wrapper .cky-show-desc-btn:focus:not(:focus-visible),.cky-btn-revisit-wrapper .cky-btn-revisit:focus:not(:focus-visible),.cky-preference-header .cky-btn-close:focus:not(:focus-visible),.cky-consent-bar .cky-banner-btn-close:focus:not(:focus-visible){outline: 0;}button.cky-show-desc-btn:not(:hover):not(:active){color: #1863dc; background: transparent;}button.cky-accordion-btn:not(:hover):not(:active),button.cky-banner-btn-close:not(:hover):not(:active),button.cky-btn-revisit:not(:hover):not(:active),button.cky-btn-close:not(:hover):not(:active){background: transparent;}.cky-consent-bar button:hover,.cky-modal.cky-modal-open button:hover,.cky-consent-bar button:focus,.cky-modal.cky-modal-open button:focus{text-decoration: none;}.cky-notice-btn-wrapper{display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; margin-top: 16px;}.cky-notice-btn-wrapper .cky-btn{text-shadow: none; box-shadow: none;}.cky-btn{flex: auto; max-width: 100%; font-size: 14px; font-family: inherit; line-height: 24px; padding: 8px; font-weight: 500; margin: 0 8px 0 0; border-radius: 2px; cursor: pointer; text-align: center; text-transform: none; min-height: 0;}.cky-btn:hover{opacity: 0.8;}.cky-btn-customize{color: #1863dc; background: transparent; border: 2px solid #1863dc;}.cky-btn-reject{color: #1863dc; background: transparent; border: 2px solid #1863dc;}.cky-btn-accept{background: #1863dc; color: #ffffff; border: 2px solid #1863dc;}.cky-btn:last-child{margin-right: 0;}@media (max-width: 576px){.cky-box-bottom-left{bottom: 0; left: 0;}.cky-box-bottom-right{bottom: 0; right: 0;}.cky-box-top-left{top: 0; left: 0;}.cky-box-top-right{top: 0; right: 0;}}@media (max-width: 440px){.cky-box-bottom-left, .cky-box-bottom-right, .cky-box-top-left, .cky-box-top-right{width: 100%; max-width: 100%;}.cky-consent-container .cky-consent-bar{padding: 20px 0;}.cky-custom-brand-logo-wrapper, .cky-notice .cky-title, .cky-notice-des, .cky-notice-btn-wrapper{padding: 0 24px;}.cky-notice-des{max-height: 40vh; overflow-y: scroll;}.cky-notice-btn-wrapper{flex-direction: column; margin-top: 0;}.cky-btn{width: 100%; margin: 10px 0 0 0;}.cky-notice-btn-wrapper .cky-btn-customize{order: 2;}.cky-notice-btn-wrapper .cky-btn-reject{order: 3;}.cky-notice-btn-wrapper .cky-btn-accept{order: 1; margin-top: 16px;}}@media (max-width: 352px){.cky-notice .cky-title{font-size: 16px;}.cky-notice-des *{font-size: 12px;}.cky-notice-des, .cky-btn{font-size: 12px;}}.cky-modal.cky-modal-open{display: flex; visibility: visible; -webkit-transform: translate(-50%, -50%); -moz-transform: translate(-50%, -50%); -ms-transform: translate(-50%, -50%); -o-transform: translate(-50%, -50%); transform: translate(-50%, -50%); top: 50%; left: 50%; transition: all 1s ease;}.cky-modal{box-shadow: 0 32px 68px rgba(0, 0, 0, 0.3); margin: 0 auto; position: fixed; max-width: 100%; background: #ffffff; top: 50%; box-sizing: border-box; border-radius: 6px; z-index: 999999999; color: #212121; -webkit-transform: translate(-50%, 100%); -moz-transform: translate(-50%, 100%); -ms-transform: translate(-50%, 100%); -o-transform: translate(-50%, 100%); transform: translate(-50%, 100%); visibility: hidden; transition: all 0s ease;}.cky-preference-center{max-height: 79vh; overflow: hidden; width: 845px; overflow: hidden; flex: 1 1 0; display: flex; flex-direction: column; border-radius: 6px;}.cky-preference-header{display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid;}.cky-preference-header .cky-preference-title{font-size: 18px; font-weight: 700; line-height: 24px;}.cky-preference-header .cky-btn-close{margin: 0; cursor: pointer; vertical-align: middle; padding: 0; background: none; border: none; width: 24px; height: 24px; min-height: 0; line-height: 0; text-shadow: none; box-shadow: none;}.cky-preference-header .cky-btn-close img{margin: 0; height: 10px; width: 10px;}.cky-preference-body-wrapper{padding: 0 24px; flex: 1; overflow: auto; box-sizing: border-box;}.cky-preference-content-wrapper,.cky-gpc-wrapper .cky-gpc-desc{font-size: 14px; line-height: 24px; font-weight: 400; padding: 12px 0;}.cky-preference-content-wrapper{border-bottom: 1px solid;}.cky-preference-content-wrapper img{height: 25px; width: 25px;}.cky-preference-content-wrapper .cky-show-desc-btn{font-size: 14px; font-family: inherit; color: #1863dc; text-decoration: none; line-height: 24px; padding: 0; margin: 0; white-space: nowrap; cursor: pointer; background: transparent; border-color: transparent; text-transform: none; min-height: 0; text-shadow: none; box-shadow: none;}.cky-accordion-wrapper{margin-bottom: 10px;}.cky-accordion{border-bottom: 1px solid;}.cky-accordion:last-child{border-bottom: none;}.cky-accordion .cky-accordion-item{display: flex; margin-top: 10px;}.cky-accordion .cky-accordion-body{display: none;}.cky-accordion.cky-accordion-active .cky-accordion-body{display: block; padding: 0 22px; margin-bottom: 16px;}.cky-accordion-header-wrapper{cursor: pointer; width: 100%;}.cky-accordion-item .cky-accordion-header{display: flex; justify-content: space-between; align-items: center;}.cky-accordion-header .cky-accordion-btn{font-size: 16px; font-family: inherit; color: #212121; line-height: 24px; background: none; border: none; font-weight: 700; padding: 0; margin: 0; cursor: pointer; text-transform: none; min-height: 0; text-shadow: none; box-shadow: none;}.cky-accordion-header .cky-always-active{color: #008000; font-weight: 600; line-height: 24px; font-size: 14px;}.cky-accordion-header-des{font-size: 14px; line-height: 24px; margin: 10px 0 16px 0;}.cky-accordion-chevron{margin-right: 22px; position: relative; cursor: pointer;}.cky-accordion-chevron-hide{display: none;}.cky-accordion .cky-accordion-chevron i::before{content: \"\"; position: absolute; border-right: 1.4px solid; border-bottom: 1.4px solid; border-color: inherit; height: 6px; width: 6px; -webkit-transform: rotate(-45deg); -moz-transform: rotate(-45deg); -ms-transform: rotate(-45deg); -o-transform: rotate(-45deg); transform: rotate(-45deg); transition: all 0.2s ease-in-out; top: 8px;}.cky-accordion.cky-accordion-active .cky-accordion-chevron i::before{-webkit-transform: rotate(45deg); -moz-transform: rotate(45deg); -ms-transform: rotate(45deg); -o-transform: rotate(45deg); transform: rotate(45deg);}.cky-audit-table{background: #f4f4f4; border-radius: 6px;}.cky-audit-table .cky-empty-cookies-text{color: inherit; font-size: 12px; line-height: 24px; margin: 0; padding: 10px;}.cky-audit-table .cky-cookie-des-table{font-size: 12px; line-height: 24px; font-weight: normal; padding: 15px 10px; border-bottom: 1px solid; border-bottom-color: inherit; margin: 0;}.cky-audit-table .cky-cookie-des-table:last-child{border-bottom: none;}.cky-audit-table .cky-cookie-des-table li{list-style-type: none; display: flex; padding: 3px 0;}.cky-audit-table .cky-cookie-des-table li:first-child{padding-top: 0;}.cky-cookie-des-table li div:first-child{width: 100px; font-weight: 600; word-break: break-word; word-wrap: break-word;}.cky-cookie-des-table li div:last-child{flex: 1; word-break: break-word; word-wrap: break-word; margin-left: 8px;}.cky-footer-shadow{display: block; width: 100%; height: 40px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%); position: absolute; bottom: calc(100% - 1px);}.cky-footer-wrapper{position: relative;}.cky-prefrence-btn-wrapper{display: flex; flex-wrap: wrap; align-items: center; justify-content: center; padding: 22px 24px; border-top: 1px solid;}.cky-prefrence-btn-wrapper .cky-btn{flex: auto; max-width: 100%; text-shadow: none; box-shadow: none;}.cky-btn-preferences{color: #1863dc; background: transparent; border: 2px solid #1863dc;}.cky-preference-header,.cky-preference-body-wrapper,.cky-preference-content-wrapper,.cky-accordion-wrapper,.cky-accordion,.cky-accordion-wrapper,.cky-footer-wrapper,.cky-prefrence-btn-wrapper{border-color: inherit;}@media (max-width: 845px){.cky-modal{max-width: calc(100% - 16px);}}@media (max-width: 576px){.cky-modal{max-width: 100%;}.cky-preference-center{max-height: 100vh;}.cky-prefrence-btn-wrapper{flex-direction: column;}.cky-accordion.cky-accordion-active .cky-accordion-body{padding-right: 0;}.cky-prefrence-btn-wrapper .cky-btn{width: 100%; margin: 10px 0 0 0;}.cky-prefrence-btn-wrapper .cky-btn-reject{order: 3;}.cky-prefrence-btn-wrapper .cky-btn-accept{order: 1; margin-top: 0;}.cky-prefrence-btn-wrapper .cky-btn-preferences{order: 2;}}@media (max-width: 425px){.cky-accordion-chevron{margin-right: 15px;}.cky-notice-btn-wrapper{margin-top: 0;}.cky-accordion.cky-accordion-active .cky-accordion-body{padding: 0 15px;}}@media (max-width: 352px){.cky-preference-header .cky-preference-title{font-size: 16px;}.cky-preference-header{padding: 16px 24px;}.cky-preference-content-wrapper *, .cky-accordion-header-des *{font-size: 12px;}.cky-preference-content-wrapper, .cky-preference-content-wrapper .cky-show-more, .cky-accordion-header .cky-always-active, .cky-accordion-header-des, .cky-preference-content-wrapper .cky-show-desc-btn, .cky-notice-des a.cky-policy{font-size: 12px;}.cky-accordion-header .cky-accordion-btn{font-size: 14px;}}.cky-switch{display: flex;}.cky-switch input[type=\"checkbox\"]{position: relative; width: 44px; height: 24px; margin: 0; background: #d0d5d2; -webkit-appearance: none; border-radius: 50px; cursor: pointer; outline: 0; border: none; top: 0;}.cky-switch input[type=\"checkbox\"]:checked{background: #1863dc;}.cky-switch input[type=\"checkbox\"]:before{position: absolute; content: \"\"; height: 20px; width: 20px; left: 2px; bottom: 2px; border-radius: 50%; background-color: white; -webkit-transition: 0.4s; transition: 0.4s; margin: 0;}.cky-switch input[type=\"checkbox\"]:after{display: none;}.cky-switch input[type=\"checkbox\"]:checked:before{-webkit-transform: translateX(20px); -ms-transform: translateX(20px); transform: translateX(20px);}@media (max-width: 425px){.cky-switch input[type=\"checkbox\"]{width: 38px; height: 21px;}.cky-switch input[type=\"checkbox\"]:before{height: 17px; width: 17px;}.cky-switch input[type=\"checkbox\"]:checked:before{-webkit-transform: translateX(17px); -ms-transform: translateX(17px); transform: translateX(17px);}}.cky-consent-bar .cky-banner-btn-close{position: absolute; right: 9px; top: 5px; background: none; border: none; cursor: pointer; padding: 0; margin: 0; min-height: 0; line-height: 0; height: 24px; width: 24px; text-shadow: none; box-shadow: none;}.cky-consent-bar .cky-banner-btn-close img{height: 9px; width: 9px; margin: 0;}.cky-notice-group{font-size: 14px; line-height: 24px; font-weight: 400; color: #212121;}.cky-notice-btn-wrapper .cky-btn-do-not-sell{font-size: 14px; line-height: 24px; padding: 6px 0; margin: 0; font-weight: 500; background: none; border-radius: 2px; border: none; cursor: pointer; text-align: left; color: #1863dc; background: transparent; border-color: transparent; box-shadow: none; text-shadow: none;}.cky-consent-bar .cky-banner-btn-close:focus-visible,.cky-notice-btn-wrapper .cky-btn-do-not-sell:focus-visible,.cky-opt-out-btn-wrapper .cky-btn:focus-visible,.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox:focus-visible{outline: 2px solid #1863dc; outline-offset: 2px;}@media (max-width: 440px){.cky-consent-container{width: 100%;}}@media (max-width: 352px){.cky-notice-des a.cky-policy, .cky-notice-btn-wrapper .cky-btn-do-not-sell{font-size: 12px;}}.cky-opt-out-wrapper{padding: 12px 0;}.cky-opt-out-wrapper .cky-opt-out-checkbox-wrapper{display: flex; align-items: center;}.cky-opt-out-checkbox-wrapper .cky-opt-out-checkbox-label{font-size: 16px; font-weight: 700; line-height: 24px; margin: 0 0 0 12px; cursor: pointer;}.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox{background-color: #ffffff; border: 1px solid black; width: 20px; height: 18.5px; margin: 0; -webkit-appearance: none; position: relative; display: flex; align-items: center; justify-content: center; border-radius: 2px; cursor: pointer;}.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox:checked{background-color: #1863dc; border: none;}.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox:checked::after{left: 6px; bottom: 4px; width: 7px; height: 13px; border: solid #ffffff; border-width: 0 3px 3px 0; border-radius: 2px; -webkit-transform: rotate(45deg); -ms-transform: rotate(45deg); transform: rotate(45deg); content: \"\"; position: absolute; box-sizing: border-box;}.cky-opt-out-checkbox-wrapper.cky-disabled .cky-opt-out-checkbox-label,.cky-opt-out-checkbox-wrapper.cky-disabled input[type=\"checkbox\"].cky-opt-out-checkbox{cursor: no-drop;}.cky-gpc-wrapper{margin: 0 0 0 32px;}.cky-footer-wrapper .cky-optout-action-area{padding:0 24px 22px 24px;box-sizing:border-box;border-color:inherit}.cky-footer-wrapper .cky-opt-out-btn-wrapper{padding-top:22px;border-top:1px solid;border-color:inherit}.cky-footer-wrapper .cky-opt-out-btn-wrapper{display: flex; flex-wrap: wrap; align-items: center; justify-content: center;}.cky-opt-out-btn-wrapper .cky-btn{flex: auto; max-width: 100%; text-shadow: none; box-shadow: none;}.cky-opt-out-btn-wrapper .cky-btn-cancel{border: 1px solid #dedfe0; background: transparent; color: #858585;}.cky-opt-out-btn-wrapper .cky-btn-confirm{background: #1863dc; color: #ffffff; border: 1px solid #1863dc;}\n.cky-optout-success{width:798px;max-width:100%;border-radius:8px;padding:8px 12px;margin:0 auto;box-sizing:border-box;outline:none}.cky-optout-success .cky-optout-success-inner{display:flex;flex-direction:column;gap:4px}.cky-optout-success .cky-optout-success-row{display:flex;align-items:flex-start}.cky-optout-success .cky-optout-success-icon{width:20px;flex-shrink:0}.cky-optout-success .cky-optout-success-text{margin:0;margin-inline-start:8px;margin-top:1px;font-weight:400;font-size:13px;line-height:20px}.cky-optout-success .cky-optout-success-text p{margin:0}.cky-optout-success .cky-optout-success-subtext{margin:0;font-weight:400;font-size:12px;line-height:20px}@media (max-width: 352px){.cky-opt-out-checkbox-wrapper .cky-opt-out-checkbox-label{font-size: 14px;}.cky-gpc-wrapper .cky-gpc-desc, .cky-gpc-wrapper .cky-gpc-desc *{font-size: 12px;}.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox{width: 16px; height: 16px;}.cky-opt-out-checkbox-wrapper input[type=\"checkbox\"].cky-opt-out-checkbox:checked::after{left: 5px; bottom: 4px; width: 3px; height: 9px;}.cky-gpc-wrapper{margin: 0 0 0 28px;}}.video-placeholder-youtube{background-size: 100% 100%; background-position: center; background-repeat: no-repeat; background-color: #b2b0b059; position: relative; display: flex; align-items: center; justify-content: center; max-width: 100%;}.video-placeholder-text-youtube{text-align: center; align-items: center; padding: 10px 16px; background-color: #000000cc; color: #ffffff; border: 1px solid; border-radius: 2px; cursor: pointer;}.video-placeholder-normal{background-image: url(\"/wp-content/plugins/cookie-law-info/lite/frontend/images/placeholder.svg\"); background-size: 80px; background-position: center; background-repeat: no-repeat; background-color: #b2b0b059; position: relative; display: flex; align-items: flex-end; justify-content: center; max-width: 100%;}.video-placeholder-text-normal{align-items: center; padding: 10px 16px; text-align: center; border: 1px solid; border-radius: 2px; cursor: pointer;}.cky-rtl{direction: rtl; text-align: right;}.cky-rtl .cky-banner-btn-close{left: 9px; right: auto;}.cky-rtl .cky-notice-btn-wrapper .cky-btn:last-child{margin-right: 8px;}.cky-rtl .cky-notice-btn-wrapper .cky-btn:first-child{margin-right: 0;}.cky-rtl .cky-notice-btn-wrapper{margin-left: 0; margin-right: 15px;}.cky-rtl .cky-prefrence-btn-wrapper .cky-btn{margin-right: 8px;}.cky-rtl .cky-prefrence-btn-wrapper .cky-btn:first-child{margin-right: 0;}.cky-rtl .cky-accordion .cky-accordion-chevron i::before{border: none; border-left: 1.4px solid; border-top: 1.4px solid; left: 12px;}.cky-rtl .cky-accordion.cky-accordion-active .cky-accordion-chevron i::before{-webkit-transform: rotate(-135deg); -moz-transform: rotate(-135deg); -ms-transform: rotate(-135deg); -o-transform: rotate(-135deg); transform: rotate(-135deg);}@media (max-width: 768px){.cky-rtl .cky-notice-btn-wrapper{margin-right: 0;}}@media (max-width: 576px){.cky-rtl .cky-notice-btn-wrapper .cky-btn:last-child{margin-right: 0;}.cky-rtl .cky-prefrence-btn-wrapper .cky-btn{margin-right: 0;}.cky-rtl .cky-accordion.cky-accordion-active .cky-accordion-body{padding: 0 22px 0 0;}}@media (max-width: 425px){.cky-rtl .cky-accordion.cky-accordion-active .cky-accordion-body{padding: 0 15px 0 0;}}.cky-rtl .cky-opt-out-btn-wrapper .cky-btn{margin-right: 12px;}.cky-rtl .cky-opt-out-btn-wrapper .cky-btn:first-child{margin-right: 0;}.cky-rtl .cky-opt-out-checkbox-wrapper .cky-opt-out-checkbox-label{margin: 0 12px 0 0;}"};
+//# sourceURL=cookie-law-info-js-extra
+</script>
+<script id="cookie-law-info-js" src="https://kino.blonie.pl/wp-content/plugins/cookie-law-info/lite/frontend/js/script.min.js"></script>
+<style id="cky-style-inline">[data-cky-tag]{visibility:hidden;}</style><meta name="redi-version" content="1.3.0" /><link rel="icon" href="https://kino.blonie.pl/wp-content/uploads/2026/05/cropped-CK-LOGO-AKTUALNE-32x32.png" sizes="32x32" />
+<link rel="icon" href="https://kino.blonie.pl/wp-content/uploads/2026/05/cropped-CK-LOGO-AKTUALNE-192x192.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://kino.blonie.pl/wp-content/uploads/2026/05/cropped-CK-LOGO-AKTUALNE-180x180.png" />
+<meta name="msapplication-TileImage" content="https://kino.blonie.pl/wp-content/uploads/2026/05/cropped-CK-LOGO-AKTUALNE-270x270.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+</head>
+<body class="wp-singular film-template-default single single-film postid-633 wp-embed-responsive wp-theme-base-tamplate flex min-h-screen flex-col bg-background text-foreground antialiased">
+
+<!-- Skip to content link (accessibility) -->
+<a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[999] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-white focus:shadow-card">
+    Przejdź do treści</a>
+
+<!-- Site Header -->
+<header id="site-header" class="site-header sticky top-0 z-50 overflow-visible border-b border-border bg-background/95 backdrop-blur-md">
+    <div class="site-header__bar mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+
+        <!-- Logo -->
+        <a href="https://kino.blonie.pl/" class="site-header__logo flex shrink-0 items-center gap-2" aria-label="Kino Bajka w Błoniu">
+                            <img
+                    src="https://kino.blonie.pl/wp-content/uploads/2026/06/Kino-Bajka-LOGO-NOWE.png"
+                    alt="Kino Bajka w Błoniu"
+                    class="site-header__logo-img w-auto"
+                    width="1494"
+                    height="908"
+                >
+                    </a>
+
+        <!-- Desktop Navigation -->
+        <nav class="hidden lg:flex lg:items-center lg:gap-1" aria-label="Nawigacja główna">
+            <ul id="menu-menu-glowne" class="flex items-center gap-1"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-73 relative"><a href="https://kino.blonie.pl/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Repertuar</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-74 relative"><a href="https://kino.blonie.pl/cennik/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Cennik</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-75 relative"><a href="https://kino.blonie.pl/filmy/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Filmy</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-77 relative"><a href="https://kino.blonie.pl/o-nas/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">O nas</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-76 relative"><a href="https://kino.blonie.pl/kontakt/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Kontakt</a></li>
+</ul>        </nav>
+
+        <!-- A11y menu (desktop) -->
+        <div class="hidden items-center lg:flex" aria-label="Ustawienia dostępności">
+            
+<div class="relative inline-flex" data-a11y-menu>
+        <button
+        class="icon-btn p-0 rounded-full"
+        type="button"
+        aria-label="Ustawienia dostępności"
+         id="header-desktop-toggle" aria-expanded="false" aria-controls="header-desktop-panel" data-a11y-menu-toggle="true"    >
+        <svg class="w-10 h-10 rounded-full" aria-hidden="true" id="Component_204_1" data-name="Component 204 – 1" xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 42 42">
+  <g id="Group_5613" data-name="Group 5613" transform="translate(-1387.001 -10081.408)">
+    <g id="Rectangle_22" data-name="Rectangle 22" transform="translate(1387.001 10081.408)" fill="#fff" stroke="#151515" stroke-width="1">
+      <rect width="42" height="42" rx="21" stroke="none"/>
+      <rect x="0.5" y="0.5" width="41" height="41" rx="20.5" fill="none"/>
+    </g>
+    <g id="disability_18601214" transform="translate(1396.236 10090.299)">
+      <path id="Path_845" data-name="Path 845" d="M10.03,1a3.03,3.03,0,1,0,3.03,3.03A3.03,3.03,0,0,0,10.03,1Z" transform="translate(0.06)" fill="#151515"/>
+      <g id="Group_1573" data-name="Group 1573" transform="translate(1 1)">
+        <path id="Path_846" data-name="Path 846" d="M7.719,10.084a5.556,5.556,0,1,0,6.143,7.2l1.922.621A7.576,7.576,0,1,1,7.411,8.088Z" transform="translate(-1 -0.929)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_847" data-name="Path 847" d="M10.03,3.02a1.01,1.01,0,1,0,1.01,1.01A1.01,1.01,0,0,0,10.03,3.02ZM7,4.03a3.03,3.03,0,1,1,3.03,3.03A3.03,3.03,0,0,1,7,4.03Z" transform="translate(-0.94 -1)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_848" data-name="Path 848" d="M9,15.09V6h2.02v8.08h6.06a1.01,1.01,0,0,1,.938.635l1.666,4.166,2.127-.709.639,1.916-3.03,1.01a1.01,1.01,0,0,1-1.257-.583L16.4,16.1H10.01A1.01,1.01,0,0,1,9,15.09Z" transform="translate(-0.92 -0.95)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_849" data-name="Path 849" d="M16.06,12.02H10V10h6.06Z" transform="translate(-0.91 -0.91)" fill="#151515" fill-rule="evenodd"/>
+      </g>
+    </g>
+  </g>
+</svg>
+            </button>
+
+    <div
+        id="header-desktop-panel"
+        class="absolute top-full z-50 mt-2 w-72 rounded-lg border border-border bg-background p-3 shadow-card right-0"
+        role="region"
+        aria-label="Ustawienia dostępności"
+        data-a11y-menu-panel
+        hidden
+    >
+        <div class="grid gap-4">
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Wygląd                </p>
+
+                <div class="flex flex-col gap-2">
+                        <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-palette="high-contrast" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor"/>
+  <path d="M12 21a9 9 0 0 0 0-18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+        <span>Kontrast</span>
+            </button>
+    <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-motion="reduced" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M21 12c0 4.97-4.03 9-9 9a9 9 0 1 1 0-18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4.5 4.5 19.5 19.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M12 6.5v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+        <span>Mniej ruchu</span>
+            </button>
+                </div>
+            </div>
+
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Tekst                </p>
+
+                <div class="flex flex-wrap gap-2">
+                        <button
+        class="icon-btn"
+        type="button"
+        aria-label="Zmniejsz tekst"
+         data-a11y-text-size="sm" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M16.5 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+    <button
+        class="icon-btn"
+        type="button"
+        aria-label="Domyślny tekst"
+         data-a11y-text-size="md" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+    <button
+        class="icon-btn"
+        type="button"
+        aria-label="Zwiększ tekst"
+         data-a11y-text-size="lg" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M19 12.5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M16.5 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+                </div>
+            </div>
+
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Czytanie                </p>
+
+                <div class="flex flex-col gap-2">
+                        <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-reading="tts" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
+        <span>Czytaj na głos</span>
+            </button>
+                </div>
+            </div>
+
+            <div class="border-t border-border pt-3">
+                    <button
+        class="btn btn--sm btn--outline w-full"
+        type="button"
+         data-a11y-reset="true"    >
+                <span>Resetuj</span>
+            </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+
+        <div class="flex items-center gap-2 lg:hidden">
+            <!-- A11y menu (mobile) -->
+            <div class="inline-flex items-center" aria-label="Ustawienia dostępności">
+                
+<div class="relative inline-flex" data-a11y-menu>
+        <button
+        class="icon-btn p-0 rounded-full"
+        type="button"
+        aria-label="Ustawienia dostępności"
+         id="header-mobile-toggle" aria-expanded="false" aria-controls="header-mobile-panel" data-a11y-menu-toggle="true"    >
+        <svg class="w-10 h-10 rounded-full" aria-hidden="true" id="Component_204_1" data-name="Component 204 – 1" xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 42 42">
+  <g id="Group_5613" data-name="Group 5613" transform="translate(-1387.001 -10081.408)">
+    <g id="Rectangle_22" data-name="Rectangle 22" transform="translate(1387.001 10081.408)" fill="#fff" stroke="#151515" stroke-width="1">
+      <rect width="42" height="42" rx="21" stroke="none"/>
+      <rect x="0.5" y="0.5" width="41" height="41" rx="20.5" fill="none"/>
+    </g>
+    <g id="disability_18601214" transform="translate(1396.236 10090.299)">
+      <path id="Path_845" data-name="Path 845" d="M10.03,1a3.03,3.03,0,1,0,3.03,3.03A3.03,3.03,0,0,0,10.03,1Z" transform="translate(0.06)" fill="#151515"/>
+      <g id="Group_1573" data-name="Group 1573" transform="translate(1 1)">
+        <path id="Path_846" data-name="Path 846" d="M7.719,10.084a5.556,5.556,0,1,0,6.143,7.2l1.922.621A7.576,7.576,0,1,1,7.411,8.088Z" transform="translate(-1 -0.929)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_847" data-name="Path 847" d="M10.03,3.02a1.01,1.01,0,1,0,1.01,1.01A1.01,1.01,0,0,0,10.03,3.02ZM7,4.03a3.03,3.03,0,1,1,3.03,3.03A3.03,3.03,0,0,1,7,4.03Z" transform="translate(-0.94 -1)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_848" data-name="Path 848" d="M9,15.09V6h2.02v8.08h6.06a1.01,1.01,0,0,1,.938.635l1.666,4.166,2.127-.709.639,1.916-3.03,1.01a1.01,1.01,0,0,1-1.257-.583L16.4,16.1H10.01A1.01,1.01,0,0,1,9,15.09Z" transform="translate(-0.92 -0.95)" fill="#151515" fill-rule="evenodd"/>
+        <path id="Path_849" data-name="Path 849" d="M16.06,12.02H10V10h6.06Z" transform="translate(-0.91 -0.91)" fill="#151515" fill-rule="evenodd"/>
+      </g>
+    </g>
+  </g>
+</svg>
+            </button>
+
+    <div
+        id="header-mobile-panel"
+        class="absolute top-full z-50 mt-2 w-72 rounded-lg border border-border bg-background p-3 shadow-card right-0"
+        role="region"
+        aria-label="Ustawienia dostępności"
+        data-a11y-menu-panel
+        hidden
+    >
+        <div class="grid gap-4">
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Wygląd                </p>
+
+                <div class="flex flex-col gap-2">
+                        <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-palette="high-contrast" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor"/>
+  <path d="M12 21a9 9 0 0 0 0-18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+        <span>Kontrast</span>
+            </button>
+    <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-motion="reduced" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M21 12c0 4.97-4.03 9-9 9a9 9 0 1 1 0-18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4.5 4.5 19.5 19.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M12 6.5v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+        <span>Mniej ruchu</span>
+            </button>
+                </div>
+            </div>
+
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Tekst                </p>
+
+                <div class="flex flex-wrap gap-2">
+                        <button
+        class="icon-btn"
+        type="button"
+        aria-label="Zmniejsz tekst"
+         data-a11y-text-size="sm" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M16.5 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+    <button
+        class="icon-btn"
+        type="button"
+        aria-label="Domyślny tekst"
+         data-a11y-text-size="md" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+    <button
+        class="icon-btn"
+        type="button"
+        aria-label="Zwiększ tekst"
+         data-a11y-text-size="lg" aria-pressed="false"    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M7.5 18 11 6l3.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.7 14.2h4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M19 12.5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M16.5 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+            </button>
+                </div>
+            </div>
+
+            <div class="grid gap-2">
+                <p class="text-sm font-semibold text-foreground">
+                    Czytanie                </p>
+
+                <div class="flex flex-col gap-2">
+                        <button
+        class="btn btn--sm btn--outline"
+        type="button"
+         data-a11y-reading="tts" aria-pressed="false"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
+        <span>Czytaj na głos</span>
+            </button>
+                </div>
+            </div>
+
+            <div class="border-t border-border pt-3">
+                    <button
+        class="btn btn--sm btn--outline w-full"
+        type="button"
+         data-a11y-reset="true"    >
+                <span>Resetuj</span>
+            </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+            </div>
+
+            <!-- Mobile Menu Toggle -->
+            <button
+                id="mobile-menu-toggle"
+                class="inline-flex items-center justify-center rounded-md p-2 text-foreground transition-colors duration-200 hover:bg-muted"
+                aria-expanded="false"
+                aria-controls="mobile-menu"
+                aria-label="Otwórz menu"
+                data-label-open="Otwórz menu"
+                data-label-close="Zamknij menu"
+            >
+                <span id="menu-icon-open" class="block">
+                    <svg aria-hidden="true" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </span>
+                <span id="menu-icon-close" class="hidden">
+                    <svg aria-hidden="true" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                </span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Mobile Menu -->
+    <nav id="mobile-menu" class="hidden border-t border-border bg-background lg:hidden" aria-label="Menu mobilne">
+        <div class="space-y-1 px-4 py-4">
+            <ul id="menu-menu-glowne-1" class="space-y-1"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-73 relative"><a href="https://kino.blonie.pl/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Repertuar</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-74 relative"><a href="https://kino.blonie.pl/cennik/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Cennik</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-75 relative"><a href="https://kino.blonie.pl/filmy/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Filmy</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-77 relative"><a href="https://kino.blonie.pl/o-nas/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">O nas</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-76 relative"><a href="https://kino.blonie.pl/kontakt/" class="inline-flex items-center gap-1.5 px-4 py-2 text-xl font-bold uppercase text-foreground hover:text-primary transition-colors duration-200 ease-smooth">Kontakt</a></li>
+</ul>        </div>
+    </nav>
+
+</header>
+
+<main id="main-content" class="grow">
+    <section
+    class="section bg-background"
+    id="film"    aria-label="Film">
+        <div class="container-site flex flex-col gap-10">
+            <div class="grid gap-8 lg:grid-cols-[minmax(240px,280px)_1fr] lg:gap-10">
+                <div class="flex flex-col gap-4">
+                                                                    <img
+                            src="https://kino.blonie.pl/wp-content/uploads/2026/09/SUPERMOCNI_plakat_A-698x1024.jpg"
+                            alt="SUPERMOCNI"
+                            class="film-poster w-full rounded-none bg-muted object-contain"
+                            loading="lazy"
+                        />
+                    
+                                                <button
+        class="btn btn--md btn--primary w-full rounded-full"
+        type="button"
+         data-video-modal-open="film-trailer-modal" aria-haspopup="dialog"    >
+        <svg aria-hidden="true" class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
+        <span>Zobacz zwiastun</span>
+            </button>
+                                    </div>
+
+                <div class="flex flex-col gap-4">
+                    <h1 class="heading-1 text-primary">SUPERMOCNI</h1>
+
+                                            <ul class="film-meta-list" role="list">
+                    <li class="film-meta-list__item">
+                            <span class="film-meta-list__icon" aria-hidden="true">
+                    <svg aria-hidden="true" class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" /></svg>
+                </span>
+                        <span class="film-meta-list__text">Dubbing</span>
+        </li>
+                    <li class="film-meta-list__item">
+                            <span class="film-meta-list__icon" aria-hidden="true">
+                    <svg aria-hidden="true" class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="##212121"><path d="M760-660q17 0 28.5-11.5T800-700q0-17-11.5-28.5T760-740q-17 0-28.5 11.5T720-700q0 17 11.5 28.5T760-660Zm-160 0q17 0 28.5-11.5T640-700q0-17-11.5-28.5T600-740q-17 0-28.5 11.5T560-700q0 17 11.5 28.5T600-660Zm-20 136h200q0-35-30.5-55.5T680-600q-39 0-69.5 20.5T580-524ZM110-150q-70-70-70-170v-280h480v280q0 100-70 170T280-80q-100 0-170-70Zm283-57q47-47 47-113v-200H120v200q0 66 47 113t113 47q66 0 113-47Zm287-153q-26 0-51.5-5.5T580-382v-94q22 17 47.5 26.5T680-440q66 0 113-47t47-113v-200H520v140h-80v-220h480v280q0 100-70 170t-170 70Zm-480-20q17 0 28.5-11.5T240-420q0-17-11.5-28.5T200-460q-17 0-28.5 11.5T160-420q0 17 11.5 28.5T200-380Zm188.5-11.5Q400-403 400-420t-11.5-28.5Q377-460 360-460t-28.5 11.5Q320-437 320-420t11.5 28.5Q343-380 360-380t28.5-11.5Zm-39 127Q380-285 380-320H180q0 35 30.5 55.5T280-244q39 0 69.5-20.5ZM280-340Zm400-280Z"/></svg>                </span>
+                        <span class="film-meta-list__text">Animacja / Familijny</span>
+        </li>
+                    <li class="film-meta-list__item">
+                            <span class="film-meta-list__icon" aria-hidden="true">
+                    <svg aria-hidden="true" class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                </span>
+                        <span class="film-meta-list__text">1 godz. 36 min.</span>
+        </li>
+                    <li class="film-meta-list__item">
+                            <span class="film-meta-list__icon" aria-hidden="true">
+                    <svg aria-hidden="true" class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="##212121"><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm216.5-183.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 56.5Q447-400 480-400t56.5-23.5Z"/></svg>                </span>
+                        <span class="film-meta-list__text">Od lat: 7</span>
+        </li>
+                    <li class="film-meta-list__item">
+                            <span class="film-meta-list__icon" aria-hidden="true">
+                    <svg aria-hidden="true" class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" /></svg>
+                </span>
+                        <span class="film-meta-list__text">Bilety: normalny 22 zł / ulgowy 20 zł</span>
+        </li>
+    </ul>
+                    
+                    <div class="flex flex-col gap-8">
+                        <h3 class="text-xl font-bold text-primary uppercase">Seanse</h3>
+                                                    <p class="text-foreground">
+                                Premiera:                                <strong>23 października 2026</strong>
+                            </p>
+                                            </div>
+                </div>
+            </div>
+
+                            <div class="flex flex-col gap-4">
+                    <h3 class="text-xl font-bold text-primary uppercase">Opis</h3>
+                    <div class="prose prose-base max-w-none text-foreground">
+                        <p>Zośka jest trochę zwariowaną nastolatką, która najbardziej na świecie kocha swoje zwierzaki. Gdy pewnego dnia, w naukowym laboratorium jej mamy, dochodzi do małej demolki, a Zośka i zwierzaki stykają się z tajemniczą kosmiczną substancją, życie całej rodziny staje na głowie! Dziewczynka i jej pupile zaczynają się dziwnie zmieniać. Ona staje się bardziej dzika i zwinna, a futrzaki bardziej bystre i wygadane. Z jednej strony to świetna sprawa, bo wszyscy zyskują niesamowite moce, ale z drugiej, jeśli tak dalej pójdzie, Zośka całkiem zmieni się w zwierzaka, a zwierzaki w ludzi. Został im tylko jeden dzień na odwrócenie tej dziwnej mutacji. Ale to nie jedyny problem. Otóż pewien żądny władzy naukowiec chce za pomocą owej kosmicznej substancji przejąć panowanie nad światem. Jeśli wpadnie ona w jego łapy, na ratunek będzie za późno. Zośka i jej zwierzaki muszą zapanować nad swoimi super mocami i wykorzystać je do ratowania planety.</p>
+                    </div>
+                </div>
+                    </div>
+    </section>
+
+    
+<section
+    class="section container-site bg-background border-t border-border"
+    id="partnerzy"    aria-label="Partnerzy">
+    <div class="">
+        <div
+            class="partners-carousel"
+            data-partners-carousel
+            data-per-view="1,2,3"
+            data-breakpoints="768,1024"
+        >
+            <div
+                id="partners-carousel-1"
+                class="partners-carousel__viewport"
+                data-partners-viewport
+                tabindex="0"
+                aria-live="off"
+            >
+                <ul class="partners-carousel__track" data-partners-track role="list">
+                                            <li class="partners-carousel__item" data-partners-item role="listitem">
+                                <a
+        class="partner-logo partner-logo__link"
+        href="https://centrumkultury.blonie.pl/"
+        aria-label="Centrum kultury w błoniu (otwiera się w nowej karcie)"
+                    target="_blank"
+            rel="noopener noreferrer"
+                    >
+        <img class="partner-logo__img" src="https://kino.blonie.pl/wp-content/uploads/2026/05/CK-LOGO-AKTUALNE.png" alt="Centrum kultury w błoniu" loading="lazy" decoding="async" width="1259" height="1259" />    </a>
+                            </li>
+                                            <li class="partners-carousel__item" data-partners-item role="listitem">
+                                <a
+        class="partner-logo partner-logo__link"
+        href="https://pisf.pl/"
+        aria-label="Polski Instytut Sztuki Filmowej (otwiera się w nowej karcie)"
+                    target="_blank"
+            rel="noopener noreferrer"
+                    >
+        <img class="partner-logo__img" src="https://kino.blonie.pl/wp-content/uploads/2026/05/Image-2.png" alt="Polski Instytut Sztuki Filmowej" loading="lazy" decoding="async" width="248" height="77" />    </a>
+                            </li>
+                                            <li class="partners-carousel__item" data-partners-item role="listitem">
+                                <a
+        class="partner-logo partner-logo__link"
+        href="https://kino.coigdzie.pl/kino/Kino+Bajka+w+B%C5%82oniu-129174"
+        aria-label="Co i Gdzie &#8211; Baza wydarzeń i repertuar (otwiera się w nowej karcie)"
+                    target="_blank"
+            rel="noopener noreferrer"
+                    >
+        <img class="partner-logo__img" src="https://kino.blonie.pl/wp-content/uploads/2026/05/pngegg.png" alt="Co i Gdzie &#8211; Baza wydarzeń i repertuar" loading="lazy" decoding="async" width="305" height="164" />    </a>
+                            </li>
+                                            <li class="partners-carousel__item" data-partners-item role="listitem">
+                                <a
+        class="partner-logo partner-logo__link"
+        href="https://www.filmweb.pl/showtimes/B%C5%82onie/Centrum+Kultury-1514"
+        aria-label="filmweb (otwiera się w nowej karcie)"
+                    target="_blank"
+            rel="noopener noreferrer"
+                    >
+        <img class="partner-logo__img" src="https://kino.blonie.pl/wp-content/uploads/2026/06/filmweb.png" alt="filmweb" loading="lazy" decoding="async" width="600" height="600" />    </a>
+                            </li>
+                                    </ul>
+            </div>
+
+            <div
+                class="partners-carousel__dots"
+                data-partners-dots
+                role="tablist"
+                aria-label="Slajdy partnerów"
+                hidden
+            ></div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+    <dialog
+    id="film-trailer-modal"
+    class="video-modal"
+    aria-labelledby="film-trailer-modal-title"
+>
+    <div class="video-modal__inner">
+        <header class="video-modal__header">
+            <h2 id="film-trailer-modal-title" class="video-modal__title">
+                Zwiastun: SUPERMOCNI            </h2>
+                <button
+        class="icon-btn video-modal__close"
+        type="button"
+        aria-label="Zamknij zwiastun"
+         data-video-modal-close=""    >
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+            </button>
+        </header>
+        <div class="video-modal__media">
+            <iframe
+                class="video-modal__iframe"
+                data-src="https://www.youtube-nocookie.com/embed/_hLX-O-rowg?rel=0"
+                title="Zwiastun: SUPERMOCNI"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowfullscreen
+            ></iframe>
+        </div>
+    </div>
+</dialog>
+
+
+<!-- Site Footer -->
+<footer class="on-primary mt-auto border-t border-border bg-primary text-white text-sm">
+
+    <!-- Footer Main -->
+    <div class="container-site py-12">
+        <div class="footer-columns">
+
+            <!-- Column 1: Logo & Secondary Footer Menu -->
+            <div class="">
+                                    <a href="https://kino.blonie.pl/" class="mb-4 inline-block">
+                        <img
+                            src="https://kino.blonie.pl/wp-content/uploads/2026/06/Kino-Bajka-LOGO-NOWE.png"
+                            alt="Kino Bajka w Błoniu"
+                            class="h-22 w-auto"
+                            width="1494"
+                            height="908"
+                        >
+                    </a>
+                
+                
+                <ul id="menu-menu-stopka" class="mt-6 space-y-2"><li id="menu-item-161" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-161"><a href="https://kino.blonie.pl/regulamin/">Regulamin</a></li>
+<li id="menu-item-162" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-162"><a href="https://kino.blonie.pl/polityka-prywatnosci/">Polityka prywatności</a></li>
+<li id="menu-item-160" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-160"><a href="https://kino.blonie.pl/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
+<li id="menu-item-163" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-163"><a href="https://centrumkultury.blonie.pl/">Centrum kultury w Błoniu</a></li>
+</ul>            </div>
+
+            <!-- Column 2: Footer Navigation & Social Media -->
+            <div>
+                <h3 class="mb-4 text-lg font-semibold tracking-wider text-white">
+                    Kino Bajka                </h3>
+                <ul id="menu-kino-bajka" class="space-y-2"><li id="menu-item-78" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-78"><a href="https://kino.blonie.pl/">Repertuar</a></li>
+<li id="menu-item-79" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-79"><a href="https://kino.blonie.pl/cennik/">Cennik</a></li>
+<li id="menu-item-80" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-80"><a href="https://kino.blonie.pl/filmy/">Filmy</a></li>
+<li id="menu-item-81" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-81"><a href="https://kino.blonie.pl/o-nas/">O nas</a></li>
+</ul>
+                <!-- Social Media -->
+                                    <div class="mt-5 flex items-center gap-3">
+                                                    <a
+                                href="https://www.facebook.com/profile.php?id=100064209427670"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center justify-center w-4 h-4 text-white/90 hover:text-white transition-all duration-200 hover:scale-110"
+                                aria-label="Facebook"
+                            >
+                                <svg aria-hidden="true" class="w-4 h-4" id="Component_27_21" data-name="Component 27 – 21" xmlns="http://www.w3.org/2000/svg" width="7.801" height="14.942" viewBox="0 0 7.801 14.942">
+  <path id="Path_4842" data-name="Path 4842" d="M144.639,103.859c.463-.017.925,0,1.39,0h.191v-2.409c-.247-.024-.506-.06-.765-.072-.474-.021-.95-.045-1.426-.033a3.5,3.5,0,0,0-2.012.621,3.014,3.014,0,0,0-1.209,2.01,7.077,7.077,0,0,0-.084,1.033c-.013.541,0,1.08,0,1.621v.2h-2.3v2.69h2.29v6.76h2.8v-6.75h2.284c.117-.895.232-1.78.351-2.7-.184,0-.348,0-.513,0-.649,0-2.139,0-2.139,0s.006-1.333.022-1.912C143.535,104.123,144,103.881,144.639,103.859Z" transform="translate(-138.419 -101.337)" fill="#fff" fill-rule="evenodd"/>
+</svg>
+                            </a>
+                                            </div>
+                            </div>
+
+            <!-- Column 3: Company Info -->
+            <div>
+                <h3 class="mb-4 text-lg font-semibold text-white">
+                    Centrum Kultury w Błoniu                </h3>
+                
+                                    <div class="mb-2 text-white/90">
+                        ul. Jana Pawła II 1b, 05-870 Błonie                    </div>
+                
+                <div class="space-y-2 text-white/90">
+                                            <div class="mb-2">NIP: 118 204 12 34</div>
+                    
+                                            <div>
+                            Tel:                            <a class="text-white/90 " href="tel:227526330">
+                                22 752 63 30                            </a>
+                        </div>
+                    
+                                            <div>
+                            Email:                            <a class="text-white/90 " href="mailto:kino@centrumkultury.com.pl">
+                                kino@centrumkultury.com.pl                            </a>
+                        </div>
+                    
+                                            <div class="mt-4">
+                            <div class="">Godziny otwarcia:</div>
+                            <div class="mt-2">
+                                Pon: zamknięte<br />
+Wt-Nd: 13:00 - 20:00                            </div>
+                        </div>
+                                    </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Copyright Bar -->
+    <div class="container-site border-t border-white/20 py-4">
+        <p class="text-left text-xs text-white/90">
+            2026 kino.blonie.pl. Wszystkie prawa zastrzeżone        </p>
+    </div>
+
+</footer>
+
+    <button
+        class="icon-btn scroll-top-btn"
+        type="button"
+        aria-label="Przewiń do góry"
+         data-scroll-top="true" hidden="hidden" aria-hidden="true"    >
+        <svg class="w-6 h-6 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#264796"><path d="M480-528 296-344l-56-56 240-240 240 240-56 56-184-184Z"/></svg>            </button>
+
+
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/base-tamplate/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<script id="ckyBannerTemplate" type="text/template"><div class="cky-overlay cky-hide"></div><div class="cky-btn-revisit-wrapper cky-revisit-hide" data-cky-tag="revisit-consent" data-tooltip="Consent Preferences" style="background-color:#0056A7"> <button class="cky-btn-revisit" aria-label="Consent Preferences"> <img src="https://kino.blonie.pl/wp-content/plugins/cookie-law-info/lite/frontend/images/revisit.svg" alt="Revisit consent button"> </button></div><div class="cky-consent-container cky-hide" tabindex="0"> <div class="cky-consent-bar" data-cky-tag="notice" style="background-color:#FFFFFF;border-color:#F4F4F4">  <div class="cky-notice"> <p class="cky-title" role="heading" aria-level="2" data-cky-tag="title" style="color:#212121">We value your privacy</p><div class="cky-notice-group"> <div class="cky-notice-des" data-cky-tag="description" style="color:#212121"> <p>We use cookies to enhance your browsing experience, serve personalised ads or content, and analyse our traffic. By clicking "Accept All", you consent to our use of cookies.</p> </div><div class="cky-notice-btn-wrapper" data-cky-tag="notice-buttons"> <button class="cky-btn cky-btn-customize" aria-label="Customise" aria-haspopup="true" aria-controls="ckyPreferenceCenter" data-cky-tag="settings-button" style="color:#1863DC;background-color:transparent;border-color:#1863DC">Customise</button> <button class="cky-btn cky-btn-reject" aria-label="Reject All" data-cky-tag="reject-button" style="color:#1863DC;background-color:transparent;border-color:#1863DC">Reject All</button> <button class="cky-btn cky-btn-accept" aria-label="Accept All" data-cky-tag="accept-button" style="color:#FFFFFF;background-color:#1863DC;border-color:#1863DC">Accept All</button>  </div></div></div></div></div><div class="cky-modal" tabindex="0"> <div class="cky-preference-center" id="ckyPreferenceCenter" data-cky-tag="detail" style="color:#212121;background-color:#FFFFFF;border-color:#F4F4F4"> <div class="cky-preference-header"> <span class="cky-preference-title" role="heading" aria-level="2" data-cky-tag="detail-title" style="color:#212121">Customise Consent Preferences</span> <button class="cky-btn-close" aria-label="Close" data-cky-tag="detail-close"> <img src="https://kino.blonie.pl/wp-content/plugins/cookie-law-info/lite/frontend/images/close.svg" alt=""> </button> </div><div class="cky-preference-body-wrapper"> <div class="cky-preference-content-wrapper" data-cky-tag="detail-description" style="color:#212121"> <p>We use cookies to help you navigate efficiently and perform certain functions. You will find detailed information about all cookies under each consent category below.</p><p>The cookies that are categorised as "Necessary" are stored on your browser as they are essential for enabling the basic functionalities of the site. </p><p>We also use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. These cookies will only be stored in your browser with your prior consent.</p><p>You can choose to enable or disable some or all of these cookies but disabling some of them may affect your browsing experience.</p> </div><div class="cky-accordion-wrapper" data-cky-tag="detail-categories"> <div class="cky-accordion" id="ckyDetailCategorynecessary"> <div class="cky-accordion-item"> <div class="cky-accordion-chevron"><i class="cky-chevron-right"></i></div> <div class="cky-accordion-header-wrapper"> <div class="cky-accordion-header"><button class="cky-accordion-btn" aria-label="Necessary" data-cky-tag="detail-category-title" style="color:#212121">Necessary</button><span class="cky-always-active">Always Active</span> <div class="cky-switch" data-cky-tag="detail-category-toggle"><input type="checkbox" id="ckySwitchnecessary"></div> </div> <div class="cky-accordion-header-des" data-cky-tag="detail-category-description" style="color:#212121"> <p>Necessary cookies are required to enable the basic features of this site, such as providing secure log-in or adjusting your consent preferences. These cookies do not store any personally identifiable data.</p></div> </div> </div> <div class="cky-accordion-body"> <div class="cky-audit-table" data-cky-tag="audit-table" style="color:#212121;background-color:#f4f4f4;border-color:#ebebeb"><p class="cky-empty-cookies-text">No cookies to display.</p></div> </div> </div><div class="cky-accordion" id="ckyDetailCategoryfunctional"> <div class="cky-accordion-item"> <div class="cky-accordion-chevron"><i class="cky-chevron-right"></i></div> <div class="cky-accordion-header-wrapper"> <div class="cky-accordion-header"><button class="cky-accordion-btn" aria-label="Functional" data-cky-tag="detail-category-title" style="color:#212121">Functional</button><span class="cky-always-active">Always Active</span> <div class="cky-switch" data-cky-tag="detail-category-toggle"><input type="checkbox" id="ckySwitchfunctional"></div> </div> <div class="cky-accordion-header-des" data-cky-tag="detail-category-description" style="color:#212121"> <p>Functional cookies help perform certain functionalities like sharing the content of the website on social media platforms, collecting feedback, and other third-party features.</p></div> </div> </div> <div class="cky-accordion-body"> <div class="cky-audit-table" data-cky-tag="audit-table" style="color:#212121;background-color:#f4f4f4;border-color:#ebebeb"><p class="cky-empty-cookies-text">No cookies to display.</p></div> </div> </div><div class="cky-accordion" id="ckyDetailCategoryanalytics"> <div class="cky-accordion-item"> <div class="cky-accordion-chevron"><i class="cky-chevron-right"></i></div> <div class="cky-accordion-header-wrapper"> <div class="cky-accordion-header"><button class="cky-accordion-btn" aria-label="Analytics" data-cky-tag="detail-category-title" style="color:#212121">Analytics</button><span class="cky-always-active">Always Active</span> <div class="cky-switch" data-cky-tag="detail-category-toggle"><input type="checkbox" id="ckySwitchanalytics"></div> </div> <div class="cky-accordion-header-des" data-cky-tag="detail-category-description" style="color:#212121"> <p>Analytical cookies are used to understand how visitors interact with the website. These cookies help provide information on metrics such as the number of visitors, bounce rate, traffic source, etc.</p></div> </div> </div> <div class="cky-accordion-body"> <div class="cky-audit-table" data-cky-tag="audit-table" style="color:#212121;background-color:#f4f4f4;border-color:#ebebeb"><p class="cky-empty-cookies-text">No cookies to display.</p></div> </div> </div><div class="cky-accordion" id="ckyDetailCategoryperformance"> <div class="cky-accordion-item"> <div class="cky-accordion-chevron"><i class="cky-chevron-right"></i></div> <div class="cky-accordion-header-wrapper"> <div class="cky-accordion-header"><button class="cky-accordion-btn" aria-label="Performance" data-cky-tag="detail-category-title" style="color:#212121">Performance</button><span class="cky-always-active">Always Active</span> <div class="cky-switch" data-cky-tag="detail-category-toggle"><input type="checkbox" id="ckySwitchperformance"></div> </div> <div class="cky-accordion-header-des" data-cky-tag="detail-category-description" style="color:#212121"> <p>Performance cookies are used to understand and analyse the key performance indexes of the website which helps in delivering a better user experience for the visitors.</p></div> </div> </div> <div class="cky-accordion-body"> <div class="cky-audit-table" data-cky-tag="audit-table" style="color:#212121;background-color:#f4f4f4;border-color:#ebebeb"><p class="cky-empty-cookies-text">No cookies to display.</p></div> </div> </div><div class="cky-accordion" id="ckyDetailCategoryadvertisement"> <div class="cky-accordion-item"> <div class="cky-accordion-chevron"><i class="cky-chevron-right"></i></div> <div class="cky-accordion-header-wrapper"> <div class="cky-accordion-header"><button class="cky-accordion-btn" aria-label="Advertisement" data-cky-tag="detail-category-title" style="color:#212121">Advertisement</button><span class="cky-always-active">Always Active</span> <div class="cky-switch" data-cky-tag="detail-category-toggle"><input type="checkbox" id="ckySwitchadvertisement"></div> </div> <div class="cky-accordion-header-des" data-cky-tag="detail-category-description" style="color:#212121"> <p>Advertisement cookies are used to provide visitors with customised advertisements based on the pages you visited previously and to analyse the effectiveness of the ad campaigns.</p></div> </div> </div> <div class="cky-accordion-body"> <div class="cky-audit-table" data-cky-tag="audit-table" style="color:#212121;background-color:#f4f4f4;border-color:#ebebeb"><p class="cky-empty-cookies-text">No cookies to display.</p></div> </div> </div> </div></div><div class="cky-footer-wrapper"> <span class="cky-footer-shadow"></span> <div class="cky-prefrence-btn-wrapper" data-cky-tag="detail-buttons"> <button class="cky-btn cky-btn-reject" aria-label="Reject All" data-cky-tag="detail-reject-button" style="color:#1863DC;background-color:transparent;border-color:#1863DC"> Reject All </button> <button class="cky-btn cky-btn-preferences" aria-label="Save My Preferences" data-cky-tag="detail-save-button" style="color:#1863DC;background-color:transparent;border-color:#1863DC"> Save My Preferences </button> <button class="cky-btn cky-btn-accept" aria-label="Accept All" data-cky-tag="detail-accept-button" style="color:#FFFFFF;background-color:#1863DC;border-color:#1863DC"> Accept All </button> </div></div></div></div></script><script id="wp-hooks-js" src="https://kino.blonie.pl/wp-includes/js/dist/hooks.min.js"></script>
+<script id="wp-i18n-js" src="https://kino.blonie.pl/wp-includes/js/dist/i18n.min.js"></script>
+<script id="wp-i18n-js-after">
+wp.i18n.setLocaleData( { 'text direction\u0004ltr': [ 'ltr' ] } );
+//# sourceURL=wp-i18n-js-after
+</script>
+<script id="swv-js" src="https://kino.blonie.pl/wp-content/plugins/contact-form-7/includes/swv/js/index.js"></script>
+<script id="contact-form-7-js-translations">
+( function( domain, translations ) {
+	var localeData = translations.locale_data[ domain ] || translations.locale_data.messages;
+	localeData[""].domain = domain;
+	wp.i18n.setLocaleData( localeData, domain );
+} )( "contact-form-7", {"translation-revision-date":"2026-08-26 11:14:47+0000","generator":"GlotPress\/4.1.0","domain":"messages","locale_data":{"messages":{"":{"domain":"messages","plural-forms":"nplurals=3; plural=(n == 1) ? 0 : ((n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 1 : 2);","lang":"pl"},"This contact form is placed in the wrong place.":["Ten formularz kontaktowy zosta\u0142 umieszczony w niew\u0142a\u015bciwym miejscu."],"Error:":["B\u0142\u0105d:"]}},"comment":{"reference":"includes\/js\/index.js"}} );
+//# sourceURL=contact-form-7-js-translations
+</script>
+<script id="contact-form-7-js-before">
+var wpcf7 = {
+    "api": {
+        "root": "https:\/\/kino.blonie.pl\/wp-json\/",
+        "namespace": "contact-form-7\/v1"
+    }
+};
+//# sourceURL=contact-form-7-js-before
+</script>
+<script id="contact-form-7-js" src="https://kino.blonie.pl/wp-content/plugins/contact-form-7/includes/js/index.js"></script>
+<script id="base-app-js" type="module" src="https://kino.blonie.pl/wp-content/themes/base-tamplate/dist/assets/app-B-DOSWvn.js"></script>
+<script id="google-recaptcha-js" src="https://www.google.com/recaptcha/api.js?render=6LcjgTEtAAAAAOJHevKhbGbasJN5FtAwBUUXcOd8"></script>
+<script id="wp-polyfill-js" src="https://kino.blonie.pl/wp-includes/js/dist/vendor/wp-polyfill.min.js"></script>
+<script id="wpcf7-recaptcha-js-before">
+var wpcf7_recaptcha = {
+    "sitekey": "6LcjgTEtAAAAAOJHevKhbGbasJN5FtAwBUUXcOd8",
+    "actions": {
+        "homepage": "homepage",
+        "contactform": "contactform"
+    }
+};
+//# sourceURL=wpcf7-recaptcha-js-before
+</script>
+<script id="wpcf7-recaptcha-js" src="https://kino.blonie.pl/wp-content/plugins/contact-form-7/modules/recaptcha/index.js"></script>
+</body>
+</html>
