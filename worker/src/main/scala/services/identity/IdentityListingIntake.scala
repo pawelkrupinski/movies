@@ -30,10 +30,16 @@ final class IdentityListingIntake(
   def listingOf(cinema: Cinema): Seq[CinemaMovie] =
     accepted.find(cinema).flatMap(_.lastSuccess).orElse(archive.find(cinema).flatMap(_.lastSuccess)).map(_.films).getOrElse(Nil)
 
-  /** Every venue of `live` with the listing it is taken to publish, venues publishing nothing left out. */
+  /** Every venue of `live` with the listing it is taken to publish, venues publishing nothing left out.
+   *
+   *  Both archives are read a page at a time, each page reduced to the live venues' listings before
+   *  the next (as [[ArchiveListings]] does for the shadow): the rows of venues no longer live, and the
+   *  archive's copy of a venue that already has an accepted listing, are never held. An archive that
+   *  could not be read whole counts as empty — a partial read is not a smaller archive. */
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
-    val acceptedByVenue = accepted.findAll().flatMap(a => a.lastSuccess.map(a.cinema -> _.films)).toMap
-    val archivedByVenue = archive.findAll().flatMap(a => a.lastSuccess.map(a.cinema -> _.films)).toMap
+    val wanted          = live.toSet
+    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted)
+    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c))
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).map(c -> _)).filter(_._2.nonEmpty)
   }
 
@@ -55,4 +61,12 @@ final class IdentityListingIntake(
 object IdentityListingIntake {
   /** Where a cut-over country keeps its venues' accepted listings. */
   val Collection = "identity_listings"
+
+  /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time; empty
+   *  when the scan could not complete. */
+  private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean): Map[Cinema, Seq[CinemaMovie]] = {
+    val byVenue  = Map.newBuilder[Cinema, Seq[CinemaMovie]]
+    val complete = repository.scan(_.foreach(row => if (keep(row.cinema)) row.lastSuccess.foreach(s => byVenue += row.cinema -> s.films)))
+    if (complete) byVenue.result() else Map.empty
+  }
 }
