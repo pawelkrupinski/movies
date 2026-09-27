@@ -91,7 +91,7 @@ class EkobiletClient(
   // `fetchChunk`). Card-grid: the listing (landing + dated pages) discovers the
   // films and their detail-page URLs (the PLAN), then each film's detail page
   // yields its showtimes (the per-film CHUNK) — the chunk key there carries
-  // `title<US>detailUrl` because the cleaned title comes from the listing, not
+  // `title<US>detailUrl` because the title (tags and all) comes from the listing, not
   // the detail page.
   def planChunks(): Seq[String] = {
     val landing    = http.get(s"$BaseUrl/$slug")
@@ -116,21 +116,34 @@ class EkobiletClient(
    *  chunk. */
   def fetchChunk(key: String): Seq[CinemaMovie] =
     if (key.startsWith(ChronoMarker)) {
-      val Array(title, dateTime, booking) = key.stripPrefix(ChronoMarker).split(KeySep.toString, 3)
-      Seq(CinemaMovie(Movie(title), cinema, None, None, None, Seq.empty, Seq.empty,
-        Seq(Showtime(LocalDateTime.parse(dateTime), Option(booking).filter(_.nonEmpty)))))
+      val Array(rawTitle, dateTime, booking) = key.stripPrefix(ChronoMarker).split(KeySep.toString, 3)
+      Seq(film(rawTitle, None, Seq(Showtime(LocalDateTime.parse(dateTime), Option(booking).filter(_.nonEmpty)))))
     } else {
-      val i     = key.indexOf(KeySep)
-      val title = key.substring(0, i)
-      val url   = key.substring(i + 1)
+      val i        = key.indexOf(KeySep)
+      val rawTitle = key.substring(0, i)
+      val url      = key.substring(i + 1)
       val showtimes = parseShowtimes(http.get(url), today)
       if (showtimes.isEmpty) Seq.empty
-      else Seq(CinemaMovie(Movie(title), cinema, None, Some(url), None, Seq.empty, Seq.empty, showtimes))
+      else Seq(film(rawTitle, Some(url), showtimes))
     }
 
-  /** Merge a film's showtimes across its detail URLs (by title), then drop
-   *  non-film live events — the same filter the old `OnlyMovieEventsFilter` mixin
-   *  applied, moved here so the queue (reduce) path filters too. */
+  /** One film's row off its listing title as the venue typed it: the tags peeled
+   *  off (see [[EkobiletClient.parseTitle]]), the version stamped on every
+   *  showtime and the age kept as the rating. */
+  private def film(rawTitle: String, filmUrl: Option[String], showtimes: Seq[Showtime]): CinemaMovie = {
+    val parsed = parseTitle(rawTitle)
+    CinemaMovie(
+      Movie(parsed.title, rawTitle = Some(rawTitle).filter(_ != parsed.title)),
+      cinema, None, filmUrl, None, Seq.empty, Seq.empty,
+      showtimes.map(_.copy(format = parsed.format)),
+      ageRating = parsed.ageRating)
+  }
+
+  /** Merge a film's showtimes across its detail URLs (by title), then drop what
+   *  isn't a film: rows ticketed as a concert or a play ([[isStageTicket]]) and
+   *  the live events [[NonMovieEventClassifier]] names — the same filter the old
+   *  `OnlyMovieEventsFilter` mixin applied, moved here so the queue (reduce) path
+   *  filters too. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
     chunks.toSeq.sortBy(_._1).flatMap(_._2)
       .groupBy(_.movie.title).toSeq.sortBy(_._1)
@@ -138,6 +151,7 @@ class EkobiletClient(
         val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
         if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
       }
+      .filterNot(isStageTicket)
       .filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
 }
 
@@ -155,6 +169,55 @@ object EkobiletClient {
    *  control character never appears in a real title. */
   private val ChronoMarker = "\u0002"
 
+  /** A listing title as the venue typed it, whitespace collapsed. The tags stay
+   *  on until [[parseTitle]], which needs them for the format and the rating. */
+  private def listingTitle(text: String): String = text.replaceAll("\\s+", " ").trim
+
+  /** A film's title with its tags peeled off, the versions they named as
+   *  `Showtime.format` tokens, and the age they named as its rating. */
+  private[cinemas] case class ListingTitle(title: String, format: List[String], ageRating: Option[String])
+
+  // Trailing pipe segments ekobilet venues tag a film with besides its version:
+  // the minimum age ("| 13+") and a premiere flag ("| PREMIERA!!!", "| PREMIERA !!!").
+  private val AgeTag      = """\s*\|\s*(\d{1,2}\+)\s*$""".r.unanchored
+  private val PremiereTag = """(?iu)\s*\|\s*premiera\s*!*\s*$"""
+
+  /** Kino Starówka and Wielicka Mediateka type every listing as
+   *  "<film> | <tag> | <tag>" — "Lalka | 13+ | PREMIERA!!!", "Wtorek z klasyką:
+   *  Asterix i Obelix: Misja Kleopatra | DUBBING PL | 10+", "Lalka | 2D | PL" —
+   *  which reached TMDB whole and never resolved. Peels the trailing age,
+   *  premiere and version segments in whatever order they come, until none is
+   *  left; a pipe segment that is none of these ("| cykl WAJDA re-wizje") stays
+   *  for the title rules. */
+  private[cinemas] def parseTitle(raw: String): ListingTitle = {
+    @annotation.tailrec
+    def peel(t: String, format: List[String], age: Option[String]): ListingTitle = {
+      val (stripped, tokens) = ScraperParse.extractFormatTags(t)
+      val withFormat = format ++ tokens.filterNot(format.contains)
+      stripped match {
+        case AgeTag(a) => peel(AgeTag.replaceFirstIn(stripped, ""), withFormat, age.orElse(Some(a)))
+        case _ =>
+          val unpremiered = stripped.replaceFirst(PremiereTag, "")
+          if (unpremiered != stripped) peel(unpremiered, withFormat, age)
+          else ListingTitle(stripped, withFormat, age)
+      }
+    }
+    peel(raw, Nil, None)
+  }
+
+  /** A row whose every booking link sells a concert or play ticket rather than a
+   *  film one. ekobilet names the ticket kind in the link — "…/630621-bilety-na-
+   *  koncert", "…-bilety-na-spektakl" beside "…-bilety-na-film" for every film —
+   *  which catches a concert whose title carries no event word ("Grzegorz Turnau").
+   *  A screened broadcast ticketed as a concert (Wąsosz's André Rieu) is kept, as
+   *  [[NonMovieEventClassifier.isScreenedBroadcast]] keeps it everywhere else. */
+  private[cinemas] def isStageTicket(cm: CinemaMovie): Boolean = {
+    val links = cm.showtimes.flatMap(_.bookingUrl)
+    links.nonEmpty && links.forall(StageTicket.matches) &&
+      !NonMovieEventClassifier.isScreenedBroadcast(cm.movie.rawTitle.getOrElse(cm.movie.title))
+  }
+  private val StageTicket = """.*-bilety-na-(?:koncert|spektakl)$""".r
+
   // "DD.MM.YYYY" — the date strip's `data-date` attribute.
   private val PickerDate = """(\d{2})\.(\d{2})\.(\d{4})""".r
 
@@ -170,7 +233,7 @@ object EkobiletClient {
       }
     }.distinct
 
-  /** (cleaned title, detail-page URL) for each film card on the venue landing,
+  /** (listing title, detail-page URL) for each film card on the venue landing,
    *  de-duplicated (cards render twice for desktop/mobile). */
   private[cinemas] def parseLanding(html: String): Seq[(String, String)] = {
     val document = Jsoup.parse(html, BaseUrl)
@@ -181,7 +244,7 @@ object EkobiletClient {
         Option(c.parent).flatMap(p => Option(p.selectFirst("p.overme"))))
         .orElse(Option(document.selectFirst("p.overme")))
       for {
-        t <- titleElement.map(e => ScraperParse.stripFormatTags(e.text)).filter(_.nonEmpty)
+        t <- titleElement.map(e => listingTitle(e.text)).filter(_.nonEmpty)
         if url.nonEmpty
       } yield (t, url)
     }.distinctBy(_._2)
@@ -211,7 +274,7 @@ object EkobiletClient {
     Jsoup.parse(html, BaseUrl).select("div.event-buy[data-href]").asScala.toSeq.flatMap { row =>
       for {
         titleElement <- Option(row.selectFirst("div.ps-2.primary-color.fw-bold"))
-        title = ScraperParse.stripFormatTags(titleElement.text).trim
+        title = listingTitle(titleElement.text)
         if title.nonEmpty
         dateStr  <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
         dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "25 wrz"

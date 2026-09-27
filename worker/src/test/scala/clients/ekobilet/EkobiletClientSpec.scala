@@ -2,7 +2,7 @@ package clients.ekobilet
 
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoRejs, KinoTon, KinoZaciszeWasosz}
+import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoRadosc, KinoRejs, KinoStarowka, KinoTon, KinoWielickaMediateka, KinoZaciszeWasosz}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.EkobiletClient
@@ -206,5 +206,55 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.showtimes.map(_.dateTime) should contain allOf(
       LocalDateTime.of(2026, 9, 25, 20, 0), LocalDateTime.of(2026, 9, 26, 20, 0), LocalDateTime.of(2026, 9, 27, 20, 0))
     film.filmUrl shouldBe None
+  }
+
+  // Venues that moved off Filmweb on 2026-09-27 (fixtures captured that day).
+  // Kino Starówka and Wielicka Mediateka tag every title with pipe segments —
+  // age, "PREMIERA!!!", version, "PL" — which went to TMDB whole and never
+  // resolved ("Lalka | 13+ | PREMIERA!!!"). The film is the part before them;
+  // the age becomes the rating and the version the showtimes' format.
+  private val switchDay = LocalDate.of(2026, 9, 27)
+  private val starowka =
+    new EkobiletClient(new FakeHttpFetch("filmweb-only-switch"), "kinostarowka", KinoStarowka, today = switchDay).fetch()
+
+  it should "peel Kino Starówka's age, premiere and version pipe tags off the title" in {
+    starowka.map(_.movie.title) should contain allOf (
+      "Lalka", "Vincent. Legenda oceanu", "Wtorek z klasyką: Asterix i Obelix: Misja Kleopatra", "Tony", "Obcy")
+    all (starowka.map(_.movie.title)) should not include "|"
+    val lalka = starowka.find(_.movie.title == "Lalka").value
+    lalka.ageRating.value shouldBe "13+"
+    lalka.movie.rawTitle.value shouldBe "Lalka | 13+ | PREMIERA!!!"
+    starowka.find(_.movie.title.startsWith("Wtorek z klasyką: Asterix")).value
+      .showtimes.map(_.format).distinct shouldBe Seq(List("DUB"))
+    starowka.find(_.movie.title == "Tony").value.showtimes.map(_.format).distinct shouldBe Seq(List("NAP"))
+  }
+
+  it should "peel Wielicka Mediateka's version pipe tags off the chrono rows" in {
+    val wieliczka =
+      new EkobiletClient(new FakeHttpFetch("filmweb-only-switch"), "kino-wielicka-mediateka", KinoWielickaMediateka,
+        today = switchDay).fetch()
+    wieliczka.map(_.movie.title) should contain allOf ("Lalka", "Z klasą do kina: Lalka")
+    all (wieliczka.map(_.movie.title)) should not include "|"
+    wieliczka.find(_.movie.title == "Z klasą do kina: Lalka").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D"))
+  }
+
+  // Kino Radość (DK Wolbrom) sells its concerts and plays on the same chrono
+  // landing, and some carry no event word in the title ("Grzegorz Turnau").
+  // ekobilet's booking link names the kind of ticket — "…-bilety-na-film" for
+  // every film, "…-bilety-na-koncert" / "…-bilety-na-spektakl" otherwise — so
+  // that, not the title, decides. ("Genialny pomysł" is Sébastien Castro's stage
+  // comedy, ticketed as a spektakl.)
+  it should "drop concerts and plays by the ticket kind their booking link names" in {
+    val radosc =
+      new EkobiletClient(new FakeHttpFetch("filmweb-only-switch"), "dk-wolbrom", KinoRadosc, today = switchDay).fetch()
+    val titles = radosc.map(_.movie.title)
+    titles should contain allOf ("Lalka", "Folwark zwierzęcy", "Tedi i magiczna lampa")
+    titles should contain noneOf ("Grzegorz Turnau", "Zespół Pieśni i Tańca Śląsk / Podróże ze Śląskiem", "Genialny pomysł")
+    titles.exists(_.startsWith("André Rieu")) shouldBe true
+  }
+
+  it should "keep a screened concert broadcast even when it is ticketed as a concert" in {
+    val rieu = wasosz.find(_.movie.title.toLowerCase.contains("rieu")).value
+    rieu.showtimes.flatMap(_.bookingUrl).head should endWith("bilety-na-koncert")
   }
 }

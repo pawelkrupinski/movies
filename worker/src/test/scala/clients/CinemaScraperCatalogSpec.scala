@@ -192,7 +192,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     KinoOaza -> (15, 43),
     KinoOstrovia -> (13, 96),
     KinoPokoj -> (9, 39),
-    KinoRadosc -> (11, 26),
+    KinoRadosc -> (8, 23),   // its concerts and play (ticketed "bilety-na-koncert/spektakl") dropped
     KinoRelaks -> (13, 40),
     KinoRenesans -> (5, 38),
     KinoRodlo -> (13, 41),
