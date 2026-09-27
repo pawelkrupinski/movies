@@ -48,6 +48,16 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
     helper should include("gh workflow run \"$workflow\" --ref main")
     helper should include("-f patch=\"$patch\"")
     helper should not include "git push"
+  }
+
+  // Five countries download into one directory: a shared name keeps only the last country's log.
+  it should "keep each country's log under its own name" in {
+    measure should include("run-${{ matrix.code }}.log")
+  }
+
+  // It takes one runner per country from the 20 Main's run needs.
+  it should "wait for Main to be idle before dispatching" in {
+    helper should include("--workflow main.yml")
     measure should include("git apply --binary --index")
   }
 }

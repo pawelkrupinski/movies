@@ -27,6 +27,11 @@ if [ -z "${BASE_ONLY:-}" ]; then
 fi
 echo "variant $variant: base $(git log --oneline -1 "$base"), patch ${#patch} chars"
 
+# A measurement takes one runner per country from the 20 Main needs: wait for Main to be idle.
+while [ -n "$(gh run list --workflow main.yml --limit 5 --json status --jq '.[] | select(.status != "completed") | .status')" ]; do
+  echo "waiting for Main to finish before dispatching…"; sleep 30
+done
+
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 gh workflow run "$workflow" --ref main -f variant="$variant" -f base="$base" -f patch="$patch" \
   -f countries="${COUNTRIES:-pl,uk,de,us,es}" -f robustness="${ROBUSTNESS:-off}" -f focus="${FOCUS:-}"
