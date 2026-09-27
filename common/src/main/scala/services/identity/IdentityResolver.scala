@@ -305,7 +305,7 @@ object IdentityResolver {
      *  CLASS (`IdentityCalibration.classProbability`): the one film its whole title names exactly
      *  that its own title search returned first, in TMDB's order ([[IdentityMeasures.exactTopHits]]),
      *  when the listing's own evidence rules it out on nothing, published nothing against it, and
-     *  gives no rival a better fit. A bare title credits it with the naive-Bayes sum of missing
+     *  gives no rival a better fit ([[fitsBetter]]). A bare title credits it with the naive-Bayes sum of missing
      *  facts, a low popularity and its same-titled rivals, which undersells what the class measured
      *  on the labels; here the search standing LENDS confidence and never withdraws it. */
     def topHit(ranked: Seq[Scored]): Option[(Scored, Double)] = ranked.headOption.flatMap { any =>
@@ -313,12 +313,30 @@ object IdentityResolver {
       IdentityMeasures.exactTopHits(any.listing, ranked.map(s => (s.c.tmdbId, s.c.film, s.rank))) match {
         case Seq(id) =>
           eligible.find(_.c.tmdbId == id)
-            .filter(best => !speaksAgainst(best) && eligible.forall(r => (r eq best) || ownEvidence(r) <= ownEvidence(best)))
+            .filter(best => !speaksAgainst(best) && eligible.forall(r => (r eq best) || !fitsBetter(r, best)))
             .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(cp => best -> math.max(best.p, cp)))
             .filter(x => calibration.showsRatings(x._2))
         case _ => None
       }
     }
+
+    /** Does the listing's own evidence fit `rival` better than `top`, its exact top hit? A rival the
+     *  listing's title does not even NAME ([[IdentityMeasures.NamingRelations]]) is weighed only on
+     *  the facts `top`'s record answers: a credit or a running time the record leaves missing is
+     *  missing evidence, not evidence against it. Otherwise a director's other work, reached by
+     *  walking the credit, out-weighs the very record the title names on the facts that record
+     *  lacks (Ocine's "BTS … IN BUENOS AIRES: LIVE VIEWING", 195 minutes, "Jungjae HA": TMDB's
+     *  exact, rank-1 record credits nobody and states no runtime; his "… in Busan" credits him at
+     *  195). A rival the title names as well — a namesake, an edition — is weighed on everything:
+     *  there the facts are what tells the two apart. */
+    def fitsBetter(rival: Scored, top: Scored): Boolean =
+      if (rival.measures.get("title").exists { case IdentityMeasures.Category(c) => IdentityMeasures.NamingRelations(c); case _ => false })
+        ownEvidence(rival) > ownEvidence(top)
+      else {
+        val unanswered = top.measures.collect { case (name, IdentityMeasures.MissingFilm) => name }.toSet
+        def answered(s: Scored) = ownContributions(s.measures.filterNot { case (name, _) => unanswered(name) })
+        answered(rival) > answered(top)
+      }
 
     /** The probability that `film` is the listing's film — the decision's confidence, on the scale
      *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its

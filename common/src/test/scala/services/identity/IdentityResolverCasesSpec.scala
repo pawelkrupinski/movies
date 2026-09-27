@@ -813,6 +813,31 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(1770237))
   }
 
+  "An exact top hit whose record credits nobody and states no runtime" should
+    "not be out-ranked on those facts by a record its title does not name" in {
+    // ES, Ocine's "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING" ×8, crediting "Jungjae HA"
+    // and 195 minutes: TMDB's Buenos Aires record, the exact rank-1 hit, credits no director and
+    // states no runtime. The credit's filmography walk reaches that director's OTHER concerts ("…
+    // in Busan", "Permission to Dance on Stage - Seoul"), each crediting him at 195 minutes under a
+    // title the listing only overlaps; once "Jungjae HA" and "Ha Jung-jae" read as one person, they
+    // out-weighed the exact record on facts it cannot answer, and the top-hit acceptance was
+    // withheld. A fact the record does not carry is missing evidence, not evidence against it. The
+    // São Paulo listings, whose record credits him, still take theirs.
+    val films = Seq(F(1770237, "BTS World Tour 'Arirang'  in Buenos Aires: Live Viewing", 2026, "", 0, 0.953),
+                    F(1770234, "BTS World Tour 'Arirang' In São Paulo: Live Viewing", 2026, "Jungjae HA", 0, 0.9572),
+                    F(1701849, "BTS WORLD TOUR [ARIRANG] in Busan", 2026, "Jungjae HA", 195, 3.5784),
+                    F(939984, "BTS: Permission to Dance on Stage - Seoul", 2022, "Jungjae HA", 195, 3.6096))
+    val venues = Seq(Multikino, Helios, KinoApollo, KinoMuza)
+    val buenosAires = venues.map(listing(_, "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195)))
+    val saoPaulo    = venues.map(listing(_, "BTS WORLD TOUR 'ARIRANG' IN SAO PAULO: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195)))
+    val r = IdentityResolver.resolve(buenosAires ++ saoPaulo, new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue((buenosAires ++ saoPaulo).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      buenosAires.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237))
+      saoPaulo.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770234))
+    }
+    r.violations shouldBe 0
+  }
+
   "A re-release titled with its screening year" should "not veto the film its credited siblings name" in {
     // 951 US venues list the 1939 film; some spell it "Gone With The Wind (2026)" — the re-release's
     // year, which a bracket year is as often as the film's. A bracket year agrees; it never denies
