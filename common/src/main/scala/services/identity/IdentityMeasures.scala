@@ -591,9 +591,21 @@ object IdentityMeasures {
    *  calibration pass; not thread-safe. */
   final class VenueBacking(groups: String => Seq[(String, Listing)]) {
     private val memo = scala.collection.mutable.HashMap.empty[(String, Film), Set[String]]
-    def corroborating(group: String, f: Film, ownVenue: String): Int =
-      (memo.getOrElseUpdate((group, f), backingVenues(f, groups(group))) - ownVenue).size
+    /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
+    def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
+      (titleGroups.iterator.flatMap(g => memo.getOrElseUpdate((g, f), backingVenues(f, groups(g)))).toSet - ownVenue).size
   }
+
+  /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the
+   *  title a learned venue decoration wraps (`TitleDecorations`) — the other venues list "Mistyczka
+   *  2D PL" as "Mistyczka". */
+  def titleGroups(l: Listing): Seq[String] =
+    (key(l.title) +: undecorated(l).map(key)).filter(_.nonEmpty).distinct
+
+  /** The title shapes only `l`'s learned decorations leave. */
+  private def undecorated(l: Listing): Seq[String] =
+    if (l.decorations == TitleDecorations.None) Nil
+    else (l.shapes.toSet -- l.copy(decorations = TitleDecorations.None).shapes).toSeq.sorted
 
   /** Measures that only ever AGREE with a film, never deny it: a year in a title is as often a
    *  re-release's screening year ("Gone With The Wind (2026)") as the film's, so the label rule

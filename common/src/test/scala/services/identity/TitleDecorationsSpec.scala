@@ -62,6 +62,14 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
       IdentityMeasures.Category("overlap")
   }
 
+  it should "add the undecorated title's group to the venues that corroborate a listing" in {
+    val d = TitleDecorations(Set.empty, Set(Seq("2d", "pl")))
+    IdentityMeasures.titleGroups(IdentityMeasures.Listing("Mistyczka 2D PL", decorations = d)) shouldBe Seq("mistyczka2dpl", "mistyczka")
+    IdentityMeasures.titleGroups(IdentityMeasures.Listing("Mistyczka 2D PL")) shouldBe Seq("mistyczka2dpl")
+    // A delimited banner segment is not a decoration: it keeps the listing's own group only.
+    IdentityMeasures.titleGroups(IdentityMeasures.Listing("Kino Seniora: Mistyczka", decorations = d)) shouldBe Seq("kinoseniora" + "mistyczka")
+  }
+
   "The resolver's artefact" should "load, and hold only what learning emits" in {
     val artefact = TitleDecorations.fromResource(TitleDecorations.ResourcePath).get
     artefact.decorations.foreach { d =>

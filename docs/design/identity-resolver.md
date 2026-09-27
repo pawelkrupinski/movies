@@ -445,8 +445,11 @@ prefixes). What relates two LISTINGS — families, the title must-links, the lis
 — reads only the venue's own delimiters (`Evidence.published`): a stripped "Horror Season 2026
 Dracula" is searched as "Dracula", but is not title-linked to every venue's bare "Dracula" (measured:
 linking by it lost the 82 listings' Terence Fisher own match and let a bare "Dracula (4K
-Restoration)" take Besson's 2025 film). No word list: a new venue's decoration is learned by the
-next refit.
+Restoration)" take Besson's 2025 film). The venues listing the undecorated title still
+CORROBORATE it (`IdentityMeasures.titleGroups`: `venues.corroborating` counts the undecorated
+title's group beside the listing's own, in the resolver and the calibration alike): undecorated,
+"Mistyczka 2D PL" is a bare "Mistyczka", and without them it would take the more popular namesake.
+No word list: a new venue's decoration is learned by the next refit.
 
 ---
 

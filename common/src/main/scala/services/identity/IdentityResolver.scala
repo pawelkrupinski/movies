@@ -219,7 +219,14 @@ object IdentityResolver {
       pieces.nonEmpty && pieces.forall(p => besideIt(p) && n.listings.forall(l => placesOf(l.cinema).exists(_.containsSlice(p))))
     }
 
-    /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
+    /** The listings by title key, with their venues: `venues.corroborating`'s groups. Every node's,
+     *  not a family's: a title a learned decoration wraps (`IdentityMeasures.titleGroups`) is listed
+     *  plain by venues whose listings are not title-linked to it, so not in its family. */
+    val titleGroups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
+      nodes.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
+        .groupMap(_._1)(_._2)
+    val backing = new IdentityMeasures.VenueBacking(titleGroups.getOrElse(_, Nil))
+
     final class FamilyScope(members: Seq[Node]) {
       val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)
       /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
@@ -227,10 +234,6 @@ object IdentityResolver {
        *  record titled only a listing's qualifier does not name it. The family's own pool, so a
        *  family resolves alone as it does among the others. */
       val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
-      private val groups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
-        members.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
-          .groupMap(_._1)(_._2)
-      private val backing = new IdentityMeasures.VenueBacking(groups.getOrElse(_, Nil))
 
       /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
        *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
@@ -240,11 +243,11 @@ object IdentityResolver {
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || shared(c.tmdbId) ||
           IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
-        val group     = IdentityMeasures.key(l.title)
+        val groups    = IdentityMeasures.titleGroups(l)
         val scored = reachable.map { c =>
           val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
-            backing.corroborating(group, c.film, venue), houses, qualifiers)
+            backing.corroborating(groups, c.film, venue), houses, qualifiers)
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
             namesItsSeasonProduction(l, c.film), deniedByPins(c.tmdbId))

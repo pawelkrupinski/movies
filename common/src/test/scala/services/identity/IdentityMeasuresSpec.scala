@@ -120,7 +120,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     }
     val backing = new IdentityMeasures.VenueBacking(Map("candyman" -> group))
     for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
-      withClue(s"$venue ${f.year}")(backing.corroborating("candyman", f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
+      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
   }
 
   "a title's billing" should "be the work two titles share and how each spells its house, and a banner's house the one most of its works name" in {

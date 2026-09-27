@@ -101,6 +101,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     decorated.map(l => run(TitleDecorations.None).decisionOf(l.key).film) shouldBe Seq(None, None)
   }
 
+  it should "be corroborated by the venues listing the title it wraps, as a bare listing of that title is" in {
+    // PL, Ekobilet's "Mistyczka 2D PL": nothing but the title. Undecorated it is a bare
+    // "Mistyczka", which the other venues list with the film's year and director; they corroborate
+    // it as they corroborate each other's bare listings. It is not title-linked to them (a learned
+    // decoration relates it to a FILM, never to a listing), so without their corroboration it
+    // stays below the cut.
+    val films     = Seq(F(1731866, "Mistyczka", 2026, "Jan Sobierajski", 100, 1), F(2, "Mistyczka", 1994, "Someone Else", 90, 2))
+    val plain     = Seq(Multikino, Helios, Rialto).map(listing(_, "Mistyczka", Some(2026), Some("Jan Sobierajski")))
+    val decorated = listing(KinoApollo, "Mistyczka 2D PL")
+    val learned   = TitleDecorations(Set.empty, Set(Seq("2d", "pl")))
+    val r = IdentityResolver.resolve(plain :+ decorated, new Table(films), normalizer, IdentityCalibration.resolver, decorations = learned)
+    withClue((plain :+ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(plain.head.key).film shouldBe Some(1731866)
+      r.decisionOf(decorated.key).film shouldBe Some(1731866)
+    }
+    r.violations shouldBe 0
+  }
+
   it should "not be title-linked by it to another venue's bare namesake" in {
     // UK, Cineworld's "Horror Season 2026 Dracula" crediting Terence Fisher: stripped of its learned
     // season banner it is searched as "Dracula", but it is not a segment sibling of every venue's
