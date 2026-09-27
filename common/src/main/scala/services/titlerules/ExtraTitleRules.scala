@@ -275,7 +275,24 @@ object ExtraTitleRules {
     //    against the dropped 'WSP:' recasing bug).
     prog("xtra-pp-terror-tuesday", """(?i)^TERROR\s+TUESDAY:\s+""", "'TERROR TUESDAY: <film>' Alamo Drafthouse horror-classics strand"),
     prog("xtra-pp-special-event-alamo", """(?i)^SPECIAL\s+EVENT:\s+""", "'SPECIAL EVENT: <film>' Alamo Drafthouse strand — the trailing 'Nth ANNIVERSARY' folds via the seed structural-anniversary-suffix"),
-    prog("xtra-pp-showtune-sundays", """(?i)^SHOWTUNE\s+SUNDAYS:\s+""", "'SHOWTUNE SUNDAYS: <film>' Alamo Drafthouse musicals strand")
+    prog("xtra-pp-showtune-sundays", """(?i)^SHOWTUNE\s+SUNDAYS:\s+""", "'SHOWTUNE SUNDAYS: <film>' Alamo Drafthouse musicals strand"),
+    // Twenty-sixth wave (2026-09-27): venues that moved off Filmweb onto their own
+    // box offices type their school / classics strands into the title.
+    prog("xtra-pp-z-klasa-do-kina",  """(?iu)^Z\s+klasą\s+do\s+kina:\s+""",  "'Z klasą do kina: <film>' school-screening strand (Wielicka Mediateka: Lalka)"),
+    prog("xtra-pp-wtorek-z-klasyka", """(?iu)^Wtorek\s+z\s+klasyką:\s+""",   "'Wtorek z klasyką: <film>' classics strand (Kino Starówka: Asterix i Obelix: Misja Kleopatra, Generał)"),
+    prog("xtra-pp-kadr-junior",      """(?iu)^KADR\s+JUNIOR:\s+""",          "'KADR JUNIOR: <film>' Kino w Kadrze children's strand (Toy Story 5)")
+  )
+
+  /** Banners that must fold BEFORE the seed's `structural-slash-suffix` (order
+   *  30), which keeps the part before a " / " and drops the rest — right for
+   *  "Top Gun / 40th Anniversary", but on a banner typed IN FRONT of a slash it
+   *  keeps the banner and throws the film away. Stamped order 25 by [[all]]
+   *  (after the seed's Cykl prefix at 20). Still query-only programme prefixes:
+   *  the screening keeps its own card. */
+  val beforeSlashBanners: Seq[TitleRule] = Seq(
+    prog("xtra-pp-wajda-rewizje-slash",
+      """(?iu)^[„"“]\s*WAJDA:\s*re-?\s*wizje\s*[”"“]\s*(?:(?:19|20)\d{2}\s*)?/\s*""",
+      "'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail goes by xtra-rezyseria-suffix")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -361,7 +378,19 @@ object ExtraTitleRules {
     // ('+ prelekcja' / '+ wstęp' is already stripped by the seed PlusSuffix rule.)
     searchStrip("xtra-kf-klub-suffix",             """(?i)\s*\|\s*KF\s+\S.*$""",                      "'<film> | KF <klub>' film-club suffix (Fellini. Noce Cabirii | KF Ambasada)"),
     searchStrip("xtra-wtorek-seniora-suffix",      """(?i)\s*\|\s*Wtorek\s+Seniora\s*$""",            "'<film> | Wtorek Seniora' senior-screening suffix (Ojczyzna)"),
-    searchStrip("xtra-senior-w-kinie-suffix",      """(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$""", "'<film> - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card"),
+    // Kino w Kadrze (Warszawa, biletyna) glues its strand onto the film after a
+    // colon — '<film>: 14 Festiwal Kultury bez Barier. Kino dostępne w Kadrze',
+    // '<film>: Kino Kadr (15+)', '<film>: Premiera w Kadrze'. The colon's LEFT side
+    // is the film, the opposite of every programme prefix, so SearchTitles' own
+    // post-colon candidate can't reach it.
+    searchStrip("xtra-kadr-colon-suffix",          """(?iu)\s*:\s*(?:\d+\.?\s*Festiwal\s+Kultury\s+bez\s+Barier|(?:Oscarowe\s+)?Kino\s+(?:dostępne\s+w\s+Kadrze|Kadr)|Premiera\s+w\s+Kadrze)\b.*$""", "'<film>: 14 Festiwal Kultury bez Barier. …' / '<film>: Kino Kadr (15+)' / '<film>: Premiera w Kadrze' Kino w Kadrze strand suffix (Chłopiec na krańcach świata, Ojczyzna, Obcy, Lalka)"),
+    searchStrip("xtra-oficjalna-premiera-prefix",  """(?iu)^Oficjalna\s+premiera:\s+""",               "'Oficjalna premiera: <film>' release-night prefix (Wielicka Mediateka: Lalka)"),
+    // Kino Fenix (systembiletowy) types the Wajda retrospective with no separator
+    // at all and the film's year bare at the end: 'Wajda Re wizje Kronika wypadków
+    // miłosnych 1985'. The banner goes, and the year is parenthesised so the query
+    // reads as '<film> (1985)' — which SearchTitles also tries without the paren.
+    searchReplace("xtra-wajda-rewizje-bare-year",  """(?iu)^Wajda\s+Re[-\s]?wizje\s+(\S.*?)\s+((?:19|20)\d{2})\s*$""", "$1 ($2)", "'Wajda Re wizje <film> <year>' separator-less retrospective banner with a bare trailing year (Kino Fenix: Kronika wypadków miłosnych)"),
+    searchStrip("xtra-senior-w-kinie-suffix",     """(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$""", "'<film> - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card"),
     searchStrip("xtra-kino-konesera-suffix",       """(?iu)\s*[-–—]\s*Kino\s+Konesera\s*$""",      "'<film> - KINO KONESERA' connoisseur-cycle suffix outside Helios (Kino Gwiazda Kętrzyn: Gorzkie święta); Helios's own per-cinema tag strips it before this runs"),
     searchStrip("xtra-fks-suffix",                 """(?iu)\s*[|_]\s*FKS\s*$""",                      "'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)"),
     searchStrip("xtra-pokazy-specjalne-suffix",    """(?i)\s*[-–—|]\s*pokazy\s+specjalne\s*$""",      "'<film> - pokazy specjalne' suffix (the xtra-pokaz-suffix rule's pokaz\\b can't match the 'pokazy' plural) (Milczenie owiec)"),
@@ -835,8 +864,10 @@ object ExtraTitleRules {
     perCinema("xtra-bajka-kluczbork-klaps", "kino-bajka-kluczbork", """(?iu)^KLAPS\s*/\s*""", "Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)")
   )
 
-  /** Orders stamped by position so the extras fold AFTER the seed rules. */
+  /** Orders stamped by position so the extras fold AFTER the seed rules — all but
+   *  [[beforeSlashBanners]], which must fold before the seed's slash strip. */
   val all: Seq[TitleRule] =
+    beforeSlashBanners.map(_.copy(order = 25)) ++
     (programmePrefixes ++ searchStrips ++ canonical ++ perCinemaRules).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)
     }

@@ -147,8 +147,25 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "TERROR TUESDAY: THE THING (1982)"                -> ("TERROR TUESDAY: ",                  "THE THING (1982)"),
     "TERROR TUESDAY: ALLIGATOR"                       -> ("TERROR TUESDAY: ",                  "ALLIGATOR"),
     "SHOWTUNE SUNDAYS: CABARET (1972)"                -> ("SHOWTUNE SUNDAYS: ",                 "CABARET (1972)"),
-    "SHOWTUNE SUNDAYS: LITTLE SHOP OF HORRORS (1986)" -> ("SHOWTUNE SUNDAYS: ",                 "LITTLE SHOP OF HORRORS (1986)")
+    "SHOWTUNE SUNDAYS: LITTLE SHOP OF HORRORS (1986)" -> ("SHOWTUNE SUNDAYS: ",                 "LITTLE SHOP OF HORRORS (1986)"),
+    // Venues moved off Filmweb 2026-09-27 (prod rows that never resolved).
+    "Z klasą do kina: Lalka"                          -> ("Z klasą do kina: ",                  "Lalka"),
+    "Wtorek z klasyką: Asterix i Obelix: Misja Kleopatra" -> ("Wtorek z klasyką: ",             "Asterix i Obelix: Misja Kleopatra"),
+    "KADR JUNIOR: Toy Story 5"                        -> ("KADR JUNIOR: ",                      "Toy Story 5"),
+    "WAJDA: re-wizje: BEZ ZNIECZULENIA"               -> ("WAJDA: re-wizje: ",                  "BEZ ZNIECZULENIA")
   )
+
+  // Kino Sokolnia (Kępno) types the Wajda retrospective IN FRONT of a slash. The
+  // seed's slash strip keeps the part before " / " — the banner — and drops the
+  // film, so this banner must fold before it, and the director tail after.
+  private val sokolniaWajda = "„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda"
+
+  "ExtraTitleRules" should "strip a quoted banner that sits before a slash, keeping the film after it" in {
+    withExtras.search(sokolniaWajda) shouldBe "KRAJOBRAZ PO BITWIE (1970)"
+    withExtras.programmePrefix(sokolniaWajda) shouldBe Some("„WAJDA: re-wizje” 2026 / ")
+    withClue("seed rules alone keep the banner and drop the film: ")(
+      seedOnly.search(sokolniaWajda) shouldBe "„WAJDA: re-wizje” 2026")
+  }
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
     programmeCases.foreach { case (in, (banner, _)) =>
@@ -481,7 +498,16 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Eleonora Wspaniała - „Senior w kinie”"                -> "Eleonora Wspaniała",
     "Eleonora Wspaniała – Senior w kinie"                  -> "Eleonora Wspaniała",
     // …and its connoisseur strand, which only Helios's per-cinema tag stripped.
-    "GORZKIE ŚWIĘTA - KINO KONESERA"                       -> "GORZKIE ŚWIĘTA"
+    "GORZKIE ŚWIĘTA - KINO KONESERA"                       -> "GORZKIE ŚWIĘTA",
+    // Kino w Kadrze glues its strand AFTER the film with a colon (the film is
+    // the colon's left side), and Wielicka Mediateka its release night before it.
+    "Chłopiec na krańcach świata: 14 Festiwal Kultury bez Barier. Kino dostępne w Kadrze" -> "Chłopiec na krańcach świata",
+    "Ojczyzna: 14 Festiwal Kultury bez Barier. Oscarowe Kino dostępne w Kadrze (16+)"   -> "Ojczyzna",
+    "Obcy: Kino Kadr (15+)"                                -> "Obcy",
+    "Lalka: Premiera w Kadrze"                             -> "Lalka",
+    "Oficjalna premiera: Lalka"                            -> "Lalka",
+    // Kino Fenix: separator-less Wajda banner, the film's year bare at the end.
+    "Wajda Re wizje Kronika wypadków miłosnych 1985"       -> "Kronika wypadków miłosnych (1985)"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
