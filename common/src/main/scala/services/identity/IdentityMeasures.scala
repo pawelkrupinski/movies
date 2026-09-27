@@ -798,6 +798,18 @@ object IdentityMeasures {
    *  the data alone. */
   val EvidenceOrder: Map[String, Seq[String]] = Map("title" -> Seq("decorated", "overlap", "none"))
 
+  /** Which way a numeric measure's evidence runs, by what it measures: more venues corroborating a
+   *  film can only back it more, a lower search rank and a smaller runtime gap only name it more
+   *  closely. The calibration fits their bins under this direction (`IdentityCalibrate.monotone`) —
+   *  a DIRECTION, never a weight — so a thin bin (0 same-film and 4 different-film units at 153-155
+   *  venues) cannot weigh more evidence below less. Signed measures (a year's difference peaks at 0)
+   *  and ones with no direction of their own are left to the data. */
+  enum EvidenceDirection { case Rising, Falling }
+  val NumericDirection: Map[String, EvidenceDirection] = Map(
+    "venues.corroborating" -> EvidenceDirection.Rising,
+    "search.rank"          -> EvidenceDirection.Falling,
+    "runtime.delta"        -> EvidenceDirection.Falling)
+
   /** Title relations that name a film: the listing's title is (a spelling of) the film's. */
   val NamingRelations: Set[String] = Set("exact", "original", "alternative", "segment", "decorated")
   /** The naming relations under which the listing's title IS one of the film's titles — whole, or

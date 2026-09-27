@@ -73,4 +73,45 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     t.weights.categories("decorated") shouldBe IdentityCalibrate.llr(20, 10, t.positives, t.negatives, 3) +- 1e-9
     t.weights.categories("overlap") shouldBe IdentityCalibrate.llr(5, 50, t.positives, t.negatives, 3) +- 1e-9
   }
+
+  private def numbers(signal: String, value: Double, same: Int, different: Int): Seq[IdentityCalibrate.Row] =
+    (0 until same + different).map { i =>
+      val u = s"$signal-$value-$i"
+      IdentityCalibrate.Row("train", u, u, "pl", Map(signal -> IdentityMeasures.Number(value)), _ => Some(i < same))
+    }
+
+  "a numeric table" should "never weigh more corroborating venues below fewer" in {
+    // r5: 0 same-film and 4 different-film units at 153-155 venues fitted a bin of -0.42 between
+    // +6.21 and +4.72, and CI recording 36342710818's bare "Lalka" (2026) took the French film
+    // backed by 108 venues over Kawalski's backed by 153.
+    val rows = numbers("venues.corroborating", 0, 995, 23410) ++ numbers("venues.corroborating", 40, 211, 2) ++
+      numbers("venues.corroborating", 154, 0, 4) ++ numbers("venues.corroborating", 170, 9, 0)
+    val t = IdentityCalibrate.fitSignal("venues.corroborating", rows, _ => Set.empty)
+    val ws = t.weights.bins.map(_.weight)
+    withClue(t.weights.bins.mkString("\n")) {
+      ws.sliding(2).foreach { case Seq(a, b) => b should be >= a; case _ => }
+      t.weights.weight(Some(IdentityMeasures.Number(153))) should be >= t.weights.weight(Some(IdentityMeasures.Number(108)))
+    }
+  }
+
+  it should "never weigh a lower search rank above a higher one, nor a longer runtime gap above a shorter" in {
+    val rank = IdentityCalibrate.fitSignal("search.rank",
+      numbers("search.rank", 1, 500, 50) ++ numbers("search.rank", 5, 20, 200) ++ numbers("search.rank", 12, 0, 300) ++
+        numbers("search.rank", 20, 6, 40), _ => Set.empty).weights.bins.map(_.weight)
+    rank.sliding(2).foreach { case Seq(a, b) => b should be <= a; case _ => }
+    val runtime = IdentityCalibrate.fitSignal("runtime.delta",
+      numbers("runtime.delta", 0, 800, 40) ++ numbers("runtime.delta", 15, 30, 120) ++ numbers("runtime.delta", 40, 0, 90) ++
+        numbers("runtime.delta", 60, 12, 30), _ => Set.empty).weights.bins.map(_.weight)
+    runtime.sliding(2).foreach { case Seq(a, b) => b should be <= a; case _ => }
+  }
+
+  it should "leave a numeric signal with no stated direction to the data" in {
+    // A year difference is signed: evidence peaks at 0 and falls both ways.
+    val ws = IdentityCalibrate.fitSignal("year.delta",
+      numbers("year.delta", -5, 2, 200) ++ numbers("year.delta", 0, 900, 50) ++ numbers("year.delta", 5, 3, 200), _ => Set.empty)
+      .weights.bins.map(_.weight)
+    ws should have size 3
+    ws(1) should be > ws(0)
+    ws(1) should be > ws(2)
+  }
 }

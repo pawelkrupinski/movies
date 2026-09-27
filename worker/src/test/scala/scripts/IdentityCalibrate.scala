@@ -350,7 +350,8 @@ object IdentityCalibrate {
     if (numeric) {
       val values = lab.collect { case (Some(Number(x)), y) => x -> y }
         .groupMapReduce(_._1)(p => if (p._2) (1, 0) else (0, 1))((a, b) => (a._1 + b._1, a._2 + b._2)).toSeq
-      val bins = mergeBins(values)
+      val merged = mergeBins(values)
+      val bins = IdentityMeasures.NumericDirection.get(signal).fold(merged)(monotone(merged, _, llr(_, _, totP, totN, merged.size + missing.size)))
       val cells = bins.size + missing.size
       // Contiguous: an unobserved value between two bins belongs to the nearer one.
       val cuts = bins.sliding(2).collect { case Seq(a, b) => (a._2 + b._1) / 2 }.toIndexedSeq
@@ -372,6 +373,27 @@ object IdentityCalibrate {
         counts = cats.map { case (v, (p, n)) => v -> Seq(p, n) } ++ missing.map { case (s, (p, n)) => s"missing:$s" -> Seq(p, n) },
         neutral = missing.keys.flatMap(s => Neutral.get(signal -> s).map(s -> _)).toMap), totP, totN)
     }
+  }
+
+  /** Numeric bins fitted under their measure's direction ([[IdentityMeasures.NumericDirection]]) by
+   *  pool-adjacent-violators, as [[inOrder]] fits categories: while a bin's ratio runs against the
+   *  direction from its neighbour's, the two are one bin over both ranges from their summed counts. */
+  def monotone(bins: Seq[(Double, Double, Int, Int)], direction: IdentityMeasures.EvidenceDirection,
+               ratio: (Int, Int) => Double): Seq[(Double, Double, Int, Int)] = {
+    val rising = direction == IdentityMeasures.EvidenceDirection.Rising
+    val pooled = mutable.ArrayBuffer.empty[(Double, Double, Int, Int)]
+    def violated = pooled.size > 1 && {
+      val a = pooled(pooled.size - 2); val b = pooled.last
+      if (rising) ratio(b._3, b._4) < ratio(a._3, a._4) else ratio(b._3, b._4) > ratio(a._3, a._4)
+    }
+    bins.sortBy(_._1).foreach { bin =>
+      pooled += bin
+      while (violated) {
+        val b = pooled.remove(pooled.size - 1); val a = pooled.remove(pooled.size - 1)
+        pooled += ((a._1, b._2, a._3 + b._3, a._4 + b._4))
+      }
+    }
+    pooled.toSeq
   }
 
   /** A categorical signal's counts fitted under its evidence order (strongest category first,
