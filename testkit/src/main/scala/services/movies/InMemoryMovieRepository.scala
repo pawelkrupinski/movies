@@ -285,8 +285,8 @@ class InMemoryMovieRepository(
         // embedded map field by field and undo the shrink the split exists for — and,
         // because `upsert` leaves that map empty, would patch onto emptiness and store a
         // record holding only the slots this one call happened to touch.
-        val showtimeOps = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
-                          else Map.empty[String, Option[ListedShowtimes]]
+        val showtimeOps = if (screenings.isDefined) ScreeningsSplit.writesFor(before.data, after.data)
+                          else ScreeningsWrites.none
         val slotOps     = if (slots.isDefined) SlotsRepository.slotOps(before.data, after.data)
                           else Map.empty[String, Option[SourceData]]
         val rawPatch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)),
@@ -297,10 +297,7 @@ class InMemoryMovieRepository(
         if (patch.isEmpty && showtimeOps.isEmpty && slotOps.isEmpty) true
         else {
           val sideWrites =
-            screenings.toSeq.flatMap(s => showtimeOps.map {
-              case (k, Some(row))   => s.upsertSlot(id, k, row)
-              case (k, None)        => s.deleteSlot(id, k)
-            }) ++
+            screenings.toSeq.flatMap(showtimeOps.applyTo(_, id)) ++
             slots.toSeq.flatMap(sl => slotOps.map {
               case (k, Some(sd)) => sl.upsertSlot(id, k, sd)
               case (k, None)     => sl.deleteSlot(id, k)

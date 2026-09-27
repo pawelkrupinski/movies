@@ -24,7 +24,7 @@ import scala.util.Try
  *
  *  - each repository write path on its own — the whole-record upsert (landing, the staging
  *    fold's completion, a re-key's retitle), the per-slot patch, a listing key that moves under
- *    unchanged showtimes, and the merge move (`SideCollectionMove`);
+ *    unchanged (and stripped) showtimes, and the merge move (`SideCollectionMove`);
  *  - then the pipeline itself over the PL hard-cluster corpus, booted the way the convergence
  *    legs boot it (scrape, settle, canonicalise, staging fold, conclusion, projection): every row
  *    it leaves must carry the key its slot derives, whichever path wrote it.
@@ -92,13 +92,19 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
       repository.updateIfPresent(title, year, record, moreShows) shouldBe true
       keys(db, ScreeningsRepository.Collection)(rowId(paged)) shouldBe serialised(pagedKey)
 
-      // The venue corrects its own year: its listing's key moves while its showtimes do not.
-      // The patch restamps the slot; the screenings row follows on the next whole-record write.
+      // The venue corrects its own year: its listing's key moves while its showtimes do not. The
+      // patch restamps BOTH rows — the screenings row too, because an ordinary re-scrape of a
+      // resolved film reaches the store only as this patch, never as a whole-record upsert. And
+      // it does so from the cache's STRIPPED records, which carry no showtimes: the restamp moves
+      // the key alone and leaves the row's showtimes as they were.
       val corrected = moreShows.copy(data = moreShows.data + (pageless -> pagelessSlot.copy(releaseYear = Some(2014))))
-      repository.updateIfPresent(title, year, moreShows, corrected) shouldBe true
+      repository.updateIfPresent(title, year, ShowtimesDigest.stripForCache(moreShows), ShowtimesDigest.stripForCache(corrected)) shouldBe true
       val correctedKey = serialised(pagelessKey.copy(year = Some(2014)))
       keys(db, SlotsRepository.Collection)(rowId(pageless)) shouldBe correctedKey
-      repository.upsert(title, year, corrected)
+      keys(db, ScreeningsRepository.Collection)(rowId(pageless)) shouldBe correctedKey
+      screenings.findForFilm(id)(pageless.displayName) shouldBe pagelessSlot.showtimes
+      // Idempotent: the same patch again finds the row already stamped and writes nothing.
+      repository.updateIfPresent(title, year, ShowtimesDigest.stripForCache(moreShows), ShowtimesDigest.stripForCache(corrected)) shouldBe true
       keys(db, ScreeningsRepository.Collection)(rowId(pageless)) shouldBe correctedKey
 
       // The merge move: the rows change film, and keep the listing they belong to.

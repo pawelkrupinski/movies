@@ -51,6 +51,16 @@ final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
       else { byFilm.update(filmId, current + (slotKey -> row)); stamp(filmId, slotKey); true }
     })
 
+  /** Replace an EXISTING row with `f` of it; an absent row stays absent. */
+  def updateIfPresent(filmId: String, slotKey: String)(f: A => A): Unit =
+    ringIf(filmId, lock.synchronized {
+      val current = byFilm.getOrElse(filmId, Map.empty)
+      current.get(slotKey).map(f).filterNot(current.get(slotKey).contains) match {
+        case Some(next) => byFilm.update(filmId, current + (slotKey -> next)); stamp(filmId, slotKey); true
+        case None       => false
+      }
+    })
+
   def delete(filmId: String, slotKey: String): Unit =
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)

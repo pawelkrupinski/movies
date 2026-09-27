@@ -1065,10 +1065,10 @@ class MongoMovieRepository(
       val key   = StoredMovieRecord.keyFor(cacheKey)
       val title = cacheKey.cleanTitle
       val year  = cacheKey.year
-      // Showtime deltas → `screenings` (its authority under the split); from the
-      // ORIGINAL records. Only when a screenings repo is wired.
-      val ops = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
-                else Map.empty[String, Option[ListedShowtimes]]
+      // Showtime deltas and listing-key restamps → `screenings` (its authority under the
+      // split); from the ORIGINAL records. Only when a screenings repo is wired.
+      val ops = if (screenings.isDefined) ScreeningsSplit.writesFor(before.data, after.data)
+                else ScreeningsWrites.none
       // Slot deltas → `movie_slots` (dual write). Also from the ORIGINAL records:
       // `slotsOf` drops showtimes itself, so a showtimes-only change yields no slot
       // write and the two side collections stay independent.
@@ -1131,10 +1131,7 @@ class MongoMovieRepository(
         // side-collection deltas (no orphan rows) and report not-present.
         if (!moviesMatched.forall(_ > 0)) WriteOutcome.Declined("absent")
         else WriteOutcome.all(
-          screenings.toSeq.flatMap(s => ops.map {
-            case (k, Some(st)) => s.upsertSlot(id, k, st)
-            case (k, None)     => s.deleteSlot(id, k)
-          }) ++
+          screenings.toSeq.flatMap(ops.applyTo(_, id)) ++
           slots.toSeq.flatMap(s => slotWrites.map {
             case (k, Some(sd)) => s.upsertSlot(id, k, sd)
             case (k, None)     => s.deleteSlot(id, k)

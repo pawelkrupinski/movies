@@ -4,7 +4,7 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import models.Showtime
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts}
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 
@@ -91,6 +91,12 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  (`MovieRepository.updateIfPresent`). */
   def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome
 
+  /** Move one slot's stored row onto `listingKey`, leaving its showtimes as they are — the
+   *  per-slot patch's answer to a listing key that moved under showtimes it may not hold (see
+   *  [[ScreeningsSplit.writesFor]]). Idempotent, and a no-op when the row does not exist:
+   *  a restamp never creates a row. */
+  def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome
+
   /** Drop one slot's screenings (the slot left the film's listings). */
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome
 
@@ -141,6 +147,11 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
 
   def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome = {
     if (roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, row)
+    WriteOutcome.Written
+  }
+
+  def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome = {
+    rows.updateIfPresent(filmId, slotKey)(_.copy(listingKey = Some(listingKey)))
     WriteOutcome.Written
   }
 
@@ -411,6 +422,20 @@ class MongoScreeningsRepository(
         upsertOne(c, filmId, slotKey, row)
         metrics.recordWrite(ScreeningsMetrics.Outcome.Written, 1)
       }
+      WriteOutcome.Written
+    }
+  }
+
+  /** ONE conditional `$set`, matched on the row's `_id` AND a `listingKey` other than the new one:
+   *  an absent row matches nothing and is not created (no upsert), and an already-stamped row
+   *  matches nothing and is not rewritten — so a repeat neither writes nor rings the change stream. */
+  def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("restampSlot", s"ScreeningsRepository.restampSlot($filmId,$slotKey)") {
+      val key = ListingKey.serialised(listingKey)
+      val modified = Await.result(c.updateOne(
+        Filters.and(Filters.eq("_id", idOf(filmId, slotKey)), Filters.ne(SlotKeyed.ListingKeyField, key)),
+        Updates.combine(Updates.set(SlotKeyed.ListingKeyField, key), Updates.set("updatedAt", Instant.now()))).toFuture(), 10.seconds).getModifiedCount
+      metrics.recordWrite(if (modified > 0) ScreeningsMetrics.Outcome.Written else ScreeningsMetrics.Outcome.Unchanged, 1)
       WriteOutcome.Written
     }
   }

@@ -33,6 +33,7 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
                   stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome    = store.replaceFilm(filmId, slots, stored)
   def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome   = store.upsertSlot(filmId, slotKey, row)
+  def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome = store.restampSlot(filmId, slotKey, listingKey)
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome                         = store.deleteSlot(filmId, slotKey)
   def deleteFilm(filmId: String): WriteOutcome                                          = store.deleteFilm(filmId)
   def deleteFilms(filmIds: Set[String]): Long                                   = store.deleteFilms(filmIds)

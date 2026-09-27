@@ -94,7 +94,7 @@ object ScreeningsSplit {
    *
    *  A slot whose LISTING KEY moved while its showtimes did not (a page-less venue correcting
    *  its year) is not written here: this record may be stripped, so it may not hold the
-   *  showtimes to write. The whole-record `upsert` that follows compares keys too and lands it. */
+   *  showtimes to write. [[writesFor]] carries that key as a restamp instead. */
   def slotOps(before: Map[Source, SourceData], after: Map[Source, SourceData]): Map[String, Option[ListedShowtimes]] =
     (before.keySet ++ after.keySet).iterator.flatMap { s =>
       val bDigest = before.get(s).map(ShowtimesDigest.slotDigest).getOrElse(ShowtimesDigest.EmptyDigest)
@@ -120,6 +120,34 @@ object ScreeningsSplit {
       }
     }.toMap
 
+  /**
+   * Every `screenings` write a per-slot patch (`MovieRepository.updateIfPresent`) owes: the row
+   * writes of [[slotOps]], plus a RESTAMP for each slot whose listing key moved while `slotOps`
+   * writes nothing for it — its showtimes unchanged, or changed in a stripped record that cannot
+   * say to what.
+   *
+   * Without the restamp such a row kept its old key for good. `movie_slots` is rewritten on every
+   * scrape, but `screenings` only when the showtimes move, and an ordinary re-scrape of a resolved
+   * film reaches the store as this patch — the whole-record `upsert`, which does compare keys,
+   * runs only when a staging fold completes. So a venue whose source data changed under unchanged
+   * showtimes (moved from Filmweb to its own-site scraper, "Flavia de Luce - KNT" becoming "Flavia
+   * de Luce"; a client that stopped emitting a trailing ")") left its screenings row filed under a
+   * listing its slot no longer names.
+   *
+   * A restamp carries the key alone, never showtimes, because this record may be stripped. A slot
+   * that screens nothing (its digest empty) has no row to restamp and gets none. Pure + unit-tested.
+   */
+  def writesFor(before: Map[Source, SourceData], after: Map[Source, SourceData]): ScreeningsWrites = {
+    val rows = slotOps(before, after)
+    val restamps = (for {
+      s   <- before.keySet.intersect(after.keySet).iterator
+      if !rows.contains(s.displayName) && ShowtimesDigest.slotDigest(after(s)) != ShowtimesDigest.EmptyDigest
+      key <- ListingKey.ofSource(s, after(s))
+      if !ListingKey.ofSource(s, before(s)).contains(key)
+    } yield s.displayName -> key).toMap
+    ScreeningsWrites(rows, restamps)
+  }
+
   /** Movies-side view of a record's data with every slot's showtimes emptied — they
    *  live in `screenings` now. Used when WRITING `movies` under the read-split, so a
    *  showtime change doesn't rewrite the (fat) film document. */
@@ -141,4 +169,23 @@ object ScreeningsSplit {
   def changedSlots(stored: Map[String, ListedShowtimes], readComplete: Boolean,
                    incoming: Map[String, ListedShowtimes]): Map[String, ListedShowtimes] =
     SlotKeyed.changedRows(stored, readComplete, incoming)
+}
+
+/**
+ * One patch's `screenings` writes, from [[ScreeningsSplit.writesFor]]: `rows` to upsert
+ * (`Some`) or delete (`None`), and `restamps` — the rows whose listing key alone moves. Applied
+ * by [[applyTo]], the one place both movie repositories hand them to the store.
+ */
+final case class ScreeningsWrites(rows: Map[String, Option[ListedShowtimes]], restamps: Map[String, ListingKey]) {
+  def isEmpty: Boolean = rows.isEmpty && restamps.isEmpty
+
+  def applyTo(screenings: ScreeningsRepository, filmId: String): Seq[WriteOutcome] =
+    rows.toSeq.map {
+      case (slotKey, Some(row)) => screenings.upsertSlot(filmId, slotKey, row)
+      case (slotKey, None)      => screenings.deleteSlot(filmId, slotKey)
+    } ++ restamps.toSeq.map { case (slotKey, key) => screenings.restampSlot(filmId, slotKey, key) }
+}
+
+object ScreeningsWrites {
+  val none: ScreeningsWrites = ScreeningsWrites(Map.empty, Map.empty)
 }

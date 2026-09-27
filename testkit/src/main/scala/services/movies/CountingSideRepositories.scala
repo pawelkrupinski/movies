@@ -56,6 +56,8 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   }
   def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome =
     write(underlying.upsertSlot(filmId, slotKey, row))
+  def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome =
+    write(underlying.restampSlot(filmId, slotKey, listingKey))
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
   def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()

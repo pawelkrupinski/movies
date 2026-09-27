@@ -1734,9 +1734,13 @@ here is additive. Nothing reads the new field, and no FilmId changes.
     write carries it, including the merge move.
   - `screenings`: a row is now `ListedShowtimes(showtimes, listingKey)`.
     `ScreeningsSplit.screeningsOf` / `slotOps` give each row its slot's key. A merge
-    (`SideCollectionMove`) carries the key it had. The write compares keys too, so a listing
-    whose key moves under unchanged showtimes (a page-less venue correcting its year) is
-    rewritten on the next whole-record write.
+    (`SideCollectionMove`) carries the key it had. The whole-record write compares keys too,
+    but an ordinary re-scrape of a resolved film reaches the store as the per-slot patch
+    (`updateIfPresent`), which writes a row only when its showtimes move. So the patch also
+    RESTAMPS (`ScreeningsSplit.writesFor` → `ScreeningsRepository.restampSlot`): a listing whose
+    key moves under unchanged showtimes (a page-less venue correcting its year, a venue moving
+    from Filmweb to its own-site scraper) has its row's `listingKey` `$set` in place, showtimes
+    untouched, since the patch's records may be stripped for the cache.
   - Serving reads (`findForFilmChecked`, `findAll`) are unchanged.
 - **Guards.**
   - `ListingKeyDualWriteIntegrationSpec` (itAll, raw documents) checks each repository write
