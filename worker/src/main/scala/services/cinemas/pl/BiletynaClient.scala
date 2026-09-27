@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import play.api.Logging
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
@@ -53,16 +54,32 @@ import scala.util.Try
 class BiletynaClient(http: HttpFetch, page: BiletynaPlacePage, override val cinema: Cinema,
                      // The hall this page lists, where a venue has a page per hall
                      // (see `MultiListingScraper`); stamped on every showtime.
-                     room: Option[String] = None)
-    extends CinemaScraper with OnlyMovieEventsFilter {
+                     room: Option[String] = None,
+                     // The shared national event feed ([[BiletynaNationalFeed]]); a
+                     // venue it lists is read from it, one it doesn't — or every
+                     // venue while it fails — off the place page as before.
+                     nationalFeed: Option[BiletynaNationalFeed] = None)
+    extends CinemaScraper with OnlyMovieEventsFilter with Logging {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page.url)
   override def sourceUrl: Option[String] = Some(page.url)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] =
+    fromNationalFeed.getOrElse(fromPlacePage())
+      .map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
+
+  private def fromNationalFeed: Option[Seq[CinemaMovie]] =
+    nationalFeed.flatMap { feed =>
+      try feed.eventsAt(page).map(records => BiletynaClient.parse("", cinema, records))
+      catch { case e: Exception =>
+        logger.warn(s"biletyna national feed unreadable, reading ${page.url} instead: ${e.getMessage}")
+        None
+      }
+    }
+
+  private def fromPlacePage(): Seq[CinemaMovie] = {
     val html = http.get(page.url)
     BiletynaClient.parse(html, cinema, BiletynaClient.remainingEvents(http, page, html))
-      .map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
   }
 }
 
@@ -231,7 +248,7 @@ object BiletynaClient {
       def fetchFrom(feedPage: Int, acc: Vector[JsValue]): Vector[JsValue] = {
         if (feedPage > MaxFeedPages)
           throw new IllegalStateException(s"${page.url}: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
-        val records = feedRecords(page, http.get(
+        val records = feedRecords(page.url, http.get(
           s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$feedPage"))
         // Records none of which read (a renamed field, a new date format) would
         // cut the venue at 50 again as surely as an error would.
@@ -250,14 +267,14 @@ object BiletynaClient {
 
   /** One feed page's records: an object keyed by event id, or an array. A reply
    *  with `status: false` or without `events` is a failed read, not an empty page. */
-  private def feedRecords(page: BiletynaPlacePage, json: String): Seq[JsValue] = {
+  private[pl] def feedRecords(source: String, json: String): Seq[JsValue] = {
     val reply = Json.parse(json)
     if ((reply \ "status").asOpt[Boolean].contains(false))
-      throw new IllegalStateException(s"${page.url}: event feed answered status false: ${json.take(200)}")
+      throw new IllegalStateException(s"$source: event feed answered status false: ${json.take(200)}")
     (reply \ "events").as[JsValue] match {
       case o: JsObject => o.values.toSeq
       case a: JsArray  => a.value.toSeq
-      case other       => throw new IllegalStateException(s"${page.url}: event feed's events is neither an object nor an array: $other")
+      case other       => throw new IllegalStateException(s"$source: event feed's events is neither an object nor an array: $other")
     }
   }
 

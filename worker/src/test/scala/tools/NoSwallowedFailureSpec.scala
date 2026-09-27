@@ -66,6 +66,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
    *  number so an entry survives unrelated edits above it, and a new swallow elsewhere in
    *  the file is not covered by an old entry that happens to share its text. */
   private val Allowlist: Map[(String, String, String), String] = Map(
+    ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "fromNationalFeed",
+      "catch { case e: Exception =>") ->
+      "None is not 'no screenings' but 'read the venue's own place page instead', which still propagates its own failure",
     ("common/src/main/scala/services/UptimeSync.scala", "poll",
       "Try(document.getList(\"errors\", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",

@@ -322,18 +322,27 @@ class CinemaScraperCatalog(
     KinoPromienRawicz   -> "https://biletyna.pl/Rawicz/Kino-Promien-w-Rawiczu",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
-    new BiletynaClient(bnFetch, BiletynaPlacePage(biletynaPages(cinema)), cinema)
+    new BiletynaClient(bnFetch, BiletynaPlacePage(biletynaPages(cinema)), cinema, nationalFeed = Some(biletynaNationalFeed))
+
+  // Końskie's two halls, each on a biletyna page of its own (see below).
+  private val koneckieHalls: Seq[(BiletynaPlacePage, String)] = Seq(
+    BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa")      -> "sala kinowa",
+    BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa") -> "sala widowiskowa",
+  )
+
+  // One read of biletyna's national event feed serves every venue above: ~7
+  // proxied requests a pass instead of one (or more) per venue.
+  private lazy val biletynaNationalFeed: BiletynaNationalFeed =
+    new BiletynaNationalFeed(bnFetch, biletynaPages.values.map(BiletynaPlacePage(_)).toSet ++ koneckieHalls.map(_._1))
 
   // Końskie's culture centre lists each hall on a biletyna page of its own. The
   // stage hall is mostly cabaret and concerts but does screen the odd film
   // ("Popiełuszko - wolność jest w nas", 2026-10-20), so both halls are ONE
   // cinema, each showtime tagged with its hall.
-  private val koneckieCentrumKultury: CinemaScraper = new MultiListingScraper(KinoKoneckieCentrumKultury, Seq(
-    new BiletynaClient(bnFetch, BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa"),
-      KinoKoneckieCentrumKultury, room = Some("sala kinowa")),
-    new BiletynaClient(bnFetch, BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa"),
-      KinoKoneckieCentrumKultury, room = Some("sala widowiskowa")),
-  ))
+  private val koneckieCentrumKultury: CinemaScraper = new MultiListingScraper(KinoKoneckieCentrumKultury,
+    koneckieHalls.map { case (page, hall) =>
+      new BiletynaClient(bnFetch, page, KinoKoneckieCentrumKultury, room = Some(hall), nationalFeed = Some(biletynaNationalFeed))
+    })
 
   // systembiletowy.pl installs, by portal base URL.
   private val systemBiletowyPortals: Map[Cinema, String] = Map(
