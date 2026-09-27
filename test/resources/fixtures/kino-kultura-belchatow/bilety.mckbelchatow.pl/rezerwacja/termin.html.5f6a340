@@ -1,0 +1,285 @@
+<!doctype html>
+<html class="no-js" lang="pl">
+<head data-template-set="html5-reset">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="title" content="Wybór terminu - Miejskie Centrum Kultury w Bełchatowie" />
+    <meta name="keywords" content="" />
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="all" />
+    <link rel="shortcut icon" href="/images/layout/giganty/favicon.ico" />
+    <link rel="apple-touch-icon" href="/images/layout/giganty/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/css/jquery-ui.min.css" />
+    <link rel="stylesheet" href="/css/giganty.css" />
+
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,700,700italic&#038;subset=latin-ext,latin" />
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=3" />
+        <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"-->
+    <!--            integrity="sha256-wS9gmOZBqsqWxgIVgA8Y9WcQOa7PgSIX+rPA0VL2rbQ="-->
+    <!--            crossorigin="anonymous"></script>-->
+    <script src="/js-common/jquery.min.js"></script>
+    <!--<script type="text/javascript">
+        $(document).ready(function(){
+            $.ajax('https://www.googleapis.com/customsearch/v1element?key=AIzaSyCVAXiUzRYsML1Pv6RwSG1gunmMikTzQqY&rsz=filtered_cse&num=10&hl=pl&prettyPrint=false&source=gcsc&gss=.com&sig=ee93f9aae9c9e9dba5eea831d506e69a&cx=004954037557232625994:axno5zmlgm4&q=asd&sort=&googlehost=www.google.com&oq=asd&gs_l=partner.12...138824.138993.1.145068.3.3.0.0.0.0.179.472.0j3.3.0.gsnos%2Cn%3D13...0.122j8410j3..1ac.1.25.partner..6.0.0.6fI5lmDKRoE&callback=google.search.Search.apiary9565&nocache=1398702747486').done(function(data){
+                console.log(data);
+            })
+        });
+    </script>-->
+    <script>window.jQuery || document.write('<script src=\'/js/giganty/jquery-1.9.1.min.js\'>\x3C/script>');</script>
+    <script src="/js/cookie.min.js"></script>
+    <script src="/js/giganty/jquery.easing.min.js"></script>
+    <script src="/js/giganty/jquery.cycle2.js"></script>
+    <script src="/js/giganty/jquery.cycle2.carousel.js"></script>
+    <script src="/js/giganty/jquery.cycle2.swipe.js"></script>
+    <script src="/js/giganty/masonry.pkgd.min.js"></script>
+    <script src="/js/giganty/jquery.transit.min.js"></script>
+    <script src="/js/giganty/whcookies.js"></script>
+    <script src="/js/giganty/zebra_datepicker.js"></script>
+    <script src="/js/giganty/idangerous.swiper-2.1.min.js"></script>
+    <script src="/js/giganty/EasePack.min.js"></script>
+    <script src="/js/giganty/CSSPlugin.js"></script>
+    <script src="/js/giganty/TimelineMax.min.js"></script>
+    <script src="/js/giganty/TweenMax.min.js"></script>
+    <!--<script src="/js/giganty/formex-0.9.min.js"></script>-->
+    <script src="/js/giganty/functions.js"></script>
+    <script src="/js/giganty/underscore-min.js"></script>
+    <script src="/js/giganty/moment.min.js"></script>
+    <script src="/js/giganty/clndr.min.js"></script>
+    <script id="mini-clndr-template" type="text/template">
+
+        <h2>Kalendarz wydarzeń</h2>
+        <div class="controls">
+            <div class="clndr-previous-button">&lsaquo;</div>
+            <div class="month"><%= month %></div>
+            <div class="clndr-next-button">&rsaquo;</div>
+        </div>
+        <div class="days-container">
+            <div class="days">
+                <div class="headers">
+                    <% _.each(daysOfTheWeek, function(day) { %>
+                    <div class="day-header"><%= day %></div>
+                    <% }); %>
+                </div>
+                <% _.each(days, function(day) { %>
+                <div class="<%= day.classes %>" id="<%= day.id %>"><%= day.day %>
+                    <div class="infobox"><% _.each(day.events, function(event) { %>
+                        <div class="event-item">
+                            <li><a href="<%= event.url %>"><%= event.title %></a></li>
+                        </div>
+                        <% }); %>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+        </div>
+
+    </script>
+        <!--<script src="/js/demo.js" type="text/javascript"></script>-->
+    <script src="/js-common/jquery-ui.min.js"></script>
+<script src="/js-common/jquery-ui.datepicker-pl.min.js"></script>
+<script src="/js-common/jquery.countdown.js"></script>
+<script src="/js-common/jquery.countdown-pl.js"></script>
+<script src="/js-common/core.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/main.js?v=3"></script>
+<script src="/js/wspolne.js?v=3"></script>
+    <script>//<![CDATA[
+$(document).ready(function(){ detectCookies(); });
+//]]></script>
+    <title>Wybór terminu - Miejskie Centrum Kultury w Bełchatowie</title>
+</head>
+<body class="darken "   data-page_name="rezerwacja_rezerwacja_termin">
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = '//connect.facebook.net/pl_PL/all.js#xfbml=1';
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));</script>
+<script>!function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (!d.getElementById(id)) {
+            js = d.createElement(s);
+            js.id = id;
+            js.src = 'https://platform.twitter.com/widgets.js';
+            fjs.parentNode.insertBefore(js, fjs);
+        }
+    }(document, 'script', 'twitter-wjs');</script>
+<script type="text/javascript" src="https://apis.google.com/js/platform.js"></script>
+<!--<script src="//platform.linkedin.com/in.js" type="text/javascript"> lang: pl_PL</script>-->
+<div id="cookies-message-container" class="clearfix" rel="alert" style="display: block">
+        <span id="cookies-message"><p>Nasza strona używa plików cookies w celach statystycznych oraz w celu dopasowania usług i treści do oczekiwań użytkowników.<br />Więcej informacji znajduje się w polityce prywatności i regulaminie serwisu.<br />Dalsze korzystanie ze strony oznacza akceptację regulaminu i polityki prywatności.</p>
+        </span>
+    <span class="pull-right" id="accept-cookies">zamknij</span>
+</div>
+<article class="clearfix" id="mck">
+    <header class="clearfix">
+        <a href="/"><img src="/images/layout/giganty/logo.png" id="logo" alt="Miejskie Centrum Kultury w Bełchatowie"></a>
+        <div class="media">
+            <div id="media-search">
+                <form method="GET" action="https://bilety.mckbelchatow.pl/rezerwacja/termin.html" id="wyszukiwanie">
+                    <input type="text" maxlength="128" name="fraza" aria-label="Znajdź na stronie" value="">
+                    <button type="submit">
+                        <span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+                    </button>
+                </form>
+            </div>
+            <div id="media-menu">
+                <a href="/uzytkownik/login.html">Zaloguj</a><a href="/uzytkownik/rejestracja.html">Rejestracja</a><a href="https://bilety.mckbelchatow.pl/index/regulamin.html">Regulamin</a><a href="https://bilety.mckbelchatow.pl/index/klauzula-informacyjna.html">Klauzula informacyjna</a><a href="https://bilety.mckbelchatow.pl/koszyk/index.html"><span class="glyphicon glyphicon-shopping-cart" aria-hidden="true"></span></a><a href="https://bilety.mckbelchatow.pl/index/pomoc.html"><span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></a> &nbsp; |            </div>
+        </div>
+                    <div class="basket-bar-wrapper">
+                <a href="https://bilety.mckbelchatow.pl/koszyk/index.html" id="block-basket" class="clearfix" title="Koszyk">
+                                    </a>
+            </div>
+                </header>
+    <nav>
+    <div id="wcag">
+        <div id="contrast"></div>
+        <span id="f1">A</span>
+        <span id="f2">A</span>
+        <span id="f3">A</span>
+    </div>
+    <div class="nav-box">
+        <ul>
+            <a href="#" class="button absolute">cofnij</a>
+            <li>
+                <a href="/" target="_self">Strona główna</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/" target="_self">MCK BEŁCHATÓW</a>
+            </li>
+            <li>
+                <a href="https://gigantymocy.pl" target="_self">GIGANTY MOCY</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/o-mck" target="_self">O MCK</a>
+                <ul>
+                    <li><a href="https://mckbelchatow.pl/o-mck/o-mck" target="_self">O MCK</a></li>
+                    <li><a href="https://mckbelchatow.pl/o-mck/kadra" target="_self">Kadra</a></li>
+                    <li><a href="https://mckbelchatow.pl/o-mck/nasze-sukcesy" target="_self">Nasze sukcesy</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/relacje-z-wydarzen" target="_self">Relacje z wydarzeń</a>
+                <ul><li><a href="https://mckbelchatow.pl/relacje-z-wydarzen/fotogaleria_2017" target="_self">2017</a></li><li><a href="http://mckbelchatow.pl/relacje-z-wydarzen/fotogaleria_2016" target="_self">2016</a></li><li><a href="http://mckbelchatow.pl/relacje-z-wydarzen/fotogaleria_2015" target="_self">2015</a></li><li><a href="http://mckbelchatow.pl/relacje-z-wydarzen/fotogaleria_2014" target="_self">2014</a></li></ul>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/zajecia-w-mck" target="_self">Zajęcia w MCK</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/wynajem-sal" target="_self">Wynajem sal</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/wydarzenia" target="_self">Archiwum wydarzeń</a>
+                <ul>
+                    <li><a href="https://mckbelchatow.pl/wydarzenia/wydarzenia_2017" target="_self">ROK 2017</a></li>
+                    <li><a href="https://mckbelchatow.pl/wydarzenia/wydarzenia_2016" target="_self">ROK 2016</a></li>
+                    <li><a href="https://mckbelchatow.pl/wydarzenia/wydarzenia_2015" target="_self">ROK 2015</a></li>
+                    <li><a href="https://mckbelchatow.pl/wydarzenia/wydarzenia_2014" target="_self">ROK 2014</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/uniwersytet-trzeciego-wieku" target="_self">Uniwersytet Trzeciego Wieku</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/wydarzenia-cykliczne" target="_self">Wydarzenia cykliczne</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/konkursy" target="_self">Konkursy</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/zrealizowane-projekty" target="_self">Zrealizowane projekty</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/dla-prasy" target="_self">Dla prasy</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/ogloszenia-i-przetargi" target="_self">Ogłoszenia i przetargi</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/formularze-i-regulaminy" target="_self">Formularze i regulaminy</a>
+            </li>
+            <li>
+                <a href="https://mckbelchatow.pl/kontakt" target="_self">Kontakt</a>
+            </li>
+        </ul>
+            </div>
+</nav>    <section class="content clearfix" id="body">
+        <div id="preloader-overlay">
+            <div class="preloader-spinner"></div>
+        </div>
+        <h2>Zakup - krok 1 / 5</h2><div id="termin">
+    <br><div class="mce-content-body"><p>Zakupu on-line możesz dokonać najpóźniej na 15 minut przed seansem. Płatności możesz dokonać za pośrednictwem serwisu Tpay. Po dokonaniu transakcji zakupu, otrzymasz wiadomość z załączonym biletem. Nie zapomnij o jego wydrukowaniu lub zapisaniu go na urządzeniu mobilnym. Będzie on sprawdzany przy wejściu. Jeżeli dokonujesz zakupu biletu ulgowego, przy wejściu zostaniesz poproszony o okazanie dokumentu uprawniającego do ulgi (legitymacja uczniowska, studencka itp.).</p></div><h1>Kino Kultura</h1>        <div>
+            <div class="row hidden-xs hidden-sm font-bold">
+                <div class="col-lg-1 col-xs-2">
+                </div>
+                <div class="col-lg-2 col-xs-4">
+                    Data                </div>
+                <div class="col-lg-4 col-xs-6">
+                    Wydarzenie                </div>
+                <div class="col-lg-1 col-xs-2">
+                </div>
+                <div class="col-lg-1 col-xs-5">
+                    Dostępne bilety                </div>
+                <div class="col-lg-3 col-xs-5">
+                </div>
+            </div>
+            <div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/kreciolek.jpg" alt=""></div><div class="col-lg-2 col-xs-4">27-09-2026 13:15</div><div class="col-lg-4 col-xs-6"><b>Kręciołek</b><div><a class="small grafit" href="https://www.vivarto.pl/kreciolek" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121346&amp;ter_idt=f1f66906361c429491f8bacbf6148617" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/andrerieunzm.jpg" alt=""></div><div class="col-lg-2 col-xs-4">27-09-2026 15:00</div><div class="col-lg-4 col-xs-6"><b>André Rieu. Niech żyje Maastricht!</b><div><a class="small grafit" href="https://kinomaestro.pl/gramy/rieumaastricht/" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">213</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121326&amp;ter_idt=7539a624f49911458df24c847f511312" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/ddksjkaczkowskiego.jpg" alt=""></div><div class="col-lg-2 col-xs-4">27-09-2026 18:15</div><div class="col-lg-4 col-xs-6"><b>Dzień dziecka księdza Jana Kaczkowskiego</b><div><a class="small grafit" href="https://www.tvp.pl/rozrywka/gwiazdy/dzien-dziecka-ksiedza-jana-kaczkowskiego-wywiad-z-rezyserem-filmu-arturem-wierzbickim,95337159" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">232</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121335&amp;ter_idt=827a9d97b72e25c464e64451e0235366" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/totalnamagia2.jpg" alt=""></div><div class="col-lg-2 col-xs-4">27-09-2026 19:45</div><div class="col-lg-4 col-xs-6"><b>Totalna magia 2</b><div><a class="small grafit" href="https://www.warnerbros.pl/filmy/totalnamagia2" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121336&amp;ter_idt=61c4205910a592f31e96f45260028671" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/kreciolek.jpg" alt=""></div><div class="col-lg-2 col-xs-4">28-09-2026 14:45</div><div class="col-lg-4 col-xs-6"><b>Kręciołek</b><div><a class="small grafit" href="https://www.vivarto.pl/kreciolek" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121347&amp;ter_idt=853e25c63c8e17e4d554ad43e1d13061" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/ddksjkaczkowskiego.jpg" alt=""></div><div class="col-lg-2 col-xs-4">28-09-2026 16:15</div><div class="col-lg-4 col-xs-6"><b>Dzień dziecka księdza Jana Kaczkowskiego</b><div><a class="small grafit" href="https://www.tvp.pl/rozrywka/gwiazdy/dzien-dziecka-ksiedza-jana-kaczkowskiego-wywiad-z-rezyserem-filmu-arturem-wierzbickim,95337159" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121337&amp;ter_idt=cbda68e9bb6741f74c74a3fd8ab10053" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/totalnamagia2.jpg" alt=""></div><div class="col-lg-2 col-xs-4">28-09-2026 17:30</div><div class="col-lg-4 col-xs-6"><b>Totalna magia 2</b><div><a class="small grafit" href="https://www.warnerbros.pl/filmy/totalnamagia2" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121338&amp;ter_idt=1bc5045b236d74525a4330e0d7212231" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/nowafala.jpg" alt=""></div><div class="col-lg-2 col-xs-4">28-09-2026 19:30</div><div class="col-lg-4 col-xs-6"><b>Nowa fala</b><div><a class="small grafit" href="https://www.nowehoryzonty.pl/film/nowa-fala" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121339&amp;ter_idt=cc58e4d3494bff46de528fbfc6514034" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/kreciolek.jpg" alt=""></div><div class="col-lg-2 col-xs-4">29-09-2026 15:00</div><div class="col-lg-4 col-xs-6"><b>Kręciołek</b><div><a class="small grafit" href="https://www.vivarto.pl/kreciolek" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121348&amp;ter_idt=b5dcc0c247f32269647eddff1db13355" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/totalnamagia2.jpg" alt=""></div><div class="col-lg-2 col-xs-4">29-09-2026 16:30</div><div class="col-lg-4 col-xs-6"><b>Totalna magia 2</b><div><a class="small grafit" href="https://www.warnerbros.pl/filmy/totalnamagia2" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121340&amp;ter_idt=7d8c0cdd8ab261dd2312969431e57265" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/ddksjkaczkowskiego.jpg" alt=""></div><div class="col-lg-2 col-xs-4">29-09-2026 18:30</div><div class="col-lg-4 col-xs-6"><b>Dzień dziecka księdza Jana Kaczkowskiego</b><div><a class="small grafit" href="https://www.tvp.pl/rozrywka/gwiazdy/dzien-dziecka-ksiedza-jana-kaczkowskiego-wywiad-z-rezyserem-filmu-arturem-wierzbickim,95337159" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121341&amp;ter_idt=7e7974fd7f9d6cd0504488bdf0854138" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/nowafala.jpg" alt=""></div><div class="col-lg-2 col-xs-4">29-09-2026 20:00</div><div class="col-lg-4 col-xs-6"><b>Nowa fala</b><div><a class="small grafit" href="https://www.nowehoryzonty.pl/film/nowa-fala" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121342&amp;ter_idt=9555e521d2d34dbd129cacca95191083" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/kreciolek.jpg" alt=""></div><div class="col-lg-2 col-xs-4">30-09-2026 14:45</div><div class="col-lg-4 col-xs-6"><b>Kręciołek</b><div><a class="small grafit" href="https://www.vivarto.pl/kreciolek" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121349&amp;ter_idt=dc697c293be692e98093004880b03526" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/lalka.jpg" alt=""></div><div class="col-lg-2 col-xs-4">30-09-2026 16:10</div><div class="col-lg-4 col-xs-6"><b>Lalka</b><div><a class="small grafit" href="https://lalka.edu.pl/" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">233</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121321&amp;ter_idt=db84e4910858c66a25b7b27e2d236647" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/lalka.jpg" alt=""></div><div class="col-lg-2 col-xs-4">30-09-2026 19:20</div><div class="col-lg-4 col-xs-6"><b>Lalka</b><div><a class="small grafit" href="https://lalka.edu.pl/" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121322&amp;ter_idt=7519f26dec1baaaffb350f16a8254123" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/kreciolek.jpg" alt=""></div><div class="col-lg-2 col-xs-4">01-10-2026 14:45</div><div class="col-lg-4 col-xs-6"><b>Kręciołek</b><div><a class="small grafit" href="https://www.vivarto.pl/kreciolek" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121350&amp;ter_idt=46c01e90ff9c335f0cfec2a60c406351" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/lalka.jpg" alt=""></div><div class="col-lg-2 col-xs-4">01-10-2026 16:10</div><div class="col-lg-4 col-xs-6"><b>Lalka</b><div><a class="small grafit" href="https://lalka.edu.pl/" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121323&amp;ter_idt=21aa64cad063c1fccad795d077491146" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div><div class="row"><div class="col-lg-1 col-xs-2"><img src="/images/wydarzenia/mini/lalka.jpg" alt=""></div><div class="col-lg-2 col-xs-4">01-10-2026 19:20</div><div class="col-lg-4 col-xs-6"><b>Lalka</b><div><a class="small grafit" href="https://lalka.edu.pl/" target="_blank">więcej informacji</a></div></div><div class="col-lg-1 col-xs-2 text-center"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span></div><div class="col-lg-1 col-xs-5">238</div><div class="col-lg-3 col-xs-5"><a href="https://bilety.mckbelchatow.pl/rezerwacja/numerowane.html?ter_id=121324&amp;ter_idt=eabe50f84ce6bf074421f1591ae52462" class="btn btn-danger"><span class="glyphicon glyphicon-tag" aria-hidden="true"></span> KUP BILET</a></div></div>                        <div id="legenda-terminy">
+                <div><span class="glyphicon glyphicon-facetime-video"
+                           aria-hidden="true"></span> Film</div>
+                <div><span class="glyphicon glyphicon-music"
+                           aria-hidden="true"></span> Koncert</div>
+                <div><span class="glyphicon glyphicon-education"
+                           aria-hidden="true"></span> Warsztaty</div>
+                <div><span class="glyphicon glyphicon-eye-open"
+                           aria-hidden="true"></span> Spektakl</div>
+            </div>
+        </div>
+            <p>
+        <a href="/"
+           class="btn btn-warning">Wróć</a>
+    </p>
+</div>
+    </section>
+    <section class="partners">
+        <img class="contrast-0 img-fluid" src="/images/layout/giganty/sponsor/ue_1 belka-01.png" alt="Fundusze Europejskie Program Regionalny">
+        <img class="contrast-1 img-fluid" src="/images/layout/giganty/sponsor/ue_cz.jpg" alt="Fundusze Europejskie Program Regionalny">
+        <span>
+            </span>
+    </section>
+    <footer class="clearfix">
+        <span>Copyright Bełchatów 2017</span>
+        <!--<a href="http://www.e-bip.pl/Start/12554/"><img src="/images/layout/giganty/icon_bip.png"  alt="BIP"/></a>-->
+        <a href="http://www.facebook.com/gigantymocy?sk=wall" target="_blank" class="icon fb"></a>
+        <a href="https://www.instagram.com/woltusbrunatny/" target="_blank" class="icon ot"></a>
+        <a href="https://plus.google.com/110184940073674326157" target="_blank" class="icon yt"></a>
+
+                <!-- Modal -->
+        <div id="noticeModal" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+
+                <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ...                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Zamknij</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+    </footer>
+
+</article>
+</body>
+</html>

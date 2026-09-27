@@ -2320,7 +2320,7 @@ class CinemaScraperCatalog(
     "radom" -> Seq(
       ekobilet("centrum-kultury-i-turystyki-w-ilzy-8211", KinoCKiTIlza),   // Iłża
       biletyna(KinoKsiazka),   // Stara Błotnica
-      new KinoRCKDrzewicaClient(http, KinoRCKDrzewica),   // Drzewica
+      new IksorisClient(http, IksorisSite("https://bilety.rck.drzewica.pl"), KinoRCKDrzewica),   // Drzewica
     ),
     "zlocieniec" -> Seq(
       biletyna(KinoChDKChoszczno),   // Choszczno
