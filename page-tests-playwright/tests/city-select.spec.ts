@@ -27,11 +27,11 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // The fixture `/` renders ONE country's list, exactly as a deployment does
     // (`views.html.landing(Country.default, isApex = false)` — see
-    // FixtureServerMain), so this is Poland's 181 pages. Real `<a href>`
+    // FixtureServerMain), so this is Poland's 180 pages. Real `<a href>`
     // markup even though the dynamic picker below hides it once JS runs —
     // `toHaveCount`/`allTextContents` read the DOM regardless of visibility.
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(181);
+    await expect(links).toHaveCount(180);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');

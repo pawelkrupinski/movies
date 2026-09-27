@@ -53,12 +53,12 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   }
 
   // Regression: MC keeps `!` in slugs — stripping it produced 404 for
-  // Yu-Gi-Oh!, Airplane!, Moulin Rouge!, etc.
-  it should "preserve '!' when building the slug (Yu-Gi-Oh!)" in {
+  // Yu-Gi-Oh!, Airplane!, Moulin Rouge!, etc. (Yu-Gi-Oh!'s own page has 404'd
+  // since 2026-09-27 though MC's search still lists it, so Airplane! stands in.)
+  it should "preserve '!' when building the slug (Airplane!)" in {
     val c = new MetacriticClient(new RealHttpFetch)
     metacritic {
-      c.canonicalUrl("Yu-Gi-Oh! The Dark Side of Dimensions") shouldBe
-        Some("https://www.metacritic.com/movie/yu-gi-oh!-the-dark-side-of-dimensions")
+      c.canonicalUrl("Airplane!") shouldBe Some("https://www.metacritic.com/movie/airplane!")
     }
   }
 
