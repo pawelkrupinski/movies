@@ -326,12 +326,15 @@ object IdentityCalibrate {
 
   // ── fitting one scope ────────────────────────────────────────────────────────────────
 
-  /** Missing sides that are an artefact of the RECORDING, not of the evidence, weighted 0. */
+  /** Missing values weighted 0: a side that is an artefact of the RECORDING, not of the evidence, or
+   *  a comparison with nothing to compare that another measure already weighs. */
   val Neutral: Map[(String, String), String] = Map(
     ("director", "film")      -> "the candidate's credits were not fetched in the recorded trees (only candidates the pipeline examined have them), so missingness marks the sampling, not the film",
     ("runtime.delta", "film") -> "the candidate's details were not fetched in the recorded trees",
     ("country", "film")       -> "the candidate's details were not fetched in the recorded trees",
-    ("search.rank", "not-returned") -> "negatives are drawn from the title search itself, so only a positive can be absent from it: the value marks the sampling")
+    ("search.rank", "not-returned") -> "negatives are drawn from the title search itself, so only a positive can be absent from it: the value marks the sampling",
+    ("numeral", "none")       -> "neither title numbers itself: there is no instalment to compare, and the title relation already weighs the rest of the title",
+    ("numeral", "unrelated")  -> "no reading of the listing names the film's series: the title relation already weighs a title naming another")
 
   /** One labelled pair. `unit` is what makes two pairs independent evidence: the family and the
    *  candidate. A wide release lists one film thousands of times with the same evidence, and those
@@ -590,7 +593,7 @@ object IdentityCalibrate {
 
   final case class Scope(name: String, signals: Seq[String], rows: Seq[Row])
 
-  val LfSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
+  val LfSignals: Seq[String] = Seq("title", "numeral", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
     "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
   val LlSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
     "runtime.delta", "venue", "chainId")

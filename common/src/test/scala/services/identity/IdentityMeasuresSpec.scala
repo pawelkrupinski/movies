@@ -355,4 +355,53 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.exactTopHits(Listing("Kino Nocne: Godzilla vs. Megalon"), Seq((1, megalon, Some(1)))) shouldBe Nil
     IdentityMeasures.exactTopHits(listing, Seq((1, megalon, Some(2)), (3, other, Some(1)), (4, megalon, None))) shouldBe Nil
   }
+
+  "a sequel numeral" should "be compared by the NUMBER each title carries, however it is written" in {
+    def numeral(listing: String, film: Film) = IdentityMeasures.numeralRelation(Listing(listing), film)
+    // US, the recorded "The Texas Chainsaw Massacre 2" ×4 (labelled 16337): TMDB's 1974 original
+    // (30497, alternative title "The Texas Chainsaw Massacre") is the series without the number.
+    val original = Film("The Texas Chain Saw Massacre", alternativeTitles = Seq("Leatherface", "The Texas Chainsaw Massacre"))
+    val sequel   = Film("The Texas Chainsaw Massacre Part 2", alternativeTitles = Seq("TCM 2", "The Texas Chain Saw Massacre Part 2"))
+    numeral("The Texas Chainsaw Massacre 2", original) shouldBe Category("listing_only")
+    numeral("The Texas Chainsaw Massacre 2", sequel) shouldBe Category("same")
+    numeral("The Texas Chainsaw Massacre", sequel) shouldBe Category("film_only")
+    numeral("Mortal Kombat 2", Film("Mortal Kombat II")) shouldBe Category("same")
+    numeral("Rocky II", Film("Rocky")) shouldBe Category("listing_only")
+    numeral("Toy Story 2", Film("Toy Story 3")) shouldBe Category("different")
+    numeral("Kill Bill: Vol. 2 (2026)", Film("Kill Bill: Vol. 1")) shouldBe Category("different")
+    numeral("Star Wars: Episode IV - A New Hope", Film("Star Wars", alternativeTitles = Seq("Star Wars: Episode IV - A New Hope"))) shouldBe Category("same")
+  }
+
+  it should "have nothing to compare in a remake, a title whose number is its name, or a decoration's number" in {
+    def numeral(listing: String, film: String) = IdentityMeasures.numeralRelation(Listing(listing), Film(film))
+    numeral("Suspiria", "Suspiria") shouldBe Missing("none")
+    numeral("2001: A Space Odyssey", "2001: A Space Odyssey") shouldBe Missing("none")
+    numeral("1917", "1917") shouldBe Missing("none")
+    numeral("Se7en", "Se7en") shouldBe Missing("none")
+    numeral("Ocean's Eleven", "Ocean's Eleven") shouldBe Missing("none")
+    numeral("2046", "2046") shouldBe Missing("none")
+    numeral("9 to 5", "9 to 5") shouldBe Category("same")
+    numeral("Cineworld 30: The Matrix", "The Matrix") shouldBe Missing("none")
+    numeral("Sense and Sensibility (2026)", "Sense and Sensibility") shouldBe Missing("none")
+    numeral("The Metropolitan Opera 2026/27: Manon", "Manon") shouldBe Missing("none")
+    // A lone "i" inside a title is a word (Polish "and"), and L, C, D, M spell words, not instalments.
+    numeral("Vivaldi i ja", "Vivaldi") shouldBe Missing("none")
+    numeral("Listy do M. 5", "Listy do M. 5") shouldBe Category("same")
+    numeral("Listy do M 5", "Listy do M. 5") shouldBe Category("same")
+    numeral("Zodiac", "Fight Club") shouldBe Missing("unrelated")
+  }
+
+  it should "keep a title that numbers another instalment from NAMING the film its words decorate" in {
+    val original = Film("The Texas Chain Saw Massacre", alternativeTitles = Seq("The Texas Chainsaw Massacre"))
+    val listing  = Listing("The Texas Chainsaw Massacre 2")
+    IdentityMeasures.titleRelation(listing, original) shouldBe Category("decorated")
+    IdentityMeasures.namesFilm(listing, original) shouldBe false
+    IdentityMeasures.namesFilm(Listing("Throwback: The Texas Chainsaw Massacre"), original) shouldBe true
+    IdentityMeasures.namesFilm(Listing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
+    // So no venue's own facts back the original on a sequel's title.
+    val group = Seq("a", "b").map(_ -> listing.copy(directors = Seq("Tobe Hooper")))
+    IdentityMeasures.backingVenues(original.copy(directors = Some(Seq("Tobe Hooper"))), group) shouldBe empty
+  }
+
+
 }

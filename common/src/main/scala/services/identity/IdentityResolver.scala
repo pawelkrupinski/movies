@@ -241,7 +241,7 @@ object IdentityResolver {
                 deniedByPins: Int => Boolean): Seq[Scored] = {
         val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses, qualifiers).value).toMap
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || shared(c.tmdbId) ||
-          IdentityMeasures.NamingRelations(relation(c.tmdbId)))
+          IdentityMeasures.names(relation(c.tmdbId), l, c.film))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val groups    = IdentityMeasures.titleGroups(l)
         val scored = reachable.map { c =>
@@ -428,10 +428,10 @@ object IdentityResolver {
     }
 
     /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
-     *  whole spelling, its original title or a segment) names the film's? */
+     *  whole spelling, its original title or a segment) names the film's and not another
+     *  instalment of its series (`IdentityMeasures.namesFilm`)? */
     def titleNames(n: Node, film: Candidate): Boolean =
-      ownSearch(n.id).contains(film.tmdbId) ||
-        IdentityMeasures.NamingRelations(IdentityMeasures.titleRelation(n.evidence.measured, film.film).value)
+      ownSearch(n.id).contains(film.tmdbId) || IdentityMeasures.namesFilm(n.evidence.measured, film.film)
     /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
      *  title names, which only a credited director's filmography reached, only when nothing else
      *  the walk reached fits the pooled facts as well: every rival's own facts fit worse or equally,

@@ -395,6 +395,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "A sequel's listing" should "take the sequel, not the original its title's words decorate" in {
+    // US, the recorded "The Texas Chainsaw Massacre 2" ×4 (labelled 16337; old pipeline and
+    // resolver both filed it on the 1974 original): every venue credits Tobe Hooper, who directed
+    // both, so the venues' own facts "backed" the original its title decorates.
+    // TMDB's records, with the alternative titles that decide the title relations: the original's
+    // "The Texas Chainsaw Massacre" (which the sequel's title decorates) and the sequel's "The
+    // Texas Chainsaw Massacre 2 - UC" (of which the listing's title is a fragment).
+    val films = Seq(F(30497, "The Texas Chain Saw Massacre", 1974, "Tobe Hooper", 83, 12, Seq("Leatherface", "The Texas Chainsaw Massacre")),
+      F(16337, "The Texas Chainsaw Massacre Part 2", 1986, "Tobe Hooper", 100, 12.75, Seq("The Texas Chainsaw Massacre 2 - UC", "TCM 2")),
+      F(609, "Poltergeist", 1982, "Tobe Hooper", 114, 30))
+    val sequel = Seq(Multikino, Helios, KinoApollo, KinoMuza).map(listing(_, "The Texas Chainsaw Massacre 2", None, Some("Tobe Hooper"), Some(101)))
+    // The title search finds the sequel; the director's filmography reaches the original.
+    val r = IdentityResolver.resolve(sequel, new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue(r.decisionOf(sequel.head.key).render) {
+      sequel.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(16337))
+    }
+  }
+
+  it should "leave a title whose number is its name, and a remake, on their films" in {
+    val films = Seq(F(844, "2046", 2004, "Wong Kar-wai", 129), F(9, "9 to 5", 1980, "Colin Higgins", 109),
+      F(1977, "Suspiria", 1977, "Dario Argento", 99, 20), F(2018, "Suspiria", 2018, "Luca Guadagnino", 152, 15))
+    val listings = Seq(listing(Multikino, "2046", Some(2004), Some("Wong Kar-wai")), listing(Helios, "9 to 5", Some(1980), Some("Colin Higgins")),
+      listing(KinoApollo, "Suspiria", Some(2018), Some("Luca Guadagnino")), listing(KinoMuza, "Suspiria", Some(1977), Some("Dario Argento")))
+    val r = resolve(listings, films)
+    listings.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(844), Some(9), Some(2018), Some(1977))
+  }
+
   "Two listings stating years decades apart" should "stay apart when no film ties them: 'It (1990)' is not 'IT (2017)'" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 90))
     val old = listing(Multikino, "It (1990)", Some(1990))
