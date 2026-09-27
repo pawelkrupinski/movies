@@ -45,6 +45,10 @@ object IdentityMeasures {
     def statedRuntime: Option[Int] = runtime.filter(_ > 0).orElse(titleRuntime)
     /** `titleShapes`, once per listing: every title relation and billing reads them. */
     private[identity] lazy val shapes: Seq[String] = IdentityMeasures.shapesOf(this)
+    /** The title and raw title as comparison forms, and the shapes' keys, once per listing: the
+     *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
+    private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
+    private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
@@ -250,6 +254,10 @@ object IdentityMeasures {
       (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] =
       (Seq(title) ++ originalTitle ++ alternativeTitles).flatMap(SearchTitles.candidates(_, None)).map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
+    /** The title, original title and alternative titles, in that order, as comparison forms once
+     *  per record (`titleRelation`). */
+    private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =
+      (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.TitleForm(_))
     /** The film's titles as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedTitles: Seq[IdentityMeasures.Numbered] =
       (Seq(title) ++ originalTitle ++ alternativeTitles).map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
@@ -320,7 +328,17 @@ object IdentityMeasures {
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =
-    tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "")
+    NonWord.matcher(tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)).replaceAll("")
+  private val NonWord = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
+
+  /** One title's comparison forms, each computed on first use: the same titles are compared across
+   *  a whole family pool, and normalising them again per pair was nearly all of a resolve's time. */
+  private[identity] final case class TitleForm(text: String) {
+    lazy val key: String            = IdentityMeasures.key(text)
+    lazy val words: Seq[String]     = IdentityMeasures.words(text)
+    lazy val wordSet: Set[String]   = words.toSet
+    lazy val yearless: String       = yearlessTokens(text).mkString
+  }
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
 
@@ -434,17 +452,19 @@ object IdentityMeasures {
    *  Cut" (2016) shares the words of "Dark City: Director's Cut" but is not its film, so it is
    *  measured on the record's other titles, and as an `overlap` when it has none. */
   private def titleRelation(l: Listing, f: Film, houses: Option[Houses], qualifiers: Qualifiers): Category = {
-    val ls  = Seq(l.title) ++ l.rawTitle
-    val all = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
-    val own = ls.map(key).filter(_.nonEmpty).toSet
+    val ls  = l.ownForms
+    val all = f.forms
+    val own = ls.map(_.key).filter(_.nonEmpty).toSet
     lazy val qualifying = qualifiers.of(l)
-    val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(yearlessTokens(t).mkString))
-    if (own.contains(key(f.title))) Category("exact")
-    else if (f.originalTitle.map(key).exists(own)) Category("original")
-    else if (f.alternativeTitles.map(key).exists(own)) Category("alternative")
+    val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
+    val (titleForm, rest) = (all.head, all.tail)
+    val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
+    if (own.contains(titleForm.key)) Category("exact")
+    else if (originalForms.map(_.key).exists(own)) Category("original")
+    else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None
-          else containment(ls, titleShapes(l), fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)))).getOrElse(
-      if (ls.map(words).exists(a => all.map(words).exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap") else Category("none"))
+          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)))).getOrElse(
+      if (ls.exists(a => all.exists(b => jaccard(a.wordSet, b.wordSet) > 0))) Category("overlap") else Category("none"))
   }
 
   /** How one side's titles name the other's once no whole title matches: a whole delimited piece
@@ -454,11 +474,11 @@ object IdentityMeasures {
    *  "It Ends with Us"). `alsoSegment` is another reason to read a segment (the title relation's
    *  season production), asked only when no shape matches. ONE definition for the title and the
    *  original-title relations. */
-  private def containment(own: Seq[String], shapes: Seq[String], others: Seq[String], alsoSegment: => Boolean = false): Option[Category] = {
-    val otherKeys = others.map(key).filter(_.nonEmpty).toSet
-    val ow = own.map(words).filter(_.nonEmpty)
-    val fw = others.map(words).filter(_.nonEmpty)
-    if (shapes.map(key).exists(otherKeys) || alsoSegment) Some(Category("segment"))
+  private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false): Option[Category] = {
+    val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
+    val ow = own.map(_.words).filter(_.nonEmpty)
+    val fw = others.map(_.words).filter(_.nonEmpty)
+    if (shapeKeys.exists(otherKeys) || alsoSegment) Some(Category("segment"))
     else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(b, a)))) Some(Category("decorated"))
     else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(a, b)))) Some(Category("fragment"))
     else None
@@ -548,7 +568,7 @@ object IdentityMeasures {
         val others = otherTitles.map(_.trim).filter(_.nonEmpty)
         if (others.isEmpty) MissingFilm
         else if (others.map(key).contains(key(o))) Category("match")
-        else containment(Seq(o), shapes(Seq(o)), others).getOrElse {
+        else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {
           val ow = words(o).filter(_.length >= 4).toSet
           if (others.exists(t => (words(t).filter(_.length >= 4).toSet intersect ow).nonEmpty)) Category("overlap")
           else Category("disjoint")

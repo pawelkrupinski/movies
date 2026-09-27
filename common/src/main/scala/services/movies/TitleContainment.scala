@@ -22,8 +22,8 @@ package services.movies
 object TitleContainment {
 
   def tokens(s: String): Seq[String] =
-    tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT)
-      .split("[^\\p{L}\\p{N}]+").iterator.filter(_.nonEmpty).toSeq
+    NonWord.split(tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT)).iterator.filter(_.nonEmpty).toSeq
+  private val NonWord = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
 
   /** PREFIX-or-SUFFIX run, not mid-string: even a 1-token base can't be swallowed by
    *  an unrelated title that merely mentions the word in the middle. */
