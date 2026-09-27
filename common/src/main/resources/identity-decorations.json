@@ -2,8 +2,8 @@
   "version" : "decorations-2026-09-27",
   "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders, that no recorded film record's title, original title or alternative title carries",
   "inputs" : {
-    "listingTitles" : 167465,
-    "venues" : 7408,
+    "listingTitles" : 167458,
+    "venues" : 7406,
     "recordTitles" : 232228
   },
   "decorations" : [ {
