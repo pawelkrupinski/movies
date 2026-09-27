@@ -24,19 +24,24 @@ import scala.collection.mutable
  *      fitted on, including `venues.corroborating`, the family's venue co-occurrence). A candidate
  *      a node's evidence DENIES (`ListingConstraints.learnedListingFilm`: a learned rule, or its OWN
  *      facts' probability below the certified cut, and only when the node publishes a fact the film
- *      can be compared on — a title relation alone is scored, never a veto) is not eligible. A node ACCEPTS its best candidate ALONE when the
+ *      can be compared on — a title relation alone is scored, never a veto; or a film of the node's
+ *      credited director its title does not name, when its title names another of that director's)
+ *      is not eligible. A node ACCEPTS its best candidate ALONE when the
  *      calibrated probability clears the calibration's cut AND its own facts (not TMDB's ranking)
  *      favour it over the runner-up; otherwise it follows its cluster. Then:
  *        1. constraint edges between nodes sharing a block key — must-links by tier (0 pinned, 1
  *           same accepted film, 2 same sanitised title, 3 same search form or original title, 4 one's
- *           title a delimited segment of the other's) and
+ *           title a delimited segment of the other's, unless the rest of the other's names a film of
+ *           its own) and
  *           cannot-links (different accepted films; a node denying the other's film; the two
  *           listings' own evidence apart, `ListingConstraints.learnedListingListing`: a learned rule
  *           or the "listing-listing" cut, only when the two compare a fact both published) —
  *           solved by [[ConstraintSolver]] (cannot wins; an ambiguous node stays alone, A2);
  *        2. GROUP-LEVEL VOTING: a cluster no member of which accepted a film scores its members'
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
- *           and the winner, if accepted, becomes every member's film. A winner some members' own
+ *           and the winner, if accepted — and no rival the title names by the same pieces fits the
+ *           pooled facts better, nor is it one of two films the title names by disjoint pieces
+ *           (`pooledAccepted`) — becomes every member's film. A winner some members' own
  *           evidence denies is not a veto of the whole cluster: those members split off and the
  *           rest take it when their own pooled facts carry it (`vote`). A winner no member's title
  *           names — only a credited director's filmography reached it — must also be the one
@@ -76,6 +81,11 @@ object IdentityResolver {
     def label: String       = s"'${evidence.title}'${evidence.statedYear.fold("")(y => s" [$y]")}" +
       (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "") + s" ×$weight"
   }
+
+  /** A venue's own name and its city's, as words: what a title piece naming the venue spells. */
+  private def placesOf(cinema: models.Cinema): Seq[Seq[String]] =
+    (Seq(cinema.displayName) ++ models.City.forCinema(cinema).map(_.labels.nominative))
+      .map(services.movies.TitleContainment.tokens).filter(_.nonEmpty)
 
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
@@ -191,6 +201,17 @@ object IdentityResolver {
       measures -- (if (screeningYear) IdentityMeasures.PublishedYear else Set.empty) -- (if (repeatedTitle) Set("originalTitle") else Set.empty)
     }
 
+    /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
+     *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
+     *  OCEANU" bills the venue, not *The Rock*, whose Polish title is "Twierdza"; the Alamo
+     *  Drafthouse circuit's "Dismember the Alamo 2026 - Chicago" at its Chicago venue names the
+     *  city, not the musical. The whole title always names its film, whatever the venue is called. */
+    def namesOnlyItsVenue(n: Node, f: IdentityMeasures.Film): Boolean = {
+      val whole  = services.movies.TitleContainment.tokens(n.evidence.title)
+      val pieces = IdentityMeasures.namingPieces(n.evidence.measured, f)
+      pieces.nonEmpty && pieces.forall(p => p != whole && n.listings.forall(l => placesOf(l.cinema).exists(_.containsSlice(p))))
+    }
+
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
     final class FamilyScope(members: Seq[Node]) {
       val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)
@@ -207,19 +228,29 @@ object IdentityResolver {
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val group     = IdentityMeasures.key(l.title)
-        reachable.map { c =>
+        val scored = reachable.map { c =>
           val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
             backing.corroborating(group, c.film, venue), houses)
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
             namesItsSeasonProduction(l, c.film))
-        }.sortBy(s => (-s.p, s.c.tmdbId))
+        }
+        // The listing's whole title (or its original or an alternative title) and its credited
+        // director name ONE film together: another film of that director, which its title does not
+        // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
+        // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
+        val titled = scored.exists(s => !s.denied && IdentityMeasures.Rivalling(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures))
+        scored.map(s =>
+          if (titled && !IdentityMeasures.NamingRelations(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures)) s.copy(denied = true)
+          else s)
+          .sortBy(s => (-s.p, s.c.tmdbId))
       }
 
       private val memo = mutable.HashMap.empty[String, Seq[Scored]]
       def of(n: Node): Seq[Scored] = memo.getOrElseUpdate(n.id,
-        score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id), pins.deniedFilms(n.listings.head.key)))
+        score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id),
+          id => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
 
       /** The cluster's members read as ONE listing: the title most of its listings carry (the
        *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
@@ -237,7 +268,7 @@ object IdentityResolver {
           countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
         val ranks = cluster.flatMap(n => ownSearch(n.id)).groupMapReduce(_._1)(_._2)(math.min)
         score(listing, lead.venue, ranks, cluster.flatMap(n => ownWalk(n.id)).toSet,
-          id => cluster.exists(n => pins.deniedFilms(n.listings.head.key)(id)))
+          id => cluster.exists(n => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
           .map(s => if (s.denied || cluster.forall(n => !of(n).exists(o => o.c.tmdbId == s.c.tmdbId && o.denied))) s else s.copy(denied = true))
       }
     }
@@ -311,11 +342,6 @@ object IdentityResolver {
         case Seq(one)     => Some(Some(one -> one.p))
         case a +: b +: _  => Some(Option.when(ownEvidence(a) > ownEvidence(b))(a -> a.p))
       }
-    /** The listing's season production, else the best eligible candidate when the calibration
-     *  accepts it, else the exact top hit. */
-    def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
-      seasonProductionOf(ranked).getOrElse(calibrated(ranked).orElse(topHit(ranked)))
-
     /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
      *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
      *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
@@ -323,8 +349,42 @@ object IdentityResolver {
     def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       val eligible = ranked.filterNot(_.denied)
       seasonProductionOf(ranked).getOrElse(
-        calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) }
+        calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
           .orElse(topHit(ranked)))
+    }
+    /** Do the listing's own facts favour `best` over `other`? Its own evidence — without the title
+     *  when the title names the two by disjoint pieces ([[IdentityMeasures.namedApart]]: "Lalka
+     *  (Dolly)"), since it then names both alike and how each piece spells its film is no fact
+     *  about which film the listing is. */
+    def favours(best: Scored, other: Scored): Boolean =
+      if (IdentityMeasures.namedApart(best.listing, best.c.film, other.c.film)) factsOf(best) > factsOf(other)
+      else ownEvidence(best) > ownEvidence(other)
+    /** What the listing's published FACTS alone contribute: its own evidence without the title relation. */
+    def factsOf(s: Scored): Double =
+      ownEvidence(s) - calibration.contributions(ListingFilm, s.measures).collect { case ("title", w) => w }.sum
+
+    /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
+     *  best eligible candidate the calibration accepts — unless the title names another candidate
+     *  by the very same pieces and the pooled FACTS ([[factsOf]]) fit that one better: four
+     *  "Camino dla opornych" whose original title "Santiago" names two films, and whose 113
+     *  minutes fit the fourth the search returned, do not take the 93-minute first. A candidate
+     *  the title names less specifically ("Mad Max" inside "Mad Max 2: The Road Warrior") or not
+     *  at all is no such rival, and namesakes the facts fit alike stay the calibration's to tell
+     *  apart — its ranking priors and the family's venue count are measured evidence there (a
+     *  bare "Resident Evil" at 148 venues). Two films the title names by disjoint pieces
+     *  ([[IdentityMeasures.namedApart]]) are not namesakes: only the facts may pick one of
+     *  "Lalka (Dolly)"'s two. */
+    def pooledAccepted(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      val eligible = ranked.filterNot(_.denied)
+      seasonProductionOf(ranked).getOrElse(
+        calibrated(ranked).filter { case (best, _) =>
+          eligible.forall(r => (r eq best) || {
+            val pieces = IdentityMeasures.namingPieces(r.listing, r.c.film)
+            val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.c.film)
+            val apart  = IdentityMeasures.namedApart(best.listing, best.c.film, r.c.film)
+            !(alike && factsOf(r) > factsOf(best)) && !(apart && factsOf(r) >= factsOf(best))
+          })
+        }.orElse(topHit(ranked)))
     }
 
     /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
@@ -339,10 +399,12 @@ object IdentityResolver {
      *  among a director's films the listing's facts favour another of (a lecture on "Trzy kolory:
      *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
     def votedFor(cluster: Seq[Node], ranked: Seq[Scored]): Option[(Scored, Double)] =
-      acceptedOf(ranked).filter { case (s, _) =>
+      pooledAccepted(ranked).filter { case (s, _) =>
         cluster.exists(titleNames(_, s.c)) ||
           ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && ownEvidence(r) <= ownEvidence(s))
       }
+
+
 
     // ── families ─────────────────────────────────────────────────────────────────────────
     def titleKeys(n: Node): Set[String] =
@@ -447,6 +509,18 @@ object IdentityResolver {
       pins.admits(FamilyClosure.Edge(nodeById(e.a).listings.head.key, nodeById(e.b).listings.head.key, e.must, e.reason))
 
 
+    /** Does the rest of `decorated`'s title name a film of its own, beside `whole`'s title — a
+     *  candidate it may still take whose naming pieces share no word with `whole`'s? "Lalka (Dolly)"
+     *  carries "Lalka" whole, but its "Dolly" names Blackhurst's film: it is not merely a decorated
+     *  "Lalka", and the segment must not decide between the two for it. */
+    def namesBeside(decorated: Node, whole: Node): Boolean = {
+      val words = services.movies.TitleContainment.tokens(whole.evidence.cleanTitle).toSet
+      scopeOf(decorated).of(decorated).exists { s =>
+        val pieces = IdentityMeasures.namingPieces(decorated.evidence.measured, s.c.film)
+        !s.denied && pieces.nonEmpty && pieces.forall(p => (p.toSet intersect words).isEmpty)
+      }
+    }
+
     def edgesOf(members: Seq[Node], filmOf: String => Option[Int]): Seq[ResolverEdge] =
       pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (x, y) =>
         val (ex, ey) = (x.evidence, y.evidence)
@@ -470,8 +544,8 @@ object IdentityResolver {
           // Lalka" and "Lalka"): the decorated spelling joins its plain sibling's cluster, so group
           // voting and the venue signal reach it. Whole segments only — "Zärtlich kreist die Faust"
           // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
-          // names two films apart.
-          Option.when(segmentOf(x, y) || segmentOf(y, x))((4, "title-segment"))
+          // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
+          Option.when((segmentOf(x, y) && !namesBeside(y, x)) || (segmentOf(y, x) && !namesBeside(x, y)))((4, "title-segment"))
         ).flatten
         cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (t, r) => edge(must = true, t, r) }
       }.filter(admitted)

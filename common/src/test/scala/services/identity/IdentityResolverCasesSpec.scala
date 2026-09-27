@@ -458,6 +458,94 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     d.explanation.exists(_.startsWith("best rejected candidate")) shouldBe true
   }
 
+  private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
+    IdentityResolver.resolve(listings, new Table(films), normalizer, IdentityCalibration.resolver)
+
+  "The pooled vote" should "not take the film TMDB's ranking favours when the cluster's own facts favour another" in {
+    // PL, "Camino dla opornych" at four venues: one publishes the original title "Santiago" and
+    // 113 minutes, one only the runtime, two nothing. "Santiago" returns Gordon Douglas's 93-minute
+    // 1956 film first and a 113-minute "Santiago!" fourth. Pooled, every fact the cluster publishes
+    // fits the fourth better; only the ranking carried the first past the cut.
+    val films = Seq(F(197704, "Santiago", 1956, "Gordon Douglas", 93, 3), F(801, "Santiago Calatrava", 2001, "A", 50, 2.8),
+      F(802, "Santiago Bernabéu", 2010, "B", 45, 2.5), F(373623, "Santiago!", 1970, "Someone", 113, 1))
+    val credited = listing(Helios, "Camino dla opornych - KNT", runtime = Some(113)).copy(originalTitle = Some("Santiago"))
+    val timed    = listing(KinoApollo, "Camino dla opornych | CHKF", runtime = Some(113))
+    val bare     = Seq(Multikino, Rialto).map(listing(_, "Camino dla opornych"))
+    val r = shipped(credited +: timed +: bare, films)
+    (credited +: timed +: bare).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(197704)))
+  }
+
+  "A title piece naming the listing's own venue" should "not name a film, whatever TMDB's ranking says" in {
+    // PL, Kino Twierdza bills its screenings "TWIERDZA - VINCENT. LEGENDA OCEANU": the venue's
+    // name is a segment, and "Twierdza" is The Rock's Polish title. US, the Alamo Drafthouse
+    // circuit's "Dismember the Alamo 2026 - Chicago" at its Chicago venue names the city, not the
+    // musical. With nothing else to go on, the ranking must not pick either.
+    val rock    = Seq(F(9802, "Twierdza", 1996, "Michael Bay", 137, 10), F(26198, "Twierdza", 1983, "Michael Mann", 96, 4))
+    val billed  = listing(models.KinoTwierdza, "TWIERDZA - VINCENT. LEGENDA OCEANU")
+    val bd      = shipped(Seq(billed), rock).decisionOf(billed.key)
+    withClue(bd.render)(bd.film shouldBe None)
+    val chicago = Seq(F(1574, "Chicago", 2002, "Rob Marshall", 113, 6), F(128298, "Chicago", 1927, "Frank Urson", 103, 1))
+    val venue   = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.labels.nominative == "Chicago")).get
+    val circuit = listing(venue, "Dismember the Alamo 2026 - Chicago")
+    val cd      = shipped(Seq(circuit), chicago).decisionOf(circuit.key)
+    withClue(cd.render)(cd.film shouldBe None)
+  }
+
+  it should "still name the film elsewhere, and as the whole title at the venue itself" in {
+    val chicago = Seq(F(1574, "Chicago", 2002, "Rob Marshall", 113, 6), F(128298, "Chicago", 1927, "Frank Urson", 103, 1))
+    val here    = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.labels.nominative == "Chicago")).get
+    val banner  = listing(KinoMuza, "Dismember the Alamo 2026 - Chicago")
+    val whole   = listing(here, "Chicago")
+    shipped(Seq(banner), chicago).decisionOf(banner.key).film shouldBe Some(1574)
+    shipped(Seq(whole), chicago).decisionOf(whole.key).film shouldBe Some(1574)
+  }
+
+  "A title naming two films by disjoint pieces" should "take neither on the title alone, nor its plain piece's film" in {
+    // PL, Blackhurst's horror "Dolly" is distributed as "Lalka", as Kawalski's "Lalka" is.
+    // "Lalka (Dolly)" names Kawalski's film by one word and Blackhurst's by the other; it publishes
+    // nothing else, so neither its own score nor the "Lalka" segment's must-link to Kawalski's
+    // credited listings may decide between them.
+    val films    = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162, 3), F(1309083, "Dolly", 2026, "Rod Blackhurst", 83, 10),
+      F(81315, "Lalka", 1968, "Wojciech Has", 152, 2.5))
+    val credited = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"), Some(162)))
+    val horror   = listing(Rialto, "Lalka (ale to horror)", Some(2025), Some("Rod Blackhurst"), Some(82))
+    val both     = listing(KinoMuza, "Lalka (Dolly)")
+    val r = shipped(credited ++ Seq(horror, both), films)
+    withClue((credited ++ Seq(horror, both)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      credited.foreach(l => r.decisionOf(l.key).film shouldBe Some(1321666))
+      r.decisionOf(horror.key).film shouldBe Some(1309083)
+      r.decisionOf(both.key).film should not be Some(1321666)
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "still join a decorated spelling whose other pieces name no film to its plain siblings" in {
+    val films    = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162, 3), F(81315, "Lalka", 1968, "Wojciech Has", 152, 2.5))
+    val credited = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"), Some(162)))
+    val premiere = listing(KinoMuza, "Oficjalna premiera: Lalka")
+    val r = shipped(credited :+ premiere, films)
+    withClue(r.decisionOf(premiere.key).render)(r.decisionOf(premiere.key).film shouldBe Some(1321666))
+  }
+
+  "A listing whose title and credited director name one film" should "not take another film of that director its title does not name" in {
+    // US, Syndicated's "Zodiac", credited to David Fincher at 139 minutes — Fight Club's runtime,
+    // not Zodiac's 157. The walk of Fincher's filmography reached Fight Club; the runtime fit made
+    // it the best score, six same-titled namesakes weighing on Zodiac. The title and the director
+    // name Zodiac together.
+    val films  = Seq(F(1949, "Zodiac", 2007, "David Fincher", 157, 20), F(550, "Fight Club", 1999, "David Fincher", 139, 40)) ++
+      (1 to 6).map(i => F(2000 + i, "Zodiac", 1970 + 5 * i, s"Director $i", 90, 1))
+    val zodiac = listing(Rialto, "Zodiac", director = Some("David Fincher"), runtime = Some(139))
+    val d = shipped(Seq(zodiac), films).decisionOf(zodiac.key)
+    withClue(d.render)(d.film shouldBe Some(1949))
+  }
+
+  it should "still take a walked film when its title names none of that director's films" in {
+    // The Polish title of a documentary TMDB's search does not return: the walk is the only path.
+    val films    = Seq(F(431444, "The Curious World of Hieronymus Bosch", 2016, "David Bickerstaff", 90, 8))
+    val credited = listing(KinoMuza, "Osobliwy świat Hieronymusa Boscha", Some(2016), Some("David Bickerstaff"), Some(90))
+    shipped(Seq(credited), films).decisionOf(credited.key).film shouldBe Some(431444)
+  }
+
   "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film under the shipped artefact (known regression, pending)" in {
     // §15.8: the r5 artefact VETOES it on its own facts (0.06 < the certified cut) and takes a bare
     // sibling down with it. Pending, so the refit that decides it right flips this red.

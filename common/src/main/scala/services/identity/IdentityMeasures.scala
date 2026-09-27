@@ -345,6 +345,30 @@ object IdentityMeasures {
     else None
   }
 
+  /** The pieces of the listing's title that NAME the film, as words: a title shape equal to one of
+   *  the film's titles (the whole title, a banner segment), or one of the film's titles as a run
+   *  along one edge of the listing's (a decoration). Empty when no piece names it. */
+  def namingPieces(l: Listing, f: Film): Set[Seq[String]] = {
+    val filmTitles = (Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).filter(t => key(t).nonEmpty)
+    val keys       = filmTitles.map(key).toSet
+    val segments   = titleShapes(l).filter(s => keys(key(s))).map(words)
+    val edgeRuns   = for {
+      own  <- (Seq(l.title) ++ l.rawTitle).map(words)
+      film <- filmTitles.map(words) if TitleContainment.isTokenRun(film, own)
+    } yield film
+    (segments ++ edgeRuns).filter(_.nonEmpty).toSet
+  }
+
+  /** Does the listing's title name the two films by DISJOINT pieces — "Lalka (Dolly)" names
+   *  Kawalski's "Lalka" by one word and Blackhurst's "Dolly" by the other, and neither by the
+   *  whole? Then its title names both alike, and only what else it publishes can tell them apart.
+   *  Nested pieces are no such tie: "Joker: Folie à deux" names its own film by the whole title
+   *  and "Joker" only by a piece of it. */
+  def namedApart(l: Listing, a: Film, b: Film): Boolean = {
+    val (pa, pb) = (namingPieces(l, a), namingPieces(l, b))
+    pa.nonEmpty && pb.nonEmpty && pa.forall(x => pb.forall(y => (x.toSet intersect y.toSet).isEmpty))
+  }
+
   /** The listing's own ORIGINAL title against every title of the other side: the same title, a
    *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
    *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
