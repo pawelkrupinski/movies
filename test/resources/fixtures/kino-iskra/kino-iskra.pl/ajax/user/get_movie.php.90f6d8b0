@@ -1,0 +1,164 @@
+<div class="row">
+  <div class="col">
+    <div class="bg-gray-light section-content p-3">
+      <div class="row ">
+        <div class="col-sm-3 col-12 mb-3">
+          <div class="row d-flex justify-content-center">
+            <div class="col-sm-12 col-6">
+                <div class="poster-zoomed-wrapper container-fluid h-100 justify-content-center align-items-center d-none">
+                    <div class="position-relative">
+                        <div class="row justify-content-center">
+                            <div class="col-auto">
+                                <div class="poster-zoomed position-relative bg-white p-3 justify-content-center d-flex flex-wrap rounded">
+                                    <img class="img-fluid position-relative mh-80vh" src="https://kino-iskra.pl/uploads/img/movies/2313-1786190386.png"/>
+                                    <div class="btn-group position-absolute btn-group-poster-zoomed d-none d-md-inline-flex">
+                                        <a href="https://kino-iskra.pl/uploads/img/movies/2313-1786190386.png" target="_blank" class="btn btn-info d-flex justify-content-center align-items-center pointer fix-width-36"><i class="fas fa-search-plus"></i></a>
+                                        <button type="button" class="btn-close-poster-zoomed btn btn-danger d-flex justify-content-center align-items-center pointer fix-width-36"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              <img alt="Plakat: 100 dni: Misja Zeus" class="w-100 poster-to-zoom pointer" src="https://kino-iskra.pl/uploads/img/movies/2313-1786190386.png"/>
+              <div class="row no-gutters">
+                <div class="col px-1 bg-light align-items-center">
+                  <p class="d-vsmaller text-center w-100 my-1">27 września, 12:45</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-9 col-12 pl-sm-1 pl-3">
+          <div class="row no-gutters justify-content-between">
+            <div class="col">
+              <div class="position-relative d-inline">
+                <h2 data-movie="2313" data-movie-hide="0" data-movie-school="2" class="h5 bold mb-2 text-black movie-title pointer">100 dni: Misja Zeus              </h2>
+                                <div class="tooltip tooltip-title"></div>
+                                  </div>
+                <p class="small mb-1 text-dark">Komedia / Akcja , Polska, 2026</p>                <p class="small mb-1 text-dark"><b>Czas trwania:</b> 100 min.</p>                <p class="small mb-1 text-dark"><b>Reżyseria:</b> Mikołaj Piszczan</p>                <p class="small mb-1 text-dark"><b>Obsada:</b> Tomasz Kot, Cezary Pazura, Piotr Głowacki, Jowita Budnik, Bartek Laskowski</p>                <p class="small mb-3 text-dark"><b>Od&nbsp;lat:</b> 10</p>                              </div>
+            </div>
+            <div class="row mb-2 order-1 pr-0 d-flex flex-wrap align-items-start justify-content-start">
+              <div class="col">
+                                                      <a  class="btn btn-opacity btn-sm vsmall mb-1 ml-1 rounded-0 poster-tag" style="background-color: #FFF800; color: #000000;">Premiera</a>
+                                                </div>
+            </div>
+                                      <div class="row">
+                <div class="col">
+                  <p class="small mb-3">Kontynuacja jednego z najgłośniejszych młodzieżowych filmów ostatnich lat. Tym razem bohaterowie wychodzą poza szkolne mury, a stawka jest większa niż kiedykolwiek wcześniej — choć oni sami nie czują się na nią gotowi. Kapsel i jego ekipa stawiają pierwsze kroki w dorosłym życiu. Jedni ruszyli już dalej, inni próbują poukładać życie po swojemu, a Kapsel… nie potrafi się odnaleźć. Mieszka z rodzicami, w pracy pożegnał się z ambicjami i coraz częściej zadaje sobie pytanie, czy najlepszy czas ma za sobą. Kiedy jednak na horyzoncie pojawia się misja, od której może zależeć przyszłość wielu ludzi, nie ma czasu na wątpliwości. Do znanej z pierwszej części drużyny dołączają nowe postaci, a wraz z nimi nowe napięcia, rywalizacje i odmienne spojrzenia na świat. Żaden z nich dream team, ale tylko razem są w stanie zmierzyć się z wyzwaniem, które zdaje się ich przerastać.</p>
+                </div>
+              </div>
+                                      <div class="row">
+                <div class="col">
+                  <div class="row">
+                    <div class="col">
+                      <p class="vsmall my-2">* Kliknij na godzinę wydarzenia aby kupić/zamówić bilet</p>
+                                                                      </div>
+                      </div>
+                      <div class="row">
+                        <div class="col">
+                          <span class="btn btn-sm btn-dark py-1 px-2 mb-1 mr-1 bold rounded-0">27 września</span>
+                                                <div class="position-relative d-inline"><button type="button" title="Zobacz szczegóły wydarzenia o 12:45" class="position-relative btn btn-sm btn-accent-dark py-1 px-2 mb-1 mr-1 text-white pointer rounded-0 event-button" data-movie="2313" data-event="15278">12:45</button><div class="tooltip"></div></div>
+                                            </div>
+                  </div>
+                </div>
+              </div>
+                            <div class="row">
+                <div class="col">
+                  <div class="d-flex justify-content-end align-items-start h5">
+                                                                                  <a title="Drukuj kartę opisową" target="_blank" href="/functions/filemanipulation/descgenerator/?movie_id=2313" class="pointer fas fa-print ml-1 text-dark" aria-hidden="true"></a>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div id="movie-trailer-container">
+                    <!-- place for trailer iframe -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr class="mb-0">
+
+<script>
+        $('.poster-to-zoom').click(function(){
+        if($('.poster-zoomed-wrapper').hasClass('d-none')){
+            $('.poster-zoomed-wrapper').removeClass('d-none');
+            $('.poster-zoomed-wrapper').addClass('d-flex');
+    }
+    })
+    $('.poster-zoomed-wrapper').click(function (data, handler){
+        if (data.target == this && $('.poster-zoomed-wrapper').hasClass('d-flex')) {
+            $('.poster-zoomed-wrapper').removeClass('d-flex');
+            $('.poster-zoomed-wrapper').addClass('d-none');
+        }
+    } );
+    $('.btn-close-poster-zoomed').click(function(){
+        if($('.poster-zoomed-wrapper').hasClass('d-flex')){
+            $('.poster-zoomed-wrapper').removeClass('d-flex');
+            $('.poster-zoomed-wrapper').addClass('d-none');
+        }
+    })
+        $('.movie-title').click(function(){
+        var tooltip = $('.movie-title').parent().children('.tooltip');
+        if($(tooltip).hasClass('d-block')){
+            $(tooltip).removeClass('d-block');
+        }else{
+            var currentTooltipText = $(tooltip).html();
+            $(tooltip).html(currentTooltipText+'<div class="btn-group-vertical text-white"><a class="btn p-2 pointer btn-info bold vsmall text-left"><i class="fas fa-spinner fa-spin"></i></a></div>');
+            var movieId = $(this).attr('data-movie');
+            var movieHide = $(this).attr('data-movie-hide');
+            var movieSchool = $(this).attr('data-movie-school');
+            var movieTitle = $(this).clone().children().remove().end().text();
+            var getMovieTooltipUrl = "/ajax/user/get_movie_tooltip_page.php?movie="+movieId+"&hide="+movieHide+"&school="+movieSchool+"&movie_title="+movieTitle;
+            $.get(getMovieTooltipUrl, function(result){
+                $(tooltip).html(result);
+            });
+            $('.tooltip').removeClass('d-block');
+            $(tooltip).addClass('d-block');
+        }
+    })
+      $('#trailer-button').click(function(){
+        var currentBtn = $(this);
+        var currentBtnText = $(currentBtn).html();
+        $(currentBtn).html(currentBtnText+'<i class="ml-2 fas fa-spinner fa-spin"></i>');
+        var youtubeUrl = $(this).attr('data-trailer-url');
+        var trailerToggle = $(this).attr('data-trailer-toggle');
+        if(trailerToggle == 'closed'){
+          var getTrailerUrl = "/ajax/user/get_trailer.php?trailer="+youtubeUrl;
+          $.get(getTrailerUrl, function(result){
+            $('#movie-trailer-container').html(result);
+          })
+          $(this).removeClass('text-dark');
+          $(this).addClass('text-accent mb-3');
+          $(this).attr('data-trailer-toggle', 'opened');
+        }else{
+          $('#movie-trailer-container').html('');
+          $(this).addClass('text-dark');
+          $(this).removeClass('text-accent mb-3');
+          $(this).attr('data-trailer-toggle', 'closed');
+        }
+        $(currentBtn).html(currentBtnText);
+      });
+      $('.event-button').click(function(){
+        var tooltip = $(this).parent().children('.tooltip');
+        if($(tooltip).hasClass('d-block')){
+          $(tooltip).removeClass('d-block');
+        }else{
+          var currentTooltipText = $(tooltip).html();
+          $(tooltip).html(currentTooltipText+'<div class="btn-group-vertical text-white"><a class="btn p-2 pointer btn-info bold vsmall text-left"><i class="fas fa-spinner fa-spin"></i></a></div>');
+          var eventId = $(this).attr('data-event');
+          var movieId = $(this).attr('data-movie');
+          var getEventTooltipUrl = "/ajax/user/get_event_tooltip.php?event="+eventId+"&movie="+movieId;
+          $.get(getEventTooltipUrl, function(result){
+            $(tooltip).html(result);
+          });
+          $('.tooltip').removeClass('d-block');
+          $(tooltip).addClass('d-block');
+        }
+      })
+    </script>

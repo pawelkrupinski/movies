@@ -1,0 +1,169 @@
+<div class="row">
+  <div class="col">
+    <div class="bg-gray-light section-content p-3">
+      <div class="row ">
+        <div class="col-sm-3 col-12 mb-3">
+          <div class="row d-flex justify-content-center">
+            <div class="col-sm-12 col-6">
+                <div class="poster-zoomed-wrapper container-fluid h-100 justify-content-center align-items-center d-none">
+                    <div class="position-relative">
+                        <div class="row justify-content-center">
+                            <div class="col-auto">
+                                <div class="poster-zoomed position-relative bg-white p-3 justify-content-center d-flex flex-wrap rounded">
+                                    <img class="img-fluid position-relative mh-80vh" src="https://kino-iskra.pl/uploads/img/movies/2350-1789465071.jpg"/>
+                                    <div class="btn-group position-absolute btn-group-poster-zoomed d-none d-md-inline-flex">
+                                        <a href="https://kino-iskra.pl/uploads/img/movies/2350-1789465071.jpg" target="_blank" class="btn btn-info d-flex justify-content-center align-items-center pointer fix-width-36"><i class="fas fa-search-plus"></i></a>
+                                        <button type="button" class="btn-close-poster-zoomed btn btn-danger d-flex justify-content-center align-items-center pointer fix-width-36"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              <img alt="Plakat: Lalka - Seans Seniora" class="w-100 poster-to-zoom pointer" src="https://kino-iskra.pl/uploads/img/movies/2350-1789465071.jpg"/>
+              <div class="row no-gutters">
+                <div class="col px-1 bg-light align-items-center">
+                  <p class="d-vsmaller text-center w-100 my-1">16 października, 11:00</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-9 col-12 pl-sm-1 pl-3">
+          <div class="row no-gutters justify-content-between">
+            <div class="col">
+              <div class="position-relative d-inline">
+                <h2 data-movie="2350" data-movie-hide="0" data-movie-school="0" class="h5 bold mb-2 text-black movie-title pointer">Lalka - Seans Seniora              </h2>
+                                <div class="tooltip tooltip-title"></div>
+                                  </div>
+                <p class="small mb-1 text-dark">Dramat / Romans, Polska, 2026</p>                <p class="small mb-1 text-dark"><b>Czas trwania:</b> 162 min.</p>                <p class="small mb-1 text-dark"><b>Reżyseria:</b> Maciej Kawalski</p>                <p class="small mb-1 text-dark"><b>Obsada:</b> Kamila Urzędowska, Marcin Dorociński, Marek Kondrat, Andrzej Seweryn, Krystyna Janda, Agata Kulesza</p>                <p class="small mb-3 text-dark"><b>Od&nbsp;lat:</b> 13</p>                              </div>
+            </div>
+            <div class="row mb-2 order-1 pr-0 d-flex flex-wrap align-items-start justify-content-start">
+              <div class="col">
+                                                      <a  class="btn btn-opacity btn-sm vsmall mb-1 ml-1 rounded-0 poster-tag" style="background-color: #FFFFFF; color: #000000;">Seans Seniora</a>
+                                                </div>
+            </div>
+                          <div class="row">
+                <div class="col">
+                  <p class="small mb-3">Bilety seniorskie w promocyjnej cenie 15 zł.</p>
+                </div>
+              </div>
+                                      <div class="row">
+                <div class="col">
+                  <p class="small mb-3">Warszawa końca XIX wieku. Serce Stanisława Wokulskiego (Marcin Dorociński) owładnięte jest szaloną miłością do Izabeli Łęckiej (Kamila Urzędowska). On, dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wkroczyć do świata wyższych sfer, aby zdobyć rękę ukochanej. Ona jest olśniewająca i wyniosła, lecz mimo arystokratycznego pochodzenia zmaga się z widmem finansowej ruiny. U boku Wokulskiego stoi jego wierny przyjaciel – Ignacy Rzecki (Marek Kondrat), romantyk, który z nostalgią obserwuje, jak świat ideałów ustępuje miejsca społecznym aspiracjom i bezwzględnej grze interesów. Wokulski wkracza w labirynt arystokratycznych salonów, gdzie każdy gest może być początkiem intrygi, a każde słowo – zapowiedzią zdrady. Stający na jego drodze rywale, niespodziewane sojusze i dramatyczne wybory wystawią na próbę jego marzenia i wiarę w ludzi. To opowieść o miłosnym zauroczeniu, które zmienia losy bohaterów i zaciera granice między sercem a rozumem.</p>
+                </div>
+              </div>
+                                      <div class="row">
+                <div class="col">
+                  <div class="row">
+                    <div class="col">
+                      <p class="vsmall my-2">* Kliknij na godzinę wydarzenia aby kupić/zamówić bilet</p>
+                                                                      </div>
+                      </div>
+                      <div class="row">
+                        <div class="col">
+                          <span class="btn btn-sm btn-dark py-1 px-2 mb-1 mr-1 bold rounded-0">16 października</span>
+                                                <div class="position-relative d-inline"><button type="button" title="Zobacz szczegóły wydarzenia o 11:00" class="position-relative btn btn-sm btn-accent-dark py-1 px-2 mb-1 mr-1 text-white pointer rounded-0 event-button" data-movie="2350" data-event="15356">11:00</button><div class="tooltip"></div></div>
+                                            </div>
+                  </div>
+                </div>
+              </div>
+                            <div class="row">
+                <div class="col">
+                  <div class="d-flex justify-content-end align-items-start h5">
+                    <i data-trailer-toggle="closed" title="Zobacz zwiastun" data-trailer-url="https://www.youtube.com/watch?v=UsmL7HKwVWM" id="trailer-button" class="fab fa-youtube ml-1 text-dark btn-opacity pointer" aria-hidden="true"></i>                                                              <a title="Drukuj kartę opisową" target="_blank" href="/functions/filemanipulation/descgenerator/?movie_id=2350" class="pointer fas fa-print ml-1 text-dark" aria-hidden="true"></a>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div id="movie-trailer-container">
+                    <!-- place for trailer iframe -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr class="mb-0">
+
+<script>
+        $('.poster-to-zoom').click(function(){
+        if($('.poster-zoomed-wrapper').hasClass('d-none')){
+            $('.poster-zoomed-wrapper').removeClass('d-none');
+            $('.poster-zoomed-wrapper').addClass('d-flex');
+    }
+    })
+    $('.poster-zoomed-wrapper').click(function (data, handler){
+        if (data.target == this && $('.poster-zoomed-wrapper').hasClass('d-flex')) {
+            $('.poster-zoomed-wrapper').removeClass('d-flex');
+            $('.poster-zoomed-wrapper').addClass('d-none');
+        }
+    } );
+    $('.btn-close-poster-zoomed').click(function(){
+        if($('.poster-zoomed-wrapper').hasClass('d-flex')){
+            $('.poster-zoomed-wrapper').removeClass('d-flex');
+            $('.poster-zoomed-wrapper').addClass('d-none');
+        }
+    })
+        $('.movie-title').click(function(){
+        var tooltip = $('.movie-title').parent().children('.tooltip');
+        if($(tooltip).hasClass('d-block')){
+            $(tooltip).removeClass('d-block');
+        }else{
+            var currentTooltipText = $(tooltip).html();
+            $(tooltip).html(currentTooltipText+'<div class="btn-group-vertical text-white"><a class="btn p-2 pointer btn-info bold vsmall text-left"><i class="fas fa-spinner fa-spin"></i></a></div>');
+            var movieId = $(this).attr('data-movie');
+            var movieHide = $(this).attr('data-movie-hide');
+            var movieSchool = $(this).attr('data-movie-school');
+            var movieTitle = $(this).clone().children().remove().end().text();
+            var getMovieTooltipUrl = "/ajax/user/get_movie_tooltip_page.php?movie="+movieId+"&hide="+movieHide+"&school="+movieSchool+"&movie_title="+movieTitle;
+            $.get(getMovieTooltipUrl, function(result){
+                $(tooltip).html(result);
+            });
+            $('.tooltip').removeClass('d-block');
+            $(tooltip).addClass('d-block');
+        }
+    })
+      $('#trailer-button').click(function(){
+        var currentBtn = $(this);
+        var currentBtnText = $(currentBtn).html();
+        $(currentBtn).html(currentBtnText+'<i class="ml-2 fas fa-spinner fa-spin"></i>');
+        var youtubeUrl = $(this).attr('data-trailer-url');
+        var trailerToggle = $(this).attr('data-trailer-toggle');
+        if(trailerToggle == 'closed'){
+          var getTrailerUrl = "/ajax/user/get_trailer.php?trailer="+youtubeUrl;
+          $.get(getTrailerUrl, function(result){
+            $('#movie-trailer-container').html(result);
+          })
+          $(this).removeClass('text-dark');
+          $(this).addClass('text-accent mb-3');
+          $(this).attr('data-trailer-toggle', 'opened');
+        }else{
+          $('#movie-trailer-container').html('');
+          $(this).addClass('text-dark');
+          $(this).removeClass('text-accent mb-3');
+          $(this).attr('data-trailer-toggle', 'closed');
+        }
+        $(currentBtn).html(currentBtnText);
+      });
+      $('.event-button').click(function(){
+        var tooltip = $(this).parent().children('.tooltip');
+        if($(tooltip).hasClass('d-block')){
+          $(tooltip).removeClass('d-block');
+        }else{
+          var currentTooltipText = $(tooltip).html();
+          $(tooltip).html(currentTooltipText+'<div class="btn-group-vertical text-white"><a class="btn p-2 pointer btn-info bold vsmall text-left"><i class="fas fa-spinner fa-spin"></i></a></div>');
+          var eventId = $(this).attr('data-event');
+          var movieId = $(this).attr('data-movie');
+          var getEventTooltipUrl = "/ajax/user/get_event_tooltip.php?event="+eventId+"&movie="+movieId;
+          $.get(getEventTooltipUrl, function(result){
+            $(tooltip).html(result);
+          });
+          $('.tooltip').removeClass('d-block');
+          $(tooltip).addClass('d-block');
+        }
+      })
+    </script>
