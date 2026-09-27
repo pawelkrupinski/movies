@@ -33,12 +33,12 @@ describe("renderMobile", () => {
 
   it("shows a pending submission separately from live", () => {
     const out = render([{ ...upToDate("iOS", "2.0.6"), pending: { version: "2.0.7", state: "WAITING_FOR_REVIEW" } }]);
-    expect(out).toContain("<h2>iOS</h2><div class=sub>submitted to Apple, will be live: <b>2.0.7</b> <span class=hint>(WAITING_FOR_REVIEW)</span></div><div class=sub>live: <b>2.0.6</b>");
+    expect(out).toContain("<h2>iOS</h2><div class=sub><b>2.0.7</b>: submitted to Apple, will be live <span class=hint>(WAITING_FOR_REVIEW)</span></div><div class=sub><b>2.0.6</b>: live · released from");
   });
 
   it("names Google Play as where an Android version was submitted", () => {
     const out = render([{ ...upToDate("Android", "2.0.10"), pending: { version: "2.0.11", state: "draft" } }]);
-    expect(out).toContain("<h2>Android</h2><div class=sub>submitted to Google Play, will be live: <b>2.0.11</b>");
+    expect(out).toContain("<h2>Android</h2><div class=sub><b>2.0.11</b>: submitted to Google Play, will be live");
   });
 
   it("names the commit a pending submission was built from, and splits the commits by it", () => {
@@ -49,7 +49,7 @@ describe("renderMobile", () => {
       submitted: { commit: "acbbd2a1a29f73f7", includes: ["aaaaaaaaaaaa"] },
       commits: [commit("bbbbbbbbbbbb", "after the submission"), commit("aaaaaaaaaaaa", "Release mobile 2.0.11")],
     }]);
-    expect(out).toContain("<b>2.0.11</b> <span class=hint>(WAITING_FOR_REVIEW)</span> from <code>acbbd2a1a2</code></div><div class=sub>live: <b>2.0.10</b>");
+    expect(out).toContain("<b>2.0.11</b>: submitted to Apple, will be live <span class=hint>(WAITING_FOR_REVIEW)</span> from <code>acbbd2a1a2</code></div><div class=sub><b>2.0.10</b>: live");
     expect(out).toMatch(/<td>after the submission<\/td><td class=mut>not submitted<\/td>/);
     expect(out).toMatch(/<td>Release mobile 2.0.11<\/td><td>in 2.0.11<\/td>/);
     expect(out).toContain("2 commit(s) not yet released: 1 in 2.0.11, 1 not submitted yet");

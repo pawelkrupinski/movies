@@ -13,15 +13,15 @@ const STORE_OF: Readonly<Record<string, string>> = { iOS: "Apple", Android: "Goo
 function platformBlock(platform: Platform): Raw {
   const heading = html`<h2>${platform.name}</h2>`;
   if (platform.fetchFailed) return html`${heading}<div class=err>${platform.error}</div>`;
-  const live = html`<b>${platform.liveVersion ?? "?"}${platform.liveExtra ? html` <span class=hint>(${platform.liveExtra})</span>` : ""}</b>`;
   const submitted = platform.submitted;
   const pendingVersion = platform.pending?.version ?? "?";
   // Its own line, ABOVE live: the version on its way out is what this page is usually opened for.
   const pending = platform.pending
-    ? html`<div class=sub>submitted to ${STORE_OF[platform.name] ?? "the store"}, will be live: <b>${pendingVersion}</b> <span class=hint>(${platform.pending.state ?? "?"})</span>${submitted ? html` from <code>${submitted.commit.slice(0, 10)}</code>` : ""}</div>`
+    ? html`<div class=sub><b>${pendingVersion}</b>: submitted to ${STORE_OF[platform.name] ?? "the store"}, will be live <span class=hint>(${platform.pending.state ?? "?"})</span>${submitted ? html` from <code>${submitted.commit.slice(0, 10)}</code>` : ""}</div>`
     : "";
   const released = platform.baseline ? html` · released from <code>${platform.baseline.slice(0, 10)}</code>` : "";
-  const line = html`${heading}${pending}<div class=sub>live: ${live}${released}</div>`;
+  const liveExtra = platform.liveExtra ? html` <span class=hint>(${platform.liveExtra})</span>` : "";
+  const line = html`${heading}${pending}<div class=sub><b>${platform.liveVersion ?? "?"}</b>: live${liveExtra}${released}</div>`;
   if (platform.error) return html`${line}<div class=note>${platform.error}</div>`;
   const commits = platform.commits;
   if (commits === null) return html`${line}<div class=note>could not read git history for this platform</div>`;
