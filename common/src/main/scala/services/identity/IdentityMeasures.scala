@@ -153,42 +153,46 @@ object IdentityMeasures {
       films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f)).flatMap(billing(l, _))
   }
 
-  /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from the film records
-   *  of one family's pool: when both pieces of a listing's title name records ("Dark City" and
-   *  "Director's Cut"), the piece the records bill beside more works is the qualifier — an edition
-   *  ("Chocolate - Director's Cut", "The Great War: Director's Cut", "The Promise (Director's
-   *  Cut)"; "Pink Floyd: The Final Cut") — and the other the work. When only one piece names a
-   *  record, a banner no record bills ("Cineworld 30: The Dark Knight", "Tani wtorek: Obcy"), there
-   *  is nothing to tell apart, however many sequels bill the work. `companions`: for each piece, by
-   *  its yearless key, how many distinct other pieces a record title adds to it along one edge
-   *  ([[Qualifiers.split]]). No edition, cut or banner word is known in advance. */
-  final case class Qualifiers(companions: Map[String, Int], records: Seq[Film] = Nil) {
-    private def count(piece: Seq[String]): Int = companions.getOrElse(piece.mkString, 0)
-    /** Does a record of the pool carry `piece`: its title, or a title naming it by a spelling of it
-     *  ([[NamingRelations]], as a listing's title names a film)? */
-    private def namesARecord(piece: Seq[String]): Boolean = {
-      val asListing = Listing(piece.mkString(" "))
-      records.exists(f => NamingRelations(titleRelation(asListing, f).value))
-    }
+  /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how the film
+   *  records of one family's pool bill each piece, and on which SIDE of the work: TMDB bills
+   *  "Director's Cut" after many works ("Chocolate - Director's Cut", "The Great War: Director's
+   *  Cut", "The Promise (Director's Cut)") and "The Final Cut" after Pink Floyd and Straw Dogs, as
+   *  "Dark City: Director's Cut" and "Michael Mann's Manhunter: The Final Cut" do — so there they
+   *  are the listings' qualifiers. A franchise LEADS its sequels ("Obcy: Przymierze", "Obcy:
+   *  Romulus"), so under a banner ("Tani wtorek: Obcy") it is still the work. `companions`: for
+   *  each piece, by its yearless key and whether it trails, how many distinct other pieces a record
+   *  title bills it beside ([[Qualifiers.split]]). No edition, cut or banner word is known in
+   *  advance. */
+  final case class Qualifiers(companions: Map[(String, Boolean), Int]) {
+    private def count(piece: Seq[String], trails: Boolean): Int = companions.getOrElse((piece.mkString, trails), 0)
     /** The listing's qualifier pieces, by key: each piece its whole title adds another to along one
-     *  edge, billed beside at least two works — one is a coincidence, as a house's is
-     *  ([[Houses.learn]]) — and beside more of them than the rest of the title, which names a
-     *  record of its own. A tie is no qualifier. */
-    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split)
-      .collect { case (piece, rest) if count(piece) >= 2 && count(piece) > count(rest) && namesARecord(rest) => piece.mkString }.toSet)
+     *  edge, which records bill on the same side beside at least two works — one is a coincidence,
+     *  as a house's is ([[Houses.learn]]) — and beside more than they bill the rest of the title on
+     *  its side. A tie is no qualifier, and neither is a piece the listing publishes as its original
+     *  title: the venue names it as the film ("Cineworld 30: The Dark Knight", originally "The Dark
+     *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). */
+    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, {
+      val named = l.originalTitle.map(yearlessTokens(_).mkString)
+      (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split).collect {
+        case (piece, rest, trails) if count(piece, trails) >= 2 && count(piece, trails) > count(rest, !trails) && !named.contains(piece.mkString) =>
+          piece.mkString
+      }.toSet
+    })
     private val memo = scala.collection.concurrent.TrieMap.empty[Listing, Set[String]]
   }
   object Qualifiers {
     val Unknown: Qualifiers = Qualifiers(Map.empty)
 
-    /** A title's pieces, each with the rest of the title: every delimited piece of it ([[shapes]])
-     *  that is a token run along one of its edges, and the rest, both ways round, as yearless tokens
-     *  ("Dark City: Director's Cut" → `dark city`/`director s cut` and back). */
-    def split(title: String): Seq[(Seq[String], Seq[String])] = {
+    /** A title's pieces, each with the rest of the title and whether it TRAILS the rest: every
+     *  delimited piece of it ([[shapes]]) that is a token run along one of its edges, and the rest,
+     *  both ways round, as yearless tokens ("Dark City: Director's Cut" → `director s cut` trailing
+     *  `dark city`, and `dark city` leading `director s cut`). */
+    def split(title: String): Seq[(Seq[String], Seq[String], Boolean)] = {
       val whole = yearlessTokens(title)
       shapes(Seq(title)).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
-        val rest = if (whole.startsWith(p)) whole.drop(p.length) else whole.dropRight(p.length)
-        Seq(p -> rest, rest -> p)
+        val trails = !whole.startsWith(p)
+        val rest   = if (trails) whole.dropRight(p.length) else whole.drop(p.length)
+        Seq((p, rest, trails), (rest, p, !trails))
       }.distinct
     }
 
@@ -196,7 +200,7 @@ object IdentityMeasures {
      *  original titles. */
     def learn(records: Seq[Film]): Qualifiers =
       Qualifiers(records.flatMap(f => Seq(f.title) ++ f.originalTitle).distinct.flatMap(split)
-        .map { case (p, r) => (p.mkString, r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _), records)
+        .map { case (p, r, trails) => ((p.mkString, trails), r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _))
   }
 
   /** Is `edition` a record of `work` under a qualifier: a later record one of whose own titles

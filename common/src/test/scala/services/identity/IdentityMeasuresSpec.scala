@@ -161,16 +161,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   it should "tie to nothing when both pieces are billed alike" in {
     val q = IdentityMeasures.Qualifiers.learn(Seq("Heat: Director's Cut", "Heat - Extended", "Alien: Director's Cut", "Heat").map(Film(_)))
-    // "heat" beside two pieces, "directorscut" beside two: neither is the listing's qualifier.
+    // "directorscut" trailing two works, "heat" leading two pieces: neither is the listing's qualifier.
     q.of(Listing("Heat: Director's Cut")) shouldBe empty
   }
 
-  it should "leave a work its record under a banner no record names, however many sequels bill the work" in {
-    // PL "Tani wtorek: OBCY", UK "Cineworld 30: The Dark Knight": the records bill the work beside
-    // its sequels, but nothing is titled the banner — there is no second work to tell it from.
+  it should "leave a work its record under a banner when the records bill it on the other side" in {
+    // PL "Tani wtorek: OBCY": the records bill the work BEFORE its sequels, the listing after its banner.
     val q = IdentityMeasures.Qualifiers.learn(Seq("Obcy", "Obcy: Przymierze", "Obcy: Romulus", "Obcy - 8. pasażer Nostromo").map(Film(_)))
     q.of(Listing("Tani wtorek: Obcy")) shouldBe empty
     IdentityMeasures.titleRelation(Listing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
+  }
+
+  it should "never be the piece a listing publishes as its original title" in {
+    // UK Cineworld's "Cineworld 30: The Dark Knight" (x87), originally "The Dark Knight": TMDB bills
+    // the work after two banners too, but the venue names it as the film.
+    val q = IdentityMeasures.Qualifiers.learn(Seq("The Dark Knight", "Enter the World of Hans Zimmer: The Dark Knight",
+      "GARO - Kiba: The Dark Knight").map(Film(_)))
+    q.of(Listing("Cineworld 30: The Dark Knight")) shouldBe Set("thedarkknight")
+    val cineworld = Listing("Cineworld 30: The Dark Knight", originalTitle = Some("The Dark Knight"))
+    q.of(cineworld) shouldBe empty
+    IdentityMeasures.titleRelation(cineworld, Film("The Dark Knight"), Houses.Unknown, q) shouldBe Category("segment")
   }
 
   "an edition" should "be a later record carrying the work's title under a qualifier, never a namesake" in {
