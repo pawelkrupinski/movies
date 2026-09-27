@@ -45,7 +45,7 @@ object Dependencies {
   val caffeine         = "com.github.ben-manes.caffeine" %  "caffeine"           % caffeineVersion
   val jsoup            = "org.jsoup"                      %  "jsoup"              % jsoupVersion
   val imageioWebp      = "com.twelvemonkeys.imageio"      %  "imageio-webp"       % twelveMonkeysVersion
-  val icu4j            = "com.ibm.icu"                    %  "icu4j"              % "77.1"
+  val icu4j            = "com.ibm.icu"                    %  "icu4j"              % "78.3"
   val sentryLogback    = "io.sentry"                      %  "sentry-logback"     % sentryVersion
   val logbackClassic   = "ch.qos.logback"                %  "logback-classic"    % logbackVersion
   val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion
