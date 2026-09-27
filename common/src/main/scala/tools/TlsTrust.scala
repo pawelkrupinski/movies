@@ -62,6 +62,8 @@ import scala.util.{Try, Using}
  *      — not the host, not any other cert that host might ever present, not a
  *      blanket "ignore expiry" flag. Once the venue renews, the new leaf's bytes
  *      won't match this pin and normal PKIX validation takes back over.
+ *      `biletyick.miastoilawa.pl` (Kinoteatr Pasja, Iława) is the second such
+ *      leaf: expired 2026-09-26, and that host doesn't answer plain http at all.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -95,7 +97,8 @@ object TlsTrust extends Logging {
    *  has lapsed, not a host or a CA, so this can never grow into a general
    *  "skip expiry" switch. */
   val PinnedExpiredLeafResources: Seq[String] = Seq(
-    "/certs/expired-leaf-kinoroma-zabrze-pl.pem"
+    "/certs/expired-leaf-kinoroma-zabrze-pl.pem",
+    "/certs/expired-leaf-biletyick-miastoilawa-pl.pem",
   )
 
   /** The pinned expired leaves, parsed. Empty if a resource is missing (logged). */
