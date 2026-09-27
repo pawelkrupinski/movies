@@ -652,14 +652,18 @@ object IdentityResolver {
      *  which is the probability it is filed at. A family too thin to outweigh the cluster decides
      *  nothing, and the cluster votes on its pooled evidence as before: 78 Cineworld venues' bare
      *  "The Omen" beside 2 venues' credited 1976 film and 4 venues' 2006 one is the 50th-anniversary
-     *  re-release, and 4 of 84 is no majority. `None` also when a member publishes a fact or the
-     *  siblings hold fewer than two films. */
+     *  re-release, and 4 of 84 is no majority. Siblings whose titles name a season do not count
+     *  (Kino Amok's bare "Manon", a Met broadcast, beside 16 venues' "RBO Sezon Kinowy 2026-27:
+     *  Manon"). `None` also when a member publishes a fact or the siblings hold fewer than two films. */
     def familyMajority(cluster: Seq[Node], members: Seq[Node], accepted: Map[String, Int],
                        titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
       Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
         val inside   = cluster.map(_.id).toSet
         val linked   = titleEdges.flatMap(e => if (inside(e.a)) Seq(e.b) else if (inside(e.b)) Seq(e.a) else Nil).toSet -- inside
-        val venuesOf = members.filter(y => linked(y.id) && accepted.contains(y.id)).groupMapReduce(y => accepted(y.id))(_.venues)(_ ++ _)
+        // A sibling whose title names a SEASON names a house's production of the work, which the
+        // bare title does not: its venues say nothing about which house's the bare one is.
+        val venuesOf = members.filter(y => linked(y.id) && accepted.contains(y.id) && y.evidence.measured.seasonYear.isEmpty)
+          .groupMapReduce(y => accepted(y.id))(_.venues)(_ ++ _)
         Option.when(venuesOf.sizeIs >= 2) {
           val (film, venues) = venuesOf.toSeq.sortBy { case (f, vs) => (-vs.size, f) }.head
           val own   = cluster.flatMap(_.venues).toSet -- venues

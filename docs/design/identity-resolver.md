@@ -419,7 +419,9 @@ clears the calibration's show-ratings cut — the probability it is then filed a
 Sense and Sensibility" had voted for the 1995 film on TMDB's ranking. A family too thin to outweigh
 the cluster decides nothing and the cluster votes as before: abstaining there instead (measured)
 cost 78 UK Cineworld venues' bare "The Omen", the 1976 film's re-release, beside 2 venues'
-credited 1976 film and 4 venues' 2006 remake.
+credited 1976 film and 4 venues' 2006 remake. Siblings whose titles name a season do not count: a
+season names one house's production of the work, which a bare title does not (Kino Amok lists the
+Met's broadcasts bare, so its "Manon" is not the RBO season's 16 Multikino venues hold).
 
 **A sequel's title does not name the original** (`IdentityMeasures.namesFilm`). "The Texas
 Chainsaw Massacre 2" carries the whole of the 1974 film's alternative title "The Texas Chainsaw

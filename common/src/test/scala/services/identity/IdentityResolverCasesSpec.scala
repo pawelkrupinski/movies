@@ -461,6 +461,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "not take a house's season production from siblings whose titles name the season it does not" in {
+    // PL, Kino Amok's bare "Manon" (it lists the Met's broadcasts bare) beside 16 Multikino
+    // venues' "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon" and Kino Kijów's "OPERA
+    // 2026/2027 - MANON" (the Met's): a season names a house's production, and a bare title
+    // names no house, so the siblings' venues say nothing about which one it is.
+    val films = Seq(F(1702757, "Royal Ballet & Opera 2026/27: Manon", 2026, "", 0, 1), F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 1),
+      F(132332, "Manon", 1949, "Henri-Georges Clouzot", 100, 3), F(2, "Manon", 2013, "Someone Else", 90, 2), F(3, "Manon", 1974, "A Third", 95, 1))
+    val rbo  = Seq(Multikino, Helios, KinoApollo, Rialto, CharlieMonroe, CinemaCityKinepolis, KinoPalacowe, CinemaCityPoznanPlaza, CinemaCityWroclavia)
+      .map(listing(_, "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon"))
+    val met  = listing(CinemaCityKorona, "The Metropolitan Opera 2026/27: Manon")
+    val bare = listing(KinoMuza, "Manon")
+    val r = IdentityResolver.resolve(rbo ++ Seq(met, bare), new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue((Seq(rbo.head, met, bare)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(rbo.head.key).film shouldBe Some(1702757)
+      r.decisionOf(met.key).film shouldBe Some(1703631)
+      r.decisionOf(bare.key).film should not be Some(1702757)
+    }
+  }
+
   "Two listings stating years decades apart" should "stay apart when no film ties them: 'It (1990)' is not 'IT (2017)'" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 90))
     val old = listing(Multikino, "It (1990)", Some(1990))
