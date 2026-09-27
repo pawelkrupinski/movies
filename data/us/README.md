@@ -233,3 +233,11 @@ Everything it does is a pure
 function of `venues.json` — same input, byte-identical output — so re-running it
 on an unchanged file is a no-op and the diff after a re-harvest is only what the
 harvest moved.
+
+## Retired venues
+
+- **`retired.json`** — venues this country has retired (closed, duplicate or
+  feedless), keyed by flicks.us slug, each with its reason, date and evidence. The
+  generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
+  fails if one is rostered anyway. To retire a venue, add it here and regenerate;
+  to bring one back, delete its entry.

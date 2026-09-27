@@ -22,6 +22,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
+import retired_venues  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "germany"
 OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "GermanRosterData.scala"
@@ -86,6 +89,9 @@ def bundesland(region: dict) -> str:
 
 def main() -> int:
     regions = json.loads((DATA / "regions.json").read_text())
+    retired = retired_venues.load(DATA)
+    for region in regions:
+        region["cinemas"] = [c for c in region["cinemas"] if c["theaterId"] not in retired]
     # Each venue's kinoprogramm.com page (harvest_kinoprogramm.py) — its showtime
     # FALLBACK behind Filmstarts. A venue the harvest could not match confidently
     # simply has none.

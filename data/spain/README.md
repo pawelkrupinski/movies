@@ -163,3 +163,11 @@ NEW venue and its history stays filed under the old name. Re-run the pipeline
 when the roster has genuinely moved, diff `provinces.json` before regenerating,
 and expect the `expected-schedules.txt` / read-model snapshots to shift with
 it.
+
+## Retired venues
+
+- **`retired.json`** — venues this country has retired (closed, duplicate or
+  feedless), keyed by SensaCine `theaterId`, each with its reason, date and evidence. The
+  generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
+  fails if one is rostered anyway. To retire a venue, add it here and regenerate;
+  to bring one back, delete its entry.

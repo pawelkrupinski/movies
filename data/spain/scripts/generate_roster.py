@@ -34,6 +34,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
+import retired_venues  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "spain"
 TOWN_NAMES = DATA / "town-names.json"
@@ -149,6 +152,9 @@ def merge_ocine(provinces: list, ocine: dict) -> list[str]:
 
 def main() -> int:
     provinces = json.loads((DATA / "provinces.json").read_text())
+    retired = retired_venues.load(DATA)
+    for province in provinces:
+        province["cinemas"] = [c for c in province["cinemas"] if c.get("theaterId") not in retired]
     corrections = load_corrections(TOWN_NAMES)
     ocine = json.loads(OCINE.read_text())
     problems = merge_ocine(provinces, ocine)

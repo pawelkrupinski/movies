@@ -1,0 +1,98 @@
+{
+  "A0743": {
+    "name": "Kino Kiste",
+    "reason": "closed",
+    "retiredOn": "2026-07-31",
+    "evidence": "Filmstarts 404; closed 31.12.2025"
+  },
+  "G01C9": {
+    "name": "Inselkino Baltrum",
+    "reason": "closed",
+    "retiredOn": "2026-07-31",
+    "evidence": "Filmstarts 404; no operator, the Gemeinde is advertising for one"
+  },
+  "A2843": {
+    "name": "Heppel - Ettlich",
+    "reason": "closed",
+    "retiredOn": "2026-07-31",
+    "evidence": "Filmstarts 404; now a Kleinkunst stage. NOT A1575 Neues Rottmann, a separate cinema"
+  },
+  "A2165": {
+    "name": "Kino Babenhausen",
+    "reason": "closed",
+    "retiredOn": "2026-07-31",
+    "evidence": "Filmstarts 404; the hall runs theatre only"
+  },
+  "A1560": {
+    "name": "Mephisto Augsburg",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; ARB Kino insolvency, shut end of Jan 2026; domain serves a betting page"
+  },
+  "A0908": {
+    "name": "Kino Deutsches Haus",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed"
+  },
+  "A0680": {
+    "name": "Kino Idstein",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed"
+  },
+  "A2708": {
+    "name": "Kino im Badehaus Masserberg",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed"
+  },
+  "A1688": {
+    "name": "Lichtwerk",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed (Schmallenberg)"
+  },
+  "A0613": {
+    "name": "Hof-Theater",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed (Sigmaringen)"
+  },
+  "A0119": {
+    "name": "Burgtheater Gummersbach",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed"
+  },
+  "A0100": {
+    "name": "Kino Center",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed (Friedberg, Hessen)"
+  },
+  "A0726": {
+    "name": "Kulturhaus Gotha",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; confirmed closed"
+  },
+  "A1547": {
+    "name": "Löwen-Lichtspiele Kenzingen",
+    "reason": "closed",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts 404; closed, the town plans a reopening: re-add if it happens"
+  },
+  "A1824": {
+    "name": "Kinomobil Stuttgart - Alte Kelter Besigheim",
+    "reason": "duplicate",
+    "retiredOn": "2026-09-26",
+    "evidence": "Filmstarts re-listed it as A0793, already rostered"
+  },
+  "A1451": {
+    "name": "Heimgarten Kino",
+    "reason": "closed",
+    "retiredOn": "2026-09-27",
+    "evidence": "Filmstarts 404; kinoprogramm.com, kinoheld, Moviepilot and critic.de list no shows; kino-heimgarten.de redirects to a parking page"
+  }
+}

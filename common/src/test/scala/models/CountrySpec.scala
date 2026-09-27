@@ -1,6 +1,9 @@
 package models
 
 import java.util.Locale
+import play.api.libs.json.{JsObject, Json}
+import scala.io.Codec
+import scala.util.Using
 import tools.Env
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -460,24 +463,29 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     regionOf("CineStar Frankfurt (Oder)") shouldBe Some("frankfurt-an-der-oder")
   }
 
-  it should "not carry the Filmstarts theater ids that were delisted upstream" in {
-    val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560",
-      "A0908", "A0680", "A2708", "A1688", "A0613", "A0119", "A0100", "A0726", "A1547", "A1824", "A1451")
-    GermanRoster.theaterIdByCinema.values.toSet intersect delisted shouldBe empty
-    val names = Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
-    names should not contain "Kino Kiste"
-    names should not contain "Inselkino Baltrum"
-    names should not contain "Heimgarten Kino"
+  // data/<country>/retired.json is the one list of venues a country has retired
+  // (closed, duplicate, feedless), with the evidence for each. The generators drop
+  // those ids; this catches a roster that was edited or regenerated around them.
+  private def retiredIds(country: String): Set[String] =
+    Using.resource(scala.io.Source.fromFile(s"data/$country/retired.json")(using Codec.UTF8)) { source =>
+      Json.parse(source.mkString).as[JsObject].keys.toSet
+    }
+
+  "Every data-driven roster" should "carry none of the venues its country retired" in {
+    val retired = Seq(
+      "germany" -> GermanRoster.theaterIdByCinema.values.toSet,
+      "spain"   -> SpanishRoster.theaterIdByCinema.values.toSet,
+      "us"      -> UsRoster.flicksSlugByCinema.values.toSet)
+    forAll(retired) { case (country, rostered) =>
+      val listed = retiredIds(country)
+      listed should not be empty
+      rostered intersect listed shouldBe empty
+    }
   }
 
-  // SensaCine answers 410 for both; each is confirmed closed (2026-09-26):
-  // Yelmo Vialia Albacete shut end of Sept 2025 (Yelmo moved to Imaginalia, still
-  // rostered), and Mota del Cuervo's municipal cinema was dismantled in 2023.
-  "Country.Spain" should "not carry the venues SensaCine retired because they closed" in {
-    val names = Country.Spain.cities.flatMap(_.cinemas).map(_.displayName).toSet
-    names should not contain "Yelmo Cines Vialia Albacete"
-    names should not contain "Cine Mota del Cuervo"
-    names should contain ("Yelmo Cines Imaginalia")
+  it should "keep a closed venue's successor when the retired one moved" in {
+    // Yelmo left Vialia Albacete (retired) for Imaginalia, which stays.
+    Country.Spain.cities.flatMap(_.cinemas).map(_.displayName) should contain ("Yelmo Cines Imaginalia")
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {

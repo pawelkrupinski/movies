@@ -18,6 +18,9 @@ import json, re, sys, unicodedata
 from decimal import ROUND_HALF_EVEN, Decimal
 from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
+import pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'scripts'))
+import retired_venues
 from states import STATES
 from metros import labels_by_slug
 from cluster_metros import (BARRIERS_APPLIED, FOLD_BARRIERS, check_coordinates,
@@ -31,17 +34,6 @@ def scala_str(s: str) -> str:
 
 def clean(s):
     return re.sub(r'\s+', ' ', (s or '')).strip()
-
-
-# Venues Flicks lists whose only feed is ANOTHER venue's programme, and which have
-# no source of their own we scrape. Kept here rather than deleted from venues.json
-# so a re-harvest cannot bring them back. slug -> the evidence.
-FEEDLESS = {
-    # 108 W Main St, Syracuse IN. Its Flicks sessions book on Veezi site
-    # nkjzf31nyb5bbbtbg06g01pq2g, which is the Pickwick Theatre in Park Ridge IL:
-    # 216/216 showtimes identical to Park Ridge's (2026-09-23).
-    'pickwick-theatre-syracuse': "Park Ridge IL's Veezi programme",
-}
 
 
 #: A centroid's precision: five decimals of a degree, about a metre.
@@ -71,7 +63,10 @@ def centroid(vs):
 
 
 def main(src, out):
-    venues = [v for v in json.load(open(src)) if v.get('slug') not in FEEDLESS]
+    # Closed and feedless venues (data/us/retired.json) — kept out here rather than
+    # deleted from venues.json, so a re-harvest cannot bring them back.
+    retired = retired_venues.load(pathlib.Path(src).resolve().parent)
+    venues = [v for v in json.load(open(src)) if v.get('slug') not in retired]
     by_state = defaultdict(list)
     skipped_no_state, skipped_no_coords, skipped_unknown_state = [], [], []
 

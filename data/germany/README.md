@@ -18,6 +18,11 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
   "Frankfurt (Oder)" carried Frankfurt am Main's coordinates until 2026-09-26, which
   had clustered its CineStar into the Frankfurt am Main region, 450 km away; moved
   by hand to `frankfurt-an-der-oder`, since re-clustering would reshuffle regions.
+- **`retired.json`** — venues this country has retired (closed, duplicate or
+  feedless), keyed by Filmstarts `theaterId`, each with its reason, date and evidence. The
+  generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
+  fails if one is rostered anyway. To retire a venue, add it here and regenerate;
+  to bring one back, delete its entry.
 - **`kinoprogramm.json`** — each venue's kinoprogramm.com page, `{ theaterId: path }`:
   its showtime FALLBACK behind Filmstarts (`KinoprogrammClient`, served once a
   venue's Filmstarts scrape has failed three separate runs). 1,134 of 1,517 venues
