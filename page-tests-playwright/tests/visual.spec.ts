@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 // the page-tests-playwright/ directory, with Docker Desktop running:
 //
 //   docker run --rm -v "$PWD":/work -w /work \
-//     mcr.microsoft.com/playwright:v1.49.0-jammy \
+//     mcr.microsoft.com/playwright:v1.63.0-noble \
 //     bash -c "npm ci && npx playwright test visual --update-snapshots"
 //
 // then commit the generated `tests/visual.spec.ts-snapshots/` folder
