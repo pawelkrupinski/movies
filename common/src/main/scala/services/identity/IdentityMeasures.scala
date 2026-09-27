@@ -630,10 +630,11 @@ object IdentityMeasures {
    * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
-    screeningYearAbsent(l, f, Map(
-      "title"          -> titleRelation(l, f, houses, qualifiers),
-      "originalTitle"  -> ownOriginalTitle(l, f),
+                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] = {
+    val title = titleRelation(l, f, houses, qualifiers)
+    screeningYearAbsent(l, f, title, Map(
+      "title"          -> title,
+      "originalTitle"  -> ownOriginalTitle(l, f, title),
       "year.delta"     -> delta(l.year, f.year),
       "year.distance"  -> absDelta(l.year, f.year),
       "titleYear.delta" -> filmMinus(f.year, l.titleYear),
@@ -647,26 +648,34 @@ object IdentityMeasures {
       "rivals"         -> Number(rivals.toDouble),
       "venues.corroborating" -> Number(corroboratingVenues.toDouble)
     ))
+  }
 
-  /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): beside the
-   *  same director, a year that denies the film is the year the venue shows it (Kinoteka's 2026 on
-   *  Ken Russell's 1971 "Diabły") or releases it, not another film's — in the score as in a veto.
-   *  "Beside" is one listing's: the director must be credited by the listing that published the
-   *  year ([[Listing.creditedBesideYear]]), never borrowed from a sibling's credit. */
-  private def screeningYearAbsent(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (ownAgreement(m)._2("year") && f.directors.exists(directorRelation(l.creditedBesideYear, _) == Category("same_person")))
+  /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
+   *  listing's title names the film ([[NamingRelations]]) and the same director is credited, a year
+   *  that denies the film is the year the venue shows it (Kinoteka's 2026 on Ken Russell's 1971
+   *  "Diabły") or releases it, not another film's — in the score as in a veto. A title that does
+   *  NOT name the film leaves the year a fact: then it tells that director's films apart
+   *  (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid").
+   *  "Credited" is by the listing that published the year ([[Listing.creditedBesideYear]]), never
+   *  borrowed from a sibling's credit. */
+  private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
+    if (NamingRelations(title.value) && ownAgreement(m)._2("year") &&
+        f.directors.exists(directorRelation(l.creditedBesideYear, _) == Category("same_person")))
       m ++ PublishedYear.map(_ -> MissingListing)
     else m
 
   /** The listing's original title against the film's titles — unless it only repeats the
-   *  listing's own title ([[repeatsItsTitle]]): then it is the title again, which the title relation
-   *  already weighs, so it counts only where it agrees (the film carries it whole, `match`) and is
-   *  otherwise absent. It never weighs against a film, in the score or a veto: counted, a
-   *  truncated copy ("…: Live") read as a fragment of the very record the title names exactly. */
-  private def ownOriginalTitle(l: Listing, f: Film): Measure =
+   *  listing's own title ([[repeatsItsTitle]]) and that title names the film ([[NamingRelations]]):
+   *  then it is the title again, and the title relation already says the film is named, so it
+   *  counts only where it agrees (the film carries it whole, `match`) and is otherwise absent —
+   *  in the score and a veto alike. Counted, a truncated copy ("…: Live") read as a fragment of the
+   *  very record the title names exactly. Beside a film the title does NOT name, the repeat stays
+   *  what it measures: Everyman's "Dracula (4K Restoration)" is not The Mummy its cinematographer
+   *  directed. */
+  private def ownOriginalTitle(l: Listing, f: Film, title: Category): Measure =
     originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles) match {
-      case m if repeatsItsTitle(l) && m != Category("match") => MissingListing
-      case m                                                 => m
+      case m if NamingRelations(title.value) && repeatsItsTitle(l) && m != Category("match") => MissingListing
+      case m                                                                                 => m
     }
 
   /** Titles a listing names itself by, as the other side of a listing-listing comparison. */

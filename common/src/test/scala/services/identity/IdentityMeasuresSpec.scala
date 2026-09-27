@@ -87,6 +87,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val devils = Film("Diabły", year = Some(1971), directors = Some(Seq("Ken Russell")))
     val screened = measures(Listing("Diabły", year = Some(2026), directors = Seq("Ken Russell")), devils)
     IdentityMeasures.PublishedYear.foreach(m => screened(m) shouldBe IdentityMeasures.MissingListing)
+    // A title that does not name the film leaves the year a fact: it tells the director's films
+    // apart (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid").
+    measures(Listing("Błotem w twarz", year = Some(2026), directors = Seq("Jaak Kilmi")),
+      Film("Sangarid", year = Some(2017), directors = Some(Seq("Jaak Kilmi"))))("year.delta") shouldBe Number(9)
     // Agreeing, it stays the fact it is; beside another director, a year decades off denies.
     measures(Listing("Diabły", year = Some(1971), directors = Seq("Ken Russell")), devils)("year.delta") shouldBe Number(0)
     measures(Listing("Diabły", year = Some(2026), directors = Seq("Someone Else")), devils)("year.delta") shouldBe Number(55)
@@ -223,9 +227,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent (1975)"), film)) shouldBe true
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent doit mourir")), film)) shouldBe true
-    // An original title that only repeats the title is the title again, not a fact beside it.
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
   }
 
   private def pair(a: Listing, b: Listing) = IdentityMeasures.listingListing(a, b, sameVenue = false, sharedChainId = None)
@@ -316,6 +318,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.repeatsItsTitle(Listing("De Gaulle: Part 2 - Liberte", originalTitle = Some("La Bataille de Gaulle - Partie 2 : J’écris ton nom"))) shouldBe false
     IdentityMeasures.repeatsItsTitle(Listing("Alien", originalTitle = Some("Alien: Romulus"))) shouldBe false
     IdentityMeasures.repeatsItsTitle(Listing("Alien")) shouldBe false
+  }
+
+  it should "be absent against a film the title names, and stay what it measures against one it does not" in {
+    val bts = Listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))
+    measures(bts, Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing"))("originalTitle") shouldBe IdentityMeasures.MissingListing
+    // UK Everyman: the repeat against The Mummy, which its title does not name, is still a disjoint title.
+    val dracula = Listing("Dracula (4K Restoration)", originalTitle = Some("Dracula 4k Restoration"))
+    measures(dracula, Film("The Mummy"))("originalTitle") shouldBe Category("disjoint")
   }
 
   "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {
