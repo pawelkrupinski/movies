@@ -242,7 +242,7 @@ object IdentityResolver {
     val titleGroups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
       nodes.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
         .groupMap(_._1)(_._2)
-    val backing = new IdentityMeasures.VenueBacking(titleGroups.getOrElse(_, Nil))
+    val backing = new IdentityMeasures.VenueBacking(titleGroups)
 
     final class FamilyScope(members: Seq[Node]) {
       val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)

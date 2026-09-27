@@ -741,13 +741,14 @@ object IdentityMeasures {
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
    *  of a film found once: a wide release lists one title at thousands of venues over one candidate
-   *  pool, and asking per member re-reads the whole group per member. One per resolve or
-   *  calibration pass; not thread-safe. */
-  final class VenueBacking(groups: String => Seq[(String, Listing)]) {
+   *  pool, and asking per member re-reads the whole group per member. A group no venue lists (an
+   *  undecorated title nobody lists bare) backs nothing. One per resolve or calibration pass; not
+   *  thread-safe. */
+  final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
     private val memo = scala.collection.mutable.HashMap.empty[(String, Film), Set[String]]
     /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
     def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-      (titleGroups.iterator.flatMap(g => memo.getOrElseUpdate((g, f), backingVenues(f, groups(g)))).toSet - ownVenue).size
+      (titleGroups.iterator.flatMap(g => memo.getOrElseUpdate((g, f), backingVenues(f, groups.getOrElse(g, Nil)))).toSet - ownVenue).size
   }
 
   /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the

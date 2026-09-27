@@ -123,6 +123,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
   }
 
+  it should "count nothing for a title group no venue lists" in {
+    // PL, a decorated "Pucio ... 2D DUB" whose undecorated title no other venue lists bare: its
+    // undecorated group is empty, not missing (the calibration's refit threw on it).
+    val decorated = Listing("Pucio 2D DUB", decorations = TitleDecorations(Set.empty, Set(Seq("2d", "dub"))))
+    val groups    = IdentityMeasures.titleGroups(decorated)
+    groups should contain (IdentityMeasures.key("Pucio"))
+    val backing = new IdentityMeasures.VenueBacking(Map(IdentityMeasures.key(decorated.title) -> Seq("Kino 1" -> decorated)))
+    backing.corroborating(groups, Film("Pucio", year = Some(2026)), "Kino 2") shouldBe 0
+  }
+
   "a title's billing" should "be the work two titles share and how each spells its house, and a banner's house the one most of its works name" in {
     IdentityMeasures.billing(Listing("RBO Cinema Season 2026-27: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
       Some(Billing(Seq("rbo", "cinema", "season"), Seq("the", "metropolitan", "opera"), "manon"))
