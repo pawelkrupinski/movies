@@ -15,7 +15,13 @@ test.describe('app banner', () => {
   const iosBadge     = (page: Page) => page.locator('#app-banner-ios');
   const androidBadge = (page: Page) => page.locator('#app-banner-android');
 
+  // The interval counts the visitor's calendar day in the city (`data-zone`), read from the
+  // page's clock. On the real clock a test straddling Warsaw's midnight sees two days: Main's
+  // run 36353560305 reloaded at 00:0x and the same-day test watched the banner, rightly, come
+  // back. Pin every page to today's midday in Warsaw — still today, never near a day's edge.
   test.beforeEach(async ({ page }) => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(new Date());
+    await page.clock.setFixedTime(new Date(`${today}T10:00:00Z`));
     await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });
   });
 
