@@ -240,4 +240,6 @@ harvest moved.
   feedless), keyed by flicks.us slug, each with its reason, date and evidence. The
   generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
   fails if one is rostered anyway. To retire a venue, add it here and regenerate;
-  to bring one back, delete its entry.
+  to bring one back, delete its entry. Entries also arrive by PR: the worker's daily
+  closure sweep (`ClosureSweep`) starts `.github/workflows/retire-venues.yml` for a
+  venue confirmed closed, which re-checks it live and opens the PR adding it here.

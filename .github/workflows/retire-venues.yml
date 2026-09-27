@@ -1,0 +1,84 @@
+name: Retire closed venues
+
+# Started by the worker's daily closure sweep (ClosureSweep → GitHubRetirementDispatch)
+# for venues it has confirmed closed from weeks of evidence: the primary aggregator page
+# gone 404/410 and the fallback feed listing nothing (VenueClosure). This run is the
+# second, independent check: each venue's page must answer 404/410 again NOW, from
+# outside the fleet, or it is kept. Passing venues go into data/<roster>/retired.json,
+# the roster is regenerated, CountrySpec must pass, and a PR is opened for a human to
+# merge. It never pushes to main.
+#
+# A PR opened with GITHUB_TOKEN does not trigger other workflows, so CI does not run on
+# it until someone pushes to the branch or closes and reopens it; CountrySpec, the check
+# a roster change can break, runs here first.
+on:
+    workflow_dispatch:
+        inputs:
+            roster:
+                description: 'Data-driven roster under data/'
+                required: true
+                type: choice
+                options: [germany, spain, us]
+            venues:
+                description: 'JSON array of {"id", "name", "evidence"}'
+                required: true
+                type: string
+
+permissions:
+    contents: write
+    pull-requests: write
+
+concurrency:
+    group: retire-venues-${{ inputs.roster }}
+    cancel-in-progress: false
+
+jobs:
+    retire:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Test the retirement script
+              run: python3 data/scripts/test_retire_venues.py
+
+            - name: Re-check each venue live and retire the confirmed ones
+              id: retire
+              env:
+                  ROSTER: ${{ inputs.roster }}
+                  VENUES: ${{ inputs.venues }}
+              run: |
+                  retired=$(python3 data/scripts/retire_venues.py --roster "$ROSTER" --venues "$VENUES" --body "$RUNNER_TEMP/pr-body.md" | tail -1)
+                  echo "retired=$retired" >> "$GITHUB_OUTPUT"
+                  cat "$RUNNER_TEMP/pr-body.md" >> "$GITHUB_STEP_SUMMARY"
+
+            - uses: actions/setup-java@v5
+              if: steps.retire.outputs.retired != '0'
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+              if: steps.retire.outputs.retired != '0'
+
+            - name: CountrySpec
+              if: steps.retire.outputs.retired != '0'
+              run: sbt "common/testOnly models.CountrySpec"
+
+            - name: Open the PR
+              if: steps.retire.outputs.retired != '0'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  ROSTER: ${{ inputs.roster }}
+                  RETIRED: ${{ steps.retire.outputs.retired }}
+              run: |
+                  branch="retire-venues/${ROSTER}-${GITHUB_RUN_ID}"
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git switch -c "$branch"
+                  git add -A common worker web data
+                  git commit -m "Retire ${RETIRED} closed ${ROSTER} venue(s) the closure sweep confirmed"
+                  git push origin "$branch"
+                  gh pr create --base main --head "$branch" \
+                      --title "Retire ${RETIRED} closed ${ROSTER} venue(s)" --body-file "$RUNNER_TEMP/pr-body.md"

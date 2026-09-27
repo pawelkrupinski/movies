@@ -22,7 +22,9 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
   feedless), keyed by Filmstarts `theaterId`, each with its reason, date and evidence. The
   generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
   fails if one is rostered anyway. To retire a venue, add it here and regenerate;
-  to bring one back, delete its entry.
+  to bring one back, delete its entry. Entries also arrive by PR: the worker's daily
+  closure sweep (`ClosureSweep`) starts `.github/workflows/retire-venues.yml` for a
+  venue confirmed closed, which re-checks it live and opens the PR adding it here.
 - **`kinoprogramm.json`** — each venue's kinoprogramm.com page, `{ theaterId: path }`:
   its showtime FALLBACK behind Filmstarts (`KinoprogrammClient`, served once a
   venue's Filmstarts scrape has failed three separate runs). 1,134 of 1,517 venues
