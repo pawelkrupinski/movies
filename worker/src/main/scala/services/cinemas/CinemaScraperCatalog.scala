@@ -1915,7 +1915,7 @@ class CinemaScraperCatalog(
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     new WebediaShowtimesClient(http, WebediaMarket.Germany, theaterId, cinema, today = Some(today))
-  // Germany — data-driven from the full GermanRoster (158 regions / 1,517 cinemas):
+  // Germany — data-driven from the full GermanRoster (158 regions / 1,515 cinemas):
   // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
   // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
   private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =

@@ -94,5 +94,17 @@
     "reason": "closed",
     "retiredOn": "2026-09-27",
     "evidence": "Filmstarts 404; kinoprogramm.com, kinoheld, Moviepilot and critic.de list no shows; kino-heimgarten.de redirects to a parking page"
+  },
+  "A2203": {
+    "name": "Holi Filmtheater",
+    "reason": "closed",
+    "retiredOn": "2026-09-27",
+    "evidence": "Filmstarts 404; kinoprogramm.com \"keine Aufführungen bekannt\". Closed 25 May 2025 after the building was sold (kino-oehringen.de \"Holi schließt\", Heilbronner Stimme). NOT A0837 Scala Filmtheater, the same operator's other Öhringen cinema, which stays. Re-checked 2026-09-27: HTTP 404."
+  },
+  "A1458": {
+    "name": "Kinett",
+    "reason": "closed",
+    "retiredOn": "2026-09-27",
+    "evidence": "Filmstarts 404; kinoprogramm.com \"keine Aufführungen bekannt\". kinett-kusel.de is now a concert and culture club with only the occasional film talk, no film programme. Re-checked 2026-09-27: HTTP 404."
   }
 }

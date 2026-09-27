@@ -1,6 +1,6 @@
 // GENERATED from data/germany/regions.json by the DE roster generator — do NOT edit by hand.
 // Full German cinema roster: 158 regions over 16 Bundesländer /
-// 1,517 cinemas (Filmstarts). Regenerate with
+// 1,515 cinemas (Filmstarts). Regenerate with
 // the generator in data/germany/scripts after re-harvesting; see data/germany/README.md.
 package models
 
@@ -672,7 +672,6 @@ private[models] object GermanRosterData {
     ("IMAX 3D Laser 4k Kino Sinsheim", "IMAX 3D Laser 4k Kino Sinsheim", "A0622", Some("/kino/sinsheim/imax-3d-32267")),
     ("Cineplex Neckarsulm", "Cineplex Neckarsulm", "A0475", Some("/kino/neckarsulm/cineplex-35134")),
     ("Kinostar Scala + Scala-Keller", "Kinostar Scala + Scala-Keller", "A0839", Some("/kino/neckarsulm/kinostar-scala-58176")),
-    ("Holi Filmtheater", "Holi Filmtheater", "A2203", Some("/kino/oehringen/holi-filmtheater-73958")),
     ("Scala Filmtheater Öhringen", "Scala Filmtheater Öhringen", "A0837", Some("/kino/oehringen/scala-filmtheater-32212")),
     ("Kinomobil Stuttgart - Alte Kelter", "Kinomobil Stuttgart - Alte Kelter", "A0793", Some("/kino/besigheim/kinomobil-stuttgart-stadthalle-alte-kelter-41595")),
     ("Kinostar Filmwelt Mosbach", "Kinostar Filmwelt Mosbach", "A1513", None),
@@ -1324,8 +1323,7 @@ private[models] object GermanRosterData {
     ("Walhalla Kinocenter", "Walhalla Kinocenter", "A1659", Some("/kino/pirmasens/walhalla-kinocenter-32220")),
     ("Broadway Ramstein-Miesenbach", "Broadway Ramstein-Miesenbach", "A1319", None),
     ("Kino Digital im Hohenstaufensaal", "Kino Digital im Hohenstaufensaal", "A2619", Some("/kino/annweiler-am-trifels/kino-im-hohenstaufensaal-32335")),
-    ("Provinzkino", "Provinzkino", "A1588", None),
-    ("Kinett", "Kinett", "A1458", Some("/kino/kusel/kinett-kino-32134"))
+    ("Provinzkino", "Provinzkino", "A1588", None)
   ))
   private def r_lueneburg: R = ("lueneburg", "Lüneburg", "Niedersachsen", 53.25122, 10.41548, Seq("Lüneburg", "Uelzen", "Winsen", "Geesthacht", "Schwarzenbek", "Boizenburg"), Seq(
     ("Filmpalast Lüneburg", "Filmpalast Lüneburg", "A0327", Some("/kino/lueneburg/filmpalast-41917")),

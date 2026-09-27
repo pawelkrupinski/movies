@@ -216,6 +216,27 @@ from VictoriaLogs' own docs 404s against this deployment's query parser.
 
 ## 2026-09-27
 
+### Four DE fallback pages (2026-09-27 ~11:00) — 2 retired, 2 working as designed
+
+- **Holi Filmtheater Öhringen (`A2203`) — `fixed` (retired).** UNCOVERED. Closed on
+  25 May 2025 when the building was sold (kino-oehringen.de "Holi schließt",
+  Heilbronner Stimme); kinoprogramm.com "keine Aufführungen bekannt". The same
+  operator's Scala Filmtheater (`A0837`) stays — it is a different cinema, not a
+  re-listing.
+- **Kinett Kusel (`A1458`) — `fixed` (retired).** UNCOVERED. kinett-kusel.de is a
+  concert and culture club now, with the occasional film talk and no film programme;
+  kinoprogramm.com is empty. Both retired through `data/scripts/retire_venues.py`,
+  which also caught a gap: one no-answer from Filmstarts kept Kinett, and the sweep
+  would never have asked again. The re-probe now retries a no-answer (never a status).
+- **Filmpalast Cine-World Lingen (`G02Q9`) — `intentionally-dormant` primary.** ENTER.
+  Operating; its Filmstarts id redirects to a dead page and there is no re-listing
+  (`A0200` is Central-Kino, a separate venue). kinoprogramm.com carries its full
+  programme, so the fallback serving it IS the fix.
+- **Tivoli-Filmtheater Achern (`A1185`) — `intentionally-dormant` primary.** ENTER,
+  "primary returned no screenings". Not a parser bug: Filmstarts has no dates for it
+  (`data-showtimes-dates="[]"`, the showtimes JSON is empty every day) while the cinema
+  is open and kinoprogramm.com lists its screenings. The fallback is serving correctly.
+
 ### Heimgarten Kino Oberammergau (`A1451`) — `fixed` (retired)
 
 Paged as UNCOVERED ("down 20h and Kinoprogramm has nothing to serve either"). The

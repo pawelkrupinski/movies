@@ -8,7 +8,7 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
 ## Contents
 
 - **`regions.json`** — the roster the app will load: **158 regions** covering
-  **1,517 cinemas** across all 16 Bundesländer. Each region:
+  **1,515 cinemas** across all 16 Bundesländer. Each region:
   `{ slug, name, lat, lon, bundesland, cities:[…], cinemas:[{theaterId, name, city, displayName}] }`.
   Regions cap the city dropdown (901 raw cities → 158 regions, each aggregating
   cinemas within ~35 km of a hub city). Every cinema `displayName` is globally
@@ -27,8 +27,8 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
   venue confirmed closed, which re-checks it live and opens the PR adding it here.
 - **`kinoprogramm.json`** — each venue's kinoprogramm.com page, `{ theaterId: path }`:
   its showtime FALLBACK behind Filmstarts (`KinoprogrammClient`, served once a
-  venue's Filmstarts scrape has failed three separate runs). 1,134 of 1,517 venues
-  (2026-09-26); `kinoprogramm-unmatched.json` lists the rest with their best
+  venue's Filmstarts scrape has failed three separate runs). 1,132 of 1,515 venues
+  (2026-09-27); `kinoprogramm-unmatched.json` lists the rest with their best
   candidate. Produced by `scripts/harvest_kinoprogramm.py` (precision first: a
   candidate must name the roster city in its address AND sit within 25 km of it,
   so a same-named town elsewhere cannot match; open-air screens never match a

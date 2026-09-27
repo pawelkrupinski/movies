@@ -119,7 +119,7 @@ object HostPolicies {
       headers = Map("x-imdb-client-name" -> "imdb-web-next"),
     ),
 
-    // Filmstarts (Webedia DE). Germany's 1,517 venues each fan out one listing
+    // Filmstarts (Webedia DE). Germany's 1,515 venues each fan out one listing
     // fetch plus one request per advertised day onto ONE origin, and with no
     // pacing the worker's fan-out delivers them in bursts the host answers with
     // 429. That was our steady state, not an anomaly: ThrottledHttpFetch's
@@ -165,7 +165,7 @@ object HostPolicies {
 
     // kinoprogramm.com — Germany's FALLBACK behind Filmstarts (KinoprogrammClient),
     // fetched only for venues whose Filmstarts scrape keeps failing, so it is idle
-    // until Filmstarts has trouble — and then, in a whole-site outage, all 1,517
+    // until Filmstarts has trouble — and then, in a whole-site outage, all 1,515
     // venues fall back at once at ~5 week-pages each. 1s keeps that burst to ~2h
     // per sweep, inside DE's 10h cadence, at the rate probing ran without a 429.
     //
