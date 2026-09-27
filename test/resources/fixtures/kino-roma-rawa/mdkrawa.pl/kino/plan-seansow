@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pl-PL" class="no-js no-svg">
+<head>
+
+<meta charset="UTF-8">
+ <!--[if IE]><meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'><![endif]-->
+<meta name="viewport" content="width=device-width, minimum-scale=1, maximum-scale=1, user-scalable=no">
+
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="Plan seansów – MDK Rawa Mazowiecka">
+<meta property="og:description" content="Miejski Dom Kultury im.Danuty Siedzikówny INKI w Rawie Mazowieckiej"/>
+<meta property="og:image" content="https://mdkrawa.pl/mdkrawa-ogimage.jpg"/>
+<meta property="fb:app_id" content="320051838501073"/>
+<meta property="og:url" content="https://mdkrawa.pl/kino/plan-seansow/">
+
+<title>Plan seansów &#8211; MDK Rawa Mazowiecka</title>
+<meta name='robots' content='max-image-preview:large' />
+<link rel='dns-prefetch' href='//fonts.googleapis.com' />
+<link rel='stylesheet' id='wp-block-library-css' href='https://mdkrawa.pl/wp-includes/css/dist/block-library/style.min.css?ver=6.2' type='text/css' media='all' />
+<link rel='stylesheet' id='classic-theme-styles-css' href='https://mdkrawa.pl/wp-includes/css/classic-themes.min.css?ver=6.2' type='text/css' media='all' />
+<style id='global-styles-inline-css' type='text/css'>
+body{--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--duotone--dark-grayscale: url('#wp-duotone-dark-grayscale');--wp--preset--duotone--grayscale: url('#wp-duotone-grayscale');--wp--preset--duotone--purple-yellow: url('#wp-duotone-purple-yellow');--wp--preset--duotone--blue-red: url('#wp-duotone-blue-red');--wp--preset--duotone--midnight: url('#wp-duotone-midnight');--wp--preset--duotone--magenta-yellow: url('#wp-duotone-magenta-yellow');--wp--preset--duotone--purple-green: url('#wp-duotone-purple-green');--wp--preset--duotone--blue-orange: url('#wp-duotone-blue-orange');--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgba(255, 255, 255, 1), 6px 6px rgba(0, 0, 0, 1);--wp--preset--shadow--crisp: 6px 6px 0px rgba(0, 0, 0, 1);}:where(.is-layout-flex){gap: 0.5em;}body .is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}body .is-layout-flex{flex-wrap: wrap;align-items: center;}body .is-layout-flex > *{margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+.wp-block-navigation a:where(:not(.wp-element-button)){color: inherit;}
+:where(.wp-block-columns.is-layout-flex){gap: 2em;}
+.wp-block-pullquote{font-size: 1.5em;line-height: 1.6;}
+</style>
+<link rel='stylesheet' id='mdkrawa-fonts-css' href='https://fonts.googleapis.com/css?family=Oswald:300,400|Playfair+Display:400,400i,900,900i|Open+Sans:400,400i,600,700,700i&#038;subset=latin,latin-ext' type='text/css' media='all' />
+<link rel='stylesheet' id='mdkrawa-style-css' href='https://mdkrawa.pl/wp-content/themes/mdkrawa/style.css?ver=4.15.0' type='text/css' media='all' />
+<link rel="canonical" href="https://mdkrawa.pl/kino/plan-seansow/" />
+</head>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-YQBBD6GWML"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-YQBBD6GWML');
+</script>
+
+<body data-ajax="https://mdkrawa.pl/wp-admin/admin-ajax.php">
+    <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><symbol id="sprite-accessibility" viewBox="0 0 481.4 481"><path d="M481.4 240.4c0 132.8-107.9 240.6-240.9 240.6C107.9 481 0 373.1 0 240.5 0 107.2 108-.1 241.9 0c131.8.1 239.5 108.2 239.5 240.4zm-251.3 34.5c3.1 0 6.2.3 9.1-.1 4.1-.6 5.6 1.2 6.9 5 14.7 44 29.6 87.9 44.4 131.8 3.2 9.5 11.9 14.2 21.2 11.6 10.2-2.8 15-12.4 11.7-23.3l-41.4-138c-1.1-3.8-2.5-7.7-2.6-11.6-.3-28.7-.1-57.3-.4-86 0-3.8 1.5-4.8 4.8-5.2 29.7-3.6 59.4-7.4 89.1-11.1 7.4-.9 13.2-7 13.7-14.3.6-8-3.8-15-11.3-16.6-4.1-.9-8.6-.4-12.8-.1-22.7 1.8-45.5 3.5-68.2 5.7-27.2 2.6-54.6 3.9-81.8 2.2-33.6-2.1-67-5.4-100.5-8.4-9.1-.8-16.9 5-18.2 13.9-1.2 8.2 4.6 16.4 12.8 17.5 27 3.8 54 7.5 81.1 10.9 4.2.5 5.4 1.9 5.4 6.2-.2 28.5-.1 57-.1 85.5 0 2.1-.1 4.4-.7 6.4-12.6 47.9-25.3 95.8-38 143.6-2.9 10.9 2.3 20.5 12.6 23.4 9.8 2.8 18.5-2.4 21.7-13 7-23 14-46.1 21-69.2 6.9-22 13.7-44.2 20.5-66.8zm6.7-227C220 48 206 61.8 205.9 78.6c-.1 17.1 14.3 31.5 31.4 31.4 17-.2 31-14.4 30.9-31.4-.1-17.1-14.1-30.8-31.4-30.7z"/></symbol><symbol id="sprite-arr" viewBox="0 0 7 13"><path d="m.5.5 5.5 6-5.5 6"/></symbol><symbol id="sprite-arrow" viewBox="0 0 22 40"><path fill="none" stroke="#000" stroke-miterlimit="10" d="M.5.5 21 19.4.5 39.5"/></symbol><symbol id="sprite-biletyna" viewBox="0 0 230 230"><path fill="#fff" d="M202.1 66.3c-6.2 6.7-13.9 8.7-22.9 8.6-46.9-.2-93.9-.1-140.8 0-6 0-11.8-.7-17.5-2.9C9 68.2 10.6 49 12.4 39.1 13.9 26 30 24.2 36.2 24.8H181c21.6-1.1 30.2 22.8 21.1 41.5zM33.1 198.5C16.8 190.5-1.8 168 1 149.2c.8-35.7 29-59.6 61.3-56.3 43.3-.1 86.7-.1 130 0 13.3 0 22.8 9.3 23 22.1.2 12.7-9.2 22.5-22.6 22.6-43.9 1-88.2-1.4-132 1.1-9.4 1.8-10 17.1-.3 19.2 47.9 2.4 96.3 0 144.4.9 30.7-3 35.5 45.7 2.8 45.9-31.5-.6-62.9-.2-94.4-.2-12.9.5-57.2-.3-69.5-2.5-1.9-.2-9.4-2.1-10.6-3.5z"/></symbol><symbol id="sprite-cafe" viewBox="0 0 40 35"><path d="M16.8 35C7.5 35 0 26.7 0 16.4v-1.5h33.6v1.5c0 10.3-7.5 18.6-16.8 18.6zM3.1 17.9C3.7 25.8 9.6 32 16.8 32c7.2 0 13.1-6.2 13.7-14.1H3.1z"/><path d="M33 29.1c-1.3 0-2.4-.3-3.4-.9l1.6-2.5c.5.3 1.1.5 1.8.5 2.3 0 4.1-1.8 4.1-4.1S35.3 18 33 18v-3c3.9 0 7.1 3.2 7.1 7.1s-3.2 7-7.1 7zM6.3 9.1c0-1 .2-2.1.5-3.1.4-2 .8-3.8-.2-5.3L9.4 0c1.3 2 .8 4.1.3 6.2-.3 1.5-.7 2.9-.3 4.2l-2.9.4c-.1-.6-.2-1.2-.2-1.7zM14.9 9.1c0-1 .2-2.1.5-3.1.4-1.9.8-3.7-.2-5.2L18 0c1.3 2 .8 4.1.3 6.2-.3 1.5-.7 2.9-.3 4.2l-2.9.4c-.2-.6-.2-1.2-.2-1.7zM23.4 9.1c0-1 .2-2.1.5-3.1.4-1.9.8-3.7-.2-5.2l2.8-.8c1.3 2 .8 4.1.3 6.2-.3 1.5-.7 2.9-.3 4.2l-2.9.4c-.1-.6-.2-1.2-.2-1.7z"/></symbol><symbol id="sprite-calendar" viewBox="0 0 19 18"><path d="M18 3v14H1V3h17m1-1H0v16h19V2z"/><path fill="none" stroke="#000" stroke-miterlimit="10" d="M19 1.5H0M2.5 0v1M.5 0v1M4.5 0v1M6.5 0v1M8.5 0v1M10.5 0v1M12.5 0v1M14.5 0v1M6.5 5v1M9.5 5v1M12.5 5v1"/><path fill="none" stroke="#FF8400" stroke-miterlimit="10" d="M15.5 5v1"/><path fill="none" stroke="#000" stroke-miterlimit="10" d="M3.5 8v1M6.5 8v1M9.5 8v1M12.5 8v1"/><path fill="none" stroke="#FF8400" stroke-miterlimit="10" d="M15.5 8v1"/><path fill="none" stroke="#000" stroke-miterlimit="10" d="M3.5 11v1M6.5 11v1M9.5 11v1M12.5 11v1"/><path fill="none" stroke="#FF8400" stroke-miterlimit="10" d="M15.5 11v1"/><path fill="none" stroke="#000" stroke-miterlimit="10" d="M3.5 14v1M6.5 14v1M9.5 14v1M12.5 14v1M16.5 0v1M18.5 0v1"/></symbol><symbol id="sprite-close" viewBox="0 0 14 14"><path d="m.5.5 13 13M13.5.5l-13 13"/></symbol><symbol id="sprite-contact" viewBox="-3 -6.3 32.2 34.3"><path d="M13.8-6.3C3.8-6.3-3 .8-3 11.5-3 18.9 1.2 25 8.1 27.9c.1.1.2.1.4.1s.5-.1.7-.5l.4-1c.3-.6.3-.9-.5-1.2-5.9-2.6-9.3-7.6-9.3-13.8 0-9.4 5.4-15.3 14-15.3 7.9 0 12.8 5 12.8 12.9 0 5-2 8.5-4.9 8.5-1.4 0-2.3-.7-2.3-4.1V5.8c0-.5-.4-.9-.9-.9H18c-1 0-1.2.5-1.4 1.3-.6-.6-1.8-1.6-4-1.6-4 0-6.7 3.1-6.7 7.8 0 4.6 2.7 7.8 6.5 7.8 2 0 3.7-1 4.7-2.7.6 1.7 2.1 2.7 4.3 2.7 5.7 0 7.8-5.9 7.8-11C29.2-.1 23-6.3 13.8-6.3zM16.4 14c-.3 1.2-1.1 3.2-3.6 3.2-2 0-4-1.5-4-4.9 0-3.1 1.6-5.1 4-5.1 2.3 0 3.4 1.5 3.6 1.8v5z"/></symbol><symbol id="sprite-download" viewBox="0 0 24 15.1"><path d="M24 15.1H0v-5h2v3h20v-3h2zM12.1 9.2l-7-7L7.3 0l4.8 5L17 0l2.2 2.2z"/></symbol><symbol id="sprite-facebook" viewBox="-3 -4.1 31.1 31.1"><path d="M24.6-4.1H.5C-1.4-4.1-3-2.5-3-.6v24.2c0 1.9 1.6 3.5 3.5 3.5h12.1V14.9H9.1v-4.3h3.5V7.1c0-3.7 2.1-6.4 6.5-6.4h3.1v4.5h-2.1c-1.7 0-2.4 1.3-2.4 2.5v2.9h4.4l-1 4.3h-3.5V27h6.9c1.9 0 3.5-1.6 3.5-3.5V-.6c.1-1.9-1.5-3.5-3.4-3.5z"/></symbol><symbol id="sprite-fb" viewBox="-15 3 8.4 18"><path d="M-6.6 3v3c0 .1 0 .2-.2.2h-1.5c-.2 0-.3 0-.5.1-.3-.1-.5.2-.5.5v2c0 .1.1.1.1.1h2.7c-.2 1-.3 2.1-.4 3.1h-2.5V21h-3.4v-9H-15V9.1c0-.1 0-.2.2-.2h1.9c.1 0 .2 0 .2-.2V6.2c0-.6.1-1.2.4-1.7.3-.6.8-1 1.4-1.2.4-.1.8-.2 1.1-.3h3.2z"/></symbol><symbol id="sprite-film" viewBox="0 0 47 35"><path d="M43.8 3.5v16H13.4v-16h30.4m3-3H10.4v22h36.4V.5z"/><path d="m0 2.7 12.8 8.8L0 20.3zM43.4 32.9 29.9 19.4l-1.3 1.3-1.3-1.3-13.5 13.5 2.2 2.2 12.6-12.7 12.6 12.7z"/></symbol><symbol id="sprite-galeria" viewBox="0 0 32 41"><path d="M25 41H0V8h25v33zM3 38h19V11H3v27z"/><path d="m28.4 36.3-4.8-.4.2-3 1.8.2 2.7-27.3L9.2 3.9l-.5 5.3-3-.2.7-8.3L31.5 3z"/><circle cx="8.5" cy="17.6" r="2.7"/><path d="M5.3 34.7h14.6V21.9l-3.3 4.4-2.5-1.6-2.5 4.9H8z"/></symbol><symbol id="sprite-inne" viewBox="0 0 45 42"><path d="m36.2 42-13.7-7-13.6 7 2.5-15.1-11-10.8 15.3-2.3L22.5 0l6.9 13.8 15.2 2.3-11 10.8L36.2 42zM22.5 31.6l9.7 5-1.8-10.8 7.8-7.7-10.8-1.6-4.9-9.8-4.9 9.8-10.9 1.6 7.8 7.7-1.8 10.8 9.8-5z"/></symbol><symbol id="sprite-konkurs" viewBox="0 0 39 37"><path d="M33 18.3v16H6v-16h27m3-2.7H3v21.5h33V15.6z"/><path d="M36 12.4v3.1H3v-3.1h33m3-3H0v9.1h39V9.4z"/><path d="M16.9 9.9h5.3v26.3h-5.3z"/><path d="M16.1 12.3c-1.5 0-3.1-.4-4.6-1.1-2.4-1-4.3-2.8-5-4.7C6 5.2 6 4 6.4 3 7.3 1.2 8.8.3 10.7.3c1.2 0 2.5.3 4 1 3.8 1.7 6.2 6.8 6.3 7l.4.7-.3.6c-.8 1.7-2.6 2.7-5 2.7zm-5.4-9c-.8 0-1.2.3-1.5 1-.2.3-.1.8 0 1.1.4.9 1.5 2.2 3.5 3.1 1.2.6 2.4.9 3.4.9.8 0 1.4-.2 1.8-.4-.9-1.5-2.6-3.9-4.4-4.8-1.1-.6-2.1-.9-2.8-.9z"/><path d="M23.1 12.3c-2.4 0-4.2-1-5-2.7l-.3-.6.3-.6c.1-.2 2.6-5.3 6.3-7 1.5-.7 2.9-1 4.1-1 1.9 0 3.4.9 4.2 2.6.5 1 .5 2.2.1 3.4-.7 2-2.6 3.8-5.1 5-1.5.5-3.1.9-4.6.9zm-1.8-3.5c.4.3 1.1.4 1.8.4 1 0 2.2-.3 3.3-.8 1.7-.8 3.1-2.1 3.5-3.3.1-.3.2-.7.1-1-.3-.6-.7-.9-1.5-.9-.7 0-1.7.3-2.9.8-1.8.9-3.5 3.4-4.3 4.8z"/></symbol><symbol id="sprite-link" viewBox="-11 14 21 18"><path d="M8 32h-19V16h7.3v2H-9v12H6v-3h2zM10 23.5H7V17H.5v-3H10z"/></symbol><symbol id="sprite-mail" viewBox="0 0 24 18"><path d="M24 18H0V0h24v18zM2 16h20V2H2v14z"/><path d="M12 11.1.9 4.9l1-1.8L12 8.9l10.4-5.8 1 1.8z"/></symbol><symbol id="sprite-muzyka" viewBox="0 0 32 43"><path d="M21.5 34.7c-1.2-2-.2-4.8 2.3-6.3s5.5-1.1 6.7.8.2 4.8-2.3 6.3-5.5 1.2-6.7-.8zM.5 40.2c-1.2-2-.2-4.8 2.3-6.3s5.5-1.1 6.7.8c1.2 2 .2 4.8-2.3 6.3-2.5 1.6-5.5 1.2-6.7-.8z"/><path d="M28 1.6h3v29.8l-3 .2zM7 6.7h3v30l-3-1z"/><path d="m31 6.6-24 6V6l24-6z"/></symbol><symbol id="sprite-ogloszenie" viewBox="2 1 43 38"><path d="M6.6 34.9 2 27.1 31 1l13.6 23.6-38 10.3zm-.8-7.2L8 31.4l32-8.7-9.8-17-24.4 22z"/><path d="M17.5 38.9c-3.2 0-6.2-2.1-7.2-5.4l2.9-.8c.7 2.4 3.1 3.7 5.5 3.1 2.4-.7 3.7-3.1 3.1-5.4l2.9-.8c1.1 3.9-1.2 8-5.1 9.1-.7.1-1.4.2-2.1.2z"/></symbol><symbol id="sprite-phone" viewBox="-10 3 18 18"><path d="M-6 3c.3.1.4.4.6.7.5.8 1.7 3 1.8 3.2.2.3.2.6 0 .9-.3.4-.7.7-1.1 1-.3.2-.6.5-.9.8-.2.2-.2.4-.1.7.1.3.3.6.4.8.3.5.7 1.1 1 1.6.5.7 1.1 1.4 1.8 2s1.3 1.1 2.1 1.5c.3.2.7.4 1 .6.4.2.6.1.8-.2.4-.4.7-.8 1.1-1.3.2-.2.4-.4.7-.6.3-.2.5-.2.8 0 .4.2 2.5 1.5 3.2 1.9.2.1.4.2.5.3.1.1.1.2.2.3v.5c-.1.3-.1.7-.2 1-.1.4-.2.7-.5 1l-.9.6c-.5.3-1.1.6-1.7.7-.2 0-.4.1-.7.1h-.8c-.5-.1-1-.2-1.4-.3l-2.4-.9c-.4-.2-.9-.4-1.3-.7-.6-.4-1.3-.8-1.8-1.3-.5-.4-1-.9-1.5-1.4-.8-.8-1.5-1.6-2.1-2.4-.5-.6-.9-1.3-1.2-2-.3-.8-.5-1.4-.8-2.1-.1-.4-.5-2-.6-2.3V7s.1-.7.2-1c.2-.6 1.2-2.1 1.4-2.4.3-.3 1.6-.5 1.9-.6h.5z"/></symbol><symbol id="sprite-pracownia" viewBox="0 0 39 39"><path d="M19.5 39C8.7 39 0 30.3 0 19.5S8.7 0 19.5 0C25 0 30.3 2.1 34 5.9c3.2 3.2 4.9 7.4 4.9 11.6 0 6.3-5.2 11.5-11.5 11.5h-3.5c-.9 0-1.5.6-1.5 1.5 0 .4.1.7.4.9.8.8 1.2 1.9 1.2 3.1 0 2.5-2 4.5-4.5 4.5zm0-36C10.4 3 3 10.4 3 19.5S10.4 36 19.5 36c.9 0 1.5-.6 1.5-1.5 0-.4-.1-.7-.4-.9-.8-.8-1.2-1.9-1.2-3.1 0-2.5 2-4.5 4.5-4.5h3.5c4.7 0 8.5-3.8 8.5-8.5 0-3.5-1.4-6.9-4-9.5-3.1-3.2-7.6-5-12.4-5z"/><path d="M8.5 19.5c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM14.5 11.5c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM24.5 11.5c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM30.5 19.5c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/></symbol><symbol id="sprite-search" viewBox="0 0 18 17"><g fill="none" stroke="#020304" stroke-width="2" stroke-miterlimit="10"><circle cx="6.7" cy="6.7" r="5.7"/><path d="m11.1 10.2 5.6 5.7"/></g></symbol><symbol id="sprite-teatr" viewBox="0 0 51 36"><path d="M37.2 35.5c-4.5 0-8.8-2.6-12.6-7.6l2.4-1.8c3.9 5.2 8.2 7.3 12.7 6.1 2.6-.7 4.5-2.2 5.9-4.6 4.1-7.1 1.6-19.7.6-23.9L26.7 8.6 24 6.2 48.3.1l.4 1.4c.2.7 4.9 17.9-.6 27.6-1.7 3.1-4.3 5.1-7.7 6-1 .2-2.1.4-3.2.4z"/><path d="m35.4 27.8-3-.1c.1-3.3 1.6-5.4 4.4-6.1 2.7-.7 5 .3 6.8 3.1l-2.5 1.6c-1.4-2.1-2.5-2.1-3.6-1.9-1 .3-2 .9-2.1 3.4zM36.8 11.1c.4 1.7 2.1 2.6 3.8 2.2s2.6-2.1 2.2-3.8l-6 1.6zM14.3 35.6c-1.1 0-2.2-.1-3.3-.4-3.6-1-6.3-3.2-8.1-6.7-5.1-10-.4-27.1-.3-27.2L3.1 0l32.7 8.5-.5 1.5c-.2 1-6.9 25.6-21 25.6zm-9.2-32c-1 4-3.4 16.4.6 23.7 1.4 2.6 3.4 4.2 6.1 4.9.8.2 1.7.3 2.5.3 10.1 0 16.1-16.8 17.7-21.9l-26.9-7z"/><path d="M14.5 28.3c-.5 0-1-.1-1.6-.2C8.7 27 8.6 23.2 8.5 22l3-.1c.1 2.3.9 3 2.2 3.3 1.3.3 2.3.1 3.6-1.9l2.5 1.6c-.6.9-2.2 3.4-5.3 3.4zM11.7 10.3c-1.7-.4-3.4.5-3.8 2.2l6 1.6c.4-1.6-.6-3.3-2.2-3.8zM25.1 17.1c.4-1.7-.5-3.4-2.2-3.8s-3.3.5-3.8 2.2l6 1.6z"/></symbol><symbol id="sprite-wystawa" viewBox="0 0 25 43"><path d="M14 3V0h-3v3H3v25.5h19V3h-8zm5 22.5H6V6h13v19.5z"/><path d="M25 27H0v3h9.5L2.9 40.7l2.6 1.6 7-11.4 6.9 11.4 2.6-1.6L15.5 30H25z"/></symbol><symbol id="sprite-youtube" viewBox="0 0 22 22"><path d="M17.4 3.7c-3.1-.3-9.7-.3-12.6 0C1.5 4 1.1 5.8 1.1 11s.4 7 3.6 7.3c3.1.3 9.7.3 12.6 0 3.2-.3 3.6-2.1 3.6-7.3.1-5.2-.3-7-3.5-7.3zM8.5 14.3V7.7l6.6 3.3-6.6 3.3z"/></symbol></svg>    <a class="skip-link screen-reader-text sr-only" href="#content">Przeskocz do głównej treści</a>
+
+    <div id="wrapper" class="wrapper">
+        <header class="header" id="header" role="banner">
+    <div class="header__wrap">
+        <div class="grid">
+            <div class="grid-12 header__main">
+                <a href="/" class="header__logo"><svg class="svg-mdk" xmlns="http://www.w3.org/2000/svg" width="231" height="150.2" viewBox="0 0 231 150.2"><path fill="#F6A656" d="M188.6 111.5l4.1-4L204 125h7.2l-14.4-21.5 13.1-12.7h-7.5l-13.8 13.9v-27h-5.8V125h5.8zM151.2 123.6c2.3 1.5 4.8 2.3 7.5 2.3 4.2 0 7.4-1.7 9.6-5.1v4.3h5.4V77.7h-5.8v17c-1-1.4-2.3-2.5-3.9-3.4-1.6-.9-3.4-1.3-5.5-1.3-2.8 0-5.4.7-7.6 2.2-2.3 1.5-4 3.6-5.1 6.4-1.1 2.8-1.7 5.9-1.7 9.3 0 3.5.6 6.6 1.9 9.3 1.2 2.7 2.9 4.8 5.2 6.4zm1.4-25.6c1.7-2.1 3.9-3.2 6.5-3.2s4.9 1.1 6.7 3.3c1.8 2.2 2.7 5.6 2.7 10.3 0 4.3-.9 7.4-2.7 9.5-1.8 2.1-3.9 3.1-6.5 3.1-2.5 0-4.7-1.1-6.5-3.3-1.8-2.2-2.8-5.5-2.8-9.8 0-4.5.8-7.8 2.6-9.9zM96.9 107.3c0-3.1.3-5.5.9-7.2.6-1.7 1.6-2.9 3-3.8 1.4-.9 2.9-1.3 4.5-1.3 2.1 0 3.7.6 4.6 1.9.9 1.3 1.4 3.2 1.4 5.8V125h5.8v-19.9c0-3.5.8-6.1 2.4-7.7 1.6-1.6 3.6-2.4 6-2.4 1.3 0 2.5.3 3.5.9 1 .6 1.7 1.4 2 2.5.4 1 .6 2.7.6 5V125h5.8v-23.5c0-3.9-.9-6.8-2.7-8.7-1.8-1.9-4.4-2.8-7.8-2.8-4.3 0-7.9 2-10.6 6-.7-1.9-1.8-3.4-3.4-4.4-1.6-1.1-3.7-1.6-6.2-1.6-2.3 0-4.3.5-6.1 1.5-1.8 1-3.2 2.4-4.3 4v-4.8h-5.2V125h5.8v-17.7z"/><path fill="#F6A656" d="M151.2 123.6c2.3 1.5 4.8 2.3 7.5 2.3 4.2 0 7.4-1.7 9.6-5.1v4.3h5.4V77.7h-5.8v17c-1-1.4-2.3-2.5-3.9-3.4-1.6-.9-3.4-1.3-5.5-1.3-2.8 0-5.4.7-7.6 2.2-2.3 1.5-4 3.6-5.1 6.4-1.1 2.8-1.7 5.9-1.7 9.3 0 3.5.6 6.6 1.9 9.3 1.2 2.7 2.9 4.8 5.2 6.4zm1.4-25.6c1.7-2.1 3.9-3.2 6.5-3.2s4.9 1.1 6.7 3.3c1.8 2.2 2.7 5.6 2.7 10.3 0 4.3-.9 7.4-2.7 9.5-1.8 2.1-3.9 3.1-6.5 3.1-2.5 0-4.7-1.1-6.5-3.3-1.8-2.2-2.8-5.5-2.8-9.8 0-4.5.8-7.8 2.6-9.9zM188.6 111.5l4.1-4L204 125h7.2l-14.4-21.5 13.1-12.7h-7.5l-13.8 13.9v-27h-5.8V125h5.8zM96.9 107.3c0-3.1.3-5.5.9-7.2.6-1.7 1.6-2.9 3-3.8 1.4-.9 2.9-1.3 4.5-1.3 2.1 0 3.7.6 4.6 1.9.9 1.3 1.4 3.2 1.4 5.8V125h5.8v-19.9c0-3.5.8-6.1 2.4-7.7 1.6-1.6 3.6-2.4 6-2.4 1.3 0 2.5.3 3.5.9 1 .6 1.7 1.4 2 2.5.4 1 .6 2.7.6 5V125h5.8v-23.5c0-3.9-.9-6.8-2.7-8.7-1.8-1.9-4.4-2.8-7.8-2.8-4.3 0-7.9 2-10.6 6-.7-1.9-1.8-3.4-3.4-4.4-1.6-1.1-3.7-1.6-6.2-1.6-2.3 0-4.3.5-6.1 1.5-1.8 1-3.2 2.4-4.3 4v-4.8h-5.2V125h5.8v-17.7z"/><path fill="#F6A656" d="M0 0v150.2h231V0H0zm223.4 142.9H7.4V7.4h216v135.5z"/></svg><span class="sr-only">Przejdź do strony głównej</span></a>
+                <hgroup>
+                    <h1>MDK Rawa Mazowiecka</h1>
+                    <h2><em>im. Danuty Siedzikówny &bdquo;Inki&rdquo;</em></h2>
+                </hgroup>
+                <nav class="nav phone-hide"><ul id="menu-nawigacja" class=""><li id="menu-item-17200" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-17200 nav__item"><a href="/wpisy">Wydarzenia</a></li><li id="menu-item-17201" class="menu-item menu-item-type-post_type menu-item-object-page current-page-ancestor menu-item-17201 nav__item"><a href="https://mdkrawa.pl/kino/">Kino</a></li><li id="menu-item-17203" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17203 nav__item"><a href="https://mdkrawa.pl/pracownie-artystyczne/">Pracownie</a></li><li id="menu-item-17202" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17202 nav__item"><a href="https://mdkrawa.pl/o-domu-kultury/">O Domu Kultury</a></li><li id="menu-item-17204" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17204 nav__item"><a href="https://mdkrawa.pl/kontakt/">Kontakt</a></li></ul></nav>                <a href="#" class="header__contrast js-toggle-contrast desktop-only" title="Uruchom wersję kontrastową"><svg class="sprite-accessibility"><use xlink:href="#sprite-accessibility"/></svg><span class="sr-only">Uruchom wersję kontrastową</span></a>
+                <a href="#" class="header__button js-toggle-menu phone-only"><div><span></span><span></span><span></span></div></a>
+            </div>
+        </div>
+    </div>
+</header>
+                <main id="content" class="content">
+<article data-page data-title="Cyfrowe Kino ROMA HD">
+        <header>
+        <div class="grid">
+                <div class="grid-12">
+        <h2 class="title"><span>Cyfrowe Kino ROMA HD</span></h2>
+    </div>
+                            <div class="grid-12">
+    <nav class="submenu">
+        <ul><li class="submenu__item">
+                <a href="/kino/aktualnosci/">Aktualności</a>
+            </li><li class="submenu__item">
+                <a href="/kino/plan-seansow/">Plan seansów</a>
+            </li><li class="submenu__item">
+                <a href="/kino/o-kinie/">O kinie</a>
+            </li><li class="submenu__item">
+                <a href="/kino/regulamin-nocy-horrorow/">Regulamin kina i nocy horrorów</a>
+            </li><li class="submenu__item">
+                <a href="/kino/cennik/">Cennik</a>
+            </li><li class="submenu__item">
+                <a href="/kino/karnety/">Karnety</a>
+            </li>        </ul>
+    </nav>
+</div>
+        </div>
+    </header>
+
+        
+        
+
+
+
+<section data-path="/kino/aktualnosci/">
+    <div class="grid">
+                <hr class="grid-12">
+                            <ul class="tiles" data-comp="Tiles">
+            <li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/nasza-rewolucja/" class="tile__link"><span class="sr-only">Film 13 &ndash; 24 listopada — Nasza rewolucja</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/1080x1350-1-768x960-1-314x222.jpg" alt="Plakat: Nasza rewolucja" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name">Nasza rewolucja</h3>
+                <div class="tile__info"><span itemprop="genre">dramat, biograficzny</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Piotr Domalewski</span>, <span itemprop="typicalAgeRange">od 13 lat</span><br/>czas projekcji: <span itemprop="duration">120 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--framed tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/dzien-dziecka-ksiedz-jana-kaczkowskiego/" class="tile__link"><span class="sr-only">Film do Dzisiaj — Dzień dziecka księdza Jana Kaczkowskiego</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/Dzien-dziecka-ks-Jana-Kaczkowskiego-plakat-314x222.jpg" alt="Plakat: Dzień dziecka księdza Jana Kaczkowskiego" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name"><strong>Dzień dziecka księdza Jana Kaczkowskiego</strong></h3>
+                <div class="tile__info"><span itemprop="genre">film biograficzny</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Artur Wierzbicki</span>, <span itemprop="typicalAgeRange">od 10 lat</span><br/>czas projekcji: <span itemprop="duration">75 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/automatycznie-zapisany-szkic-67/" class="tile__link"><span class="sr-only">Film 23 &ndash; 29 października — Supermocni</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/supermocni-supermocni-plakat-ala-1-380x557-1-314x222.webp" alt="Plakat: Supermocni" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name">Supermocni</h3>
+                <div class="tile__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">Hiszpania</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Julio Soto Gurpide</span>, <span itemprop="typicalAgeRange">od 5 lat</span><br/>czas projekcji: <span itemprop="duration">90 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/baranek-shaun-i-kudlata-bestia/" class="tile__link"><span class="sr-only">Film 16 &ndash; 28 października — Baranek Shaun i kudłata bestia</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/BaranekShaun_B1_PL-2-711x1024-1-314x222.jpg" alt="Plakat: Baranek Shaun i kudłata bestia" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name"><strong>Baranek Shaun i kudłata bestia</strong></h3>
+                <div class="tile__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">Wielka Brytania</span>, <span itemprop="dateCreated">2025</span>, <span itemprop="typicalAgeRange">od 5 lat</span><br/>czas projekcji: <span itemprop="duration">80 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/czas-ktory-nie-nadszedl/" class="tile__link"><span class="sr-only">Film 16 &ndash; 28 października — Czas , który nie nadszedł</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/CKNN_4x5_Clear-768x960-1-314x222.jpg" alt="Plakat: Czas , który nie nadszedł" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name"><strong>Czas , który nie nadszedł</strong></h3>
+                <div class="tile__info"><span itemprop="genre">dramat</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Julia Rogowska</span>, <span itemprop="typicalAgeRange">od 15 lat</span><br/>czas projekcji: <span itemprop="duration">100 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/zapomniana-wyspa/" class="tile__link"><span class="sr-only">Film 2 &ndash; 13 października — Zapomniana wyspa</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/ZAPOMNIANA-WYSPA-PLAKAT-NET-314x222.jpg" alt="Plakat: Zapomniana wyspa" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name">Zapomniana wyspa</h3>
+                <div class="tile__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">USA</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Joel Crawford</span>, <span itemprop="typicalAgeRange">od 7 lat</span><br/>czas projekcji: <span itemprop="duration">90 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--framed tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/tedi-jones-4/" class="tile__link"><span class="sr-only">Film do 29 września — Tedi i magiczna lampa</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/2137_m-224x222.jpg" alt="Plakat: Tedi i magiczna lampa" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name"><strong>Tedi i magiczna lampa</strong></h3>
+                <div class="tile__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">USA</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="typicalAgeRange">od 6 lat</span><br/>czas projekcji: <span itemprop="duration">90 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/lalka/" class="tile__link"><span class="sr-only">Film 30 września &ndash; 22 października — Lalka</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/486322608_17879253537274147_2383865047669824368_n-819x1024-1-314x222.jpg" alt="Plakat: Lalka" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name"><strong>Lalka</strong></h3>
+                <div class="tile__info"><span itemprop="genre">dramat, romans</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Maciej Kawalski</span>, <span itemprop="typicalAgeRange">od 13 lat</span><br/>czas projekcji: <span itemprop="duration">160 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+<li class="grid-3 tile tile--publish tile--film" itemscope itemtype="http://schema.org/ScreeningEvent">
+      <a href="https://mdkrawa.pl/wpisy/pucio-kocha-zwierzaki/" class="tile__link"><span class="sr-only">Film do 7 października — Pucio kocha zwierzaki</span><span>Więcej<svg class="sprite-arr"><use xlink:href="#sprite-arr"/></svg></span></a>
+        <div class="tile__image">
+      <img src="https://mdkrawa.pl/wp-content/uploads/Pucio-kocha-zwierzaki-PLAKAT-314x222.jpg" alt="Plakat: Pucio kocha zwierzaki" itemprop="image" class="is-loading">
+    </div>
+        <div class="tile__wrap">
+        <div class="tile__head">
+            <span class="tile__category"><svg class="sprite-film"><use xlink:href="#sprite-film"/></svg>Film</span>
+    <span class="sr-only" itemprop="startDate"></span>        </div>
+        <h3 class="tile__title" itemprop="name">Pucio kocha zwierzaki</h3>
+                <div class="tile__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Anna Stróżycka</span>, <span itemprop="typicalAgeRange">bez ograniczeń wiekowych</span><br/>czas projekcji: <span itemprop="duration">45 min</span></div>
+                <hr class="tile__line">
+                <div class="tile__location sr-only" itemprop="location" itemscope itemtype="http://schema.org/Place">
+            <span itemprop="name">MDK Rawa Mazowiecka</span>
+            <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+              <span itemprop="addressLocality">Rawa Mazowiecka</span>
+              <span itemprop="postalCode">96-200</span>
+            </span>
+        </div>
+        <span class="sr-only" itemprop="eventStatus">EventScheduled</span>
+        <span class="sr-only" itemprop="eventAttendanceMode">OfflineEventAttendanceMode</span>
+            </div>
+    </li>
+            <li class="grid-3 line"></li>
+            <li class="grid-3 line"></li>
+            <li class="grid-3 line"></li>
+            <li class="grid-3 hover"></li>
+            <li class="column-sizer"></li>
+            <li class="gutter-sizer"></li>
+        </ul>
+                    </div>
+</section>
+<section data-path="/kino/plan-seansow/">
+    <div class="grid">
+            <div class="grid-12">
+        <h2 class="title"><span>Plan seansów</span></h2>
+    </div>
+                            <div class="calendar" data-comp="Calendar">
+            <div class="grid-6 calendar__wrap">
+                <time datetime="2026-09" class="calendar__main">
+        <span class="calendar__nav js-calendar-nav">
+            <a title="Sierpień 2026" href="?rok=2026&miesiac=8" data-action="calendar_month" class="calendar__prev" data-history="false" rel="prev"><svg class="sprite-arrow"><use xlink:href="#sprite-arrow"/></svg></a>
+            <span class="calendar__month js-calendar-month"><strong>Wrzesień</strong> 2026</span>
+            <a title="Październik 2026" href="?rok=2026&miesiac=10" data-action="calendar_month" class="calendar__next" data-history="false" rel="next"><svg class="sprite-arrow"><use xlink:href="#sprite-arrow"/></svg></a>
+        </span>
+        <span class="calendar__weekdays">
+            <abbr title="Poniedziałek">Pn</abbr><abbr title="Wtorek">Wt</abbr><abbr title="Środa">Śr</abbr><abbr title="Czwartek">Cz</abbr><abbr title="Piątek">Pt</abbr><abbr title="Sobota">Sb</abbr><abbr title="Niedziela">Nd</abbr>
+        </span>
+        <span class="calendar__days js-calendar-days">
+            <span class="calendar__week"><time class="calendar__day" datetime="2026-09-01"><a href="?rok=2026&miesiac=9&dzien=1" data-action="calendar_day" data-history="false">1</a></time><time class="calendar__day" datetime="2026-09-02"><a href="?rok=2026&miesiac=9&dzien=2" data-action="calendar_day" data-history="false">2</a></time><time class="calendar__day" datetime="2026-09-03"><a href="?rok=2026&miesiac=9&dzien=3" data-action="calendar_day" data-history="false">3</a></time><time class="calendar__day" datetime="2026-09-04"><a href="?rok=2026&miesiac=9&dzien=4" data-action="calendar_day" data-history="false">4</a></time><time class="calendar__day" datetime="2026-09-05"><a href="?rok=2026&miesiac=9&dzien=5" data-action="calendar_day" data-history="false">5</a></time><time class="calendar__day" datetime="2026-09-06"><a href="?rok=2026&miesiac=9&dzien=6" data-action="calendar_day" data-history="false">6</a></time></span><span class="calendar__week"><time class="calendar__day" datetime="2026-09-07"><a href="?rok=2026&miesiac=9&dzien=7" data-action="calendar_day" data-history="false">7</a></time><time class="calendar__day" datetime="2026-09-08"><a href="?rok=2026&miesiac=9&dzien=8" data-action="calendar_day" data-history="false">8</a></time><time class="calendar__day" datetime="2026-09-09"><a href="?rok=2026&miesiac=9&dzien=9" data-action="calendar_day" data-history="false">9</a></time><time class="calendar__day" datetime="2026-09-10"><a href="?rok=2026&miesiac=9&dzien=10" data-action="calendar_day" data-history="false">10</a></time><time class="calendar__day" datetime="2026-09-11"><a href="?rok=2026&miesiac=9&dzien=11" data-action="calendar_day" data-history="false">11</a></time><time class="calendar__day" datetime="2026-09-12"><a href="?rok=2026&miesiac=9&dzien=12" data-action="calendar_day" data-history="false">12</a></time><time class="calendar__day" datetime="2026-09-13"><a href="?rok=2026&miesiac=9&dzien=13" data-action="calendar_day" data-history="false">13</a></time></span><span class="calendar__week"><time class="calendar__day" datetime="2026-09-14"><a href="?rok=2026&miesiac=9&dzien=14" data-action="calendar_day" data-history="false">14</a></time><time class="calendar__day" datetime="2026-09-15"><a href="?rok=2026&miesiac=9&dzien=15" data-action="calendar_day" data-history="false">15</a></time><time class="calendar__day" datetime="2026-09-16"><a href="?rok=2026&miesiac=9&dzien=16" data-action="calendar_day" data-history="false">16</a></time><time class="calendar__day" datetime="2026-09-17"><a href="?rok=2026&miesiac=9&dzien=17" data-action="calendar_day" data-history="false">17</a></time><time class="calendar__day" datetime="2026-09-18"><a href="?rok=2026&miesiac=9&dzien=18" data-action="calendar_day" data-history="false">18</a></time><time class="calendar__day" datetime="2026-09-19"><a href="?rok=2026&miesiac=9&dzien=19" data-action="calendar_day" data-history="false">19</a></time><time class="calendar__day" datetime="2026-09-20"><a href="?rok=2026&miesiac=9&dzien=20" data-action="calendar_day" data-history="false">20</a></time></span><span class="calendar__week"><time class="calendar__day" datetime="2026-09-21"><a href="?rok=2026&miesiac=9&dzien=21" data-action="calendar_day" data-history="false">21</a></time><time class="calendar__day" datetime="2026-09-22"><a href="?rok=2026&miesiac=9&dzien=22" data-action="calendar_day" data-history="false">22</a></time><time class="calendar__day" datetime="2026-09-23"><a href="?rok=2026&miesiac=9&dzien=23" data-action="calendar_day" data-history="false">23</a></time><time class="calendar__day" datetime="2026-09-24"><a href="?rok=2026&miesiac=9&dzien=24" data-action="calendar_day" data-history="false">24</a></time><time class="calendar__day" datetime="2026-09-25"><a href="?rok=2026&miesiac=9&dzien=25" data-action="calendar_day" data-history="false">25</a></time><time class="calendar__day" datetime="2026-09-26"><a href="?rok=2026&miesiac=9&dzien=26" data-action="calendar_day" data-history="false">26</a></time><time class="calendar__day is-active is-current" datetime="2026-09-27"><a href="?rok=2026&miesiac=9&dzien=27" data-action="calendar_day" data-history="false">27</a></time></span><span class="calendar__week"><time class="calendar__day" datetime="2026-09-28"><a href="?rok=2026&miesiac=9&dzien=28" data-action="calendar_day" data-history="false">28</a></time><time class="calendar__day" datetime="2026-09-29"><a href="?rok=2026&miesiac=9&dzien=29" data-action="calendar_day" data-history="false">29</a></time><time class="calendar__day" datetime="2026-09-30"><a href="?rok=2026&miesiac=9&dzien=30" data-action="calendar_day" data-history="false">30</a></time></span>        </span>
+    </time>            </div><div class="grid-6 calendar__content js-calendar-content">
+                    <h3 class="calendar__header js-calendar-header"><time datetime="2026-09-27"><span>Dzisiaj</span> 27 września</time></h3>
+    <ul class="calendar__list js-calendar-list"><li class="calendar__item" itemscope itemtype="http://schema.org/ScreeningEvent">
+                    <time class="calendar__time" datetime="2026-09-27 15:00">15:00</time>
+                    <cite class="calendar__title" itemprop="name"><a href="https://mdkrawa.pl/wpisy/tedi-jones-4/"><strong>Tedi i magiczna lampa</strong></a></cite>
+                    <p class="calendar__info"><span itemprop="genre">animacja,familijny</span>, <span itemprop="countryOfOrigin">USA</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="typicalAgeRange">od 6 lat</span><br/>czas projekcji: <span itemprop="duration">90 min</span></p>
+                </li><li class="calendar__item" itemscope itemtype="http://schema.org/ScreeningEvent">
+                    <time class="calendar__time" datetime="2026-09-27 17:00">17:00</time>
+                    <cite class="calendar__title" itemprop="name"><a href="https://mdkrawa.pl/wpisy/dzien-dziecka-ksiedz-jana-kaczkowskiego/"><strong>Dzień dziecka księdza Jana Kaczkowskiego</strong></a></cite>
+                    <p class="calendar__info"><span itemprop="genre">film biograficzny</span>, <span itemprop="countryOfOrigin">Polska</span>, <span itemprop="dateCreated">2026</span>, <span itemprop="director">Artur Wierzbicki</span>, <span itemprop="typicalAgeRange">od 10 lat</span><br/>czas projekcji: <span itemprop="duration">75 min</span></p>
+                </li></ul>            </div>
+        </div>
+    </div>
+</section>
+
+    <section data-path="/kino/o-kinie/">
+        <div class="grid">
+                <div class="grid-12">
+        <h2 class="title"><span>O kinie</span></h2>
+    </div>
+                            <div class="image grid-5">
+    <img src="https://mdkrawa.pl/wp-content/uploads/roma-logo.png" alt="" class="is-loading">
+</div><div class="text grid-7">
+        <h3>Cyfrowe Kino Roma HD</h3>
+<p>Kontakt telefoniczny: <strong><a href="tel://601295967" target="_blank" rel="noopener">601 295 967</a></strong><em><strong><br /></strong></em>email: <a href="mailto:roma-rawa@wp.pl" target="_blank" rel="noopener"><strong>roma-rawa@wp.pl</strong></a></p>
+<p>ul. Krakowska 6c<br />96-200 Rawa Mazowiecka</p>
+<p><em>Najwyższa jakość obrazu i dźwięku za przystępną cenę</em>.</p>
+<p> </p>
+    </div>
+            
+            <hr class="grid-12">
+            <div class="image grid-5">
+    <img src="https://mdkrawa.pl/wp-content/uploads/sala.jpg" alt="" class="is-loading">
+</div><div class="text grid-7">
+        <p>Miejsc siedzących: 300.</p>
+<p>Nowoczesny kinowy projektor cyfrowy w rozdzielczości HD firmy BARCO.<br />System DOREMI.<br />Nagłośnienie: dolby digital EX, (dźwięk przestrzenny. 5.1)<br />Ekran perełkowy: 10,75 / 4,55m.<br />Projektor analogowy niemieckiej firmy Kinoton.<br />Odtwarzacz Blu-ray Sony 3D.</p>
+<p>Sala klimatyzowana<br />Atrakcyjny wystrój wnętrza</p>
+<p><strong>Kasa kina czynna na 30 min. przed seansem.<br /></strong>* Seans filmu może się odbyć wyłącznie w przypadku obecności minimum 5 widzów.<br />* Kino zastrzega sobie możliwość zmiany godzin i repertuaru.</p>
+    </div>
+    
+
+            <hr class="grid-12">
+            <div class="image grid-5">
+    <img src="https://mdkrawa.pl/wp-content/uploads/PISF_log1pol_small.png" alt="" class="is-loading">
+</div><div class="text grid-7">
+        <p>Zakup i montaż serwera do Kina Roma współfinansowane przez PISF</p>
+    </div>
+    
+        </div>
+    </section>
+
+
+    <section data-path="/kino/regulamin-nocy-horrorow/">
+        <div class="grid">
+                <div class="grid-12">
+        <h2 class="title"><span>Regulamin kina i nocy horrorów</span></h2>
+    </div>
+                            <div class="image grid-5">
+</div><div class="text grid-7">
+        <p>1. Szatnia na terenie kina w dniu imprezy jest obowiązkowa, niepłatna.</p>
+<p>2. HONORUJEMY TYLKO ORYGINALNE ZAKUPIONE W KASIE KINA WEJŚCIÓWKI- próby podrabiania i fałszowania będą zgłaszane na policję . Nie ma możliwości zwrotu zakupionej wejściówki.</p>
+<p>3. Na teren sali widowiskowej nie wolno wnosić plecaków i większych toreb ( które należy pozostawić w szatni)</p>
+<p>4. Na terenie pomieszczeń kina i na sali widowiskowej obowiązuje całkowity zakaz: wnoszenia i spożywania alkoholu, zażywania środków odurzających, palenia papierosów (w tym elektronicznych). Na próby łamania tego zakazu będzie reagować ochrona.<br />5. Na terenie kina i na zewnątrz nie wolno śmiecić.<br />6. Na teren sali widowiskowej nie wolno wnosić i spożywać artykułów spożywczych (np. popcorn, chipsy).</p>
+<p><strong>Prosimy o nie przyklejanie</strong> <strong>gum do żucia do wykładziny podłogi i foteli kinowych</strong></p>
+<p>7. Zabrania się niszczenia mienia Miejskiego Domu Kultury ( między innymi w toaletach i na sali widowiskowej. Zniszczenia mienia  skutkuje zgłoszeniem na policję i odszkodowaniem z poniesione szkody)<br />8. Przy każdym wyjściu z sali kinowej należy mieć przy sobie &#8222;wejściówkę&#8221; i okazać ją na żądanie obsługi kina i ochrony  przy ponownym wejściu na salę.<br />9. W czasie projekcji filmów należy zachowywać się kulturalnie, tak by nie przeszkadzać innym widzom.</p>
+<p>10. Należy stosować się do poleceń obsługi kina i ochrony .<br />11. Nie zastosowanie się do powyższego regulaminu będzie skutkowało wyproszeniem z sali kinowej bez możliwości zwrotu pieniędzy za zakupioną wejściówkę czy bilet.</p>
+    </div>
+                    </div>
+    </section>
+
+
+    <section data-path="/kino/cennik/">
+        <div class="grid">
+                <div class="grid-12">
+        <h2 class="title"><span>Cennik</span></h2>
+    </div>
+                            <div class="image grid-5">
+</div><div class="text grid-7">
+        <p> </p>
+<p><strong>UWAGA!</strong></p>
+<p><span style="text-decoration: underline;"><em><strong>(Cena biletu kinowego jest związana z tytułem filmu i jest podana w informacjach przy danym  filmie)</strong></em></span></p>
+<p><strong>Bilet normalny 2D: 20-23 </strong><strong> zł  </strong></p>
+<p><strong>Bilet ulgowy 2D: </strong><strong>18-20  zł<br /></strong>(przysługuje dzieciom  od 3 lat,  młodzieży szkolnej, studentom za okazaniem ważnej legitymacji szkolnej lub studenckiej, rencistom i seniorom, osobom niepełnosprawnym i ich opiekunom, nauczycielom, oraz na  <strong>&#8222;ogólnopolską kartę</strong> <strong>dużej rodziny&#8221;</strong>).</p>
+<p><strong>UWAGA !-</strong>  <span style="text-decoration: underline;">zniżki na karty</span> : &#8222;rawską kartę  dużej rodziny&#8221; i &#8222;ogólnopolską kartę dużej rodziny &#8221; nie sumują się przy zakupie biletu.</p>
+<p><span style="text-decoration: underline;"> Wyłącznie przy <strong> rawskiej </strong> <strong>&#8222;karcie  duża  rodzina 3+ &#8221;  50%</strong> ceny biletów  obowiązujących w kinie.)</span></p>
+<p><strong>Dzieci do lat 3:</strong> bezpłatnie (pod warunkiem wejścia z opiekunem)</p>
+<p><strong> </strong><strong>UWAGA:<br /></strong><span style="text-decoration: underline;"><strong>Seans filmu może się odbyć jedynie jeśli zostanie sprzedane minimum 5 szt. biletów</strong></span></p>
+<p> </p>
+<h3><strong>Reklama Audiowizualna</strong></h3>
+<p>Zachęcamy do reklamowania Państwa firm w bloku reklamowym przed projekcją seansu. Emisję realizujemy z powierzonych  przez Państwa materiałów (krótkie filmy, spoty, bannery i plansze reklamowe)</p>
+<p>Taka reklama  jest obecnie najbardziej skuteczną z dostępnych bezpośrednich form reklamowych, gdyż dociera do każdego potencjalnego klienta będącego widzem na sali kinowej.</p>
+<p>Szczegóły na banerach na stronie kina w zakładce<strong> cennik biletów i reklama audiowizualna, oraz pod nr. 601295967</strong></p>
+    </div>
+            
+                <hr class="grid-12">
+            
+        
+        <div class="banner grid-12">
+              <img src="https://mdkrawa.pl/wp-content/uploads/cennik-1-scaled-e1733399815949.jpg" alt="" class="is-loading">  <img src="https://mdkrawa.pl/wp-content/uploads/karnety-e1516221796211.jpg" alt="" class="is-loading">  <img src="https://mdkrawa.pl/wp-content/uploads/KinoRoma-reklama-ulotkaA6-a-e1516221826601.jpg" alt="" class="is-loading">  <img src="https://mdkrawa.pl/wp-content/uploads/KinoRoma-reklama-ulotkaA6-b-e1516221888332.jpg" alt="" class="is-loading">        </div>
+            </div>
+    </section>
+
+
+    <section data-path="/kino/karnety/">
+        <div class="grid">
+                <div class="grid-12">
+        <h2 class="title"><span>Karnety</span></h2>
+    </div>
+                            <div class="image grid-5">
+</div><div class="text grid-7">
+        <p>Kino Roma MDK w Rawie Maz. posiada w sprzedaży <strong>karnety kinowe</strong>. Karnet obejmuje <strong>10, 12, 14</strong> wejść.</p>
+<p>Cena karnetu:  <strong>10</strong> wejść:<strong> 160 </strong>zł,  <strong>12 </strong>wejść: <strong>192</strong> zł,    <strong>14</strong> wejść: <strong>224</strong> zł</p>
+<p>Karnet ważny <strong>6 miesięcy</strong> od daty zakupu. </p>
+<p><strong>Zalety posiadania karnetu:</strong></p>
+<ul>
+<li>cena 1-go wejścia to tylko 16 zł</li>
+<li>oszczędzasz do 30% ceny biletu kinowego</li>
+<li>karnet nie jest imienny, może go wykorzystać każda osoba, która okaże go w kasie kina, np. rodzina, znajomi, itd.</li>
+<li>karnet to wygoda i oszczędność  pieniędzy.</li>
+<li><strong>karnet kinowy to idealny i nietuzinkowy prezent np. na gwiazdkę, mikołajki czy urodziny.</strong></li>
+</ul>
+<p><strong>REGULAMIN KORZYSTANIA Z KARNETU</strong></p>
+<ul>
+<li><strong>Uwaga:</strong> na jeden karnet mogą wejść jednorazowo <strong>max</strong>. <strong>4</strong> osoby</li>
+<li>Przed wejściem na salę prosimy o podejście z zakupionym  karnetem  do kasy  kina celem zakreślenia wejścia.</li>
+<li><strong>Uwaga</strong>: karnet <strong>nie gwarantuje</strong> miejsca na sali w konkretnym dniu (np. w soboty). W przypadku <strong>hitów kinowych </strong>dla pewności prosimy o wcześniejszą rezerwację miejsca telefonicznie (tel. 601295967) lub w kasie kina.</li>
+<li> Zakupiony karnet <strong>nie podlega</strong> zwrotowi.</li>
+</ul>
+<p>Zachęcamy osoby prywatne i firmy do zakupu karnetów do kina dla pracowników. <strong>Wystawiamy faktury VAT</strong></p>
+    </div>
+                    </div>
+    </section>
+
+</article>
+        </main>
+        <nav class="menu phone-only"><ul id="menu-nawigacja-1" class=""><li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-17200 nav__item"><a href="/wpisy">Wydarzenia</a></li><li class="menu-item menu-item-type-post_type menu-item-object-page current-page-ancestor menu-item-17201 nav__item"><a href="https://mdkrawa.pl/kino/">Kino</a></li><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17203 nav__item"><a href="https://mdkrawa.pl/pracownie-artystyczne/">Pracownie</a></li><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17202 nav__item"><a href="https://mdkrawa.pl/o-domu-kultury/">O Domu Kultury</a></li><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17204 nav__item"><a href="https://mdkrawa.pl/kontakt/">Kontakt</a></li></ul></nav>    </div>
+
+    <div class="preloader"></div>
+
+    <footer class="footer" id="footer">
+    <div class="grid">
+        <div class="grid-12 footer__wrap">
+            <hr>
+            <div class="tab">
+                <div class="footer__links phone-hide">
+                    <a href="http://rawamazowiecka.pl" target="_blank"><span class="sr-only">Urząd Miasta Rawa Mazowiecka</span><svg class="svg-rawa-logo" width="200" height="107.7" viewBox="0 0 200 107.7"><path d="M59.9 46c.3-.8.2-1.3.2-1.7 0-.3-.1-.6 0-1 .6-2.5 2.5-2.8 2.7-2.8.3-.1.6-.1.9-.1 1.6 0 2.8 1 3.3 1.6 1.2 1.5 1.4 2.9 1.3 3.8-.1 1.4-.8 2.3-1.1 2.5-.6.5-1.2.5-1.7.6-2.3.2-3.2.6-3.7 1.7-.7 1.8-.1 3.1.3 3.6l5.7 5.7-6.3 6.3-.2.2-.1.1c-1.2 2.7.4 3.9 1.1 4.5.4.3.8.5 1.3.5.2 0 .4 0 .6-.1.3-.1.5-.1.8-.1 1.4 0 2.5 1 2.8 1.7.7 1.8.4 3.4-1 4.9-1 1-2 1.6-3.2 1.6-.9 0-1.6-.3-2.1-.6-.7-.4-1.2-1.1-1.3-1.9-.4-3.4-.5-3.9-1.6-4.6-.6-.4-1.3-.6-1.8-.6-.4 0-.7.1-1.1.2l-6.9 6.9-6.6-6.9c-.3-.6-.1-1.3.3-2.1.5-.7.6-.8 4-1.2 1.4-.2 2.2-1 2.6-1.7.5-.8 1.7-3.7-1.2-6.3-1.8-1.6-3.7-2-5.8-1.1-1.3.5-2.7 2.4-2.1 4.6.1.4.1.7-.3 1.2-.5.6-1 1.2-2 1.2-.4 0-.9-.1-1.5-.4L30 59.6l18.8-18.9 5.6 5.7.4.3c.7.8 1.5 1.2 2.3 1.2 1.7 0 2.7-1.7 2.8-1.9zm-23.2-7.4V23h-5.2L22.2 9 13 23H7.7v76.1h20.9L9.1 79.4l6.3-6.2.3-.4c.7-.7 1-1.3 1-1.9-.1-1-1.2-1.8-1.4-1.9-.5-.2-.9-.2-1.4-.1-.4 0-.8 0-1.3-.1-3.2-.8-3.5-3.3-3.6-3.4-.7-3.2 1-5 1.7-5.6 1.3-1 2.6-1.5 3.9-1.5 1.8 0 3.2 1 3.8 2.1.4.8.7 1.4.7 2.1.2 2.4.6 2.8 1.2 3 .5.2.9.3 1.3.3.7 0 1.2-.3 1.4-.4l5.9-5.9 19.7-19.8 6.2 6.2.4.3c.6.6 1.2 1 1.7 1 1.1 0 1.9-1.2 2-1.4.2-.6.2-.9.1-1.3 0-.3-.1-.7.1-1.3.7-3.1 3.3-3.4 3.4-3.4.3-.1.7-.1 1-.1 1.6 0 3.1.9 3.9 1.9 1.4 1.7 1.6 3.4 1.5 4.5-.2 1.6-.9 2.7-1.4 3.1-.8.6-1.6.7-2.1.7-2.5.2-2.8.6-3.1 1.2-.6 1.4-.1 2.4.1 2.7l6.2 6.2-6.9 7c-.9 1.9-.1 2.7.8 3.4.4.3.6.3.8.3.1 0 .3 0 .4-.1.3-.1.6-.1 1-.1 1.7 0 3.1 1.2 3.6 2.2.9 2.1.5 4-1.1 5.7-1.1 1.2-2.4 1.8-3.8 1.8-1.1 0-1.9-.4-2.5-.7-1-.5-1.5-1.4-1.7-2.5-.4-3.4-.5-3.5-1.2-4-.8-.5-1.5-.6-2.1-.3l-6.7 6.7-.3.3 6.8 6.8c.3.5.4 1.4-.3 2.6-.6.9-.9 1-4.3 1.4-.5.1-1.6.3-2.3 1.5-.8 1.5-1.2 3.8 1.1 5.8.6.5 1.4 1.1 2.5 1.4 1.9.2 2.5-.2 2.9-.3 1.1-.5 2.4-2.1 1.9-4.1-.1-.4-.2-.9.3-1.6.6-.8 1.7-2 4-.9l.2.2 6.5 6 .7.7h1.9V38.6H36.7zm5.2 30.8c.7-1.1 1.2-1.2 4.6-1.6.9-.1 1.5-.5 2-1.3.5-.9 1.4-3.1-1-5.3-1.5-1.4-3.1-1.7-4.9-1-1 .4-2.1 1.9-1.6 3.6.1.3.3 1.1-.4 1.9-.4.5-1.2 1.5-2.6 1.5-.6 0-1.2-.2-1.8-.5l-.1-.1-.2-.2-6.3-6.3-5.7 5.7c-.4.3-1 .6-1.9.6-.5 0-1.1-.1-1.6-.3-1.1-.5-1.5-1.4-1.7-3.7 0-.4-.1-.9-.6-1.8-.5-.8-1.6-1.7-3.1-1.7-1.1 0-2.3.5-3.4 1.4-.6.5-2.1 2-1.4 4.8 0 .1.3 2.1 2.9 2.7.4.1.7.1 1 0 .5 0 1.1 0 1.7.2h.1c.1 0 1.7 1 1.8 2.5.1.9-.3 1.7-1.2 2.5l-.3.4-5.7 5.7 18.9 19.2 6.2-6.3c.7-.6 1-1.2.9-1.8-.1-1-1.3-1.8-1.5-2-.5-.2-.9-.2-1.4-.1-.4 0-.8 0-1.3-.1-3.1-.7-3.5-3.3-3.5-3.4-.5-2.3.1-4.4 1.7-5.6 1.3-1 2.5-1.4 3.8-1.4 1.9 0 3.3 1.1 3.9 2.1.5.9.6 1.5.7 2.1.2 2.3.5 2.9 1.3 3.1.4.1.9.2 1.2.2.9 0 1.3-.4 1.4-.5l5.7-5.6-6.8-7c-.4-.3-.6-1.3.2-2.6M99.2 77l3.4 6.8c.2.5.3.8.3 1.1 0 .3-.1.5-.3.7-.2.2-.4.3-.7.3-.4 0-.8-.3-1.1-.9L97 77.4h-4.7v7.2c0 .2-.1.5-.2.6-.2.4-.5.6-.9.6s-.7-.2-.9-.6c-.1-.2-.2-.4-.2-.6V65.9c0-.5.1-.8.4-1.1.2-.2.6-.3 1-.3h4.7c1.1 0 1.9.1 2.7.4.7.2 1.4.6 2.1 1.2 1.5 1.3 2.3 2.9 2.3 4.9 0 1.5-.5 2.9-1.5 4.1-.8.7-1.6 1.3-2.6 1.9m-7-1.8h3.9c1.4 0 2.4-.3 3.3-1 1-.8 1.4-1.9 1.4-3.2 0-1.4-.5-2.4-1.5-3.2-.8-.7-2-1-3.4-1h-3.8v8.4zM116.7 80.7H109l-1.4 4.3c-.2.5-.5.8-1.1.8-.3 0-.6-.1-.8-.4-.2-.2-.3-.5-.3-.7 0-.1 0-.3.1-.4l6.2-18.4c.3-.9.7-1.4 1.2-1.4s.8.2 1 .6c.1.2.2.5.3.8l6 18.3c0 .2.1.3.1.4 0 .3-.1.5-.3.7-.2.2-.5.3-.8.3-.5 0-.9-.3-1.1-.8l-1.4-4.1zm-6.9-2.2h6.3l-3.1-9.4-3.2 9.4zM130 75.2l-2.9 8.7c-.3.7-.4 1.1-.5 1.3-.2.4-.5.5-.9.5-.6 0-1-.5-1.2-1.5l-4-18.4v-.3c0-.3.1-.6.4-.8.2-.2.4-.3.7-.3.6 0 1 .3 1.1.9l3.2 15 2.7-7.9c.3-.8.5-1.3.6-1.4.2-.2.4-.3.8-.3s.7.1.8.3c.1.1.3.6.6 1.4l2.7 7.9 3.2-15c.1-.6.5-.9 1.1-.9.3 0 .5.1.7.3.3.2.4.5.4.8v.3l-3.9 18.4c-.2 1-.6 1.5-1.2 1.5-.3 0-.5-.1-.7-.2-.2-.2-.4-.7-.8-1.6l-2.9-8.7zM151 80.7h-7.7l-1.4 4.3c-.2.5-.5.8-1.1.8-.3 0-.6-.1-.8-.4-.2-.2-.3-.5-.3-.7 0-.1 0-.3.1-.4l6.2-18.4c.3-.9.7-1.4 1.2-1.4s.8.2 1 .6c.1.2.2.5.3.8l6 18.3c0 .2.1.3.1.4 0 .3-.1.5-.3.7-.2.2-.5.3-.8.3-.5 0-.9-.3-1.1-.8l-1.4-4.1zm-6.9-2.2h6.3l-3.1-9.4-3.2 9.4zM91.1 92.5v6.2c0 .1 0 .2-.1.3-.1.2-.2.2-.4.2s-.3-.1-.4-.2c0-.1-.1-.2-.1-.3v-7.6c0-.6.2-.8.5-.8.2 0 .3.1.5.4l2.2 3.7 2.2-3.7c.2-.3.3-.4.5-.4.3 0 .5.3.5.8v7.6c0 .1 0 .2-.1.3-.1.2-.2.2-.4.2s-.3-.1-.4-.2c0-.1-.1-.2-.1-.3v-6.2L94 95.2c-.1.1-.2.3-.3.4-.1.1-.2.2-.4.2-.1 0-.3-.1-.4-.2-.1-.1-.2-.2-.3-.4l-1.5-2.7zM102.5 97.1h-3.2l-.6 1.8c-.1.2-.2.3-.5.3-.1 0-.2-.1-.3-.2-.1-.1-.1-.2-.1-.3v-.2l2.6-7.7c.1-.4.3-.6.5-.6s.3.1.4.2c0 .1.1.2.1.4l2.5 7.7v.2c0 .1 0 .2-.1.3-.1.1-.2.1-.3.1-.2 0-.4-.1-.4-.4l-.6-1.6zm-2.9-1h2.6l-1.3-4-1.3 4zM106.1 98.3h3.7c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-4.3c-.4 0-.6-.1-.6-.4 0-.1.1-.3.2-.6l3.9-7h-3.7c-.1 0-.2 0-.3-.1-.2-.1-.2-.2-.2-.4s.1-.3.2-.4c.1 0 .2-.1.3-.1h4c.3 0 .5 0 .6.1.2.1.3.2.3.3 0 .1-.1.3-.2.5l-3.9 7.1zM111.1 96.2v-3c0-.9.2-1.5.7-2.1.3-.3.6-.5.9-.7.4-.2.7-.2 1.1-.2.4 0 .7.1 1.1.2.4.2.7.4.9.6.2.2.4.5.5.9.1.3.2.7.2 1v3.4c0 .4-.1.7-.2 1.1-.1.4-.3.7-.6.9-.5.5-1.1.8-1.9.8-.8 0-1.5-.3-2-.9-.3-.3-.5-.7-.6-1 0-.2-.1-.6-.1-1m4.5.1v-3.1c0-.6-.1-1.1-.4-1.4-.3-.4-.8-.6-1.4-.6-.6 0-1 .2-1.4.6-.3.3-.4.8-.4 1.4v3c0 .7.2 1.2.5 1.5.3.3.8.5 1.3.5.6 0 1-.2 1.4-.6.3-.3.4-.7.4-1.3M121.9 94.8l-1.2 3.7c-.1.3-.2.5-.2.5-.1.2-.2.2-.4.2s-.4-.2-.5-.6l-1.7-7.7v-.1c0-.1.1-.2.2-.3.1-.1.2-.1.3-.1.3 0 .4.1.5.4l1.4 6.3 1.1-3.3c.1-.3.2-.5.2-.6.1-.1.2-.1.3-.1.2 0 .3 0 .3.1s.1.3.2.6l1.1 3.3 1.4-6.3c.1-.3.2-.4.5-.4.1 0 .2 0 .3.1.1.1.2.2.2.4v.1l-1.7 7.7c-.1.4-.3.6-.5.6-.1 0-.2 0-.3-.1-.1-.1-.2-.3-.3-.7l-1.2-3.7zM127.6 98.7v-7.9c0-.1 0-.2.1-.3.1-.2.2-.2.4-.2s.3.1.4.2c0 .1.1.2.1.3v7.9c0 .1 0 .2-.1.3-.1.2-.2.2-.4.2s-.3-.1-.4-.2c-.1-.1-.1-.2-.1-.3M131.7 91.2v2.7h2.1c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-2.1v3.5h3c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-3.4c-.2 0-.4 0-.5-.2-.1-.1-.1-.2-.1-.4V91c0-.2 0-.3.1-.4.1-.1.2-.1.4-.1h3.4c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-2.9zM138.8 90.3h1.6c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-1.7c-.5 0-.8.1-1 .3-.2.2-.3.6-.4 1.3v3.9c0 .6.1 1 .4 1.3.2.2.6.3 1 .3h1.7c.1 0 .2 0 .3.1.2.1.2.2.2.4s-.1.3-.2.4c-.1 0-.2.1-.3.1h-1.6c-1.6 0-2.5-.8-2.5-2.4v-4.2c0-.8.2-1.5.7-1.9.5-.5 1.1-.6 1.8-.6M145.1 93.8l2.4 4.5c.1.2.2.4.2.5 0 .1 0 .2-.1.3-.1.1-.2.2-.3.2-.1 0-.3-.1-.3-.2s-.1-.2-.2-.3l-.1-.1-2.2-4.1-1.2 1.1v3.2c0 .1 0 .2-.1.3-.1.2-.2.2-.4.2s-.3-.1-.4-.2c0-.1-.1-.2-.1-.3V91c0-.1 0-.2.1-.3.1-.2.2-.2.4-.2s.3.1.4.2c0 .1.1.2.1.3v3.5l3.8-3.9c.1-.1.2-.2.4-.2.1 0 .2 0 .3.1.1.1.1.2.1.3 0 .1-.1.2-.2.3l-2.6 2.7zM153.4 97.1h-3.2l-.6 1.8c-.1.2-.2.3-.4.3-.1 0-.2-.1-.3-.2-.1-.1-.1-.2-.1-.3v-.2l2.6-7.7c.1-.4.3-.6.5-.6s.3.1.4.2c0 .1.1.2.1.4l2.5 7.7v.2c0 .1 0 .2-.1.3-.1.1-.2.1-.3.1-.2 0-.4-.1-.5-.4l-.6-1.6zm-2.9-1h2.6l-1.3-4-1.3 4zM101.5 44c.1.3.1.6.1.9v.7c0 .9-.1 1.7-.3 2.6-.2.8-.5 1.6-.9 2.3-.4.7-.9 1.3-1.4 1.7-.6.4-1.2.7-2 .7-.5 0-1-.2-1.3-.7-.3-.4-.5-.8-.7-1.4-.2-.5-.3-1-.3-1.6v-.1l-.1.1c-.2.3-.4.6-.7 1l-.9 1.2c-.3.4-.7.7-1.1 1-.4.3-.9.5-1.4.5-.3 0-.6-.1-.9-.4-.2-.2-.3-.5-.4-.9-.1-.3-.2-.7-.2-1.1 0-.4-.1-.8-.1-1.3s0-.9.1-1.4c0-.4.1-.9.2-1.2.1-.4.1-.7.2-1 .1-.3.1-.5.1-.6 0-.2.1-.3.3-.6.2-.3.5-.5.8-.5.4 0 .6.1.8.3.2.2.2.4.2.7v.3c0 .1 0 .2-.1.3-.1.5-.3 1.1-.4 1.8-.1.9-.1 1.5-.1 2.1 0 .5 0 1 .1 1.3v.2s.2-.1.4-.4c.3-.3.6-.7.9-1.1.3-.4.6-.9.9-1.3.3-.5.5-.8.6-1.1 0 0 .1-.1.1-.3.1-.1.1-.2.1-.2 0-.1.1-.3.1-.4 0-.2.1-.4.2-.5.1-.2.2-.4.4-.5.2-.1.4-.2.8-.2.6 0 .8.3.9.5.1.2.1.5.1.8v1.3c0 .2 0 .6.1 1 0 .4.1.8.2 1.2.1.4.2.7.3 1 .1.2.2.2.2.2.2 0 .5-.2.7-.4.3-.3.6-.7.8-1.2.3-.5.5-1.1.6-1.7.2-.6.3-1.3.3-1.9l-.1-1c0-.5.1-.8.4-1 .2-.2.4-.2.7-.2.2-.1.5.1.7.5m13.7-.3c0-.2-.1-.4-.2-.6-.1-.1-.3-.3-.7-.3h-1.7c.2-.6.4-1.3.6-1.9.3-.8.5-1.6.8-2.4.1-.2.1-.3.1-.5s-.1-.5-.2-.7c-.1-.2-.4-.4-.9-.4-.3 0-.6.1-.7.3-.1.2-.3.4-.4.6-.3.9-.6 1.8-.8 2.6-.2.8-.5 1.6-.7 2.4l-1.5.1c-.3 0-.5 0-.6.1-.3 0-.6.1-.7.2-.1.1-.3.3-.3.7 0 .4.2.7.7.8.3.1.6.1.9.1h1c-.2.8-.4 1.6-.5 2.4-.1.9-.2 1.8-.2 2.6 0 1 .1 1.8.2 2.4.1.6.2.9.2 1.1 0 .1 0 .1.1.2l.1.3c.1.1.1.3.2.4.1.2.2.3.3.5.2.3.5.4.7.4.6 0 .7-.4.7-.5 0-.2.1-.3.1-.4 0-.2 0-.3-.1-.5 0-.1-.1-.3-.2-.4-.1-.3-.2-.8-.3-1.2-.1-.5-.1-1.1-.1-1.8v-.4-.4c0-.2.1-.6.1-1.1.1-.5.1-1 .2-1.5l.3-1.5c.1-.3.2-.5.2-.7h2.2c.7 0 1.1-.4 1.1-1m6 1.7c.1.4.1.9.1 1.2 0 .5-.1 1.1-.2 1.7-.2.6-.4 1.2-.7 1.8-.3.6-.7 1-1.2 1.4-.5.4-1.1.6-1.8.6-.5 0-1-.1-1.4-.3-.4-.2-.7-.5-.9-.8-.2-.3-.4-.7-.5-1.1-.1-.4-.2-.8-.2-1.2 0-.8.1-1.5.3-2.2.2-.7.5-1.4.9-1.9.4-.6.8-1 1.3-1.4 1-.7 2.3-.7 3.1-.1.3.3.6.6.8 1 .2.5.4.9.4 1.3m-1.9.7c0-.2-.1-.5-.1-.7-.1-.2-.2-.4-.3-.5-.1-.1-.2-.1-.2-.1-.3 0-.6.1-.8.3-.3.2-.5.5-.7.9-.2.4-.4.8-.5 1.3-.1.5-.2.9-.2 1.3 0 .2 0 .4.1.6 0 .2.1.4.2.6.1.2.2.3.3.4.1.1.2.1.4.1.3 0 .5-.1.8-.3.3-.3.5-.6.7-1 .2-.4.3-.8.4-1.2.1-.4.1-.8.1-1.1-.1-.2-.1-.4-.2-.6m22.6.5c0-.4-.1-.7-.2-1-.1-.3-.1-.6-.2-.8-.1-.3-.3-.5-.5-.7-.5-.4-1.1-.5-1.8-.1-.3.2-.5.4-.8.6l-1 1c-.3.4-.6.8-.8 1.2l-.6.9v-.2c-.1-.4-.1-.8-.3-1.3-.1-.5-.3-.9-.5-1.3-.2-.3-.4-.6-.6-.8-.6-.5-1.4-.5-2.2 0-.4.2-.7.5-1.1.9-.2.2-.3.4-.5.5 0-.1 0-.3.1-.4 0-.3.1-.6.1-.9v-.8c0-.2 0-.3-.1-.5-.1-.4-.3-.6-.5-.7-.5-.3-1.1-.2-1.4.1-.2.1-.3.4-.3.8v.4c0 .1.1.2.1.3 0 .1.1.1.1.2v.8l-.1.6c0 .3-.1.6-.2 1.1-.1.5-.2.9-.3 1.4l-.4 2.2c0 .1-.1.4-.1.7-.1.3-.1.7-.1 1 0 1.1.8 1.2 1 1.2.4 0 .6-.2.7-.3.1-.1.2-.4.3-.6 0-.1.1-.4.2-.9.1-.4.3-.9.5-1.5.1-.1.1-.3.3-.6.1-.2.3-.5.4-.8l.6-.9c.2-.3.4-.5.6-.8.2-.2.4-.4.6-.5.1-.1.3-.2.4-.2l.1.1c.1.2.2.4.2.7.1.3.1.6.2 1 0 .4.1.7.1 1l.1.9c0 .3 0 .5.1.6 0 .3.1.5.2.8.1.2.3.6 1 .6.2 0 .4-.1.7-.3.1-.1.2-.3.3-.4.1-.2.3-.4.5-.8s.5-.8.8-1.2c.3-.4.6-.9.9-1.3.3-.4.6-.8.9-1.1l.4-.4c.1.2.1.3.1.6.1.4.1.8.1 1.2v1.3c0 .5 0 1-.1 1.4 0 .4-.1.8-.2 1.1-.1.2-.1.3-.1.5 0 .3.2.5.3.6.1.1.3.2.5.2.3 0 .8-.1 1.1-.8.1-.4.3-.8.3-1.4.1-.5.1-1.1.1-1.7v-1.3c.1-.5.1-.9 0-1.2m3.4-2.4c-.6 0-1 .4-1 1v.2c0 .2-.1.5-.1.9-.1.4-.2.9-.2 1.4-.1.5-.2 1-.2 1.6-.1.6-.1 1.1-.1 1.7v.6c0 .3.1.5.1.8.1.3.2.5.3.7.2.3.5.4.8.4.1 0 .3 0 .4-.1.2-.1.4-.3.4-.6 0-.2 0-.3-.1-.5v-.2-.6c0-.3.1-.6.1-1s.1-.7.1-1.1c0-.4.1-.7.1-.9l.3-1.5c.1-.6.2-1.1.2-1.5 0-1.2-.8-1.3-1.1-1.3m.2-3.7c-.2 0-.6.1-.9.4-.2.3-.4.6-.4 1 0 .3.1.6.2.9.2.3.5.5.8.6.3 0 .6-.1.9-.4.2-.3.4-.6.4-1 0-.3-.1-.7-.2-.9 0-.4-.3-.6-.8-.6m16 8.1c0 .6.1 1.2.1 1.7 0 .9-.1 1.8-.2 2.8-.1 1-.3 1.9-.5 2.8-.2.9-.5 1.8-.8 2.6-.3.8-.7 1.6-1.1 2.2-.4.7-.9 1.2-1.5 1.6-.6.4-1.2.6-1.9.6-.2 0-.4 0-.6-.1-.2 0-.5-.1-.7-.2-.2-.1-.4-.2-.6-.4-.2-.2-.3-.4-.3-.7 0-.1 0-.2.1-.4s.3-.3.5-.3.4.1.7.2c.7.3 1.1.1 1.6-.3.4-.3.7-.8 1-1.4.3-.6.6-1.3.8-2 .2-.8.5-1.6.6-2.4.2-.8.3-1.7.4-2.5.1-.8.1-1.6.1-2.3v-1.2c-.1.2-.3.4-.4.6-.3.5-.7 1-1.1 1.5-.4.5-.9.9-1.4 1.2-.5.4-1.1.5-1.7.5-.7 0-1.1-.2-1.4-.6-.3-.4-.4-.8-.4-1.4 0-.4.1-.9.2-1.5.1-.5.3-1.1.6-1.6s.6-1.1.9-1.6c.3-.5.7-1 1.1-1.4.4-.4.8-.8 1.3-1 .6-.4 1.2-.5 1.9-.4.2 0 .4.1.6.2.2.1.4.2.5.4.2.2.3.4.4.7h.1v.5c.1.1.2.3.3.4.2.3.3.8.4 1.3.3.8.3 1.4.4 1.9m-2.9-2.6c0-.2 0-.3.1-.5 0 0 0-.1.1-.1-.3 0-.6.2-1 .5-.4.4-.9.9-1.2 1.5-.4.6-.7 1.2-1 1.8-.3.6-.4 1.1-.4 1.6v.2c.1 0 .2-.1.4-.2.2-.2.5-.4.8-.7.3-.3.6-.7.8-1 .3-.4.5-.8.7-1.1.2-.4.4-.7.6-1 .1-.2.2-.4.2-.5-.1-.2-.1-.3-.1-.5m12.5-2.1c0-.3-.1-.6-.3-.8-.2-.2-.4-.3-.6-.4-.2-.1-.4-.1-.6-.2h-.5c-.8 0-1.6.2-2.2.7-.3.2-.6.5-.9.8v-.1c0-.2-.1-.5-.2-.7-.3-.5-1.1-.6-1.6-.2-.2.2-.4.4-.4.7v.3c0 .2 0 .4-.1.7 0 .3-.1.6-.1 1s-.1.7-.2 1.1c-.1.4-.1.8-.2 1.2-.1.5-.1.9-.2 1.4-.1.5-.1.9-.1 1.4 0 .5-.1.9-.1 1.2 0 .2 0 .5.1.7.1.2.3.5.8.5.4 0 .6-.2.7-.3.1-.2.2-.4.2-.7 0-.3.1-.6.1-.9 0-.4.1-.7.2-1.1.1-.4.2-.8.3-1.3.1-.4.3-.9.4-1.3.1-.3.3-.7.5-1.1.2-.4.5-.7.8-1 .3-.3.6-.6 1-.8.3-.2.7-.3 1-.3.2 0 .3 0 .4.1.4.1.8.2 1.1 0 .5-.1.7-.3.7-.6m4.7 5.8c0 .1 0 .2.1.3.1.5.2.9.4 1.3s.4.8.7 1.2c.3.4.6.7 1.1.9.1 0 .2.1.2.1.1 0 .2.1.3.1.2 0 .3 0 .4-.1.2-.1.3-.3.3-.6 0-.2-.1-.3-.2-.5l-.3-.3c-.3-.3-.5-.7-.7-1-.2-.4-.3-.8-.4-1.2-.1-.4-.2-.9-.2-1.3 0-.5-.1-.9-.1-1.3V46c0-.2 0-.5-.1-.7-.1-.2-.3-.5-.8-.5-.3 0-.5.1-.7.4l-.3.6c0 .1-.1.3-.2.5-.1.3-.3.6-.5 1s-.4.8-.7 1.2c-.2.4-.5.8-.7 1.2-.2.3-.5.6-.7.9-.2.2-.3.2-.3.3l-.1-.1v-.3-.3c0-.6.1-1.2.4-1.9.2-.7.5-1.4.9-2 .4-.6.7-1.1 1.2-1.5.4-.3.7-.5 1-.5h.2c.1 0 .2.1.3.1.1.1.3.1.4.2.5.2.8.1 1-.2.1-.1.1-.3.1-.5 0-.3-.1-.5-.3-.7-.2-.2-.3-.3-.6-.4-.2-.1-.4-.2-.7-.2-.2 0-.4-.1-.6-.1-.7 0-1.4.3-2 .7-.6.5-1.2 1.1-1.7 1.8s-.9 1.6-1.2 2.5c-.3.9-.5 1.8-.5 2.7v.8c0 .3.1.6.2.9.1.3.3.5.6.7.6.4 1.6.4 2.3-.2.4-.3.7-.6 1-1 .3-.4.6-.8.9-1.3.5-.2.6-.3.6-.4m5.6-6.5c.2 0 .5-.1.8-.4.2-.2.3-.5.3-.8 0-.4-.1-.7-.4-1-.3-.4-.7-.5-1-.5-.3 0-.6.2-.8.4-.1.2-.2.5-.2.8 0 .4.1.8.4 1.1.2.3.6.4.9.4m.5.3c-.3 0-.5.1-.7.3-.2.2-.2.4-.2.7v.3c.1.4.2.9.3 1.6.1.7.1 1.5.1 2.4 0 .3 0 .8-.1 1.5s-.1 1.5-.3 2.5c-.1.9-.3 1.9-.5 2.8-.2 1-.4 1.9-.7 2.7-.3.8-.6 1.4-.9 1.9-.3.4-.6.6-.9.6 0 0-.1 0-.2-.2s-.2-.5-.3-.8c-.1-.3-.2-.6-.2-.9 0-.3-.1-.6-.1-.7 0-.2-.1-.5-.2-.6-.1-.2-.3-.4-.7-.4-.5 0-.7.2-.9.4-.1.2-.2.5-.2.7 0 .4 0 .8.1 1.3s.2 1 .4 1.5.5.9.8 1.3c.4.4.8.6 1.4.6.6 0 1.2-.2 1.7-.6.5-.3.9-.8 1.2-1.4.4-.6.7-1.2.9-2 .3-.7.5-1.5.7-2.3.2-.8.4-1.6.5-2.4.1-.8.2-1.6.3-2.3.1-.7.1-1.4.2-2 0-.6.1-1.1.1-1.5 0-1.6-.1-2.8-.3-3.6-.2-1.1-.8-1.4-1.3-1.4m5.1 6.8c-.1.1-.3.2-.4.4-.1.1-.1.3-.2.4 0 .2-.1.3-.1.4 0 1.3.8 1.5 1.1 1.5.2 0 .4-.1.6-.2.2-.2.4-.4.4-.6.1-.2.1-.4.1-.7 0-.3-.1-.7-.2-.9-.2-.5-.9-.7-1.3-.3m4.7-14.8c-.2-.3-.4-.4-.8-.4-.6 0-.9.3-1 .5-.1.2-.2.5-.3.8-.3.9-.5 1.9-.7 2.8l-.6 3c-.2 1-.4 2-.6 3.1l-.6 3c0 .2-.1.3-.1.4 0 .2.1.5.2.6.1.2.3.4.8.4.4 0 .7-.2.8-.5.1-.2.2-.5.2-.7l2.9-12.3v-.1c0-.1 0-.4-.2-.6"/></svg></a>
+                </div>
+                <div class="footer__address"><strong>Miejski Dom Kultury im. Danuty Siedzikówny &bdquo;Inki&rdquo;</strong><br>96-200 Rawa Mazowiecka, ul. Krakowska 6c</div>
+                <div class="footer__copyright">&copy; 2026 MDK Rawa Mazowiecka<br><span style="text-transform:none"><a href="/deklaracja-dostepnosci">Deklaracja dostępności</a> | <a href="/polityka-ochrony-dzieci">Polityka ochrony dzieci</a></span><!-- <a href="">fb</a><a href="">YT</a> --></div>
+            </div>
+        </div>
+    </div>
+</footer>
+    
+    <script src="/wp-content/themes/mdkrawa/js/libs.min.js?v=4.15.0"></script>
+    <script src="/wp-content/themes/mdkrawa/js/scripts.min.js?v=4.15.0"></script>
+
+</body>
+</html>
