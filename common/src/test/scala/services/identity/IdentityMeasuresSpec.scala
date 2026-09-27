@@ -411,4 +411,20 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Listing("Sense and Sensibility", directors = Seq("Georgia Oakley")).publishesAFact shouldBe true
     Listing("Sense and Sensibility", runtime = Some(132)).publishesAFact shouldBe true
   }
+
+  "a title naming two films" should "name them apart when their pieces sit at spans of it that do not overlap" in {
+    val gruffalo = Film("The Gruffalo"); val child = Film("The Gruffalo's Child")
+    // A double bill: the two titles share words, but each has its own place in the title.
+    IdentityMeasures.namedApart(Listing("The Gruffalo + The Gruffalo's Child"), gruffalo, child) shouldBe true
+    // Disjoint words, as before.
+    IdentityMeasures.namedApart(Listing("Lalka (Dolly)"), Film("Lalka"), Film("Dolly")) shouldBe true
+    // Nested: one film's title is part of the other's, which the whole title names.
+    IdentityMeasures.namedApart(Listing("Joker: Folie à deux"), Film("Joker"), Film("Joker: Folie à deux")) shouldBe false
+    IdentityMeasures.namedApart(Listing("The Gruffalo's Child"), gruffalo, child) shouldBe false
+    // A film named by both of its titles leaves no place of its own for a third title's word.
+    IdentityMeasures.namedApart(Listing("Tokyo Story (Tôkyô monogatari)"), Film("Tokyo Story", Some("Tôkyô monogatari")), Film("Tokyo")) shouldBe false
+    // A film whose own title joins two others' is named by the whole title, which overlaps both.
+    IdentityMeasures.namedApart(Listing("Romeo + Juliet"), Film("Romeo + Juliet"), Film("Romeo")) shouldBe false
+    IdentityMeasures.namedApart(Listing("Fast & Furious"), Film("Fast & Furious"), Film("Furious")) shouldBe false
+  }
 }

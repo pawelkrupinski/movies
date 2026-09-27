@@ -708,6 +708,44 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "take neither for a programme whose two films' titles share words but not their place in it" in {
+    // UK, Odeon's "The Gruffalo + The Gruffalo's Child" (×39): 53 minutes, both films' directors
+    // credited. Its title starts with one film's title and ends with the other's; the two share
+    // "The Gruffalo", so read as word sets they looked nested and the pooled vote took one film.
+    // They sit at spans of the title that do not overlap: the title names both alike, its facts fit
+    // both alike (both directors, the runtime of neither), so it takes neither.
+    val films    = Seq(F(28118, "The Gruffalo", 2009, "Max Lang", 27, 8), F(81684, "The Gruffalo's Child", 2011, "Johannes Weiland", 27, 6))
+    val plain    = Seq(Multikino, Helios).map(listing(_, "The Gruffalo", director = Some("Max Lang"), runtime = Some(27)))
+    val bill     = Seq(KinoApollo, Rialto).map(listing(_, "The Gruffalo + The Gruffalo's Child",
+      director = Some("Jakob Schuh, Max Lang, Johannes Weiland"), runtime = Some(53)))
+    val r = shipped(plain ++ bill, films)
+    withClue((plain ++ bill).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      plain.foreach(l => r.decisionOf(l.key).film shouldBe Some(28118))
+      bill.foreach(l => r.decisionOf(l.key).film shouldBe None)
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "still take the one film the facts of such a title fit" in {
+    // The same title credited to one film's director at its runtime: the facts pick that film.
+    val films = Seq(F(28118, "The Gruffalo", 2009, "Max Lang", 27, 8), F(81684, "The Gruffalo's Child", 2011, "Johannes Weiland", 27, 6))
+    val one   = listing(KinoApollo, "The Gruffalo + The Gruffalo's Child", Some(2011), Some("Johannes Weiland"), Some(27))
+    val d = shipped(Seq(one), films).decisionOf(one.key)
+    withClue(d.render)(d.film shouldBe Some(81684))
+  }
+
+  it should "still take a film whose own title joins two others' ('Romeo + Juliet', 'Fast & Furious')" in {
+    val romeo  = Seq(F(454, "Romeo + Juliet", 1996, "Baz Luhrmann", 120, 30), F(6003, "Romeo", 2011, "Someone Else", 90, 2),
+      F(6004, "Juliet", 2015, "Another One", 95, 2), F(6005, "Romeo and Juliet", 1968, "Franco Zeffirelli", 138, 15))
+    val furious = Seq(F(13804, "Fast & Furious", 2009, "Justin Lin", 107, 40), F(6006, "Fast", 2010, "Someone Else", 80, 2),
+      F(6007, "Furious", 2017, "Another One", 110, 3))
+    val bareRomeo   = listing(KinoApollo, "Romeo + Juliet")
+    val bareFurious = listing(KinoApollo, "Fast & Furious")
+    withClue(shipped(Seq(bareRomeo), romeo).decisionOf(bareRomeo.key).render)(shipped(Seq(bareRomeo), romeo).decisionOf(bareRomeo.key).film shouldBe Some(454))
+    withClue(shipped(Seq(bareFurious), furious).decisionOf(bareFurious.key).render)(
+      shipped(Seq(bareFurious), furious).decisionOf(bareFurious.key).film shouldBe Some(13804))
+  }
+
   it should "still join a decorated spelling whose other pieces name no film to its plain siblings" in {
     val films    = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162, 3), F(81315, "Lalka", 1968, "Wojciech Has", 152, 2.5))
     val credited = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"), Some(162)))

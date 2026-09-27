@@ -481,11 +481,28 @@ object IdentityMeasures {
   /** Does the listing's title name the two films by DISJOINT pieces — "Lalka (Dolly)" names
    *  Kawalski's "Lalka" by one word and Blackhurst's "Dolly" by the other, and neither by the
    *  whole? Then its title names both alike, and only what else it publishes can tell them apart.
-   *  Nested pieces are no such tie: "Joker: Folie à deux" names its own film by the whole title
-   *  and "Joker" only by a piece of it. */
+   *  Two pieces are disjoint when they share no word, or when they sit at spans of the listing's
+   *  title that do not overlap: the double bill "The Gruffalo + The Gruffalo's Child" names each
+   *  film by its own part of the title, though both parts spell "The Gruffalo". Nested pieces are
+   *  no such tie: "Joker: Folie à deux" names its own film by the whole title and "Joker" only by
+   *  a piece of it, and a film whose own title joins two others' ("Romeo + Juliet") is named by
+   *  the whole title, which every piece overlaps. */
   def namedApart(l: Listing, a: Film, b: Film): Boolean = {
     val (pa, pb) = (namingPieces(l, a), namingPieces(l, b))
-    pa.nonEmpty && pb.nonEmpty && pa.forall(x => pb.forall(y => (x.toSet intersect y.toSet).isEmpty))
+    pa.nonEmpty && pb.nonEmpty && (
+      pa.forall(x => pb.forall(y => (x.toSet intersect y.toSet).isEmpty)) ||
+        (Seq(l.title) ++ l.rawTitle).map(words).distinct.exists(placedApart(pa.toSeq, pb.toSeq, _)))
+  }
+  /** Can every piece of `pa` and of `pb` be placed in `title` (one occurrence each) so that no word
+   *  of the title is under a piece of both? Every piece must occur in it: "Tokyo Story (Tokyo
+   *  Monogatari)" names Ozu's film by both of its titles, which leave "Tokyo" nowhere of its own. */
+  private def placedApart(pa: Seq[Seq[String]], pb: Seq[Seq[String]], title: Seq[String]): Boolean = {
+    def placements(pieces: Seq[Seq[String]]): Seq[Set[Int]] =
+      pieces.foldLeft(Seq(Set.empty[Int])) { (covered, p) =>
+        for { c <- covered; i <- title.indices if title.startsWith(p, i) } yield c ++ (i until i + p.size)
+      }
+    val (ca, cb) = (placements(pa), placements(pb))
+    ca.exists(x => cb.exists(y => (x intersect y).isEmpty))
   }
 
   /** The listing's own ORIGINAL title against every title of the other side: the same title, a
