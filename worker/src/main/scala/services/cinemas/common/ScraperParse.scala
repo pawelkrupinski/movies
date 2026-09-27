@@ -216,6 +216,17 @@ private[cinemas] object ScraperParse {
   def extractFormatTags(raw: String): (String, List[String]) = FormatTags.extractFormatTags(raw)
   def formatTokensIn(text: String): List[String] = FormatTags.formatTokensIn(text)
 
+  private val RuntimeHours   = """(\d+)\s*godz""".r
+  private val RuntimeMinutes = """(\d+)\s*min""".r
+
+  /** A runtime spelled in hours and minutes — "1 godz. 53 min", "3 godz 03 min",
+   *  "95 min" — in minutes; `None` when neither part is present. */
+  def hoursMinutesRuntime(s: String): Option[Int] = {
+    val hours   = RuntimeHours.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
+    val minutes = RuntimeMinutes.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
+    Some(hours * 60 + minutes).filter(_ > 0)
+  }
+
   private val FourDigitYear = """(?:19|20)\d{2}""".r
 
   /** A cinema "production" line — "USA 2026", "Polska, Kanada, Hiszpania, 2026" —

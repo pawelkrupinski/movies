@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="pl">
+	<head>
+		<meta charset="utf-8">
+		<title> Repertuar środa 30 września 2026  - Stylowy.net</title>
+		<link rel="shortcut icon" href="/templates/images/favicon.ico" />
+		<base href="https://www.stylowy.net/" />
+		<meta name="viewport" content="width=device-width, initial-scale=1 viewport-fit=cover">
+		<meta name="deklaracja-dostępności" content="page/64-deklaracja-dostepnosci-serwisu.html">
+		<meta name="Description" content="Repertuar zamojskiego kina CKF Stylowy" />
+		<meta name="Keywords" content="kino, zamość, senase, repertuar, film, repertuar kina, repertuar kinowy, kino w zamościu," />
+		
+		<meta property="og:site_name" content="CKF Stylowy w Zamościu">
+		<meta property="og:title" content=" Repertuar środa 30 września 2026  - Stylowy.net" />
+	    <meta property="og:description" content="Repertuar zamojskiego kina CKF Stylowy" />
+		<meta property="og:url" content="" />
+		
+		
+
+		
+		<script src="https://weblegal.ai/js/wl-cookie-consent.js"
+       data-color="#25aae1"
+       data-privacy-url="https://www.stylowy.net/page/49-polityka-plikow-cookie.html"></script>	
+		
+		
+	
+		<link href='https://fonts.googleapis.com/css?family=Roboto:700,500,400,400italic&amp;subset=latin,latin-ext' rel='stylesheet' type='text/css' >
+		
+		<link href="templates/assets/_bootstrap/css/bootstrap.min.css" rel="stylesheet">
+		<link href="templates/assets/css/offcanvas-navbar.css?20251008" rel="stylesheet">
+		<link href="templates/assets/_swiper/css/swiper-bundle.min.css?20251008"  rel="stylesheet" />
+		<link href="templates/assets/css/stylowy24.css?202603131" rel="stylesheet">
+		<link href="templates/assets/css/stylowypf.css?202600" rel="stylesheet">
+
+
+        <!-- Facebook Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+ fbq('init', '890264170152280'); 
+fbq('track', 'PageView');
+</script>
+<noscript>
+ <img height="1" width="1" 
+src="https://www.facebook.com/tr?id=890264170152280&ev=PageView
+&noscript=1"/>
+</noscript>
+<!-- End Facebook Pixel Code -->
+	</head>
+
+
+<body>
+<!-- Modal for trailers -->
+
+<div class="modal fade" id="trailerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"><img src="templates/images/ui/ico-close.svg" title="zamknij" /></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="ratio ratio-16x9" id="player">
+                </div>
+            </div>
+            <div class="modal-footer d-none">
+                <button type="button" class="btn-dark" id="playBtn">Play</button>
+                <button type="button" class="btn-dark" id="pauseBtn">Pause</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for trailers koniec --><!-- Navigation --><!-- holiday-1-menu-pattern holiday-2-menu-pattern -->
+<nav id="navMain" class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark " aria-label="Main navigation">
+	<div class="container-fluid"> 
+		<a class="navbar-brand" href="/">	
+		<!-- org templates/images/logo_org.svg holi templates/images/holiday-1/logo.svg   --> 
+			<img src="templates/images/logo_org.svg" class="card-img img-fluid" alt="Stylowy">
+		</a>
+		<a class="navbar-brand" href="dolbyatmos/" title="Dolby Atmos - nowy wymiar dźwięku">		
+<span class="fst fst-dolby fst-3x"></span>
+
+	<!--	<img src="templates/images/logo-dolby.svg" class="card-img img-fluid atmosHeadLogo" alt="Dolby Atmos">-->
+		</a>
+		<button class="navbar-toggler p-0 border-0" type="button" id="navbarSideCollapse" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="navbar-collapse offcanvas-collapse" id="navbarsStylowy">
+			<ul class="navbar-nav ms-auto mb-2 mb-lg-0 text-center">
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="repertuar/" title="Repertuar " >Repertuar</a></li>
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="zapowiedzi/" title="Zapowiedzi filmowe ">Zapowiedzi</a></li>
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="oferta/35-sala-kinowa-zamojskiej-akademii-kultury.html" title="Repertuar w sali ZAK">Sala ZAK</a></li>
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="oferta/20-seans-dla-grup-szkolnych-.html" title="Oferta dla szkół ">Szkoły</a></li>
+                <li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2"  href="oferta" title="Oferta i promocje ">Oferta</a></li>
+                <li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2"  href="cennik/" title="Cennik ">Cennik</a></li>
+				
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="events/" title="Wydarzenia ">Wydarzenia</a></li>
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="news/" title="Aktualności ">Aktualności</a></li>
+				
+				
+				<li class="nav-item"><a class="nav-link px-md-2 px-xl-4 py-3 py-lg-2" href="kino/" title="CKF Stylowy ">Kino</a></li>
+	        </ul>
+	    </div>
+	</div>
+</nav>
+<!-- Navigation koniec--><!-- Holiday 1 Baner -->
+	<!-- 
+<div class="holiday-1-baner bg-dark text-center p-0">
+<div class="align-items-center text-white bg-dark holiday-1-baner-bg py-5">
+<div class="txt-shadow-drk">
+<div class="fs-3 lh-1 py-2">Spokojnych i radosnych Świąt&nbsp;Bożego&nbsp;Narodzenia<br/>oraz<br/>wszelkiej pomyślności w&nbsp;Nowym&nbsp;Roku</div>
+<div class="fs-5 lh-1 py-2 text-gold">życzą<br/>Dyrektor i Pracownicy<br/>Centrum Kultury Filmowej "Stylowy" w&nbsp;Zamościu</div>
+</div>
+</div>
+<div class="py-3">
+<div class="alert holiday-element holiday-1-alert mx-3 mb-0 text-center text-dark" role="alert">Uprzejmie informujemy, że w Wigilię (24 grudnia) oraz w pierwszy dzień świąt Bożego Narodzenia (25 grudnia) kino będzie nieczynne.<br/><span class="fw-medium">Na świąteczne seanse zapraszamy już&nbsp;26&nbsp;grudnia!</span></div>
+</div>
+</div>   --> 
+<!-- Holiday 1 Baner koniec --><!-- Holiday 2 Baner -->
+	<!--  
+<div class="holiday-2-baner bg-dark text-center p-0">
+<div class="align-items-center text-white bg-dark holiday-2-baner-bg py-5">
+<div class="txt-shadow-drk">
+<div class="fs-3 lh-1 py-2">Pełnych spokoju i nadziei świąt Zmartwychwstania Pańskiego,<br />dużo zdrowia, pomyślności i wiosennego nastroju</div>
+<div class="fs-5 lh-1 py-2 text-gold">życzą<br/>Dyrektor i Pracownicy<br/>Centrum Kultury Filmowej "Stylowy" w&nbsp;Zamościu</div>
+</div>
+</div>
+<div class="py-3">
+<div class="alert holiday-element holiday-2-alert mx-3 mb-0 text-center text-dark" role="alert">Składając życzenia świąteczne informujemy, że w dniach 3-5 kwietnia 2026 Centrum Kultury Filmowej „Stylowy" będzie nieczynne.<br/><span class="fw-medium">Na seanse filmowe zapraszamy już 6 kwietnia, w drugi dzień Świąt Wielkanocnych.</span></div>
+</div>
+</div>   
+-->
+<!-- Holiday 2 Baner koniec --><!-- startCalendar --><!-- class holiday-1-calendar-pattern -->
+<div id="startCalendar" class="container-full  pt-4 px-0 ">
+	<div>
+		<h2 class="text-center  text-white txt-shadow-blu">Wybierz interesujący Cię dzień </h2>
+	
+		<div class="swiperStartCalendar containerStartCalendar  pt-3 pb-4 px-5 position-relative">
+			
+			<div class="swiper-wrapper">
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-09-27" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayNIE"><b>NIE</b><br/><small>27 WRZ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-09-28" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayPON"><b>PON</b><br/><small>28 WRZ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-09-29" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayWTO"><b>WTO</b><br/><small>29 WRZ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-09-30" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  cardFirst strtCalDayŚRO"><b>ŚRO</b><br/><small>30 WRZ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-01" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayCZW"><b>CZW</b><br/><small>01 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-02" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayPIĄ"><b>PIĄ</b><br/><small>02 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-03" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDaySOB"><b>SOB</b><br/><small>03 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-04" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayNIE"><b>NIE</b><br/><small>04 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-05" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayPON"><b>PON</b><br/><small>05 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-06" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayWTO"><b>WTO</b><br/><small>06 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-07" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayŚRO"><b>ŚRO</b><br/><small>07 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+				<div class="swiper-slide ">
+					<a href="repertuar/repertuar.html&amp;rep_date=2026-10-08" title="Aktualny repertuar w CKF Stylowy" aria-label="Aktualny repertuar w CKF Stylowy">
+					<div class="card  strtCalDayCZW"><b>CZW</b><br/><small>08 PAŹ</small></div>
+					</a>
+					
+				</div>
+	
+			
+			
+			</div>
+			
+			<div class="swiper-button-next swiperStartCalendar-button-next"><span class="fst fst-arrow-wht fst-3x"></span></div>
+			<div class="swiper-button-prev swiperStartCalendar-button-prev"><span class="fst fst-arrow-wht fst-3x"></span></div>
+			<!--<div class="swiperStartCalendar-pagination text-center"></div>-->
+		</div>
+
+	</div>
+</div>
+  
+<!-- startCalendar koniec--><!-- start Repertuar -->
+<div id="startRepertuar">
+<h2 class="text-center pt-5">Repertuar <span>na środa 30 września 2026 </span></h2>
+
+<!-- holiday-1-alert-info sacrofilm-alert -->
+
+<!--
+<div class="holiday-element alert alert-info holiday-2-alert-info m-3 m-md-5 pb-4 pb-md-3 text-center fs-2" role="alert" onclick="window.open('http://sacrofilm.pl/','Sacrofilm');" style="cursor: pointer;">
+<strong>9-13 marca 2025 </strong><br/> 29. Międzynarodowe Dni Filmu Religijnego SACROFILM - Zapraszamy 
+</div> 
+ -->
+ 
+
+
+
+<div class="container py-3 ">
+	<div class="row">
+	
+		
+		<div class="col-12 col-md-6 ">
+			
+
+			<div class="card mb-3 position-relative">
+				<div class="row g-0">
+					<div class="col-4">
+						<div class="startRepertuarPoster position-relative">
+						<a href="https://www.stylowy.net/film/4166-luna-i-rozgadana-swinka.html" title="LUNA I ROZGADANA ŚWINKA / dubbing" title="Zobacz zwiastun LUNA I ROZGADANA ŚWINKA / dubbing" aria-label="Zobacz zwiastun LUNA I ROZGADANA ŚWINKA / dubbing"><img src="data/film/41/4166_500x720.jpg" alt="LUNA I ROZGADANA ŚWINKA / dubbing" class="d-block img-fluid w-100" /></a>
+						<a class="buttonPlay trailerPlayHandlerId" data-bs-toggle="modal" data-bs-target="#trailerModal" data-ytlink="9vQihQhstxc" title="Zobacz zwiastun LUNA I ROZGADANA ŚWINKA / dubbing" aria-label="Zobacz zwiastun LUNA I ROZGADANA ŚWINKA / dubbing"><span class="fst fst-play-x heroplay"></span></a>
+						</div>
+					</div>
+					<div class="col-8">
+						<div class="card-header text-end badgesContainer py-1 px-2">
+			
+							<em class="badgepf badgepfDlaDzieci">DLA DZIECI</em>
+						</div>
+						<div class="card-body">
+							<a href="https://www.stylowy.net/film/4166-luna-i-rozgadana-swinka.html" class="card-title fs-5 text-decoration-none lh-1 d-block mb-0" title="Zwiastun filmu" aria-label="Zwiastun filmu"><strong>LUNA I ROZGADANA ŚWINKA</strong></a>
+							<p class="card-text text-secondary mb-1 pt-1 pb-1">animowany <em class="badge text-bg-success align-text-bottom fw-semibold text-success-emphasis bg-success-subtle border border-success-subtle rounded-2">od&nbsp;lat&nbsp;6</em></p>
+							<p class="card-text d-none d-xl-block border-top"><small class="text-body-secondary">Jeden z twórców „Artura i Minimków” Philippe Riche zaprasza na widowiskową, pełną humoru i wyobraźni animację, która łączy przygodę z mądrym przesłaniem o świecie natury. Opowieść...</small></p>
+						</div>
+						
+					</div>
+				</div>
+				<div class="card-footer px-0 pb-3">
+					<div class="row g-0">
+						<div class="col-4 text-center pe-1 mt-3 pe-0">
+							<strong class="text-dark">KUP BILET</strong>
+						</div>
+						
+						
+						<div class="col-8 text-center">
+							
+								
+								<div class="btnKupBilet25 " aria-disabled="false">
+									<span class="bKB25blob">
+									
+									dubbing
+									
+									</span>
+									
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=2994&idt=51613f4eacd2a6a5d473f1604d521481&ReturnLink=https://www.stylowy.net/film/4166-luna-i-rozgadana-swinka.html" class="bKB25hour" rel="nofollow">09:00</a>
+									
+									
+									<div class="bKB25feat">
+										
+									</div>
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=2994&idt=51613f4eacd2a6a5d473f1604d521481&ReturnLink=https://www.stylowy.net/film/4166-luna-i-rozgadana-swinka.html" class="bKB25btn" title="Kup bilet" aria-label="Kup bilet">Kup bilet</a>
+									
+									
+								</div>		<!--    -->
+						</div>
+						
+						
+					</div>
+				</div>
+			</div>
+
+		</div>
+	
+	
+		<div class="col-12 col-md-6 ">
+			
+
+			<div class="card mb-3 position-relative">
+				<div class="row g-0">
+					<div class="col-4">
+						<div class="startRepertuarPoster position-relative">
+						<a href="https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" title="TEDI I MAGICZNA LAMPA / dubbing" title="Zobacz zwiastun TEDI I MAGICZNA LAMPA / dubbing" aria-label="Zobacz zwiastun TEDI I MAGICZNA LAMPA / dubbing"><img src="data/film/41/4164_500x720.jpg" alt="TEDI I MAGICZNA LAMPA / dubbing" class="d-block img-fluid w-100" /></a>
+						<a class="buttonPlay trailerPlayHandlerId" data-bs-toggle="modal" data-bs-target="#trailerModal" data-ytlink="Wwrcx9LnBmw" title="Zobacz zwiastun TEDI I MAGICZNA LAMPA / dubbing" aria-label="Zobacz zwiastun TEDI I MAGICZNA LAMPA / dubbing"><span class="fst fst-play-x heroplay"></span></a>
+						</div>
+					</div>
+					<div class="col-8">
+						<div class="card-header text-end badgesContainer py-1 px-2">
+			
+							<em class="badgepf badgepfDlaDzieci">DLA DZIECI</em>
+						</div>
+						<div class="card-body">
+							<a href="https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" class="card-title fs-5 text-decoration-none lh-1 d-block mb-0" title="Zwiastun filmu" aria-label="Zwiastun filmu"><strong>TEDI I MAGICZNA LAMPA</strong></a>
+							<p class="card-text text-secondary mb-1 pt-1 pb-1">animowany <em class="badge text-bg-success align-text-bottom fw-semibold text-success-emphasis bg-success-subtle border border-success-subtle rounded-2">od&nbsp;lat&nbsp;6</em></p>
+							<p class="card-text d-none d-xl-block border-top"><small class="text-body-secondary">Tedi to trochę niezdarny budowlaniec, który od dziecka marzył, żeby zostać odkrywcą i archeologiem. Najnowszy film TEDI I MAGICZNA LAMPA to trzecia część tej niezwykle popularnej i lubianej serii,...</small></p>
+						</div>
+						
+					</div>
+				</div>
+				<div class="card-footer px-0 pb-3">
+					<div class="row g-0">
+						<div class="col-4 text-center pe-1 mt-3 pe-0">
+							<strong class="text-dark">KUP BILET</strong>
+						</div>
+						
+						
+						<div class="col-8 text-center">
+							
+								
+								<div class="btnKupBilet25 " aria-disabled="false">
+									<span class="bKB25blob">
+									
+									dubbing
+									
+									</span>
+									
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=3210&idt=18ec427b5317286b27ad606c5ef33142&ReturnLink=https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" class="bKB25hour" rel="nofollow">08:45</a>
+									
+									
+									<div class="bKB25feat">
+										
+									</div>
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=3210&idt=18ec427b5317286b27ad606c5ef33142&ReturnLink=https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" class="bKB25btn" title="Kup bilet" aria-label="Kup bilet">Kup bilet</a>
+									
+									
+								</div>		<!--    -->
+								
+								<div class="btnKupBilet25 " aria-disabled="false">
+									<span class="bKB25blob">
+									
+									dubbing
+									
+									</span>
+									
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=3168&idt=40f24fe8560d67fbcebf24fd1fa24758&ReturnLink=https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" class="bKB25hour" rel="nofollow">09:15</a>
+									
+									
+									<div class="bKB25feat">
+										
+									</div>
+									
+									<a href="https://bilety.stylowy.net/rezerwacja/rezerwacja/miejsca.html?id=3168&idt=40f24fe8560d67fbcebf24fd1fa24758&ReturnLink=https://www.stylowy.net/film/4164-tedi-i-magiczna-lampa.html" class="bKB25btn" title="Kup bilet" aria-label="Kup bilet">Kup bilet</a>
+									
+									
+								</div>		<!--    -->
+						</div>
+						
+						
+					</div>
+				</div>
+			</div>
+
+		</div>
+	
+	
+	<!--
+	<div class="alert alert-info alert-warning text-center" role="alert">
+	Brak repertuaru na wybrany dzień.
+	</div> -->
+
+	</div>
+</div>
+</div>
+<!-- start Repertuar koniec--><!-- start Wydarzenia Promowane -->
+
+<div id="startWydarzenia" class="container-full bg-dark text-white pb-3">
+	<div class="container">
+		<h2 class="text-center pt-3 pb-2">Promowane</h2>
+		
+		<div class="card-group">
+		
+			 
+			<div class="card bg-transparent">
+				<div class="card-body py-1">
+					<a href="https://www.stylowy.net/oferta/2-tanie-wtorki.html" title="Tanie wtorki w CKF Stylowy"><img src="data/banner/7/750.jpg?26270906" alt="baner Tanie wtorki w CKF Stylowy" class="card-img d-block m-auto" /></a>
+				</div>
+			</div>
+		 
+			<div class="card bg-transparent">
+				<div class="card-body py-1">
+					<a href="https://www.stylowy.net/oferta/35-sala-kinowa-zamojskiej-akademii-kultury.html" title="Repertuar ZAK"><img src="data/banner/7/753.jpg?26270906" alt="baner Repertuar ZAK" class="card-img d-block m-auto" /></a>
+				</div>
+			</div>
+		 
+		 
+		</div>
+
+	</div>
+</div>
+
+<!-- start Wydarzenia koniec --><!-- stopka -->
+<div class="bg-black">
+	<div class="stopkaImg d-none d-sm-block">
+		<img loading="lazy" src="templates/images/footer/sala-bg.jpg" alt="background" class="w-100"/>
+	</div>
+	<div id="stopka" class="container py-3">
+		<div class="row m-0 pb-3">
+					<div class="col-12 col-sm-6 col-lg-3">
+						
+						<div class=" d-none d-sm-block">
+							<h5 class="futerHeadline pb-2">Oferta</h5>
+							<ul class="nav flex-column">
+								<li class="nav-item"><a href="repertuar/" title="Repertuar" class="nav-link futerLnk">Repertuar</a></li>
+								<li class="nav-item"><a href="zapowiedzi/" title="Zapowiedzi" class="nav-link futerLnk">Zapowiedzi</a></li>								<li class="nav-item"><a href="oferta/35-sala-kinowa-zamojskiej-akademii-kultury.html" title="Repertuar w sali ZAK" class="nav-link futerLnk">Sala ZAK</a></li>
+								<li class="nav-item"><a href="film/" class="nav-link futerLnk">Baza filmów</a></li>
+								<li class="nav-item"><a href="cennik/" title="Ceny biletów" class="nav-link futerLnk">Cennik</a></li>
+								<li class="nav-item"><a href="oferta/18-wynajem-sal.html" title="Oferta wynajmu sal w Zamościu" class="nav-link futerLnk">Wynajem sal </a></li>
+								<li class="nav-item"><a href="oferta/19-reklama.html" title="Oferta marketingowa - reklama w kinie" class="nav-link futerLnk">Reklama </a></li>
+							</ul>
+						</div>
+						
+						<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt1">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#st1-collapseOne" aria-expanded="false" aria-controls="st1-collapseOne">
+										Oferta
+									</button>
+		    					</h2>
+								<div id="st1-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionSt1">
+									<div class="accordion-body">
+										<ul class="nav flex-column">
+											<li class="nav-item"><a href="repertuar/" title="Repertuar" class="nav-link futerLnk">Repertuar</a></li>
+											<li class="nav-item"><a href="zapowiedzi/" title="Zapowiedzi" class="nav-link futerLnk">Zapowiedzi</a></li>
+											<li class="nav-item"><a href="film/" class="nav-link futerLnk">Baza filmów</a></li>
+											<li class="nav-item"><a href="cennik/" title="Ceny biletów" class="nav-link futerLnk">Cennik</a></li>
+											<li class="nav-item"><a href="oferta/18-wynajem-sal.html" title="Oferta wynajmu sal w Zamościu" class="nav-link futerLnk">Wynajem sal </a></li>
+											<li class="nav-item"><a href="oferta/19-reklama.html" title="Oferta marketingowa - reklama w kinie" class="nav-link futerLnk">Reklama </a></li>
+											<li class="nav-item"><a href="biletotwarty/" title="Bilet otwarty wymienisz na właściwy bilet w kasie kina." class="nav-link futerLnk">Bilet otwarty </a></li>
+											
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+					</div>
+					<div class="col-12 col-sm-6 col-lg-3">
+						
+						<div class=" d-none d-sm-block">
+						<h5 class="futerHeadline pb-2">Polecamy</h5>
+						<ul class="nav flex-column">
+							<li class="nav-item"><a href="http://sacrofilm.pl/" class="nav-link futerLnk">Sacrofilm </a></li>
+							<li class="nav-item"><a href="http://www.alchemiakina.pl/" class="nav-link futerLnk">Alchemia kina</a></li>
+							<li class="nav-item"><a href="http://www.zamoscfilmfestival.pl/" class="nav-link futerLnk">Zamojski Festiwal Filmowy  <br/>„Spotkania z historią”</a></li>
+							<li class="nav-item"><a href="page/55-polecane-strony.html" title="Polecane strony" class="nav-link futerLnk">Polecane strony </a></li>
+						</ul>
+						</div>
+						
+						<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt2">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#st2-collapseOne" aria-expanded="false" aria-controls="st2-collapseOne">
+										Polecamy
+									</button>
+		    					</h2>
+								<div id="st2-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionSt2">
+									<div class="accordion-body">
+										<ul class="nav flex-column">
+											<li class="nav-item"><a href="http://sacrofilm.pl/" class="nav-link futerLnk">Sacrofilm </a></li>
+											<li class="nav-item"><a href="http://www.alchemiakina.pl/" class="nav-link futerLnk">Alchemia kina</a></li>
+											<li class="nav-item"><a href="http://www.zamoscfilmfestival.pl/" class="nav-link futerLnk">Zamojski Festiwal Filmowy  <br/>„Spotkania z historią”</a></li>
+											<li class="nav-item"><a href="page/55-polecane-strony.html" title="Polecane strony" class="nav-link futerLnk">Polecane strony </a></li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+					</div>			
+					<div class="col-12 col-sm-6 col-lg-3">
+						
+						<div class=" d-none d-sm-block">
+						<h5 class="futerHeadline pb-2">Kino</h5>
+						<ul class="nav flex-column">
+							<li class="nav-item"><a href="kino/" class="nav-link futerLnk">Informacje o kinie</a></li>
+							<li class="nav-item"><a href="page/65-o-kinie-wersja-etr.html" class="nav-link futerLnk"> O kinie - wersja ETR</a></li>
+							<li class="nav-item"><a href="dolbyatmos/" class="nav-link futerLnk">Dolby Atmos</a></li>
+								<li class="nav-item"><a href="page/70-infinity-vision.html" class="nav-link futerLnk">Infinity Vision</a></li>
+							<li class="nav-item"><a href="contact/" class="nav-link futerLnk">Kontakt</a></li>
+							<li class="nav-item"><a href="faq/" class="nav-link futerLnk">Pytania i odpowiedzi</a></li>
+							<li class="nav-item"><a href="page/64-deklaracja-dostepnosci-serwisu.html" class="nav-link futerLnk">Deklaracja dostępności</a></li>
+							<!--<li class="nav-item"><a href="http://bckf.zamosc.pl/" rel="nofollow" class="nav-link futerLnk">Budowa CKF</a></li>-->
+						</ul>
+						</div>
+						
+						<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt3">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#st3-collapseOne" aria-expanded="false" aria-controls="st3-collapseOne">
+										Kino
+									</button>
+		    					</h2>
+								<div id="st3-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionSt3">
+									<div class="accordion-body">
+										<ul class="nav flex-column">
+											<li class="nav-item"><a href="kino/" class="nav-link futerLnk">Informacje o kinie</a></li>
+											<li class="nav-item"><a href="page/65-o-kinie-wersja-etr.html" class="nav-link futerLnk"> O kinie - wersja ETR</a></li>
+											<li class="nav-item"><a href="dolbyatmos/" class="nav-link futerLnk">Dolby Atmos</a></li>
+											<li class="nav-item"><a href="contact/" class="nav-link futerLnk">Kontakt</a></li>
+											<li class="nav-item"><a href="faq/" class="nav-link futerLnk">Pytania i odpowiedzi</a></li>
+											<li class="nav-item"><a href="page/64-deklaracja-dostepnosci-serwisu.html" class="nav-link futerLnk">Deklaracja dostępności</a></li>
+											<li class="nav-item"><a href="http://bckf.zamosc.pl/" rel="nofollow" class="nav-link futerLnk">Budowa CKF</a></li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+					</div>
+					<div class="col-12 col-sm-6 col-lg-3">
+						
+						<div class=" d-none d-sm-block">				
+						<h5 class="futerHeadline pb-2">Regulaminy i&nbsp;ochrona danych</h5>
+						<ul class="nav flex-column">
+							<li class="nav-item"><a href="page/44-regulamin.html" class="nav-link futerLnk">Regulamin</a></li>
+							<li class="nav-item"><a href="page/47-regulamin-sprzedazy-internetowej.html" class="nav-link futerLnk">Regulamin sprzedaży<br/>internetowej</a></li>
+							<li class="nav-item"><a href="page/42-polityka-prywatnosci.html" class="nav-link futerLnk">Polityka Prywatności</a></li>
+							<li class="nav-item"><a href="page/49-polityka-plikow-cookie.html" class="nav-link futerLnk">Polityka plików Cookie</a></li>
+							<li class="nav-item"><a href="http://www.stylowy.net/page/58-ochrona-danych-osobowych.html" rel="nofollow" class="nav-link futerLnk">Ochrona Danych <br/>Osobowych</a></li>
+							<li class="nav-item"><a href="http://www.stylowy.net/page/59-monitoring-wizyjny.html" rel="nofollow" class="nav-link futerLnk">Monitoring wizyjny</a></li>
+						</ul>
+						</div>
+						
+						<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt4">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#st4-collapseOne" aria-expanded="false" aria-controls="st4-collapseOne">
+										Regulaminy i&nbsp;ochrona danych
+									</button>
+		    					</h2>
+								<div id="st4-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionSt4">
+									<div class="accordion-body">
+										<ul class="nav flex-column">
+											<li class="nav-item"><a href="page/44-regulamin.html" class="nav-link futerLnk">Regulamin</a></li>
+							<li class="nav-item"><a href="page/47-regulamin-sprzedazy-internetowej.html" class="nav-link futerLnk">Regulamin sprzedaży<br/>internetowej</a></li>
+							<li class="nav-item"><a href="page/42-polityka-prywatnosci.html" class="nav-link futerLnk">Polityka Prywatności</a></li>
+							<li class="nav-item"><a href="page/49-polityka-plikow-cookie.html" class="nav-link futerLnk">Polityka plików Cookie</a></li>
+							<li class="nav-item"><a href="http://www.stylowy.net/page/58-ochrona-danych-osobowych.html" rel="nofollow" class="nav-link futerLnk">Ochrona Danych <br/>Osobowych</a></li>
+							<li class="nav-item"><a href="http://www.stylowy.net/page/59-monitoring-wizyjny.html" rel="nofollow" class="nav-link futerLnk">Monitoring wizyjny</a></li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						
+					</div>
+		</div>
+
+		<div class="stopka2 d-none d-sm-block"></div>
+		
+		<div class="row m-0 py-0 py-sm-3">
+			<div class="col-12 col-sm-6 col-lg-4">
+				
+				<div class="d-none d-sm-block">
+				<h5 class="futerHeadline pb-2">Kontakt</h5>
+				<div class=""> 
+					<div itemscope itemtype="http://data-vocabulary.org/Organization">
+						<span itemprop="name">Centrum Kultury Filmowej "Stylowy" w Zamościu </span><br />
+						<span itemprop="name">22-400 Zamość, ul. Odrodzenia 9</span><br />
+						<span itemprop="tel">tel. 84 639 23 13</span><br />
+						e-mail: <a href="mailto:ckf@stylowy.net" class="futerLnk">ckf@stylowy.net</a> 
+					</div>
+				</div>
+				</div>
+				
+				<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt5">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed pt-0" type="button" data-bs-toggle="collapse" data-bs-target="#st5-collapseOne" aria-expanded="false" aria-controls="st5-collapseOne">
+										Kontakt
+									</button>
+		    					</h2>
+								<div id="st5-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionSt5">
+									<div class="accordion-body">
+										<div>
+											<span>Centrum Kultury Filmowej "Stylowy" w Zamościu </span><br />
+											<span>22-400 Zamość, ul. Odrodzenia 9</span><br />
+											<span>tel. 84 639 23 13</span><br />
+											e-mail: <a href="mailto:ckf@stylowy.net" class="futerLnk">ckf@stylowy.net</a> 
+										</div>
+									</div>
+								</div>
+							</div>
+				</div>
+	
+			</div>
+			<div class="col-12 col-sm-6 col-lg-8">
+				<div class="stopkalinki text-center py-3 d-none d-sm-block">
+					<a href="http://bip.stylowy.net/" title="BIP CKF STYLOWY"><span class="fst fst-logo-bip fst-4x"></span></a>
+					<a href="http://www.zamosc.pl/" title="Miasto Zamość"><span class="fst fst-logo-twierdza fst-4x"></span></a>
+					<a href="https://stowarzyszeniekinstudyjnych.pl/" title="Stowarzyszenie Kin Studyjnych" rel="nofollow"><span class="fst fst-logo-sks fst-4x"></span></a>
+					<a href="http://www.pisf.pl/" title="PISF. Polski Instytut Sztuki Filmowej" rel="nofollow"><span class="fst fst-logo-pisf fst-5x"></span></a>
+					<!--  <a href="http://www.fn.org.pl/" title="Filmoteka Narodowa" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-fina.png" alt="filmoteka narodowa" class="d-inline mx-0 my-3"/></a>
+					<a href="http://www.c-kino.pl/" title="Sieć Polskich Kin Cyfrowych" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-ckino.png" alt="Sieci Polskich Kin Cyfrowych" class="d-inline mx-0 my-3"/></a>
+					<a href="http://kinads.pl/" title=">KinAds | Zintegrowana reklama w kinie i internecie" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-kinads.png" alt="KinAds" class="d-inline mx-0 my-3"/></a> -->
+				</div>
+				
+				<div class="accordion accordion-flush widget accordion-bg-dark d-block d-sm-none" id="accordionSt6">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed pt-3 pb-4" type="button" data-bs-toggle="collapse" data-bs-target="#st6-collapseOne" aria-expanded="false" aria-controls="st6-collapseOne">
+										Patroni/Współpraca
+									</button>
+		    					</h2>
+								<div id="st6-collapseOne" class="accordion-collapse collapse stopkalinki" data-bs-parent="#accordionSt6">
+									<div class="accordion-body" style="text-align:center;">
+										<a href="http://bip.stylowy.net/" title="BIP CKF STYLOWY"><span class="fst fst-logo-bip fst-4x"></a>
+										<a href="http://www.zamosc.pl/" title="Miasto Zamość"><span class="fst fst-logo-twierdza fst-4x"></span></a>
+										<a href="https://stowarzyszeniekinstudyjnych.pl/" title="Stowarzyszenie Kin Studyjnych" rel="nofollow"><span class="fst fst-logo-sks fst-4x"></span></a>
+										<a href="http://www.pisf.pl/" title="PISF. Polski Instytut Sztuki Filmowej" rel="nofollow"><span class="fst fst-logo-pisf fst-5x"></span></a>
+										<!-- <a href="http://www.fn.org.pl/" title="Filmoteka Narodowa" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-fina.png" alt="filmoteka narodowa" class="d-inline mx-0 my-3"/></a>
+										<a href="http://www.c-kino.pl/" title="Sieć Polskich Kin Cyfrowych" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-ckino.png" alt="Sieci Polskich Kin Cyfrowych" class="d-inline mx-0 my-3"/></a>
+										<a href="http://kinads.pl/" title=">KinAds | Zintegrowana reklama w kinie i internecie" rel="nofollow"><img loading="lazy" src="templates/images/footer/logo-kinads.png" alt="KinAds" class="d-inline mx-0 my-3"/></a> -->
+									</div>
+								</div>
+							</div>
+				</div>
+			</div>		
+		</div>
+
+		<div class="stopkaCprght row m-0 border-top py-3">
+		<div class="col-12 col-sm-6 order-2 order-sm-1 text-center text-sm-start">Copyright © 2024 Centrum Kultury Filmowej Stylowy</div>
+		<div class="col-12 col-sm-2 order-1 order-sm-2 footerSocialLink text-center">
+			<a class="" href="http://www.facebook.com/ckfstylowy" title="Facebook" target="_blank"><span class="fst fst-fb"></span></a>
+			<a class="" href="https://www.instagram.com/kinozamosc" title="Instagram" target="_blank"><span class="fst fst-insta"></span></a>
+			<a class="" href="http://www.stylowy.net/xml/rss.php" title="RSS" target="_blank"><span class="fst fst-rss"></span></a>
+		</div>
+		<div class="col-12 col-sm-4 order-3 order-sm-3 text-center text-sm-end d-none d-sm-block">Projekt i realizacja <a href="http://www.dotbek.com" title="Systemy, serwisy WWW"><div class="svg_dotbek"></div></a></div>
+	</div>
+	</div>
+</div>
+<!-- stopka KONIEC-->
+
+		<script src="templates/assets/js/popper.min.js"></script>
+		<script src="templates/assets/_bootstrap/js/bootstrap.bundle.min.js"></script>
+		<script src="templates/assets/js/offcanvas-navbar.js"></script>
+		<script src="templates/assets/_swiper/js/swiper-bundle.min.js"></script>
+		<script src="templates/assets/js/stylowy24.js"></script>
+	
+		<script type="text/javascript">
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-4580874-1', 'stylowy.net');
+		  ga('send', 'pageview');
+		</script>
+		
+	</body>
+</html>
