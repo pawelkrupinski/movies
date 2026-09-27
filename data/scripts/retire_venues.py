@@ -24,6 +24,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -55,7 +56,7 @@ GONE = {404, 410}
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
 
 
-def probe(url: str) -> str:
+def status_of(url: str) -> str:
     """The page's HTTP status as text, or why there is none."""
     request = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
@@ -65,6 +66,19 @@ def probe(url: str) -> str:
         return str(error.code)
     except Exception as error:  # noqa: BLE001 — any failure to get a status keeps the venue
         return f"no answer ({type(error).__name__})"
+
+
+def probe(url: str, fetch=status_of, sleep=time.sleep, attempts: int = 3) -> str:
+    """The page's status, asking again when it did not answer at all. A status is the
+    page's answer and stands; a blip must not keep a venue, because the sweep asks for
+    a confirmed venue only once."""
+    answer = fetch(url)
+    for attempt in range(1, attempts):
+        if answer.isdigit():
+            break
+        sleep(5 * attempt)
+        answer = fetch(url)
+    return answer
 
 
 def decide(retired: dict, venues: list, page: str, status_of, today: str):
