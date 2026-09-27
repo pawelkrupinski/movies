@@ -159,7 +159,7 @@ object IdentityCalibrate {
     obs.indices.foreach { i =>
       val o = obs(i); val pool = pools(i); val g = IdentityMeasures.key(o.listing.title)
       // The qualifier pieces, learned from the pool's records as the resolver learns them from its family's.
-      val qualifiers = IdentityMeasures.Qualifiers.learn(pool.toSeq.sortBy(_._1).flatMap { case (_, (_, f)) => Seq(f.title) ++ f.originalTitle })
+      val qualifiers = IdentityMeasures.Qualifiers.learn(pool.toSeq.sortBy(_._1).map(_._2._2))
       val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f, houses, qualifiers).value }
       val close = closeTitles.count { case (_, r) => IdentityMeasures.Rivalling(r) }
       pool.foreach { case (id, (rank, f)) =>

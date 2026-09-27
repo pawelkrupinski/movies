@@ -18,9 +18,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
                              alternatives: Seq[String] = Nil)
 
-  /** A film database of `films`: search by all-words containment of a title or an alternative title, the
-   *  directors' filmographies, and each film's record. */
-  private final class Table(films: Seq[F]) extends IdentityLookups {
+  /** A film database of `films`: search by all-words containment of a title or an alternative title
+   *  — plus, for a query of `fuzzy`, the films TMDB's looser search returned for it in a recording —
+   *  the directors' filmographies, and each film's record. */
+  private final class Table(films: Seq[F], fuzzy: Map[String, Seq[Int]] = Map.empty) extends IdentityLookups {
     private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
     private def hit(f: F) = Hit(f.id, f.title, None, Some(f.year), f.popularity)
     override def hasDetail(l: Listing): Boolean = false
@@ -28,7 +29,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
       case CandidateQuery.Title(text) =>
         val want = words(text)
-        films.filter(f => want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
+        val recorded = fuzzy.collect { case (query, ids) if words(query) == want => ids }.flatten.toSeq
+        (films.filter(f => want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity) ++
+          recorded.flatMap(id => films.find(_.id == id))).distinct.map(hit)
       case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
     })
     // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
@@ -775,7 +778,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // none — the cut is the qualifier, and a record of the qualifier alone names nothing.
     val films = directorsCuts ++ Seq(F(2666, "Dark City", 1998, "Alex Proyas", 100, 13.3), F(36331, "Dark City", 1950, "William Dieterle", 98, 2.7))
     val cut   = listing(Rialto, "Dark City: Director's Cut")
-    val r = resolve(Seq(cut), films)
+    // TMDB's search for the whole title returned the work (recording 36224654409).
+    val r = IdentityResolver.resolve(Seq(cut), new Table(films, Map("Dark City: Director's Cut" -> Seq(2666))), normalizer, weights)
     withClue(r.decisionOf(cut.key).render) {
       r.decisionOf(cut.key).film should not be Some(355536)
       r.decisionOf(cut.key).film should not be Some(1291247)
@@ -783,7 +787,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // "Michael Mann's Manhunter: The Final Cut" (US, Alamo) took Omar Naim's "The Final Cut" (2004).
     val manhunter = Seq(F(11454, "Manhunter", 1986, "Michael Mann", 120, 0.4), F(100279, "Manhunter", 1974, "Walter Grauman", 74, 2.3))
     val mann = listing(Rialto, "Michael Mann's Manhunter: The Final Cut")
-    val m = resolve(Seq(mann), finalCuts ++ manhunter)
+    val m = IdentityResolver.resolve(Seq(mann), new Table(finalCuts ++ manhunter, Map("Michael Mann's Manhunter: The Final Cut" -> Seq(11454))),
+      normalizer, weights)
     withClue(m.decisionOf(mann.key).render) {
       Set(Some(11099), Some(2442)) should not contain m.decisionOf(mann.key).film
     }
@@ -835,6 +840,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       listing(KinoMuza, "Throwback: Dark City"), listing(KinoMuza, "Throwback: Heat"))
     val t = resolve(banners, darko ++ directorsCuts :+ F(2666, "Dark City", 1998, "Alex Proyas", 100, 13.3))
     t.decisionOf(banners.head.key).film shouldBe Some(141)
+  }
+
+  it should "leave a work its record under a banner no record names, however many sequels bill it" in {
+    // PL, four venues' "Tani wtorek: OBCY" and UK Cineworld's "Cineworld 30: The Dark Knight" lost
+    // their film when records billing the work beside its sequels made the work read as a qualifier.
+    // No record carries the banner: nothing else is named, so the work's record still names it.
+    val films = Seq(F(1429348, "Obcy", 2025, "Zuzanna Grajcewska", 90, 3), F(126889, "Obcy: Przymierze", 2017, "Ridley Scott", 122, 30),
+      F(945961, "Obcy: Romulus", 2024, "Fede Alvarez", 119, 60), F(348, "Obcy - 8. pasażer Nostromo", 1979, "Ridley Scott", 117, 50))
+    val bannered = listing(KinoMuza, "Tani wtorek: Obcy", Some(2025), Some("Zuzanna Grajcewska"))
+    val r = IdentityResolver.resolve(Seq(bannered), new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue(r.decisionOf(bannered.key).render) { r.decisionOf(bannered.key).film shouldBe Some(1429348) }
   }
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {

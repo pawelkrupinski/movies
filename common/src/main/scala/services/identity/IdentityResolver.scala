@@ -225,7 +225,7 @@ object IdentityResolver {
        *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
        *  record titled only a listing's qualifier does not name it. The family's own pool, so a
        *  family resolves alone as it does among the others. */
-      val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.flatMap(c => Seq(c.film.title) ++ c.film.originalTitle))
+      val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
       private val groups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
         members.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
           .groupMap(_._1)(_._2)
@@ -360,11 +360,14 @@ object IdentityResolver {
      *  names by its whole title while it names the film only by a piece. The listing's facts chose
      *  the work, and an edition carries its work's facts — the venue credits Murnau, TMDB the
      *  edition's maker — so they do not deny the edition; a pin still does. With the confidence of
-     *  the work. The film itself when the listing names it whole, or no edition, or two. */
+     *  the work. The film itself when the listing names it whole — by its title or its own
+     *  original title — or no edition, or two. */
     def editionNamed(ranked: Seq[Scored])(accepted: (Scored, Double)): (Scored, Double) = {
       val (work, confidence) = accepted
-      def namedWhole(s: Scored) = IdentityMeasures.Rivalling(s.measures.get("title").collect { case IdentityMeasures.Category(c) => c }.getOrElse(""))
-      if (namedWhole(work)) accepted
+      def category(s: Scored, measure: String) = s.measures.get(measure).collect { case IdentityMeasures.Category(c) => c }
+      def namedWhole(s: Scored) = category(s, "title").exists(IdentityMeasures.Rivalling)
+      // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
+      if (namedWhole(work) || category(work, "originalTitle").contains("match")) accepted
       else ranked.filter(e => (e ne work) && !e.deniedByPin && namedWhole(e) && IdentityMeasures.editionOf(e.c.film, work.c.film)) match {
         case Seq(edition) => edition -> confidence
         case _            => accepted

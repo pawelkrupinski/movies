@@ -146,7 +146,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
     val q = IdentityMeasures.Qualifiers.learn(Seq("Chocolate - Director's Cut",
-      "The Great War: Director's Cut", "The Promise (Director's Cut)", "Director's Cut", "Dark City", "Manhunter"))
+      "The Great War: Director's Cut", "The Promise (Director's Cut)", "Director's Cut", "Dark City", "Manhunter").map(Film(_)))
     q.of(Listing("Dark City: Director's Cut")) shouldBe Set("directorscut")
     // A bare title, and a title whose only piece is its bracketed year, have no qualifier.
     q.of(Listing("Director's Cut")) shouldBe empty
@@ -160,9 +160,17 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "tie to nothing when both pieces are billed alike" in {
-    val q = IdentityMeasures.Qualifiers.learn(Seq("Heat: Director's Cut", "Heat - Extended", "Alien: Director's Cut"))
+    val q = IdentityMeasures.Qualifiers.learn(Seq("Heat: Director's Cut", "Heat - Extended", "Alien: Director's Cut", "Heat").map(Film(_)))
     // "heat" beside two pieces, "directorscut" beside two: neither is the listing's qualifier.
     q.of(Listing("Heat: Director's Cut")) shouldBe empty
+  }
+
+  it should "leave a work its record under a banner no record names, however many sequels bill the work" in {
+    // PL "Tani wtorek: OBCY", UK "Cineworld 30: The Dark Knight": the records bill the work beside
+    // its sequels, but nothing is titled the banner — there is no second work to tell it from.
+    val q = IdentityMeasures.Qualifiers.learn(Seq("Obcy", "Obcy: Przymierze", "Obcy: Romulus", "Obcy - 8. pasażer Nostromo").map(Film(_)))
+    q.of(Listing("Tani wtorek: Obcy")) shouldBe empty
+    IdentityMeasures.titleRelation(Listing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
   }
 
   "an edition" should "be a later record carrying the work's title under a qualifier, never a namesake" in {
@@ -171,6 +179,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.editionOf(Film("Nosferatu: A Symphony of Horror", year = Some(2023)), murnau) shouldBe false
     IdentityMeasures.editionOf(Film("Nosferatu", year = Some(2024)), murnau) shouldBe false
     IdentityMeasures.editionOf(murnau, Film("Radiohead X Nosferatu: A Symphony of Horror", year = Some(2025))) shouldBe false
+    // DE "Die Puppe" (1975, originally "The Doll") is a namesake of Has's "Lalka", which TMDB also
+    // calls "The Doll": an original title is a whole title, never a piece of the record's own.
+    val has = Film("Lalka", alternativeTitles = Seq("The Doll"), year = Some(1968))
+    IdentityMeasures.editionOf(Film("Die Puppe", originalTitle = Some("The Doll"), year = Some(1975)), has) shouldBe false
   }
 
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {

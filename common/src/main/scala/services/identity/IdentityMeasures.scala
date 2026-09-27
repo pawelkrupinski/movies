@@ -153,48 +153,64 @@ object IdentityMeasures {
       films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f)).flatMap(billing(l, _))
   }
 
-  /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how film records
-   *  bill each piece: a piece TMDB bills beside many different works is a qualifier — an edition
+  /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from the film records
+   *  of one family's pool: when both pieces of a listing's title name records ("Dark City" and
+   *  "Director's Cut"), the piece the records bill beside more works is the qualifier — an edition
    *  ("Chocolate - Director's Cut", "The Great War: Director's Cut", "The Promise (Director's
-   *  Cut)"; "Pink Floyd: The Final Cut") or a house's banner — and one billed beside few is a work.
-   *  `companions`: for each piece, by its yearless key, how many distinct other pieces a record
-   *  title adds to it along one edge ([[Qualifiers.split]]). No edition, cut or banner word is
-   *  known in advance. */
-  final case class Qualifiers(companions: Map[String, Int]) {
-    private def count(piece: String): Int = companions.getOrElse(piece, 0)
-    /** The listing's qualifier pieces: each piece its whole title adds another to along one edge,
-     *  billed beside at least two works — one is a coincidence, as a house's is ([[Houses.learn]]) —
-     *  and beside more of them than the rest of the title is. A tie is no qualifier. */
+   *  Cut)"; "Pink Floyd: The Final Cut") — and the other the work. When only one piece names a
+   *  record, a banner no record bills ("Cineworld 30: The Dark Knight", "Tani wtorek: Obcy"), there
+   *  is nothing to tell apart, however many sequels bill the work. `companions`: for each piece, by
+   *  its yearless key, how many distinct other pieces a record title adds to it along one edge
+   *  ([[Qualifiers.split]]). No edition, cut or banner word is known in advance. */
+  final case class Qualifiers(companions: Map[String, Int], records: Seq[Film] = Nil) {
+    private def count(piece: Seq[String]): Int = companions.getOrElse(piece.mkString, 0)
+    /** Does a record of the pool carry `piece`: its title, or a title naming it by a spelling of it
+     *  ([[NamingRelations]], as a listing's title names a film)? */
+    private def namesARecord(piece: Seq[String]): Boolean = {
+      val asListing = Listing(piece.mkString(" "))
+      records.exists(f => NamingRelations(titleRelation(asListing, f).value))
+    }
+    /** The listing's qualifier pieces, by key: each piece its whole title adds another to along one
+     *  edge, billed beside at least two works — one is a coincidence, as a house's is
+     *  ([[Houses.learn]]) — and beside more of them than the rest of the title, which names a
+     *  record of its own. A tie is no qualifier. */
     def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split)
-      .collect { case (piece, rest) if count(piece) >= 2 && count(piece) > count(rest) => piece }.toSet)
+      .collect { case (piece, rest) if count(piece) >= 2 && count(piece) > count(rest) && namesARecord(rest) => piece.mkString }.toSet)
     private val memo = scala.collection.concurrent.TrieMap.empty[Listing, Set[String]]
   }
   object Qualifiers {
     val Unknown: Qualifiers = Qualifiers(Map.empty)
 
     /** A title's pieces, each with the rest of the title: every delimited piece of it ([[shapes]])
-     *  that is a token run along one of its edges, and the rest, both ways round, as yearless keys
-     *  ("Dark City: Director's Cut" → `darkcity`/`directorscut` and `directorscut`/`darkcity`). */
-    def split(title: String): Seq[(String, String)] = {
+     *  that is a token run along one of its edges, and the rest, both ways round, as yearless tokens
+     *  ("Dark City: Director's Cut" → `dark city`/`director s cut` and back). */
+    def split(title: String): Seq[(Seq[String], Seq[String])] = {
       val whole = yearlessTokens(title)
       shapes(Seq(title)).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
         val rest = if (whole.startsWith(p)) whole.drop(p.length) else whole.dropRight(p.length)
-        Seq(p.mkString -> rest.mkString, rest.mkString -> p.mkString)
+        Seq(p -> rest, rest -> p)
       }.distinct
     }
 
-    /** Learn from the titles of the candidate records one family's listings searched up. */
-    def learn(titles: Iterable[String]): Qualifiers =
-      Qualifiers(titles.toSeq.distinct.flatMap(split).distinct.groupMapReduce(_._1)(_ => 1)(_ + _))
+    /** Learn from the candidate records one family's listings searched up, by their titles and
+     *  original titles. */
+    def learn(records: Seq[Film]): Qualifiers =
+      Qualifiers(records.flatMap(f => Seq(f.title) ++ f.originalTitle).distinct.flatMap(split)
+        .map { case (p, r) => (p.mkString, r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _), records)
   }
 
-  /** Is `edition` a record of `work` under a qualifier: a later record whose title carries one of
-   *  the work's titles as a delimited piece or a token run along one edge ("Radiohead X Nosferatu:
-   *  A Symphony of Horror" of Murnau's "Nosferatu", whose record carries "Nosferatu: A Symphony of
-   *  Horror")? A record of the same title is a namesake, not an edition. */
-  def editionOf(edition: Film, work: Film): Boolean =
+  /** Is `edition` a record of `work` under a qualifier: a later record one of whose own titles
+   *  carries one of the work's as a delimited piece or a token run along one edge ("Radiohead X
+   *  Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu", whose record carries "Nosferatu: A
+   *  Symphony of Horror")? A record with a title of the work's own is a namesake or a translation
+   *  ("Die Puppe", 1975, originally "The Doll", is not an edition of Has's "Lalka", which TMDB
+   *  also calls "The Doll"). Each title is read alone: an original title is a whole title, never
+   *  a piece. */
+  def editionOf(edition: Film, work: Film): Boolean = {
+    val relations = (Seq(edition.title) ++ edition.originalTitle).distinct.map(t => titleRelation(Listing(t), work).value)
     edition.year.exists(y => work.year.exists(_ <= y)) &&
-      Set("segment", "decorated")(titleRelation(Listing(edition.title, originalTitle = edition.originalTitle), work).value)
+      relations.exists(Set("segment", "decorated")) && !relations.exists(Rivalling)
+  }
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
