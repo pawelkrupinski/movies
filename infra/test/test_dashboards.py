@@ -178,6 +178,18 @@ class DashboardStructure(unittest.TestCase):
                     (panel.get("description") or "").strip(),
                     "%s: %r has no description" % (path, panel.get("title")))
 
+    def test_every_dashboard_marks_deploys(self):
+        # .github/actions/mark-grafana-deploy posts an org-wide annotation tagged "deploy" on every
+        # rollout, but Grafana draws one only on a dashboard that queries that tag. Without the query
+        # a step in a chart cannot be told apart from the deploy that caused it.
+        for path, document in self.dashboards:
+            queries = document.get("annotations", {}).get("list", [])
+            self.assertTrue(
+                any(query.get("type") == "tags" and "deploy" in (query.get("tags") or [])
+                    and query.get("enable") and not query.get("hide")
+                    for query in queries),
+                "%s draws no deploy markers: add the \"Deploys\" tags annotation" % path)
+
     def test_the_datasource_allowlist_matches_what_grafana_provisions(self):
         # Keeps the constant above honest: if a datasource is added or renamed in roles/grafana.nix
         # and not here, the checks above start rejecting valid panels.
