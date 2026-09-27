@@ -38,7 +38,7 @@ import scala.jdk.CollectionConverters._
  * generic box office with no field telling a screening from a stage event, and
  * the culture house also stages concerts and plays.
  */
-class KinoRemusClient(http: HttpFetch, override val cinema: Cinema = KinoRemus) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
+class KinoRemusClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
 
   import KinoRemusClient._
 

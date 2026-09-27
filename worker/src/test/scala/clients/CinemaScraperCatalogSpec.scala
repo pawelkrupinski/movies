@@ -196,6 +196,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     KinoRelaks -> (13, 40),
     KinoRenesans -> (5, 38),
     KinoRodlo -> (13, 41),
+    KinoPromienRawicz -> (10, 49),   // Rawicz: its own repertoire is prose; biletyna sells the lot
     KinoSlawa -> (18, 67),   // Międzyrzec's one screen, once (Filmweb listed it twice, as 1658 and 1850)
     KinoSokolZakopane -> (8, 41),
     KinoStarowka -> (11, 53),
@@ -241,6 +242,9 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     KinoBajkaBlonie        -> classOf[KinoBajkaBlonieClient],
     KinoMetalowiecNowaDeba -> classOf[KinoMetalowiecNowaDebaClient],
     KinoEva                -> classOf[KinoEvaClient],
+    KinoBCK                -> classOf[IksorisBookingClient],
+    KinoRemus              -> classOf[KinoRemusClient],
+    KinoWCK                -> classOf[IksorisCalendarClient],
   )
   for ((cinema, scraper) <- ownSiteScrapers)
     it should s"scrape ${cinema.displayName} off its own site with ${scraper.getSimpleName}" in {

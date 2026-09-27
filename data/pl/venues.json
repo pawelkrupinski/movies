@@ -1425,7 +1425,7 @@
   "cinemaObject": "KinoBCK",
   "displayName": "Kino BCK",
   "town": "Biłgoraj",
-  "annotation": "Biłgoraj — filmweb 1489"
+  "annotation": "Biłgoraj — iKsoris bilet.bck.lbl.pl"
  },
  {
   "citySlug": "bochnia",
@@ -2048,7 +2048,7 @@
   "cinemaObject": "KinoRemus",
   "displayName": "Kino Remus",
   "town": "Kościerzyna",
-  "annotation": "Kościerzyna — filmweb 2317"
+  "annotation": "Kościerzyna — own site remus.hostingasp.pl"
  },
  {
   "citySlug": "krapkowice",
@@ -2790,7 +2790,7 @@
   "cinemaObject": "KinoPromienRawicz",
   "displayName": "Kino Promień Rawicz",
   "town": "Rawicz",
-  "annotation": "Rawicz — filmweb 1656"
+  "annotation": "Rawicz — biletyna Kino-Promien-w-Rawiczu"
  },
  {
   "citySlug": "rawicz",
@@ -3343,7 +3343,7 @@
   "cinemaObject": "KinoWCK",
   "displayName": "Wejherowskie Centrum Kultury",
   "town": "Wejherowo",
-  "annotation": "Wejherowo — filmweb 1835"
+  "annotation": "Wejherowo — iKsoris bilety.wck.org.pl"
  },
  {
   "citySlug": "wejherowo",

@@ -318,6 +318,8 @@ class CinemaScraperCatalog(
     // One screen Filmweb split across two ids (1658 "Kino Sława", 1850 "Kino za
     // Rogiem", the room's older name), sharing slots; biletyna sells all of it.
     KinoSlawa           -> "https://biletyna.pl/Miedzyrzec-Podlaski/Kino-Slawa",
+    // The site's own repertoire is prose; its "Kup online" widget is this page.
+    KinoPromienRawicz   -> "https://biletyna.pl/Rawicz/Kino-Promien-w-Rawiczu",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
     new BiletynaClient(bnFetch, BiletynaPlacePage(biletynaPages(cinema)), cinema)
@@ -723,7 +725,7 @@ class CinemaScraperCatalog(
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-stalowa-wola-1419", KinoWrzos),   // Stalowa Wola
     new ModernEventsCalendarClient(http, ModernEventsCalendarPage("https://nck.nisko.pl/kino-sokol/repertuar/"), KinoSokolNisko, today),   // Nisko
     new KinoMetalowiecNowaDebaClient(http, KinoMetalowiecNowaDeba, today),   // Nowa Dęba
-    filmweb(1489, KinoBCK),   // Biłgoraj
+    new IksorisBookingClient(http, IksorisBookingPage(IksorisOrigin("https://bilet.bck.lbl.pl")), KinoBCK),   // Biłgoraj
   )
   private val zamoscScrapers = Seq(
     new KinoStylowyClient(http, KinoStylowy, today),   // Zamość
@@ -734,7 +736,7 @@ class CinemaScraperCatalog(
   private val lesznoScrapers = Seq(
     multikino("0044", MultikinoLeszno),   // Leszno
     bilety24("https://www.bilety24.pl/kino/organizator/teatr-miejski-w-lesznie-1653", KinoTeatrMiejskiLeszno),   // Leszno
-    filmweb(1656, KinoPromienRawicz),   // Rawicz
+    biletyna(KinoPromienRawicz),   // Rawicz
     bilety24("https://www.bilety24.pl/kino/organizator/gostynski-osrodek-kultury-hutnik-z-siedziba-w-gostyniu-679", KinoPodKopula),   // Gostyń
     bilety24("https://www.bilety24.pl/kino/organizator/biblioteka-i-centrum-kultury-rekreacji-im-jana-z-domachowa-bzdegi-w-krobi-1643", KinoKrobia),   // Krobia
   )
@@ -759,7 +761,7 @@ class CinemaScraperCatalog(
   )
   private val starogardGdanskiScrapers = Seq(
     cinemaCity("1095", CinemaCityStarogard),   // Starogard Gdański
-    filmweb(2317, KinoRemus),   // Kościerzyna
+    new KinoRemusClient(http, KinoRemus),   // Kościerzyna
   )
   private val ciechanowScrapers = Seq(
     bilety24("https://www.bilety24.pl/kino/organizator/powiatowe-centrum-kultury-i-sztuki-im-marii-konopnickiej-1307", KinoLydynia),   // Ciechanów
@@ -2245,7 +2247,7 @@ class CinemaScraperCatalog(
       biletyna(TeatrBoto),   // Sopot
       biletyna(TeatrAtelier),   // Sopot
       biletyna(KinoCKGniewino),   // Gniewino
-      filmweb(1835, KinoWCK),   // Wejherowo
+      new IksorisCalendarClient(http, IksorisBookingPage(IksorisOrigin("https://bilety.wck.org.pl")), KinoWCK, today),   // Wejherowo
       biletyna(KinoZaRogiemChmielno),   // Chmielno
       bilety24("https://www.bilety24.pl/kino/organizator/kino-zeglarz-1224", KinoZeglarz),   // Jastarnia
       bilety24("https://www.bilety24.pl/kino/organizator/kartuskie-centrum-kultury-w-kartuzach-1364", KinoKCK),   // Kartuzy
