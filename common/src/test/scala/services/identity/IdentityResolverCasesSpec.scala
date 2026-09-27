@@ -58,6 +58,28 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     together(r, plain.head, decorated) shouldBe true
   }
 
+  "A listing whose own title search is empty" should
+    "be offered the film its identical title's siblings reached, and take it on its own facts" in {
+    // PL, "Vincent. Legenda oceanu": TMDB titles the film "The Last Whale Singer", so the Polish
+    // title's own search is empty; the credited venues reach it through their director. One venue
+    // publishes a year and a credit the record contradicts, so its own evidence denies the film
+    // and it is kept apart from them. A venue publishing the film's year and running time but no
+    // credit is title-linked to both — ambiguous, so it stays alone (A2) — and, with no candidate
+    // of its own, was NoCandidate. Its identical title's siblings' candidates are its candidates
+    // too, scored on its own facts.
+    val films    = Seq(F(677558, "The Last Whale Singer", 2025, "Reza Memari", 91, 5))
+    val credited = Seq(Multikino, Helios, Rialto).map(listing(_, "Vincent. Legenda oceanu", Some(2025), Some("Reza Memari")))
+    val denier   = listing(KinoMuza, "Vincent. Legenda oceanu", Some(1998), Some("Pavel Hrubos"))
+    val dated    = listing(KinoApollo, "VINCENT. LEGENDA OCEANU", Some(2025), runtime = Some(91))
+    val r = resolve(credited ++ Seq(denier, dated), films)
+    withClue((credited ++ Seq(denier, dated)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(credited.head.key).film shouldBe Some(677558)
+      r.decisionOf(denier.key).film shouldBe None
+      r.decisionOf(dated.key).film shouldBe Some(677558)
+    }
+    r.violations shouldBe 0
+  }
+
   "A spelling a learned venue decoration wraps" should "take the film its plain siblings matched" in {
     // UK, Cineworld's "(4DX Rewind) Shrek": the whole title names no film, so its own search is
     // empty and the plain "Shrek" the other venues list never reaches it. "(4DX Rewind)" is a

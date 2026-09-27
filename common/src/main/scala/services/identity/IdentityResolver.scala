@@ -145,6 +145,18 @@ object IdentityResolver {
     }.toMap
     val ownWalk: Map[String, Set[Int]] = nodes.map(n =>
       n.id -> queriesOf(n.id).filterNot(isTitle).flatMap(q => answers(q).toOption.getOrElse(Nil)).map(_.tmdbId).toSet).toMap
+    /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
+     *  own evidence — a credited director, a detail page's original title — that its own did not:
+     *  "Vincent. Legenda oceanu" at a venue publishing nothing else searches empty (TMDB titles the
+     *  film "The Last Whale Singer"), while the same title credited elsewhere walks its director to
+     *  it. A path to a candidate, never evidence for it: the node scores it on its own facts (no
+     *  search rank), and still denies it when they rule it out. */
+    val titleOf: Node => String = n => IdentityMeasures.key(n.evidence.title)
+    val sharedOf: Map[String, Set[Int]] = nodes.groupBy(titleOf).filter { case (t, ns) => t.nonEmpty && ns.size > 1 }.values.toSeq
+      .flatMap { ns =>
+        val reached = ns.map(n => n.id -> (ownSearch(n.id).keySet ++ ownWalk(n.id))).toMap
+        ns.map(n => n.id -> (ns.filterNot(_ eq n).flatMap(m => reached(m.id)).toSet -- reached(n.id)))
+      }.toMap.withDefaultValue(Set.empty)
     val hitsById = nodes.flatMap(n => queriesOf(n.id).flatMap(q => answers(q).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
     val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
     val candidateById: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
@@ -222,10 +234,11 @@ object IdentityResolver {
 
       /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
        *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
-      def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int],
+      def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
                 deniedByPins: Int => Boolean): Seq[Scored] = {
         val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses, qualifiers).value).toMap
-        val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || IdentityMeasures.NamingRelations(relation(c.tmdbId)))
+        val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || shared(c.tmdbId) ||
+          IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val group     = IdentityMeasures.key(l.title)
         val scored = reachable.map { c =>
@@ -249,7 +262,7 @@ object IdentityResolver {
 
       private val memo = mutable.HashMap.empty[String, Seq[Scored]]
       def of(n: Node): Seq[Scored] = memo.getOrElseUpdate(n.id,
-        score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id),
+        score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id), sharedOf(n.id),
           id => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
 
       /** The cluster's members read as ONE listing: the title most of its listings carry (the
@@ -270,7 +283,7 @@ object IdentityResolver {
           runtime       = runtimes.lift(runtimes.size / 2),
           countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
         val ranks = cluster.flatMap(n => ownSearch(n.id)).groupMapReduce(_._1)(_._2)(math.min)
-        score(listing, lead.venue, ranks, cluster.flatMap(n => ownWalk(n.id)).toSet,
+        score(listing, lead.venue, ranks, cluster.flatMap(n => ownWalk(n.id)).toSet, cluster.flatMap(n => sharedOf(n.id)).toSet,
           id => cluster.exists(n => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
           .map(s => if (s.denied || cluster.forall(n => !of(n).exists(o => o.c.tmdbId == s.c.tmdbId && o.denied))) s else s.copy(denied = true))
       }

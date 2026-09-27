@@ -418,6 +418,17 @@ permutation checks still test, and the lazy-lookup mutant stays detectable. The 
 Each must be proven the way the rest was: a hard cluster, and a mutation that the checks catch
 (dropping the whole-segment rule merges Faust; pooling in arrival order fails P1).
 
+**Identical titles share their candidates.** A node's candidates are what its own searches and
+walks named; a title variant whose own search answers empty ("Vincent. Legenda oceanu" at a venue
+publishing nothing else: TMDB titles the film "The Last Whale Singer") has no film to score, and
+when the must-link ambiguity rule leaves it alone (A2: it is title-linked to two clusters kept
+apart) the film its credited siblings found is never offered to it. Every node therefore also
+reaches the candidates the nodes of its IDENTICAL title (`IdentityMeasures.key`: case, accents and
+punctuation folded) reached by their own evidence. It is a path, never evidence: the node scores
+the shared film on its own facts (no search rank, since its own search did not return it), and
+still denies it when they rule it out. A set function: the nodes of one title are a subset of the
+listing set.
+
 **Learned venue decorations.** An undelimited decoration ("Girls Like Girls Unlimited Screening",
 "(4DX Rewind) Shrek", "Lalka 2D PL", "André Rieu. Niech żyje Maastricht! w Helios na Scenie")
 leaves no segment to search or to relate. `scripts.IdentityDecorationsLearn` (run by
