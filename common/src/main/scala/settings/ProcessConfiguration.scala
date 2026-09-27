@@ -93,6 +93,7 @@ final class ProcessConfiguration(val env: Env) {
   def proxyPassword: Option[ProxyPassword]                   = text("KINOWO_PROXY_PASS").map(ProxyPassword(_))
   def facebookAppId: Option[FacebookAppId]                   = text("FACEBOOK_APP_ID").map(FacebookAppId(_))
   def facebookAppSecret: Option[FacebookAppSecret]           = text("FACEBOOK_APP_SECRET").map(FacebookAppSecret(_))
+  def githubDispatchToken: Option[GitHubDispatchToken]       = text("KINOWO_GITHUB_DISPATCH_TOKEN").map(GitHubDispatchToken(_))
   def facebookPageAppId: Option[FacebookPageAppId]           = text("FB_APP_ID").map(FacebookPageAppId(_))
   def googleAnalyticsId: Option[GoogleAnalyticsMeasurementId] = text("GA_MEASUREMENT_ID").map(GoogleAnalyticsMeasurementId(_))
   def sentryLoaderUrl: Option[SentryLoaderUrl]               = text("SENTRY_LOADER_URL").map(SentryLoaderUrl(_))

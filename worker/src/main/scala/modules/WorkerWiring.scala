@@ -151,6 +151,20 @@ class WorkerWiring(
     new services.tasks.ClaimedPeriodicTask("identity-shadow", () => identityShadowTick(), identityShadowInterval.value,
       configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
+  // Once a day, every venue through `VenueClosure`: a newly confirmed closure pages once on
+  // the fallback channel and, for a data-driven roster (DE/ES/US), starts the retire-venues
+  // workflow, which re-checks it live and opens the PR removing it. Without
+  // KINOWO_GITHUB_DISPATCH_TOKEN the page asks for a hand retirement instead.
+  lazy val closureLedger: services.closure.ClosureLedger =
+    mongoConnection.database.fold[services.closure.ClosureLedger](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
+  lazy val closureSweep = new services.closure.ClosureSweep(() => closureCandidates, scrapeArchive, filmwebFallbackStore,
+    closureLedger, fallbackPager("venue-closure"),
+    configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
+      java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
+    clock)
+  lazy val closureSchedule = new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
+    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock)
+
   // The shadow run's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19):
   // `KINOWO_IDENTITY_SHADOW_LOOKUPS`, a staged-migration switch, off by default, and only with the
   // shadow run on. After each shadow tick it asks the resolver's unobserved TMDB questions through
@@ -352,6 +366,7 @@ class WorkerWiring(
     if (!identityCutover) { unresolvedTmdbReaper.start(); detailReaper.start() }
     settleReaper.start()
     identityShadowSchedule.foreach(_.start())
+    closureSchedule.start()
     omdbBackfillReaper.foreach(_.start())
     shareCardReapers.foreach(_.start())
     startFacebookRescrapes()
@@ -407,6 +422,7 @@ class WorkerWiring(
     detailReaper.stop()
     settleReaper.stop()
     identityShadowSchedule.foreach(_.stop())
+    closureSchedule.stop()
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
     stopFacebookRescrapes()
@@ -445,6 +461,12 @@ object WorkerWiring {
   /** Long enough after boot for the synchronous hydrate to have loaded the films the diff reads. */
   val DefaultIdentityShadowInitialDelay: settings.IdentityShadowInitialDelay =
     settings.IdentityShadowInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
+
+  /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed
+   *  daily), so a daily verdict loses nothing. */
+  val ClosureSweepInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(24, "hours")
+  /** Clear of the boot scrape burst, which it has no reason to compete with. */
+  val ClosureSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "minutes")
 
   /** The ONE background budget a process shares across its countries' wirings. */
   def backgroundBudgetFrom(configuration: ProcessConfiguration): ExecutionBudget =

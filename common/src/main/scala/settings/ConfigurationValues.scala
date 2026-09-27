@@ -76,6 +76,8 @@ final case class ProxyPassword(value: String) extends AnyVal
 final case class FacebookAppId(value: String) extends AnyVal
 /** `FACEBOOK_APP_SECRET`. */
 final case class FacebookAppSecret(value: String) extends AnyVal
+/** A GitHub token allowed to start the retire-venues workflow (`actions: write` on the repository). */
+final case class GitHubDispatchToken(value: String) extends AnyVal
 /** `FB_APP_ID` — the `fb:app_id` a page's Open Graph block carries. */
 final case class FacebookPageAppId(value: String) extends AnyVal
 /** `GA_MEASUREMENT_ID` — the GA4 property pages report to. */
