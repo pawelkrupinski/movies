@@ -187,4 +187,36 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
       .map(_.movie.title).exists(_.contains("Dkf")) shouldBe false
   }
+
+  // The advanced feed's `event` carries the film's identity as its own fields —
+  // `director`, `oryginal_title`, `year`, `country`, `duration` — which TMDB
+  // resolution needs once a venue leaves Filmweb. Captured live 2026-09-27.
+  private val switched = new FakeHttpFetch("filmweb-only-switch")
+  private def film(base: String, cinema: Cinema, titleFragment: String) =
+    new SystemBiletowyClient(switched, VisualSoftPortal(base), cinema, titles = titleNormalizer).fetch()
+      .find(_.movie.title.toLowerCase.contains(titleFragment)).value
+
+  it should "carry the feed's director, original title, year, country and runtime onto the film" in {
+    val auta = film("https://bilety.kino.myslenice.pl", KinoMuzaMyslenice, "auta")
+    auta.director shouldBe Seq("John Lasseter")
+    auta.movie.originalTitle shouldBe Some("Cars")
+    auta.movie.releaseYear shouldBe Some(2006)
+    auta.movie.countries shouldBe Seq("USA")
+    auta.movie.runtimeMinutes shouldBe Some(122)
+  }
+
+  it should "split a multi-country field, trim padded values and treat a zero runtime as unknown" in {
+    val marsupilami = film("https://grl.systembiletowy.pl", KinoWilga, "marsupilami")
+    marsupilami.movie.countries shouldBe Seq("Belgia", "Francja")
+    marsupilami.movie.releaseYear shouldBe Some(2025)
+    marsupilami.movie.runtimeMinutes shouldBe None
+    val bogaci = film("https://bilety.ckis.miechow.eu", KinoGryf, "bogaci i martwi")
+    bogaci.movie.countries shouldBe Seq("Grecja", "USA", "Wielka Brytania")
+    bogaci.movie.originalTitle shouldBe Some("Sacrifice")
+  }
+
+  it should "not echo an original title that only repeats the listing's own" in {
+    film("https://bilety.kino.myslenice.pl", KinoMuzaMyslenice, "odzyskany").movie.originalTitle shouldBe None
+    film("https://grl.systembiletowy.pl", KinoWilga, "marsupilami").movie.originalTitle shouldBe None
+  }
 }

@@ -27,7 +27,10 @@ import scala.util.Try
  * screening: `title`, an ISO `date` with the zone offset, and `id`.
  *
  * `advanced=1` adds a `url` (the `kup-bilet` booking link), an `image`, an
- * `event` (`description`, `category`) and a `location` (`institution_name`).
+ * `event` (`description`, `category`, and the film's `director`,
+ * `oryginal_title`, `year`, `country` and `duration` as fields of their own —
+ * the identity TMDB resolution runs on; a blank director falls back to the
+ * description's "Reżyseria" line) and a `location` (`institution_name`).
  * Older instances (Farys, Kino Orzeł in 2026-09) don't ship the advanced
  * template and answer `{"error":"The template … does not exist …"}`; for those
  * the plain feed is fetched instead, and the booking link is the
@@ -86,7 +89,27 @@ object SystemBiletowyClient {
     (Json.parse(json) \ "error").asOpt[String].exists(_.contains("listAdvancedSuccess"))
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String],
-                             poster: Option[String], director: Seq[String])
+                             poster: Option[String], identity: Identity)
+
+  /** The film's identity as the advanced feed's `event` states it, field by
+   *  field. Instances fill these unevenly (Garwolin all but `duration`, Łowicz
+   *  none), so each is optional and a blank or zero reads as unknown. */
+  private case class Identity(director: Seq[String], originalTitle: Option[String], year: Option[Int],
+                              countries: Seq[String], runtime: Option[Int])
+
+  private def identity(event: JsLookupResult, title: String): Identity = {
+    def text(field: String) = (event \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    val director = text("director").map(names => names.split("[,;]").iterator.map(_.trim).filter(_.nonEmpty).toSeq)
+      .getOrElse((event \ "description").asOpt[String].map(parseDirector).getOrElse(Seq.empty))
+    Identity(
+      director      = director,
+      // Kept only when it tells the search something the title doesn't.
+      originalTitle = text("oryginal_title").filterNot(_.equalsIgnoreCase(title)),
+      year          = text("year").flatMap(_.toIntOption).filter(_ > 1880),
+      countries     = text("country").toSeq.flatMap(_.split("[,/]")).map(_.trim).filter(_.nonEmpty),
+      runtime       = (event \ "duration").asOpt[Int].filter(_ > 0)
+    )
+  }
 
   // Kino Orzeł's (and Nowa Sarzyna's) boilerplate "-Film"/"- Film" word ahead
   // of the format tag ("…-Film 2D", "… - Film 2D dubbing") — not a real
@@ -130,20 +153,23 @@ object SystemBiletowyClient {
                      }.map(id => s"${portal.url}/index.php/repertoire.html?id=$id")),
         format   = ScraperParse.extractFormatTags(peeled)._2,
         poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(absolute),
-        director = (r \ "event" \ "description").asOpt[String].map(parseDirector).getOrElse(Seq.empty)
+        identity = identity(r \ "event", title)
       )
     }.distinctBy(s => (s.title, s.dateTime, s.booking))
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
       val sorted = group.sortBy(_.dateTime)
+      def first[A](field: Identity => Option[A]) = sorted.iterator.flatMap(s => field(s.identity)).nextOption()
+      def firstOf[A](field: Identity => Seq[A]) = sorted.iterator.map(s => field(s.identity)).find(_.nonEmpty).getOrElse(Seq.empty)
       CinemaMovie(
-        movie     = Movie(title),
+        movie     = Movie(title, runtimeMinutes = first(_.runtime), releaseYear = first(_.year),
+                      countries = firstOf(_.countries), originalTitle = first(_.originalTitle)),
         cinema    = cinema,
         posterUrl = sorted.flatMap(_.poster).headOption,
         filmUrl   = None,
         synopsis  = None,
         cast      = Seq.empty,
-        director  = sorted.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
+        director  = firstOf(_.director),
         showtimes = showtimes
       )
     }
