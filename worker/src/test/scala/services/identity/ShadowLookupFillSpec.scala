@@ -27,11 +27,14 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
    *  error. The body is an empty result set — this spec is about which questions are asked and
    *  where the answers go, not what TMDB says (`ShadowIdentityReaperIntegrationSpec` replays real
    *  answers). */
-  private final class Service(failWith: Map[Int, Throwable] = Map.empty) extends HttpFetch {
+  private final class Service(failWith: Map[Int, Throwable] = Map.empty, failHost: Option[String] = None) extends HttpFetch {
     val requests = mutable.ArrayBuffer.empty[String]
     private def answer(url: String): String = {
       requests += url
       failWith.get(requests.size).foreach(e => throw e)
+      // The host fails its FIRST request only: an overload, then a service that has recovered.
+      failHost.filter(h => url.contains(h) && requests.count(_.contains(h)) == 1)
+        .foreach(h => throw new HttpStatusException(503, "GET", s"https://$h/", None))
       """{"results":[],"crew":[],"cast":[]}"""
     }
     override def get(url: String): String                                    = answer(url)
@@ -81,18 +84,38 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     sleeps.toSeq shouldBe Seq.fill(29)(60000L)
   }
 
-  it should "stop at the first overload, and run the next round at half the rate, doubling back once clean" in {
-    val service = new Service(Map(2 -> new HttpStatusException(429, "GET", "https://api.themoviedb.org/3/search/movie", None)))
+  it should "stop asking the paced service at its first overload, and run the next round at half the rate, doubling back once clean" in {
+    val tmdb    = "api.themoviedb.org"
+    val service = new Service(failHost = Some(tmdb))
     val rounds  = mutable.Buffer.empty[ShadowLookupRound]
     val f       = fill(store(), service, rate = 8, rounds = rounds)
     val first   = f.round()
     first.backedOff shouldBe true
-    first.asked shouldBe 2
-    service.requests.size shouldBe 2
+    service.requests.count(_.contains(tmdb)) shouldBe 1
     f.effectiveRate shouldBe IdentityShadowLookupRate(4)
     f.round().rate shouldBe IdentityShadowLookupRate(4)
     f.effectiveRate shouldBe IdentityShadowLookupRate(8)
     rounds.map(_.rate.perMinute) shouldBe Seq(8, 4)
+  }
+
+  it should "stop asking only the host that overloaded, and keep the rate when that host was not the one it paces" in {
+    // Production, 2026-09-28: every round in four countries asked a few hundred lookups, hit ONE
+    // failure and stopped all asks, so a 300/min fill ran at ~12/min. The rate paces the round's
+    // main service; one host's timeout says nothing about another's.
+    val other   = "v3.sg.media-imdb.com"
+    val service = new Service(failHost = Some(other))
+    val f       = fill(store(), service, rate = 600)
+    val round   = f.round()
+    val (failing, rest) = service.requests.partition(_.contains(other))
+    withClue(service.requests.take(12).mkString("\n")) {
+      failing.size shouldBe 1                                  // the failed host: once, then deferred
+      val clean = new Service
+      fill(store(), clean).round()
+      rest.size shouldBe clean.requests.count(!_.contains(other)) // every other host's question still asked
+      rest.size should be > 1
+    }
+    round.backedOff shouldBe true
+    f.effectiveRate shouldBe IdentityShadowLookupRate(600)
   }
 
   "the pipeline's own requests" should "wait on a shared paced host no longer than one interval per shadow ask, the shadow capped by its rate" in {
