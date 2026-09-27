@@ -92,6 +92,12 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations)
 
+  /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration
+   *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
+   *  measures). A learned decoration names a FILM to search for and relate to; it never links a
+   *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
+  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None)
+
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
 }

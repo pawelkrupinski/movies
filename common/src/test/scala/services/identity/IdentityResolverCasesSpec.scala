@@ -84,8 +84,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // UK, Cineworld's "(4DX Rewind) Shrek": the whole title names no film, so its own search is
     // empty and the plain "Shrek" the other venues list never reaches it. "(4DX Rewind)" is a
     // LEARNED decoration (it recurs around other films' titles and no record carries it), so
-    // "Shrek" is one of its title shapes: searched, read by the title relation, and a segment
-    // its plain siblings' cluster joins it by.
+    // "Shrek" is one of its title shapes: searched and read by the title relation, and the film
+    // it then takes on its own joins it to its plain siblings.
     val films     = Seq(F(808, "Shrek", 2001, "Andrew Adamson", 90, 60), F(809, "Shrek 2", 2004, "Andrew Adamson", 93, 50))
     val plain     = Seq(Multikino, Helios).map(listing(_, "Shrek", Some(2001), Some("Andrew Adamson")))
     val decorated = Seq(KinoApollo, KinoMuza).map(listing(_, "(4DX Rewind) Shrek"))
@@ -99,6 +99,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
     // Without the learned decoration the spelling names nothing, as before.
     decorated.map(l => run(TitleDecorations.None).decisionOf(l.key).film) shouldBe Seq(None, None)
+  }
+
+  it should "not be title-linked by it to another venue's bare namesake" in {
+    // UK, Cineworld's "Horror Season 2026 Dracula" crediting Terence Fisher: stripped of its learned
+    // season banner it is searched as "Dracula", but it is not a segment sibling of every venue's
+    // bare "Dracula". A must-link to one listing Besson's film, whose facts deny Fisher's, would
+    // withdraw its own match (a title-linked sibling denies it) and leave it unmatched.
+    val films   = Seq(F(11868, "Dracula", 1958, "Terence Fisher", 82, 8), F(1246049, "Dracula", 2025, "Luc Besson", 130, 60))
+    val season  = Seq(Multikino, Helios).map(listing(_, "Horror Season 2026 Dracula", director = Some("Terence Fisher"), runtime = Some(82)))
+    val besson  = listing(KinoApollo, "Dracula", Some(2025), Some("Luc Besson"), Some(130))
+    val learned = TitleDecorations(Set(Seq("horror", "season", "2026")), Set.empty)
+    val r = IdentityResolver.resolve(season :+ besson, new Table(films), normalizer, weights, decorations = learned)
+    withClue((season :+ besson).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      season.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(11868), Some(11868))
+      r.decisionOf(besson.key).film shouldBe Some(1246049)
+      r.edges.exists(e => e.must && e.reason == "title-segment") shouldBe false
+    }
+    r.violations shouldBe 0
   }
 
   "A listing that publishes only a title" should

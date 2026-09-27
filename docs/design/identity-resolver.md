@@ -439,9 +439,14 @@ no recorded film record's title, original title or alternative title carries any
 "Exhibition on Screen", "Throwback" and "The" are words TMDB titles use, so they stay the film's.
 It writes `identity-decorations.json` with each decoration's side, film, venue and title counts and
 example remainders; the resolver strips them ADDITIVELY (`TitleDecorations.strip`: the undecorated
-spelling becomes one more title shape, so it is searched, related and segment-linked), and never
-changes the listing's own title, so a programme's card stays its own (§ programme prefixes). No word
-list: a new venue's decoration is learned by the next refit.
+spelling becomes one more title shape, so it is searched and read by the title relation to a FILM),
+and never changes the listing's own title, so a programme's card stays its own (§ programme
+prefixes). What relates two LISTINGS — families, the title must-links, the listing-listing measures
+— reads only the venue's own delimiters (`Evidence.published`): a stripped "Horror Season 2026
+Dracula" is searched as "Dracula", but is not title-linked to every venue's bare "Dracula" (measured:
+linking by it lost the 82 listings' Terence Fisher own match and let a bare "Dracula (4K
+Restoration)" take Besson's 2025 film). No word list: a new venue's decoration is learned by the
+next refit.
 
 ---
 

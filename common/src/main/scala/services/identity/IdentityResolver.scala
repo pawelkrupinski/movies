@@ -446,7 +446,7 @@ object IdentityResolver {
     // ── families ─────────────────────────────────────────────────────────────────────────
     def titleKeys(n: Node): Set[String] =
       FamilyClosure.blockKeys(n.evidence.cleanTitle, n.evidence.originalTitle, None, normalizer,
-        segments = IdentityMeasures.titleShapes(n.evidence.measured) :+ n.evidence.cleanTitle) ++
+        segments = IdentityMeasures.titleShapes(n.evidence.published) :+ n.evidence.cleanTitle) ++
         pins.blockKeys(n.listings.head.key)
     val pinnedFilm: Map[String, Int] = nodes.flatMap(n => pins.filmOf(n.listings.head.key).map(n.id -> _)).toMap
     def familiesOf(ids: Map[String, Set[Int]]): Map[String, Int] =
@@ -457,7 +457,7 @@ object IdentityResolver {
     val sanitized  = (s: String) => normalizer.sanitize(s)
     val searchForm = (s: String) => normalizer.searchQuery(s)
     val segmentsOf: Map[String, Set[String]] = nodes.map(n => n.id ->
-      (IdentityMeasures.titleShapes(n.evidence.measured).map(sanitized).toSet - sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
+      (IdentityMeasures.titleShapes(n.evidence.published).map(sanitized).toSet - sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
     def segmentOf(whole: Node, decorated: Node): Boolean =
       segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
     /** Do two nodes' titles must-link them (tiers 2–4: same sanitised title, same search form,
@@ -524,7 +524,7 @@ object IdentityResolver {
     // The two listings' own evidence apart: the seasons their titles name, or the learned
     // "listing-listing" scope when they compare a fact both published.
     def listingsApart(x: Node, y: Node): Option[String] = {
-      val (a, b) = (x.evidence.measured, y.evidence.measured)
+      val (a, b) = (x.evidence.published, y.evidence.published)
       lazy val m = IdentityMeasures.listingListing(a, b, sameVenue = (x.venues intersect y.venues).nonEmpty, sharedChainId = None)
       ListingConstraints.seasonsApart(a.seasonYear, b.seasonYear, b.year)
         .orElse(ListingConstraints.seasonsApart(b.seasonYear, a.seasonYear, a.year))
