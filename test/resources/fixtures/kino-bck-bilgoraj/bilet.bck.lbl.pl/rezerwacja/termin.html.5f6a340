@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html class="h-100"
+      lang="pl"
+      xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport"
+	      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<meta http-equiv="X-UA-Compatible"
+	      content="ie=edge">
+	<title>Wybór terminu</title>
+	<meta name="keywords"
+	      content=""/>
+	<meta name="description"
+	      content=""/>
+	<meta name="author"
+	      content="SoftCOM - https://www.softcom.wroc.pl"/>
+	<meta name="robots"
+	      content="all"/>
+    <link rel="canonical" href="https://bilet.bck.lbl.pl/rezerwacja/termin.html" />	<script>
+        var assetsVersion = 35;
+	</script>
+    <link rel="stylesheet" type="text/css" href="/rezerwacja/bootstrap/css/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" href="/rezerwacja/bootstrap-icons-1.10.3/bootstrap-icons.css" />
+<link rel="stylesheet" type="text/css" href="/rezerwacja/css/wizualizacja.css?v=35" />
+<link rel="stylesheet" type="text/css" href="/rezerwacja/css/style.css?v=35" />
+<script src="/js-common/jquery.min.js?v=35"></script>
+<script src="/js-common/jquery-ui.min.js?v=35"></script>
+<script src="/js-common/jquery-ui.datepicker-pl.min.js?v=35"></script>
+<script src="/js-common/jquery.countdown.js?v=35"></script>
+<script src="/js-common/jquery.countdown-pl.js?v=35"></script>
+<script src="/js-common/core.js?v=35"></script>
+<script src="/rezerwacja/bootstrap/js/bootstrap.bundle.min.js?v=35"></script>
+<script src="/js-common/jquery.easing.compatibility.js?v=35"></script>
+<script src="/rezerwacja/js/modules.js?v=35" type="module"></script>
+<script src="/rezerwacja/js/main.js?v=35"></script>
+<script>//<![CDATA[
+$(document).ready(function(){ detectCookies(); });
+//]]></script>
+</head>
+<body class="d-flex flex-column h-100 rezerwacja-rezerwacja-termin"
+      data-page_name="rezerwacja_rezerwacja_termin">
+
+<noscript>
+	<div class="alert alert-warning mb-0" role="alert">
+		<div class="row justify-content-center align-items-center">
+			<div class="col-auto d-flex justify-content-center align-items-center">
+				<i class="bi bi-filetype-js"></i>
+			</div>
+			<div class="col-auto">
+                <span class="fw-bold">Uwaga!</span> Do pełnej funkcjonalności strony potrzebujesz włączonej obsługi skryptów. Tu znajdziesz <a href="https://www.enable-javascript.com/pl/" class="alert-link">instrukcje, które pozwolą Ci włączyć skrypty w Twojej przeglądarce.</a>			</div>
+		</div>
+	</div>
+</noscript>
+<header class="header">
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-12 col-xl-11">
+				<div class="d-flex justify-content-between align-items-center" id="top-block">
+					<a href="/" class="logo-wrapper ">
+						<img id="site-logo" class="img-fluid" src="/rezerwacja/images/layout/logo2.png" alt="Logo Biłgorajskiego Centrum Kultury">
+						<div class="logo-separator"></div>
+					</a>
+					<nav id="navbar"
+					     class="navbar navbar-expand-xl">
+						<button class="ms-auto navbar-toggler"
+						        type="button"
+						        data-bs-toggle="collapse"
+						        data-bs-target="#navbarsTop"
+						        aria-expanded="false"
+						        aria-label="Pokaż/ukryj menu">
+							<span class="navbar-toggler-icon"></span>
+						</button>
+						<div class="collapse navbar-collapse order-2 order-xl-1" id="navbarsTop">
+							<ul class="navbar-nav ms-auto">
+                                			<li class="nav-item">
+				<a href="/"
+				   class="nav-link"
+				   target="_self">
+                    Strona główna				</a>
+			</li>
+            			<li class="nav-item">
+				<a href="https://bilet.bck.lbl.pl/index/regulamin.html"
+				   class="nav-link"
+				   target="_self">
+                    Regulamin				</a>
+			</li>
+            				<li class="nav-item dropdown">
+					<a class="nav-link dropdown-toggle"
+					   href="#"
+					   data-bs-toggle="dropdown">Użytkownik</a>
+					<ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="https://bilet.bck.lbl.pl/uzytkownik/login.html" target="_self">Logowanie</a></li><li><a class="dropdown-item" href="https://bilet.bck.lbl.pl/uzytkownik/rejestracja.html" target="_self">Rejestracja</a></li>					</ul>
+				</li>
+                							</ul>
+						</div>
+					</nav>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="container">
+		<div class="header-separator"></div>
+	</div>
+</header>
+
+
+<main id="main" class="flex-grow-1">
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-12 col-xl-11">
+				<div class="navbar-options order-1 order-xl-2">
+                    					<div class="navbar__cart d-flex justify-content-end">
+						<a href="https://bilet.bck.lbl.pl/koszyk/index.html"
+						   class="clock-link"
+						   title="Przejdź do koszyka">
+							<i class="fas fa-shopping-basket"></i>
+							<span class="ms-2"
+							      data-bs-toggle="tooltip"
+							      data-bs-custom-class="bcktooltip"
+							      data-bs-placement="bottom"
+							      title="Wartość koszyka"
+							      id="pasek-do-zaplaty"></span>
+							<span
+								class="clock__wrapper ms-2 d-none"
+								title="Czas do końca sesji"
+								data-toggle="tooltip"
+								data-placement="bottom"><i class="bi bi-alarm"></i>
+                            <span id="clock" class="ms-2"></span>
+                        </span>
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="loading">
+		<div class="d-flex h-100 justify-content-center align-items-center">
+			<div class="spinner-border"
+			     role="status">
+				<span class="visually-hidden">Loading...</span>
+			</div>
+		</div>
+	</div>
+
+	<div id="alignment-tip"
+	     class="alignment-tip">
+		<div class="alignment-tip__mobile">
+			<i class="fas fa-hand-pointer"></i>
+		</div>
+		<div class="alignment-tip__desktop">
+			<i class="fas fa-mouse-pointer"></i>
+		</div>
+	</div>
+	<!-- /.alignment-tip -->
+
+    
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+                            <div class="terms-list">
+                                            <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-09-27 niedziela</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                15:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12683&amp;idt=ac4eccf0bf3f94b04313601166709986&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                17:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12668&amp;idt=b7d4f3ae72189e3b4cf75273f4e11525&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Buntownik-2026-10078982" target="_blank">Buntownik</a>                                        </div>
+                                        <div class="description-block">
+                                            Wielka Brytania, USA, 96 min, od lat 15,   Thriller / Akcja                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12674&amp;idt=e68ff9d55aa5f38066d6fa1646792326&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-09-28 poniedziałek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                15:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12684&amp;idt=9b0138994e4d43d94215077a7df93747&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                17:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12669&amp;idt=f0b2470a03a7a12e22817fa0f2047466&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Buntownik-2026-10078982" target="_blank">Buntownik</a>                                        </div>
+                                        <div class="description-block">
+                                            Wielka Brytania, USA, 96 min, od lat 15,   Thriller / Akcja                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12675&amp;idt=82b5ac6c38b93dfa8df60bddc5082495&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-09-29 wtorek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                15:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12670&amp;idt=a29cd07c44e53f86c62a8b7ad4211237&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                17:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12685&amp;idt=935049823f076485f663b10715324646&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Buntownik-2026-10078982" target="_blank">Buntownik</a>                                        </div>
+                                        <div class="description-block">
+                                            Wielka Brytania, USA, 96 min, od lat 15,   Thriller / Akcja                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12676&amp;idt=72c9a83eb580edb9b021f01928856266&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-09-30 środa</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                15:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12686&amp;idt=1e33eee783be184818833a5f08c28963&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                17:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12671&amp;idt=7edb50ce0a3c3bcb8baee32377f72542&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Buntownik-2026-10078982" target="_blank">Buntownik</a>                                        </div>
+                                        <div class="description-block">
+                                            Wielka Brytania, USA, 96 min, od lat 15,   Thriller / Akcja                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12677&amp;idt=b646c6c58b3d462441adfb1b23f84205&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-01 czwartek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                17:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135" target="_blank">Mistyczka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 90 min, od lat 13,  Dramat / Biograficzny                                         </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12672&amp;idt=add9006fa0fada194f7f30b6acc59130&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Buntownik-2026-10078982" target="_blank">Buntownik</a>                                        </div>
+                                        <div class="description-block">
+                                            Wielka Brytania, USA, 96 min, od lat 15,   Thriller / Akcja                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12678&amp;idt=b7f472a1e98cd18850498e5b8e776112&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-02 piątek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12614&amp;idt=7ad411e59fb614048eff476efe563565&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-04 niedziela</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12615&amp;idt=699f003f0eaca97d818bfa0bfd845484&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-05 poniedziałek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12618&amp;idt=6c69154e11824d3f973f743180354576&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-06 wtorek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12621&amp;idt=8caf5519f7cd4a67febe692798421136&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-07 środa</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12622&amp;idt=ae6f38f5e89e2e64efbb7aef96d80322&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-08 czwartek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12625&amp;idt=b9a112bdd81d9ff0fb86242d7ad76463&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-09 piątek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12628&amp;idt=beaeaa77a3ff5d6b07e4a1c654319701&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-10 sobota</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                18:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12629&amp;idt=0a4cfcdc9cd179e2d4519c9da4291617&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-11 niedziela</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                18:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12630&amp;idt=a609ed980912423144f9295846385210&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-12 poniedziałek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12633&amp;idt=25a414687478339c3bd42f280f235792&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-13 wtorek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12636&amp;idt=23241c47f90dcf07fa4996b9a4554461&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-14 środa</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12639&amp;idt=619a960785662afb55208131dfb37692&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-15 czwartek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                18:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12640&amp;idt=be5a4ab16f09b58b9cc1936ba5c30326&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-16 piątek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                15:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12643&amp;idt=aa90646938997106d642bd0780756645&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                        <div class="term-in-date-term odd">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                18:30                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://kinomaestro.pl/gramy/andreprzetanczyc/#opis" target="_blank">André Rieu. „Niech żyje Maastricht!”</a>                                        </div>
+                                        <div class="description-block">
+                                            170 min, Retransmisja letniego koncertu z Maastricht 2026 w kinie BCK na dużym ekranie                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #ff313b; border-color: #ff313b; color: #FFFFFF">NAPISY</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #ffff00; border-color: #ffff00; color: #000000">KONCERT W KINIE</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12462&amp;idt=1a79e435546b898a140b14737b270697&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-18 niedziela</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                18:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12644&amp;idt=3ee2aa20cc2f30db1f3eb810a0711892&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-19 poniedziałek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                16:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12647&amp;idt=818c8fa15b6882417027c1308fd73666&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-20 wtorek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12648&amp;idt=1285dbe536aa9bae6091a14258040796&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-21 środa</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12649&amp;idt=faf901c2aca58057d02f1cfb40b33737&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                                <div class="terms-in-date">
+                            <div class="term-in-date-header">2026-10-22 czwartek</div>
+                            <div class="term-in-date-term-list">
+                                                                    <div class="term-in-date-term even">
+                                        <div class="hour-block">
+                                            <div class="hour-wrapper">
+                                                19:00                                            </div>
+                                        </div>
+                                        <div class="title-block">
+                                            <a href="https://www.filmweb.pl/film/Lalka-2026-10057628" target="_blank">Lalka</a>                                        </div>
+                                        <div class="description-block">
+                                            Polska, 162 min, od lat 13 ,Dramat , Romans                                        </div>
+                                        <div class="tags-block ">
+                                            <span class="event-tag" style="background-color: #000000; border-color: #000000; color: #ffffff">2D</span><span class="event-tag" style="background-color: #f57f0a; border-color: #f57f0a; color: #FFFFFF">HIT</span><span class="event-tag" style="background-color: #27af15; border-color: #27af15; color: #FFFFFF">NOWOŚĆ</span><span class="event-tag" style="background-color: #EE8AF8; border-color: #EE8AF8; color: #FFFFFF">PREMIERA</span>                                        </div>
+                                        <div class="buy-button-block">
+                                            <a class="select-term-btn" href="https://bilet.bck.lbl.pl/miejsca.html?id=12650&amp;idt=cf30e3fc8aecb6cee2e1491b86d06779&amp;idg=1">Kup bilet</a>                                        </div>
+                                    </div>
+                                                                </div>
+                        </div>
+                                        </div>
+                        </div>
+    </div>
+</div>
+
+</main>
+
+<footer id="footer" tabindex="-1">
+    <div class="footer-author-info">
+        <a href="https://www.iksoris.pl/" target="_blank">System rezerwacji i sprzedaży biletów iKsoris</a> © SoftCOM 2023 Wrocław. Wszelkie Prawa Zastrzeżone
+    </div>
+</footer>
+<!-- Modal popup -->
+<div class="modal fade"
+     id="notice-modal"
+     tabindex="-1"
+     aria-labelledby="notice-modal"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0">
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Zamknij"></button>
+            </div>
+            <div class="modal-body">
+                            </div>
+            <div class="modal-footer border-top-0"></div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

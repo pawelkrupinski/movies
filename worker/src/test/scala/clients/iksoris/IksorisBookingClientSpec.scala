@@ -2,14 +2,14 @@ package clients.iksoris
 
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{KinoKulturaBelchatow, KinoRCKDrzewica}
+import models.{KinoBCK, KinoKulturaBelchatow, KinoRCKDrzewica}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{IksorisBookingClient, IksorisBookingPage, IksorisOrigin}
 
 import java.time.LocalDateTime
 
-/** Replays two venues' recorded iKsoris `rezerwacja/termin.html?idg=1` pages —
+/** Replays three venues' recorded iKsoris `rezerwacja/termin.html?idg=1` pages —
  *  one per page theme the platform ships — through the one client:
  *
  *  - RCK Drzewica (`bilety.rck.drzewica.pl`, captured 2026-09-23), the
@@ -17,7 +17,11 @@ import java.time.LocalDateTime
  *    news-post schedule is unstructured text and misses two of these four showings.
  *  - MCK Bełchatów's Kino Kultura (`bilety.mckbelchatow.pl`, captured
  *    2026-09-27), the older Bootstrap "table" theme — one row per showing. Its
- *    Filmweb page (the venue's only source before) is thin next to it. */
+ *    Filmweb page (the venue's only source before) is thin next to it.
+ *  - Biłgorajskie Centrum Kultury's Kino BCK (`bilet.bck.lbl.pl`, captured
+ *    2026-09-27), the "terms list" theme — day headers over one card per
+ *    showing. Its Filmweb page listed 2 films / 14 showings to 1 October; this
+ *    page lists 4 films / 34 showings to 22 October. */
 class IksorisBookingClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val drzewica = new IksorisBookingClient(new FakeHttpFetch("kino-rck-drzewica"),
@@ -25,6 +29,9 @@ class IksorisBookingClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   private val belchatow = new IksorisBookingClient(new FakeHttpFetch("kino-kultura-belchatow"),
     IksorisBookingPage(IksorisOrigin("https://bilety.mckbelchatow.pl")), KinoKulturaBelchatow).fetch()
+
+  private val bck = new IksorisBookingClient(new FakeHttpFetch("kino-bck-bilgoraj"),
+    IksorisBookingPage(IksorisOrigin("https://bilet.bck.lbl.pl")), KinoBCK).fetch()
 
   "IksorisBookingClient on the programme theme (Drzewica)" should "return a non-empty, single-cinema film list" in {
     drzewica should not be empty
@@ -83,5 +90,46 @@ class IksorisBookingClientSpec extends AnyFlatSpec with Matchers with OptionValu
     val magia = belchatow.find(_.movie.title == "Totalna magia 2").value
     magia.posterUrl.value shouldBe "https://bilety.mckbelchatow.pl/images/wydarzenia/mini/totalnamagia2.jpg"
     magia.filmUrl shouldBe None
+  }
+
+  "IksorisBookingClient on the terms-list theme (Biłgoraj)" should "read every bookable film and showing off the day-grouped cards" in {
+    bck.map(_.cinema).toSet shouldBe Set(KinoBCK)
+    bck.map(_.movie.title) should contain theSameElementsAs Seq(
+      "André Rieu. „Niech żyje Maastricht!”", "Buntownik", "Lalka", "Mistyczka")
+    bck.map(_.showtimes.size).sum shouldBe 34
+    bck.find(_.movie.title == "Lalka").value.showtimes should have size 19
+  }
+
+  it should "date each showing by its day header and link its own booking page" in {
+    val mistyczka = bck.find(_.movie.title == "Mistyczka").value
+    mistyczka.showtimes.map(_.dateTime).take(3) shouldBe Seq(
+      LocalDateTime.of(2026, 9, 27, 15, 0), LocalDateTime.of(2026, 9, 27, 17, 0), LocalDateTime.of(2026, 9, 28, 15, 0))
+    mistyczka.showtimes.head.bookingUrl.value shouldBe
+      "https://bilet.bck.lbl.pl/miejsca.html?id=12683&idt=ac4eccf0bf3f94b04313601166709986&idg=1"
+    mistyczka.showtimes.flatMap(_.bookingUrl).distinct should have size mistyczka.showtimes.size
+  }
+
+  it should "read countries, runtime and genres off the description, skipping the age rating" in {
+    val buntownik = bck.find(_.movie.title == "Buntownik").value.movie
+    buntownik.countries shouldBe Seq("Wielka Brytania", "USA")
+    buntownik.runtimeMinutes.value shouldBe 96
+    buntownik.genres shouldBe Seq("Thriller", "Akcja")
+    bck.find(_.movie.title == "Lalka").value.movie.genres shouldBe Seq("Dramat", "Romans")
+  }
+
+  it should "take the production year from the title's Filmweb link slug, and none from a non-Filmweb link" in {
+    bck.find(_.movie.title == "Lalka").value.movie.releaseYear.value shouldBe 2026
+    bck.find(_.movie.title == "Buntownik").value.movie.releaseYear.value shouldBe 2026
+    val rieu = bck.find(_.movie.title.startsWith("André Rieu")).value
+    rieu.movie.releaseYear shouldBe None
+    rieu.movie.countries shouldBe empty
+    rieu.movie.genres shouldBe empty
+    rieu.movie.runtimeMinutes.value shouldBe 170
+  }
+
+  it should "recognise the subtitle badge among the tags, and leave the outbound title link off filmUrl" in {
+    val buntownik = bck.find(_.movie.title == "Buntownik").value
+    buntownik.showtimes.head.format should contain ("NAP")
+    buntownik.filmUrl shouldBe None
   }
 }

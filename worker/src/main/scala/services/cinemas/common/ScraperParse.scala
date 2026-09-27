@@ -240,6 +240,15 @@ private[cinemas] object ScraperParse {
     (countries, year)
   }
 
+  private val FilmwebSlugYear = """filmweb\.pl/film/.+-((?:19|20)\d{2})-\d+/?$""".r
+
+  /** The production year a Filmweb film link's slug carries —
+   *  `filmweb.pl/film/Mistyczka-2026-10125135` → 2026. Venues that link a title
+   *  to its Filmweb page publish no year of their own, so the slug is their
+   *  only year signal; `None` for any other link. */
+  def filmwebSlugYear(url: String): Option[Int] =
+    FilmwebSlugYear.findFirstMatchIn(url).map(_.group(1).toInt)
+
   /** Canonical `https://www.youtube.com/watch?v=<id>` form for a YouTube
     * embed / watch / `youtu.be` URL; Vimeo URLs pass through unchanged for the
     * view layer's `TrailerEmbed` to reshape, and anything else is dropped. Each

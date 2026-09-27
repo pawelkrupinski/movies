@@ -57,7 +57,6 @@ object KinoMetalowiecNowaDebaClient {
 
   private val DayHeader    = """^(\d{1,2})\s+(\p{L}+)$""".r
   private val Screening    = """^(\d{1,2}:\d{2})\s+(.+)$""".r
-  private val FilmwebYear  = """filmweb\.pl/film/.+-((?:19|20)\d{2})-\d+/?$""".r
   private val Minutes      = """(\d+)\s*min""".r
   private val AgeYears     = """(\d+)\s*\+""".r
   private val YouTubeUrl   = """"youtube_url":"([^"]+)"""".r
@@ -128,7 +127,7 @@ object KinoMetalowiecNowaDebaClient {
    *  link's OWN text names (an empty wrapping link names nothing). */
   private def filmwebYears(document: Document): Map[String, Int] =
     document.select("aside a[href*=filmweb.pl/film/]").asScala.toSeq.flatMap { a =>
-      FilmwebYear.findFirstMatchIn(a.attr("href")).map(m => keyOf(a.ownText) -> m.group(1).toInt)
+      ScraperParse.filmwebSlugYear(a.attr("href")).map(keyOf(a.ownText) -> _)
     }.filter(_._1.nonEmpty).toMap
 
   /** The post body's film blocks: its Elementor widgets, split at the dividers. */
