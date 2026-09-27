@@ -574,11 +574,20 @@ object IdentityMeasures {
    *  on the year's score (Helios RePlay's 2026 "Diabły" is Ken Russell's 1971 film). */
   val PublishedYear: Set[String] = Set("year.delta", "year.distance")
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
-  /** Does the listing's original title only repeat its own title (a venue filling the field with
-   *  the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day")? Then
-   *  it is the title again, not a second fact, and — as a title relation alone — never vetoes. */
+  /** Does the listing's original title only repeat its own title — the whole of it (a venue
+   *  filling the field with the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2:
+   *  Judgment Day"), a delimited piece of it, or a run cut off one edge of it ("BTS World Tour
+   *  'ARIRANG' In Buenos Aires: Live" beside "…: LIVE VIEWING")? Then it carries nothing the title
+   *  does not: it is the title again, not a second fact, and — as a title relation alone — never
+   *  vetoes. Read by [[originalTitleRelation]] against the listing's own titles, so one definition
+   *  of "carries" serves both. An original title LONGER than the listing's (a `decorated` one)
+   *  says more than the title, and stays a fact. */
   def repeatsItsTitle(l: Listing): Boolean =
-    l.originalTitle.map(key).exists(o => o.nonEmpty && (l.rawTitle.toSeq :+ l.title).map(key).contains(o))
+    originalTitleRelation(l.originalTitle, l.rawTitle.toSeq :+ l.title) match {
+      case Category(c) => CopiesOfTheTitle(c)
+      case _           => false
+    }
+  private val CopiesOfTheTitle: Set[String] = Set("match", "segment", "fragment")
 
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its
@@ -620,7 +629,7 @@ object IdentityMeasures {
                   houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
     Map(
       "title"          -> titleRelation(l, f, houses, qualifiers),
-      "originalTitle"  -> originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles),
+      "originalTitle"  -> ownOriginalTitle(l, f),
       "year.delta"     -> delta(l.year, f.year),
       "year.distance"  -> absDelta(l.year, f.year),
       "titleYear.delta" -> filmMinus(f.year, l.titleYear),
@@ -634,6 +643,17 @@ object IdentityMeasures {
       "rivals"         -> Number(rivals.toDouble),
       "venues.corroborating" -> Number(corroboratingVenues.toDouble)
     )
+
+  /** The listing's original title against the film's titles — unless it only repeats the
+   *  listing's own title ([[repeatsItsTitle]]): then it is the title again, which the title relation
+   *  already weighs, so it counts only where it agrees (the film carries it whole, `match`) and is
+   *  otherwise absent. It never weighs against a film, in the score or a veto: counted, a
+   *  truncated copy ("…: Live") read as a fragment of the very record the title names exactly. */
+  private def ownOriginalTitle(l: Listing, f: Film): Measure =
+    originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles) match {
+      case m if repeatsItsTitle(l) && m != Category("match") => MissingListing
+      case m                                                 => m
+    }
 
   /** Titles a listing names itself by, as the other side of a listing-listing comparison. */
   private def asFilm(l: Listing): Film =

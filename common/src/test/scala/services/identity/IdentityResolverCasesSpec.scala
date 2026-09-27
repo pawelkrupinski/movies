@@ -613,6 +613,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.basis should not be ResolverDecision.Basis.Vetoed)
   }
 
+  it should "not veto the film when it is the listing's title cut short" in {
+    // UK, 271 BTS "… IN BUENOS AIRES / SÃO PAULO: LIVE VIEWING" listings whose original-title field
+    // is the same title truncated to "…: Live": scored as a fragment of the record's full title, it
+    // vetoed the exact, rank-1 record. A truncated copy is the title again, not a second fact.
+    val films = Seq(F(1770237, "BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", 2026, "", 0, 20))
+    val relay = listing(KinoMuza, "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195))
+      .copy(originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))
+    val d = IdentityResolver.resolve(Seq(relay), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(relay.key)
+    withClue(d.render)(d.film shouldBe Some(1770237))
+  }
+
   "A re-release titled with its screening year" should "not veto the film its credited siblings name" in {
     // 951 US venues list the 1939 film; some spell it "Gone With The Wind (2026)" — the re-release's
     // year, which a bracket year is as often as the film's. A bracket year agrees; it never denies

@@ -213,7 +213,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent (1975)"), film)) shouldBe true
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent doit mourir")), film)) shouldBe true
+    // An original title that only repeats the title is the title again, not a fact beside it.
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe false
   }
 
   private def pair(a: Listing, b: Listing) = IdentityMeasures.listingListing(a, b, sameVenue = false, sharedChainId = None)
@@ -290,6 +292,20 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // The listing-film measure reads it the same way.
     measures(Listing("Twoje imię", originalTitle = Some("Your Name (re-release)")),
       Film("Twoje imię", Some("君の名は。"), alternativeTitles = Seq("Your Name.")))("originalTitle") shouldBe Category("segment")
+  }
+
+  "an original title copying the listing's own title" should "repeat it whether whole, a delimited piece or a truncation" in {
+    // UK BTS relays: the venue's original-title field is its own title cut short ("…: Live").
+    val bts = "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING"
+    IdentityMeasures.repeatsItsTitle(Listing(bts, originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))) shouldBe true
+    IdentityMeasures.repeatsItsTitle(Listing(bts, originalTitle = Some(bts))) shouldBe true
+    IdentityMeasures.repeatsItsTitle(Listing("Diabły | Splat!FilmFest", originalTitle = Some("Diabły"))) shouldBe true
+    // Anything the title does not already carry is a second fact: another language's title, a
+    // shared word, or a LONGER title the venue shortened for display.
+    IdentityMeasures.repeatsItsTitle(Listing("Diabły | Splat!FilmFest", originalTitle = Some("The Devils"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(Listing("De Gaulle: Part 2 - Liberte", originalTitle = Some("La Bataille de Gaulle - Partie 2 : J’écris ton nom"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(Listing("Alien", originalTitle = Some("Alien: Romulus"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(Listing("Alien")) shouldBe false
   }
 
   "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {

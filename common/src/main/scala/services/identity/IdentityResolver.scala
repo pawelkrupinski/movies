@@ -186,22 +186,18 @@ object IdentityResolver {
      *  that the film is not of, or its season's production of its work by ANOTHER house than its
      *  banner's (`houses`). */
     def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
-      val vetoing = vetoingMeasures(l, measures)
+      val vetoing = vetoingMeasures(measures)
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
         (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
         ListingConstraints.learnedListingFilm(calibration, vetoing, factsProbability(vetoing)).isDefined
     }
-    /** The measures a veto may read — the score still reads them all — without
-     *  - the published year when it denies a film the same director made
-     *    (`IdentityMeasures.ownAgreement`): there it dates the screening (`IdentityMeasures.PublishedYear`);
-     *  - an original title that only repeats the listing's own title when it weighs against the film
-     *    (`IdentityMeasures.repeatsItsTitle`): it is the title again, and a title alone never vetoes. */
-    def vetoingMeasures(l: IdentityMeasures.Listing, measures: Map[String, Measure]): Map[String, Measure] = {
-      def weighsAgainst(name: String) = calibration.contributions(ListingFilm, measures).exists { case (n, w) => n == name && w < 0 }
-      val screeningYear = IdentityMeasures.sameDirector(measures) && IdentityMeasures.ownAgreement(measures)._2("year")
-      val repeatedTitle = IdentityMeasures.repeatsItsTitle(l) && weighsAgainst("originalTitle")
-      measures -- (if (screeningYear) IdentityMeasures.PublishedYear else Set.empty) -- (if (repeatedTitle) Set("originalTitle") else Set.empty)
-    }
+    /** The measures a veto may read — the score still reads them all — without the published year
+     *  when it denies a film the same director made (`IdentityMeasures.ownAgreement`): there it
+     *  dates the screening (`IdentityMeasures.PublishedYear`). (An original title that only repeats
+     *  the listing's own title never weighs against a film at all: `IdentityMeasures.listingFilm`.) */
+    def vetoingMeasures(measures: Map[String, Measure]): Map[String, Measure] =
+      if (IdentityMeasures.sameDirector(measures) && IdentityMeasures.ownAgreement(measures)._2("year")) measures -- IdentityMeasures.PublishedYear
+      else measures
 
     /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
      *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
