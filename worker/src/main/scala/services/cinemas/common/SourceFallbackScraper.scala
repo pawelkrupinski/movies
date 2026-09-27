@@ -193,7 +193,7 @@ class SourceFallbackScraper(
   private def ownSpell(state: FallbackState): FallbackState =
     if (state.fallbackSource == fallbackName) state
     else state.copy(
-      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None,
+      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None, emptyFallback = None,
       consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None)
 
   /** Has the current failing spell, counting THIS failed run, reached [[fallbackAfter]]?

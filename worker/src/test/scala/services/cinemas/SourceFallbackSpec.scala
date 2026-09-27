@@ -296,10 +296,12 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       cinema = Service, active = false, fallbackSource = "Filmweb", fallbackRef = None,
       failingSince = Some(longAgo), since = None, lastReason = Some("HTTP 404"),
       consecutiveFailures = 0, lastPrimaryProbeAt = Some(longAgo), nextPrimaryProbeAt = None,
-      updatedAt = longAgo, history = List(FallbackEvent(longAgo, FallbackEvent.Uncovered, "HTTP 404"))
+      updatedAt = longAgo, history = List(FallbackEvent(longAgo, FallbackEvent.Uncovered, "HTTP 404")),
+      emptyFallback = Some(FallbackState.EmptySpell(longAgo, longAgo))
     ))
     h.tickSwallowing(); h.advance(1.hour)
     h.state.flatMap(_.failingSince) shouldBe Some(h.clock.minusMillis(1.hour.toMillis))   // its own clock
+    h.state.flatMap(_.emptyFallback) shouldBe None      // Filmweb's silence is no evidence about kinoprogramm.com
     h.tickSwallowing(); h.advance(1.hour)
     h.tickSwallowing()
     h.events.map(_._2.event) shouldBe List(FallbackEvent.Uncovered)
