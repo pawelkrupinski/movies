@@ -1407,6 +1407,13 @@
   "annotation": "Biała Podlaska — Cinema City API"
  },
  {
+  "citySlug": "biala-podlaska",
+  "cinemaObject": "KinoSlawa",
+  "displayName": "Kino Sława",
+  "town": "Międzyrzec Podlaski",
+  "annotation": "Międzyrzec Podlaski — biletyna Kino-Slawa"
+ },
+ {
   "citySlug": "bielsk-podlaski",
   "cinemaObject": "KinoBielsk",
   "displayName": "Kino Bielsk",
@@ -2287,20 +2294,6 @@
   "displayName": "Kino Gryf",
   "town": "Miechów",
   "annotation": "Miechów — systembiletowy bilety.ckis.miechow.eu"
- },
- {
-  "citySlug": "miedzyrzec-podlaski",
-  "cinemaObject": "KinoSlawa",
-  "displayName": "Kino Sława",
-  "town": "Międzyrzec Podlaski",
-  "annotation": "Międzyrzec Podlaski — filmweb 1658"
- },
- {
-  "citySlug": "miedzyrzec-podlaski",
-  "cinemaObject": "KinoZaRogiemMiedzyrzec",
-  "displayName": "Kino za Rogiem Międzyrzec",
-  "town": "Międzyrzec Podlaski",
-  "annotation": "Międzyrzec Podlaski — filmweb 1850"
  },
  {
   "citySlug": "miedzyrzecz",

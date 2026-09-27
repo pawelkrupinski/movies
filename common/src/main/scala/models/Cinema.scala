@@ -642,8 +642,7 @@ case object HeliosTomaszow extends Cinema("Helios Tomaszów Mazowiecki", "Helios
 case object HeliosSiedlce extends Cinema("Helios Siedlce", "Helios")   // Siedlce — Helios REST
 case object NoveKinoSiedlce extends Cinema("Nove Kino Siedlce", "Nove Kino")   // Siedlce — NoveKino siedlce
 case object KinoSokolSokolowPodlaski extends Cinema("Kino Sokół Sokołów Podlaski", "Sokół")   // Sokołów Podlaski — filmweb 2073
-case object KinoSlawa extends Cinema("Kino Sława", "Sława")   // Międzyrzec Podlaski — filmweb 1658
-case object KinoZaRogiemMiedzyrzec extends Cinema("Kino za Rogiem Międzyrzec", "za Rogiem")   // Międzyrzec Podlaski — filmweb 1850
+case object KinoSlawa extends Cinema("Kino Sława", "Sława")   // Międzyrzec Podlaski — biletyna Kino-Slawa
 case object KinoKongres extends Cinema("Kino Kongres", "Kongres")   // Węgrów — biletyna Wegrowski-Osrodek-Kultury
 case object KinoLukow extends Cinema("Kino Łuków", "Łuków")   // Łuków — filmweb 1808
 case object CinemaCityBialaPodlaska extends Cinema("Cinema City Biała Podlaska", "Cinema City")   // Biała Podlaska — Cinema City API

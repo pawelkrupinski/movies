@@ -96,16 +96,6 @@ object RosterLocationAudit {
   import RosterFinding._
   import SourceReading._
 
-  /** Venues that share a street address and are nonetheless two listings,
-   *  checked by comparing their programmes, not their names. */
-  private val SharingAnAddress: Set[Set[String]] = Set(
-    // Warszawska 37, Międzyrzec Podlaski: Filmweb 1658 and 1850 carry disjoint
-    // programmes (different films, different days — 14 days compared 2026-09-23),
-    // Sława's sold through biletyna and za Rogiem's not: two screens of one
-    // culture centre, not one screen twice.
-    Set("Kino Sława", "Kino za Rogiem Międzyrzec"),
-  )
-
   /** How far from its city page's centre a venue may sit. Picked from the PL
    *  roster's real spread, measured 2026-09-23 over the 174 venues whose source
    *  publishes coordinates (Filmweb, Helios, Cinema City): median 9.5 km, and the
@@ -136,7 +126,7 @@ object RosterLocationAudit {
     val shared = located
       .flatMap { case (v, Located(p, _)) => p.street.map(s => (Slugify.stable(p.town), streetKey(s)) -> (v, p)) }
       .groupMap(_._1)(_._2).toSeq
-      .collect { case (_, all) if all.map(_._1.cinema).distinct.size > 1 && !SharingAnAddress(all.map(_._1.cinema).toSet) =>
+      .collect { case (_, all) if all.map(_._1.cinema).distinct.size > 1 =>
         SharedAddress(all.map(_._1), all.head._2.town, all.head._2.street.getOrElse(""))
       }
     val gone       = readings.collect { case (v, Gone(detail)) => SourceGone(v, detail) }

@@ -315,6 +315,9 @@ class CinemaScraperCatalog(
     KinoRelaks          -> "https://biletyna.pl/Naklo-nad-Notecia/Nakielski-Osrodek-Kultury",
     KinoMorskieOko      -> "https://biletyna.pl/Krasnystaw/Kino-Morskie-Oko",
     KinoKosmosMlawa     -> "https://biletyna.pl/Mlawa/Miejski-Dom-Kultury-kino-Kosmos",
+    // One screen Filmweb split across two ids (1658 "Kino Sława", 1850 "Kino za
+    // Rogiem", the room's older name), sharing slots; biletyna sells all of it.
+    KinoSlawa           -> "https://biletyna.pl/Miedzyrzec-Podlaski/Kino-Slawa",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
     new BiletynaClient(bnFetch, BiletynaPlacePage(biletynaPages(cinema)), cinema)
@@ -680,8 +683,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Siedlce),   // Siedlce
     noveKino("siedlce", NoveKinoSiedlce),   // Siedlce
     filmweb(2073, KinoSokolSokolowPodlaski),   // Sokołów Podlaski
-    filmweb(1658, KinoSlawa),   // Międzyrzec Podlaski
-    filmweb(1850, KinoZaRogiemMiedzyrzec),   // Międzyrzec Podlaski
+    biletyna(KinoSlawa),   // Międzyrzec Podlaski
     biletyna(KinoKongres),   // Węgrów
     filmweb(1808, KinoLukow),   // Łuków
     cinemaCity("1100", CinemaCityBialaPodlaska),   // Biała Podlaska

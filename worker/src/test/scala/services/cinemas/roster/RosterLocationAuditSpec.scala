@@ -62,11 +62,16 @@ class RosterLocationAuditSpec extends AnyFlatSpec with Matchers {
     found.filter(_.failing) should have size 1
   }
 
-  it should "pass the two Międzyrzec screens that share Warszawska 37 but not a programme" in {
+  // Filmweb 1658 and 1850 were once let through as two screens of one culture
+  // centre; they are one screen whose programme Filmweb splits across two ids,
+  // sharing slots (biletyna sells all of it in the one hall, 2026-09-27).
+  it should "flag the two Filmweb listings of Międzyrzec's one screen at Warszawska 37" in {
     val miedzyrzec = Seq("Międzyrzec Podlaski")
-    audit(web(filmwebInfo(1658) -> (filmwebInfo(1658), Slawa1658), filmwebInfo(1850) -> (filmwebInfo(1850), ZaRogiem1850)),
+    val found = audit(web(filmwebInfo(1658) -> (filmwebInfo(1658), Slawa1658), filmwebInfo(1850) -> (filmwebInfo(1850), ZaRogiem1850)),
       AuditedVenue("siedlce", "Kino Sława", "https://www.filmweb.pl/cinema/-1658", miedzyrzec),
-      AuditedVenue("siedlce", "Kino za Rogiem Międzyrzec", "https://www.filmweb.pl/cinema/-1850", miedzyrzec)) shouldBe empty
+      AuditedVenue("siedlce", "Kino za Rogiem Międzyrzec", "https://www.filmweb.pl/cinema/-1850", miedzyrzec))
+    found.collect { case SharedAddress(venues, _, _) => venues.map(_.cinema).sorted } shouldBe
+      Seq(Seq("Kino Sława", "Kino za Rogiem Międzyrzec"))
   }
 
   it should "pass a source spelling the town's qualifier with another ending" in {

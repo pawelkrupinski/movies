@@ -767,7 +767,7 @@
   },
   {
    "slug": "biala-podlaska",
-   "kind": "town",
+   "kind": "cluster",
    "object": null,
    "name": "Biała Podlaska",
    "anchor": "Biała Podlaska",
@@ -775,10 +775,12 @@
    "lat": 52.0324,
    "lon": 23.1165,
    "towns": [
-    "Biała Podlaska"
+    "Biała Podlaska",
+    "Międzyrzec Podlaski"
    ],
    "cinemas": [
-    "CinemaCityBialaPodlaska"
+    "CinemaCityBialaPodlaska",
+    "KinoSlawa"
    ],
    "voivodeship": "Lubelskie"
   },
@@ -1803,24 +1805,6 @@
     "KinoGryf"
    ],
    "voivodeship": "Małopolskie"
-  },
-  {
-   "slug": "miedzyrzec-podlaski",
-   "kind": "town",
-   "object": null,
-   "name": "Międzyrzec Podlaski",
-   "anchor": "Międzyrzec Podlaski",
-   "locative": "Międzyrzecu Podlaskim",
-   "lat": 51.9864,
-   "lon": 22.7825,
-   "towns": [
-    "Międzyrzec Podlaski"
-   ],
-   "cinemas": [
-    "KinoSlawa",
-    "KinoZaRogiemMiedzyrzec"
-   ],
-   "voivodeship": "Lubelskie"
   },
   {
    "slug": "miedzyrzecz",
@@ -3460,6 +3444,7 @@
   }
  ],
  "retired": {
+  "miedzyrzec-podlaski": "biala-podlaska",
   "starogard-gdanski": "tczew",
   "ketrzyn": "gizycko"
  }

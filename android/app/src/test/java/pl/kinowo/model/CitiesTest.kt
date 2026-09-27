@@ -96,8 +96,8 @@ class CitiesTest {
 
     @Test
     fun allIsTheGlobalUnionOfPolishAndUkCities() {
-        assertEquals(260, Cities.all.size)               // 181 PL + 79 GB
-        assertEquals(181, Cities.citiesIn("pl").size)
+        assertEquals(259, Cities.all.size)               // 180 PL + 79 GB
+        assertEquals(180, Cities.citiesIn("pl").size)
         assertEquals(79, Cities.citiesIn("uk").size)
     }
 
@@ -176,7 +176,7 @@ class CitiesTest {
                 "jastrzebie-zdroj", "jaworzno", "kedzierzyn-kozle", "kepno", "klodzko", "kluczbork", "kolobrzeg",
                 "koscierzyna", "krapkowice", "krasnik", "krasnystaw", "krosno", "krotoszyn", "krynica-zdroj",
                 "kutno", "lapy", "leba", "legionowo", "leszno", "lidzbark-warminski", "lipno",
-                "lomza", "lubin", "lubliniec", "lukow", "miechow", "miedzyrzec-podlaski", "miedzyrzecz",
+                "lomza", "lubin", "lubliniec", "lukow", "miechow", "miedzyrzecz",
                 "miedzyzdroje", "mielec", "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol",
                 "nowy-targ", "nowy-tomysl", "nysa", "olawa", "olecko", "olesnica", "olsztynek",
                 "opoczno", "ostrow-mazowiecka", "ostrow-wielkopolski", "ostrowiec-swietokrzyski", "oswiecim", "otwock", "pabianice",
@@ -212,7 +212,7 @@ class CitiesTest {
                 "krasnystaw", "krasnik", "krosno", "krotoszyn", "krynica-zdroj", "kutno",
                 "legionowo", "legnica", "leszno", "lidzbark-warminski", "lipno", "lubin",
                 "lublin", "lubliniec", "lapy", "leba", "lomza", "lodz",
-                "lukow", "miechow", "mielec", "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje",
+                "lukow", "miechow", "mielec", "miedzyrzecz", "miedzyzdroje",
                 "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol", "nowy-sacz",
                 "nowy-targ", "nowy-tomysl", "nysa", "olecko", "olesnica", "olsztyn",
                 "olsztynek", "olawa", "opoczno", "opole", "ostrowiec-swietokrzyski", "ostrow-mazowiecka",

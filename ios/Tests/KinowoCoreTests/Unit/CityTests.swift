@@ -99,8 +99,8 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 260)                 // 181 PL + 79 UK
-        XCTAssertEqual(City.all.inCountry("pl").count, 181)
+        XCTAssertEqual(City.all.count, 259)                 // 180 PL + 79 UK
+        XCTAssertEqual(City.all.inCountry("pl").count, 180)
         XCTAssertEqual(City.all.inCountry("uk").count, 79)
     }
 
@@ -149,7 +149,7 @@ final class CityTests: XCTestCase {
             "jastrzebie-zdroj", "jaworzno", "kedzierzyn-kozle", "kepno", "klodzko", "kluczbork", "kolobrzeg",
             "koscierzyna", "krapkowice", "krasnik", "krasnystaw", "krosno", "krotoszyn", "krynica-zdroj",
             "kutno", "lapy", "leba", "legionowo", "leszno", "lidzbark-warminski", "lipno",
-            "lomza", "lubin", "lubliniec", "lukow", "miechow", "miedzyrzec-podlaski", "miedzyrzecz",
+            "lomza", "lubin", "lubliniec", "lukow", "miechow", "miedzyrzecz",
             "miedzyzdroje", "mielec", "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol",
             "nowy-targ", "nowy-tomysl", "nysa", "olawa", "olecko", "olesnica", "olsztynek",
             "opoczno", "ostrow-mazowiecka", "ostrow-wielkopolski", "ostrowiec-swietokrzyski", "oswiecim", "otwock", "pabianice",
@@ -180,7 +180,7 @@ final class CityTests: XCTestCase {
             "krasnystaw", "krasnik", "krosno", "krotoszyn", "krynica-zdroj", "kutno",
             "legionowo", "legnica", "leszno", "lidzbark-warminski", "lipno", "lubin",
             "lublin", "lubliniec", "lapy", "leba", "lomza", "lodz",
-            "lukow", "miechow", "mielec", "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje",
+            "lukow", "miechow", "mielec", "miedzyrzecz", "miedzyzdroje",
             "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol", "nowy-sacz",
             "nowy-targ", "nowy-tomysl", "nysa", "olecko", "olesnica", "olsztyn",
             "olsztynek", "olawa", "opoczno", "opole", "ostrowiec-swietokrzyski", "ostrow-mazowiecka",

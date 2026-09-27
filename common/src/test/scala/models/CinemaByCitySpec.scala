@@ -51,6 +51,6 @@ class CinemaByCitySpec extends AnyFlatSpec with Matchers {
   it should "file a venue outside every major city under its own town or cluster page" in {
     Cinema.cityOf(MultikinoPruszkow) shouldBe Some("Pruszków i okolice")
     Cinema.cityOf(KinoTur) shouldBe Some("Turek i okolice")
-    Cinema.cityOf(CinemaCityBialaPodlaska) shouldBe Some("Biała Podlaska")
+    Cinema.cityOf(CinemaCityBialaPodlaska) shouldBe Some("Biała Podlaska i okolice")
   }
 }

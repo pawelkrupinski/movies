@@ -1,6 +1,6 @@
 // GENERATED from data/uk/venues.json + data/pl/venues.json by
 // data/scripts/generate_venue_towns.py — do NOT edit by hand.
-// The town each of 1208 venues sits in (841 in the UK, 367 in Poland).
+// The town each of 1207 venues sits in (841 in the UK, 366 in Poland).
 // Regenerate after rebuilding either country's table; see data/uk/README.md
 // and data/pl/README.md.
 package models
@@ -630,7 +630,6 @@ private[models] object VenueTowns {
     ("Kino za Rogiem", "Płock"),
     ("Kino za Rogiem Brusy", "Brusy"),
     ("Kino za Rogiem Chmielno", "Chmielno"),
-    ("Kino za Rogiem Międzyrzec", "Międzyrzec Podlaski"),
     ("Kino za Rogiem Wieleń", "Wieleń"),
     ("Kino za Rogiem w Siedlcu", "Siedlec"),
     ("Kino Łuków", "Łuków"),
@@ -774,11 +773,11 @@ private[models] object VenueTowns {
     ("Odeon Cinema Lincoln", "Lincoln"),
     ("Odeon Cinema Llanelli", "Llanelli"),
     ("Odeon Cinema Loughborough", "Loughborough"),
-    ("Odeon Cinema Maidstone", "Maidstone")
+    ("Odeon Cinema Maidstone", "Maidstone"),
+    ("Odeon Cinema Manchester Great Northern", "Manchester")
   )
 
   private def chunk5: Seq[(String, String)] = Seq(
-    ("Odeon Cinema Manchester Great Northern", "Manchester"),
     ("Odeon Cinema Manchester Trafford Centre", "Manchester"),
     ("Odeon Cinema Mansfield", "Mansfield"),
     ("Odeon Cinema Metrocentre", "Gateshead"),
@@ -927,11 +926,11 @@ private[models] object VenueTowns {
     ("Plaza Stockport", "Stockport"),
     ("Plough Arts Centre Torrington", "Torrington"),
     ("Plymouth Arts Cinema", "Plymouth"),
-    ("Pocklington Arts Centre", "York")
+    ("Pocklington Arts Centre", "York"),
+    ("Pontardawe Arts Centre", "Pontardawe")
   )
 
   private def chunk6: Seq[(String, String)] = Seq(
-    ("Pontardawe Arts Centre", "Pontardawe"),
     ("Pontio Arts & Innovation Centre Bangor", "Bangor"),
     ("Prince Charles London", "London"),
     ("Przedwiośnie", "Krotoszyn"),
@@ -1080,11 +1079,11 @@ private[models] object VenueTowns {
     ("The Light Banbury", "Banbury"),
     ("The Light Bolton", "Bolton"),
     ("The Light Bradford", "Bradford"),
-    ("The Light Cambridge", "Cambridge")
+    ("The Light Cambridge", "Cambridge"),
+    ("The Light New Brighton", "Wallasey")
   )
 
   private def chunk7: Seq[(String, String)] = Seq(
-    ("The Light New Brighton", "Wallasey"),
     ("The Light Redhill", "Redhill"),
     ("The Light Sheffield", "Sheffield"),
     ("The Light Sittingbourne", "Sittingbourne"),
@@ -1233,11 +1232,11 @@ private[models] object VenueTowns {
     ("Wetherby Film Theatre", "Wetherby"),
     ("Windmill Littlehampton", "Littlehampton"),
     ("Woolton Picture House", "Liverpool"),
-    ("Wybrzeże", "Kołobrzeg")
+    ("Wybrzeże", "Kołobrzeg"),
+    ("Wyeside Arts Centre Builth Wells", "Builth Wells")
   )
 
   private def chunk8: Seq[(String, String)] = Seq(
-    ("Wyeside Arts Centre Builth Wells", "Builth Wells"),
     ("Wyllyotts Theatre Potters Bar", "Potters Bar"),
     ("Zacisze", "Piekary Śląskie"),
     ("Zeffirellis Cinema Ambleside", "Ambleside"),

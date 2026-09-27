@@ -21,7 +21,7 @@ private[models] object PolishPages {
   private def chunk0: Seq[Row] = Seq(
     Row("augustow", "Augustów", "Augustowie", 53.8432, 22.9798, "Podlaskie", multiTown = false, Seq(KinoIskra)),
     Row("belchatow", "Bełchatów", "Bełchatowie", 51.3688, 19.3567, "Łódzkie", multiTown = false, Seq(HeliosBelchatow, KinoKulturaBelchatow)),
-    Row("biala-podlaska", "Biała Podlaska", "Białej Podlaskiej", 52.0324, 23.1165, "Lubelskie", multiTown = false, Seq(CinemaCityBialaPodlaska)),
+    Row("biala-podlaska", "Biała Podlaska", "Białej Podlaskiej", 52.0324, 23.1165, "Lubelskie", multiTown = true, Seq(CinemaCityBialaPodlaska, KinoSlawa)),
     Row("bielsk-podlaski", "Bielsk Podlaski", "Bielsku Podlaskim", 52.7651, 23.1865, "Podlaskie", multiTown = false, Seq(KinoBielsk)),
     Row("bilgoraj", "Biłgoraj", "Biłgoraju", 50.5411, 22.722, "Lubelskie", multiTown = false, Seq(KinoBCK)),
     Row("bochnia", "Bochnia", "Bochni", 49.9691, 20.4303, "Małopolskie", multiTown = true, Seq(KinoWazka, KinoPlaneta, KinoRegis, KinoKlaps)),
@@ -77,7 +77,6 @@ private[models] object PolishPages {
     Row("lubliniec", "Lubliniec", "Lublińcu", 50.669, 18.6844, "Śląskie", multiTown = false, Seq(KinoKarolinka)),
     Row("lukow", "Łuków", "Łukowie", 51.929, 22.3796, "Lubelskie", multiTown = false, Seq(KinoLukow)),
     Row("miechow", "Miechów", "Miechowie", 50.3565, 20.0279, "Małopolskie", multiTown = true, Seq(KinoRadosc, KinoGryf)),
-    Row("miedzyrzec-podlaski", "Międzyrzec Podlaski", "Międzyrzecu Podlaskim", 51.9864, 22.7825, "Lubelskie", multiTown = false, Seq(KinoSlawa, KinoZaRogiemMiedzyrzec)),
     Row("miedzyrzecz", "Międzyrzecz", "Międzyrzeczu", 52.4446, 15.578, "Lubuskie", multiTown = false, Seq(KinoMOKMiedzyrzecz)),
     Row("miedzyzdroje", "Międzyzdroje", "Międzyzdrojach", 53.9292, 14.451, "Zachodniopomorskie", multiTown = false, Seq(KinoEva)),
     Row("mielec", "Mielec", "Mielcu", 50.2871, 21.4239, "Podkarpackie", multiTown = true, Seq(KinoJednosc, KinoSniezka, KinoPromien, MultikinoMielec)),
@@ -102,10 +101,10 @@ private[models] object PolishPages {
     Row("pabianice", "Pabianice", "Pabianicach", 51.6645, 19.3547, "Łódzkie", multiTown = false, Seq(KinoTomi, HeliosPabianice)),
     Row("parczew", "Parczew", "Parczewie", 51.6402, 22.9006, "Lubelskie", multiTown = false, Seq(KinoParczew)),
     Row("pila", "Piła", "Pile", 53.1514, 16.7378, "Wielkopolskie", multiTown = true, Seq(HeliosPila, KinoWCKWalcz, KinoOsiedlowe, KinoNotec, KinoSwiatowidCzarnkow)),
+    Row("piotrkow-trybunalski", "Piotrków Trybunalski", "Piotrkowie Trybunalskim", 51.4055, 19.7032, "Łódzkie", multiTown = false, Seq(HeliosPiotrkow)),
   )
 
   private def chunk2: Seq[Row] = Seq(
-    Row("piotrkow-trybunalski", "Piotrków Trybunalski", "Piotrkowie Trybunalskim", 51.4055, 19.7032, "Łódzkie", multiTown = false, Seq(HeliosPiotrkow)),
     Row("police", "Police", "Policach", 53.5521, 14.5718, "Zachodniopomorskie", multiTown = true, Seq(KinoKawiarnia, KinoMOKPolice, KinoGryfinskiDomKultury)),
     Row("polkowice", "Polkowice", "Polkowicach", 51.5039, 16.0726, "Dolnośląskie", multiTown = false, Seq(KinoPCA)),
     Row("pruszkow", "Pruszków", "Pruszkowie", 52.1707, 20.8121, "Mazowieckie", multiTown = true, Seq(CinemaCityJanki, KinoGrojeckiOsrodekKultury, MultikinoPruszkow, KinoCKiSPruszkow, KinoBasn)),
@@ -145,10 +144,10 @@ private[models] object PolishPages {
     Row("wadowice", "Wadowice", "Wadowicach", 49.8834, 19.4929, "Małopolskie", multiTown = true, Seq(KinoCentrumWadowice, KinoCKiF)),
     Row("wagrowiec", "Wągrowiec", "Wągrowcu", 52.8084, 17.1996, "Wielkopolskie", multiTown = true, Seq(KinoMewaBudzyn, KinoMDKWagrowiec, KinoMiescisko)),
     Row("wejherowo", "Wejherowo", "Wejherowie", 54.6057, 18.2356, "Pomorskie", multiTown = true, Seq(MultikinoRumia, KinoWCK, KinoZeglarz, KinoCKGniewino, KinoFregata)),
+    Row("wielen", "Wieleń", "Wieleniu", 52.8946, 16.1714, "Wielkopolskie", multiTown = false, Seq(KinoZaRogiemWielen)),
   )
 
   private def chunk3: Seq[Row] = Seq(
-    Row("wielen", "Wieleń", "Wieleniu", 52.8946, 16.1714, "Wielkopolskie", multiTown = false, Seq(KinoZaRogiemWielen)),
     Row("wieliczka", "Wieliczka", "Wieliczce", 49.9874, 20.0647, "Małopolskie", multiTown = true, Seq(KinoMuzaMyslenice, KinoWielickaMediateka)),
     Row("wielun", "Wieluń", "Wieluniu", 51.221, 18.5696, "Łódzkie", multiTown = false, Seq(KinoSyrena)),
     Row("wlodawa", "Włodawa", "Włodawie", 51.55, 23.55, "Lubelskie", multiTown = false, Seq(KinoWDK)),
@@ -265,6 +264,7 @@ private[models] object PolishPages {
   /** Pages that no longer exist → the page now holding their town. */
   val retired: Map[String, String] = Map(
     "ketrzyn" -> "gizycko",
+    "miedzyrzec-podlaski" -> "biala-podlaska",
     "starogard-gdanski" -> "tczew",
   )
 }

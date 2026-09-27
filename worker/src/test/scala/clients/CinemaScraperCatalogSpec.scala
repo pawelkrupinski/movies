@@ -196,6 +196,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     KinoRelaks -> (13, 40),
     KinoRenesans -> (5, 38),
     KinoRodlo -> (13, 41),
+    KinoSlawa -> (18, 67),   // Międzyrzec's one screen, once (Filmweb listed it twice, as 1658 and 1850)
     KinoSokolZakopane -> (8, 41),
     KinoStarowka -> (11, 53),
     KinoSybilla -> (6, 30),

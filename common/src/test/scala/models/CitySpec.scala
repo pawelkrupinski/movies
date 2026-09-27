@@ -85,7 +85,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
       "krasnystaw", "krasnik", "krosno", "krotoszyn", "krynica-zdroj", "kutno",
       "legionowo", "legnica", "leszno", "lidzbark-warminski", "lipno", "lubin",
       "lublin", "lubliniec", "lapy", "leba", "lomza", "lodz",
-      "lukow", "miechow", "mielec", "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje",
+      "lukow", "miechow", "mielec", "miedzyrzecz", "miedzyzdroje",
       "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol", "nowy-sacz",
       "nowy-targ", "nowy-tomysl", "nysa", "olecko", "olesnica", "olsztyn",
       "olsztynek", "olawa", "opoczno", "opole", "ostrowiec-swietokrzyski", "ostrow-mazowiecka",
