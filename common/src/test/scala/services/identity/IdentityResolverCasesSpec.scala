@@ -585,6 +585,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(devils.key).render)(r.decisionOf(devils.key).film shouldBe Some(31767))
   }
 
+  it should "not take that director's film for a programme whose title only starts with it" in {
+    // PL, Kino Nowe Horyzonty's 2026 double bill "Basia. Humor w paski mam + Kocia Szajka. Tajemnica
+    // zniknięcia śledzi", credited to Marcin Wasilewski, whose 2018 "Basia" its title merely starts
+    // with (`decorated`). The title is not that film's title, so its 2026 is not a screening year
+    // of it: the year stays a fact, and the programme is not the 2018 film.
+    val films = Seq(F(634598, "Basia", 2018, "Marcin Wasilewski", 0, 1))
+    val bill  = listing(Multikino, "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", Some(2026),
+      Some("Marcin Wasilewski"), Some(53))
+    val d = IdentityResolver.resolve(Seq(bill), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(bill.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
   it should "still take the same director's film of the listing's year when both are there" in {
     val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
     val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))

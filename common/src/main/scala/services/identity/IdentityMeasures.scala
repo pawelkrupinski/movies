@@ -603,6 +603,10 @@ object IdentityMeasures {
 
   /** Title relations that name a film: the listing's title is (a spelling of) the film's. */
   val NamingRelations: Set[String] = Set("exact", "original", "alternative", "segment", "decorated")
+  /** The naming relations under which the listing's title IS one of the film's titles — whole, or
+   *  as one delimited piece of it — not merely carrying it along one edge (`decorated`), where the
+   *  rest may bill another work. */
+  val TitledRelations: Set[String] = NamingRelations - "decorated"
 
   /** What a listing's own measurements say about a film by themselves: the corroborators that
    *  agree (a year within one, the same director, the original title) and those that deny it. */
@@ -652,15 +656,18 @@ object IdentityMeasures {
   }
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
-   *  listing's title names the film ([[NamingRelations]]) and the same director is credited, a year
+   *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year
    *  that denies the film is the year the venue shows it (Kinoteka's 2026 on Ken Russell's 1971
-   *  "Diabły") or releases it, not another film's — in the score as in a veto. A title that does
-   *  NOT name the film leaves the year a fact: then it tells that director's films apart
-   *  (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid").
+   *  "Diabły") or releases it, not another film's — in the score as in a veto. A title that is
+   *  NOT the film's leaves the year a fact: then it tells that director's films apart
+   *  (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid"), and
+   *  a title that only starts or ends with the film's (`decorated`) may bill another work beside it
+   *  (Nowe Horyzonty's 2026 double bill "Basia. Humor w paski mam + Kocia Szajka…" is not
+   *  Wasilewski's 2018 "Basia").
    *  "Credited" is by the listing that published the year ([[Listing.creditedBesideYear]]), never
    *  borrowed from a sibling's credit. */
   private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
-    if (NamingRelations(title.value) && ownAgreement(m)._2("year") &&
+    if (TitledRelations(title.value) && ownAgreement(m)._2("year") &&
         f.directors.exists(directorRelation(l.creditedBesideYear, _) == Category("same_person")))
       m ++ PublishedYear.map(_ -> MissingListing)
     else m

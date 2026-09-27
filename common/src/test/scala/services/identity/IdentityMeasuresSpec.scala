@@ -91,6 +91,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // apart (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid").
     measures(Listing("Błotem w twarz", year = Some(2026), directors = Seq("Jaak Kilmi")),
       Film("Sangarid", year = Some(2017), directors = Some(Seq("Jaak Kilmi"))))("year.delta") shouldBe Number(9)
+    // Nor does a title that only starts with the film's ("Basia. Humor w paski mam + Kocia Szajka…"
+    // beside Wasilewski's 2018 "Basia"): it is not the film's title, so the year is not its screening.
+    measures(Listing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", year = Some(2026),
+      directors = Seq("Marcin Wasilewski")), Film("Basia", year = Some(2018), directors = Some(Seq("Marcin Wasilewski"))))("year.delta") shouldBe Number(8)
     // Agreeing, it stays the fact it is; beside another director, a year decades off denies.
     measures(Listing("Diabły", year = Some(1971), directors = Seq("Ken Russell")), devils)("year.delta") shouldBe Number(0)
     measures(Listing("Diabły", year = Some(2026), directors = Seq("Someone Else")), devils)("year.delta") shouldBe Number(55)
