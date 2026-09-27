@@ -99,18 +99,37 @@ old path again, over the projection's rows:
 Rollback is data-safe at any time: showtimes are re-derived from the scrapes, never stored only in
 the projection's own state. No manual reseed is needed in either direction.
 
-## 6. What blocks each country today (2026-09-26)
+## 6. What blocks each country today (2026-09-28)
+
+Offline: CI measurement `Identity measure` run 36352075806 (main 5525862f2, the pinned recordings
+the convergence legs replay). Production: the workers' shadow at 2026-09-28 ~00:00 UTC.
 
 | | ES | DE | UK | US | PL |
 |---|---|---|---|---|---|
-| hard clusters cut over (canary vs old path) | 9 / 9 identical | 11 / 11 identical | 21 / 24 identical, 1 merged, 2 moved | 26 / 36 identical, 8 split, 2 moved | 13 / 49 identical, 33 split |
-| full corpus, identical clusters (§17.3; US §15.2) | 235 / 236 | 1,673 / 1,680 | 1,481 / 1,563 | 2,239 / 2,304 | 1,086 / 1,314 |
-| listings matched, pipeline → resolver (§15.2) | 93.9 → 93.3% | 99.0 → 97.2% | 90.4 → 72.0% | 92.9 → 86.8% | 94.2 → 86.8% (Lalka under-merge) |
-| shadow read / backfill | not yet on | not yet on | not yet on | not yet on | not yet on (73 fold-hidden) |
+| labelled: wrong / coverage loss / win (vs pipeline) | 0 / 0 / 0 of 1,176 | 0 / 2 / 2 of 6,153 | 0 / 0 / 0 of 3,398 | 0 / 16 / 91 of 21,497 | **9** / 1 / 0 of 1,409 (Lalka) |
+| gate 5 accuracy + recall (−0.5 pt) | met | met | met | met | **not met** (−0.64 pt) |
+| shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 499/499 | 500/500 |
+| capture (4) | on | on | on | on | on |
+| shadow `identical` (prod) | 227/240 = 94.6% | 1,581/1,725 = 91.7% | 1,240/1,509 = 82.2% | 1,914/2,237 = 85.6% | 759/1,204 = 63.0% |
+| unobserved lookups (prod) | 2 | 32,850 | 33,519 | 39,004 | 11,283 |
 
-Common to all five: the ListingKey backfill and a week of shadow-read agreement (preconditions 1–2),
-the capture on for 8 days (4), and resolver coverage — most of the resolver's queries were not
-recorded when last measured (§15.5), so the gate (5) is not yet met anywhere. ES is closest.
+The earliest 7-day shadow-read windows close ~Oct 3 (ES/DE/US) and ~Oct 4 (PL/UK); 8 days of
+capture ~Oct 4–5. The lookup fill (300/min since gitops fdf9418; per-host back-off since
+af024dd8d) is still draining DE/UK/US/PL; their `identical` rises as it does.
+
+**PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
+pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
+holds at 94.6%: of its 13 non-identical films, the resolver is right on at least four (*The Dark
+Knight Rises* and *All We Imagine as Light*, which the pipeline filed as *The Dark Knight* and
+*La luz*; *Dune: Part Three* and *Cars* listings the pipeline left unmatched), and the pipeline on
+four coverage losses (Leonas, Carmen (OPERA LIVE), Manon (BALLET LIVE), Lumière). Proposal: count
+a film as agreeing when it is `identical` OR the offline adjudication (§17.3) rules it
+resolver-right; keep 97%. Until decided, the gate stands as written in §2.
+
+Relearning the weights on today's code is NOT yet a win: the listing↔listing cannot-link cut
+falls from 0.268 to 0.034 (it is certified below the single lowest same-film unit), merging
+e.g. Odeon's "The Gruffalo + The Gruffalo's Child" double bill (28 new wrong in the UK) for PL's
+Lalka ×9 fixed and ~80 right lost net. Under investigation; r5 stays.
 
 ## 7. Phase 6: what becomes dead once all five are on
 
