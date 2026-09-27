@@ -3,7 +3,7 @@
  * OWN baseline -- the independence is the whole point (see stores.ts).
  */
 import { fetchMobileTags, mobileTagSha, releaseCommitFor, unreleasedCommits } from "./git.js";
-import { allPlatformsNetworkFailed, type MobileState, type Platform } from "./model.js";
+import { allPlatformsNetworkFailed, type MobileState, type Platform, type Submitted } from "./model.js";
 import type { StoreState } from "./stores.js";
 
 export interface MobileSources {
@@ -18,6 +18,18 @@ const PLATFORMS = [
   { name: "Android", subdir: "android", source: "android" },
 ] as const;
 
+/**
+ * Which commit the pending version was built from -- found the same way as the live one's, so it
+ * is the exact submitted build whenever the release tagged it -- and which unreleased commits that
+ * build carries.
+ */
+async function submittedOf(repoDir: string, subdir: string, baseline: string | null, version: string | null): Promise<Submitted | null> {
+  const commit = await releaseCommitFor(repoDir, version, subdir);
+  if (!commit) return null;
+  const carried = baseline ? await unreleasedCommits(repoDir, baseline, subdir, commit) : [];
+  return { commit, includes: (carried ?? []).map((carriedCommit) => carriedCommit.sha) };
+}
+
 async function platformOf(repoDir: string, name: string, subdir: string, state: StoreState): Promise<Platform> {
   if (state.error !== null) return { name, fetchFailed: true, error: state.error, networkError: state.networkError };
   const version = state.liveVersion;
@@ -25,6 +37,7 @@ async function platformOf(repoDir: string, name: string, subdir: string, state: 
   const tagSha = await mobileTagSha(repoDir, subdir, version);
   const baseline = await releaseCommitFor(repoDir, version, subdir, tagSha);
   const commits = baseline ? await unreleasedCommits(repoDir, baseline, subdir) : null;
+  const submitted = state.pending ? await submittedOf(repoDir, subdir, baseline, state.pending.version) : null;
   let error: string | null = null;
   if (version === null) error = "never released to this store yet";
   else if (!baseline && tagSha) {
@@ -36,6 +49,7 @@ async function platformOf(repoDir: string, name: string, subdir: string, state: 
     liveVersion: version,
     liveExtra: state.liveExtra,
     pending: state.pending,
+    submitted,
     baseline,
     commits,
     error,

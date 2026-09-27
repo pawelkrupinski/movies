@@ -15,6 +15,13 @@ export interface Pending {
   readonly state: string | null;
 }
 
+/** The commit a pending (submitted, not yet live) version was built from. */
+export interface Submitted {
+  readonly commit: string;
+  /** Shas of the unreleased commits that build carries; the rest landed after it was submitted. */
+  readonly includes: readonly string[];
+}
+
 /**
  * One platform. `fetchFailed` IS ITS OWN FLAG, NOT INFERRED FROM `liveVersion` BEING NULL, because a
  * version that has genuinely never shipped ALSO has no live version -- and that is a different,
@@ -35,6 +42,8 @@ export type Platform =
     readonly liveVersion: string | null;
     readonly liveExtra: string | null;
     readonly pending: Pending | null;
+    /** null: nothing pending, or its build commit could not be found. */
+    readonly submitted: Submitted | null;
     readonly baseline: string | null;
     /** null: git history could not be read (or there was no baseline to read it from). */
     readonly commits: readonly Commit[] | null;

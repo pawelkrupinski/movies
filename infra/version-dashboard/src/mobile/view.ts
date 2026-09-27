@@ -5,14 +5,16 @@
  */
 import { ago } from "../age.js";
 import { html, type Raw } from "../html.js";
-import type { MobileState, Platform } from "./model.js";
+import type { Commit, MobileState, Platform } from "./model.js";
 
 function platformBlock(platform: Platform): Raw {
   const heading = html`<h2>${platform.name}</h2>`;
   if (platform.fetchFailed) return html`${heading}<div class=err>${platform.error}</div>`;
   const live = html`<b>${platform.liveVersion ?? "?"}${platform.liveExtra ? html` <span class=hint>(${platform.liveExtra})</span>` : ""}</b>`;
+  const submitted = platform.submitted;
+  const pendingVersion = platform.pending?.version ?? "?";
   const pending = platform.pending
-    ? html` · already submitted, not yet live: <b>${platform.pending.version ?? "?"}</b> <span class=hint>(${platform.pending.state ?? "?"})</span>`
+    ? html` · already submitted, not yet live: <b>${pendingVersion}</b> <span class=hint>(${platform.pending.state ?? "?"})</span>${submitted ? html` from <code>${submitted.commit.slice(0, 10)}</code>` : ""}`
     : "";
   const released = platform.baseline ? html` · released from <code>${platform.baseline.slice(0, 10)}</code>` : "";
   const line = html`${heading}<div class=sub>live: ${live}${pending}${released}</div>`;
@@ -22,8 +24,15 @@ function platformBlock(platform: Platform): Raw {
   if (!commits.length) {
     return html`${line}<div class=note>up to date — nothing merged here since the release that shipped the live version</div>`;
   }
-  const rows = commits.map((commit) => html`<tr><td class=sv><span class=sha title='${commit.sha}'>${commit.short}</span></td><td class=mut>${commit.date}</td><td>${commit.subject}</td></tr>`);
-  return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released</div>`;
+  const cells = (commit: Commit) => html`<td class=sv><span class=sha title='${commit.sha}'>${commit.short}</span></td><td class=mut>${commit.date}</td><td>${commit.subject}</td>`;
+  if (!submitted) {
+    const rows = commits.map((commit) => html`<tr>${cells(commit)}</tr>`);
+    return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released</div>`;
+  }
+  const inBuild = new Set(submitted.includes);
+  const rows = commits.map((commit) => html`<tr>${cells(commit)}${inBuild.has(commit.sha) ? html`<td>in ${pendingVersion}</td>` : html`<td class=mut>not submitted</td>`}</tr>`);
+  const carried = commits.filter((commit) => inBuild.has(commit.sha)).length;
+  return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th><th>submission</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released: ${carried} in ${pendingVersion}, ${commits.length - carried} not submitted yet</div>`;
 }
 
 /** The whole page body for one state. `now` in epoch ms. */

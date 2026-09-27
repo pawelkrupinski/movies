@@ -87,10 +87,10 @@ export async function releaseCommitFor(
   return result.code === 0 && sha ? sha : null;
 }
 
-/** Commits touching `subdir` since `baseline`, newest first. [] when up to date; null when git
- * could not answer -- which the page says, rather than rendering it as "up to date". */
-export async function unreleasedCommits(repoDir: string, baseline: string, subdir: string): Promise<Commit[] | null> {
-  const result = await git(repoDir, ["log", "--format=%H%x1f%h%x1f%ad%x1f%s", "--date=short", `${baseline}..HEAD`, "--", subdir]);
+/** Commits touching `subdir` since `baseline` up to `until`, newest first. [] when up to date; null
+ * when git could not answer -- which the page says, rather than rendering it as "up to date". */
+export async function unreleasedCommits(repoDir: string, baseline: string, subdir: string, until = "HEAD"): Promise<Commit[] | null> {
+  const result = await git(repoDir, ["log", "--format=%H%x1f%h%x1f%ad%x1f%s", "--date=short", `${baseline}..${until}`, "--", subdir]);
   if (result.code !== 0) return null;
   return result.stdout.split("\n").filter(Boolean).map((line) => {
     const [sha = "", short = "", date = "", ...subject] = line.split("\x1f");

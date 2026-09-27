@@ -5,7 +5,7 @@ export const NOW = 1_790_000_000_000;
 export const networkDown = (name: string): Platform => ({ name, fetchFailed: true, error: "TypeError: fetch failed (getaddrinfo ENOTFOUND)", networkError: true });
 
 export const upToDate = (name: string, version = "2.0.7"): ReleasedPlatform => ({
-  name, fetchFailed: false, liveVersion: version, liveExtra: null, pending: null, baseline: "abc1234def0", commits: [], error: null,
+  name, fetchFailed: false, liveVersion: version, liveExtra: null, pending: null, submitted: null, baseline: "abc1234def0", commits: [], error: null,
 });
 
 export const state = (platforms: Platform[], over: Partial<MobileState> = {}): MobileState => ({

@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { setExecutor, spawnExecutor, type Executor } from "../../src/exec.js";
 import { buildMobile, type MobileSources } from "../../src/mobile/build.js";
 import { fetchMobileTags, mobileTagSha, releaseCommitFor, unreleasedCommits } from "../../src/mobile/git.js";
-import type { Platform } from "../../src/mobile/model.js";
+import type { Pending, Platform } from "../../src/mobile/model.js";
 import type { StoreState } from "../../src/mobile/stores.js";
 import { TempRepo } from "./repo.js";
 
@@ -129,7 +129,7 @@ describe("build assembly", () => {
   });
   afterEach(() => repo.cleanup());
 
-  const live = (version: string | null, extra: string | null = null): StoreState => ({ error: null, liveVersion: version, liveExtra: extra, pending: null });
+  const live = (version: string | null, extra: string | null = null, pending: Pending | null = null): StoreState => ({ error: null, liveVersion: version, liveExtra: extra, pending });
   const sources = (ios: StoreState, android: StoreState): MobileSources => {
     let tick = 0;
     return { repoDir: repo.root, ios: async () => ios, android: async () => android, now: () => 1_790_000_000_000 + 250 * tick++ };
@@ -151,6 +151,31 @@ describe("build assembly", () => {
     const platforms = Object.fromEntries(state.platforms.map((platform) => [platform.name, platform]));
     expect(commitsOf(platforms.iOS)?.map((commit) => commit.subject)).toEqual(["ios-only follow-up"]);
     expect(commitsOf(platforms.Android)?.map((commit) => commit.subject)).toEqual(["android-only follow-up"]);
+  });
+
+  it("identifies the commit the submitted version was built from, and which unreleased commits it carries", async () => {
+    repo.commit("README.md", "init");
+    repo.tag("mobile-ios-2.0.10", repo.commit("ios/a.swift", "Release mobile 2.0.10"));
+    const inBuild = repo.commit("ios/b.swift", "Release mobile 2.0.11");
+    const built = repo.commit("android/a.kt", "Pin the Gradle daemon"); // the build ran one commit later
+    repo.tag("mobile-ios-2.0.11", built);
+    const after = repo.commit("ios/c.swift", "lands after the submission");
+    const ios = live("2.0.10", "READY_FOR_SALE", { version: "2.0.11", state: "WAITING_FOR_REVIEW" });
+    const platforms = await byName(sources(ios, live(null)));
+    const iOS = platforms.iOS;
+    if (!iOS || iOS.fetchFailed) throw new Error("iOS should have been read");
+    expect(iOS.submitted).toEqual({ commit: built, includes: [inBuild] });
+    expect(iOS.commits?.map((commit) => commit.sha)).toEqual([after, inBuild]);
+  });
+
+  it("leaves submitted empty when nothing is pending, or the pending build cannot be found", async () => {
+    repo.commit("README.md", "init");
+    repo.commit("ios/a.swift", "Release mobile 2.0.10");
+    const orphanPending = live("2.0.10", null, { version: "2.0.11", state: "WAITING_FOR_REVIEW" });
+    const platforms = await byName(sources(orphanPending, live("2.0.10")));
+    const submittedOf = (platform: Platform | undefined) => (platform && !platform.fetchFailed ? platform.submitted : undefined);
+    expect(submittedOf(platforms.iOS)).toBeNull();
+    expect(submittedOf(platforms.Android)).toBeNull();
   });
 
   it("reports a fetch error as its own state, without touching git", async () => {

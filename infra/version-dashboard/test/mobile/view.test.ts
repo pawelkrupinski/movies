@@ -36,6 +36,20 @@ describe("renderMobile", () => {
     expect(out).toContain("live: <b>2.0.6</b> · already submitted, not yet live: <b>2.0.7</b> <span class=hint>(WAITING_FOR_REVIEW)</span>");
   });
 
+  it("names the commit a pending submission was built from, and splits the commits by it", () => {
+    const commit = (sha: string, subject: string) => ({ sha, short: sha.slice(0, 9), date: "2026-09-27", subject });
+    const out = render([{
+      ...upToDate("iOS", "2.0.10"),
+      pending: { version: "2.0.11", state: "WAITING_FOR_REVIEW" },
+      submitted: { commit: "acbbd2a1a29f73f7", includes: ["aaaaaaaaaaaa"] },
+      commits: [commit("bbbbbbbbbbbb", "after the submission"), commit("aaaaaaaaaaaa", "Release mobile 2.0.11")],
+    }]);
+    expect(out).toContain("<b>2.0.11</b> <span class=hint>(WAITING_FOR_REVIEW)</span> from <code>acbbd2a1a2</code>");
+    expect(out).toMatch(/<td>after the submission<\/td><td class=mut>not submitted<\/td>/);
+    expect(out).toMatch(/<td>Release mobile 2.0.11<\/td><td>in 2.0.11<\/td>/);
+    expect(out).toContain("2 commit(s) not yet released: 1 in 2.0.11, 1 not submitted yet");
+  });
+
   it("makes never-released a note, not an err box", () => {
     const out = render([{ ...upToDate("Android"), liveVersion: null, baseline: null, commits: null, error: "never released to this store yet" }]);
     expect(out).toContain("<div class=note>never released to this store yet</div>");
