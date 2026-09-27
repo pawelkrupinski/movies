@@ -89,9 +89,10 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
       listings.map(_.key).toSet shouldBe scraped.toSet
     }
     val lookups = store.currentLookups()
-    // The resolver's lookups only: the TMDB client's and the venues' details — no rating page.
+    // The resolver's lookups only: TMDB's, IMDb's title suggestions (an edition's own record, e.g.
+    // Caligula's Ultimate Cut) and the venues' details — no rating page.
     val (details, external) = lookups.partition(_.query.key.startsWith("DETAIL "))
-    external.map(_.query.host).toSet shouldBe Set("api.themoviedb.org")
+    external.map(_.query.host).toSet shouldBe Set("api.themoviedb.org", "v3.sg.media-imdb.com")
     details.size should be > 0
   }
 
