@@ -26,8 +26,9 @@ import scala.util.matching.Regex
  *     venue's "Kino**teatr**ze" survives because [[EventMarkers]] anchors on a
  *     word boundary (`\bteatr`, not a bare substring).
  *
- *  Applied per cinema by [[NonMovieEventFilteringScraper]], which wraps every
- *  client's `fetch()` at the scrape seam (cf. the per-client filters in
+ *  Applied only by the clients that opt in — by mixing in [[OnlyMovieEventsFilter]]
+ *  or calling [[isLiveEvent]] themselves; nothing applies it to every scrape
+ *  (cf. the per-client filters in
  *  `KinoSfinksClient` / `CharlieMonroeClient`, which this complements rather
  *  than replaces — those discriminate on a structured category the venue
  *  exposes; this one works off the title for venues that expose none). */

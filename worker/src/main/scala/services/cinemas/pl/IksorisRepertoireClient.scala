@@ -33,14 +33,16 @@ import scala.util.Try
  * The listing exposes nothing more — the `wydarzenie.html` event pages aren't
  * linked from a showing and carry at most a prose blurb — so title, runtime,
  * poster and booking link are the whole signal. Live events sold on the same
- * site (concerts) are left to [[NonMovieEventClassifier]] at the scrape seam.
+ * site (Plon's "CZERWONE GITARY. Diamentowy koncert…") are dropped by title via
+ * [[OnlyMovieEventsFilter]]; one named only by its performers ("10 Tenorów")
+ * carries no signal to drop it by.
  */
 class IksorisRepertoireClient(
   http:   HttpFetch,
   origin: IksorisOrigin,
   override val cinema: Cinema,
   today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import IksorisRepertoireClient._
 
@@ -49,7 +51,7 @@ class IksorisRepertoireClient(
 
   // Today's page (the day-picker) failing propagates — a red scrape, not a
   // white "0 films". A later day failing drops only that day, unless every one did.
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val first     = Jsoup.parse(http.get(dayUrl(origin, today)), origin.value)
     val otherDays = pickerDays(first).filterNot(_ == today)
     val attempts  = otherDays.map(day => Try(day -> Jsoup.parse(http.get(dayUrl(origin, day)), origin.value)))

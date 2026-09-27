@@ -56,10 +56,17 @@ class IksorisRepertoireClientSpec extends AnyFlatSpec with Matchers with OptionV
 
   "IksorisRepertoireClient (termin skin, Kino Plon)" should "read every day the picker links, however far ahead" in {
     plon.map(_.cinema).toSet shouldBe Set(KinoPlon)
-    plon.size shouldBe 11
-    plon.flatMap(_.showtimes).size shouldBe 21
+    plon.size shouldBe 10
+    plon.flatMap(_.showtimes).size shouldBe 20
     plon.find(_.movie.title == "Dziadek do orzechów").value.showtimes.map(_.dateTime) shouldBe
       Seq(LocalDateTime.of(2026, 12, 19, 18, 0))
+  }
+
+  // Plon sells its concerts on the same repertoire ("CZERWONE GITARY. Diamentowy
+  // koncert 60-lecia na bis"), which went to TMDB as a film: the client never
+  // applied the live-event filter its doc said a scrape seam would.
+  it should "drop a live concert sold on the same repertoire" in {
+    plon.map(_.movie.title).filter(_.toLowerCase.contains("koncert")) shouldBe empty
   }
 
   it should "pin a showing's time, seat-picker link and runtime" in {
