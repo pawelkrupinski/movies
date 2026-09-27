@@ -417,6 +417,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "take the instalment its number names over an earlier one whose crew it credits" in {
+    // PL, Kinoteka's recorded "Niesamowite przygody skarpetek 4. Do roboty! – zestaw | Młode
+    // Horyzonty" (original title the part-4 record's, 55 minutes, crediting animators): TMDB credits
+    // them on the 2025 first set, which the resolver took on that credit; part 4's record (2026, 55
+    // minutes) credits nobody. The title numbers part 4 as its record does.
+    val films = Seq(F(1447108, "Niesamowite przygody skarpetek", 2025, "Mateusz Kmieć", 55, 1.2),
+      F(1735319, "Niesamowite przygody skarpetek 4. Do roboty!", 2026, "", 55, 0.8))
+    val set = listing(Multikino, "Niesamowite przygody skarpetek 4. Do roboty! – zestaw | Młode Horyzonty", None, Some("Mateusz Kmieć"), Some(55))
+      .copy(originalTitle = Some("Niesamowite przygody skarpetek 4. Do roboty!"))
+    val d = shipped(Seq(set), films).decisionOf(set.key)
+    withClue(d.render)(d.film shouldBe Some(1735319))
+    // The first set's own listing keeps it: no record numbers an instalment its title does not.
+    val first = listing(Helios, "Niesamowite przygody skarpetek", None, Some("Mateusz Kmieć"), Some(55))
+    shipped(Seq(first), films).decisionOf(first.key).film shouldBe Some(1447108)
+  }
+
   it should "leave a title whose number is its name, and a remake, on their films" in {
     val films = Seq(F(844, "2046", 2004, "Wong Kar-wai", 129), F(9, "9 to 5", 1980, "Colin Higgins", 109),
       F(1977, "Suspiria", 1977, "Dario Argento", 99, 20), F(2018, "Suspiria", 2018, "Luca Guadagnino", 152, 15))

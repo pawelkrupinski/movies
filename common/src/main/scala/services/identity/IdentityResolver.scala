@@ -270,8 +270,16 @@ object IdentityResolver {
         // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
         // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
         val titled = scored.exists(s => !s.denied && IdentityMeasures.Rivalling(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures))
+        // The listing's title numbers its instalment as an eligible record of its series does
+        // (`numeral` `same`): another instalment of that series — one the listing numbers and it
+        // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
+        // "Niesamowite przygody skarpetek 4. Do roboty! – zestaw" is part 4, not the 2025 first set
+        // whose animators it credits).
+        def numeral(s: Scored) = s.measures.get("numeral").collect { case IdentityMeasures.Category(c) => c }
+        val instalment = scored.exists(s => !s.denied && numeral(s).contains("same"))
         scored.map(s =>
           if (titled && !IdentityMeasures.NamingRelations(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures)) s.copy(denied = true)
+          else if (instalment && numeral(s).exists(IdentityMeasures.OtherInstalment)) s.copy(denied = true)
           else s)
           .sortBy(s => (-s.p, s.c.tmdbId))
       }
