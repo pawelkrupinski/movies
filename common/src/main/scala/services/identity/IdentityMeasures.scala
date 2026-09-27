@@ -48,6 +48,12 @@ object IdentityMeasures {
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
+    /** Does the venue publish a FACT beside its title — a year (field, bracket or season), a
+     *  running time, a director, a country, or an original title that is not its title again
+     *  ([[IdentityMeasures.repeatsItsTitle]])? */
+    def publishesAFact: Boolean =
+      statedYear.isDefined || seasonYear.isDefined || statedRuntime.isDefined || directors.exists(_.trim.nonEmpty) ||
+        countries.nonEmpty || (originalTitle.exists(_.trim.nonEmpty) && !IdentityMeasures.repeatsItsTitle(this))
     /** The shapes as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
   }

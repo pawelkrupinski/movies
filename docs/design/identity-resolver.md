@@ -407,6 +407,28 @@ does it in rounds, each a function of the previous round's partition:
    to name the answer instead (C17, reverted) cost 110 right PL listings.
 3. Stop when Pk+1 = Pk.
 
+**A facts-free cluster follows its title family's clear majority** (`IdentityResolver.familyMajority`).
+A cluster whose listings publish nothing but a title (no year in a field, bracket or season, no
+runtime, director, country or original title of its own) has no evidence of its own to vote with:
+its pooled vote is the database's ranking. When the siblings its round-A title must-links join it
+to accepted two or more films on their own evidence, it takes the film most of the family's VENUES
+hold (venues, as the calibration counts independent units; the cluster's own venues count as not
+the majority's) when the one-sided 95% Wilson lower bound of that share (`RateBounds.lower95`)
+clears the calibration's show-ratings cut — the probability it is then filed at. The bare US
+"Sense and Sensibility" (836 venues on the 2026 film, 9 on Ang Lee's) and UK "Relaxed Screening:
+Sense and Sensibility" had voted for the 1995 film on TMDB's ranking. A family too thin to outweigh
+the cluster decides nothing and the cluster votes as before: abstaining there instead (measured)
+cost 78 UK Cineworld venues' bare "The Omen", the 1976 film's re-release, beside 2 venues'
+credited 1976 film and 4 venues' 2006 remake.
+
+**A sequel's title does not name the original** (`IdentityMeasures.namesFilm`). "The Texas
+Chainsaw Massacre 2" carries the whole of the 1974 film's alternative title "The Texas Chainsaw
+Massacre", which the title relation reads as `decorated`, a naming relation: every venue crediting
+Tobe Hooper (who directed both) then backed the original in `venues.corroborating`, and the pooled
+vote filed the sequel there, as the old pipeline did. A title names a film only when the numbers
+the two titles carry (`numeralRelation`) do not say another instalment; the same relation is a
+title measure (`numeral`) the calibration weighs.
+
 Order-independence: P0 is a function of the set (A2); a cluster's pooled evidence is a function
 of its members, so round k+1's lookups and edges are a function of Pk; by induction every round
 is a function of the set. Termination: a round only adds must-links, so partitions coarsen
@@ -1036,7 +1058,9 @@ bins start at every observed integer and merge adjacent bins while a G-test (5%)
 ratios apart. Missing evidence is its own value per side (`missing:listing`, `missing:film`); four
 missing values are forced to 0 because they mark how the recorded data was SAMPLED, not the film
 (credits, runtime and country of candidates whose details were never fetched; a positive absent
-from the title search), and the artefact says so beside each. The summed log-odds go through an
+from the title search), and the artefact says so beside each. So are the `numeral` measure's two
+"nothing to compare" values (`none`: neither title numbers itself; `unrelated`: no reading of the
+listing names the film's series), which the title relation already weighs. The summed log-odds go through an
 isotonic map fitted on the calibration split.
 
 A categorical signal whose categories carry more or less of the other side is fitted under that
@@ -1690,6 +1714,8 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
 | The bracketed-runtime marks (a prime, an apostrophe or "min" after a bracketed 2–3 digit number) | `IdentityMeasures.bracketedRuntime` | the only way a number in a title says it is a duration ("DZIADKU WIEJEMY (97’)"); 8 PL listings | learn per-venue title annotations from their agreement with the film's runtime |
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
+| An instalment number: an Arabic numeral of at most three digits (four are a year), or a Roman one from I to XXXIX closing a delimited piece of the title | `IdentityMeasures.numbered` | a grammar, not a list: "2", "II" and "Part 2" are 2; L/C/D/M and a mid-piece "i" (Polish "and") spell words | none needed; its weight is fitted (`numeral`) |
+| The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `IdentityResolver.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
 

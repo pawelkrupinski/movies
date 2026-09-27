@@ -561,6 +561,10 @@ object IdentityResolver {
       }
     }
 
+    /** The must-link tiers a title draws (`edgesOf`): same title, same search form or original
+     *  title, one title a segment of the other. */
+    val TitleTiers: Set[Int] = Set(2, 3, 4)
+
     def edgesOf(members: Seq[Node], filmOf: String => Option[Int]): Seq[ResolverEdge] =
       pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (x, y) =>
         val (ex, ey) = (x.evidence, y.evidence)
@@ -634,17 +638,54 @@ object IdentityResolver {
       })
     }
 
+    /** The film a cluster of listings that publish NOTHING but their titles takes from its TITLE
+     *  FAMILY — the siblings outside it a title must-link of round A joins it to (`titleEdges`,
+     *  [[TitleTiers]]) that accepted a film on their own evidence — when those siblings are split
+     *  across films. A bare "Sense and Sensibility" beside 836 venues' "Sense and Sensibility
+     *  (2026) {Oakley}" and 9 venues' "(1995) {Ang Lee}" has no evidence of its own for either:
+     *  the database's ranking prefers the older, the listings around it the current release.
+     *
+     *  It takes the family's majority film only when the majority is CLEAR: the one-sided 95%
+     *  Wilson lower bound ([[RateBounds.lower95]]) of that film's share of the family's venues —
+     *  venues, as the calibration counts units, and the cluster's own venues among them as NOT the
+     *  majority's, since nothing they publish says so — clears the calibration's show-ratings cut,
+     *  which is the probability it is filed at. A family too thin to outweigh the cluster decides
+     *  nothing, and the cluster votes on its pooled evidence as before: 78 Cineworld venues' bare
+     *  "The Omen" beside 2 venues' credited 1976 film and 4 venues' 2006 one is the 50th-anniversary
+     *  re-release, and 4 of 84 is no majority. `None` also when a member publishes a fact or the
+     *  siblings hold fewer than two films. */
+    def familyMajority(cluster: Seq[Node], members: Seq[Node], accepted: Map[String, Int],
+                       titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
+      Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
+        val inside   = cluster.map(_.id).toSet
+        val linked   = titleEdges.flatMap(e => if (inside(e.a)) Seq(e.b) else if (inside(e.b)) Seq(e.a) else Nil).toSet -- inside
+        val venuesOf = members.filter(y => linked(y.id) && accepted.contains(y.id)).groupMapReduce(y => accepted(y.id))(_.venues)(_ ++ _)
+        Option.when(venuesOf.sizeIs >= 2) {
+          val (film, venues) = venuesOf.toSeq.sortBy { case (f, vs) => (-vs.size, f) }.head
+          val own   = cluster.flatMap(_.venues).toSet -- venues
+          val total = (venuesOf.values.flatten ++ own).toSet.size
+          val bound = RateBounds.lower95(venues.size, total)
+          Option.when(calibration.showsRatings(bound) && !cluster.exists(denies(_, film)))(
+            (film, bound, s"title family's majority film $film: ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
+        }.flatten
+      }.flatten
+
     def decide(cluster: Seq[Node], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
-               voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
+               voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int],
+               familyTaken: Map[String, (Int, Double, String)]): ResolverDecision = {
       val films = cluster.flatMap(n => filmOf(n.id)).distinct
       require(films.sizeIs <= 1, s"a cluster holds two films ${films.mkString(",")}: a cannot-link was not drawn")
       val film    = films.headOption
       val pinned  = film.isDefined && cluster.exists(n => pinnedFilm.contains(n.id))
       val scored  = scope.pooled(cluster)
       val eligible = scored.filterNot(_.denied)
+      // A cluster the title family alone decided is filed at the family's bound when its own
+      // scoring rates the film lower.
+      val familyBound = film.filter(_ => cluster.forall(n => !accepted.contains(n.id))).flatMap(f =>
+        cluster.flatMap(n => familyTaken.get(n.id)).filter(_._1 == f).map(_._2).minOption)
       val confidence =
         if (pinned) 1.0
-        else film.fold(eligible.map(1 - _.p).product)(confidenceOf(scored, _))
+        else film.fold(eligible.map(1 - _.p).product)(f => math.max(confidenceOf(scored, f), familyBound.getOrElse(0.0)))
       val unknown = cluster.flatMap(n => queriesOf(n.id)).distinct.count(q => !answers(q).isKnown)
       val basis =
         if (pinned) ResolverDecision.Basis.Pinned
@@ -663,7 +704,8 @@ object IdentityResolver {
         val other = if (ids(e.a)) e.b else e.a
         s"kept apart from ${nodeById(other).label} (cluster ${clusterIndex(other)}): ${e.reason}"
       }.distinct.sorted
-      val vote  = cluster.flatMap(n => voted.get(n.id)).headOption.map { case (id, p) => s"pooled evidence of ${cluster.size} node(s) → $id at ${ResolverDecision.percent(p)}" }
+      val vote  = cluster.flatMap(n => familyTaken.get(n.id).map(_._3)).headOption.orElse(
+        cluster.flatMap(n => voted.get(n.id)).headOption.map { case (id, p) => s"pooled evidence of ${cluster.size} node(s) → $id at ${ResolverDecision.percent(p)}" })
       val best  = scored.headOption.filter(s => film.forall(_ != s.c.tmdbId)).map(s =>
         s"best ${if (s.denied) "vetoed" else "rejected"} candidate ${s.c.tmdbId} at ${ResolverDecision.percent(s.p)} (${calibration.explain(ListingFilm, s.measures)})")
       val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
@@ -690,9 +732,21 @@ object IdentityResolver {
 
       val roundA = solve(members, roundAByFamily.getOrElse(family, Nil))
       // Group-level voting over the clusters no member matched alone.
+      val unaccepted = roundA.filter(_.forall(n => !accepted.contains(n.id)))
+      // A facts-free cluster in a split title family follows the family's clear majority
+      // (`familyMajority`); every other cluster votes on its pooled evidence.
+      val familyTaken: Map[String, (Int, Double, String)] =
+        if (mutation == Mutation.NoVoting) Map.empty
+        else {
+          // The title family: the round's title must-links (same title, search form, original
+          // title, segment), however the solver then split the nodes they join.
+          val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(e => e.must && TitleTiers(e.tier))
+          unaccepted.flatMap(c => familyMajority(c, members, accepted, titleEdges).toSeq.flatMap(t => c.map(_.id -> t))).toMap
+        }
       val voted: Map[String, (Int, Double)] =
         if (mutation == Mutation.NoVoting) Map.empty
-        else roundA.filter(_.forall(n => !accepted.contains(n.id))).flatMap(vote(_, scope)).toMap
+        else unaccepted.flatMap(c => if (c.exists(n => familyTaken.contains(n.id))) c.map(n => n.id -> (familyTaken(n.id)._1, familyTaken(n.id)._2))
+                                     else vote(c, scope)).toMap
       val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
       val edges    = edgesOf(members, filmOf)
       val clusters = solve(members, edges)
@@ -700,7 +754,7 @@ object IdentityResolver {
 
       val clusterIndex = clusters.zipWithIndex.flatMap { case (c, i) => c.map(_.id -> i) }.toMap
       violations += edges.count(e => !e.must && clusterIndex(e.a) == clusterIndex(e.b))
-      clusters.foreach(cluster => decisions += decide(cluster, scope, filmOf, accepted, voted, edges, clusterIndex))
+      clusters.foreach(cluster => decisions += decide(cluster, scope, filmOf, accepted, voted, edges, clusterIndex, familyTaken))
     }
 
     val decided = decisions.toSeq.sortBy(_.members.head)(using ListingKey.ordering)

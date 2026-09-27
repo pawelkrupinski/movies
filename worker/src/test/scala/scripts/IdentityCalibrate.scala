@@ -228,15 +228,8 @@ object IdentityCalibrate {
   /** Additive (Jeffreys) smoothing for every likelihood ratio. */
   private val Alpha = 0.5
 
-  /** One-sided Wilson upper bound of a rate at the normal quantile `z`. */
-  def upperBound(x: Int, n: Int, z: Double): Double =
-    if (n == 0) 1.0 else {
-      val p = x.toDouble / n; val z2 = z * z
-      math.min(1.0, (p + z2 / (2 * n) + z * math.sqrt(p * (1 - p) / n + z2 / (4.0 * n * n))) / (1 + z2 / n))
-    }
-
-  /** One-sided 95% Wilson upper bound of a rate. */
-  def upper95(x: Int, n: Int): Double = upperBound(x, n, 1.6448536269514722)
+  /** The Wilson bounds, shared with the resolver (`services.identity.RateBounds`). */
+  export services.identity.RateBounds.{upperBound, upper95}
 
   /** The standard normal quantile, by bisection on the complementary error function
    *  (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7). */

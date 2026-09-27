@@ -403,5 +403,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.backingVenues(original.copy(directors = Some(Seq("Tobe Hooper"))), group) shouldBe empty
   }
 
-
+  "a listing that publishes nothing but its title" should "be told from one that publishes a fact" in {
+    Listing("Sense and Sensibility").publishesAFact shouldBe false
+    Listing("Relaxed Screening: Sense and Sensibility").publishesAFact shouldBe false
+    Listing("Sense and Sensibility", originalTitle = Some("Sense and Sensibility")).publishesAFact shouldBe false
+    Listing("Sense and Sensibility (2026)").publishesAFact shouldBe true
+    Listing("Sense and Sensibility", directors = Seq("Georgia Oakley")).publishesAFact shouldBe true
+    Listing("Sense and Sensibility", runtime = Some(132)).publishesAFact shouldBe true
+  }
 }

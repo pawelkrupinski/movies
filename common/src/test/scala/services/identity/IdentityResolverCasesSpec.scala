@@ -1,6 +1,7 @@
 package services.identity
 
-import models.{Cinema, Helios, KinoApollo, KinoMuza, Multikino, Rialto}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany,
+  HeliosMagnolia, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, MultikinoPasazGrunwaldzki, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingConstraints, ListingKey, SingleCountryNormalizer}
@@ -420,6 +421,44 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       listing(KinoApollo, "Suspiria", Some(2018), Some("Luca Guadagnino")), listing(KinoMuza, "Suspiria", Some(1977), Some("Dario Argento")))
     val r = resolve(listings, films)
     listings.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(844), Some(9), Some(2018), Some(1977))
+  }
+
+  "A listing that publishes only its title" should "follow its title family's clear majority film, not the database's ranking" in {
+    // US Landmark Ritz Five's bare "Sense and Sensibility" (and UK Everyman's "Relaxed Screening:
+    // …"): the credited siblings are split between the current release and Ang Lee's 1995 film,
+    // which TMDB ranks first. The bare listing's own vote took the 1995 film on that ranking.
+    val films = Seq(F(4584, "Sense and Sensibility", 1995, "Ang Lee", 136, 20), F(1503762, "Sense and Sensibility", 2026, "Georgia Oakley", 132, 10))
+    val current = Seq(Helios, KinoApollo, Rialto, CharlieMonroe, CinemaCityKinepolis, KinoPalacowe, CinemaCityPoznanPlaza,
+      CinemaCityWroclavia, CinemaCityKorona).map(listing(_, "Sense and Sensibility", Some(2026), Some("Georgia Oakley")))
+    val lee     = listing(Multikino, "Sense and Sensibility", Some(1995), Some("Ang Lee"))
+    val bare    = listing(KinoMuza, "Sense and Sensibility")
+    val relaxed = listing(KinoBulgarska, "Relaxed Screening: Sense and Sensibility")
+    val r = resolve(current ++ Seq(lee, bare, relaxed), films)
+    withClue((current.head +: Seq(lee, bare, relaxed)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(current.head.key).film shouldBe Some(1503762)
+      r.decisionOf(lee.key).film shouldBe Some(4584)
+      r.decisionOf(bare.key).film shouldBe Some(1503762)
+      r.decisionOf(relaxed.key).film shouldBe Some(1503762)
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "keep its own vote when the family is too thin to outweigh it" in {
+    // UK, 78 Cineworld venues' bare "The Omen" (the 1976 film's 50th-anniversary re-release)
+    // beside 2 venues crediting Donner's 1976 film and 4 crediting the 2006 remake: 4 of the
+    // family's 84 venues is no majority, and the bare listings vote on their own evidence.
+    val films = Seq(F(794, "The Omen", 1976, "Richard Donner", 111, 20), F(806, "The Omen", 2006, "John Moore", 110, 10))
+    val donner   = Seq(Multikino, Rialto).map(listing(_, "The Omen", Some(1976), Some("Richard Donner")))
+    val moore    = Seq(Helios, KinoApollo, CinemaCityKinepolis, KinoPalacowe).map(listing(_, "The Omen", Some(2006), Some("John Moore")))
+    val chain    = Seq(KinoMuza, KinoBulgarska, CharlieMonroe, CinemaCityPoznanPlaza, CinemaCityWroclavia, CinemaCityKorona,
+      MultikinoPasazGrunwaldzki, HeliosMagnolia, HeliosAlejaBielany).map(listing(_, "The Omen"))
+    val r = resolve(donner ++ moore ++ chain, films)
+    withClue(r.decisionOf(chain.head.key).render) {
+      r.decisionOf(donner.head.key).film shouldBe Some(794)
+      r.decisionOf(moore.head.key).film shouldBe Some(806)
+      chain.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(794))
+    }
+    r.violations shouldBe 0
   }
 
   "Two listings stating years decades apart" should "stay apart when no film ties them: 'It (1990)' is not 'IT (2017)'" in {
