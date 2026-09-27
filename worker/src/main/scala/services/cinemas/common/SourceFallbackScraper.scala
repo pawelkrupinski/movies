@@ -113,8 +113,8 @@ class SourceFallbackScraper(
       // The fallback is the ONLY source this tick, so its failure is the scrape's: it
       // fails (red) rather than reading as an empty listing. Only a fallback that
       // answered empty is an empty tick.
-      val (fwResult, fwMs) = fetchFallback()
-      previous.foreach(p => store.put(p.copy(updatedAt = nowI)))
+      val (fwResult, fwMs, fwAnswer) = fetchFallback()
+      previous.foreach(p => store.put(p.copy(updatedAt = nowI, emptyFallback = witnessed(p, fwAnswer, nowI))))
       fwResult match {
         case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
           monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
@@ -140,12 +140,13 @@ class SourceFallbackScraper(
         case PrimaryOutcome.Empty(movies, ms) =>
           // Empty only counts as a failure if the fallback can actually cover it —
           // otherwise it's a genuine empty repertoire and must never trip.
-          val (fwMovies, fwMs, fwServed) = tryFallback()
+          val (fwMovies, fwMs, fwAnswer) = tryFallback()
+          val fwServed = fwAnswer == FallbackAnswer.Served
           if (!fwServed) {
-            if (active) markPrimaryDown(previous, nowI, EmptyReason)  // already on fallback: still a failed re-probe
+            if (active) markPrimaryDown(previous, nowI, EmptyReason, fwAnswer)  // already on fallback: still a failed re-probe
             monitor.recordEmpty(service, ms); primaryServed(movies)
           } else if (active) {
-            markPrimaryDown(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
+            markPrimaryDown(previous, nowI, EmptyReason, fwAnswer); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
           } else if (graceElapsed(previous, nowI)) {
             enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
           } else {
@@ -164,13 +165,13 @@ class SourceFallbackScraper(
     keepPrimaryOutcome: => CinemaScraper.Scraped
   ): CinemaScraper.Scraped =
     if (active) {
-      val (fwMovies, fwMs, fwServed) = tryFallback()
-      markPrimaryDown(previous, nowI, reason)
-      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) } else keepPrimaryOutcome
+      val (fwMovies, fwMs, fwAnswer) = tryFallback()
+      markPrimaryDown(previous, nowI, reason, fwAnswer)
+      if (fwAnswer == FallbackAnswer.Served) { monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) } else keepPrimaryOutcome
     } else if (graceElapsed(previous, nowI)) {
-      val (fwMovies, fwMs, fwServed) = tryFallback()
-      if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) }
-      else { recordUncovered(previous, nowI, reason); keepPrimaryOutcome }
+      val (fwMovies, fwMs, fwAnswer) = tryFallback()
+      if (fwAnswer == FallbackAnswer.Served) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) }
+      else { recordUncovered(previous, nowI, reason, fwAnswer); keepPrimaryOutcome }
     } else {
       recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome
     }
@@ -223,23 +224,34 @@ class SourceFallbackScraper(
     }
   }
 
-  /** One fallback fetch and how long it took; an absent fallback answers empty. */
-  private def fetchFallback(): (scala.util.Try[Seq[CinemaMovie]], Long) = fallback() match {
+  /** One fallback fetch, how long it took, and what it answered; an absent fallback
+   *  answers empty, as [[FallbackAnswer.Absent]]. */
+  private def fetchFallback(): (scala.util.Try[Seq[CinemaMovie]], Long, FallbackAnswer) = fallback() match {
     case Some(fw) =>
       val t0 = System.currentTimeMillis()
       val movies = scala.util.Try(fw.fetch())
-      (movies, System.currentTimeMillis() - t0)
-    case None => (scala.util.Success(Seq.empty), 0L)
+      (movies, System.currentTimeMillis() - t0, FallbackAnswer.of(movies))
+    case None => (scala.util.Success(Seq.empty), 0L, FallbackAnswer.Absent)
   }
 
-  /** The fallback as cover for a primary that failed or came back empty: whether it can
-   *  serve this tick. A fallback that threw cannot, and the primary's own outcome — its
-   *  throw, or its empty listing — stands; nothing is reported on the fallback's behalf. */
-  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean) = {
-    val (movies, ms) = fetchFallback()
-    val served       = movies.toOption.filter(showtimeCount(_) > 0)
-    (served.getOrElse(Seq.empty), ms, served.isDefined)
+  /** The fallback as cover for a primary that failed or came back empty: what it
+   *  answered this tick. Only [[FallbackAnswer.Served]] covers; otherwise the primary's
+   *  own outcome — its throw, or its empty listing — stands, and nothing is reported
+   *  on the fallback's behalf. */
+  private def tryFallback(): (Seq[CinemaMovie], Long, FallbackAnswer) = {
+    val (movies, ms, answer) = fetchFallback()
+    (if (answer == FallbackAnswer.Served) movies.get else Seq.empty, ms, answer)
   }
+
+  /** The empty-fallback spell after the fallback gave `answer` at `nowI`: listing
+   *  nothing starts or extends it, serving ends it, and an error or a missing
+   *  fallback proves nothing either way. */
+  private def witnessed(base: FallbackState, answer: FallbackAnswer, nowI: Instant): Option[FallbackState.EmptySpell] =
+    answer match {
+      case FallbackAnswer.ListedEmpty => Some(base.emptyFallback.fold(FallbackState.EmptySpell(nowI, nowI))(_.copy(lastSeen = nowI)))
+      case FallbackAnswer.Served      => None
+      case FallbackAnswer.Failed | FallbackAnswer.Absent => base.emptyFallback
+    }
 
   /** Grace-window failure: keep the `failingSince` clock running (starting it if
    *  this is the first failure) without entering fallback. `active=false` so the
@@ -262,12 +274,12 @@ class SourceFallbackScraper(
    *  worth nothing, and the state is otherwise the grace state — still
    *  `active = false`, because we are not serving a fallback, we are serving
    *  nothing. A primary success clears `failingSince` and so re-arms it. */
-  private def recordUncovered(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
+  private def recordUncovered(previous: Option[FallbackState], nowI: Instant, reason: String, answer: FallbackAnswer): Unit = {
     val base = previous.getOrElse(initialState)
-    if (alreadyPagedUncovered(base)) recordGraceFailure(previous, nowI, reason)
+    if (alreadyPagedUncovered(base)) store.put(stillFailing(base, nowI, reason, answer))
     else {
       val event = FallbackEvent(nowI, FallbackEvent.Uncovered, reason)
-      val next  = stillFailing(base, nowI, reason)
+      val next  = stillFailing(base, nowI, reason, answer)
         .copy(history = (event :: base.history).take(FallbackState.MaxHistory))
       store.put(next)
       onEvent(next, event)
@@ -285,8 +297,9 @@ class SourceFallbackScraper(
 
   /** The persisted shape of "the primary is down and we are not on fallback",
    *  shared by the silent grace ticks and the one that pages. */
-  private def stillFailing(base: FallbackState, nowI: Instant, reason: String): FallbackState =
+  private def stillFailing(base: FallbackState, nowI: Instant, reason: String, answer: FallbackAnswer = FallbackAnswer.Absent): FallbackState =
     base.copy(
+      emptyFallback       = witnessed(base, answer, nowI),
       active              = false,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
@@ -316,7 +329,8 @@ class SourceFallbackScraper(
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(1).toMillis)),
       updatedAt           = nowI,
       history             = (event :: base.history).take(FallbackState.MaxHistory),
-      alerted             = true
+      alerted             = true,
+      emptyFallback       = None
     )
     store.put(next)
     onEvent(next, event)
@@ -326,7 +340,7 @@ class SourceFallbackScraper(
    *  PROBE_FAILED, bump the failure count and push the next probe out with
    *  exponential backoff. Routine backoff noise — no page (FallbackAlert ignores
    *  PROBE_FAILED). */
-  private def markPrimaryDown(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
+  private def markPrimaryDown(previous: Option[FallbackState], nowI: Instant, reason: String, answer: FallbackAnswer): Unit = {
     val base        = previous.getOrElse(initialState)
     val consecutive = base.consecutiveFailures + 1
     val event       = FallbackEvent(nowI, FallbackEvent.ProbeFailed, reason)
@@ -340,7 +354,8 @@ class SourceFallbackScraper(
       lastPrimaryProbeAt  = Some(nowI),
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(consecutive).toMillis)),
       updatedAt           = nowI,
-      history             = (event :: base.history).take(FallbackState.MaxHistory)
+      history             = (event :: base.history).take(FallbackState.MaxHistory),
+      emptyFallback       = witnessed(base, answer, nowI)
     )
     store.put(next)
     onEvent(next, event)
@@ -355,12 +370,12 @@ class SourceFallbackScraper(
       val next = p.copy(
         active = false, lastReason = Some("primary recovered"), consecutiveFailures = 0,
         failingSince = None, failedRuns = 0, since = None, lastPrimaryProbeAt = Some(nowI), nextPrimaryProbeAt = None,
-        updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
+        emptyFallback = None, updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
       )
       store.put(next)
       onEvent(next, event)
-    } else if (p.failingSince.isDefined) {
-      store.put(p.copy(failingSince = None, failedRuns = 0, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI))
+    } else if (p.failingSince.isDefined || p.emptyFallback.isDefined) {
+      store.put(p.copy(failingSince = None, failedRuns = 0, emptyFallback = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI))
     }
   }
 
@@ -387,6 +402,19 @@ object SourceFallbackScraper {
   private val EmptyReason = "primary returned no screenings"
 
   private def showtimeCount(movies: Seq[CinemaMovie]): Int = movies.iterator.map(_.showtimes.size).sum
+
+  /** What the fallback said when asked to cover: it served showtimes, it answered with
+   *  none (its page exists and lists nothing), it failed, or the venue has none. */
+  private enum FallbackAnswer {
+    case Served, ListedEmpty, Failed, Absent
+  }
+  private object FallbackAnswer {
+    def of(result: scala.util.Try[Seq[CinemaMovie]]): FallbackAnswer = result match {
+      case scala.util.Success(movies) if showtimeCount(movies) > 0 => Served
+      case scala.util.Success(_)                                  => ListedEmpty
+      case scala.util.Failure(_)                                  => Failed
+    }
+  }
 
   private sealed trait PrimaryOutcome
   private object PrimaryOutcome {

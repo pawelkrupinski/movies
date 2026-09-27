@@ -76,24 +76,33 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
     ))
   }
 
+  private def roundTrip(s: FallbackState): Option[FallbackState] = {
+    val set = MongoFallbackStore.toUpdate(s)
+      .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
+      .getDocument("$set")
+    MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema))
+  }
+
   // Pure write→read round-trip with no Mongo: render the $set toUpdate produces,
   // feed it back through fromDocument. Catches any field-name drift between the two
   // halves of the codec (a typo only a live Mongo would otherwise reveal).
   "MongoFallbackStore write→read" should "round-trip a state through toUpdate + fromDocument" in {
     val s = state("Kino Praha", active = true)
-    val set = MongoFallbackStore.toUpdate(s)
-      .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
-      .getDocument("$set")
-    MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema)) shouldBe Some(s)
+    roundTrip(s) shouldBe Some(s)
   }
 
   // The run count a `FallbackAfter.FailedRuns` venue is judged on: dropped on write, a
   // 10-hourly venue would restart at zero after every worker restart and never fall back.
   it should "round-trip the separate failed runs of the current spell" in {
     val s = state("Kino Praha", active = false).copy(failedRuns = 2)
-    val set = MongoFallbackStore.toUpdate(s)
-      .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
-      .getDocument("$set")
-    MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema)).map(_.failedRuns) shouldBe Some(2)
+    roundTrip(s).map(_.failedRuns) shouldBe Some(2)
+  }
+
+  // The closure verdict reads how long the fallback has listed nothing; lost on a
+  // write, every worker restart would start the evidence over.
+  it should "round-trip the empty-fallback spell" in {
+    val spell = FallbackState.EmptySpell(since = Instant.ofEpochMilli(4000), lastSeen = Instant.ofEpochMilli(9000))
+    val s = state("Heimgarten Kino", active = false).copy(emptyFallback = Some(spell))
+    roundTrip(s).flatMap(_.emptyFallback) shouldBe Some(spell)
   }
 }

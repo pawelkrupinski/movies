@@ -473,4 +473,68 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.alerts.head  should include ("serving via Filmweb fallback")
     h.alerts.last  should include ("recovered")
   }
+
+  // ---- the fallback's own answer, as closure evidence ----
+  // An uncovered venue whose fallback PAGE EXISTS but lists nothing is the shape a
+  // closed cinema leaves; one whose fallback errors says nothing either way. The
+  // state keeps the first apart from the second so a closure verdict can read it.
+
+  it should "start an empty-fallback spell when an uncovered venue's fallback lists nothing, and extend it" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(NoShowtimes)))
+    h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe None           // grace ticks never consult the fallback
+    h.advance(6.hours + 1.minute)
+    val first = h.clock
+    h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = first, lastSeen = first))
+    h.advance(1.day); h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = first, lastSeen = h.clock))
+  }
+
+  it should "leave the empty-fallback spell alone when the fallback errors" in {
+    val flaky = ScriptedCinemaScraper(List(Right(NoShowtimes), Left(new RuntimeException("fallback down")), Right(NoShowtimes)))
+    val h = new Harness(Seq(Left(boom)), Some(flaky))
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    val first = h.clock
+    h.tickSwallowing()                                  // listed empty
+    h.advance(1.day); h.tickSwallowing()                // errored: neither proves nor disproves
+    h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = first, lastSeen = first))
+    h.advance(1.day); h.tickSwallowing()                // listed empty again
+    h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = first, lastSeen = h.clock))
+  }
+
+  it should "record no empty-fallback spell for a venue with no fallback at all" in {
+    val h = new Harness(Seq(Left(boom)), filmweb = None)
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute); h.tickSwallowing()
+    h.advance(1.day); h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe None
+  }
+
+  it should "end the empty-fallback spell when the primary recovers" in {
+    val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie)), Some(filmwebWith(NoShowtimes)))
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute); h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe defined
+    h.advance(1.day)
+    h.scraper.fetch() shouldBe OneMovie
+    h.state.value.emptyFallback shouldBe None
+  }
+
+  it should "start an empty-fallback spell when a venue already on fallback sees the fallback go empty" in {
+    // Closed while on fallback: the primary keeps failing its re-probes and the
+    // fallback, which had been serving, now lists nothing.
+    val fallback = ScriptedCinemaScraper(List(Right(OneMovie)) ++ List.fill(20)(Right(NoShowtimes)))
+    val h = new Harness(Seq(Left(boom)), Some(fallback))
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch() shouldBe OneMovie                 // ENTER: the fallback served
+    h.state.value.emptyFallback shouldBe None
+    h.advance(1.day)
+    val emptied = h.clock
+    h.tickSwallowing()                                  // re-probe fails, fallback lists nothing
+    h.advance(1.day); h.tickSwallowing()
+    h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = emptied, lastSeen = h.clock))
+  }
 }

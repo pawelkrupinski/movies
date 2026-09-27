@@ -109,7 +109,9 @@ object MongoFallbackStore {
     Updates.set("updatedAt", date(s.updatedAt)),
     Updates.set("history", s.history.map(eventToString).asJava),
     Updates.set("alerted", s.alerted),
-    Updates.set("failedRuns", s.failedRuns)
+    Updates.set("failedRuns", s.failedRuns),
+    Updates.set("emptyFallbackSince", s.emptyFallback.map(spell => date(spell.since)).orNull),
+    Updates.set("emptyFallbackLastSeen", s.emptyFallback.map(spell => date(spell.lastSeen)).orNull)
   )
 
   private[fallback] def fromDocument(document: Document): Option[FallbackState] =
@@ -132,7 +134,9 @@ object MongoFallbackStore {
         history             = Try(document.getList("history", classOf[String])).toOption.flatMap(Option(_))
                                 .fold(List.empty[FallbackEvent])(_.asScala.toList.flatMap(eventFromString)),
         alerted             = Try(document.getBoolean("alerted", false)).getOrElse(false),
-        failedRuns          = Try(document.getInteger("failedRuns", 0)).getOrElse(0)
+        failedRuns          = Try(document.getInteger("failedRuns", 0)).getOrElse(0),
+        emptyFallback       = for (since <- instant("emptyFallbackSince"); lastSeen <- instant("emptyFallbackLastSeen"))
+                                yield FallbackState.EmptySpell(since, lastSeen)
       )
     }
 }
