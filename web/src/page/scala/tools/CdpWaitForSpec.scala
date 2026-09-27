@@ -76,4 +76,21 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
     failure.getMessage should include ("Timed out after 500ms")
     ((System.nanoTime() - started) / 1000000) should be < 5000L
   }
+
+  // A poll can land while the page is swapping documents (a reload the test
+  // triggered): Chrome answers that evaluate with an error instead of a value.
+  // That is "not there yet", not a failure — the IdentityAdminPageSpec CI flake,
+  // 2026-09-27, whose timing no browser test can pin, so the loop is driven here.
+  it should "keep polling through an evaluate that lands mid-navigation" in {
+    val answers = Iterator[() => Boolean](
+      () => throw new RuntimeException(s"""CDP error from Runtime.evaluate: {"code":-32000,"message":"${CdpPage.NavigatedMidEvaluate}"}"""),
+      () => true)
+    noException should be thrownBy CdpPage.pollUntil("the new document", timeoutMs = 1000, pollMs = 1)(() => answers.next()())
+  }
+
+  it should "still fail on any other CDP error" in {
+    val thrown = the [RuntimeException] thrownBy
+      CdpPage.pollUntil("anything", timeoutMs = 1000, pollMs = 1)(() => throw new RuntimeException("CDP error from Runtime.evaluate: boom"))
+    thrown.getMessage should include ("boom")
+  }
 }

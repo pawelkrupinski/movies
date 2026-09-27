@@ -342,6 +342,30 @@ object CdpPage {
    *  one-line expression answers in 1–25 ms even on a busy machine; anything
    *  past this is the renderer not running, not the page being slow. */
   private[tools] val NormalEvalRoundTripMs = 250L
+
+  /** What Chrome answers an evaluate that reached the page while it was swapping
+   *  documents (a reload or navigation the page itself started). */
+  private[tools] val NavigatedMidEvaluate = "Inspected target navigated or closed"
+
+  /** [[CdpPage.waitFor]]'s loop, over any check. A check that lands mid-navigation
+   *  counts as "not yet": the new document is on its way, and a page that really
+   *  closed fails the next check on its lost connection instead. */
+  private[tools] def pollUntil(waitingFor: String, timeoutMs: Int, pollMs: Int)(check: () => Boolean): Unit = {
+    var chargedMs = 0L
+    while (true) {
+      val pollStart = System.nanoTime()
+      val met =
+        try check()
+        catch { case e: RuntimeException if Option(e.getMessage).exists(_.contains(NavigatedMidEvaluate)) => false }
+      if (met) return
+      if (chargedMs >= timeoutMs)
+        throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $waitingFor")
+      val evalMs = (System.nanoTime() - pollStart) / 1000000
+      Thread.sleep(pollMs)
+      val sleptMs = (System.nanoTime() - pollStart) / 1000000 - evalMs
+      chargedMs += math.min(evalMs, NormalEvalRoundTripMs) + sleptMs
+    }
+  }
 }
 
 /** One CDP page session. Synchronous request/response over the WebSocket,
@@ -522,20 +546,10 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *  polls are, since the page runs during them. The timeout is only declared
    *  on a poll taken AFTER the budget is spent, never on a stale one. A page
    *  busy in its own JS blocks the evaluate the same way, but the 30 s reply
-   *  timeout in [[send]] still bounds that. */
-  def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit = {
-    var chargedMs = 0L
-    while (true) {
-      val pollStart = System.nanoTime()
-      if (evalBool(s"!!($js)")) return
-      if (chargedMs >= timeoutMs)
-        throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $js")
-      val evalMs = (System.nanoTime() - pollStart) / 1000000
-      Thread.sleep(pollMs)
-      val sleptMs = (System.nanoTime() - pollStart) / 1000000 - evalMs
-      chargedMs += math.min(evalMs, CdpPage.NormalEvalRoundTripMs) + sleptMs
-    }
-  }
+   *  timeout in [[send]] still bounds that. A poll that lands while the page is
+   *  swapping documents is "not yet" (see [[CdpPage.pollUntil]]). */
+  def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit =
+    CdpPage.pollUntil(js, timeoutMs, pollMs)(() => evalBool(s"!!($js)"))
 
   /** Reload and wait for the NEW document, not merely for A document.
    *
