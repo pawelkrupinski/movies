@@ -88,6 +88,16 @@ object IdentityResolver {
     (Seq(cinema.displayName) ++ models.City.forCinema(cinema).map(_.labels.nominative))
       .map(services.movies.TitleContainment.tokens).filter(_.nonEmpty)
 
+  /** How much as ITS OWN a title relation names a record: by the record's own title or original
+   *  title ([[NamedAsItsOwn]]), by one of the alternative titles the database files beside them,
+   *  or not whole (0). */
+  private val NamedAsItsOwn = 2
+  private def namedAs(titleRelation: Option[String]): Int = titleRelation match {
+    case Some("exact") | Some("original") => NamedAsItsOwn
+    case Some("alternative")              => 1
+    case _                                => 0
+  }
+
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
 
@@ -144,6 +154,8 @@ object IdentityResolver {
       n.id -> queriesOf(n.id).filter(isTitle).flatMap(q => answers(q).toOption.getOrElse(Nil).zipWithIndex)
         .groupMapReduce(_._1.tmdbId)(_._2 + 1)(math.min)
     }.toMap
+    // Each candidate a node's other paths reached: its credited directors' filmographies, and the
+    // films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank.
     val ownWalk: Map[String, Set[Int]] = nodes.map(n =>
       n.id -> queriesOf(n.id).filterNot(isTitle).flatMap(q => answers(q).toOption.getOrElse(Nil)).map(_.tmdbId).toSet).toMap
     /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
@@ -384,18 +396,28 @@ object IdentityResolver {
     /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
      *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
      *  — "Radiohead X Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu"), which the listing
-     *  names by its whole title while it names the film only by a piece. The listing's facts chose
-     *  the work, and an edition carries its work's facts — the venue credits Murnau, TMDB the
-     *  edition's maker — so they do not deny the edition; a pin still does. With the confidence of
-     *  the work. The film itself when the listing names it whole — by its title or its own
-     *  original title — or no edition, or two. */
+     *  names by its whole title MORE as its own than it names the film ([[namedAs]]). The listing's
+     *  facts chose the work, and an edition carries its work's facts — the venue credits Murnau,
+     *  TMDB the edition's maker — so they do not deny the edition; a pin still does. With the
+     *  confidence of the work. The film itself when the listing names it as its own — by its title
+     *  or its own original title — or no edition, or two.
+     *
+     *  A work the title names only by one of its ALTERNATIVE titles, while another record carries
+     *  that title as its own, is named as closely by the title as that record: TMDB files "Caligula:
+     *  The Ultimate Cut" among the 1979 "Caligula"'s alternatives beside the re-cut's own record, and
+     *  "Nosferatu: A Symphony of Horror" among Murnau's beside David Lee Fisher's 2023 remake. Then
+     *  the record is an edition by the work's OWN titles, and the listing's credit decides: a record
+     *  crediting another person than the listing's is another film, one crediting nobody else is the
+     *  work's edition — its running time is the cut's own. */
     def editionNamed(ranked: Seq[Scored])(accepted: (Scored, Double)): (Scored, Double) = {
       val (work, confidence) = accepted
       def category(s: Scored, measure: String) = s.measures.get(measure).collect { case IdentityMeasures.Category(c) => c }
-      def namedWhole(s: Scored) = category(s, "title").exists(IdentityMeasures.Rivalling)
+      val named = namedAs(category(work, "title"))
       // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
-      if (namedWhole(work) || category(work, "originalTitle").contains("match")) accepted
-      else ranked.filter(e => (e ne work) && !e.deniedByPin && namedWhole(e) && IdentityMeasures.editionOf(e.c.film, work.c.film)) match {
+      if (named == NamedAsItsOwn || category(work, "originalTitle").contains("match")) accepted
+      else ranked.filter(e => (e ne work) && !e.deniedByPin && namedAs(category(e, "title")) > named && (
+        if (named == 0) IdentityMeasures.editionOf(e.c.film, work.c.film)
+        else IdentityMeasures.editionOf(e.c.film, work.c.film.copy(alternativeTitles = Nil)) && !category(e, "director").contains("different"))) match {
         case Seq(edition) => edition -> confidence
         case _            => accepted
       }

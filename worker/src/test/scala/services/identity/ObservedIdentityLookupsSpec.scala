@@ -22,8 +22,9 @@ class ObservedIdentityLookupsSpec extends AnyFlatSpec with Matchers {
   "a lookup the pipeline's observed client made" should "be answered from the store exactly as the service answered it" in {
     val observations = store()
     // The pipeline's client, observed — on the recorded tree, with its own key.
-    val pipeline = new TmdbIdentityLookups(new TmdbClient(new ObservingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), observations),
-      apiKey = Some(settings.TmdbApiKey("the-pipelines-key")), retrySleep = (_: Long) => ()), Nil)
+    val observed = new ObservingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), observations)
+    val pipeline = new TmdbIdentityLookups(new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("the-pipelines-key")),
+      retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(observed), Nil)
     val film = pipeline.film(1018)
     film.toOption.flatten shouldBe defined
 

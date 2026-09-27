@@ -34,12 +34,13 @@ final case class LookupQuery(key: String) {
   }
 
   /** Whether this is evidence the identity resolver reads: a venue's detail, or a request under
-   *  TMDB's API — the one external client `TmdbIdentityLookups` asks, and so the one the capture
-   *  observes (`identityLookupFetch`). What the unscoped capture filed from every other client —
-   *  rating pages above all — is not, and `PurgeNonIdentityObservations` removes it. */
+   *  TMDB's API or IMDb's title suggestions — what `TmdbIdentityLookups` asks. What the unscoped
+   *  capture filed from every other client — rating pages above all — is not, and
+   *  `PurgeNonIdentityObservations` removes it. */
   def isIdentityEvidence: Boolean = key.split(' ') match {
     case Array(LookupQuery.DetailMethod, _*) => true
-    case Array(_, url, _*)                   => url.startsWith(s"${clients.TmdbClient.ApiBase}/")
+    case Array(_, url, _*)                   =>
+      url.startsWith(s"${clients.TmdbClient.ApiBase}/") || url.startsWith(s"${services.enrichment.ImdbClient.SuggestionBase}/")
     case _                                   => false
   }
 }

@@ -44,8 +44,9 @@ trait ObservationStoreBehaviour extends AnyFlatSpec with Matchers {
       LookupQuery.of("POST", "https://api.graphql.imdb.com/", Some("{b}"))
   }
 
-  it should "be identity evidence exactly when it is a venue's detail or a TMDB request" in {
+  it should "be identity evidence exactly when it is a venue's detail, a TMDB request or an IMDb title suggestion" in {
     search.isIdentityEvidence shouldBe true
+    LookupQuery.of("GET", services.enrichment.ImdbClient.suggestionUrl("Caligula: The Ultimate Cut")).isIdentityEvidence shouldBe true
     LookupQuery.venueDetail("Kino Muza", "/film/belle").isIdentityEvidence shouldBe true
     LookupQuery.of("GET", "https://www.metacritic.com/movie/belle/").isIdentityEvidence shouldBe false
     LookupQuery.of("GET", "https://www.rottentomatoes.com/m/belle_2021").isIdentityEvidence shouldBe false

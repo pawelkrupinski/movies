@@ -67,14 +67,15 @@ object IdentityLookupSweep {
   }
 
 
-  /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers
-   *  and its TMDB client, both fetching through the wiring's recording chain — which is what files
+  /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers,
+   *  its TMDB client and an IMDb suggestion client over the TMDB client's fetch, all fetching
+   *  through the wiring's recording chain — which is what files
    *  the answers into the leg's tree. `onLookup` hears each logical lookup's name as soon as it has
    *  been issued (they run one at a time), so a caller can attribute every request to it. With
    *  `recorded` (a hermetic replay of a marked tree), a lookup it does not name is not issued. */
   def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => (), recorded: Option[Set[String]] = None): Summary = {
     val normalizer = w.movieCache.normalizer
-    run(Listing.corpus(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer,
+    run(Listing.corpus(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, new services.enrichment.ImdbClient(w.identityLookupFetch), w.detailEnrichers), normalizer,
       onLookup, recorded = recorded)
   }
 

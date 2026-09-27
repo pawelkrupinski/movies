@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 
 /**
  * One-shot cleanup of what the UNSCOPED observation capture filed: every `obs_lookups` row that
- * is not identity evidence (`LookupQuery.isIdentityEvidence` — a venue's detail or a TMDB request),
+ * is not identity evidence (`LookupQuery.isIdentityEvidence` — a venue's detail, a TMDB request or an IMDb title suggestion),
  * rating pages above all (docs/design/identity-resolver.md, "Capture"). The capture no longer
  * writes them; without this they would only age out a retention window later.
  *

@@ -162,16 +162,24 @@ class ImdbClient(http: HttpFetch) {
   def findId(title: String, year: Option[Int], directors: Set[String]): Option[String] = {
     if (title.trim.isEmpty) None
     else {
-      val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
-      val prefix  = title.trim.headOption.filter(c => c.isLetter && c.toInt < 128).map(_.toLower).getOrElse('x')
-      val url     = s"$SuggestionBase/$prefix/$encoded.json"
-      EnrichmentRead.absentOnNotFound(http.get(url)).flatMap { body =>
+      EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).flatMap { body =>
         parseSuggestions(body, title, year).orElse(
           if (directors.nonEmpty) disambiguateByDirector(body, directors) else None
         )
       }
     }
   }
+
+  /** The IMDb ids of every film IMDb's suggestion endpoint lists under `title` itself — its display
+   *  title the query's, deburred and a leading English article aside, as `parseSuggestions` matches
+   *  a title — in IMDb's order. No choice between them: the identity resolver's candidate path to a
+   *  record TMDB's own search does not return (`TmdbIdentityLookups`). Empty for a blank title or a
+   *  query IMDb does not know; a failed read throws, as `http` threw it. */
+  def titledIds(title: String): Seq[String] =
+    if (title.trim.isEmpty) Nil
+    else EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).toSeq.flatMap { body =>
+      Try(Json.parse(body)).toOption.toSeq.flatMap(js => titleMatches(movieSuggestions(js), title)).map(_.id).distinct
+    }
 
   /** Director-based fallback: when `parseSuggestions` finds no title match (the
    *  film may be listed under a different or international title on IMDb), consider
@@ -210,30 +218,9 @@ class ImdbClient(http: HttpFetch) {
    *  ids, video games sharing the title, missing optional fields) that we
    *  want fixture-driven assertions independent of HTTP. */
   def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
-    // Deburr both sides: IMDb stores titles in ASCII (ł→l, ą→a, ś→s, etc.) while
-    // our query titles retain Polish diacritics — and en-dash/em-dash titles must
-    // meet hyphen queries. Both are `TitleMatch.deburredFold`.
-    val normalizedTitle = TitleMatch.deburredFold(title)
     Try(Json.parse(body)).toOption.flatMap { js =>
-      // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
-      // returns the best query match first, popularity padding after.
-      val movies = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .flatMap { entry =>
-          for {
-            id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
-            qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-          } yield Suggestion(id, (entry \ "l").asOpt[String].map(TitleMatch.deburredFold), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
-        }
-      // A leading article is not a difference. IMDb lists a film under its PRIMARY title,
-      // so the Polish release title "Bodyguard" belongs to "The Bodyguard" (1992) — an AKA
-      // this payload never shows — while an unrelated film carries "Bodyguard" as its own
-      // primary title. Bare equality therefore finds exactly one confident hit and it is
-      // the wrong film. Counting the article-stripped forms as matches too makes the
-      // ambiguity VISIBLE rather than letting it resolve silently.
-      def withoutArticle(t: String) = ImdbClient.LeadingArticle.replaceFirstIn(t, "")
-      val titleMatches = movies.filter(_.title.exists { candidate =>
-        candidate == normalizedTitle || withoutArticle(candidate) == withoutArticle(normalizedTitle)
-      })
+      val movies       = movieSuggestions(js)
+      val titleMatches = ImdbClient.titleMatches(movies, title)
       val ranked = titleMatches.sortBy { s =>
         val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
         (yearDistance, s.rank)
@@ -268,7 +255,7 @@ class ImdbClient(http: HttpFetch) {
 
 object ImdbClient {
   private val Endpoint        = "https://caching.graphql.imdb.com/"
-  private val SuggestionBase  = "https://v3.sg.media-imdb.com/suggestion"
+  val SuggestionBase          = "https://v3.sg.media-imdb.com/suggestion"
   /** Leading English article, for treating "The Bodyguard" and "Bodyguard" as the same
    *  claim on a title. English only: IMDb's primary titles are English, and Polish has no
    *  articles to strip. */
@@ -277,6 +264,44 @@ object ImdbClient {
   val MinVotes: Int    = 5
   // Top-N cap for IMDb's principal cast — matches TMDB's shape.
   val MaxCastNames: Int = 5
+
+  /** The suggestion endpoint's URL for `title`: the query, and a `prefix` segment that is
+   *  conventionally its lowercase first letter (`x` for a non-ASCII one, which the endpoint also
+   *  accepts). */
+  def suggestionUrl(title: String): String = {
+    val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
+    val prefix  = title.trim.headOption.filter(c => c.isLetter && c.toInt < 128).map(_.toLower).getOrElse('x')
+    s"$SuggestionBase/$prefix/$encoded.json"
+  }
+
+  /** Real film candidates: tt-id, qid "movie". Document order — IMDb returns the best query match
+   *  first, popularity padding after. */
+  private def movieSuggestions(js: JsValue): Seq[Suggestion] =
+    (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .flatMap { entry =>
+        for {
+          id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
+          qid <- (entry \ "qid").asOpt[String] if qid == "movie"
+        } yield Suggestion(id, (entry \ "l").asOpt[String].map(TitleMatch.deburredFold), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
+      }
+
+  /** The `movies` IMDb titles `title` itself. Deburred on both sides: IMDb stores titles in ASCII
+   *  (ł→l, ą→a, ś→s, etc.) while our query titles retain Polish diacritics — and en-dash/em-dash
+   *  titles must meet hyphen queries. Both are `TitleMatch.deburredFold`.
+   *
+   *  A leading article is not a difference. IMDb lists a film under its PRIMARY title, so the
+   *  Polish release title "Bodyguard" belongs to "The Bodyguard" (1992) — an AKA this payload never
+   *  shows — while an unrelated film carries "Bodyguard" as its own primary title. Bare equality
+   *  therefore finds exactly one confident hit and it is the wrong film. Counting the
+   *  article-stripped forms as matches too makes the ambiguity VISIBLE rather than letting it
+   *  resolve silently. */
+  private def titleMatches(movies: Seq[Suggestion], title: String): Seq[Suggestion] = {
+    val normalizedTitle = TitleMatch.deburredFold(title)
+    def withoutArticle(t: String) = LeadingArticle.replaceFirstIn(t, "")
+    movies.filter(_.title.exists { candidate =>
+      candidate == normalizedTitle || withoutArticle(candidate) == withoutArticle(normalizedTitle)
+    })
+  }
 
   /** One parsed suggestion-endpoint movie row: tt-id plus the fields the
    *  matcher ranks on (lowercased display title, release year, popularity

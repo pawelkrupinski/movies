@@ -67,6 +67,8 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     queries should contain (CandidateQuery.Title("Rozważna i romantyczna"))
     // …and a director's filmography, from the detail page merged under the listing.
     queries should contain (CandidateQuery.Director("Ang Lee"))
+    // …and the films IMDb lists under each listing's whole title, a path TMDB's search can miss.
+    evidences.map(_.title).distinct.foreach(t => queries should contain (CandidateQuery.Imdb(t)))
     summary.detailsUnanswered shouldBe 1
     names.size shouldBe asked.size
   }

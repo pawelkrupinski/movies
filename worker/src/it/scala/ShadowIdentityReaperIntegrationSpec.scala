@@ -106,9 +106,10 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
 
       // 1. the offline resolve, its answers filed by the production capture
       val observations = ObservationStore.inMemory(clock)
+      val offlineFetch  = new ObservingHttpFetch(new GapsFail(c.fetch, c.misses), observations)
       val offlineSource = new TmdbIdentityLookups(
-        new TmdbClient(new ObservingHttpFetch(new GapsFail(c.fetch, c.misses), observations),
-          apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
+        new TmdbClient(offlineFetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
+        new services.enrichment.ImdbClient(offlineFetch),
         w.detailEnrichers.map(e => new ObservingDetailEnricher(new DetailGapsFail(e, c.misses), observations)), c.misses)
       val offline = IdentityResolver.resolve(listings, offlineSource, c.normalizer, IdentityCalibration.resolver)
 

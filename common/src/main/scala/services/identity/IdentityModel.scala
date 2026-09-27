@@ -156,10 +156,15 @@ enum CandidateQuery {
   case Title(query: String)
   /** Every film a person of this name directed (or, with no directing credit, wrote). */
   case Director(name: String)
+  /** Every film IMDb lists under this very title, found in TMDB by its IMDb id: a path to a record
+   *  TMDB's own search does not return ("Caligula: The Ultimate Cut", whose record only an IMDb id
+   *  reaches). A path, never a rank: its films are scored on the listing's facts alone. */
+  case Imdb(title: String)
 
   def sortKey: String = this match {
     case Title(q)    => s"t\u0000$q"
     case Director(n) => s"d\u0000$n"
+    case Imdb(t)     => s"i\u0000$t"
   }
 }
 

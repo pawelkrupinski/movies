@@ -15,11 +15,14 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val weights    = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
 
+  /** `searched`: TMDB's search returns the film (a record its index misses is reached only by the
+   *  IMDb id IMDb lists under its title). */
   private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
-                             alternatives: Seq[String] = Nil)
+                             alternatives: Seq[String] = Nil, searched: Boolean = true)
 
   /** A film database of `films`: search by all-words containment of a title or an alternative title,
-   *  the directors' filmographies, and each film's record. */
+   *  the directors' filmographies, the films IMDb lists under a title (its own, exactly), and each
+   *  film's record. */
   private final class Table(films: Seq[F]) extends IdentityLookups {
     private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
     private def hit(f: F) = Hit(f.id, f.title, None, Some(f.year), f.popularity)
@@ -28,8 +31,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
       case CandidateQuery.Title(text) =>
         val want = words(text)
-        films.filter(f => want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
+        films.filter(f => f.searched && want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
       case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
+      case CandidateQuery.Imdb(title)    => films.filter(f => words(f.title) == words(title)).map(hit)
     })
     // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
@@ -1039,6 +1043,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       r.decisionOf(work.key).film shouldBe Some(653)
     }
     r.violations shouldBe 0
+  }
+
+  it should "take an edition only IMDb's id reaches, over a work that names it only as an alternative title" in {
+    // US, three Flicks venues' "Caligula: The Ultimate Cut", crediting Tinto Brass and 157 minutes
+    // (recording 36224654409). TMDB's search for the title returns only the 1979 "Caligula", whose
+    // record files "Caligula: The Ultimate Cut" among its alternative titles; the re-cut's own
+    // record (2024, 178 minutes, crediting nobody) is reached only by the IMDb id IMDb lists under
+    // the title. The whole title is the re-cut's own; the work's facts, which the edition carries,
+    // chose the work.
+    val films = Seq(
+      F(9453, "Caligula", 1979, "Tinto Brass", 156, 10.2, Seq("Io, Caligola", "Caligula: The Ultimate Cut", "Calígula")),
+      F(1774981, "Caligula: The Ultimate Cut", 2024, "", 178, 0.23, searched = false))
+    val cut = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Caligula: The Ultimate Cut", None, Some("Tinto Brass"), Some(157)))
+    val r = shipped(cut, films)
+    withClue(cut.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      cut.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1774981))
+    }
+    // The work's own title keeps the work: "Caligula" names the 1979 record as its own.
+    val work = listing(KinoMuza, "Caligula", None, Some("Tinto Brass"), Some(156))
+    shipped(Seq(work), films).decisionOf(work.key).film shouldBe Some(9453)
+    // A record carrying the work's alternative title that credits ANOTHER person is a remake, not
+    // an edition: Murnau's listing under his film's alternative title is not David Lee Fisher's.
+    val nosferatu = Seq(F(653, "Nosferatu", 1922, "F. W. Murnau", 94, 9.2, Seq("Nosferatu: A Symphony of Horror")),
+      F(394151, "Nosferatu: A Symphony of Horror", 2023, "David Lee Fisher", 92, 2.4))
+    val murnau = listing(KinoMuza, "Nosferatu: A Symphony of Horror", None, Some("F.W. Murnau"), Some(94))
+    val m = shipped(Seq(murnau), nosferatu).decisionOf(murnau.key)
+    withClue(m.render)(m.film shouldBe Some(653))
   }
 
   it should "leave a sequel, a subtitle and a banner their own films" in {

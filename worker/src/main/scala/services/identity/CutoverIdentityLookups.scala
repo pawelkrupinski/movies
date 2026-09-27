@@ -3,6 +3,7 @@ package services.identity
 import clients.TmdbClient
 import models.{Cinema, Source}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.enrichment.ImdbClient
 import services.observations.ObservationStore
 import tools.HttpFetch
 
@@ -48,7 +49,9 @@ object CutoverIdentityLookups {
   /** The projection's lookups: observed first when a store is wired, else the live source alone. */
   def over(store: Option[ObservationStore], tmdb: HttpFetch => TmdbClient, live: HttpFetch, enrichers: Seq[DetailEnricher]): IdentityLookups =
     store match {
-      case Some(s) => new TmdbIdentityLookups(tmdb(new ObservedFirstHttpFetch(s, live)), enrichers.map(new ObservedFirstDetailEnricher(_, s)))
-      case None    => new TmdbIdentityLookups(tmdb(live), enrichers)
+      case Some(s) =>
+        val fetch = new ObservedFirstHttpFetch(s, live)
+        new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedFirstDetailEnricher(_, s)))
+      case None    => new TmdbIdentityLookups(tmdb(live), new ImdbClient(live), enrichers)
     }
 }

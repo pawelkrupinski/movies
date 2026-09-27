@@ -72,7 +72,8 @@ object GeneratedIdentityCorpus {
   }
 
   /** A film database over `universe`: TMDB's search (every film whose title holds all the query's
-   *  words, most popular first), filmographies and records.
+   *  words, most popular first), filmographies, the films IMDb lists under a title (its own) and
+   *  records.
    *  One query in eleven and one record in seven are GAPS. */
   class SyntheticLookups(universe: Seq[Film], normalizer: TitleNormalizer) extends IdentityLookups {
     private val known = universe.filter(_.tmdbId.isDefined)
@@ -89,6 +90,8 @@ object GeneratedIdentityCorpus {
             .sortBy(f => (-f.popularity, f.tmdbId.get)).map(hit))
         case CandidateQuery.Director(name) =>
           Answer.Known(known.filter(_.director == name).sortBy(_.tmdbId.get).map(hit))
+        case CandidateQuery.Imdb(title) =>
+          Answer.Known(known.filter(f => words(f.title) == words(title)).sortBy(_.tmdbId.get).map(hit))
       }
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
       if (tmdbId % 7 == 0) Answer.Unknown

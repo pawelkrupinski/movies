@@ -92,8 +92,8 @@ object ShadowLookupMetrics {
  * (yearless searches, director walks, candidate records) are ones the pipeline never asks. After
  * each shadow tick, a round resolves the same listing set once more over the store — so the
  * questions are exactly the resolver's own (`CandidateQueries`, the query set
- * `IdentityLookupSweep` records), with no second list — and asks each unobserved TMDB question
- * live, at most `rate` per minute over the round's `window` (the shadow run's interval, so a
+ * `IdentityLookupSweep` records), with no second list — and asks each unobserved TMDB or IMDb
+ * suggestion question live, at most `rate` per minute over the round's `window` (the shadow run's interval, so a
  * round's allowance is what fits before the next tick), through `liveFetch` (the pipeline's
  * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick
  * reads them. Nothing here writes a pipeline cache or row.
@@ -134,8 +134,8 @@ final class ShadowLookupFill(
     // Observed first (main's `ObservedFirstHttpFetch`, the cut-over projection's own), live for a
     // gap within the budget; details from the store only.
     val gaps    = new ObservationGaps
-    val lookups = new TmdbIdentityLookups(
-      tmdb(new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))),
+    val fetch   = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
+    val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch),
       enrichers.map(new ObservedDetailEnricher(_, store, gaps)), () => gaps.total)
     try IdentityResolver.resolve(listings(), lookups, normalizer, calibration)
     catch { case crossing: IdentityResolver.FamilyCrossing => logger.warn(s"identity shadow fill: ${crossing.getMessage}") }

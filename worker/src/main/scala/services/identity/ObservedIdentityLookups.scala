@@ -3,6 +3,7 @@ package services.identity
 import clients.TmdbClient
 import models.{Cinema, Source}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.enrichment.ImdbClient
 import services.observations.{LookupAnswer, LookupQuery, ObservationStore, ObservingDetailEnricher}
 import tools.{HttpFetch, HttpStatusException}
 
@@ -111,8 +112,9 @@ object ObservedIdentityLookups {
    *  observed client was built by, so this one asks exactly the requests that client filed. No
    *  answer here is transient, so the client never waits to retry. */
   def over(store: ObservationStore, tmdb: HttpFetch => TmdbClient, enrichers: Seq[DetailEnricher]): (IdentityLookups, ObservationGaps) = {
-    val gaps = new ObservationGaps
-    (new TmdbIdentityLookups(tmdb(new ObservedHttpFetch(store, gaps)), enrichers.map(new ObservedDetailEnricher(_, store, gaps)),
+    val gaps  = new ObservationGaps
+    val fetch = new ObservedHttpFetch(store, gaps)
+    (new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedDetailEnricher(_, store, gaps)),
       () => gaps.total), gaps)
   }
 }

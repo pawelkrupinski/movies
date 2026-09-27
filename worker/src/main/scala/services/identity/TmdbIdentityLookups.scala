@@ -3,24 +3,27 @@ package services.identity
 import clients.TmdbClient
 import models.Cinema
 import services.cinemas.common.DetailEnricher
+import services.enrichment.ImdbClient
 import services.movies.TmdbCandidateSearch
 
 import scala.util.Try
 
 /**
- * [[IdentityLookups]] answered by TMDB and the venues' own detail pages — the raw primitives
- * only: one yearless title search's results, a person's filmography, a film's record
- * (`TmdbClient.identityRecord`, parsed by the calibration's own `TmdbFilmRecord`). No choice between
+ * [[IdentityLookups]] answered by TMDB, IMDb's title suggestions and the venues' own detail pages
+ * — the raw primitives only: one yearless title search's results, a person's filmography, the
+ * films IMDb lists under a title found in TMDB by their IMDb ids, a film's record
+ * (`TmdbClient.identityRecord`, parsed by the calibration's own `TmdbFilmRecord`). `tmdb` and `imdb`
+ * draw from one fetch, so the store observes, and a replay answers, both alike. No choice between
  * candidates is made here (that is the resolver's score), and nothing is memoised across calls,
  * so an answer is a function of its argument and of what the source holds.
  *
  * `misses` counts the requests the source could NOT answer (a hermetic replay's gaps); a lookup
  * during which it grew is [[Answer.Unknown]], never an empty answer — `TmdbClient` turns a failed
  * read into an empty one, which would read as "no such film". A lookup that throws is `Unknown`
- * too. Until the observation store (phase 1) replaces it, this is the resolver's source in the
- * shadow harness; nothing in production constructs it.
+ * too. Production builds it over the observation store (`ObservedIdentityLookups`,
+ * `CutoverIdentityLookups`); the offline harness over a recorded replay.
  */
-final class TmdbIdentityLookups(tmdb: TmdbClient, enrichers: Seq[DetailEnricher], misses: () => Long = () => 0L)
+final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher], misses: () => Long = () => 0L)
     extends IdentityLookups {
 
   private val enricherOf: Map[Cinema, DetailEnricher] = enrichers.map(e => e.cinema -> e).toMap
@@ -54,6 +57,8 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, enrichers: Seq[DetailEnricher]
           val directed = tmdb.personDirectorCredits(person)
           if (directed.nonEmpty) directed else tmdb.personWriterCredits(person)
         }.map(hit).distinctBy(_.tmdbId))
+    case CandidateQuery.Imdb(title)       =>
+      answered(imdb.titledIds(title).flatMap(tmdb.findByImdbId).map(hit).distinctBy(_.tmdbId))
   }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
