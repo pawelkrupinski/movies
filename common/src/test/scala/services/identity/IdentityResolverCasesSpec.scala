@@ -719,15 +719,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(credited), films).decisionOf(credited.key).film shouldBe Some(431444)
   }
 
-  "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film under the shipped artefact (known regression, pending)" in {
-    // §15.8: the r5 artefact VETOES it on its own facts (0.06 < the certified cut) and takes a bare
-    // sibling down with it. Pending, so the refit that decides it right flips this red.
-    val films = Seq(F(372058, "Twoje imię", 2016, "Makoto Shinkai", 106, 30))
+  "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film, whose record carries the English title it publishes" in {
+    // §15.8 listed it as a known regression: the r5 artefact VETOED it (0.06 < the certified cut)
+    // against a hand-built record titled only "Twoje imię", so its original title "Your Name
+    // (re-release)" read as disjoint (−2.94) beside 83 minutes against 106 (−3.26). TMDB's record
+    // (recording 36224654409, the PL tree's 372058) carries "Your Name" among its titles: the
+    // original title is the film's, decorated, and the shipped artefact takes it on its director.
+    val films = Seq(F(372058, "Twoje imię.", 2016, "Makoto Shinkai", 106, 30, Seq("Twoje imię", "Your Name", "Kimi no Na wa.")))
     val nh = Listing(KinoMuza, ListingKey.Published(KinoMuza.displayName, "Twoje imię", None, Seq("Makoto Shinkai")), "Twoje imię",
       "Twoje imię", "Twoje imię", None, Seq("Makoto Shinkai"), Some(83), None, Some("Your Name (re-release)"))
-    pendingUntilFixed {
-      IdentityResolver.resolve(Seq(nh), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(nh.key).film shouldBe Some(372058)
-    }
+    val d = IdentityResolver.resolve(Seq(nh), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(nh.key)
+    withClue(d.render)(d.film shouldBe Some(372058))
   }
 
   "A re-release whose listing publishes its screening year" should "not veto the film its same director made" in {
