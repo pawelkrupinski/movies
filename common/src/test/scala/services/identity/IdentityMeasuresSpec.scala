@@ -83,6 +83,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.ownAgreement(measures(Listing("Toy Story", year = Some(2026)), Film("Toy Story", year = Some(1995))))._2 should contain ("year")
   }
 
+  "a published year beside the same director" should "date a screening, not the film, when it denies the film" in {
+    val devils = Film("Diabły", year = Some(1971), directors = Some(Seq("Ken Russell")))
+    val screened = measures(Listing("Diabły", year = Some(2026), directors = Seq("Ken Russell")), devils)
+    IdentityMeasures.PublishedYear.foreach(m => screened(m) shouldBe IdentityMeasures.MissingListing)
+    // Agreeing, it stays the fact it is; beside another director, a year decades off denies.
+    measures(Listing("Diabły", year = Some(1971), directors = Seq("Ken Russell")), devils)("year.delta") shouldBe Number(0)
+    measures(Listing("Diabły", year = Some(2026), directors = Seq("Someone Else")), devils)("year.delta") shouldBe Number(55)
+    measures(Listing("Diabły", year = Some(2026)), devils)("year.delta") shouldBe Number(55)
+  }
+
   "venues corroborating a film" should "count only venues whose own title names it, not every venue crediting its director" in {
     // 237 Regal venues list "Candyman (1992)" by Bernard Rose: they back his Candyman, but not
     // every other film the director walk turns up — a director alone does not pick his film.

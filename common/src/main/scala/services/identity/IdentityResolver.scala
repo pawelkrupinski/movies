@@ -182,22 +182,13 @@ object IdentityResolver {
       IdentityMeasures.namesSeasonProduction(l, f) && !IdentityMeasures.billing(l, f).exists(houses.other)
 
     /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-     *  probability below the certified cut (both on [[vetoingMeasures]]), a season its title names
-     *  that the film is not of, or its season's production of its work by ANOTHER house than its
-     *  banner's (`houses`). */
+     *  probability below the certified cut, a season its title names that the film is not of, or
+     *  its season's production of its work by ANOTHER house than its banner's (`houses`). */
     def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
-      val vetoing = vetoingMeasures(measures)
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
         (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
-        ListingConstraints.learnedListingFilm(calibration, vetoing, factsProbability(vetoing)).isDefined
+        ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined
     }
-    /** The measures a veto may read — the score still reads them all — without the published year
-     *  when it denies a film the same director made (`IdentityMeasures.ownAgreement`): there it
-     *  dates the screening (`IdentityMeasures.PublishedYear`). (An original title that only repeats
-     *  the listing's own title never weighs against a film at all: `IdentityMeasures.listingFilm`.) */
-    def vetoingMeasures(measures: Map[String, Measure]): Map[String, Measure] =
-      if (IdentityMeasures.sameDirector(measures) && IdentityMeasures.ownAgreement(measures)._2("year")) measures -- IdentityMeasures.PublishedYear
-      else measures
 
     /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
      *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
@@ -261,14 +252,17 @@ object IdentityResolver {
 
       /** The cluster's members read as ONE listing: the title most of its listings carry (the
        *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
-       *  median runtime, the modal original title, and every candidate any of them named. */
+       *  median runtime, the modal original title, and every candidate any of them named. The
+       *  directors credited beside that year are only those of the members publishing it. */
       def pooled(cluster: Seq[Node]): Seq[Scored] = {
         def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
           values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (v, w) => (-w, v) }.headOption.map(_._1)
         val lead     = cluster.sortBy(n => (-n.weight, n.id)).head
         val runtimes = cluster.flatMap(n => n.evidence.runtime.toSeq.flatMap(r => Seq.fill(n.weight)(r))).sorted
+        val year     = modal(cluster.flatMap(n => n.evidence.year.map(_ -> n.weight)))
         val listing  = lead.evidence.measured.copy(
-          year          = modal(cluster.flatMap(n => n.evidence.year.map(_ -> n.weight))),
+          year          = year,
+          yearCredits   = Some(cluster.filter(n => year.nonEmpty && n.evidence.year == year).flatMap(_.evidence.directors).distinct.sorted),
           originalTitle = modal(cluster.flatMap(n => n.evidence.originalTitle.map(_ -> n.weight))),
           directors     = cluster.flatMap(_.evidence.directors).distinct.sorted,
           runtime       = runtimes.lift(runtimes.size / 2),

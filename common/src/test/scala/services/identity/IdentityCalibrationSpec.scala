@@ -165,20 +165,15 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // A KNOWN LIMITATION, pinned so a recalibration that learns better flips it: Kinoteka lists
-  // Coppola's 1974 "Rozmowa" at its 2026 screening year. No same-film unit of the recorded data sits
-  // that far from its film, so a certified learned year veto forbids it — the DECISION, unchanged
-  // since the first artefact.
-  it should "keep Kinoteka's screening-year Rozmowa from Coppola's film by the certified year veto (known limitation)" in {
-    val m = IdentityMeasures.listingFilm(rozmowa, conversation, None, 0, 0)
-    model.cannotLink(ListingFilm, m).map(_.all.map(_.signal)) shouldBe Some(Seq("year.distance"))
+  // Kinoteka lists Coppola's 1974 "Rozmowa" at its 2026 screening year. Beside the same director the
+  // year dates the screening (`IdentityMeasures.listingFilm` reads it as absent), so neither the
+  // certified learned year veto nor the score reads it — both did until 2026-09-27.
+  it should "not keep Kinoteka's screening-year Rozmowa from Coppola's film on the year" in {
+    model.cannotLink(ListingFilm, IdentityMeasures.listingFilm(rozmowa, conversation, None, 0, 0)) shouldBe None
   }
 
-  // The SCORE, which the first artefact put above even odds (0.90), is 0.41 under r5 (§15.8): the
-  // director and runtime weights shrank once candidates' credits were recorded. Pending until a refit
-  // scores it right again; the decision above does not depend on it.
-  it should "score Kinoteka's screening-year Rozmowa as Coppola's film (known regression, pending)" in {
-    pendingUntilFixed(film(rozmowa, conversation) should be > 0.5)
+  it should "score Kinoteka's screening-year Rozmowa as Coppola's film" in {
+    film(rozmowa, conversation) should be > 0.5
   }
 
   private val differentListings: Seq[(String, Listing, Listing, Boolean)] = Seq(

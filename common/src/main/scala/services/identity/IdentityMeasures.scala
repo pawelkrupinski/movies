@@ -26,8 +26,11 @@ object IdentityMeasures {
   /** What one venue published about one film. */
   final case class Listing(title: String, rawTitle: Option[String] = None, originalTitle: Option[String] = None,
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
-                           countries: Seq[String] = Nil) {
+                           countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
+    /** The directors credited beside the published `year` — one listing's own, unless a pooled
+     *  read took its year and its credits from different listings (`yearCredits`). */
+    def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
     /** The season the title names ("2026/27"), by its first year. */
     lazy val seasonYear: Option[Int] = IdentityMeasures.seasonYear(titles)
     /** A year the venue put in its title as a delimited annotation ("(2026)"), outside any season. */
@@ -569,9 +572,10 @@ object IdentityMeasures {
   val AgreesOnly: Set[String] = Set("titleYear.delta")
 
   /** A listing's published year against the film's. Beside the SAME director it never denies the
-   *  film: a year decades off then dates the screening (a re-release, a retrospective), not
-   *  another film — and that director's other film of the title, when the pool has it, still wins
-   *  on the year's score (Helios RePlay's 2026 "Diabły" is Ken Russell's 1971 film). */
+   *  film (`listingFilm` reads it as absent there): a year decades off then dates the screening (a
+   *  re-release, a retrospective), not another film — and that director's other film of the title,
+   *  when the pool has it, still wins on the year's score (Helios RePlay's 2026 "Diabły" is Ken
+   *  Russell's 1971 film). */
   val PublishedYear: Set[String] = Set("year.delta", "year.distance")
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
   /** Does the listing's original title only repeat its own title — the whole of it (a venue
@@ -627,7 +631,7 @@ object IdentityMeasures {
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
                   houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
-    Map(
+    screeningYearAbsent(l, f, Map(
       "title"          -> titleRelation(l, f, houses, qualifiers),
       "originalTitle"  -> ownOriginalTitle(l, f),
       "year.delta"     -> delta(l.year, f.year),
@@ -642,7 +646,17 @@ object IdentityMeasures {
       "popularity.log2" -> f.popularity.fold[Measure](MissingFilm)(p => Number(math.floor(math.log(math.max(p, 1e-3)) / math.log(2)))),
       "rivals"         -> Number(rivals.toDouble),
       "venues.corroborating" -> Number(corroboratingVenues.toDouble)
-    )
+    ))
+
+  /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): beside the
+   *  same director, a year that denies the film is the year the venue shows it (Kinoteka's 2026 on
+   *  Ken Russell's 1971 "Diabły") or releases it, not another film's — in the score as in a veto.
+   *  "Beside" is one listing's: the director must be credited by the listing that published the
+   *  year ([[Listing.creditedBesideYear]]), never borrowed from a sibling's credit. */
+  private def screeningYearAbsent(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
+    if (ownAgreement(m)._2("year") && f.directors.exists(directorRelation(l.creditedBesideYear, _) == Category("same_person")))
+      m ++ PublishedYear.map(_ -> MissingListing)
+    else m
 
   /** The listing's original title against the film's titles — unless it only repeats the
    *  listing's own title ([[repeatsItsTitle]]): then it is the title again, which the title relation

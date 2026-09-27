@@ -573,6 +573,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     dated.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(31767)))
   }
 
+  it should "take that director's film even though the screening year counts against it in the score" in {
+    // PL Kinoteka publishes its screening year, 2026, for retrospective titles: Veit Helmer's 1999
+    // "Tuvalu" with its director and runtime, and Ken Russell's 1971 "Diabły" in a festival banner.
+    // The year no longer vetoed them, but its −7.77 still sank them below the cut (5.8%, 27.3%).
+    val films = Seq(F(8076, "Tuvalu", 1999, "Veit Helmer", 101, 5), F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
+    val tuvalu = listing(Multikino, "Tuvalu", Some(2026), Some("Veit Helmer"), Some(101))
+    val devils = listing(Helios, "Diabły | Splat!FilmFest", Some(2026), Some("Ken Russell"), Some(111)).copy(originalTitle = Some("The Devils"))
+    val r = IdentityResolver.resolve(Seq(tuvalu, devils), new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue(r.decisionOf(tuvalu.key).render)(r.decisionOf(tuvalu.key).film shouldBe Some(8076))
+    withClue(r.decisionOf(devils.key).render)(r.decisionOf(devils.key).film shouldBe Some(31767))
+  }
+
   it should "still take the same director's film of the listing's year when both are there" in {
     val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
     val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))
