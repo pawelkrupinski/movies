@@ -35,7 +35,9 @@ import scala.util.Try
  *   `TOY STORY 5 (2D DUBBING DOLBY ATMOS)`
  * The cleaning step strips a trailing `(…)` that contains a screen-technology
  * keyword (`2D`, `3D`, `IMAX`, `DOLBY`, `4DX`) and normalises the title to
- * sentence case so it merges correctly with TMDB and other sources.
+ * sentence case so it merges correctly with TMDB and other sources. A version
+ * followed by a comma and the distributor (`LALKA 2D PL, DYS. KINO ŚWIAT`) is
+ * cut at the format word the same way.
  *
  * @parameter http    HTTP client (swap for `FakeHttpFetch` in tests).
  * @parameter baseUrl Scheme + host of the venue's MSI portal, no trailing slash
@@ -75,7 +77,12 @@ class MsiClient(
   // before cleaning — which also re-exposes any format word the suffix had
   // buried (the bare `NAPISY`/`DUBBING` then becomes trailing and the normal
   // format extractor catches it).
-  titleSuffix: Option[String] = None
+  titleSuffix: Option[String] = None,
+  // A few portals stamp a label on their FILM rows only ("FILM: LALKA" on
+  // bilety.scksieradz.pl) and leave a classic or a broadcast unlabelled. When
+  // set, a leading `<label>:` is stripped where present and no row is dropped —
+  // see [[MsiClient.cleanTitleStripLabel]].
+  filmLabel: Option[String] = None
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import MsiClient._
@@ -89,6 +96,7 @@ class MsiClient(
   private val titleCleaner: String => (String, List[String]) =
     titlePrefix.map(cleanTitleForVenue)
       .orElse(titleSuffix.map(cleanTitleStripSuffix))
+      .orElse(filmLabel.map(cleanTitleStripLabel))
       .getOrElse(cleanTitle)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
@@ -144,8 +152,42 @@ object MsiClient {
    *  (The strip+token extraction is shared with the other portal clients via
    *  `ScraperParse.extractFormatTags` — a cross-client concern, not MSI-specific.) */
   private[cinemas] def cleanTitle(raw: String): (String, List[String]) = {
-    val (stripped, tokens) = ScraperParse.extractFormatTags(raw)
-    (ScraperParse.sentenceCase(stripped), tokens)
+    val (film, tailTokens) = DistributorTail.findFirstMatchIn(raw) match {
+      case Some(m) => (raw.substring(0, m.start), (m.group(1) +: Option(m.group(2)).toSeq).flatMap(versionToken).toList)
+      case None    => (raw, Nil)
+    }
+    val (stripped, tokens) = ScraperParse.extractFormatTags(film)
+    (ScraperParse.sentenceCase(stripped), (tokens ++ tailTokens).distinct)
+  }
+
+  /** Kino Górnik (Łęczyca) types the version and then the film's DISTRIBUTOR
+   *  after a comma: "Avengers: Koniec gry 2D Dubbing, Dys. Disney", "Luna i
+   *  rozgadana świnka 2D Dubbing, Kino Świat", "Zapopmniana wyspa-2D  dubbind,
+   *  dystybutor". Anchored on the screen format (2D/3D), an optional version
+   *  word, then the comma and a comma-free tail to the end — so a title's own
+   *  comma ("Powiedz mi, co czujesz") is never cut, and a mistyped version word
+   *  ("dubbind") is only tolerated in that slot. */
+  private val DistributorTail =
+    """(?iu)[\s-]+([23]d)(?:\s+(dubb\p{L}*|napis\p{L}*|lektor|pl))?\s*,[^,]*$""".r
+
+  /** The display token a word of [[DistributorTail]] names — the screen format as
+   *  typed, the version by its stem (so "dubbind" still reads as a dub). */
+  private def versionToken(word: String): Option[String] = word.toLowerCase match {
+    case w if w.startsWith("dubb")  => Some("DUB")
+    case w if w.startsWith("napis") => Some("NAP")
+    case "lektor"                   => Some("LEK")
+    case "pl"                       => None
+    case w                          => Some(w.toUpperCase)
+  }
+
+  /** Title cleaner for a portal that stamps a label on its FILM rows only — Kino
+   *  Teatr Sieradz writes "FILM: LALKA" but "KLASYKA KINA: ORLANDO" and an
+   *  unlabelled André Rieu broadcast, both screenings too. So unlike
+   *  [[cleanTitleForVenue]] this never drops a row: the leading `<label>:` is
+   *  stripped where present and every title then gets the normal clean. */
+  private[cinemas] def cleanTitleStripLabel(label: String)(raw: String): (String, List[String]) = {
+    val pat = s"""(?iu)^\\s*${java.util.regex.Pattern.quote(label)}\\s*:\\s*"""
+    cleanTitle(raw.replaceFirst(pat, ""))
   }
 
   /** Title cleaner for one venue of a two-cinema MSI portal whose titles are

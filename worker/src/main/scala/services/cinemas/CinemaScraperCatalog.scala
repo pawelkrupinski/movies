@@ -157,12 +157,13 @@ class CinemaScraperCatalog(
 
   // MSI / VisualTicket portals (29). `fetch` is Zyte's residential egress for
   // the one venue whose origin firewall blocks both our Fly IP and the Decodo
-  // proxy (see the ctor doc); `mvcPath` / `titlePrefix` / `titleSuffix` are the
-  // per-install quirks `MsiClient` documents.
+  // proxy (see the ctor doc); `mvcPath` / `titlePrefix` / `titleSuffix` /
+  // `filmLabel` are the per-install quirks `MsiClient` documents.
   private case class MsiVenue(baseUrl:     String,
                               mvcPath:     String         = MsiClient.DefaultMvcPath,
                               titlePrefix: Option[String] = None,
                               titleSuffix: Option[String] = None,
+                              filmLabel:   Option[String] = None,
                               fetch:       HttpFetch      = http)
   private val msiVenues: Map[Cinema, MsiVenue] = Map(
     KinoKryterium                -> MsiVenue("https://bilety.ck105.koszalin.pl", fetch = zyteFetch),
@@ -209,7 +210,7 @@ class CinemaScraperCatalog(
     // Filmweb-only until 2026-09-27 (Iława's expired leaf is pinned in TlsTrust).
     KinoCinemaLumiereSuwalki -> MsiVenue("https://suwalki.cinema-lumiere.pl"),
     KinoOstrovia             -> MsiVenue("https://bilety.kinoostrovia.pl"),
-    KinoTeatrSieradz         -> MsiVenue("https://bilety.scksieradz.pl"),
+    KinoTeatrSieradz         -> MsiVenue("https://bilety.scksieradz.pl", filmLabel = Some("FILM")),
     KinoChDK                 -> MsiVenue("https://bilety.ckchojnice.pl"),
     KinoteatrPasja           -> MsiVenue("https://biletyick.miastoilawa.pl"),
     KinoGornikLeczyca        -> MsiVenue("https://kinogornik.eurobilet.pl"),
@@ -219,7 +220,8 @@ class CinemaScraperCatalog(
   private def msi(cinema: Cinema): MsiClient = {
     val venue = msiVenues(cinema)
     new MsiClient(venue.fetch, venue.baseUrl, cinema, today,
-      mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix)
+      mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix,
+      filmLabel = venue.filmLabel)
   }
 
   // biletyna.pl venue pages (plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare

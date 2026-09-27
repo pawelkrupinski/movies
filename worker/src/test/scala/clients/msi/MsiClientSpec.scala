@@ -334,4 +334,20 @@ class MsiClientSpec
 
     showtimes.map(_.dateTime.toLocalDate) shouldBe Seq(LocalDate.of(2026, 10, 14))
   }
+
+  // Kino Górnik (Łęczyca) types the version and then the distributor after a
+  // comma — "Avengers: Koniec gry 2D Dubbing, Dys. Disney", "Luna i rozgadana
+  // świnka 2D Dubbing, Kino Świat", with typos ("Zapopmniana wyspa-2D  dubbind,
+  // dystybutor") — so no title resolved. Captured 2026-09-27 from the live portal.
+  "MsiClient (Kino Górnik Łęczyca)" should "drop the distributor tail and read the version it follows" in {
+    val leczyca = new MsiClient(new FakeHttpFetch("filmweb-only-switch"), "https://kinogornik.eurobilet.pl",
+      KinoGornikLeczyca, today = LocalDate.of(2026, 9, 27)).fetch()
+    val titles = leczyca.map(_.movie.title)
+    titles should contain allOf ("Avengers: koniec gry", "Luna i rozgadana świnka", "Lalka", "Zapopmniana wyspa",
+      "Dzień dziecka księdza jana kaczkowskiego", "Resident evil")
+    all (titles) should (not include "," and not include "2d")
+    leczyca.find(_.movie.title == "Avengers: koniec gry").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D", "DUB"))
+    leczyca.find(_.movie.title == "Zapopmniana wyspa").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D", "DUB"))
+    leczyca.find(_.movie.title == "Lalka").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D"))
+  }
 }

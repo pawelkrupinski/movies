@@ -251,6 +251,21 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       catalog().all.find(_.cinema == cinema).value.getClass shouldBe scraper
     }
 
+  // Kino Teatr Sieradz's MSI portal stamps "FILM: " on its film rows only, so
+  // "Film: lalka" reached TMDB with the label on. The label is stripped where
+  // present; the unlabelled rows stay — a classic ("KLASYKA KINA: ORLANDO") and
+  // a broadcast (André Rieu) are screenings too, so the label can't be a filter
+  // (the live page, 2026-09-27, listed both beside the labelled films).
+  it should "strip Kino Teatr Sieradz's FILM: label, keeping its unlabelled screenings" in {
+    val titles = switchedCatalog.all.find(_.cinema == KinoTeatrSieradz).value.fetch().map(_.movie.title)
+    titles should contain allOf ("Lalka", "Dzień dziecka ks. jana kaczkowskiego", "Vincent. Legenda oceanu",
+      "Totalna magia 2", "Klasyka kina: orlando",
+      // a comma no version tag precedes is the title's own (MSI's Łęczyca distributor strip must leave it)
+      "Powiedz mi, co czujesz", "Czas, który nie nadszedł")
+    titles.exists(_.toLowerCase.contains("rieu")) shouldBe true
+    all (titles.map(_.toLowerCase)) should not startWith "film:"
+  }
+
   it should "keep Sucha Beskidzka's systembiletowy feed to its cinema, not the cabaret and musicals it also sells" in {
     val titles = switchedCatalog.all.find(_.cinema == KinoCKiF).value.fetch().map(_.movie.title.toLowerCase)
     titles should not be empty
