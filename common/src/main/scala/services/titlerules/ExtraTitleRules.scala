@@ -361,6 +361,8 @@ object ExtraTitleRules {
     // ('+ prelekcja' / '+ wstęp' is already stripped by the seed PlusSuffix rule.)
     searchStrip("xtra-kf-klub-suffix",             """(?i)\s*\|\s*KF\s+\S.*$""",                      "'<film> | KF <klub>' film-club suffix (Fellini. Noce Cabirii | KF Ambasada)"),
     searchStrip("xtra-wtorek-seniora-suffix",      """(?i)\s*\|\s*Wtorek\s+Seniora\s*$""",            "'<film> | Wtorek Seniora' senior-screening suffix (Ojczyzna)"),
+    searchStrip("xtra-senior-w-kinie-suffix",      """(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$""", "'<film> - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card"),
+    searchStrip("xtra-kino-konesera-suffix",       """(?iu)\s*[-–—]\s*Kino\s+Konesera\s*$""",      "'<film> - KINO KONESERA' connoisseur-cycle suffix outside Helios (Kino Gwiazda Kętrzyn: Gorzkie święta); Helios's own per-cinema tag strips it before this runs"),
     searchStrip("xtra-fks-suffix",                 """(?iu)\s*[|_]\s*FKS\s*$""",                      "'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)"),
     searchStrip("xtra-pokazy-specjalne-suffix",    """(?i)\s*[-–—|]\s*pokazy\s+specjalne\s*$""",      "'<film> - pokazy specjalne' suffix (the xtra-pokaz-suffix rule's pokaz\\b can't match the 'pokazy' plural) (Milczenie owiec)"),
     searchStrip("xtra-wakacje-z-dokumentem-suffix", """(?i)\s*\|\s*Wakacje\s+z\s+dokumentem\s*$""",   "'<film> | Wakacje z dokumentem' documentary-strand suffix (Silver)"),

@@ -25,8 +25,10 @@ import scala.util.Try
  *     fetched inline for every card (showtimes are identity-bearing and cannot be
  *     deferred to a detail enricher). It carries:
  *       - `h1`                                  → title (ALL CAPS, verbatim; the
- *         scrape-time recase and title rules handle case and the " - KINO
- *         KONESERA" / "SENIOR W KINIE" programme suffixes)
+ *         scrape-time recase handles case; the `xtra-kino-konesera-suffix` and
+ *         `xtra-senior-w-kinie-suffix` search strips take the " - KINO
+ *         KONESERA" / "SENIOR W KINIE" programme suffixes off the enrichment
+ *         query — the screening keeps its own card)
  *       - the meta spans under `h1`             → `NNN min`, a comma-separated
  *         genre list, and the language version ("dubbing PL", "napisy PL",
  *         "Wersja oryginalna")

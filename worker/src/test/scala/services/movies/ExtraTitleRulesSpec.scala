@@ -473,7 +473,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // named format ('ON 35MM'), neither reached by the seed or xtra-4k-suffix
     // (which only matches a bare trailing '4K' / '(4K)').
     "CEMETERY MAN - 4K RESTORATION"                        -> "CEMETERY MAN",
-    "THE EXORCIST - ON 35MM"                                -> "THE EXORCIST"
+    "THE EXORCIST - ON 35MM"                                -> "THE EXORCIST",
+    // Kino Gwiazda (Kętrzyn) glues its senior strand onto the film as a quoted
+    // label plus a descriptor tail. The screening keeps its own card (a senior
+    // programme is a distinct-audience edition); the query must be the bare film.
+    "ELEONORA WSPANIAŁA - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+" -> "ELEONORA WSPANIAŁA",
+    "Eleonora Wspaniała - „Senior w kinie”"                -> "Eleonora Wspaniała",
+    "Eleonora Wspaniała – Senior w kinie"                  -> "Eleonora Wspaniała",
+    // …and its connoisseur strand, which only Helios's per-cinema tag stripped.
+    "GORZKIE ŚWIĘTA - KINO KONESERA"                       -> "GORZKIE ŚWIĘTA"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
