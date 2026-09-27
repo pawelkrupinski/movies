@@ -71,6 +71,18 @@ lazy val heapDumpScript = Seq(
     ((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh",
 )
 
+// JDK 27 held to JDK 25's behaviour: the options in infra/jvm/ go into each dist's
+// conf/application.ini, which the start script reads ahead of the overlay's JAVA_OPTS. The files
+// say which difference each line undoes; JdkParityOptionsSpec holds them to 25's values.
+def jdk25Parity(files: String*) = Seq(
+  Universal / javaOptions ++= files.flatMap { name =>
+    IO.readLines((LocalRootProject / baseDirectory).value / "infra" / "jvm" / name)
+      .map(_.trim)
+      .filterNot(line => line.isEmpty || line.startsWith("#"))
+      .map("-J" + _)
+  },
+)
+
 // Integration tests (it/scala) and page-regression tests (page/scala) run under
 // their own sbt configurations so CI can dispatch them as separate jobs. Both
 // `extend Test` to reuse helpers from test/scala. Defined here because both the
@@ -245,6 +257,7 @@ lazy val worker = (project in file("worker"))
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
+  .settings(jdk25Parity("jdk25-parity.options"))
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -325,6 +338,7 @@ lazy val web = (project in file("web"))
   .settings(itReportSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
+  .settings(jdk25Parity("jdk25-parity.options", "jdk25-parity-g1.options"))
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //

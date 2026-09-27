@@ -1,0 +1,6 @@
+# The G1-only half of jdk25-parity.options, for the web tier (the workers run SerialGC, where
+# these four already match 25). JDK 27's G1Arguments overrides each when left at its default.
+-XX:-UseCondCardMark
+-XX:GCTimeRatio=12
+-XX:MinHeapFreeRatio=40
+-XX:MaxHeapFreeRatio=70

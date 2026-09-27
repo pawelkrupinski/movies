@@ -1,0 +1,41 @@
+# JDK 27 RUN AS CLOSE TO JDK 25 AS IT CAN BE, for BOTH apps (web: G1, worker: Serial).
+#
+# Derived on 2026-09-27 by running every prod JAVA_OPTS (web base + US, all five workers) under
+# Temurin 25.0.4.1+1 (what prod ran) and Temurin 27+35 on k3s-worker-1 itself, and diffing every
+# final flag value (-XX:+PrintFlagsFinal with diagnostic+experimental unlocked), every system
+# property and every security setting. Each line below is one difference, set back to 25's value;
+# JdkParityOptionsSpec re-runs the JVM with these options and holds the result to 25's values.
+#
+# What cannot be put back (no flag restores it) is left as 27 ships it: G1's new card-table
+# refinement (JEP 522: G1PerThreadPendingCardThreshold replaces the removed G1UpdateBufferSize),
+# G1's split array marking (ArrayMarkingMinStride), C2's reachability-fence nodes and its new
+# interference-graph bailout (IFGEdgesLimit). New 27 flags whose default already IS 25's behaviour
+# (LoopPeeling=1, DelayAfterInliningCutoff, HotCodeHeap, NMethodRelocation, AOT*) need no line.
+# The G1CPUUsage*/G1ShrinkByPercentOfAvailable resizing flags are inert: every pod runs Xms == Xmx.
+
+# JEP 534 (27): compact object headers became the default.
+-XX:-UseCompactObjectHeaders
+
+# Diagnostic flags below need unlocking; the worker's JAVA_OPTS unlock them too, web's do not.
+-XX:+UnlockDiagnosticVMOptions
+# 27 turned on the side table for inflated monitors.
+-XX:-UseObjectMonitorTable
+# Renamed from LightweightFastLockingSpins (25: 13) with a new default of 8.
+-XX:FastLockingSpins=13
+# 27 enables the ML-DSA (Dilithium) intrinsics on this CPU; 25 did not.
+-XX:-UseDilithiumIntrinsics
+# New C2 loop and vectorization optimizations in 26/27; off is 25's code shape.
+-XX:-ShortRunningLongLoop
+-XX:-UseAutoVectorizationPredicate
+-XX:-UseAutoVectorizationSpeculativeAliasingChecks
+
+# Heap-sizing and allocation-prefetch ergonomics that changed. InitialRAMPercentage is inert while
+# Xms is set, but it is a difference. The prefetch values are what 25 chose on k3s-worker-1's
+# Skylake Xeon; a different CPU would have had its own.
+-XX:InitialRAMPercentage=1.5625
+-XX:AllocatePrefetchDistance=256
+-XX:AllocatePrefetchLines=3
+
+# JEP 527 (27): X25519MLKEM768 went to the front of the TLS 1.3 key-share list, and ffdhe6144/8192
+# left it. This is 25's list exactly. Protocols, cipher suites and signature schemes are unchanged.
+-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1,secp521r1,x448,ffdhe2048,ffdhe3072,ffdhe4096,ffdhe6144,ffdhe8192
