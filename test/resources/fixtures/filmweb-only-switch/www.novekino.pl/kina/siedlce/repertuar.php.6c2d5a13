@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="pl">
+
+
+    <head>
+        <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Repertuar na wtorek (2026-09-29) - NoveKino Siedlce - kino cyfrowe 3D</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="https://www.novekino.pl/kina/siedlce/">
+<link href="https://fonts.googleapis.com/css?family=Rubik:300,400,500,700&amp;subset=latin-ext" rel="stylesheet">
+<meta name="theme-color" content="#000">
+<meta name="description" content="NoveKino Siedlce - kino cyfrowe 3D ul. Wiszniewskiego 4 Siedlce tel. 025 640 77 66">
+<meta name="keywords" content="kino, novekino siedlce, kino siedlce, repertuar kino siedlce, kino cyfrowe 3d, repertuar kina w siedlcach, nove kino siedlce, repertuar novekino siedlce">
+<meta name="robots" content="index, follow">
+<meta name="author" content="VEGA Internet Studio, https://www.vis.pl, e-mail: biuro@vis.pl, tel: 022 877 33 09">
+<style>
+    @media (min-width: 576px) {.hidden-sm-up {display: none !important}}
+    @media (max-width: 767px) {.hidden-sm-down {display: none !important}}
+    @media (min-width: 768px) {.hidden-md-up {display: none !important}}
+    @media (max-width: 991px) {.hidden-md-down {display: none !important}}
+    @media (min-width: 992px) {.hidden-lg-up {display: none !important}}
+    @media (max-width: 1199px) {.hidden-lg-down {display: none !important}}
+    @media (min-width: 1200px) {.hidden-xl-up {display: none !important}}
+    .hidden-xl-down {display: none !important}
+</style>
+<link rel="stylesheet" href="css/lib/css-lib.min_17.css">
+<link rel="stylesheet" href="css/style.min_17.css">
+<link rel="stylesheet" href="css/vis_17.css">
+<link rel="stylesheet" href="local_17.css">
+    </head>
+
+    <body class="">
+        <a href="javascript:" id="return-to-top"><img src="/img/chevron-up.png" alt="" /></a>
+        <div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pl_PL/sdk.js#xfbml=1&version=v9.0" nonce="J6QJ4OlG"></script>
+<header class="header">
+    <div class="cinema hidden-lg-up">
+        <select class="cinema-select" title="Kino">
+            <option value="/kina/atlantic/">Atlantic (Warszawa)</option>
+            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+            <option value="/kina/siedlce/" selected="selected">Siedlce</option>
+            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+        </select>
+    </div>
+    <div class="container">
+        <div class="header-top">
+            <a href="/kina/siedlce/" class="header-logo" style="position: relative;">
+                <img src="images_local/logo.gif" alt="">
+                            </a>
+            <div class="header-nav">
+                <div class="cinema_phone">
+                    <div class="phone">
+                        <span class="phone-label">Rezerwacja</span>
+                        <a class="phone-number" href="tel:256407766">25&nbsp;640&nbsp;77&nbsp;66</a>
+                    </div>
+                    <div class="cinema hidden-md-down">
+                        <select class="cinema-select" title="Kino">
+                            <option value="/kina/atlantic/">Atlantic (Warszawa)</option>
+                            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+                            <option value="/kina/siedlce/" selected="selected">Siedlce</option>
+                            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+                            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <nav class="menu hidden-lg-down">
+    <ul class="menu-list">
+        <li class="menu-element"><a href="repertuar.php" class="menu-link">Repertuar</a></li>
+        <li class="menu-element"><a href="zapowiedzi.php" class="menu-link">Zapowiedzi</a></li>
+        <li class="menu-element"><a href="cennik.php" class="menu-link">Cennik</a></li>
+        <li class="menu-element"><a href="cykle-filmowe.php" class="menu-link">Cykle filmowe</a></li>
+        <li class="menu-element"><a href="szkola.php" class="menu-link">Szkoła</a></li>
+        <li class="menu-element"><a href="partnerzy.php" class="menu-link">Partnerzy</a></li>
+        <li class="menu-element"><a href="reklama.php" class="menu-link">Reklama</a></li>
+        <li class="menu-element"><a href="o-nas.php" class="menu-link">O nas</a></li>
+        <li class="menu-element"><a href="wynajem-sal.php" class="menu-link">Wynajem sal</a></li>
+    </ul>
+</nav>
+            </div>
+            <div class="header-menu_toggle hidden-xl-up">
+                <button class="header-menu_toggle-btn">
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--close">
+                    <use xlink:href="#i-close"></use>
+                    </svg>
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--open">
+                    <use xlink:href="#i-hamburger"></use>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="menu_mobile-ou hidden-xl-up">
+
+            <nav class="menu_mobile">
+    <ul class="menu_mobile-list">
+        <li class="menu_mobile-element"><a href="repertuar.php" class="menu_mobile-link">Repertuar</a></li>
+        <li class="menu_mobile-element"><a href="zapowiedzi.php" class="menu_mobile-link">Zapowiedzi</a></li>
+        <li class="menu_mobile-element"><a href="cennik.php" class="menu_mobile-link">Cennik</a></li>
+        <li class="menu_mobile-element"><a href="cykle-filmowe.php" class="menu_mobile-link">Cykle filmowe</a></li>
+        <li class="menu_mobile-element"><a href="szkola.php" class="menu_mobile-link">Szkoła</a></li>
+        <li class="menu_mobile-element"><a href="partnerzy.php" class="menu_mobile-link">Partnerzy</a></li>
+        <li class="menu_mobile-element"><a href="reklama.php" class="menu_mobile-link">Reklama</a></li>
+        <li class="menu_mobile-element"><a href="o-nas.php" class="menu_mobile-link">O nas</a></li>
+        <li class="menu_mobile-element"><a href="wynajem-sal.php" class="menu_mobile-link">Wynajem sal</a></li>
+    </ul>
+</nav>
+        </div>
+
+        <div class="ad_banner">
+
+                <div class="ad_banner">
+                <div id="animation_container" style="width:750px;">
+
+                                <a href="https://www.novekino.pl/kina/siedlce/film.php?id=20178" target="_self"><img
+                                src="banery/gorne/BANNER-750x200-KINO-SENIORA-FOLWARK-ZWIERECY.jpg" alt="" width="750"/></a>
+                        </div>
+    </div>
+
+        </div>
+    </div>
+</header>
+
+        <main class="page_content">
+            <div class="page_content-main">
+                <div class="container">
+
+                    
+<section class="repertoire">
+    <header class="repertoire-header">
+        <h2 class="repertoire-title">Repertuar</h2>
+        <div class="repertoire-date_cinema">
+                        <span class="repertoire-date">wtorek 29.09</span>
+            <span class="repertoire-cinema">Siedlce</span>
+        </div>
+    </header>
+    <div class="repertoire-days">
+        <div class="repertoire-days-btn repertoire-days-btn--disable repertoire-days-btn--prev hidden-sm-down">
+            <svg class="repertoire-days-btn-ico">
+            <use xlink:href="#i-arrow"></use>
+            </svg>
+        </div>
+        <div class="repertoire-days-slider-ou">
+            <div class="repertoire-days-slider owl-carousel">
+
+                <a href="repertuar.php" class="repertoire-day " data-hash="1">
+                    <div class="repertoire-days-name">niedziela</div>
+                    <div class="repertoire-days-number">27</div>
+                    <div class="repertoire-days-month">wrześ.</div>
+                </a>
+
+                <a href="repertuar.php?data=2026-09-28" class="repertoire-day " data-hash="2">
+                    <div class="repertoire-days-name">poniedz.</div>
+                    <div class="repertoire-days-number">28</div>
+                    <div class="repertoire-days-month">wrześ.</div>
+                </a>
+
+                                                                        <a href="repertuar.php?data=2026-09-29" class="repertoire-day repertoire-day--active" data-hash="3">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">29</div>
+                        <div class="repertoire-days-month">wrześ.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-09-30" class="repertoire-day " data-hash="4">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">30</div>
+                        <div class="repertoire-days-month">wrześ.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-01" class="repertoire-day " data-hash="5">
+                        <div class="repertoire-days-name">czwartek</div>
+                        <div class="repertoire-days-number">01</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-02" class="repertoire-day " data-hash="6">
+                        <div class="repertoire-days-name">piątek</div>
+                        <div class="repertoire-days-number">02</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-03" class="repertoire-day " data-hash="7">
+                        <div class="repertoire-days-name">sobota</div>
+                        <div class="repertoire-days-number">03</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-04" class="repertoire-day " data-hash="8">
+                        <div class="repertoire-days-name">niedziela</div>
+                        <div class="repertoire-days-number">04</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-05" class="repertoire-day " data-hash="9">
+                        <div class="repertoire-days-name">poniedz.</div>
+                        <div class="repertoire-days-number">05</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-06" class="repertoire-day " data-hash="10">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">06</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-07" class="repertoire-day " data-hash="11">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">07</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-08" class="repertoire-day " data-hash="12">
+                        <div class="repertoire-days-name">czwartek</div>
+                        <div class="repertoire-days-number">08</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-12" class="repertoire-day " data-hash="13">
+                        <div class="repertoire-days-name">poniedz.</div>
+                        <div class="repertoire-days-number">12</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-13" class="repertoire-day " data-hash="14">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">13</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-21" class="repertoire-day " data-hash="15">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">21</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-10-26" class="repertoire-day " data-hash="16">
+                        <div class="repertoire-days-name">poniedz.</div>
+                        <div class="repertoire-days-number">26</div>
+                        <div class="repertoire-days-month">paździe.</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-11-03" class="repertoire-day " data-hash="17">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">03</div>
+                        <div class="repertoire-days-month">list.</div>
+                    </a>
+                
+            </div>
+        </div>
+        <div class="repertoire-days-btn repertoire-days-btn--next hidden-sm-down">
+            <svg class="repertoire-days-btn-ico">
+            <use xlink:href="#i-arrow"></use>
+            </svg>
+        </div>
+        <div class="repertoire-days-mobile_nav hidden-md-up">
+            <button class="repertoire-days-mobile_btn repertoire-days-mobile_btn--prev btn--full_width btn">
+                Poprzednie
+                <svg class="repertoire-days-mobile_btn-ico">
+                <use xlink:href="#i-arrow-bold"></use>
+                </svg>
+            </button>
+            <button class="repertoire-days-mobile_btn repertoire-days-mobile_btn--next btn--full_width btn">
+                <svg class="repertoire-days-mobile_btn-ico">
+                <use xlink:href="#i-arrow-bold"></use>
+                </svg>
+                Następne
+            </button>
+        </div>
+    </div>
+    <table class="repertoire-list">
+        <tr class="repertoire-list-header">
+            <th class="repertoire-list-header-th">
+                <div class="repertoire-list-header-th-in"></div>
+            </th>
+            <th class="repertoire-list-header-th">
+                <div class="repertoire-list-header-th-in">Godziny</div>
+            </th>
+        </tr>
+
+                        <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19992"> <img src="https://multimedia.novekino.pl/100_dni_misja_zeus/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19992">100 dni: Misja Zeus</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Polska                                                <br>
+                                                Gatunek: akcja/komedia<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">akcja/komedia</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="100 dni: Misja Zeus" data-day="2026-09-29" data-hour="09:00" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148632&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">09:00</a><a href="" class="repertoire-movie-time" data-title="100 dni: Misja Zeus" data-day="2026-09-29" data-hour="13:15" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148439&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">13:15</a><a href="" class="repertoire-movie-time" data-title="100 dni: Misja Zeus" data-day="2026-09-29" data-hour="17:30" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148441&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">17:30</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20055"> <img src="https://multimedia.novekino.pl/dzien_dziecka_jana_kaczkowskiego/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20055">Dzień Dziecka księdza Jana Kaczkowskiego</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Polska                                                <br>
+                                                Gatunek: dokument<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">dokument</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Dzień Dziecka księdza Jana Kaczkowskiego" data-day="2026-09-29" data-hour="15:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148496&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148496&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">15:30</a><a href="" class="repertoire-movie-time" data-title="Dzień Dziecka księdza Jana Kaczkowskiego" data-day="2026-09-29" data-hour="17:45" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148528&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148528&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">17:45</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20277"> <img src="https://multimedia.novekino.pl/ksiega_pustyni/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20277">Księga pustyni - seans grupowy</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Francja                                                <br>
+                                                Gatunek: familijny/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">familijny/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Księga pustyni - seans grupowy" data-day="2026-09-29" data-hour="09:00" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148271&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148271&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">09:00</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20110"> <img src="https://multimedia.novekino.pl/luna_i_rozgadana_swinka/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20110">Luna i rozgadana świnka - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Francja, Belgia                                                <br>
+                                                Gatunek: animowany/fantasy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">animowany/fantasy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Luna i rozgadana świnka - dubbing" data-day="2026-09-29" data-hour="09:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148546&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148546&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">09:30</a><a href="" class="repertoire-movie-time" data-title="Luna i rozgadana świnka - dubbing" data-day="2026-09-29" data-hour="13:45" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148495&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148495&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">13:45</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19950"> <img src="https://multimedia.novekino.pl/marsupilami/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19950">Marsupilami - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Belgia, Francja                                                <br>
+                                                Gatunek: komedia/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">komedia/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Marsupilami - dubbing" data-day="2026-09-29" data-hour="11:00" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148405&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148405&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">11:00</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19743"> <img src="https://multimedia.novekino.pl/minionki_i_straszydla/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19743">Minionki i straszydła - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: USA                                                <br>
+                                                Gatunek: animowany/familijny/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">animowany/familijny/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Minionki i straszydła - dubbing" data-day="2026-09-29" data-hour="11:00" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148640&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148640&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">11:00</a><a href="" class="repertoire-movie-time" data-title="Minionki i straszydła - dubbing" data-day="2026-09-29" data-hour="13:45" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148526&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148526&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">13:45</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19944"> <img src="https://multimedia.novekino.pl/mistyczka/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19944">Mistyczka</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Polska                                                <br>
+                                                Gatunek: dramat biograficzny<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">dramat biograficzny</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Mistyczka" data-day="2026-09-29" data-hour="17:15" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148497&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148497&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">17:15</a><a href="" class="repertoire-movie-time" data-title="Mistyczka" data-day="2026-09-29" data-hour="19:15" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148498&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148498&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">19:15</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19947"> <img src="https://multimedia.novekino.pl/psi_patrol_i_dinozaury/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19947">Psi Patrol i dinozaury - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Kanada, USA                                                <br>
+                                                Gatunek: animowany/dla dzieci/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">animowany/dla dzieci/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Psi Patrol i dinozaury - dubbing" data-day="2026-09-29" data-hour="15:45" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148527&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148527&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">15:45</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20174"> <img src="https://multimedia.novekino.pl/resident_evil_2026/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20174">Resident Evil - napisy</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Czechy, Francja, Niemcy, USA                                                <br>
+                                                Gatunek: horror<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">horror</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Resident Evil - napisy" data-day="2026-09-29" data-hour="17:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148471&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148471&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">17:30</a><a href="" class="repertoire-movie-time" data-title="Resident Evil - napisy" data-day="2026-09-29" data-hour="19:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148472&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148472&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">19:30</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19847"> <img src="https://multimedia.novekino.pl/spider_man_calkiem_nowy_dzien/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19847">Spider-Man: Całkiem nowy dzień - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: USA                                                <br>
+                                                Gatunek: akcja/science-fiction<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">akcja/science-fiction</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Spider-Man: Całkiem nowy dzień - dubbing" data-day="2026-09-29" data-hour="19:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148529&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148529&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">19:30</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20172"> <img src="https://multimedia.novekino.pl/tedi_i_magiczna_lampa/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20172">Tedi i magiczna lampa - dubbing</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Hiszpania                                                <br>
+                                                Gatunek: animowany/komedia/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">animowany/komedia/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="Tedi i magiczna lampa - dubbing" data-day="2026-09-29" data-hour="09:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148420&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148420&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">09:30</a><a href="" class="repertoire-movie-time" data-title="Tedi i magiczna lampa - dubbing" data-day="2026-09-29" data-hour="13:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148469&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148469&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">13:30</a><a href="" class="repertoire-movie-time" data-title="Tedi i magiczna lampa - dubbing" data-day="2026-09-29" data-hour="15:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148470&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148470&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">15:30</a>                        </div>
+                    </td>
+                </tr>
+
+                                <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=20170"> <img src="https://multimedia.novekino.pl/w_sercu_dziczy/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=20170">W sercu dziczy - napisy</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: USA                                                <br>
+                                                Gatunek: dramat/przygodowy<br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag">dramat/przygodowy</div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="W sercu dziczy - napisy" data-day="2026-09-29" data-hour="15:30" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148440&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148440&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">15:30</a><a href="" class="repertoire-movie-time" data-title="W sercu dziczy - napisy" data-day="2026-09-29" data-hour="19:45" data-reserve-text="rezerwuj" data-reserve-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148442&typetran=1&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php" data-buy-text="kup" data-buy-link="https://siedlce.novekino.pl/msi/default.aspx?event_id=148442&typetran=0&ReturnLink=https://www.novekino.pl/kina/siedlce/repertuar.php">19:45</a>                        </div>
+                    </td>
+                </tr>
+
+                
+    </table>
+</section>
+
+<section class="movies_slider_panel panel">
+    <div class="panel-header">
+        <span class="panel-ico font_ico--dr">K</span>
+        <h2 class="panel-title">
+            Zapowiedzi
+        </h2>
+    </div>
+    <div class="movies_slider_panel-slider-ou">
+        <div class="movies_slider_panel-slider owl-carousel">
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20178"> <img src="https://multimedia.novekino.pl/folwark_zwierzecy_sie_ks/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20178">Kino seniora: Folwark zwierzęcy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-09-28                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19957"> <img src="https://multimedia.novekino.pl/lalka/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19957">Lalka</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-09-30                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20129"> <img src="https://multimedia.novekino.pl/lalka_sie_ok/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20129">Oczami Kobiet: Lalka</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-09-30                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20216"> <img src="https://multimedia.novekino.pl/verity_coraz_wiekszy_mrok/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20216">Verity. Coraz większy mrok - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-02                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20213"> <img src="https://multimedia.novekino.pl/zapomniana_wyspa/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20213">Zapomniana wyspa - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-02                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20241"> <img src="https://multimedia.novekino.pl/czas_ktory_nie_nadszedl_sie_ok/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20241">Oczami Kobiet: Czas, który nie nadszedł</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-07                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20231"> <img src="https://multimedia.novekino.pl/digger/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20231">Digger - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-09                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20251"> <img src="https://multimedia.novekino.pl/the_social_reckoning/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20251">The Social Reckoning: W sieci konsekwencji - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-09                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20176"> <img src="https://multimedia.novekino.pl/vincent_legenda_oceanu/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20176">Vincent. Legenda oceanu - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-09                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20218"> <img src="https://multimedia.novekino.pl/czas_ktory_nie_nadszedl/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20218">Czas, który nie nadszedł - przedpremiera</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        10-11.10.2026r.                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20260"> <img src="https://multimedia.novekino.pl/lalka_sie_ks/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20260">Kino Seniora: LALKA.</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-12                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20057"> <img src="https://multimedia.novekino.pl/mistyczka_sie_fr/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20057">Filmowe Rekolekcje: Mistyczka</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-13                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20238"> <img src="https://multimedia.novekino.pl/baranek_shaun_i_kudlata_bestia/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20238">Baranek Shaun i kudłata bestia - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20217"> <img src="https://multimedia.novekino.pl/czas_ktory_nie_nadszedl/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20217">Czas, który nie nadszedł</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20249"> <img src="https://multimedia.novekino.pl/rozwazna_i_romantyczna/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20249">Rozważna i romantyczna - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20242"> <img src="https://multimedia.novekino.pl/jak_zyc_zeby_nie_zwariowac_sie_ok/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20242">Oczami Kobiet: Jak żyć, żeby nie zwariować</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-21                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20166"> <img src="https://multimedia.novekino.pl/jak_zyc_zeby_nie_zwariowac/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20166">Jak żyć, żeby nie zwariować</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-23                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20240"> <img src="https://multimedia.novekino.pl/runner/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20240">Runner - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-23                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20168"> <img src="https://multimedia.novekino.pl/supermocni/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20168">Supermocni - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-23                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20259"> <img src="https://multimedia.novekino.pl/jak_zyc_zeby_nie_zwariowac_sie_ks/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20259">Kino Seniora: Jak żyć, żeby nie zwariować</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-26                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20312"> <img src="https://multimedia.novekino.pl/clayface/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20312">Clayface - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-28                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20285"> <img src="https://multimedia.novekino.pl/witajcie_w_hope/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20285">Witajcie w Hope - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-10-30                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20288"> <img src="https://multimedia.novekino.pl/camino_dla_opornych/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20288">Filmowe Rekolekcje: Camino dla opornych</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-11-03                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20307"> <img src="https://multimedia.novekino.pl/kot_prot/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20307">Kot Prot - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-11-03                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20276"> <img src="https://multimedia.novekino.pl/nasza_rewolucja/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20276">Nasza rewolucja</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-11-11                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20309"> <img src="https://multimedia.novekino.pl/strus_pedziwiatr_i_zemsta_kojota/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20309">Struś Pędziwiatr i zemsta Kojota - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-11-11                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20270"> <img src="https://multimedia.novekino.pl/avengers_doomsday/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20270">Avengers: Doomsday - 3d dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-12-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20269"> <img src="https://multimedia.novekino.pl/avengers_doomsday/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20269">Avengers: Doomsday - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-12-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20268"> <img src="https://multimedia.novekino.pl/avengers_doomsday/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20268">Avengers: Doomsday - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-12-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20272"> <img src="https://multimedia.novekino.pl/diuna_czesc_trzecia/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20272">Diuna: Część trzecia - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-12-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=20273"> <img src="https://multimedia.novekino.pl/diuna_czesc_trzecia/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=20273">Diuna: Część trzecia - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-12-16                    </div>
+                </div>
+                    </div>
+        <div class="movies_slider_panel-btns">
+            <button class="movies_slider_panel-btn movies_slider_panel-btn--prev">
+                <svg class="movies_slider_panel-btn-ico movies_slider_panel-btn-ico--prev" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124">
+                    <circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle>
+                    <polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon>
+                </svg>
+            </button>
+            <button class="movies_slider_panel-btn movies_slider_panel-btn--next">
+                <svg class="movies_slider_panel-btn-ico movies_slider_panel-btn-ico--next" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124">
+                    <circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle>
+                    <polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+</section>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+    <div class="footer-nav">
+
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-8 col-lg-7 hidden-md-down">
+                    <nav class="footer_menu">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Kino</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="/kina/siedlce/" class="footer_menu-link">Strona główna</a></li>
+                                        <li class="footer_menu-element"><a href="cennik.php" class="footer_menu-link">Cennik</a></li>
+                                        <li class="footer_menu-element"><a href="kontakt.php" class="footer_menu-link">Kontakt</a></li>
+                                        <li class="footer_menu-element"><a href="doc/regulaminy.pdf" class="footer_menu-link">Regulaminy</a></li>
+                                        <li class="footer_menu-element"><a href="pliki-cookie.php" class="footer_menu-link">Informacja o wykorzystaniu Cookies</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" target="_blank" class="footer_menu-link">Zasady przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a></li>                                         
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Repertuar</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Repertuar</a></li>
+                                        <li class="footer_menu-element"><a href="zapowiedzi.php" class="footer_menu-link">Zapowiedzi</a></li>
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Rezerwacja</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">O nas</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="o-nas.php" class="footer_menu-link">O nas</a></li>
+                                        <li class="footer_menu-element"><a href="szkola.php" class="footer_menu-link">Szkoła</a></li>
+                                        <li class="footer_menu-element"><a href="cykle-filmowe.php" class="footer_menu-link">Cykle filmowe</a></li>
+                                        <li class="footer_menu-element"><a href="reklama.php" class="footer_menu-link">Reklama</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Partnerzy</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="partnerzy.php" class="footer_menu-link">Partnerzy</a></li>
+                                        <li class="footer_menu-element"><a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank" class="footer_menu-link">Stowarzyszenie Kin Studyjnych</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.pisf.pl/pl" target="_blank" class="footer_menu-link">PISF</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.fn.org.pl/" target="_blank" class="footer_menu-link">Filmoteka Narodowa</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+
+                        </div>
+                    </nav>
+                </div>
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="footer-nav-right">
+                        <div class="footer-newsletter">
+                            <label for="newsletter" class="footer-newsletter-label footer-label">Zapisz się do
+                                newslettera</label>
+                            <form action="newsletter.php" method="post" class="footer-newsletter-form">
+                                <input title="newsletter" id="newsletter" name="email" type="text" placeholder="Tu wpisz email" class="footer-newsletter-input"><button type="submit" class="footer-newsletter-submit font_ico--cr"><span class="footer-newsletter-submit-ico">C</span></button>
+                            </form>
+                            <div style="font-size:10px; color: #ccc;"><br>
+                            Zapisując się do Newslettera zapoznałem się z <a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" style="color: #ccc; text-decoration:underline;" target="_blank">Zasadami przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a>. Zgadzam się na otrzymanie od kin Novekino  na wskazany przeze mnie adres e-mail informacji marketingowych. Administratorem Twoich danych osobowych jest Instytucja Filmowa MAX-FILM Spółka Akcyjna z siedzibą w Warszawie, ul. Panieńska 11, Wpisana do Rejestru Przedsiębiorców prowadzonego przez Sąd Rejonowy dla Warszawy Mokotowa, XIII Wydział Gospodarczy pod numerem KRS 0000236457 Posiadasz prawo dostępu do treści Swoich danych osobowych oraz prawo ich sprostowania, usunięcia, ograniczenia przetwarzania, prawo do przenoszenia danych osobowych, prawo wniesienia sprzeciwu, a także prawo do cofnięcia zgody w dowolnym momencie. Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</div>
+                        </div>
+                        <div class="footer-reservation_info">
+                            <h3 class="footer-reservation_info-label footer-label">
+                                Rezerwacje telefoniczne
+                            </h3>
+                            <div class="footer-reservation_info-phone">
+                                <span class="footer-reservation_info-number-ico font_ico--bl">t</span>
+                                <a href="tel:256407766" class="footer-reservation_info-phone-number">25 640 77 66</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-socials">
+                <a href="https://www.facebook.com/Novekino-Siedlce-200104713349712/" class="footer-socials-link">
+                    <svg class="footer-socials-link-fb-ico" preserveAspectRatio="xMidYMid">
+                    <use xlink:href="#i-fb"></use>
+                    </svg>
+                    facebook
+                </a>
+                            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="footer-bottom-in">
+                <div class="footer-bottom-col">
+                    <span class="footer-rights">
+                        2026 © Novekino. All Rights Reserved
+                    </span>
+                    <span class="footer-author">
+                        projekt i wykonanie : <a href="http://www.vis.pl/" class="footer-link">VEGA Internet Studio</a>
+                    </span>
+                </div>
+                <div class="footer-bottom-col footer-bottom-col--right">
+                    <a href="http://www.maxfilm.com.pl/" target="_blank"><img src="img/instytucja.jpg" alt="Instytuacja Filmowa Max-Film S.A."></a>
+                <a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank"><img src="img/logo_sks_1.jpg" alt="Stowarzyszenie Kin Studyjnych"></a>
+                    <a href="http://www.pisf.pl" target="_blank"><img src="img/pisf.gif" alt=""></a>
+                    <a href="http://www.fina.gov.pl" target="_blank"><img src="img/fina.gif" alt=""></a>                    
+                                     </div>
+            </div>
+        </div>
+
+    </div>
+
+</footer>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3HWJMKMM71"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-3HWJMKMM71');
+</script>
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "77f5473ca18944998ba21957f4b4ea53"}'></script><!-- End Cloudflare Web Analytics -->
+        <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+
+<script src="js/lib/js-lib.min.js"></script>
+
+<script src="js/repertoire.min.js"></script>
+<script src="js/script.min_7.js"></script>
+<script src="js/local_2.js"></script>
+    </body>
+</html>

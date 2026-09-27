@@ -375,7 +375,7 @@
   "cinemaObject": "KinoWKadrze",
   "displayName": "Kino w Kadrze",
   "town": "Warszawa",
-  "annotation": "Warszawa — filmweb 2436"
+  "annotation": "Warszawa — biletyna Dom-Kultury-Kadr"
  },
  {
   "citySlug": "warszawa",
@@ -1523,7 +1523,7 @@
   "cinemaObject": "KinoZdrojBusko",
   "displayName": "Kino Zdrój Busko",
   "town": "Busko-Zdrój",
-  "annotation": "Busko-Zdrój — filmweb 1720"
+  "annotation": "Busko-Zdrój — biletyna BSCK"
  },
  {
   "citySlug": "busko-zdroj",
@@ -1551,14 +1551,14 @@
   "cinemaObject": "KinoChDK",
   "displayName": "Kino ChDK",
   "town": "Chojnice",
-  "annotation": "Chojnice — filmweb 2307"
+  "annotation": "Chojnice — MSI bilety.ckchojnice.pl"
  },
  {
   "citySlug": "chojnice",
   "cinemaObject": "KinoUciechaCzluchow",
   "displayName": "Kino Uciecha Człuchów",
   "town": "Człuchów",
-  "annotation": "Człuchów — filmweb 2349"
+  "annotation": "Człuchów — biletyna Kino-Uciecha"
  },
  {
   "citySlug": "chojnice",
@@ -1677,7 +1677,7 @@
   "cinemaObject": "KinoECK",
   "displayName": "Kino ECK",
   "town": "Ełk",
-  "annotation": "Ełk — filmweb 1650"
+  "annotation": "Ełk — biletyna Elckie-Centrum-Kultury"
  },
  {
   "citySlug": "elk",
@@ -1698,7 +1698,7 @@
   "cinemaObject": "KinoZodiak",
   "displayName": "Kino Zodiak",
   "town": "Mrągowo",
-  "annotation": "Mrągowo — filmweb 1701"
+  "annotation": "Mrągowo — ekobilet mck-mragowo"
  },
  {
   "citySlug": "gizycko",
@@ -1789,14 +1789,14 @@
   "cinemaObject": "KinoteatrPasja",
   "displayName": "Kinoteatr Pasja",
   "town": "Iława",
-  "annotation": "Iława — filmweb 1857"
+  "annotation": "Iława — MSI biletyick.miastoilawa.pl"
  },
  {
   "citySlug": "ilawa",
   "cinemaObject": "KinoPokoj",
   "displayName": "Kino Pokój",
   "town": "Lubawa",
-  "annotation": "Lubawa — filmweb 1805"
+  "annotation": "Lubawa — ekobilet mok-lubawa"
  },
  {
   "citySlug": "ilawa",
@@ -1866,7 +1866,7 @@
   "cinemaObject": "KinoJDK",
   "displayName": "Kino JDK",
   "town": "Jasło",
-  "annotation": "Jasło — filmweb 2314"
+  "annotation": "Jasło — systembiletowy jdk.systembiletowy.pl"
  },
  {
   "citySlug": "jastrzebie-zdroj",
@@ -1922,7 +1922,7 @@
   "cinemaObject": "KinoZbyszekOlkusz",
   "displayName": "Kino Zbyszek Olkusz",
   "town": "Olkusz",
-  "annotation": "Olkusz — filmweb 1487"
+  "annotation": "Olkusz — biletyna Kino-Zbyszek"
  },
  {
   "citySlug": "jaworzno",
@@ -2076,7 +2076,7 @@
   "cinemaObject": "KinoMorskieOko",
   "displayName": "Kino Morskie Oko",
   "town": "Krasnystaw",
-  "annotation": "Krasnystaw — filmweb 284"
+  "annotation": "Krasnystaw — biletyna Kino-Morskie-Oko"
  },
  {
   "citySlug": "krosno",
@@ -2132,7 +2132,7 @@
   "cinemaObject": "KinoGornikLeczyca",
   "displayName": "Kino Górnik Łęczyca",
   "town": "Łęczyca",
-  "annotation": "Łęczyca — filmweb 2065"
+  "annotation": "Łęczyca — MSI kinogornik.eurobilet.pl"
  },
  {
   "citySlug": "kutno",
@@ -2279,14 +2279,14 @@
   "cinemaObject": "KinoRadosc",
   "displayName": "Kino Radość",
   "town": "Wolbrom",
-  "annotation": "Wolbrom — filmweb 1704"
+  "annotation": "Wolbrom — ekobilet dk-wolbrom"
  },
  {
   "citySlug": "miechow",
   "cinemaObject": "KinoGryf",
   "displayName": "Kino Gryf",
   "town": "Miechów",
-  "annotation": "Miechów — filmweb 1906"
+  "annotation": "Miechów — systembiletowy bilety.ckis.miechow.eu"
  },
  {
   "citySlug": "miedzyrzec-podlaski",
@@ -2349,7 +2349,7 @@
   "cinemaObject": "KinoKosmosMlawa",
   "displayName": "Kino Kosmos Mława",
   "town": "Mława",
-  "annotation": "Mława — filmweb 1921"
+  "annotation": "Mława — biletyna Miejski-Dom-Kultury-kino-Kosmos"
  },
  {
   "citySlug": "mlawa",
@@ -2384,7 +2384,7 @@
   "cinemaObject": "KinoRelaks",
   "displayName": "Kino Relaks",
   "town": "Nakło nad Notecią",
-  "annotation": "Nakło nad Notecią — filmweb 2329"
+  "annotation": "Nakło nad Notecią — biletyna Nakielski-Osrodek-Kultury"
  },
  {
   "citySlug": "naklo-nad-notecia",
@@ -2468,7 +2468,7 @@
   "cinemaObject": "KinoCinemaN",
   "displayName": "Cinema N 3D",
   "town": "Nysa",
-  "annotation": "Nysa — filmweb 1657"
+  "annotation": "Nysa — systembiletowy bilety.kino.nysa.pl"
  },
  {
   "citySlug": "olawa",
@@ -2482,14 +2482,14 @@
   "cinemaObject": "GoKinoOlawa",
   "displayName": "GO KINO Oława",
   "town": "Oława",
-  "annotation": "Oława — filmweb 2161"
+  "annotation": "Oława — MSI olawa.gokino.pl"
  },
  {
   "citySlug": "olecko",
   "cinemaObject": "KinoMazur",
   "displayName": "Kino Mazur",
   "town": "Olecko",
-  "annotation": "Olecko — filmweb 1533"
+  "annotation": "Olecko — ekobilet mazury-olecko"
  },
  {
   "citySlug": "olesnica",
@@ -2531,7 +2531,7 @@
   "cinemaObject": "KinoOstrovia",
   "displayName": "Kino Ostrovia",
   "town": "Ostrów Mazowiecka",
-  "annotation": "Ostrów Mazowiecka — filmweb 1743"
+  "annotation": "Ostrów Mazowiecka — MSI bilety.kinoostrovia.pl"
  },
  {
   "citySlug": "ostrow-wielkopolski",
@@ -2552,7 +2552,7 @@
   "cinemaObject": "KinoOOK",
   "displayName": "Opatowski Ośrodek Kultury",
   "town": "Opatów",
-  "annotation": "Opatów — filmweb 3133"
+  "annotation": "Opatów — biletyna Opatowski-Osrodek-Kultury"
  },
  {
   "citySlug": "oswiecim",
@@ -2580,21 +2580,21 @@
   "cinemaObject": "KinoUciecha",
   "displayName": "Kino Uciecha",
   "town": "Góra Kalwaria",
-  "annotation": "Góra Kalwaria — filmweb 1860"
+  "annotation": "Góra Kalwaria — biletyna Kino-Uciecha"
  },
  {
   "citySlug": "otwock",
   "cinemaObject": "KinoOaza",
   "displayName": "Kino Oaza",
   "town": "Otwock",
-  "annotation": "Otwock — filmweb 2340"
+  "annotation": "Otwock — biletyna Kino-Oaza-Otwockie-Centrum-Kultury"
  },
  {
   "citySlug": "otwock",
   "cinemaObject": "KinoWilga",
   "displayName": "Kino Wilga",
   "town": "Garwolin",
-  "annotation": "Garwolin — filmweb 1677"
+  "annotation": "Garwolin — systembiletowy grl.systembiletowy.pl"
  },
  {
   "citySlug": "pabianice",
@@ -2671,7 +2671,7 @@
   "cinemaObject": "KinoMOKPolice",
   "displayName": "Kino MOK Police",
   "town": "Police",
-  "annotation": "Police — filmweb 307"
+  "annotation": "Police — biletyna Miejski-Osrodek-Kultury"
  },
  {
   "citySlug": "police",
@@ -2762,14 +2762,14 @@
   "cinemaObject": "KinoSybilla",
   "displayName": "Kino Sybilla",
   "town": "Puławy",
-  "annotation": "Puławy — filmweb 311"
+  "annotation": "Puławy — NoveKino sybilla"
  },
  {
   "citySlug": "pulawy",
   "cinemaObject": "KinoRenesans",
   "displayName": "Kino Renesans",
   "town": "Ryki",
-  "annotation": "Ryki — filmweb 2089"
+  "annotation": "Ryki — ekobilet kino-renesans"
  },
  {
   "citySlug": "pultusk",
@@ -2909,7 +2909,7 @@
   "cinemaObject": "NoveKinoSiedlce",
   "displayName": "Nove Kino Siedlce",
   "town": "Siedlce",
-  "annotation": "Siedlce — filmweb 1400"
+  "annotation": "Siedlce — NoveKino siedlce"
  },
  {
   "citySlug": "sierpc",
@@ -2993,7 +2993,7 @@
   "cinemaObject": "KinoKongres",
   "displayName": "Kino Kongres",
   "town": "Węgrów",
-  "annotation": "Węgrów — filmweb 1742"
+  "annotation": "Węgrów — biletyna Wegrowski-Osrodek-Kultury"
  },
  {
   "citySlug": "srem",
@@ -3021,7 +3021,7 @@
   "cinemaObject": "KinoStarowka",
   "displayName": "Kino Starówka",
   "town": "Sandomierz",
-  "annotation": "Sandomierz — filmweb 1601"
+  "annotation": "Sandomierz — ekobilet kinostarowka"
  },
  {
   "citySlug": "stalowa-wola",
@@ -3119,14 +3119,14 @@
   "cinemaObject": "KinoGrazyna",
   "displayName": "Kino Grażyna",
   "town": "Strzelin",
-  "annotation": "Strzelin — filmweb 1950"
+  "annotation": "Strzelin — MSI bilety.kinostrzelin.pl"
  },
  {
   "citySlug": "suwalki",
   "cinemaObject": "KinoCinemaLumiereSuwalki",
   "displayName": "Cinema Lumiere Suwałki",
   "town": "Suwałki",
-  "annotation": "Suwałki — filmweb 1441"
+  "annotation": "Suwałki — MSI suwalki.cinema-lumiere.pl"
  },
  {
   "citySlug": "swidnica",
@@ -3315,7 +3315,7 @@
   "cinemaObject": "KinoCKiF",
   "displayName": "Kino CKiF",
   "town": "Sucha Beskidzka",
-  "annotation": "Sucha Beskidzka — filmweb 2412"
+  "annotation": "Sucha Beskidzka — systembiletowy bilety.ckifsucha.pl"
  },
  {
   "citySlug": "wagrowiec",
@@ -3385,14 +3385,14 @@
   "cinemaObject": "KinoMuzaMyslenice",
   "displayName": "Kino Muza Myślenice",
   "town": "Myślenice",
-  "annotation": "Myślenice — filmweb 1491"
+  "annotation": "Myślenice — systembiletowy bilety.kino.myslenice.pl"
  },
  {
   "citySlug": "wieliczka",
   "cinemaObject": "KinoWielickaMediateka",
   "displayName": "Kino Wielicka Mediateka",
   "town": "Wieliczka",
-  "annotation": "Wieliczka — filmweb 2434"
+  "annotation": "Wieliczka — ekobilet kino-wielicka-mediateka"
  },
  {
   "citySlug": "wielun",
@@ -3413,7 +3413,7 @@
   "cinemaObject": "KinoMuzaWloszczowa",
   "displayName": "Kino Muza Włoszczowa",
   "town": "Włoszczowa",
-  "annotation": "Włoszczowa — filmweb 1482"
+  "annotation": "Włoszczowa — biletyna Dom-Kultury-we-Wloszczowie"
  },
  {
   "citySlug": "wolomin",
@@ -3448,21 +3448,21 @@
   "cinemaObject": "KinoDobrychFilmow",
   "displayName": "Kino Dobrych Filmów",
   "town": "Wyszków",
-  "annotation": "Wyszków — filmweb 2304"
+  "annotation": "Wyszków — biletyna Wyszkowski-Osrodek-Kultury-Hutnik"
  },
  {
   "citySlug": "wyszkow",
   "cinemaObject": "KinoMiGOK",
   "displayName": "Kino MiGOK",
   "town": "Łochów",
-  "annotation": "Łochów — filmweb 2337"
+  "annotation": "Łochów — biletyna Miejski-i-Gminny-Osrodek-Kultury"
  },
  {
   "citySlug": "zakopane",
   "cinemaObject": "KinoSokolZakopane",
   "displayName": "Kino Sokół Zakopane",
   "town": "Zakopane",
-  "annotation": "Zakopane — filmweb 1273"
+  "annotation": "Zakopane — biletyna Kino-Sokol"
  },
  {
   "citySlug": "zakopane",
@@ -3476,7 +3476,7 @@
   "cinemaObject": "KinoMiejsce",
   "displayName": "Kino Miejsce",
   "town": "Zakopane",
-  "annotation": "Zakopane — filmweb 2336"
+  "annotation": "Zakopane — biletyna Kino-Miejsce"
  },
  {
   "citySlug": "zamosc",
@@ -3511,7 +3511,7 @@
   "cinemaObject": "KinoTeatrSieradz",
   "displayName": "Kino Teatr Sieradz",
   "town": "Sieradz",
-  "annotation": "Sieradz — filmweb 2333"
+  "annotation": "Sieradz — MSI bilety.scksieradz.pl"
  },
  {
   "citySlug": "zdunska-wola",
@@ -3588,7 +3588,7 @@
   "cinemaObject": "KinoRodlo",
   "displayName": "Kino Rodło",
   "town": "Złotów",
-  "annotation": "Złotów — filmweb 2415"
+  "annotation": "Złotów — biletyna Zlotowskie-Centrum-Aktywnosci-Spolecznej"
  },
  {
   "citySlug": "zlotow",
@@ -3658,7 +3658,7 @@
   "cinemaObject": "KinoFenix",
   "displayName": "Kino Fenix",
   "town": "Łowicz",
-  "annotation": "Łowicz — filmweb 1519"
+  "annotation": "Łowicz — systembiletowy lok.systembiletowy.pl"
  },
  {
   "citySlug": "zywiec",

@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{City, Country, AdaKinoStudyjne, KinoCKiSPruszkow, KinoDomKulturyGrajewo, KinoKulturaWolomin, KinoCentrumWadowice, KinoLen, KinoApolloDzialdowo, KinoZaRogiemChmielno, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -48,12 +48,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  throws / returns empty. */
   private def catalog(biletyna:   String = "does-not-exist",
                       zyte:       String = "does-not-exist",
+                      direct:     HttpFetch = http,
+                      today:      LocalDate = LocalDate.of(2026, 6, 6),
                       flicks:     HttpFetch = http,
                       vue:        HttpFetch = http,
                       odeon:      HttpFetch = http,
                       odeonToken: Option[String] = None): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
+      direct, mkFetch = direct, bnFetch = new FakeHttpFetch(biletyna), today = today,
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
       odeonFetch = odeon, odeonAuthToken = () => odeonToken, titles = titleNormalizer
@@ -158,6 +160,73 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
         .find(_.dateTime == when).value.bookingUrl.value shouldBe booking
       all (movies.flatMap(_.showtimes).flatMap(_.bookingUrl)) should not include "/koncert/"
     }
+
+  // The Filmweb-only venues moved onto their own box offices on 2026-09-27 —
+  // biletyna, MSI, systembiletowy, ekobilet and NoveKino — each of which listed
+  // more (in total about three times the showtimes) than Filmweb did. Fixtures
+  // captured live that day through this catalog; the counts pin that capture, so
+  // a venue wired back onto Filmweb, or onto the wrong page, reads nothing.
+  private val switchedOffFilmweb: Map[Cinema, (Int, Int)] = Map(
+    GoKinoOlawa -> (13, 126),
+    KinoCKiF -> (17, 67),
+    KinoChDK -> (18, 78),
+    KinoCinemaLumiereSuwalki -> (12, 67),
+    KinoCinemaN -> (8, 45),
+    KinoDobrychFilmow -> (11, 81),
+    KinoECK -> (18, 56),
+    KinoFenix -> (8, 47),
+    KinoGornikLeczyca -> (16, 124),
+    KinoGrazyna -> (6, 52),
+    KinoGryf -> (2, 10),
+    KinoJDK -> (13, 73),
+    KinoKongres -> (3, 31),
+    KinoKosmosMlawa -> (5, 25),
+    KinoMOKPolice -> (6, 7),
+    KinoMazur -> (4, 6),
+    KinoMiGOK -> (10, 53),
+    KinoMiejsce -> (7, 31),
+    KinoMorskieOko -> (16, 74),
+    KinoMuzaMyslenice -> (9, 41),
+    KinoMuzaWloszczowa -> (16, 108),
+    KinoOOK -> (7, 25),
+    KinoOaza -> (15, 43),
+    KinoOstrovia -> (13, 96),
+    KinoPokoj -> (9, 39),
+    KinoRadosc -> (11, 26),
+    KinoRelaks -> (13, 40),
+    KinoRenesans -> (5, 38),
+    KinoRodlo -> (13, 41),
+    KinoSokolZakopane -> (8, 41),
+    KinoStarowka -> (11, 53),
+    KinoSybilla -> (6, 30),
+    KinoTeatrSieradz -> (16, 168),
+    KinoUciecha -> (13, 46),
+    KinoUciechaCzluchow -> (15, 48),
+    KinoWKadrze -> (6, 6),
+    KinoWielickaMediateka -> (10, 25),
+    KinoWilga -> (13, 94),
+    KinoZbyszekOlkusz -> (12, 69),
+    KinoZdrojBusko -> (8, 19),
+    KinoZodiak -> (2, 16),
+    KinoteatrPasja -> (15, 64),
+    NoveKinoSiedlce -> (26, 242),
+  )
+  private lazy val switchedCatalog = {
+    val fixtures = new FakeHttpFetch("filmweb-only-switch")
+    catalog(biletyna = "filmweb-only-switch", direct = fixtures, today = LocalDate.of(2026, 9, 27))
+  }
+  for ((cinema, (films, showtimes)) <- switchedOffFilmweb)
+    it should s"scrape ${cinema.displayName} off its own box office, not Filmweb" in {
+      val movies = switchedCatalog.all.find(_.cinema == cinema).value.fetch()
+      movies.map(_.cinema).toSet shouldBe Set(cinema)
+      (movies.size, movies.map(_.showtimes.size).sum) shouldBe ((films, showtimes))
+    }
+
+  it should "keep Sucha Beskidzka's systembiletowy feed to its cinema, not the cabaret and musicals it also sells" in {
+    val titles = switchedCatalog.all.find(_.cinema == KinoCKiF).value.fetch().map(_.movie.title.toLowerCase)
+    titles should not be empty
+    all (titles) should (not include "kabaret" and not include "musical")
+  }
 
   // Kino Fenomen (WDK) is iframe639.biletyna.pl — a biletyna host whose per-film
   // /artist/view/id detail pages 403 our Fly IP behind Cloudflare, so its deferred
