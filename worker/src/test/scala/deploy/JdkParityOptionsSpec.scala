@@ -10,7 +10,7 @@ import scala.sys.process.Process
  *
  * infra/jvm/jdk25-parity*.options undo, one line each, the differences a flag-by-flag diff of
  * Temurin 25.0.4.1 against 27 found under the production JAVA_OPTS. This spec starts a real JVM
- * (the one running the tests, which CI pins to the image's JDK) with a tier's production
+ * (the one running the tests -- ProcessConfiguration's java.home, which CI pins to the image's JDK) with a tier's production
  * JAVA_OPTS followed by its parity options, exactly as the start script combines
  * conf/application.ini with the overlay, and reads back the final values. Without the options,
  * JDK 27 fails every row below; a later JDK that renames or reinterprets one fails it too, which
@@ -35,11 +35,13 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
 
   private lazy val tmp = java.nio.file.Files.createTempDirectory("jdk-parity")
 
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   /** Both streams: -XX:+PrintFlagsFinal writes to stdout, -XshowSettings to stderr. */
   private def run(args: Seq[String]): String = {
     val out  = new StringBuilder
     val line = (l: String) => out.synchronized { out.append(l).append('\n'); () }
-    val exit = Process(s"${System.getProperty("java.home")}/bin/java" +: args).!(scala.sys.process.ProcessLogger(line, line))
+    val exit = Process(configuration.javaHome.binary("java").toString +: args).!(scala.sys.process.ProcessLogger(line, line))
     withClue(s"java ${args.mkString(" ")}:\n$out") { exit.shouldBe(0) }
     out.toString
   }
