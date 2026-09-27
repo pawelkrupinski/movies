@@ -68,21 +68,24 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
     cyfroweTitles(seedOnly).head.toLowerCase should startWith("premiera!")
   }
 
+  // A bare "Napisy PL" now comes off in the shared format strip (FormatTags drops
+  // a PL that qualifies a version word), so the per-cinema rule is load-bearing
+  // only for the Ukrainian-screening marker it also takes: "… UA Napisy PL".
   private val kijowHtml =
     """<div class="cd-timeline-content eventlist">
       |  <span class="cd-date">20 sie 18:00</span>
-      |  <h2>20 sie 18:00 - Diabeł ubiera się u Prady 2 Napisy PL</h2>
+      |  <h2>20 sie 18:00 - Diabeł ubiera się u Prady 2 UA Napisy PL</h2>
       |  <a class="btn-badge2" href="/MSI/Default.aspx?id=1">Bilety</a>
       |</div>""".stripMargin
 
   private def kijowTitles(titles: TitleNormalizer) =
     KinoKijowClient.parseDocument(kijowHtml, YearMonth.of(2026, 8), titles).map(_.title)
 
-  "KinoKijowClient" should "strip the 'Napisy PL' subtitle suffix via cinemaClean" in {
+  "KinoKijowClient" should "strip the 'UA Napisy PL' subtitle suffix via cinemaClean" in {
     kijowTitles(withExtras) shouldBe Seq("Diabeł ubiera się u Prady 2")
   }
-  it should "be load-bearing — the seed rules alone leave the 'Napisy PL' suffix" in {
-    kijowTitles(seedOnly) shouldBe Seq("Diabeł ubiera się u Prady 2 Napisy PL")
+  it should "be load-bearing — the seed rules alone leave the 'UA' marker" in {
+    kijowTitles(seedOnly) shouldBe Seq("Diabeł ubiera się u Prady 2 UA")
   }
 
   // ── shared portal clients: per-cinema cleanup keyed by the derived Cinema.slug ──
