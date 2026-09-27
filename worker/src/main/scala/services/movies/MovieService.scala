@@ -12,7 +12,7 @@ import services.tasks.{RatingTasks, ResolveMode}
 import tools.{DaemonExecutors, HttpStatusException}
 
 import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
-import services.identity.{Hit, IdentityMeasures, StoredIdentityConfidence}
+import services.identity.{Hit, PinnedGateMeasures, StoredIdentityConfidence}
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
@@ -822,7 +822,8 @@ class MovieService(
     )
   }
 
-  /** `IdentityMeasures.titleSearch` for every distinct listing title of `row` the same film's slot
+  /** `PinnedGateMeasures.titleSearch` (the live gate's frozen measurement: a resolver change in
+   *  shadow never moves a stored row) for every distinct listing title of `row` the same film's slot
    *  has not measured yet (`carried`), over live yearless searches in TMDB's own order (each query
    *  asked once). Measured once per film and title: a re-resolve to the same film — most of them
    *  answered off the id cache — asks TMDB nothing more. A title whose searches all failed is
@@ -833,9 +834,9 @@ class MovieService(
       Try(tmdb.searchAsRanked(query)).toOption.flatten.map(_.map(r => Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity))))
     val known    = carried.map(_.titleKey).toSet
     val listings = row.cinemaShowings.map { case (_, slot) => StoredIdentityConfidence.listing(slot) }
-      .filter(_.title.trim.nonEmpty).sortBy(l => (l.title, l.rawTitle.getOrElse(""))).distinctBy(l => IdentityMeasures.key(l.title))
-      .filterNot(l => known(IdentityMeasures.key(l.title)))
-    (carried ++ listings.flatMap(IdentityMeasures.titleSearch(_, tmdbId, search))).sortBy(_.titleKey)
+      .filter(_.title.trim.nonEmpty).sortBy(l => (l.title, l.rawTitle.getOrElse(""))).distinctBy(l => PinnedGateMeasures.key(l.title))
+      .filterNot(l => known(PinnedGateMeasures.key(l.title)))
+    (carried ++ listings.flatMap(PinnedGateMeasures.titleSearch(_, tmdbId, search))).sortBy(_.titleKey)
   }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the

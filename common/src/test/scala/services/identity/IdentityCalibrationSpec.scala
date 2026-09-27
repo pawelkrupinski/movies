@@ -250,12 +250,22 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     val answers = Map(
       "Kill Bill" -> Seq(Hit(24, "Kill Bill: Vol. 1", None, Some(2003), 50), Hit(414419, "Kill Bill: The Whole Bloody Affair", None, Some(2011), 5)),
       "Kill Bill: The Whole Bloody Affair" -> Seq(Hit(414419, "Kill Bill: The Whole Bloody Affair", None, Some(2011), 5)))
-    val s = IdentityMeasures.titleSearch(l, 414419, answers.get).get
+    val s = PinnedGateMeasures.titleSearch(l, 414419, answers.get).get
     s shouldBe models.TitleSearch(IdentityMeasures.key("Kill Bill"), Some(1), 0)
-    IdentityMeasures.titleSearch(l, 7, answers.get).get.rank shouldBe None
-    IdentityMeasures.titleSearch(l, 414419, _ => None) shouldBe None
+    PinnedGateMeasures.titleSearch(l, 7, answers.get).get.rank shouldBe None
+    PinnedGateMeasures.titleSearch(l, 414419, _ => None) shouldBe None
     val namesakes = Map("Lalka" -> Seq(Hit(1, "Lalka", None, Some(1968), 3), Hit(2, "Lalka", None, Some(2026), 9)))
-    IdentityMeasures.titleSearch(Listing("Lalka"), 2, namesakes.get).get shouldBe models.TitleSearch("lalka", Some(2), 1)
+    PinnedGateMeasures.titleSearch(Listing("Lalka"), 2, namesakes.get).get shouldBe models.TitleSearch("lalka", Some(2), 1)
+  }
+
+  it should "stay the pinned gate's measurement while the resolver's queries move on" in {
+    // The resolver de-decorates a banner split's remainder; the stored title searches the live gate
+    // reads were measured without it, and a shadow-only resolver change may not move a stored row.
+    val l = Listing("Throwback: Donnie Darko (25th Anniversary)")
+    IdentityMeasures.searchQueries(l) should contain ("Donnie Darko")
+    PinnedGateMeasures.searchQueries(l) should not contain "Donnie Darko"
+    val answers = Map("Donnie Darko" -> Seq(Hit(141, "Donnie Darko", None, Some(2001), 30)))
+    PinnedGateMeasures.titleSearch(l, 141, answers.get) shouldBe None
   }
 
   "a learned cannot-link" should "never fire on missing evidence" in {

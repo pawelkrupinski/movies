@@ -7,8 +7,8 @@ import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Measure}
  * How sure a STORED film's TMDB identity is, from the evidence the row itself keeps — the rating
  * gate's confidence (docs/design/identity-resolver.md §15). The row's TMDB slot is the film; each
  * venue slot is a listing, measured against it with the calibration's own measures
- * ([[IdentityMeasures.listingFilm]]): title, original title, year, director, runtime and country
- * agreement, and how many OTHER venues listing the same title back the film by their own year or
+ * ([[PinnedGateMeasures.listingFilm]]): title, original title, year, director, runtime and country
+ * agreement (the gate's frozen measures, [[PinnedGateMeasures]], for its pinned artefact), and how many OTHER venues listing the same title back the film by their own year or
  * director (`venues.corroborating`). A venue's detail-page facts are part of its slot, so they
  * count too. The score is [[IdentityCalibration.probability]] over those measures; nothing here
  * weighs or thresholds anything itself.
@@ -18,7 +18,7 @@ import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Measure}
  *
  * The film's standing in each listing title's own TMDB title search is part of the evidence: the
  * TMDB slot keeps it per title (`SourceData.titleSearches`, measured at resolution by
- * [[IdentityMeasures.titleSearch]]) as the film's rank and its same-titled rivals — what makes a
+ * [[PinnedGateMeasures.titleSearch]]) as the film's rank and its same-titled rivals — what makes a
  * bare exact title that TMDB knows as one film credible, and a banner or namesake not. A listing
  * title with no stored search (a row resolved before the field existed, a venue that listed the
  * film later) leaves both out, weighing nothing. Popularity is never used: measured, it adds
@@ -35,7 +35,7 @@ object StoredIdentityConfidence {
     year              = tmdb.releaseYear,
     runtime           = tmdb.runtimeMinutes.filter(_ > 0),
     directors         = Some(tmdb.director.map(_.trim).filter(_.nonEmpty)).filter(_.nonEmpty),
-    countries         = Some(tmdb.countries.flatMap(IdentityMeasures.countryCode).distinct).filter(_.nonEmpty))
+    countries         = Some(tmdb.countries.flatMap(PinnedGateMeasures.countryCode).distinct).filter(_.nonEmpty))
 
   /** One venue slot as the measures read a listing (as `services.identity.Listing.of` does). */
   def listing(slot: SourceData): Listing = {
@@ -55,12 +55,12 @@ object StoredIdentityConfidence {
    *  the film's stored title searches. */
   def measures(film: Film, venue: String, listing: Listing, venues: Seq[(String, Listing)],
                searches: Seq[TitleSearch]): Map[String, Measure] = {
-    val titleKey = IdentityMeasures.key(listing.title)
-    val family   = venues.filter { case (_, l) => IdentityMeasures.key(l.title) == titleKey }
+    val titleKey = PinnedGateMeasures.key(listing.title)
+    val family   = venues.filter { case (_, l) => PinnedGateMeasures.key(l.title) == titleKey }
     val search   = searches.find(_.titleKey == titleKey)
-    val measured = IdentityMeasures.listingFilm(listing, film, search.flatMap(_.rank), search.fold(0)(_.rivals),
-      IdentityMeasures.corroboratingVenues(film, family, venue)) - "popularity.log2"
-    if (search.isDefined) measured else measured -- IdentityMeasures.RankingPriors
+    val measured = PinnedGateMeasures.listingFilm(listing, film, search.flatMap(_.rank), search.fold(0)(_.rivals),
+      PinnedGateMeasures.corroboratingVenues(film, family, venue)) - "popularity.log2"
+    if (search.isDefined) measured else measured -- PinnedGateMeasures.RankingPriors
   }
 
   /** The film's confidence: its best-evidenced listing's calibrated probability. The ratings are
@@ -76,7 +76,7 @@ object StoredIdentityConfidence {
       // sensitive ones (docs/design/identity-resolver.md §14.6).
       val withSearch = measures(film, venue, l, venues, searches)
       calibration.probability(ListingFilm, withSearch) max
-        calibration.probability(ListingFilm, withSearch -- IdentityMeasures.RankingPriors)
+        calibration.probability(ListingFilm, withSearch -- PinnedGateMeasures.RankingPriors)
     }.maxOption
 
   def of(record: MovieRecord, calibration: IdentityCalibration): Option[Double] =

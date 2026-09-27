@@ -105,7 +105,7 @@ class TmdbClient(
   }
 
   /** One yearless title search in TMDB's OWN order, not re-sorted by popularity: where a film
-   *  ranks in it is identity evidence (`IdentityMeasures.titleSearch`), measured exactly as the
+   *  ranks in it is identity evidence (`PinnedGateMeasures.titleSearch`), measured exactly as the
    *  calibration measured it on recorded answers. `None` without a key; a failed request throws. */
   def searchAsRanked(title: String): Option[Seq[TmdbClient.SearchResult]] = authHeader.map { auth =>
     (Json.parse(httpGet(searchUrl(title, None), auth)) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)

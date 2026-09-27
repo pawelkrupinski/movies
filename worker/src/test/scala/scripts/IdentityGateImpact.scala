@@ -3,7 +3,7 @@ package scripts
 import models.SourceData
 import play.api.libs.json.{JsObject, JsValue, Json}
 import models.TitleSearch
-import services.identity.{Hit, IdentityCalibration, IdentityMeasures, StoredIdentityConfidence}
+import services.identity.{Hit, IdentityCalibration, IdentityMeasures, PinnedGateMeasures, StoredIdentityConfidence}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters.*
  * by a mongosh `find` over `movies` + `movie_slots` + `web_screenings`).
  *
  * With `--trees <dir of enrichment-<cc>/>`, a row whose TMDB slot stores no title searches is
- * measured from the recorded answers instead (`IdentityMeasures.titleSearch`, the pipeline's own
+ * measured from the recorded answers instead (`PinnedGateMeasures.titleSearch`, the pipeline's own
  * measure) — what a backfill would store — and `--plan <dir>` writes those measurements as
  * `title-searches-<cc>.jsonl` for `scripts/identity-gate/backfill-title-searches.js`.
  *
@@ -92,7 +92,7 @@ object IdentityGateImpact {
             val search = (q: String) => a.search(q).map(_.map(h => Hit(h.id, h.title, h.originalTitle, h.year, h.popularity)))
             (r \ "venues").as[Seq[JsValue]].map(v => StoredIdentityConfidence.listing(slot(v))).filter(_.title.trim.nonEmpty)
               .sortBy(l => (l.title, l.rawTitle.getOrElse(""))).distinctBy(l => IdentityMeasures.key(l.title))
-              .flatMap(IdentityMeasures.titleSearch(_, tmdbId, search)).sortBy(_.titleKey)
+              .flatMap(PinnedGateMeasures.titleSearch(_, tmdbId, search)).sortBy(_.titleKey)
           }
         }
       }.toMap

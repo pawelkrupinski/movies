@@ -97,7 +97,7 @@ case class SourceData(
   ageRating:       Option[String] = None,
   // Tmdb slot only: what each of the film's listing titles' own yearless TMDB title searches
   // said about this film when it was resolved — its rank and its same-titled rivals, one entry
-  // per listing title key (`IdentityMeasures.titleSearch`). Evidence the rating gate scores
+  // per listing title key (`PinnedGateMeasures.titleSearch`). Evidence the rating gate scores
   // (`StoredIdentityConfidence`), never a verdict. Empty on rows resolved before it existed.
   titleSearches:   Seq[TitleSearch] = Seq.empty
 ) {
