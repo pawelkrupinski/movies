@@ -25,6 +25,7 @@ test/resources/fixtures/corpus/**
 .github/workflows/us-convergence.yml
 .github/workflows/country-convergence-leg.yml
 .github/actions/convergence-setup/**
+.github/actions/setup-jdk/**
 .github/actions/convergence-publish/**
 .github/actions/convergence-findings/**
 .github/scripts/pack-enrichment-tree.sh
