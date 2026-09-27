@@ -63,6 +63,39 @@
 let
   cfg = config.fleet.mongodb;
 
+  # THE SERVER RELEASE, ahead of nixpkgs. nixpkgs' mongodb-ce tracks the 8.2 minor line
+  # (its updateScript selects `r8.2*` tags), but 8.2 is on MongoDB's MINOR-release track, and
+  # a minor release stops receiving patches the moment the next one ships: 8.3 is out, so
+  # 8.2 is unpatched. The derivation is a repack of MongoDB's own tarball, so the override is
+  # a version and four hashes -- nothing is built. When nixpkgs catches up, drop this and go
+  # back to `pkgs.mongodb-ce`. MongoServerVersionParitySpec reads this literal and holds the
+  # CI/local `mongo:<tag>` containers to it.
+  mongodbVersion = "8.3.11";
+  mongodbCe = pkgs.mongodb-ce.overrideAttrs (finalAttrs: previous: {
+    version = mongodbVersion;
+    __intentionallyOverridingVersion = true;
+    passthru = previous.passthru // {
+      sources = {
+        "x86_64-linux" = pkgs.fetchurl {
+          url = "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2404-${mongodbVersion}.tgz";
+          hash = "sha256-qKpPddwPKmarQhUpuxRSSFIixsmJCbBHqY2QmBw06r4=";
+        };
+        "aarch64-linux" = pkgs.fetchurl {
+          url = "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2404-${mongodbVersion}.tgz";
+          hash = "sha256-UlQL+x3nrUFVJMalEX1DT82E8k8j49tW5xl36f7Sjy4=";
+        };
+        "x86_64-darwin" = pkgs.fetchurl {
+          url = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-${mongodbVersion}.tgz";
+          hash = "sha256-RbSnkTwThNSzzjLIFjClwOGZPeL2EZ9RGZXsIyTexck=";
+        };
+        "aarch64-darwin" = pkgs.fetchurl {
+          url = "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-${mongodbVersion}.tgz";
+          hash = "sha256-tYbDlyiA/N6pBpCm0iwizSYLCXLecXynEMC8d8ZLA54=";
+        };
+      };
+    };
+  });
+
   # ADDRESSES THIS ROLE IS WILLING TO BIND. The assertion below is the only thing standing between
   # a typo and a MongoDB on the public internet, so it is a whitelist of PREFIXES rather than a
   # blacklist of the public address: a blacklist has to be kept in step with whatever Hetzner hands
@@ -241,8 +274,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.mongodb-ce;
-      defaultText = "pkgs.mongodb-ce";
+      default = mongodbCe;
+      defaultText = "pkgs.mongodb-ce overridden to mongodbVersion";
       description = ''
         THE SERVER. Named as an option and not taken implicitly because a MongoDB MAJOR VERSION IS A
         ONE-WAY DOOR: the server upgrades the data files on first start and an older binary will not
@@ -250,7 +283,12 @@ in
         database, which is the one place where NixOS's usual "switch back to the last generation"
         answer does not hold.
 
-        LATEST (mongodb-ce, 8.2.11) BY DECISION, migrating from the Fly instance's 7.0.39. This is
+        8.3 SINCE 2026-09-27, an in-place binary upgrade from 8.2.11 (the one supported step: minor
+        releases cannot be skipped). The FEATURE COMPATIBILITY VERSION is a separate, later step --
+        until `setFeatureCompatibilityVersion: "8.3"` runs, an 8.2 binary can still open these data
+        files, so the binary change alone rolls back like any other generation.
+
+        WAS LATEST (mongodb-ce, 8.2.11) BY DECISION, migrating from the Fly instance's 7.0.39. This is
         the cheap moment to make that jump and the migration is the right vehicle for it: the move
         is a LOGICAL one -- mongodump on the old server, mongorestore into this one -- so 8.2 builds
         its own data files from BSON rather than upgrading 7.0's in place. That is the supported

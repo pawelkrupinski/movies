@@ -36,7 +36,7 @@ wait_for() {
 is_up()      { mongosh_eval 'db.runCommand({ping:1})' >/dev/null 2>&1; }
 is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 
-docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 "$@" || exit 1
+docker run -d --name mongo -p 27017:27017 mongo:8.3.11 --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
 mongosh_eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})' || exit 1
 wait_for "PRIMARY" is_primary || exit 1

@@ -79,9 +79,9 @@ fi
 if (echo >/dev/tcp/127.0.0.1/27117) 2>/dev/null; then
     echo "==> reusing the MongoDB already listening on :27117"
 else
-    echo "==> starting a throwaway mongo:7 single-node replica set on :27117"
+    echo "==> starting a throwaway mongo:8.3.11 single-node replica set on :27117"
     docker rm -f convergence-local-mongo >/dev/null 2>&1 || true
-    docker run -d --name convergence-local-mongo -p 27117:27017 mongo:7 --replSet rs0 --bind_ip_all >/dev/null
+    docker run -d --name convergence-local-mongo -p 27117:27017 mongo:8.3.11 --replSet rs0 --bind_ip_all >/dev/null
     until docker exec convergence-local-mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
     docker exec convergence-local-mongo mongosh --quiet --eval \
         'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]}) }' >/dev/null

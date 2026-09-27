@@ -45,7 +45,7 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
   private lazy val heapGb: Seq[Int] = callers.flatMap(gigabytes("""heap:\s*(\d+)g""", _))
 
   "the convergence runner" should "cap mongod's WiredTiger cache rather than let it size for the whole box" in {
-    withClue("`docker run … mongo:7` in convergence-setup must name --wiredTigerCacheSizeGB; " +
+    withClue("`docker run … mongo` in convergence-setup must name --wiredTigerCacheSizeGB; " +
              "mongod otherwise takes ~7.5GB of a 16GB runner the sbt JVM is sharing:\n") {
       wiredTigerGb should not be empty
     }
