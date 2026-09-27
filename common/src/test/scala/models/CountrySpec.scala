@@ -93,8 +93,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
     Country.Germany.cities should have size 158
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every region carries cinemas; the roster totals 1,518 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1518
+    // Every region carries cinemas; the roster totals 1,517 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1517
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -462,11 +462,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   it should "not carry the Filmstarts theater ids that were delisted upstream" in {
     val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560",
-      "A0908", "A0680", "A2708", "A1688", "A0613", "A0119", "A0100", "A0726", "A1547", "A1824")
+      "A0908", "A0680", "A2708", "A1688", "A0613", "A0119", "A0100", "A0726", "A1547", "A1824", "A1451")
     GermanRoster.theaterIdByCinema.values.toSet intersect delisted shouldBe empty
     val names = Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
     names should not contain "Kino Kiste"
     names should not contain "Inselkino Baltrum"
+    names should not contain "Heimgarten Kino"
   }
 
   // SensaCine answers 410 for both; each is confirmed closed (2026-09-26):

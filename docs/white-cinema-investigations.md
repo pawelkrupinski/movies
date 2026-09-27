@@ -214,6 +214,21 @@ from VictoriaLogs' own docs 404s against this deployment's query parser.
 
 ---
 
+## 2026-09-27
+
+### Heimgarten Kino Oberammergau (`A1451`) — `fixed` (retired)
+
+Paged as UNCOVERED ("down 20h and Kinoprogramm has nothing to serve either"). The
+2026-09-26 sweep had filed it as "operating, dropped by Filmstarts" and kept it for
+the kinoprogramm.com fallback, but by now every source is empty: Filmstarts 404s
+`A1451` (a deletion, not dormancy); kinoprogramm.com says "keine Aufführungen
+bekannt"; kinoheld, Moviepilot and critic.de list no shows; and the venue's own
+domain, kino-heimgarten.de, now redirects to a domain-parking page. No press notice
+of a closure turned up, so this rests on that convergence rather than a dated
+closing. Removed from `regions.json`, `kinoprogramm.json` and `GermanRosterData`
+(1,518 → **1,517**), and `A1451` added to `CountrySpec`'s delisted-id guard. If it
+reopens, re-add the one entry.
+
 ## 2026-09-26
 
 **Ninth all-five-country sweep.** Newest bucket 2026-09-25 23:15 UTC. There is

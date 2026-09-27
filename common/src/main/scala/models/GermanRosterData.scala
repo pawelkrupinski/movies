@@ -1,6 +1,6 @@
 // GENERATED from data/germany/regions.json by the DE roster generator — do NOT edit by hand.
 // Full German cinema roster: 158 regions over 16 Bundesländer /
-// 1,518 cinemas (Filmstarts). Regenerate with
+// 1,517 cinemas (Filmstarts). Regenerate with
 // the generator in data/germany/scripts after re-harvesting; see data/germany/README.md.
 package models
 
@@ -1592,8 +1592,7 @@ private[models] object GermanRosterData {
   private def r_garmisch_partenkirchen: R = ("garmisch-partenkirchen", "Garmisch-Partenkirchen", "Bayern", 47.49209, 11.09576, Seq("Garmisch-Partenkirchen", "Murnau am Staffelsee", "Oberammergau"), Seq(
     ("Hochland-Kino", "Hochland-Kino", "A0609", Some("/kino/garmischpartenkirchen/hochlandkino-32766")),
     ("Kinocenter Garmisch &amp; Aspen im Lamm", "Kinocenter Garmisch &amp; Aspen im Lamm", "A1508", Some("/kino/garmischpartenkirchen/kinocenter-garmisch-und-aspen-im-lamm-32767")),
-    ("Kino im Griesbräu", "Kino im Griesbräu", "A0593", None),
-    ("Heimgarten Kino", "Heimgarten Kino", "A1451", Some("/kino/oberammergau/heimgarten-kino-33078"))
+    ("Kino im Griesbräu", "Kino im Griesbräu", "A0593", None)
   ))
   private def r_dorsten: R = ("dorsten", "Dorsten", "Nordrhein-Westfalen", 51.66166, 6.96514, Seq("Dorsten", "Gladbeck", "Dinslaken", "Wesel"), Seq(
     ("Central Kinocenter Dorsten", "Central Kinocenter Dorsten", "A2788", Some("/kino/dorsten/central-kinocenter-186")),
