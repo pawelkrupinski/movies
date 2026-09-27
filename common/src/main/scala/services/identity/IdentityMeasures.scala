@@ -307,8 +307,8 @@ object IdentityMeasures {
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
 
-  private def people(names: Iterable[String]): Set[String] =
-    names.iterator.flatMap(_.split(",")).map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
+  private def credits(names: Iterable[String]): Seq[String] =
+    names.iterator.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
 
   private def latin(names: Iterable[String]): Boolean =
     names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
@@ -319,27 +319,54 @@ object IdentityMeasures {
   private val toLatin = ThreadLocal.withInitial(() => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII"))
   private def latinized(name: String): String = toLatin.get.transliterate(name)
 
-  private def byName(pa: Set[String], pb: Set[String], disagree: String): Category =
-    if ((pa intersect pb).nonEmpty) Category("same_person")
+  /** Credit lists as the director relation compares them, each written form found once. */
+  final class Credits(raw: Iterable[String]) {
+    val names: Seq[String] = credits(raw)
+    lazy val keys: Set[String]              = names.map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
+    lazy val words: Seq[Seq[String]]        = names.map(TitleContainment.tokens).filter(_.nonEmpty)
+    lazy val isLatin: Boolean               = latin(names)
+    lazy val inLatin: Credits               = new Credits(names.map(latinized))
+    def isEmpty: Boolean = keys.isEmpty
+
+    /** Some credit names the same person as some credit of `other`: the same words in any order
+     *  ([[services.movies.PersonKey]]) or the same letters split otherwise ([[sameLetters]]). */
+    def samePerson(other: Credits): Boolean =
+      (keys intersect other.keys).nonEmpty || words.exists(a => other.words.exists(sameLetters(a, _)))
+  }
+
+  /** The most words a credit may have for [[sameLetters]] to try its orders (it enumerates them). */
+  private val MaxOrderedWords = 5
+
+  /** Two credits are one written name whatever its ORDER, CASE and SPLITTING: some order of each
+   *  one's words, written out, is the same letters ("Jungjae HA" and "Ha Jung-jae" are both
+   *  "hajungjae"). Every letter must be accounted for, so "Jung Ha" is not "Ha Jung-jae". */
+  private def sameLetters(a: Seq[String], b: Seq[String]): Boolean =
+    a.sizeIs <= MaxOrderedWords && b.sizeIs <= MaxOrderedWords && a.mkString.sorted == b.mkString.sorted && {
+      val written = b.permutations.map(_.mkString).toSet
+      a.permutations.exists(p => written(p.mkString))
+    }
+
+  private def byName(a: Credits, b: Credits, disagree: String): Category =
+    if (a.samePerson(b)) Category("same_person")
     else {
-      val wa = pa.flatMap(_.split(" ")).filter(_.length >= 3)
-      val wb = pb.flatMap(_.split(" ")).filter(_.length >= 3)
+      val wa = a.keys.flatMap(_.split(" ")).filter(_.length >= 3)
+      val wb = b.keys.flatMap(_.split(" ")).filter(_.length >= 3)
       Category(if ((wa intersect wb).nonEmpty) "shared_name" else disagree)
     }
 
-  /** How two credit lists relate: one person in common, a shared name word only (a surname, a
-   *  transliteration), or nobody in common. Credits in different scripts (a venue's "Bi Gan",
-   *  TMDB's "毕赣") are compared in Latin letters ([[latinized]]); nobody in common THERE is
-   *  `different_script`, its own category, since a transliteration can miss a person a Latin
-   *  spelling names (a Japanese reading of Kanji is not its pinyin). `incomparable` only when a
-   *  side has no name left to compare in Latin letters. */
+  /** How two credit lists relate: one person in common — the same words or letters in any order,
+   *  case or splitting (`same_person`) — a shared name word only (a surname, a transliteration), or
+   *  nobody in common. Credits in different scripts (a venue's "Bi Gan", TMDB's "毕赣") are compared in Latin letters
+   *  ([[latinized]]); nobody in common THERE is `different_script`, its own category, since a
+   *  transliteration can miss a person a Latin spelling names (a Japanese reading of Kanji is not
+   *  its pinyin). `incomparable` only when a side has no name left to compare in Latin letters. */
   def directorRelation(a: Seq[String], b: Seq[String]): Measure = {
-    val (pa, pb) = (people(a), people(b))
-    if (pa.isEmpty) MissingListing
-    else if (pb.isEmpty) MissingFilm
-    else if (latin(a) == latin(b)) byName(pa, pb, "different")
+    val (ca, cb) = (new Credits(a), new Credits(b))
+    if (ca.isEmpty) MissingListing
+    else if (cb.isEmpty) MissingFilm
+    else if (ca.isLatin == cb.isLatin) byName(ca, cb, "different")
     else {
-      val (la, lb) = (people(a.map(latinized)), people(b.map(latinized)))
+      val (la, lb) = (ca.inLatin, cb.inLatin)
       if (la.isEmpty || lb.isEmpty) Category("incomparable") else byName(la, lb, "different_script")
     }
   }

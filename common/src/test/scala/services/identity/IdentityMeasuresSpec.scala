@@ -298,6 +298,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.directorRelation(Seq("Кира Муратова"), Seq("Кира Муратова")) shouldBe Category("same_person")
   }
 
+  "a director's name" should "be the same person whatever its order, case and splitting" in {
+    // BTS São Paulo: the venue writes the given name joined and the surname last in capitals.
+    IdentityMeasures.directorRelation(Seq("Jungjae HA"), Seq("Ha Jung-jae")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Makoto Shinkai"), Seq("Shinkai Makoto")) shouldBe Category("same_person")
+    // Every letter must be accounted for: a name word missing is not the same written name.
+    IdentityMeasures.directorRelation(Seq("Jung Ha"), Seq("Ha Jung-jae")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Jungjae Kim"), Seq("Ha Jung-jae")) should not be Category("same_person")
+  }
+
   "a decorated original title" should "read as naming the film, as a decorated title does, not as a word overlap" in {
     val yourName = Seq("Twoje imię", "君の名は。", "Your Name.")
     IdentityMeasures.originalTitleRelation(Some("Your Name (re-release)"), yourName) shouldBe Category("segment")

@@ -263,6 +263,15 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     PinnedGateMeasures.titleSearch(l, 141, answers.get) shouldBe None
   }
 
+  "the pinned gate's director relation" should "stay frozen while the resolver's reads a name in any order and splitting" in {
+    // The resolver's director relation moves in shadow; the live gate measures with its own frozen
+    // one, which knows only the categories its pinned artefact was fitted on.
+    val gateCategories = Set("same_person", "shared_name", "different", "incomparable")
+    IdentityMeasures.directorRelation(Seq("Jungjae HA"), Seq("Ha Jung-jae")) shouldBe Category("same_person")
+    PinnedGateMeasures.directorRelation(Seq("Jungjae HA"), Seq("Ha Jung-jae")) shouldBe Category("different")
+    IdentityCalibration.ratingGate.scopes.values.flatMap(_.signals.get("director")).flatMap(_.categories.keySet).toSet should be (gateCategories)
+  }
+
   "a learned cannot-link" should "never fire on missing evidence" in {
     val rule = IdentityCalibration.Condition("director", in = Seq("different"))
     rule.holds(Map("director" -> Missing("listing"))) shouldBe false
