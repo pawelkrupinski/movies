@@ -109,9 +109,9 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       focus.foreach { f =>
         val tokens = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++
           services.movies.TitleContainment.tokens(l.cleanTitle).toSet
-        val focused = listings.filter(l => (tokens(l) intersect f.words).nonEmpty)
+        val focused = listings.filter(l => f.covers(tokens(l)))
         val (r, secs) = timed(IdentityResolver.resolve(focused, lookups, c.normalizer, calibration))
-        report.line(f"[${c.label}] FOCUS ${f.words.mkString(",")}: ${focused.size} listing(s) resolved alone in $secs%.1fs")
+        report.line(f"[${c.label}] FOCUS ${f.phrases.map(_.mkString(" ")).mkString(",")}: ${focused.size} listing(s) resolved alone in $secs%.1fs")
         focused.map(l => r.decisionOf(l.key)).distinct.foreach(d => report.line(d.render))
         cancel(s"focus mode: ${focused.size} listing(s) resolved; the corpus-wide measures need every listing")
       }

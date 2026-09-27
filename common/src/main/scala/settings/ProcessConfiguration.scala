@@ -344,11 +344,11 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_ROBUSTNESS=off` — skip the robustness measures that resolve a corpus again. */
   def identityShadowRobustness: IdentityShadowRobustness =
     IdentityShadowRobustness(!text("KINOWO_IDENTITY_ROBUSTNESS").contains("off"))
-  /** `KINOWO_IDENTITY_FOCUS=pieśni lasu,vincent` — resolve only listings whose titles share a word
-   *  with these (comma-separated), print their decisions and stop: a fast check of one change. */
+  /** `KINOWO_IDENTITY_FOCUS=pieśni lasu,vincent` — resolve only listings whose titles hold every word
+   *  of one of these comma-separated phrases, print their decisions and stop: a fast check. */
   def identityFocus: Option[IdentityFocus] =
-    text("KINOWO_IDENTITY_FOCUS").map(v => IdentityFocus(v.split(",").iterator
-      .flatMap(w => services.movies.TitleContainment.tokens(w)).toSet)).filter(_.words.nonEmpty)
+    text("KINOWO_IDENTITY_FOCUS").map(v => IdentityFocus(v.split(",").toSeq
+      .map(p => services.movies.TitleContainment.tokens(p).toSet).filter(_.nonEmpty))).filter(_.phrases.nonEmpty)
   /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
    *  against a scratch fixture root. */
   def identityRecordCheck: Option[IdentityRecordCheck] =
