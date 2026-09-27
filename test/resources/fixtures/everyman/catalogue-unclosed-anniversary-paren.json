@@ -1,0 +1,3658 @@
+{
+ "data": {
+  "allMovie": {
+   "nodes": [
+    {
+     "id": "1000046230",
+     "path": "/film-listing/1000046230-royal-ballet-and-opera-romeo-and-juliet",
+     "title": "Royal Ballet and Opera: Romeo and Juliet",
+     "originalTitle": "Royal Ballet and Opera: Romeo and Juliet (INACTIVE)",
+     "casting": null,
+     "certificate": null,
+     "direction": null,
+     "coDirection": null,
+     "genres": "BALLET",
+     "pictures": null,
+     "heroImages": null,
+     "quadImages": null,
+     "poster": "https://all.web.img.acsta.net/img/0b/26/0b2607691b5d4d3bdc45837857ce68d3.jpg",
+     "posterColorVibrant": null,
+     "posterColorDarkVibrant": null,
+     "release": null,
+     "runtime": null,
+     "synopsis": null,
+     "trailer": {
+      "HD": null,
+      "SD": null,
+      "youtube": null
+     },
+     "col": [
+      15,
+      17,
+      11,
+      12,
+      6,
+      13
+     ],
+     "orderIndex": 104,
+     "editorialization": {
+      "categories": [
+       {
+        "category": {
+         "id": "V2Vic2l0ZU1hbmFnZXJNb3ZpZUNhdGVnb3J5OmE0YTEwNDg2LTI1NWUtNGQ5My1iZjliLTI1ZTJjN2Q2MWRjZA=="
+        },
+        "theaters": [
+         "G0210",
+         "X11DP",
+         "X0712",
+         "X06SI",
+         "G01VT",
+         "X077P",
+         "X0VHE",
+         "G011I",
+         "G049A",
+         "X0X3Q",
+         "X11NT",
+         "G02AM",
+         "X0VPB",
+         "X11NU",
+         "X0XMY",
+         "X078X",
+         "G01VU",
+         "X11NR",
+         "X11DR",
+         "G01IW",
+         "G018L",
+         "G01HI",
+         "X06UF",
+         "X06SK",
+         "X11DQ",
+         "X06ZW",
+         "X0X9K",
+         "X11LP",
+         "X0X5P",
+         "X0QM5",
+         "G004G",
+         "X11I7",
+         "X0LWI",
+         "X11NP",
+         "G01RL",
+         "X06SN",
+         "X11KB",
+         "G01OJ",
+         "X070Y",
+         "G01RJ",
+         "X070X",
+         "G01QM",
+         "X077O",
+         "G029X",
+         "X0YZU",
+         "X0710",
+         "X0711",
+         "X11NV",
+         "X06TJ",
+         "G05D7"
+        ]
+       }
+      ],
+      "comments": [],
+      "links": []
+     },
+     "theaters": [
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06SI",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06SK",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06SN",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X06TJ",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06UF",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06ZW",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-06-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X070X",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X070Y",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0710",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0711",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0712",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X077O",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X077P",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0LWI",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0QM5",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0X3Q",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0X9K",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0VHE",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0VPB",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0X5P",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0XMY",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0YZU",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11DQ",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11DR",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11LP",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11DP",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11NP",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11NV",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11KB",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11NR",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11NT",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11NU",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11I7",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X078X",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G004G",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G011I",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G018L",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01HI",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01OJ",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01QM",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01RJ",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01RL",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01VT",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01VU",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G0210",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G029X",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G02AM",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G049A",
+       "tags": [
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2027-05-25"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G05D7",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      }
+     ],
+     "events": [
+      {
+       "id": "RXh0ZXJuYWxFdmVudDo1ODI4",
+       "path": "/events/5828-everyman-theatre-events",
+       "title": "Everyman Theatre Events",
+       "shortDescription": "Experience theatre events on the big screen - join us for recorded and live-streamed shows from around the world.",
+       "endAt": null,
+       "startAt": null,
+       "type": "Theatre Events",
+       "theaters": [
+        {
+         "id": "G004G"
+        },
+        {
+         "id": "G011I"
+        },
+        {
+         "id": "G018L"
+        },
+        {
+         "id": "G01HI"
+        },
+        {
+         "id": "G01OJ"
+        },
+        {
+         "id": "G01QM"
+        },
+        {
+         "id": "G01RJ"
+        },
+        {
+         "id": "G01RL"
+        },
+        {
+         "id": "G01VT"
+        },
+        {
+         "id": "G01VU"
+        },
+        {
+         "id": "G0210"
+        },
+        {
+         "id": "G029X"
+        },
+        {
+         "id": "G02AM"
+        },
+        {
+         "id": "G049A"
+        },
+        {
+         "id": "G05D7"
+        },
+        {
+         "id": "X06SI"
+        },
+        {
+         "id": "X06SK"
+        },
+        {
+         "id": "X06SN"
+        },
+        {
+         "id": "X06TJ"
+        },
+        {
+         "id": "X06UF"
+        },
+        {
+         "id": "X06ZW"
+        },
+        {
+         "id": "X070X"
+        },
+        {
+         "id": "X070Y"
+        },
+        {
+         "id": "X0710"
+        },
+        {
+         "id": "X0711"
+        },
+        {
+         "id": "X0712"
+        },
+        {
+         "id": "X077O"
+        },
+        {
+         "id": "X077P"
+        },
+        {
+         "id": "X078X"
+        },
+        {
+         "id": "X0LWI"
+        },
+        {
+         "id": "X0QM5"
+        },
+        {
+         "id": "X0VHE"
+        },
+        {
+         "id": "X0VPB"
+        },
+        {
+         "id": "X0X3Q"
+        },
+        {
+         "id": "X0X5P"
+        },
+        {
+         "id": "X0X9K"
+        },
+        {
+         "id": "X0XMY"
+        },
+        {
+         "id": "X0YZU"
+        },
+        {
+         "id": "X11DP"
+        },
+        {
+         "id": "X11DQ"
+        },
+        {
+         "id": "X11DR"
+        },
+        {
+         "id": "X11I7"
+        },
+        {
+         "id": "X11KB"
+        },
+        {
+         "id": "X11LP"
+        },
+        {
+         "id": "X11NP"
+        },
+        {
+         "id": "X11NR"
+        },
+        {
+         "id": "X11NT"
+        },
+        {
+         "id": "X11NU"
+        },
+        {
+         "id": "X11NV"
+        }
+       ],
+       "relatedMovies": [
+        {
+         "movie": {
+          "id": "1000045607"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046327"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000048872"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046832"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000049864"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043022"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043020"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045315"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045316"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046229"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043021"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043023"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045317"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045318"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043024"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000013229"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043025"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045314"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043026"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046138"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046230"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000043027"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        }
+       ]
+      },
+      {
+       "id": "RXh0ZXJuYWxFdmVudDoyMTk4",
+       "path": "/events/2198-royal-ballet-and-opera-live",
+       "title": "Royal Ballet & Opera Live",
+       "shortDescription": "The Royal Ballet & Opera screens stage productions live across the world. RBO Live is now back with a new season!",
+       "endAt": null,
+       "startAt": null,
+       "type": "Live Opera",
+       "theaters": [
+        {
+         "id": "G004G"
+        },
+        {
+         "id": "G011I"
+        },
+        {
+         "id": "G018L"
+        },
+        {
+         "id": "G01HI"
+        },
+        {
+         "id": "G01OJ"
+        },
+        {
+         "id": "G01QM"
+        },
+        {
+         "id": "G01RJ"
+        },
+        {
+         "id": "G01RL"
+        },
+        {
+         "id": "G01VT"
+        },
+        {
+         "id": "G01VU"
+        },
+        {
+         "id": "G0210"
+        },
+        {
+         "id": "G029X"
+        },
+        {
+         "id": "G02AM"
+        },
+        {
+         "id": "G049A"
+        },
+        {
+         "id": "G05D7"
+        },
+        {
+         "id": "X06SI"
+        },
+        {
+         "id": "X06SK"
+        },
+        {
+         "id": "X06SN"
+        },
+        {
+         "id": "X06TJ"
+        },
+        {
+         "id": "X06UF"
+        },
+        {
+         "id": "X06ZW"
+        },
+        {
+         "id": "X070X"
+        },
+        {
+         "id": "X070Y"
+        },
+        {
+         "id": "X0710"
+        },
+        {
+         "id": "X0711"
+        },
+        {
+         "id": "X0712"
+        },
+        {
+         "id": "X077O"
+        },
+        {
+         "id": "X077P"
+        },
+        {
+         "id": "X078X"
+        },
+        {
+         "id": "X0LWI"
+        },
+        {
+         "id": "X0QM5"
+        },
+        {
+         "id": "X0VHE"
+        },
+        {
+         "id": "X0VPB"
+        },
+        {
+         "id": "X0X3Q"
+        },
+        {
+         "id": "X0X5P"
+        },
+        {
+         "id": "X0X9K"
+        },
+        {
+         "id": "X0XMY"
+        },
+        {
+         "id": "X0YZU"
+        },
+        {
+         "id": "X11DP"
+        },
+        {
+         "id": "X11DQ"
+        },
+        {
+         "id": "X11DR"
+        },
+        {
+         "id": "X11I7"
+        },
+        {
+         "id": "X11KB"
+        },
+        {
+         "id": "X11LP"
+        },
+        {
+         "id": "X11NP"
+        },
+        {
+         "id": "X11NR"
+        },
+        {
+         "id": "X11NT"
+        },
+        {
+         "id": "X11NU"
+        },
+        {
+         "id": "X11NV"
+        }
+       ],
+       "relatedMovies": [
+        {
+         "movie": {
+          "id": "1000045315"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045316"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046229"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045317"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045318"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000013229"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000045314"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046138"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000046230"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        }
+       ]
+      }
+     ],
+     "localizations": null,
+     "advisory": null,
+     "studio": null,
+     "overrides": {
+      "title": null,
+      "synopsis": null,
+      "poster": null
+     },
+     "shouldBeHidden": false
+    },
+    {
+     "id": "1000051611",
+     "path": "/film-listing/1000051611-throwback-casino-royale-20th-anniversary",
+     "title": "Throwback: Casino Royale (20th Anniversary",
+     "originalTitle": "Throwback: Casino Royale (20th Anniversary)",
+     "casting": null,
+     "certificate": null,
+     "direction": null,
+     "coDirection": null,
+     "genres": "SPY, ACTION, THRILLER",
+     "pictures": null,
+     "heroImages": null,
+     "quadImages": null,
+     "poster": "https://cms-assets.webediamovies.pro/production/279/220f11c11d07e5de59577192a98de614.jpg",
+     "posterColorVibrant": null,
+     "posterColorDarkVibrant": null,
+     "release": null,
+     "runtime": null,
+     "synopsis": null,
+     "trailer": {
+      "HD": null,
+      "SD": null,
+      "youtube": null
+     },
+     "col": [
+      15,
+      17,
+      6,
+      7,
+      13
+     ],
+     "orderIndex": 108,
+     "editorialization": {
+      "categories": [],
+      "comments": [],
+      "links": []
+     },
+     "theaters": [
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X06SI",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X06SK",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X06SN",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X06TJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X06UF",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X06ZW",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X070X",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X070Y",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0711",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0LWI",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0QM5",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0X3Q",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0X9K",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0VHE",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0VPB",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0X5P",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0XMY",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X0YZU",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11DQ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11DR",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11LP",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11DP",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11NP",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11NV",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11KB",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11NR",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11NT",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11NU",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X11I7",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "X078X",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital",
+        "Internal.Data.AlmostSoldOut"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G004G",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G011I",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G018L",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01HI",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01OJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01QM",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01RJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01RL",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01VT",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G01VU",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G0210",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G029X",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G02AM",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G049A",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      },
+      {
+       "col": [
+        17,
+        6,
+        7,
+        13
+       ],
+       "th": "G05D7",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-10-04"
+      }
+     ],
+     "events": [
+      {
+       "id": "RXh0ZXJuYWxFdmVudDozMjQz",
+       "path": "/events/3243-throwback-season",
+       "title": "Throwback Season",
+       "shortDescription": " Bring it back! The most beloved classic movies, to be enjoyed on the big screen, with a complimentary drink and popcorn.",
+       "endAt": null,
+       "startAt": null,
+       "type": "Throwbacks",
+       "theaters": [
+        {
+         "id": "G004G"
+        },
+        {
+         "id": "G011I"
+        },
+        {
+         "id": "G018L"
+        },
+        {
+         "id": "G01HI"
+        },
+        {
+         "id": "G01OJ"
+        },
+        {
+         "id": "G01QM"
+        },
+        {
+         "id": "G01RJ"
+        },
+        {
+         "id": "G01RL"
+        },
+        {
+         "id": "G01VT"
+        },
+        {
+         "id": "G01VU"
+        },
+        {
+         "id": "G0210"
+        },
+        {
+         "id": "G029X"
+        },
+        {
+         "id": "G02AM"
+        },
+        {
+         "id": "G049A"
+        },
+        {
+         "id": "X06SI"
+        },
+        {
+         "id": "X06SK"
+        },
+        {
+         "id": "X06SN"
+        },
+        {
+         "id": "X06TJ"
+        },
+        {
+         "id": "X06UF"
+        },
+        {
+         "id": "X06ZW"
+        },
+        {
+         "id": "X070X"
+        },
+        {
+         "id": "X070Y"
+        },
+        {
+         "id": "X0711"
+        },
+        {
+         "id": "X078X"
+        },
+        {
+         "id": "X0QM5"
+        },
+        {
+         "id": "X0VHE"
+        },
+        {
+         "id": "X0VPB"
+        },
+        {
+         "id": "X0X3Q"
+        },
+        {
+         "id": "X0X5P"
+        },
+        {
+         "id": "X0X9K"
+        },
+        {
+         "id": "X0XMY"
+        },
+        {
+         "id": "X0YZU"
+        },
+        {
+         "id": "X11DP"
+        },
+        {
+         "id": "X11DQ"
+        },
+        {
+         "id": "X11DR"
+        },
+        {
+         "id": "X11I7"
+        },
+        {
+         "id": "X11KB"
+        },
+        {
+         "id": "X11LP"
+        },
+        {
+         "id": "X11NP"
+        },
+        {
+         "id": "X11NR"
+        },
+        {
+         "id": "X11NT"
+        },
+        {
+         "id": "X11NU"
+        },
+        {
+         "id": "X11NV"
+        }
+       ],
+       "relatedMovies": [
+        {
+         "movie": {
+          "id": "1000050157"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000051320"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000051611"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052169"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052426"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052175"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052177"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052182"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        }
+       ]
+      }
+     ],
+     "localizations": null,
+     "advisory": null,
+     "studio": null,
+     "overrides": {
+      "title": null,
+      "synopsis": null,
+      "poster": "https://cms-assets.webediamovies.pro/production/279/220f11c11d07e5de59577192a98de614.jpg"
+     },
+     "shouldBeHidden": false
+    },
+    {
+     "id": "1000052177",
+     "path": "/film-listing/1000052177-throwback-donnie-darko-25th-anniversary",
+     "title": "Throwback: Donnie Darko (25th Anniversary)",
+     "originalTitle": "Throwback: Donnie Darko (25th Anniversary)",
+     "casting": null,
+     "certificate": null,
+     "direction": null,
+     "coDirection": null,
+     "genres": "DRAMA, SCIENCE_FICTION",
+     "pictures": null,
+     "heroImages": null,
+     "quadImages": null,
+     "poster": "https://cms-assets.webediamovies.pro/production/279/58553f0db90d178873e47c6a6bfd4493.jpg",
+     "posterColorVibrant": null,
+     "posterColorDarkVibrant": null,
+     "release": null,
+     "runtime": null,
+     "synopsis": null,
+     "trailer": {
+      "HD": null,
+      "SD": null,
+      "youtube": null
+     },
+     "col": [
+      15,
+      17,
+      11,
+      12,
+      6,
+      13
+     ],
+     "orderIndex": 112,
+     "editorialization": {
+      "categories": [],
+      "comments": [],
+      "links": []
+     },
+     "theaters": [
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06SI",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06SK",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X06SN",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06TJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X06UF",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X06ZW",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X070X",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X070Y",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0711",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0QM5",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0X3Q",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0X9K",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X0VHE",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0VPB",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0X5P",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0XMY",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X0YZU",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11DQ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11DR",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11LP",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11DP",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11NP",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11NV",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11KB",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11NR",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11NT",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "X11NU",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X11I7",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "X078X",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G004G",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G011I",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G018L",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G01HI",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01OJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G01QM",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01RJ",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01RL",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01VT",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-04"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G01VU",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G0210",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15
+       ],
+       "th": "G029X",
+       "tags": null,
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": null
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G02AM",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        15,
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G049A",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      },
+      {
+       "col": [
+        17,
+        11,
+        12,
+        6,
+        13
+       ],
+       "th": "G05D7",
+       "tags": [
+        "Showtime.Event.Throwback",
+        "Auditorium.Comfort.ReservedSeating",
+        "Format.Projection.Digital"
+       ],
+       "isInMovieUnionOnly": false,
+       "startDate": null,
+       "firstShowtimeDate": "2026-11-01"
+      }
+     ],
+     "events": [
+      {
+       "id": "RXh0ZXJuYWxFdmVudDozMjQz",
+       "path": "/events/3243-throwback-season",
+       "title": "Throwback Season",
+       "shortDescription": " Bring it back! The most beloved classic movies, to be enjoyed on the big screen, with a complimentary drink and popcorn.",
+       "endAt": null,
+       "startAt": null,
+       "type": "Throwbacks",
+       "theaters": [
+        {
+         "id": "G004G"
+        },
+        {
+         "id": "G011I"
+        },
+        {
+         "id": "G018L"
+        },
+        {
+         "id": "G01HI"
+        },
+        {
+         "id": "G01OJ"
+        },
+        {
+         "id": "G01QM"
+        },
+        {
+         "id": "G01RJ"
+        },
+        {
+         "id": "G01RL"
+        },
+        {
+         "id": "G01VT"
+        },
+        {
+         "id": "G01VU"
+        },
+        {
+         "id": "G0210"
+        },
+        {
+         "id": "G029X"
+        },
+        {
+         "id": "G02AM"
+        },
+        {
+         "id": "G049A"
+        },
+        {
+         "id": "X06SI"
+        },
+        {
+         "id": "X06SK"
+        },
+        {
+         "id": "X06SN"
+        },
+        {
+         "id": "X06TJ"
+        },
+        {
+         "id": "X06UF"
+        },
+        {
+         "id": "X06ZW"
+        },
+        {
+         "id": "X070X"
+        },
+        {
+         "id": "X070Y"
+        },
+        {
+         "id": "X0711"
+        },
+        {
+         "id": "X078X"
+        },
+        {
+         "id": "X0QM5"
+        },
+        {
+         "id": "X0VHE"
+        },
+        {
+         "id": "X0VPB"
+        },
+        {
+         "id": "X0X3Q"
+        },
+        {
+         "id": "X0X5P"
+        },
+        {
+         "id": "X0X9K"
+        },
+        {
+         "id": "X0XMY"
+        },
+        {
+         "id": "X0YZU"
+        },
+        {
+         "id": "X11DP"
+        },
+        {
+         "id": "X11DQ"
+        },
+        {
+         "id": "X11DR"
+        },
+        {
+         "id": "X11I7"
+        },
+        {
+         "id": "X11KB"
+        },
+        {
+         "id": "X11LP"
+        },
+        {
+         "id": "X11NP"
+        },
+        {
+         "id": "X11NR"
+        },
+        {
+         "id": "X11NT"
+        },
+        {
+         "id": "X11NU"
+        },
+        {
+         "id": "X11NV"
+        }
+       ],
+       "relatedMovies": [
+        {
+         "movie": {
+          "id": "1000050157"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000051320"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000051611"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052169"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052426"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052175"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052177"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        },
+        {
+         "movie": {
+          "id": "1000052182"
+         },
+         "showtimes": [
+          [
+           null,
+           null
+          ]
+         ],
+         "showtimesTags": []
+        }
+       ]
+      }
+     ],
+     "localizations": null,
+     "advisory": null,
+     "studio": null,
+     "overrides": {
+      "title": null,
+      "synopsis": null,
+      "poster": "https://cms-assets.webediamovies.pro/production/279/58553f0db90d178873e47c6a6bfd4493.jpg"
+     },
+     "shouldBeHidden": false
+    }
+   ]
+  },
+  "allMovieUnion": {
+   "nodes": []
+  }
+ }
+}

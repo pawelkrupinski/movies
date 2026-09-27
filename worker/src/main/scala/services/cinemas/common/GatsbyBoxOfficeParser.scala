@@ -75,7 +75,7 @@ object GatsbyBoxOfficeParser {
       .flatMap { n =>
         for {
           id    <- (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty)
-          title <- (n \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          title <- (n \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty).map(closeDanglingParenthesis)
         } yield id -> CatalogueFilm(
           title = title,
           // Both brands echo the same string here for English-language films;
@@ -95,6 +95,14 @@ object GatsbyBoxOfficeParser {
             .map(id => s"https://www.youtube.com/watch?v=$id")
         )
       }.toMap
+
+  /** "Throwback: Casino Royale (20th Anniversary" → "…(20th Anniversary)". The CMS `title` loses a
+   *  closing parenthesis now and then (Everyman's 1000051611, 2026-09-27, whose `originalTitle` still
+   *  has it); a trailing group opened and never closed is closed, so the card and the enrichment
+   *  query don't carry a dangling "(". Anything else unbalanced is left as billed. */
+  private def closeDanglingParenthesis(title: String): String =
+    if (title.count(_ == '(') == title.count(_ == ')') + 1 && title.lastIndexOf('(') > title.lastIndexOf(')')) s"$title)"
+    else title
 
   /** "ADVENTURE, SCIENCE_FICTION" → List("Adventure", "Science fiction"). The
    *  platform ships a comma-separated SCREAMING_SNAKE enum; leave it verbatim
