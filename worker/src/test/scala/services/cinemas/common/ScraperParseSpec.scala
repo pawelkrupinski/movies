@@ -235,6 +235,19 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       (("Spider-Man. Całkiem nowy dzień", List("3D")))
   }
 
+  // Ekobilet and MSI venues qualify the version with the language it is in —
+  // "Lalka | 2D | PL" (Wielicka Mediateka), "Lalka 2D PL" (Kino Radość),
+  // "… | DUBBING PL" (Kino Starówka). The bare "PL" is only a qualifier when a
+  // format word sits right before it; a title that merely ends in "PL" is kept.
+  it should "drop a trailing PL language qualifier that follows a format word" in {
+    ScraperParse.extractFormatTags("Lalka | 2D | PL")   shouldBe (("Lalka", List("2D")))
+    ScraperParse.extractFormatTags("Lalka 2D PL")       shouldBe (("Lalka", List("2D")))
+    ScraperParse.extractFormatTags("Asterix | DUBBING PL") shouldBe (("Asterix", List("DUB")))
+    ScraperParse.extractFormatTags("Obcy - napisy PL")  shouldBe (("Obcy", List("NAP")))
+    ScraperParse.extractFormatTags("Kino PL")           shouldBe (("Kino PL", Nil))
+    ScraperParse.extractFormatTags("Made in PL")        shouldBe (("Made in PL", Nil))
+  }
+
   it should "leave a non-version underscore (date, programme tag) intact" in {
     ScraperParse.extractFormatTags("Seans w ciemno_7.26") shouldBe (("Seans w ciemno_7.26", Nil))
     ScraperParse.extractFormatTags("Monterey Pop_DKF")    shouldBe (("Monterey Pop_DKF", Nil))

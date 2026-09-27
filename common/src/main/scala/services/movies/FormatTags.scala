@@ -79,6 +79,16 @@ object FormatTags {
     w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
   }
 
+  /** True when the trailing token is a bare "PL" qualifying the version word
+   *  before it ("Lalka 2D PL", "… | DUBBING PL", "Lalka | 2D | PL" — ekobilet and
+   *  MSI venues). Only then: a title that merely ends in "PL" ("Kino PL") has no
+   *  format word in front and is left whole. Separators between the two are
+   *  skipped; the PL itself yields no token. */
+  private def isLanguageQualifier(toks: Vector[String]): Boolean =
+    bareWord(toks.last) == "pl" &&
+      toks.init.reverseIterator.map(bareWord).find(w => w.nonEmpty && !FormatSeparators.contains(w))
+        .exists(FormatVersionWords.contains)
+
   /** True when the trailing token is a dub/lektor word directly preceded by
    *  `ukraiński`/`ukrainian` — the Ukrainian version marker, kept (not stripped). */
   private def uaGuardedTail(toks: Vector[String]): Boolean =
@@ -114,7 +124,7 @@ object FormatTags {
         t = FormatParenTag.replaceFirstIn(t, "").trim
       }
       var toks = t.split(" ").filter(_.nonEmpty).toVector
-      while (toks.length > 1 && isDroppableTag(toks.last) && !uaGuardedTail(toks)) {
+      while (toks.length > 1 && (isDroppableTag(toks.last) || isLanguageQualifier(toks)) && !uaGuardedTail(toks)) {
         captureTagWords(toks.last, dropped)
         toks = toks.dropRight(1)
       }
