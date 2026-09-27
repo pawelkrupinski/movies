@@ -153,6 +153,49 @@ object IdentityMeasures {
       films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f)).flatMap(billing(l, _))
   }
 
+  /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how film records
+   *  bill each piece: a piece TMDB bills beside many different works is a qualifier — an edition
+   *  ("Chocolate - Director's Cut", "The Great War: Director's Cut", "The Promise (Director's
+   *  Cut)"; "Pink Floyd: The Final Cut") or a house's banner — and one billed beside few is a work.
+   *  `companions`: for each piece, by its yearless key, how many distinct other pieces a record
+   *  title adds to it along one edge ([[Qualifiers.split]]). No edition, cut or banner word is
+   *  known in advance. */
+  final case class Qualifiers(companions: Map[String, Int]) {
+    private def count(piece: String): Int = companions.getOrElse(piece, 0)
+    /** The listing's qualifier pieces: each piece its whole title adds another to along one edge,
+     *  billed beside at least two works — one is a coincidence, as a house's is ([[Houses.learn]]) —
+     *  and beside more of them than the rest of the title is. A tie is no qualifier. */
+    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split)
+      .collect { case (piece, rest) if count(piece) >= 2 && count(piece) > count(rest) => piece }.toSet)
+    private val memo = scala.collection.concurrent.TrieMap.empty[Listing, Set[String]]
+  }
+  object Qualifiers {
+    val Unknown: Qualifiers = Qualifiers(Map.empty)
+
+    /** A title's pieces, each with the rest of the title: every delimited piece of it ([[shapes]])
+     *  that is a token run along one of its edges, and the rest, both ways round, as yearless keys
+     *  ("Dark City: Director's Cut" → `darkcity`/`directorscut` and `directorscut`/`darkcity`). */
+    def split(title: String): Seq[(String, String)] = {
+      val whole = yearlessTokens(title)
+      shapes(Seq(title)).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
+        val rest = if (whole.startsWith(p)) whole.drop(p.length) else whole.dropRight(p.length)
+        Seq(p.mkString -> rest.mkString, rest.mkString -> p.mkString)
+      }.distinct
+    }
+
+    /** Learn from the titles of the candidate records one family's listings searched up. */
+    def learn(titles: Iterable[String]): Qualifiers =
+      Qualifiers(titles.toSeq.distinct.flatMap(split).distinct.groupMapReduce(_._1)(_ => 1)(_ + _))
+  }
+
+  /** Is `edition` a record of `work` under a qualifier: a later record whose title carries one of
+   *  the work's titles as a delimited piece or a token run along one edge ("Radiohead X Nosferatu:
+   *  A Symphony of Horror" of Murnau's "Nosferatu", whose record carries "Nosferatu: A Symphony of
+   *  Horror")? A record of the same title is a namesake, not an edition. */
+  def editionOf(edition: Film, work: Film): Boolean =
+    edition.year.exists(y => work.year.exists(_ <= y)) &&
+      Set("segment", "decorated")(titleRelation(Listing(edition.title, originalTitle = edition.originalTitle), work).value)
+
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
   /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
@@ -314,18 +357,26 @@ object IdentityMeasures {
    *  banner once seasons and bracketed years are dropped ("The Metropolitan Opera: Manon (2027)"
    *  and "The Metropolitan Opera 2026/27: Manon"), or the house the listing's banner was learned
    *  to be (`houses`: "NT Live" and "National Theatre Live"). */
-  def titleRelation(l: Listing, f: Film, houses: Houses = Houses.Unknown): Category = titleRelation(l, f, Some(houses))
+  def titleRelation(l: Listing, f: Film, houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
+    titleRelation(l, f, Some(houses), qualifiers)
 
-  /** `houses`: `None` for two listings, whose banners name no house on record. */
-  private def titleRelation(l: Listing, f: Film, houses: Option[Houses]): Category = {
+  /** `houses`: `None` for two listings, whose banners name no house on record.
+   *
+   *  A record title that is only one of the listing's [[Qualifiers]] names nothing: "Director's
+   *  Cut" (2016) shares the words of "Dark City: Director's Cut" but is not its film, so it is
+   *  measured on the record's other titles, and as an `overlap` when it has none. */
+  private def titleRelation(l: Listing, f: Film, houses: Option[Houses], qualifiers: Qualifiers): Category = {
     val ls  = Seq(l.title) ++ l.rawTitle
-    val fs  = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
+    val all = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
     val own = ls.map(key).filter(_.nonEmpty).toSet
+    lazy val qualifying = qualifiers.of(l)
+    val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(yearlessTokens(t).mkString))
     if (own.contains(key(f.title))) Category("exact")
     else if (f.originalTitle.map(key).exists(own)) Category("original")
     else if (f.alternativeTitles.map(key).exists(own)) Category("alternative")
-    else containment(ls, titleShapes(l), fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same))).getOrElse(
-      if (ls.map(words).exists(a => fs.map(words).exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap") else Category("none"))
+    else (if (fs.isEmpty) None
+          else containment(ls, titleShapes(l), fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)))).getOrElse(
+      if (ls.map(words).exists(a => all.map(words).exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap") else Category("none"))
   }
 
   /** How one side's titles name the other's once no whole title matches: a whole delimited piece
@@ -543,11 +594,12 @@ object IdentityMeasures {
    * @param corroboratingVenues how many OTHER venues listing the same title publish this film's
    *                   exact year or credit its director — the family's pooled evidence
    * @param houses     the houses the listings' banners were learned to be ([[Houses.learn]])
+   * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: Houses = Houses.Unknown): Map[String, Measure] =
+                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
     Map(
-      "title"          -> titleRelation(l, f, houses),
+      "title"          -> titleRelation(l, f, houses, qualifiers),
       "originalTitle"  -> originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles),
       "year.delta"     -> delta(l.year, f.year),
       "year.distance"  -> absDelta(l.year, f.year),
@@ -578,7 +630,7 @@ object IdentityMeasures {
     // whole delimited piece of the other's ("Lalka" and "Astra Seniora - Lalka", in either order)
     // the pair is a `segment`, as the resolver's title-segment must-link reads it — measured one
     // way only, the plain spelling first read as a `fragment` or an `overlap` of its decorated one.
-    val title = (titleRelation(a, asFilm(b), houses = None), titleRelation(b, asFilm(a), houses = None)) match {
+    val title = (titleRelation(a, asFilm(b), None, Qualifiers.Unknown), titleRelation(b, asFilm(a), None, Qualifiers.Unknown)) match {
       case (Category("original") | Category("alternative"), _) => Category("exact")
       case (forward, backward) if forward != Category("exact") && backward == Category("segment") => backward
       case (forward, _)                                        => forward

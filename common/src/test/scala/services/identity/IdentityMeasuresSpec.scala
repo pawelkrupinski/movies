@@ -144,6 +144,35 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.listingFilm(nt, record, None, 0, 0, houses)("title") shouldBe Category("segment")
   }
 
+  "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
+    val q = IdentityMeasures.Qualifiers.learn(Seq("Chocolate - Director's Cut",
+      "The Great War: Director's Cut", "The Promise (Director's Cut)", "Director's Cut", "Dark City", "Manhunter"))
+    q.of(Listing("Dark City: Director's Cut")) shouldBe Set("directorscut")
+    // A bare title, and a title whose only piece is its bracketed year, have no qualifier.
+    q.of(Listing("Director's Cut")) shouldBe empty
+    q.of(Listing("Manhunter (1986)")) shouldBe empty
+    // A record titled only the qualifier names nothing; the work's record still names the listing.
+    val cut = Listing("Dark City: Director's Cut")
+    IdentityMeasures.titleRelation(cut, Film("Director's Cut")) shouldBe Category("segment")
+    IdentityMeasures.titleRelation(cut, Film("Director's Cut"), Houses.Unknown, q) shouldBe Category("overlap")
+    IdentityMeasures.titleRelation(cut, Film("Dark City"), Houses.Unknown, q) shouldBe Category("decorated")
+    IdentityMeasures.titleRelation(cut, Film("Dark City: Director's Cut"), Houses.Unknown, q) shouldBe Category("exact")
+  }
+
+  it should "tie to nothing when both pieces are billed alike" in {
+    val q = IdentityMeasures.Qualifiers.learn(Seq("Heat: Director's Cut", "Heat - Extended", "Alien: Director's Cut"))
+    // "heat" beside two pieces, "directorscut" beside two: neither is the listing's qualifier.
+    q.of(Listing("Heat: Director's Cut")) shouldBe empty
+  }
+
+  "an edition" should "be a later record carrying the work's title under a qualifier, never a namesake" in {
+    val murnau = Film("Nosferatu", alternativeTitles = Seq("Nosferatu: A Symphony of Horror"), year = Some(1922))
+    IdentityMeasures.editionOf(Film("Radiohead X Nosferatu: A Symphony of Horror", year = Some(2025)), murnau) shouldBe true
+    IdentityMeasures.editionOf(Film("Nosferatu: A Symphony of Horror", year = Some(2023)), murnau) shouldBe false
+    IdentityMeasures.editionOf(Film("Nosferatu", year = Some(2024)), murnau) shouldBe false
+    IdentityMeasures.editionOf(murnau, Film("Radiohead X Nosferatu: A Symphony of Horror", year = Some(2025))) shouldBe false
+  }
+
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
     // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
     // Anniversary)", whose trailing bracket is itself a decoration.

@@ -15,9 +15,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val weights    = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
 
-  private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0)
+  private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
+                             alternatives: Seq[String] = Nil)
 
-  /** A film database of `films`: search by all-words containment (year-scoped when asked), the
+  /** A film database of `films`: search by all-words containment of a title or an alternative title, the
    *  directors' filmographies, and each film's record. */
   private final class Table(films: Seq[F]) extends IdentityLookups {
     private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
@@ -27,13 +28,13 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
       case CandidateQuery.Title(text) =>
         val want = words(text)
-        films.filter(f => want.nonEmpty && want.subsetOf(words(f.title))).sortBy(-_.popularity).map(hit)
+        films.filter(f => want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
       case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
     })
     // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
       Answer.Known(films.find(_.id == id).map(f =>
-        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime).filter(_ > 0), Some(Seq(f.director).filter(_.nonEmpty)),
+        IdentityMeasures.Film(f.title, None, f.alternatives, Some(f.year), Some(f.runtime).filter(_ > 0), Some(Seq(f.director).filter(_.nonEmpty)),
           None, Some(f.popularity))))
   }
 
@@ -756,6 +757,84 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bareMeasures = IdentityMeasures.listingFilm(IdentityMeasures.Listing("Samson i Dalila"),
       IdentityMeasures.Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
     ListingConstraints.learned(withRule, "listing-film", bareMeasures, probability = 0.5) shouldBe None
+  }
+
+  // ── editions and cuts: a title plus a qualifier ────────────────────────────────────────
+
+  /** What a title search for a qualifier returns: records billing it beside other works, as
+   *  TMDB's "Director's Cut" and "The Final Cut" searches did (recording 36224654409). */
+  private val directorsCuts = Seq(F(355536, "Director's Cut", 2016, "Adam Rifkin", 91, 2.3), F(1291247, "Director's Cut", 2024, "Someone", 88, 1.6),
+    F(1255761, "Chocolate - Director's Cut", 2008, "Prachya Pinkaew", 110, 1.0), F(526535, "The Great War: Director's Cut", 2013, "Other", 100, 0.7),
+    F(572544, "The Promise (Director's Cut)", 2016, "Terry George", 133, 0.7))
+  private val finalCuts = Seq(F(11099, "The Final Cut", 2004, "Omar Naim", 95, 5.2), F(2442, "The Final Cut", 1995, "Roger Christian", 99, 2.8),
+    F(92476, "Pink Floyd: The Final Cut", 1983, "Willie Christie", 19, 1.7), F(469940, "Mantrap – Straw Dogs: The Final Cut", 2003, "Other", 30, 1.8))
+
+  "A title plus a cut" should "never take a record titled only its cut" in {
+    // US, Landmark Nuart's "Dark City: Director's Cut", no fact published: the new resolver took
+    // "Director's Cut" (2016). Records bill "Director's Cut" beside many works, "Dark City" beside
+    // none — the cut is the qualifier, and a record of the qualifier alone names nothing.
+    val films = directorsCuts ++ Seq(F(2666, "Dark City", 1998, "Alex Proyas", 100, 13.3), F(36331, "Dark City", 1950, "William Dieterle", 98, 2.7))
+    val cut   = listing(Rialto, "Dark City: Director's Cut")
+    val r = resolve(Seq(cut), films)
+    withClue(r.decisionOf(cut.key).render) {
+      r.decisionOf(cut.key).film should not be Some(355536)
+      r.decisionOf(cut.key).film should not be Some(1291247)
+    }
+    // "Michael Mann's Manhunter: The Final Cut" (US, Alamo) took Omar Naim's "The Final Cut" (2004).
+    val manhunter = Seq(F(11454, "Manhunter", 1986, "Michael Mann", 120, 0.4), F(100279, "Manhunter", 1974, "Walter Grauman", 74, 2.3))
+    val mann = listing(Rialto, "Michael Mann's Manhunter: The Final Cut")
+    val m = resolve(Seq(mann), finalCuts ++ manhunter)
+    withClue(m.decisionOf(mann.key).render) {
+      Set(Some(11099), Some(2442)) should not contain m.decisionOf(mann.key).film
+    }
+  }
+
+  it should "leave a listing of the qualifier's own title its film" in {
+    // The same records: a listing titled "Director's Cut" alone, with its year, is the 2016 film.
+    val films = directorsCuts :+ F(2666, "Dark City", 1998, "Alex Proyas", 100, 13.3)
+    val bare  = listing(Rialto, "Director's Cut", Some(2016), Some("Adam Rifkin"))
+    resolve(Seq(bare), films).decisionOf(bare.key).film shouldBe Some(355536)
+  }
+
+  "A title plus a qualifier" should "take the edition's record when TMDB files one, and the work beside it keeps the work" in {
+    // UK, 42 Picturehouse listings of "Radiohead X Nosferatu: A Symphony of Horror", crediting
+    // Murnau and his 94 minutes: the new resolver took Murnau's 1922 record, which the title names
+    // only through its alternative title "Nosferatu: A Symphony of Horror". TMDB files the event as
+    // its own record, crediting its maker — the listing's facts are the work's, which the edition
+    // carries; the whole title names the edition.
+    val films = Seq(
+      F(653, "Nosferatu", 1922, "F. W. Murnau", 94, 9.2, Seq("Nosferatu: A Symphony of Horror", "Nosferatu the Vampire")),
+      F(1489665, "Radiohead X Nosferatu: A Symphony of Horror", 2025, "Josh Frank", 90, 1.3),
+      F(394151, "Nosferatu: A Symphony of Horror", 2023, "David Lee Fisher", 92, 2.4),
+      F(426063, "Nosferatu", 2024, "Robert Eggers", 132, 40))
+    val events = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Radiohead X Nosferatu: A Symphony of Horror", None, Some("F.W. Murnau"), Some(94)))
+    val work   = listing(KinoMuza, "Nosferatu (1922)", None, Some("F.W. Murnau"))
+    // The production calibration: its director veto is what denied the edition's record.
+    val r = IdentityResolver.resolve(events :+ work, new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue((events :+ work).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      events.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1489665))
+      r.decisionOf(work.key).film shouldBe Some(653)
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "leave a sequel, a subtitle and a banner their own films" in {
+    // A later record carrying the work's title is an edition only to a listing that names IT whole
+    // and the work only by a piece: "Dune" names Dune whole; "Dune: Part Two" names its own record.
+    val dune = Seq(F(438631, "Dune", 2021, "Denis Villeneuve", 155, 60), F(693134, "Dune: Part Two", 2024, "Denis Villeneuve", 166, 80),
+      F(841, "Dune", 1984, "David Lynch", 137, 20))
+    val first  = listing(Multikino, "Dune", Some(2021), Some("Denis Villeneuve"))
+    val second = listing(Helios, "Dune: Part Two", Some(2024), Some("Denis Villeneuve"))
+    val r = resolve(Seq(first, second), dune)
+    r.decisionOf(first.key).film shouldBe Some(438631)
+    r.decisionOf(second.key).film shouldBe Some(693134)
+    // A programme banner beside a work TMDB files one cut of: records bill the work beside one
+    // piece, a coincidence, never a qualifier — the work's record still names it.
+    val darko = Seq(F(141, "Donnie Darko", 2001, "Richard Kelly", 113, 20), F(9999, "Donnie Darko: Director's Cut", 2004, "Richard Kelly", 133, 2))
+    val banners = Seq(listing(KinoMuza, "Throwback: Donnie Darko", None, Some("Richard Kelly"), Some(113)),
+      listing(KinoMuza, "Throwback: Dark City"), listing(KinoMuza, "Throwback: Heat"))
+    val t = resolve(banners, darko ++ directorsCuts :+ F(2666, "Dark City", 1998, "Alex Proyas", 100, 13.3))
+    t.decisionOf(banners.head.key).film shouldBe Some(141)
   }
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {

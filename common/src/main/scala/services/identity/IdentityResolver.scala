@@ -150,9 +150,11 @@ object IdentityResolver {
     // ── scoring ──────────────────────────────────────────────────────────────────────────
     /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
      *  1-based). `seasonProduction`: the film's record names the listing's season production
-     *  (`IdentityMeasures.namesSeasonProduction`). */
+     *  (`IdentityMeasures.namesSeasonProduction`). `deniedByPin`: a pin, not the listing's
+     *  evidence, is (part of) why it is `denied`. */
     final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean,
-                            listing: IdentityMeasures.Listing, rank: Option[Int], seasonProduction: Boolean = false)
+                            listing: IdentityMeasures.Listing, rank: Option[Int], seasonProduction: Boolean = false,
+                            deniedByPin: Boolean = false)
 
     /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
      *  title and country measures — as opposed to the film database's ranking priors (search rank,
@@ -219,6 +221,11 @@ object IdentityResolver {
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
     final class FamilyScope(members: Seq[Node]) {
       val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)
+      /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
+       *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
+       *  record titled only a listing's qualifier does not name it. The family's own pool, so a
+       *  family resolves alone as it does among the others. */
+      val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.flatMap(c => Seq(c.film.title) ++ c.film.originalTitle))
       private val groups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
         members.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
           .groupMap(_._1)(_._2)
@@ -228,17 +235,17 @@ object IdentityResolver {
        *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
       def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int],
                 deniedByPins: Int => Boolean): Seq[Scored] = {
-        val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses).value).toMap
+        val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses, qualifiers).value).toMap
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val group     = IdentityMeasures.key(l.title)
         val scored = reachable.map { c =>
           val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
-            backing.corroborating(group, c.film, venue), houses)
+            backing.corroborating(group, c.film, venue), houses, qualifiers)
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
-            namesItsSeasonProduction(l, c.film))
+            namesItsSeasonProduction(l, c.film), deniedByPins(c.tmdbId))
         }
         // The listing's whole title (or its original or an alternative title) and its credited
         // director name ONE film together: another film of that director, which its title does not
@@ -311,6 +318,7 @@ object IdentityResolver {
     def confidenceOf(ranked: Seq[Scored], film: Int): Double =
       topHit(ranked).filter(_._1.c.tmdbId == film).map(_._2)
         .orElse(calibrated(ranked).filter(_._1.c.tmdbId == film).map(_._2))
+        .orElse(pooledAccepted(ranked).filter(_._1.c.tmdbId == film).map(_._2))
         .getOrElse(ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p))
     /** `best`'s probability with the database's ranking priors and the family's pooled count
      *  LENDING confidence but never withdrawing it — each one's negative weight capped at 0 — when
@@ -346,6 +354,23 @@ object IdentityResolver {
         case Seq(one)     => Some(Some(one -> one.p))
         case a +: b +: _  => Some(Option.when(ownEvidence(a) > ownEvidence(b))(a -> a.p))
       }
+    /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
+     *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
+     *  — "Radiohead X Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu"), which the listing
+     *  names by its whole title while it names the film only by a piece. The listing's facts chose
+     *  the work, and an edition carries its work's facts — the venue credits Murnau, TMDB the
+     *  edition's maker — so they do not deny the edition; a pin still does. With the confidence of
+     *  the work. The film itself when the listing names it whole, or no edition, or two. */
+    def editionNamed(ranked: Seq[Scored])(accepted: (Scored, Double)): (Scored, Double) = {
+      val (work, confidence) = accepted
+      def namedWhole(s: Scored) = IdentityMeasures.Rivalling(s.measures.get("title").collect { case IdentityMeasures.Category(c) => c }.getOrElse(""))
+      if (namedWhole(work)) accepted
+      else ranked.filter(e => (e ne work) && !e.deniedByPin && namedWhole(e) && IdentityMeasures.editionOf(e.c.film, work.c.film)) match {
+        case Seq(edition) => edition -> confidence
+        case _            => accepted
+      }
+    }
+
     /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
      *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
      *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
@@ -354,7 +379,7 @@ object IdentityResolver {
       val eligible = ranked.filterNot(_.denied)
       seasonProductionOf(ranked).getOrElse(
         calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
-          .orElse(topHit(ranked)))
+          .orElse(topHit(ranked))).map(editionNamed(ranked))
     }
     /** Do the listing's own facts favour `best` over `other`? Its own evidence — without the title
      *  when the title names the two by disjoint pieces ([[IdentityMeasures.namedApart]]: "Lalka
@@ -377,7 +402,7 @@ object IdentityResolver {
      *  apart — its ranking priors and the family's venue count are measured evidence there (a
      *  bare "Resident Evil" at 148 venues). Two films the title names by disjoint pieces
      *  ([[IdentityMeasures.namedApart]]) are not namesakes: only the facts may pick one of
-     *  "Lalka (Dolly)"'s two. */
+     *  "Lalka (Dolly)"'s two. Each the edition of it the listing names, if any ([[editionNamed]]). */
     def pooledAccepted(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       val eligible = ranked.filterNot(_.denied)
       seasonProductionOf(ranked).getOrElse(
@@ -388,7 +413,7 @@ object IdentityResolver {
             val apart  = IdentityMeasures.namedApart(best.listing, best.c.film, r.c.film)
             !(alike && factsOf(r) > factsOf(best)) && !(apart && factsOf(r) >= factsOf(best))
           })
-        }.orElse(topHit(ranked)))
+        }.orElse(topHit(ranked))).map(editionNamed(ranked))
     }
 
     /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
@@ -476,7 +501,7 @@ object IdentityResolver {
       scopeOf(n).of(n).find(_.c.tmdbId == film).fold(pins.deniedFilms(n.listings.head.key)(film) || {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
-          evidenceDenies(n.evidence.measured, c.film, IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0, houses))
+          evidenceDenies(n.evidence.measured, c.film, IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0, houses, scopeOf(n).qualifiers))
         }
       })(_.denied)
 

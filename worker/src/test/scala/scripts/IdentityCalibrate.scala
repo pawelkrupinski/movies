@@ -158,13 +158,15 @@ object IdentityCalibrate {
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>
       val o = obs(i); val pool = pools(i); val g = IdentityMeasures.key(o.listing.title)
-      val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f, houses).value }
+      // The qualifier pieces, learned from the pool's records as the resolver learns them from its family's.
+      val qualifiers = IdentityMeasures.Qualifiers.learn(pool.toSeq.sortBy(_._1).flatMap { case (_, (_, f)) => Seq(f.title) ++ f.originalTitle })
+      val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f, houses, qualifiers).value }
       val close = closeTitles.count { case (_, r) => IdentityMeasures.Rivalling(r) }
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
         val venues = backing.corroborating(g, f, o.venue)
-        lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues, houses))
+        lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues, houses, qualifiers))
       }
     }
     val lfPairs = lf.result()
