@@ -1,0 +1,5394 @@
+<!-- /layout.antlers.html -->
+<!doctype html>
+<html lang="pl" class="antialiased scroll-smooth scroll-pt-4">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <link rel="preload" as="style" href="https://kino.ketrzyn.pl/build/assets/site-Bg0z18fD.css" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/site-N_dor0vN.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/alpinejs-tfXiYlyz.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/@alpinejs-CRIRwVM7.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/laravel-precognition-alpine-Cu4K3qMN.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/laravel-precognition-JrK98svh.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/axios-CjxB0R_e.js" /><link rel="modulepreload" as="script" href="https://kino.ketrzyn.pl/build/assets/lodash-es-DzrphU2f.js" /><link rel="stylesheet" href="https://kino.ketrzyn.pl/build/assets/site-Bg0z18fD.css" /><script type="module" src="https://kino.ketrzyn.pl/build/assets/site-N_dor0vN.js"></script>
+        <!-- statamic-peak-seo::snippets/_seo.antlers.html -->
+
+<title>
+    
+    
+    
+        Repertuar · Kino Gwiazda
+    
+</title>
+
+
+
+
+
+
+   
+
+
+
+
+    
+        
+            <link rel="alternate" hreflang="pl-PL" href="https://kino.ketrzyn.pl/repertuar">
+        
+    
+
+
+
+
+    
+        <link rel="canonical" href="https://kino.ketrzyn.pl/repertuar">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:site_name" content="Kino Gwiazda">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pl_PL">
+<meta property="og:url" content="https://kino.ketrzyn.pl/repertuar">
+
+    <meta property="og:title" content="Repertuar">
+
+
+
+
+
+
+    
+    
+
+    
+        
+            
+                
+                    <script async  src="//gc.zgo.at/count.js" data-goatcounter="https://kinoketrzyn.goatcounter.com/count"></script>
+                
+            
+        
+    
+
+    
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+<!-- End: statamic-peak-seo::snippets/_seo.antlers.html -->
+
+        <!-- /snippets/_browser_appearance.antlers.html -->
+
+
+
+
+
+
+
+
+
+<link rel="manifest" href="https://kino.ketrzyn.pl/site.webmanifest">
+
+
+
+<!-- End: /snippets/_browser_appearance.antlers.html -->
+
+        
+
+        
+        <noscript>
+            <style>
+                nav.hidden,
+                nav ul [x-cloak],
+                nav ul li ul {
+                    display: block !important;
+                }
+            </style>
+        </noscript>
+    
+    </head>
+    <body class="flex flex-col min-h-screen bg-cinema-bg selection:bg-primary selection:text-white">
+        
+        
+    
+        <!-- statamic-peak-tools::snippets/_noscript.antlers.html -->
+
+    <noscript>
+        <p class="relative z-50 py-3 px-4 bg-gray-100 border-b border-gray-200 text-center font-bold text-xs text-gray-600">Ta strona wymaga JavaScript do poprawnego działania niektórych funkcji. Twoje doświadczenie może się różnić.</p>
+    </noscript>
+
+    
+
+<!-- End: statamic-peak-tools::snippets/_noscript.antlers.html -->
+
+        <!-- statamic-peak-tools::navigation/_skip_links.antlers.html -->
+<div class="z-50 text-sm font-bold text-white [&_a]:fixed [&_a]:px-4 [&_a]:py-2 [&_a]:-translate-y-24 [&_a]:opacity-0 [&_a]:top-4 [&_a]:left-8 [&_a]:bg-primary [&_a:focus]:translate-y-0 [&_a:focus]:opacity-100 [&_a]:outline-primary motion-safe:[&_a]:transition-transform ">
+    
+        <a href="#content">Przejdź do treści</a>
+    
+    
+</div>
+<!-- End: statamic-peak-tools::navigation/_skip_links.antlers.html -->
+
+        <!-- statamic-peak-tools::components/_toolbar.antlers.html -->
+
+<!-- End: statamic-peak-tools::components/_toolbar.antlers.html -->
+
+
+        <!-- /layout/_header.antlers.html -->
+<header class="w-full border-b border-neutral-800 bg-black backdrop-blur-sm sticky top-0 z-40">
+    <div class="fluid-grid h-14 md:h-20">
+        <div class="span-content flex justify-between items-center h-full">
+            
+            <a
+                href="/"
+                class="flex items-center"
+                aria-label="Kino Gwiazda - Strona główna"
+            >
+                <img
+                    src="/visuals/logo_kino_gwiazda_neon.png"
+                    alt="Kino Gwiazda"
+                    class="h-9 md:h-14 w-auto select-none"
+                    aria-hidden="true"
+                />
+            </a>
+
+            
+            
+<!-- /navigation/_main_desktop.antlers.html -->
+<nav class="hidden md:flex gap-8" aria-label="Główna nawigacja desktop">
+    
+        
+            <div
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-white dark:text-cinema-text hover:text-cinema-accent
+                    "
+                    
+                        href="/"
+                    
+                    
+                >
+                    Strona główna
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-0 group-hover:w-full"></span>
+                    
+                </a>
+                
+            </div>
+        
+    
+        
+            <div
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-cinema-accent
+                    "
+                    
+                        href="/repertuar"
+                    
+                    aria-current="page"
+                >
+                    Repertuar
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-full"></span>
+                    
+                </a>
+                
+            </div>
+        
+    
+        
+            <div
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-white dark:text-cinema-text hover:text-cinema-accent
+                    "
+                    
+                        href="/oferty-dla-szkol"
+                    
+                    
+                >
+                    Oferty dla szkół
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-0 group-hover:w-full"></span>
+                    
+                </a>
+                
+            </div>
+        
+    
+        
+            <div
+                
+                    x-data="{ subnavOpen: false }"
+                    @keyup.escape.stop.prevent="subnavOpen = false"
+                    @focusin.window="!$refs.subnav.contains($event.target) && (subnavOpen = false)"
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-white dark:text-cinema-text hover:text-cinema-accent
+                    "
+                    
+                        href="#"
+                        @click.prevent="subnavOpen = !subnavOpen"
+                        :aria-label="subnavOpen
+                            ? 'Oferta - Zamknij podnawigację'
+                            : 'Oferta - Otwórz podnawigację'"
+                        :aria-expanded="subnavOpen"
+                    
+                    
+                >
+                    Oferta
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-0 group-hover:w-full"></span>
+                    
+                        <div :class="{ 'scale-y-[-1]': subnavOpen }" class="inline-block motion-safe:transition-transform">
+                            <svg class="w-2 ml-1 overflow-visible stroke-current" aria-hidden="true" stroke-width="24" viewBox="0 0 140 140"><path d="M135.625 42.648l-62.533 62.527a4.37 4.37 0 01-6.184 0L4.375 42.648" fill="none"/></svg>
+                        </div>
+                    
+                </a>
+                
+                    <ul
+                        x-show="subnavOpen"
+                        x-ref="subnav"
+                        class="absolute left-0 mt-4 py-2 px-3 bg-cinema-card dark:bg-cinema-card border border-white/10 rounded-lg shadow-xl min-w-[180px]"
+                        @click.outside="subnavOpen = false"
+                        x-transition
+                        x-cloak
+                    >
+                        
+                            <li>
+                                <a
+                                    class="
+                                        whitespace-nowrap py-2 block text-sm font-medium hover:text-cinema-accent transition-colors
+                                        text-white dark:text-cinema-text
+                                    "
+                                    href="/oferty-reklamowe"
+                                    
+                                >
+                                    Oferty reklamowe
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a
+                                    class="
+                                        whitespace-nowrap py-2 block text-sm font-medium hover:text-cinema-accent transition-colors
+                                        text-white dark:text-cinema-text
+                                    "
+                                    href="/promocje"
+                                    
+                                >
+                                    Promocje
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a
+                                    class="
+                                        whitespace-nowrap py-2 block text-sm font-medium hover:text-cinema-accent transition-colors
+                                        text-white dark:text-cinema-text
+                                    "
+                                    href="/vouchery"
+                                    
+                                >
+                                    Vouchery
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a
+                                    class="
+                                        whitespace-nowrap py-2 block text-sm font-medium hover:text-cinema-accent transition-colors
+                                        text-white dark:text-cinema-text
+                                    "
+                                    href="/honorowane-karty"
+                                    
+                                >
+                                    Honorowane karty
+                                </a>
+                            </li>
+                        
+                    </ul>
+                
+            </div>
+        
+    
+        
+            <div
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-white dark:text-cinema-text hover:text-cinema-accent
+                    "
+                    
+                        href="/projekty"
+                    
+                    
+                >
+                    Projekty
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-0 group-hover:w-full"></span>
+                    
+                </a>
+                
+            </div>
+        
+    
+        
+            <div
+                
+                class="relative"
+            >
+                <a
+                    class="
+                        text-lg font-medium transition-colors relative group
+                        text-white dark:text-cinema-text hover:text-cinema-accent
+                    "
+                    
+                        href="/kontakt"
+                    
+                    
+                >
+                    Kontakt
+                    
+                    <span class="absolute -bottom-1 left-0 h-0.5 bg-cinema-accent transition-all w-0 group-hover:w-full"></span>
+                    
+                </a>
+                
+            </div>
+        
+    
+</nav>
+<!-- End: /navigation/_main_desktop.antlers.html -->
+
+
+
+<!-- /navigation/_main_mobile.antlers.html -->
+<nav
+    x-data="{ mobileNavOpen: false }"
+    class="md:hidden"
+    aria-label="Główna nawigacja mobilna"
+    x-trap.inert.noscroll.noautofocus="mobileNavOpen"
+    @keyup.escape.stop.prevent="mobileNavOpen = false"
+    x-cloak
+>
+    
+    <button
+        type="button"
+        @click.prevent.stop="mobileNavOpen = !mobileNavOpen"
+        class="p-2 text-white hover:text-cinema-accent border border-transparent hover:border-cinema-accent rounded transition-colors"
+        :aria-label="mobileNavOpen ? 'Zamknij nawigację' : 'Otwórz nawigację'"
+        :aria-expanded="mobileNavOpen"
+    >
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path x-show="!mobileNavOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            <path x-show="mobileNavOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+    </button>
+
+    
+    <template x-teleport="body">
+    <div
+        class="fixed inset-0 z-[100] pt-8 px-8 pb-12 flex flex-col"
+        style="background-color: #171717;"
+        x-show="mobileNavOpen"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+    >
+        
+        <button
+            type="button"
+            @click="mobileNavOpen = false"
+            class="absolute top-6 right-6 p-2 text-white hover:text-cinema-accent transition-colors"
+            aria-label="Zamknij nawigację"
+        >
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+
+        
+        <a href="/" class="flex items-center mb-8">
+            <img
+                src="/visuals/logo_kino_gwiazda_neon.png"
+                alt="Kino Gwiazda"
+                class="h-12 w-auto"
+            >
+        </a>
+
+        
+        <ul class="flex flex-col gap-y-4 overflow-auto flex-grow">
+            
+                
+                    <li
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-white hover:text-cinema-accent
+                            "
+                            
+                                href="/"
+                                @click="mobileNavOpen = false"
+                            
+                            
+                        >
+                            <span>Strona główna</span>
+
+                            
+                        </a>
+
+                        
+                    </li>
+                
+            
+                
+                    <li
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-cinema-accent
+                            "
+                            
+                                href="/repertuar"
+                                @click="mobileNavOpen = false"
+                            
+                            aria-current="page"
+                        >
+                            <span>Repertuar</span>
+
+                            
+                        </a>
+
+                        
+                    </li>
+                
+            
+                
+                    <li
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-white hover:text-cinema-accent
+                            "
+                            
+                                href="/oferty-dla-szkol"
+                                @click="mobileNavOpen = false"
+                            
+                            
+                        >
+                            <span>Oferty dla szkół</span>
+
+                            
+                        </a>
+
+                        
+                    </li>
+                
+            
+                
+                    <li
+                        
+                            x-data="{ subnavOpen: $root.querySelector('[aria-current=page]') ? true : false }"
+                            @focusin.window="!$refs.subnav.contains($event.target) && (subnavOpen = false)"
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-white hover:text-cinema-accent
+                            "
+                            
+                                href="#"
+                                @click.prevent="subnavOpen = !subnavOpen"
+                                @click.outside="subnavOpen = false"
+                                :aria-label="subnavOpen ? 'Oferta - Zamknij podnawigację' : 'Oferta - Otwórz podnawigację'"
+                                :aria-expanded="subnavOpen"
+                            
+                            
+                        >
+                            <span>Oferta</span>
+
+                            
+                                <div :class="{ 'rotate-180': subnavOpen }" class="motion-safe:transition-transform">
+                                    <svg class="w-3 overflow-visible stroke-current" aria-hidden="true" stroke-width="24" viewBox="0 0 140 140"><path d="M135.625 42.648l-62.533 62.527a4.37 4.37 0 01-6.184 0L4.375 42.648" fill="none"/></svg>
+                                </div>
+                            
+                        </a>
+
+                        
+                            <ul
+                                x-show="subnavOpen"
+                                x-ref="subnav"
+                                class="flex flex-col items-stretch gap-y-2 pl-4 border-l-2 border-cinema-accent/30"
+                                x-collapse
+                            >
+                                
+                                    <li class="mt-2">
+                                        <a
+                                            class="
+                                                block py-2 whitespace-nowrap font-medium transition-colors
+                                                text-neutral-300 hover:text-cinema-accent
+                                            "
+                                            href="/oferty-reklamowe"
+                                            @click="mobileNavOpen = false"
+                                            
+                                        >
+                                            Oferty reklamowe
+                                        </a>
+                                    </li>
+                                
+                                    <li class="">
+                                        <a
+                                            class="
+                                                block py-2 whitespace-nowrap font-medium transition-colors
+                                                text-neutral-300 hover:text-cinema-accent
+                                            "
+                                            href="/promocje"
+                                            @click="mobileNavOpen = false"
+                                            
+                                        >
+                                            Promocje
+                                        </a>
+                                    </li>
+                                
+                                    <li class="">
+                                        <a
+                                            class="
+                                                block py-2 whitespace-nowrap font-medium transition-colors
+                                                text-neutral-300 hover:text-cinema-accent
+                                            "
+                                            href="/vouchery"
+                                            @click="mobileNavOpen = false"
+                                            
+                                        >
+                                            Vouchery
+                                        </a>
+                                    </li>
+                                
+                                    <li class="">
+                                        <a
+                                            class="
+                                                block py-2 whitespace-nowrap font-medium transition-colors
+                                                text-neutral-300 hover:text-cinema-accent
+                                            "
+                                            href="/honorowane-karty"
+                                            @click="mobileNavOpen = false"
+                                            
+                                        >
+                                            Honorowane karty
+                                        </a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </li>
+                
+            
+                
+                    <li
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-white hover:text-cinema-accent
+                            "
+                            
+                                href="/projekty"
+                                @click="mobileNavOpen = false"
+                            
+                            
+                        >
+                            <span>Projekty</span>
+
+                            
+                        </a>
+
+                        
+                    </li>
+                
+            
+                
+                    <li
+                        
+                        class="leading-none"
+                    >
+                        <a
+                            class="
+                                w-full py-3 flex items-center gap-x-2 text-xl font-bold transition-colors
+                                text-white hover:text-cinema-accent
+                            "
+                            
+                                href="/kontakt"
+                                @click="mobileNavOpen = false"
+                            
+                            
+                        >
+                            <span>Kontakt</span>
+
+                            
+                        </a>
+
+                        
+                    </li>
+                
+            
+        </ul>
+
+    </div>
+    </template>
+</nav>
+<!-- End: /navigation/_main_mobile.antlers.html -->
+
+
+
+        </div>
+    </div>
+</header>
+<!-- End: /layout/_header.antlers.html -->
+
+        <!-- /default.antlers.html -->
+<main class="pb-6 md:pb-8 lg:pb-12 stack-6 md:stack-8 lg:stack-12" id="content">
+    
+        <!-- /components/_page_title.antlers.html -->
+<div class="fluid-grid py-6 md:py-8 border-b border-white/5">
+    <div class="span-content">
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3">
+            Repertuar
+        </h1>
+        
+        <p class="text-lg text-neutral-400">
+            Sprawdź aktualne seanse i kup bilet online
+        </p>
+        
+    </div>
+</div>
+<!-- End: /components/_page_title.antlers.html -->
+
+    
+
+    
+        <!-- /page_builder/_repertoire.antlers.html -->
+
+<script>
+document.addEventListener('alpine:init', () => {
+    // Generate movies array from Statamic data
+    const movies = [
+        { dates: ['2026-10-09'], cats: ['animacja'] },
+        { dates: ['2026-09-26','2026-09-27'], cats: ['fantasy','komedia-romantyczna'] },
+        { dates: ['2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07'], cats: ['animacja'] },
+        { dates: ['2026-09-25','2026-09-26','2026-09-27','2026-09-28','2026-09-29'], cats: ['dramat'] },
+        { dates: ['2026-09-25','2026-09-26','2026-09-27','2026-09-28','2026-09-29','2026-09-30'], cats: ['animacja'] },
+        { dates: ['2026-09-30','2026-10-02','2026-10-02','2026-10-03','2026-10-03','2026-10-04','2026-10-04','2026-10-05','2026-10-05','2026-10-06','2026-10-06','2026-10-07','2026-10-07','2026-10-09','2026-10-09','2026-10-10','2026-10-10','2026-10-11','2026-10-11','2026-10-12','2026-10-12','2026-10-13','2026-10-13','2026-10-14','2026-10-14'], cats: ['dramat','romans'] },
+        { dates: ['2026-10-08'], cats: ['dramat'] },
+        { dates: ['2026-10-12'], cats: ['dramat'] },
+        { dates: ['2026-10-11'], cats: ['dokumentalny'] },
+        { dates: ['2026-09-25','2026-09-26','2026-09-27','2026-09-28','2026-09-29','2026-09-30'], cats: ['akcja','komedia'] }
+        
+    ];
+
+    // Generate dates array
+    const today = new Date();
+    const days = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb'];
+    const fullDays = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
+    const dates = [
+        { value: 'all', label: 'Wszystkie dni', shortLabel: 'Wszystkie', date: null }
+    ];
+
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const daysUntilEndOfMonth = Math.ceil((lastDayOfMonth - today) / (1000 * 60 * 60 * 24)) + 1;
+
+    for (let i = 0; i < daysUntilEndOfMonth; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const dayName = days[d.getDay()];
+        const fullDayName = fullDays[d.getDay()];
+        const dateStr = d.toISOString().split('T')[0];
+        const dayNum = d.getDate().toString().padStart(2, '0');
+        const monthNum = (d.getMonth() + 1).toString().padStart(2, '0');
+        let label = '';
+        let shortLabel = '';
+        if (i === 0) {
+            label = 'Dzisiaj';
+            shortLabel = 'Dziś';
+        } else if (i === 1) {
+            label = 'Jutro';
+            shortLabel = 'Jutro';
+        } else {
+            label = fullDayName + ', ' + dayNum + '.' + monthNum;
+            shortLabel = dayName + ' ' + dayNum + '.' + monthNum;
+        }
+        dates.push({
+            value: dateStr,
+            label: label,
+            shortLabel: shortLabel,
+            date: d
+        });
+    }
+
+    Alpine.store('repertoire', {
+        selectedDate: 'all',
+        selectedCategory: 'all',
+        dates: dates,
+        movies: movies,
+        get visibleCount() {
+            const date = this.selectedDate;
+            const cat = this.selectedCategory;
+            return this.movies.filter(m => {
+                const dateMatch = date === 'all' || m.dates.includes(date);
+                const catMatch = cat === 'all' || m.cats.some(c => c === cat);
+                return dateMatch && catMatch;
+            }).length;
+        },
+        countLabel(n) {
+            if (n === 1) return 'film';
+            if (n >= 2 && n <= 4) return 'filmy';
+            return 'filmów';
+        },
+        updateUrl() {
+            const params = new URLSearchParams(window.location.search);
+            if (this.selectedDate !== 'all') {
+                params.set('date', this.selectedDate);
+            } else {
+                params.delete('date');
+            }
+            if (this.selectedCategory !== 'all') {
+                params.set('category', this.selectedCategory);
+            } else {
+                params.delete('category');
+            }
+            const newUrl = params.toString() ? window.location.pathname + '?' + params : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+    });
+});
+</script>
+<section
+    class="bg-cinema-bg pb-4 md:pb-8"
+    aria-label="Repertuar kina"
+    x-data
+    x-effect="$store.repertoire.selectedDate; $store.repertoire.selectedCategory; $store.repertoire.updateUrl();"
+>
+    <div class="fluid-grid">
+        
+        <div class="span-content mb-4">
+            <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            text-sm
+        "
+        
+        href="#informacje-o-biletach"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Informacje o biletach
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+
+        </div>
+
+        
+        <nav
+            class="span-content mb-6"
+            aria-label="Filtruj repertuar wedlug daty"
+            x-data="{
+                scrollContainer: null,
+                canScrollLeft: false,
+                canScrollRight: true,
+                init() {
+                    this.scrollContainer = this.$refs.scrollContainer;
+                    if (this.scrollContainer) {
+                        this.updateScrollButtons();
+                        this.scrollContainer.addEventListener('scroll', () => this.updateScrollButtons());
+                    }
+                },
+                updateScrollButtons() {
+                    if (!this.scrollContainer) return;
+                    this.canScrollLeft = this.scrollContainer.scrollLeft > 0;
+                    this.canScrollRight = this.scrollContainer.scrollLeft < (this.scrollContainer.scrollWidth - this.scrollContainer.clientWidth - 5);
+                },
+                scrollLeft() {
+                    this.scrollContainer.scrollBy({ left: -200, behavior: 'smooth' });
+                },
+                scrollRight() {
+                    this.scrollContainer.scrollBy({ left: 200, behavior: 'smooth' });
+                }
+            }"
+        >
+            
+            <div class="flex items-center justify-between mb-3">
+                <p
+                    id="date-filter-label"
+                    class="text-sm text-neutral-500 font-medium uppercase tracking-wide"
+                >
+                    Wybierz dzień
+                </p>
+
+                
+                <div class="flex items-center gap-1 md:hidden">
+                    <button
+                        type="button"
+                        @click="scrollLeft()"
+                        :disabled="!canScrollLeft"
+                        :class="canScrollLeft ? 'opacity-100' : 'opacity-30 cursor-not-allowed'"
+                        class="flex items-center justify-center w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 text-white active:bg-neutral-700 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent"
+                        aria-label="Przewin daty w lewo"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        @click="scrollRight()"
+                        :disabled="!canScrollRight"
+                        :class="canScrollRight ? 'opacity-100' : 'opacity-30 cursor-not-allowed'"
+                        class="flex items-center justify-center w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 text-white active:bg-neutral-700 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent"
+                        aria-label="Przewin daty w prawo"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            
+            <div
+                x-ref="scrollContainer"
+                class="md:hidden -mx-4 px-4 overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent pb-2 scroll-smooth snap-x"
+                role="group"
+                aria-labelledby="date-filter-label"
+            >
+                <div class="flex gap-2 w-max">
+                    <template x-for="(dateItem, index) in $store.repertoire.dates" :key="dateItem.value">
+                        <button
+                            type="button"
+                            @click="$store.repertoire.selectedDate = dateItem.value"
+                            :class="{
+                                'bg-cinema-accent text-black border-cinema-accent shadow-lg shadow-cinema-accent/20': $store.repertoire.selectedDate === dateItem.value,
+                                'bg-neutral-800 text-white border-neutral-700 hover:border-neutral-500 hover:bg-neutral-700': $store.repertoire.selectedDate !== dateItem.value
+                            }"
+                            class="snap-start px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cinema-bg min-h-[44px]"
+                            :aria-pressed="$store.repertoire.selectedDate === dateItem.value"
+                            x-text="dateItem.shortLabel"
+                        ></button>
+                    </template>
+                </div>
+            </div>
+
+            
+            <div
+                class="hidden md:flex md:flex-wrap md:gap-2"
+                role="group"
+                aria-labelledby="date-filter-label"
+            >
+                <template x-for="(dateItem, index) in $store.repertoire.dates" :key="dateItem.value">
+                    <button
+                        type="button"
+                        @click="$store.repertoire.selectedDate = dateItem.value"
+                        :class="{
+                            'bg-cinema-accent text-black border-cinema-accent shadow-lg shadow-cinema-accent/20': $store.repertoire.selectedDate === dateItem.value,
+                            'bg-neutral-800 text-white border-neutral-700 hover:border-neutral-500 hover:bg-neutral-700': $store.repertoire.selectedDate !== dateItem.value
+                        }"
+                        class="px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cinema-bg min-h-[44px]"
+                        :aria-pressed="$store.repertoire.selectedDate === dateItem.value"
+                        x-text="dateItem.label"
+                    ></button>
+                </template>
+            </div>
+        </nav>
+
+        
+        <div class="span-content mb-4">
+            <label for="category-filter" class="block text-sm text-neutral-500 font-medium uppercase tracking-wide mb-3">
+                Wybierz kategorię
+            </label>
+            <select
+                id="category-filter"
+                x-model="$store.repertoire.selectedCategory"
+                class="w-full sm:w-auto sm:min-w-[220px] bg-neutral-800 border border-neutral-700 text-white rounded-lg pl-4 pr-10 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cinema-accent focus:border-cinema-accent transition-all duration-200 cursor-pointer hover:border-neutral-500 min-h-[44px]"
+            >
+                <option value="all">Wszystkie kategorie</option>
+                
+                    <option value="akcja" >Akcja</option>
+                
+                    <option value="animacja" >Animacja</option>
+                
+                    <option value="biograficzny" >Biograficzny</option>
+                
+                    <option value="czarna-komedia" >Czarna komedia</option>
+                
+                    <option value="dokumentalny" >Dokumentalny</option>
+                
+                    <option value="dramat" >Dramat</option>
+                
+                    <option value="dramat-romantyczny" >Dramat romantyczny</option>
+                
+                    <option value="dramat-spoleczny" >Dramat społeczny</option>
+                
+                    <option value="familijny" >Familijny</option>
+                
+                    <option value="fantasy" >Fantasy</option>
+                
+                    <option value="historyczny" >Historyczny</option>
+                
+                    <option value="horror" >Horror</option>
+                
+                    <option value="komedia" >Komedia</option>
+                
+                    <option value="komedia-animowana" >Komedia animowana</option>
+                
+                    <option value="komedia-przygodowa" >Komedia przygodowa</option>
+                
+                    <option value="komedia-romantyczna" >Komedia romantyczna</option>
+                
+                    <option value="komedia-swiateczna" >Komedia świąteczna</option>
+                
+                    <option value="komediodramat" >Komediodramat</option>
+                
+                    <option value="kryminal" >Kryminał</option>
+                
+                    <option value="melodramat" >Melodramat</option>
+                
+                    <option value="musical" >Musical</option>
+                
+                    <option value="muzyczny" >Muzyczny</option>
+                
+                    <option value="obyczajowy" >Obyczajowy</option>
+                
+                    <option value="przygodowy" >Przygodowy</option>
+                
+                    <option value="psychologiczny" >Psychologiczny</option>
+                
+                    <option value="religijny" >Religijny</option>
+                
+                    <option value="retransmisja" >Retransmisja</option>
+                
+                    <option value="romans" >Romans</option>
+                
+                    <option value="sci-fi" >Sci-Fi</option>
+                
+                    <option value="sensacyjny" >Sensacyjny</option>
+                
+                    <option value="thriller" >Thriller</option>
+                
+                    <option value="thriller-historyczny" >Thriller historyczny</option>
+                
+                    <option value="wojenny" >Wojenny</option>
+                
+            </select>
+        </div>
+
+        
+        <div class="span-content mb-8">
+            <p class="text-neutral-400 text-sm">
+                Znaleziono
+                <span class="text-white font-bold" x-text="$store.repertoire.visibleCount"></span>
+                <span x-text="$store.repertoire.countLabel($store.repertoire.visibleCount)"></span>
+            </p>
+        </div>
+
+        
+        <div
+            class="span-xl"
+            role="feed"
+            aria-label="Lista filmow w repertuarze"
+            aria-busy="false"
+        >
+            <div class="flex flex-col space-y-6">
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-09-30,2026-10-02,2026-10-02,2026-10-03,2026-10-03,2026-10-04,2026-10-04,2026-10-05,2026-10-05,2026-10-06,2026-10-06,2026-10-07,2026-10-07,2026-10-09,2026-10-09,2026-10-10,2026-10-10,2026-10-11,2026-10-11,2026-10-12,2026-10-12,2026-10-13,2026-10-13,2026-10-14,2026-10-14', cats: 'dramat,romans' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/lalka"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL2xhbGthL2RpZ2l0YWwtcG9zdGVyLmpwZw/digital-poster.jpg?w=300&h=450&fit=crop&s=663a21b7c205430c546741dea3324581"
+                    alt="LALKA - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                     
+                    <span
+                        class="inline-block bg-cinema-accent text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider"
+                    >
+                        Premiera
+                    </span>
+                      
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        13+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/lalka"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        LALKA
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Dramat, Romans</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>160 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">Wersja oryginalna</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Maciej Kawalski
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej,...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/lalka"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/DmmBAXjbZWk?si=vJkc56MDzuSD8Zvb"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Śr 30.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        So 3.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        So 3.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 4.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                        
+                            
+                            
+                        
+                    
+                    
+                        <!-- /components/_screening_more_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    class="
+        inline-flex items-center justify-center border border-dashed border-neutral-600 rounded-lg
+        text-neutral-400 hover:border-cinema-accent hover:text-cinema-accent transition-colors
+        px-3 py-2 text-sm min-w-[70px]
+        
+    "
+>
+    +19
+</a>
+<!-- End: /components/_screening_more_button.antlers.html -->
+
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Śr 30.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+            
+                <!-- /components/_screening_more_button.antlers.html -->
+<a
+    href="/filmy/lalka#seanse"
+    class="
+        inline-flex items-center justify-center border border-dashed border-neutral-600 rounded-lg
+        text-neutral-400 hover:border-cinema-accent hover:text-cinema-accent transition-colors
+        px-2 sm:px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    +22
+</a>
+<!-- End: /components/_screening_more_button.antlers.html -->
+
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-09-25,2026-09-26,2026-09-27,2026-09-28,2026-09-29,2026-09-30', cats: 'animacja' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/luna-i-rozgadana-swinka"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL2x1bmEtaS1yb3pnYWRhbmEtc3dpbmthL2x1bmFfaV9yb3pnYWRhbmFfc3dpbmthX2IxLmpwZw/luna_i_rozgadana_swinka_b1.jpg?w=300&h=450&fit=crop&s=761c4fa0d6c24dc19c625912d04df4e0"
+                    alt="LUNA I ROZGADANA ŚWINKA - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                     
+                    <span
+                        class="inline-block bg-cinema-accent text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider"
+                    >
+                        Premiera
+                    </span>
+                      
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        7+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/luna-i-rozgadana-swinka"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        LUNA I ROZGADANA ŚWINKA
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Animacja</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>90 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">dubbing PL</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Philippe Riche
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Jeden z twórców „Artura i Minimków” Philippe Riche zaprasza na widowiskową, pełną humoru i wyobraźni animację, która łączy przygodę z mądrym przesłani...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/luna-i-rozgadana-swinka"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/9vQihQhstxc?si=kEwTjyUeWYFP_D5U"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                    
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Śr 30.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+            
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+            
+                <!-- /components/_screening_more_button.antlers.html -->
+<a
+    href="/filmy/luna-i-rozgadana-swinka#seanse"
+    class="
+        inline-flex items-center justify-center border border-dashed border-neutral-600 rounded-lg
+        text-neutral-400 hover:border-cinema-accent hover:text-cinema-accent transition-colors
+        px-2 sm:px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    +1
+</a>
+<!-- End: /components/_screening_more_button.antlers.html -->
+
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-09-25,2026-09-26,2026-09-27,2026-09-28,2026-09-29,2026-09-30', cats: 'akcja,komedia' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/100-dni-misja-zeus"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzLzEwMC1kbmktbWlzamEtemV1cy8xMDAtZG5pLi1taXNqYS16ZXVzLXBsYWthdC1jeWZyb3d5XzEwODB4MTkyMC1mdWxsaGQucG5n/100-dni.-misja-zeus-plakat-cyfrowy_1080x1920-fullhd.png?w=300&h=450&fit=crop&s=47cfe05b62518e0fa8cac29824eb9b8a"
+                    alt="100 DNI: MISJA ZEUS - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                       
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        13+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/100-dni-misja-zeus"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        100 DNI: MISJA ZEUS
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Akcja, Komedia</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>110 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">Wersja oryginalna</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Mikołaj Piszczan
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Kontynuacja jednego z najgłośniejszych młodzieżowych filmów ostatnich lat. Tym razem bohaterowie wychodzą poza szkolne mury, a stawka jest większa niż...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/100-dni-misja-zeus"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/3aFA2uiS_zQ?si=dcovsADHO59kpQqx"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                    
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Śr 30.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+            
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        17:30
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+            
+                <!-- /components/_screening_more_button.antlers.html -->
+<a
+    href="/filmy/100-dni-misja-zeus#seanse"
+    class="
+        inline-flex items-center justify-center border border-dashed border-neutral-600 rounded-lg
+        text-neutral-400 hover:border-cinema-accent hover:text-cinema-accent transition-colors
+        px-2 sm:px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    +1
+</a>
+<!-- End: /components/_screening_more_button.antlers.html -->
+
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-10-11', cats: 'dokumentalny' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/dzien-dziecka-ksiedza-jana-kaczkowskiego"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL2R6aWVuLWR6aWVja2Eta3NpZWR6YS1qYW5hLWthY3prb3dza2llZ28vZHppZW4tZHppZWNrYS1rcy1qYW5hLWthY3prb3dza2llZ28tcGxha2F0LmpwZw/dzien-dziecka-ks-jana-kaczkowskiego-plakat.jpg?w=300&h=450&fit=crop&s=be35893e34d196d493f81db99d657e4b"
+                    alt="DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                     
+                    <span
+                        class="inline-block bg-purple-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider"
+                    >
+                        Wydarzenie
+                    </span>
+                      
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        12+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/dzien-dziecka-ksiedza-jana-kaczkowskiego"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Dokumentalny</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>76 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">Wersja oryginalna</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Artur Wierzbicki
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Ksiądz Jan Kaczkowski – charyzmatyczny duchowny i zwykły błądzący człowiek. Naznaczony nieuleczalną chorobą, samozwańczy „onkocelebryta”, który walczy...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/dzien-dziecka-ksiedza-jana-kaczkowskiego"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/Gfwwa5HwBjE?si=SkqzR9J5igceqAm-"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/dzien-dziecka-ksiedza-jana-kaczkowskiego#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 11.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        13:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/dzien-dziecka-ksiedza-jana-kaczkowskiego#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 11.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        13:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-10-12', cats: 'dramat' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/eleonora-wspaniala-senior-w-kinie-cykl-filmowy-dla-widzow-60"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL2VsZW9ub3JhLXdzcGFuaWFsYS1zZW5pb3Itdy1raW5pZS1jeWtsLWZpbG1vd3ktZGxhLXdpZHpvdy02MC9zZW5pb3ItcGxha2F0LWZiLnBuZw/senior-plakat-fb.png?w=300&h=450&fit=crop&s=b462be9ec3c788d300182bd593b3254f"
+                    alt="ELEONORA WSPANIAŁA - "SENIOR W KINIE" Cykl filmowy dla widzów 60+ - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                     
+                    <span
+                        class="inline-block bg-purple-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider"
+                    >
+                        Wydarzenie
+                    </span>
+                      
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        15+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/eleonora-wspaniala-senior-w-kinie-cykl-filmowy-dla-widzow-60"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        ELEONORA WSPANIAŁA - "SENIOR W KINIE" Cykl filmowy dla widzów 60+
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Dramat</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>98 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">napisy PL</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Scarlett Johansson
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Eleanor Morgenstein przenosi się z Florydy do Nowego Jorku, aby zamieszkać z córką i wnukiem, z nadzieją, że nawiąże z nimi więź. Zamiast tego czuje s...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/eleonora-wspaniala-senior-w-kinie-cykl-filmowy-dla-widzow-60"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/cKS5LzTB8jw?si=6LVHcWtCVc-z_BTS"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/eleonora-wspaniala-senior-w-kinie-cykl-filmowy-dla-widzow-60#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pn 12.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        11:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/eleonora-wspaniala-senior-w-kinie-cykl-filmowy-dla-widzow-60#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pn 12.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        11:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-10-08', cats: 'dramat' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/gorzkie-swieta-kino-konesera"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL2dvcnpraWUtc3dpZXRhLWtpbm8ta29uZXNlcmEvZ29yemtpZS1zd2lldGFfcGxha2F0X3BsX2hxLmpwZw/gorzkie-swieta_plakat_pl_hq.jpg?w=300&h=450&fit=crop&s=08ffbb35c20a5bb9736637923313fecc"
+                    alt="GORZKIE ŚWIĘTA - KINO KONESERA - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                     
+                    <span
+                        class="inline-block bg-purple-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider"
+                    >
+                        Wydarzenie
+                    </span>
+                      
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        15+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/gorzkie-swieta-kino-konesera"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        GORZKIE ŚWIĘTA - KINO KONESERA
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Dramat</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>112 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">napisy PL</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Pedro Almodóvar
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Pedro Almodóvar powraca w szczytowej formie z jednym ze swoich najbardziej osobistych filmów. W „Gorzkich świętach” - jego pierwszej od 5 lat hiszpańs...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/gorzkie-swieta-kino-konesera"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/sZiiP7todmk?si=5qhJDBh4Y2iE2Du8"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/gorzkie-swieta-kino-konesera#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Cz 8.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/gorzkie-swieta-kino-konesera#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Cz 8.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        17:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-09-25,2026-09-26,2026-09-27,2026-09-28,2026-09-29', cats: 'dramat' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/powiedz-mi-co-czujesz"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL3Bvd2llZHotbWktY28tY3p1amVzei9wbWNjX2IxX2xhdXJ5X2wuanBn/pmcc_b1_laury_l.jpg?w=300&h=450&fit=crop&s=f7bfde8323741c1a63943152f01c14f7"
+                    alt="POWIEDZ MI, CO CZUJESZ - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                       
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        15+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/powiedz-mi-co-czujesz"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        POWIEDZ MI, CO CZUJESZ
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Dramat</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>104 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">Wersja oryginalna</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Łukasz Ronduda
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    „Powiedz mi, co czujesz” to subtelna opowieść o miłości dwojga młodych artystów, dla których pierwszy poważny związek w dorosłym życiu staje się lustr...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/powiedz-mi-co-czujesz"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/-gi8nuA6FRY?si=yNbC6S1C_n3gVT9F"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                    
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+            
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pn 28.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/powiedz-mi-co-czujesz#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Wt 29.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        20:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-10-02,2026-10-03,2026-10-04,2026-10-05,2026-10-06,2026-10-07', cats: 'animacja' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/tedi-i-magiczna-lampa"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL3RlZGktaS1tYWdpY3puYS1sYW1wYS90ZWRpLWktbWFnaWN6bmEtbGFtcGEtcGxha2F0X25ldC5qcGcuanBn/tedi-i-magiczna-lampa-plakat_net.jpg.jpg?w=300&h=450&fit=crop&s=e0f81ef2ae595a1b1256a42a515021f1"
+                    alt="TEDI I MAGICZNA LAMPA - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                       
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        6+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/tedi-i-magiczna-lampa"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        TEDI I MAGICZNA LAMPA
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Animacja</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>94 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">dubbing PL</span>
+                    
+                </p>
+
+                  
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Oli, nieustraszona dwuletnia córka Tediego, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu B...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/tedi-i-magiczna-lampa"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/Wwrcx9LnBmw?si=YnVAuS7NOnzi9NoZ"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        So 3.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 4.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pn 5.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Wt 6.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Śr 7.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pt 2.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        So 3.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 4.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+                
+                    
+                    
+                
+            
+            
+                <!-- /components/_screening_more_button.antlers.html -->
+<a
+    href="/filmy/tedi-i-magiczna-lampa#seanse"
+    class="
+        inline-flex items-center justify-center border border-dashed border-neutral-600 rounded-lg
+        text-neutral-400 hover:border-cinema-accent hover:text-cinema-accent transition-colors
+        px-2 sm:px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    +3
+</a>
+<!-- End: /components/_screening_more_button.antlers.html -->
+
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-09-26,2026-09-27', cats: 'fantasy,komedia-romantyczna' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/totalna-magia-2-1"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL3RvdGFsbmEtbWFnaWEtMi9wbF9wbWFnMl92ZXJ0X21haW5fMjc2NHg0MDk2X2ludGwuanBn/pl_pmag2_vert_main_2764x4096_intl.jpg?w=300&h=450&fit=crop&s=fde182f5845c88b759e8f14d7d5267b2"
+                    alt="TOTALNA MAGIA 2 - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                       
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        13+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/totalna-magia-2-1"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        TOTALNA MAGIA 2
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Fantasy, Komedia romantyczna</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>130 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">dubbing PL</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. SUSANNE BIER
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Magia powraca. TOTALNA MAGIA 2 w kinach od 11 września!#TotalnaMagia2 Sandra Bullock i Nicole Kidman, grające główne role w filmie Totalna magia 2, po...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/totalna-magia-2-1"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/EwYh2erdnG8?si=6H0LvZihMVjYm1AV"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/totalna-magia-2-1#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        13:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/totalna-magia-2-1#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Nd 27.09
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        13:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+                <div
+                    class="movie-item"
+                    x-data="{ dates: '2026-10-09', cats: 'animacja' }"
+                    x-show="($store.repertoire.selectedDate === 'all' || dates.split(',').includes($store.repertoire.selectedDate)) && ($store.repertoire.selectedCategory === 'all' || cats.split(',').includes($store.repertoire.selectedCategory))"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                >
+                    <!-- /components/_movie_card_horizontal.antlers.html -->
+
+<article
+    class="flex flex-col bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-neutral-500 transition-all duration-300 group"
+>
+    
+    <div class="flex flex-row">
+        
+        <div class="relative flex-shrink-0 self-stretch min-w-16 max-w-24 sm:min-w-24 sm:max-w-32 md:min-w-32 md:max-w-40 lg:min-w-0 lg:max-w-none">
+            <a
+                href="/filmy/vincent-legenda-oceanu"
+                class="block h-full bg-neutral-700 overflow-hidden"
+            >
+                
+                <img
+                    src="/img/asset/aW1hZ2VzL3ZpbmNlbnQtbGVnZW5kYS1vY2VhbnUvdmluY2VudC4tbGVnZW5kYS1vY2VhbnUtcGxha2F0LW9ubGluZS5qcGc/vincent.-legenda-oceanu-plakat-online.jpg?w=300&h=450&fit=crop&s=693c4afe90ed9171df3beab289e8546a"
+                    alt="VINCENT. LEGENDA OCEANU - plakat"
+                    class="object-cover h-full w-auto aspect-[2/3] group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+            </a>
+        </div>
+
+        
+        <div class="flex-grow flex flex-col min-w-0">
+            
+            <div class="p-2 sm:p-4 flex flex-col min-w-0">
+                
+                <div class="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                       
+                    <span
+                        class="inline-block bg-neutral-700 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20"
+                    >
+                        6+
+                    </span>
+                    
+                </div>
+
+                
+                <h3 class="text-sm sm:text-lg md:text-xl lg:text-lg font-bold text-white leading-tight mb-1 sm:mb-2">
+                    <a
+                        href="/filmy/vincent-legenda-oceanu"
+                        class="inline hover:text-cinema-accent transition-colors line-clamp-2"
+                    >
+                        VINCENT. LEGENDA OCEANU
+                    </a>
+                </h3>
+
+                
+                <p class="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 mb-1 sm:mb-2">
+                    
+                        <span>Animacja</span>
+                    
+                    
+                        <span class="text-neutral-500">|</span>
+                        <span>91 min</span>
+                    
+                    
+                        <span class="hidden sm:inline text-neutral-500">|</span>
+                        <span class="hidden sm:inline">dubbing PL</span>
+                    
+                </p>
+
+                 
+                <p class="hidden sm:block text-xs text-neutral-300">
+                    Reż. Reza Memari
+                </p>
+                 
+                
+                <p
+                    class="hidden md:block text-sm text-neutral-300 line-clamp-2 mt-2"
+                >
+                    Film w niesamowity sposób przedstawia podwodny świat pełen ryb, ssaków, ukwiałów i innych stworzeń, który pod wpływem tajemniczej i złowrogiej siły st...
+                </p>
+                
+                <div class="flex gap-4 my-2">
+                    <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-cinema-accent border-2 border-cinema-accent text-black hover:bg-cinema-accent-hover hover:border-cinema-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-cinema-accent focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="/filmy/vincent-legenda-oceanu"
+
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zobacz więcej
+        </span>
+
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+  <!-- /components/_button.antlers.html -->
+
+    <a
+        class="
+            inline-flex items-center justify-center gap-1 font-bold transition-colors duration-200
+            px-6 py-3 rounded-lg leading-none no-underline select-none
+            bg-transparent border-2 border-white text-white hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900
+            px-6 py-3 text-sm md:text-base
+        "
+        
+        href="https://youtu.be/KcmQ7e95dUo?si=6lxE-P4ZF4j5VRy6"
+rel="noopener" target="_blank"
+
+
+
+
+
+    >
+        <span class="min-w-fit">
+            Zwiastun
+        </span>
+
+        
+            <span class="sr-only">(link zewnętrzny)</span>
+            <svg class="ml-1 w-3 h-3 fill-current" aria-hidden="true" alt="" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+        
+    </a>
+
+<!-- End: /components/_button.antlers.html -->
+ 
+                </div>
+            </div>
+
+             
+            <div class="hidden lg:block px-4 pb-4 mt-auto">
+                <p
+                    class="text-sm text-neutral-200 font-medium mb-2 uppercase tracking-wide"
+                >
+                    Najbliższe seanse
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    
+                    
+                        
+                            
+                                <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/vincent-legenda-oceanu#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-3 py-2 min-w-[70px]
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] mb-0.5
+    "
+    >
+        Pt 9.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                            
+                            
+                        
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+     
+    <div
+        class="lg:hidden px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5"
+    >
+        <p class="text-sm text-neutral-300 font-medium mb-2 uppercase tracking-wide">
+            Najbliższe seanse
+        </p>
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            
+            
+                
+                    
+                        <!-- /components/_screening_button.antlers.html -->
+<a
+    href="/filmy/vincent-legenda-oceanu#seanse"
+    
+    class="
+        inline-flex flex-col items-center justify-center bg-neutral-700 border border-neutral-600 rounded-lg
+        hover:border-cinema-accent hover:bg-neutral-600 transition-all duration-200
+        px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-[70px] min-h-[60px] sm:min-h-0
+        
+    "
+>
+    <span
+        class="
+        text-neutral-400 uppercase tracking-wide
+        text-[12px] sm:text-[12px]
+    "
+    >
+        Pt 9.10
+    </span>
+    <span
+        class="
+        font-bold text-white
+        text-xs sm:text-sm
+    "
+    >
+        15:00
+    </span>
+    
+</a>
+<!-- End: /components/_screening_button.antlers.html -->
+
+                    
+                    
+                
+            
+            
+        </div>
+    </div>
+    
+</article>
+
+<!-- End: /components/_movie_card_horizontal.antlers.html -->
+
+                </div>
+                
+            </div>
+
+            
+            <div
+                x-show="$store.repertoire.visibleCount === 0"
+                x-cloak
+                class="text-center py-12"
+            >
+                <svg
+                    class="w-16 h-16 text-neutral-700 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+                    ></path>
+                </svg>
+                <p class="text-neutral-400 text-lg">
+                    Brak filmów spełniających kryteria
+                </p>
+                <button
+                    type="button"
+                    @click="$store.repertoire.selectedDate = 'all'; $store.repertoire.selectedCategory = 'all'"
+                    class="mt-4 text-cinema-accent hover:underline focus:outline-none focus-visible:underline"
+                >
+                    Pokaż wszystkie filmy
+                </button>
+            </div>
+        </div>
+
+        
+        <aside
+            id="informacje-o-biletach"
+            class="span-content mt-12 p-6 bg-neutral-900/50 rounded-xl border border-white/5 scroll-mt-4"
+            aria-labelledby="info-heading"
+        >
+            <h2
+                id="info-heading"
+                class="text-lg font-semibold text-white mb-4 flex items-center gap-2"
+            >
+                <svg
+                    class="w-5 h-5 text-cinema-accent"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                </svg>
+                Informacje o biletach
+            </h2>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div class="flex items-start gap-3">
+                    <div
+                        class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0"
+                        aria-hidden="true"
+                    >
+                        <svg class="w-4 h-4 text-cinema-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Bilety ulgowe</p>
+                        <p class="text-neutral-400">
+                            Bilet ulgowy przysługuje dzieciom, osobom uczącym się do 25 roku życia, emerytom i rencistom oraz osobom, które ukończyły 60 rok życia. Do biletu ulgowego ma prawo również opiekun osoby niepełnosprawnej.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div
+                        class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0"
+                        aria-hidden="true"
+                    >
+                        <svg class="w-4 h-4 text-cinema-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Dzieci do lat 3</p>
+                        <p class="text-neutral-400">
+                            Wstęp bezpłatny na kolanach opiekuna
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div
+                        class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0"
+                        aria-hidden="true"
+                    >
+                        <svg class="w-4 h-4 text-cinema-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Płatności</p>
+                        <p class="text-neutral-400">Gotówka, karta, BLIK</p>
+                        <hr class="my-1" />
+                        <p class="text-neutral-400">Bilety</p>
+                        <ul class="text-neutral-400">
+                            <li>Normalny: 20 zł</li>
+                            <li>Ulgowy: 18 zł</li>
+                            <li>Senior w kinie (60+): 15 zł</li>
+                            <li>Rodzina 3+: 10 zł</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+<!-- End: /page_builder/_repertoire.antlers.html -->
+
+    
+</main>
+<!-- End: /default.antlers.html -->
+
+        <!-- /layout/_footer.antlers.html -->
+<footer
+    class="bg-black dark:bg-black text-neutral-400 border-t border-neutral-800 mt-auto"
+>
+    <div class="fluid-grid py-12">
+        <div class="span-content">
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                
+                <div class="col-span-1 md:col-span-2">
+                    <a
+                        href="/"
+                        class="inline-block mb-4"
+                        aria-label="Kino Gwiazda - Strona główna"
+                    >
+                        <img
+                            src="/visuals/logo_kino_gwiazda_neon.png"
+                            alt="Kino Gwiazda"
+                            class="h-12 w-auto select-none"
+                            aria-hidden="true"
+                        />
+                    </a>
+                    <p class="text-sm leading-relaxed max-w-sm mb-6 mt-4">
+                        Twoje miejsce na
+                        filmowej mapie miasta. Oferujemy najnowsze premiery w
+                        najwyższej jakości obrazu i dźwięku.
+                    </p>
+
+                     
+                    <div class="flex gap-4">
+                        
+                        <a
+                            href="https://www.facebook.com/kinogwiazda/?locale=pl_PL"
+                            rel="noopener"
+                            aria-label="Kino Gwiazda na Facebook"
+                            target="_blank"
+                            class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center hover:bg-cinema-accent hover:text-black transition-colors focus:ring-2 focus:ring-white"
+                        >
+                            <svg class="w-5 h-5
+                            overflow-visible fill-current" alt="" aria-hidden="true" viewBox="0 0 140 140"><path d="M105.817 41.825a2.917 2.917 0 00-2.159-.992H81.667v-8.225c0-1.633.35-3.5 2.975-3.5h17.5a2.567 2.567 0 002.041-.875A2.917 2.917 0 00105 26.25V2.917A2.917 2.917 0 00102.083 0H76.825c-28 0-30.158 23.917-30.158 31.208v9.625H32.083a2.917 2.917 0 00-2.916 2.917v23.333A2.917 2.917 0 0032.083 70h14.584v67.083A2.917 2.917 0 0049.583 140H78.75a2.917 2.917 0 002.917-2.917V70h19.541a2.917 2.917 0 002.917-2.625l2.45-23.333a2.917 2.917 0 00-.758-2.217z"/></svg>
+                        </a>
+                        
+                        <a
+                            href="https://www.instagram.com/kck_ketrzyn"
+                            rel="noopener"
+                            aria-label="Kino Gwiazda na Instagram"
+                            target="_blank"
+                            class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center hover:bg-cinema-accent hover:text-black transition-colors focus:ring-2 focus:ring-white"
+                        >
+                            <svg class="w-5 h-5
+                            overflow-visible fill-current" alt="" aria-hidden="true" viewBox="0 0 140 140"><path d="M102.083 0H37.917A37.975 37.975 0 000 37.917v64.166A37.975 37.975 0 0037.917 140h64.166A37.975 37.975 0 00140 102.083V37.917A37.975 37.975 0 00102.083 0zM70 102.083A32.083 32.083 0 11102.083 70 32.083 32.083 0 0170 102.083zm37.917-64.166a8.75 8.75 0 118.75-8.75 8.75 8.75 0 01-8.75 8.75z"/></svg>
+                        </a>
+                        
+                    </div>
+                    
+
+                    
+                    <a
+                        href="https://kck.ketrzyn.pl"
+                        target="_blank"
+                        rel="noopener"
+                        class="inline-flex items-center gap-1 mt-6 text-sm text-neutral-400 hover:text-cinema-accent transition-colors"
+                    >
+                        KCK Kętrzyńskie Centrum Kultury
+                        <svg class="w-3 h-3" viewBox="0 0 15 15" fill="currentColor"><path d="M5 1.95v2H2v9h9V10h2v4.95H0v-13z"/><path d="M15 0v7h-2V3.414l-7 7L4.586 9l6.999-7H7.167V0z"/></svg>
+                    </a>
+                </div>
+
+                
+                <div>
+                    <h3
+                        class="text-white font-bold mb-4 uppercase tracking-wider text-sm"
+                    >
+                        Na skróty
+                    </h3>
+                    <ul class="space-y-2 text-sm">
+                        
+                        <li>
+                            <a
+                                href="/"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Strona główna</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/repertuar"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Repertuar</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/projekty"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Projekty</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/kontakt"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Kontakt</a>
+                        </li>
+                        
+                    </ul>
+                </div>
+
+                
+                <div>
+                    <h3
+                        class="text-white font-bold mb-4 uppercase tracking-wider text-sm"
+                    >
+                        Pomoc
+                    </h3>
+                    <ul class="space-y-2 text-sm">
+                        
+                        <li>
+                            <a
+                                href="/regulamin"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Regulamin</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/polityka-prywatnosci"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Polityka prywatności</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/rodo"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >RODO</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/dostepnosc"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Dostępność</a>
+                        </li>
+                        
+                        <li>
+                            <a
+                                href="/cyberbezpieczenstwo"
+                                class="hover:text-cinema-accent transition-colors inline-block py-1"
+                            >Cyberbezpieczeństwo</a>
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
+
+            
+            
+            
+            <div class="border-t border-neutral-800 pt-8 mb-8">
+                <h3 class="text-white font-bold mb-6 uppercase tracking-wider text-sm text-center">
+                    Partnerzy
+                </h3>
+                <div class="flex flex-wrap justify-center items-center gap-6 md:gap-10">
+                    
+                    
+                    <a
+                        href="https://kck.ketrzyn.pl/"
+                        target="_blank"
+                        rel="noopener"
+                        class="transition-opacity hover:opacity-80"
+                        aria-label="Strona partnera: KĘTRZYŃSKIE CENTRUM KULTURY"
+                    >
+                    
+                        
+                        <img
+                            src="/img/asset/aW1hZ2VzL2JhbmVyeS9sb2dvLWtjay1iaWFsZS5wbmc/logo-kck-biale.png?w=240&h=120&fit=contain&s=cceda3cc404fb2a263d8e240f15cb066"
+                            alt="KĘTRZYŃSKIE CENTRUM KULTURY"
+                            class="h-20 md:h-24 w-auto object-contain"
+                        />
+                        
+                    
+                    </a>
+                    
+                    
+                    
+                    <a
+                        href="https://www.miastoketrzyn.pl/miasto-ketrzyn/"
+                        target="_blank"
+                        rel="noopener"
+                        class="transition-opacity hover:opacity-80"
+                        aria-label="Strona partnera: MIASTO KĘTRZYN"
+                    >
+                    
+                        
+                        <img
+                            src="/img/asset/aW1hZ2VzL2JhbmVyeS9sb2dvLnBuZw/logo.png?w=240&h=120&fit=contain&s=adc44dd1dedc397b3ceccd58b3f37402"
+                            alt="MIASTO KĘTRZYN"
+                            class="h-20 md:h-24 w-auto object-contain"
+                        />
+                        
+                    
+                    </a>
+                    
+                    
+                </div>
+            </div>
+            
+            
+
+            
+            <div
+                class="border-t border-neutral-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-neutral-500 gap-4"
+            >
+                <p>
+                    &copy; 2025  - 2026  Kino Gwiazda Kętrzyn | KCK. Wszelkie prawa zastrzeżone.
+                </p>
+                <p>Strona zgodna z wytycznymi WCAG 2.2</p>
+
+                 
+            </div>
+        </div>
+    </div>
+</footer>
+<!-- End: /layout/_footer.antlers.html -->
+
+    </body>
+</html>
+<!-- End: /layout.antlers.html -->
