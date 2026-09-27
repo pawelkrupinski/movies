@@ -1,0 +1,87 @@
+package clients.kino_wars
+
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import models.KinoWars
+import org.scalatest.OptionValues
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.KinoWarsClient
+import tools.{HttpFetch, HttpStatusException}
+
+import java.time.LocalDateTime
+import scala.collection.mutable
+
+/** Replays the 2026-09-27 capture of Kino Wars' own repertoire
+ *  (`kino.wysokiemazowieckie.pl/repertuar` + its `?start=15` second page) — one
+ *  Joomla blog post per film with "DD.MM.YYYY r. - godz. HH:MM" date lines.
+ *
+ *  Fixture directory: test/resources/fixtures/kino-wars/ (recorded with
+ *  RecordingHttpFetch over RealHttpFetch). */
+class KinoWarsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
+
+  private val requested = mutable.Buffer.empty[String]
+  private val http = new HttpFetch {
+    private val fixtures = new FakeHttpFetch("kino-wars")
+    def get(url: String): String = { requested += url; fixtures.get(url) }
+    def post(url: String, body: String, contentType: String): String = fixtures.post(url, body, contentType)
+  }
+  private val movies = new KinoWarsClient(http).fetch()
+
+  private def film(title: String) = movies.find(_.movie.title == title).value
+
+  "KinoWarsClient" should "read every page of the paginated repertoire" in {
+    requested shouldBe Seq(KinoWarsClient.RepertoireUrl, s"${KinoWarsClient.RepertoireUrl}?start=15")
+    movies.map(_.cinema).toSet shouldBe Set(KinoWars)
+    movies.size shouldBe 12
+    movies.flatMap(_.showtimes).size shouldBe 60
+  }
+
+  it should "pin a film's exact showtimes, each booking through its iKsoris ticket page" in {
+    val gwiazdozbior = film("Gwiazdozbiór psa")
+    gwiazdozbior.showtimes.map(_.dateTime) shouldBe Seq(
+      LocalDateTime.of(2026, 9, 25, 17, 0),
+      LocalDateTime.of(2026, 9, 26, 20, 0),
+      LocalDateTime.of(2026, 9, 27, 17, 0),
+      LocalDateTime.of(2026, 9, 30, 20, 0),
+      LocalDateTime.of(2026, 10, 1, 17, 0)
+    )
+    gwiazdozbior.showtimes.flatMap(_.bookingUrl).distinct shouldBe
+      Seq("http://bilety.kino.wysokiemazowieckie.pl/rezerwacja/termin.html?idl=0&idg=0&idw=847&d=3")
+    all(gwiazdozbior.showtimes.map(_.format)) shouldBe List("NAP")
+  }
+
+  it should "emit the runtime, genres, age rating, poster, trailer and synopsis the post carries" in {
+    val gwiazdozbior = film("Gwiazdozbiór psa")
+    gwiazdozbior.movie.runtimeMinutes.value shouldBe 119
+    gwiazdozbior.movie.genres shouldBe Seq("Akcja", "przygodowy", "sci-fi", "thriller")
+    gwiazdozbior.ageRating.value shouldBe "14"
+    gwiazdozbior.posterUrl.value shouldBe
+      "https://kino.wysokiemazowieckie.pl/images/filmy/2026/Gwiazdozbiór_Psa_-_plakat_główny_net_zmniejszony.jpg"
+    gwiazdozbior.filmUrl.value shouldBe "https://kino.wysokiemazowieckie.pl/repertuar/gwiazdozbior-psa"
+    gwiazdozbior.trailerUrl.value shouldBe "https://www.youtube.com/watch?v=WHlue-wpHcE"
+    gwiazdozbior.synopsis.value should startWith("Gwiazdozbiór psa w reżyserii Ridleya Scotta")
+    gwiazdozbior.synopsis.value should not include "UWAGA"
+  }
+
+  it should "strip the '/ PL' Polish-film suffix, keeping the raw title" in {
+    val zeus = film("100 dni: Misja Zeus")
+    zeus.movie.rawTitle.value shouldBe "100 dni: Misja Zeus / PL"
+    zeus.movie.runtimeMinutes.value shouldBe 113
+    zeus.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 27, 20, 0))
+  }
+
+  it should "read two shows on one date line ('godz. 17:00 i 20:00')" in {
+    film("Królowe życia - spektakl").showtimes.map(_.dateTime) shouldBe Seq(
+      LocalDateTime.of(2026, 10, 2, 17, 0),
+      LocalDateTime.of(2026, 10, 2, 20, 0)
+    )
+  }
+
+  it should "drop an announced film with no screening dates yet" in {
+    movies.map(_.movie.title) should not contain "Luna i rozgadana świnka"
+  }
+
+  it should "propagate a fetch failure instead of reporting an empty (white) scrape" in {
+    a[HttpStatusException] should be thrownBy new KinoWarsClient(new FailingHttpFetch(503)).fetch()
+  }
+}
