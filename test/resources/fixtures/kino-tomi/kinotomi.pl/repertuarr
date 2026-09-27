@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <base href="https://kinotomi.pl/"/>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width,            initial-scale=1.0,            maximum-scale=1.0,            user-scalable=no"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>KinoTomi - Repertuar</title>
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+         <meta name="author" content="BORTOS Production">
+          <link rel="shortcut icon" href="files/sites/5873/20201009_140004_1001452111.png" type="image/png">
+    <link rel="icon" href="files/sites/5873/20201009_140004_1001452111.png" type="image/png">
+        <link rel="stylesheet" href="template/kinotomi/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/css/bootstrapBT.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/all.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/animate.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/flaticon.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/magnific-popup.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/odometer.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/owl.carousel.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/owl.theme.default.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/nice-select.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/jquery.animatedheadline.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/main.css?v=49">
+    <link rel="shortcut icon" href="template/kinotomi/assets/images/favicon.png" type="image/x-icon">
+    
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-53GR3LK');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-68774732-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-68774732-1');
+    </script>
+
+    
+    <link rel="stylesheet" href="modules/popup/css/popup.css?v=1717950609" type="text/css">
+<link rel="stylesheet" href="libs/js/notifIt/notifIt.css" type="text/css">
+ 
+    <style>
+        /* Styl dla popupa */
+        .popup-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .popup-content {
+            display: none;
+            position: absolute;
+            left: -150px; /* Ustaw odpowiednią odległość od lewej strony */
+            top: 0;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1;
+        }
+
+        .popup-container:hover .popup-content {
+            display: block;
+        }
+    </style>
+    <div class="cookie-banner" id="cookieBanner">
+        <p>Nasza strona używa ciasteczek, aby zapewnić najlepsze doświadczenie użytkownika. Kontynuując korzystanie z naszej strony, zgadzasz się na używanie ciasteczek. <a href="https://kinotomi.pl/files/files/3048/20201013_232423_368198138.pdf" style="color: #4CAF50;">Dowiedz się więcej</a>.</p>
+        <button onclick="acceptCookies()">Akceptuję</button>
+    </div>
+</head>
+
+
+<body>
+
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-53GR3LK"
+                  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+
+<!-- ==========Preloader========== --><div class="preloader">    <div class="preloader-inner">        <div class="preloader-icon">            <span></span>            <span></span>        </div>    </div>    </div></div>
+<!-- ==========Preloader========== --><!-- ==========Overlay========== -->
+<div class="overlay"></div>
+<a href="#0" class="scrollToTop"> <i class="fas fa-angle-up"></i></a><!-- ==========Overlay========== -->
+<!-- ==========Header-Section========== -->
+<header class="header-section" style="background: #0a1e5e;">
+    <div class="container" style="max-width: 1300px;">
+        <div class="header-wrapper">             <div class="logo"><a href="/"> <img alt="KinoTomi - Repertuar - Logo" src="files/sites/9217/20221209_173350_185886706.png"> </a></div>
+                         <ul class="menu">                 <li class="color-3"><a class="nav-link " href="/repertuarr">Repertuar </a>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="filmy/na-ekranie">Filmy </a>
+                                        <ul class="submenu">                         <li><a href="filmy/na-ekranie" target="_self">Aktualnie na ekranach </a></li>
+                                                <li><a href="filmy/zapowiedzi" target="_self">Zapowiedzi </a></li>
+                                                <li><a href="filmy/archiwum" target="_self">Archiwum </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="">TOMI DZIECIOM </a>
+                                        <ul class="submenu">                         <li><a href="3-seanse-szkolne" target="_self">TOMI Z KLASĄ </a></li>
+                                                <li><a href="18-seanse-przyjazne-sensorycznie" target="_self">SEANSE PRZYJAZNE SENSORYCZNIE </a></li>
+                                                <li><a href="19-iedzielne-poranki" target="_self">NIEDZIELNE PORANKI </a></li>
+                                                <li><a href="35-polityka-ochrony-maloletnich" target="_self">POLITYKA OCHRONY MAŁOLETNICH </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="">NASZE PROJEKTY </a>
+                                        <ul class="submenu">                         <li><a href="4-tomi-dla-kobiet" target="_self">TOMI DLA KOBIET </a></li>
+                                                <li><a href="17-maratony" target="_self">MARATONY KINA TOMI </a></li>
+                                                <li><a href="5-akademia-filmowa" target="_self">AKADEMIA FILMOWA </a></li>
+                                                <li><a href="20-kino-z-krzyzykiem" target="_self">KINO Z KRZYŻYKIEM </a></li>
+                                                <li><a href="24-oferta-firmowa" target="_self">OFERTA FIRMOWA </a></li>
+                                                <li><a href="21-tomi-dzieciom" target="_self">TOMI DZIECIOM </a></li>
+                                                <li><a href="23-kocham-dziwne-kino" target="_self">KOCHAM DZIWNE KINO </a></li>
+                                                <li><a href="25-kino-plenerowe" target="_self">KINO PLENEROWE </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="1-cennik">Cennik </a>
+                                        <ul class="submenu">                         <li><a href="1-cennik" target="_self">BIlety </a></li>
+                                                <li><a href="7-bilety-zbiorowe" target="_self">Bilety zbiorowe </a></li>
+                                                <li><a href="8-vouchery-i-karnety" target="_self">Vouchery i karnety </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="kontakt">Kontakt </a>
+                                    </li>
+                                 <li class="header-button pr-0">  <a
+                        href="uzytkownik/logowanie">Zaloguj</a>                 </li>
+            </ul>
+                        <div class="header-bar d-lg-none"><span></span> <span></span> <span></span></div>
+        </div>
+    </div>
+
+
+</header><!-- ==========Header-Section========== -->
+
+<section class="details-banner hero-area bg_img seat-plan-banner"
+         data-background="./template/kinotomi/assets/images/banner/banner04.jpg"><input type="hidden" id="csrf_token"
+                                                                                        value="dc8K5bY0kxGv7ySIaU/eAR0jBoRYswrsF8ZgxOCT6to=">
+    <div class="container">
+        <div class="details-banner-wrapper">
+            <div class="details-banner-content style-two"><h3 class="title">Repertuar</h3></div>
+        </div>
+    </div>
+</section><section class="search-ticket-section pt-lg-0 padding-bottom">
+    <div class="container">
+        <div class="search-tab">
+            <div class="ticket-plan-section">
+                <div class="row">
+                    <div class="col-12" style="padding:30px">
+                        <div class="owl-carousel owl-theme" id="owl-carousel-days">                                                         <div class="item cinema-event-day active" data-day="2026-09-27">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-09-27')">
+                                    <span class="day-name">nd</span> <span class="day-nr">27</span>
+                                    <span class="month-name">Wrz</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-09-28">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-09-28')">
+                                    <span class="day-name">pon</span> <span class="day-nr">28</span>
+                                    <span class="month-name">Wrz</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-09-29">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-09-29')">
+                                    <span class="day-name">wt</span> <span class="day-nr">29</span>
+                                    <span class="month-name">Wrz</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-09-30">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-09-30')">
+                                    <span class="day-name">śr</span> <span class="day-nr">30</span>
+                                    <span class="month-name">Wrz</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-01">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-01')">
+                                    <span class="day-name">cz</span> <span class="day-nr">01</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-02">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-02')">
+                                    <span class="day-name">pt</span> <span class="day-nr">02</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-03">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-03')">
+                                    <span class="day-name">so</span> <span class="day-nr">03</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-04">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-04')">
+                                    <span class="day-name">nd</span> <span class="day-nr">04</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-05">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-05')">
+                                    <span class="day-name">pon</span> <span class="day-nr">05</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-08">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-08')">
+                                    <span class="day-name">cz</span> <span class="day-nr">08</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-10-27">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-10-27')">
+                                    <span class="day-name">wt</span> <span class="day-nr">27</span>
+                                    <span class="month-name">Paż</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-11-03">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-11-03')">
+                                    <span class="day-name">wt</span> <span class="day-nr">03</span>
+                                    <span class="month-name">Lis</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-11-08">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-11-08')">
+                                    <span class="day-name">nd</span> <span class="day-nr">08</span>
+                                    <span class="month-name">Lis</span> </a></div>
+                                                         <div class="item cinema-event-day " data-day="2026-11-14">
+                                <a href="javascript:void(0)" onclick="showEventsForDate2('2026-11-14')">
+                                    <span class="day-name">so</span> <span class="day-nr">14</span>
+                                    <span class="month-name">Lis</span> </a></div>
+                             
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <form class="ticket-search-form pb-2 pt-2">
+                        <div class="tab-item active">
+                            <form class="ticket-search-form"></form>
+                        </div>
+                        
+                    </form>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-09-27"><p
+                            class="event-date">niedziela - 2026-09-27</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/6448/main_20260817_165114_1932036710.jpg"> <a
+                                        href="film/2026-asterix-i-obelix-misja-kleopatra" title="Asterix i Obelix: Misja Kleopatra"
+                                        class="name">Asterix i Obelix: Misja Kleopatra<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=b85d7e6a-bb9b-4fed-bf4c-829e70d0cbed"
+                                                                                        style="color:#000000;                                                background:#59dbed;"
+                                            title="Bilety w cenie 15 zł "
+                                                                                         >
+                                        10:30                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/19-iedzielne-poranki"
+                                                                             target="_self" class="item"
+                                                                             style="background:#59dbed;color:#000000;"
+                                                                             title="Niedzielne Poranki "> </a> <a
+                                                        href="https://kinotomi.pl/19-iedzielne-poranki" target="_self"
+                                                        style="color:white"> Bilety w cenie 15 zł  </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg"> <a
+                                        href="film/2026-tedi-i-magiczna-lampa" title="Tedi i magiczna lampa"
+                                        class="name">Tedi i magiczna lampa<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=0db065ba-f7bd-46b0-b398-0d29f878273d"
+                                             >
+                                        11:30                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=3ac1dc66-6957-44e8-baf8-e8fbf5456bc4"
+                                             >
+                                        15:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9303/main_20260716_163833_470605543.jpg"> <a
+                                        href="film/2026-pucio-kocha-zwierzaki" title=" Pucio kocha zwierzaki"
+                                        class="name"> Pucio kocha zwierzaki<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=85c500e5-84b9-4003-8e53-62d0c3e88fcc"
+                                                                                        style="color:#000000;                                                background:#3be464;"
+                                            title="Seanse bez reklam, z przyciszonym dźwiękiem i przyciemnionym światłem na sali.
+"
+                                                                                         >
+                                        13:00                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/18-seanse-przyjazne-sensorycznie"
+                                                                             target="_blank" class="item"
+                                                                             style="background:#3be464;color:#000000;"
+                                                                             title="Seanse przyjazne sensorycznie"> </a> <a
+                                                        href="https://kinotomi.pl/18-seanse-przyjazne-sensorycznie" target="_blank"
+                                                        style="color:white"> Seanse bez reklam, z przyciszonym dźwiękiem i przyciemnionym światłem na sali.
+ </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/2412/main_20260907_155812_1849961126.jpg"> <a
+                                        href="film/2026-mistyczka" title="Mistyczka"
+                                        class="name">Mistyczka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=c20b6ffb-e73c-4ac0-922c-afa5f7fdf4ae"
+                                             >
+                                        13:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3286/main_20260921_180740_707940049.jpg"> <a
+                                        href="film/2026-luna-i-rozgadana-swinka" title="Luna i rozgadana świnka"
+                                        class="name">Luna i rozgadana świnka<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=d7e4e27c-5bd7-4586-b5d2-7531cbcbb2ba"
+                                             >
+                                        14:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7097/main_20260908_172339_135437084.jpg"> <a
+                                        href="film/2026-avengers-koniec-gry-wersja-rozszerzona" title="Avengers: Koniec gry - wersja rozszerzona"
+                                        class="name">Avengers: Koniec gry - wersja rozszerzona<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=f31ae92c-b0ad-4a00-a1cf-f54f42b991bf"
+                                             >
+                                        15:15                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7939/main_20260903_163522_35949254.jpg"> <a
+                                        href="film/2026-w-sercu-dziczy" title="W sercu dziczy"
+                                        class="name">W sercu dziczy<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=322323b1-bdf8-4e2a-9cfc-89b0ff11b72e"
+                                             >
+                                        17:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9673/main_20260817_170511_1918154173.jpg"> <a
+                                        href="film/2026-100-dni-misja-zeus" title="100 dni: Misja Zeus"
+                                        class="name">100 dni: Misja Zeus<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=d0af15e9-c209-401a-be8f-eec34137f7d8"
+                                             >
+                                        18:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4354/main_20260903_162346_142381697.png"> <a
+                                        href="film/2026-resident-evil" title="Resident Evil"
+                                        class="name">Resident Evil<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=839f1624-34a6-42e9-a3b3-8d5cc53bc7ef"
+                                             >
+                                        19:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-09-28"><p
+                            class="event-date">poniedziałek - 2026-09-28</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9673/main_20260817_170511_1918154173.jpg"> <a
+                                        href="film/2026-100-dni-misja-zeus" title="100 dni: Misja Zeus"
+                                        class="name">100 dni: Misja Zeus<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=bed2cb40-6173-4fc9-ba7a-3da98ac71185"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        09:00                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/2412/main_20260907_155812_1849961126.jpg"> <a
+                                        href="film/2026-mistyczka" title="Mistyczka"
+                                        class="name">Mistyczka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=094f845a-c6eb-458f-8c39-cd009f803526"
+                                             >
+                                        13:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9673/main_20260817_170511_1918154173.jpg"> <a
+                                        href="film/2026-100-dni-misja-zeus" title="100 dni: Misja Zeus"
+                                        class="name">100 dni: Misja Zeus<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=ff4e6a21-4d9d-4626-b664-889bad0aa2e0"
+                                             >
+                                        13:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg"> <a
+                                        href="film/2026-tedi-i-magiczna-lampa" title="Tedi i magiczna lampa"
+                                        class="name">Tedi i magiczna lampa<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=23c8fb29-2959-4380-86b0-712b523587e3"
+                                             >
+                                        15:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3286/main_20260921_180740_707940049.jpg"> <a
+                                        href="film/2026-luna-i-rozgadana-swinka" title="Luna i rozgadana świnka"
+                                        class="name">Luna i rozgadana świnka<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=bba94918-ed88-457b-bf67-580caeabf671"
+                                             >
+                                        16:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7939/main_20260903_163522_35949254.jpg"> <a
+                                        href="film/2026-w-sercu-dziczy" title="W sercu dziczy"
+                                        class="name">W sercu dziczy<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=0bbe370c-2a08-4ed3-ab4b-b348a1425b06"
+                                             >
+                                        17:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4837/main_20260901_141621_429046191.jpg"> <a
+                                        href="film/2026-dzien-dziecka-ksiedza-jana-kaczkowskiego" title=" Dzień dziecka księdza Jana Kaczkowskiego"
+                                        class="name"> Dzień dziecka księdza Jana Kaczkowskiego<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=3f480a3a-086d-411a-9b55-a4bdf4d47102"
+                                             >
+                                        17:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7097/main_20260908_172339_135437084.jpg"> <a
+                                        href="film/2026-avengers-koniec-gry-wersja-rozszerzona" title="Avengers: Koniec gry - wersja rozszerzona"
+                                        class="name">Avengers: Koniec gry - wersja rozszerzona<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=68c5911a-8efd-4573-a680-526c0e3447f9"
+                                             >
+                                        19:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4354/main_20260903_162346_142381697.png"> <a
+                                        href="film/2026-resident-evil" title="Resident Evil"
+                                        class="name">Resident Evil<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=3cddbb5e-9e05-424a-9be8-dcf70e433730"
+                                             >
+                                        19:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-09-29"><p
+                            class="event-date">wtorek - 2026-09-29</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7097/main_20260908_172339_135437084.jpg"> <a
+                                        href="film/2026-avengers-koniec-gry-wersja-rozszerzona" title="Avengers: Koniec gry - wersja rozszerzona"
+                                        class="name">Avengers: Koniec gry - wersja rozszerzona<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=4976b15e-1dbe-4654-bc4c-44b514c974a4"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        10:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=d061f4af-5f6f-46f8-839f-2f86aac8f73f"
+                                             >
+                                        19:30                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9673/main_20260817_170511_1918154173.jpg"> <a
+                                        href="film/2026-100-dni-misja-zeus" title="100 dni: Misja Zeus"
+                                        class="name">100 dni: Misja Zeus<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=bdb38c63-ddbd-4450-bb13-e53d711f76bf"
+                                             >
+                                        13:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4837/main_20260901_141621_429046191.jpg"> <a
+                                        href="film/2026-dzien-dziecka-ksiedza-jana-kaczkowskiego" title=" Dzień dziecka księdza Jana Kaczkowskiego"
+                                        class="name"> Dzień dziecka księdza Jana Kaczkowskiego<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=248604f9-4f0f-4e61-92cd-bda55b47fcdc"
+                                             >
+                                        13:15                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3286/main_20260921_180740_707940049.jpg"> <a
+                                        href="film/2026-luna-i-rozgadana-swinka" title="Luna i rozgadana świnka"
+                                        class="name">Luna i rozgadana świnka<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=8e141e4d-3f68-40b1-933e-522411895861"
+                                             >
+                                        15:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg"> <a
+                                        href="film/2026-tedi-i-magiczna-lampa" title="Tedi i magiczna lampa"
+                                        class="name">Tedi i magiczna lampa<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=0117589d-1778-4aac-979e-a446d471d7e1"
+                                             >
+                                        15:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4354/main_20260903_162346_142381697.png"> <a
+                                        href="film/2026-resident-evil" title="Resident Evil"
+                                        class="name">Resident Evil<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=4fd8ca8e-e255-4e11-b41c-90ec8f94f200"
+                                             >
+                                        17:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=8fcd414f-90be-48ed-8bd3-9ca6958c5596"
+                                             >
+                                        20:45                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7939/main_20260903_163522_35949254.jpg"> <a
+                                        href="film/2026-w-sercu-dziczy" title="W sercu dziczy"
+                                        class="name">W sercu dziczy<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=7dfe672e-d6c8-423c-be62-08fbfb071f77"
+                                             >
+                                        17:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/2412/main_20260907_155812_1849961126.jpg"> <a
+                                        href="film/2026-mistyczka" title="Mistyczka"
+                                        class="name">Mistyczka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=f63bb1e9-031e-4df2-bb16-1059a6b51ab5"
+                                             >
+                                        19:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-09-30"><p
+                            class="event-date">środa - 2026-09-30</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg"> <a
+                                        href="film/2026-tedi-i-magiczna-lampa" title="Tedi i magiczna lampa"
+                                        class="name">Tedi i magiczna lampa<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=2d54b24f-9bf1-4536-b715-cd00e3dbf25d"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        08:30                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=2d660597-14af-4544-b3e9-25b61ed525ca"
+                                             >
+                                        16:30                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9673/main_20260817_170511_1918154173.jpg"> <a
+                                        href="film/2026-100-dni-misja-zeus" title="100 dni: Misja Zeus"
+                                        class="name">100 dni: Misja Zeus<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=0cfae58c-c465-40f4-a0fb-0e8543b55f17"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        09:15                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=b1235e46-0198-43c9-8d68-38a19c85e8b5"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        11:45                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=c2ec84c1-3513-4540-81e0-e5c02efdf84e"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        11:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=94b6259b-b2a5-4b2b-b2f2-f9acbf3a1748"
+                                             >
+                                        18:30                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3286/main_20260921_180740_707940049.jpg"> <a
+                                        href="film/2026-luna-i-rozgadana-swinka" title="Luna i rozgadana świnka"
+                                        class="name">Luna i rozgadana świnka<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=ca08dee7-ee31-48a5-92a8-6ecdd730cac1"
+                                             >
+                                        14:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7097/main_20260908_172339_135437084.jpg"> <a
+                                        href="film/2026-avengers-koniec-gry-wersja-rozszerzona" title="Avengers: Koniec gry - wersja rozszerzona"
+                                        class="name">Avengers: Koniec gry - wersja rozszerzona<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=7e56eb10-694e-458b-aa0a-a1d8bfdf6948"
+                                             >
+                                        15:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4354/main_20260903_162346_142381697.png"> <a
+                                        href="film/2026-resident-evil" title="Resident Evil"
+                                        class="name">Resident Evil<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=49d612c6-05a4-421c-8a19-7c09885d17cd"
+                                             >
+                                        18:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7939/main_20260903_163522_35949254.jpg"> <a
+                                        href="film/2026-w-sercu-dziczy" title="W sercu dziczy"
+                                        class="name">W sercu dziczy<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=ac9212c2-243d-4aa2-9c0d-b576b6a675a5"
+                                             >
+                                        20:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-01"><p
+                            class="event-date">czwartek - 2026-10-01</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=b8cf7a05-c078-4601-bc18-11e7ced79f3e"
+                                             >
+                                        13:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=71b8f4b6-876c-48da-b034-19c2814d242f"
+                                             >
+                                        18:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3286/main_20260921_180740_707940049.jpg"> <a
+                                        href="film/2026-luna-i-rozgadana-swinka" title="Luna i rozgadana świnka"
+                                        class="name">Luna i rozgadana świnka<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=4bd42a4e-7625-4952-9d20-c2180006ee7c"
+                                             >
+                                        13:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7097/main_20260908_172339_135437084.jpg"> <a
+                                        href="film/2026-avengers-koniec-gry-wersja-rozszerzona" title="Avengers: Koniec gry - wersja rozszerzona"
+                                        class="name">Avengers: Koniec gry - wersja rozszerzona<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=3bf0a441-6e11-4b93-8220-454abdfc2f0e"
+                                             >
+                                        15:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg"> <a
+                                        href="film/2026-tedi-i-magiczna-lampa" title="Tedi i magiczna lampa"
+                                        class="name">Tedi i magiczna lampa<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=6b266a94-d44a-4703-a0e2-5ad4c9c8c7e3"
+                                             >
+                                        16:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/4354/main_20260903_162346_142381697.png"> <a
+                                        href="film/2026-resident-evil" title="Resident Evil"
+                                        class="name">Resident Evil<br> <span>                                                                          - Dubbing                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=986d9d3f-2953-4dfe-8ad0-37e7dc9a709d"
+                                             >
+                                        18:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7939/main_20260903_163522_35949254.jpg"> <a
+                                        href="film/2026-w-sercu-dziczy" title="W sercu dziczy"
+                                        class="name">W sercu dziczy<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=c1764db0-2f6a-4ca7-bc42-360b9cc9a367"
+                                             >
+                                        20:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-02"><p
+                            class="event-date">piątek - 2026-10-02</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/9497/main_20260611_161910_217028796.jpg"> <a
+                                        href="film/2026-odyseja" title="Odyseja"
+                                        class="name">Odyseja<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=ecf0865a-c95b-4781-b2b9-5c6c2469c75a"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        09:00                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=bcfddcb8-77ca-499c-8b45-f45cd19e7851"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        10:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=2bdc158a-20be-47ad-a4b7-5d981b74f79c"
+                                             >
+                                        14:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=8605d149-c0ef-4ab4-92fa-0e41a855a592"
+                                             >
+                                        20:10                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                                                        <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3632/main_20260813_165622_1747423606.png"> <a
+                                        href="film/2026-tomi-dla-kobiet-lalka" title="TOMI dla Kobiet - Lalka"
+                                        class="name">TOMI dla Kobiet - Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=e95ea504-a572-46f8-9b0a-285ca0a49d36"
+                                             >
+                                        18:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-03"><p
+                            class="event-date">sobota - 2026-10-03</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=dd75596e-c5d2-41e1-b0a0-fdee235ffac0"
+                                             >
+                                        11:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=5ae12b1a-a4df-40bf-abb5-89a7d7893160"
+                                             >
+                                        14:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=9eb51abd-d8d0-4f8b-8e37-d9154017cc16"
+                                             >
+                                        17:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=e993a5d8-1cc0-4e76-b5b1-57f11ad0221b"
+                                             >
+                                        20:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-04"><p
+                            class="event-date">niedziela - 2026-10-04</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=929786dd-912d-489a-b40a-57a2fdf0537c"
+                                             >
+                                        12:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=acc56682-836a-4fd3-a676-d402f52d5f22"
+                                             >
+                                        15:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=1f8ce6b0-ad14-4e4f-ac3d-27367cbc7c8d"
+                                             >
+                                        18:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=9d29cb4c-b349-4801-897c-e1487bcd3220"
+                                             >
+                                        21:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-05"><p
+                            class="event-date">poniedziałek - 2026-10-05</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/8478/main_20260721_114008_1656406115.jpg"> <a
+                                        href="film/2026-lalka" title="Lalka"
+                                        class="name">Lalka<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=15a9ed81-4ab5-44b5-a397-93f773822298"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        10:00                                    </a>
+                                         <a
+                                            class="item"
+                                            href="zamowienie/sala?event=49e9ca1e-f651-48d5-a1d8-3a474894b16d"
+                                                                                        style="color:#000000;                                                background:#f0e700;"
+                                            title="Rezerwacja pod nr. 607190607"
+                                                                                         >
+                                        11:00                                    </a>
+                                        
+                                    </div>
+                                                                        <div class="col-12 row">                                         <div class="row">
+                                            <div class="d-flex col-12  align-items-center" style="color:white">  <a href="https://kinotomi.pl/3-seanse-szkolne"
+                                                                             target="_self" class="item"
+                                                                             style="background:#f0e700;color:#000000;"
+                                                                             title="Seans grupowy "> </a> <a
+                                                        href="https://kinotomi.pl/3-seanse-szkolne" target="_self"
+                                                        style="color:white"> Rezerwacja pod nr. 607190607 </a>                                             </div>
+                                        </div>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-08"><p
+                            class="event-date">czwartek - 2026-10-08</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/7508/main_20260926_140601_1279933835.jpg"> <a
+                                        href="film/2026-lalka-z-angielskimi-napisami" title="Lalka (z angielskimi napisami)"
+                                        class="name">Lalka (z angielskimi napisami)<br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=4b1c4fc8-c564-43d3-a70d-fc177c682254"
+                                             >
+                                        17:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-10-27"><p
+                            class="event-date">wtorek - 2026-10-27</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/2853/main_20260925_082057_1084140800.jpg"> <a
+                                        href="film/2026-odzyskany" title="Odzyskany"
+                                        class="name">Odzyskany<br> <span>                                                                          - Polski                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=899224d5-63d9-4c17-ac44-eeeb007e37c7"
+                                             >
+                                        19:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-11-03"><p
+                            class="event-date">wtorek - 2026-11-03</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3402/main_20260926_122033_1043426364.png"> <a
+                                        href="film/2026-skrzypek-na-dachu" title="Skrzypek na dachu - 55. rocznica premiery "
+                                        class="name">Skrzypek na dachu - 55. rocznica premiery <br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=eb32f203-bed7-42f0-9ae5-c056afc020bf"
+                                             >
+                                        18:30                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-11-08"><p
+                            class="event-date">niedziela - 2026-11-08</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3402/main_20260926_122033_1043426364.png"> <a
+                                        href="film/2026-skrzypek-na-dachu" title="Skrzypek na dachu - 55. rocznica premiery "
+                                        class="name">Skrzypek na dachu - 55. rocznica premiery <br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=5b76a077-f8b6-4812-a794-c8df32f73797"
+                                             >
+                                        12:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                                        <div class="col-lg-12 mb-lg-0 seat-plan-row" data-date="2026-11-14"><p
+                            class="event-date">sobota - 2026-11-14</p>
+                        <ul class="seat-plan-wrapper bg-five">                             <li>
+                                <div class="movie-name"><img src="files/cinema_movies/3402/main_20260926_122033_1043426364.png"> <a
+                                        href="film/2026-skrzypek-na-dachu" title="Skrzypek na dachu - 55. rocznica premiery "
+                                        class="name">Skrzypek na dachu - 55. rocznica premiery <br> <span>                                                                          - Napisy                                        </span>
+                                </a></div>
+                                <div class="movie-schedule">                                     <div>  <a
+                                            class="item"
+                                            href="zamowienie/sala?event=4ce48a33-9895-4524-99fb-c13978f3cce4"
+                                             >
+                                        15:00                                    </a>
+                                        
+                                    </div>
+                                                                    </div>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</section><!-- ==========Newslater-Section========== -->
+<footer class="footer-section"> <div class="newslater-section padding-bottom">
+    <div class="container">
+        <div
+                class="newslater-container bg_img"
+                data-background="./template/kinotomi/assets/images/newslater/newslater-bg01.jpg"
+        >
+            <div class="newslater-wrapper">
+                <h5 class="cate">Zapisz się do newslettera</h5>
+                <h3 class="title">aby być na bieżąco z nowościami</h3>
+                <form
+                        class="newslater-form"
+                        id="addToNewslettterForm"
+                        method="post"
+                >
+                    <input
+                            id="addToNewslettterEmail"
+                            type="email"
+                            name="email"
+                            required
+                            placeholder="Adres email"
+                    >
+                    <button type="submit">Zapisz</button>
+                </form>
+                <p style="
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+">
+                    <input id="addToNewslettterRules" type="checkbox" name="add_to_newslettter_rules" value="1" style="
+    width: 20px;
+    margin-right: 10px;
+">
+
+                    <label for="addToNewslettterRules" style="color: #ffffff;">Wyrażam zgodę na przetwarzanie moich danych osobowych w celach marketingowych.</label></p>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="container">
+        <div class="footer-top">             <div class="logo"><a href="/"> <img alt=" - Logo" src="files/sites/9217/20221209_173350_185886706.png" class="img-fluid"
+                                                style="max-width:150px;"> </a></div>
+                        <ul class="social-icons">                 <li><a href="https://www.facebook.com/kino.tomi" target="_blank" title="Facebook"> <img style="max-width:24px;"
+                                                                                 src="https://static.bortos.pl/images/email/icons/icon_facebook.png"
+                                                                                 alt="Facebook"> </a></li>
+                
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-area">                 <ul class="links">                     <li><a href="1-regulamin" target="_self">Regulamin</a></li>
+                                        <li><a href="files/files/3048/20201013_232423_368198138.pdf" target="_self">Polityka prywatności</a></li>
+                    
+                </ul>
+                            </div>
+            <div class="footer-bottom-area ">
+                <div class="col-md-12 text-center pt-5"><p>Copyright © 2020 - 2026. All Rights Reserved By <a
+                            href="https://kinotomi.pl/">F.K.R. TOMI Tomasz Chmielewski</a>. </p>
+                    <p class="text-center pt-5 pb-5"><a href="https://bortos.pl" target="_blank" rel="nofollow"
+                                                        class="mx-auto"> <img
+                            src="https://static.bortos.pl/images/bortos/logotypes/bortos_powered_white.png"
+                            alt="BORTOS Production"> </a></p></div>
+            </div>
+        </div>
+    </div>
+</footer><!-- ==========Newslater-Section========== -->
+<script>
+    function checkCookie() {
+        var cookieAccepted = getCookie("cookieAccepted");
+        if (!cookieAccepted) {
+            document.getElementById("cookieBanner").style.display = "block";
+        }
+    }
+
+    function acceptCookies() {
+        setCookie("cookieAccepted", "true", 365);
+        document.getElementById("cookieBanner").style.display = "none";
+    }
+
+    function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function eraseCookie(name) {
+        document.cookie = name + '=; Max-Age=-99999999;';
+    }
+
+    // Sprawdź ciasteczka po załadowaniu strony
+    window.onload = checkCookie;
+</script>
+<script src="template/kinotomi/assets/js/jquery-3.3.1.min.js"></script>
+<script src="template/kinotomi/assets/js/modernizr-3.6.0.min.js"></script>
+<script src="template/kinotomi/assets/js/plugins.js"></script>
+<script src="template/kinotomi/assets/js/bootstrap.min.js"></script>
+<script src="template/kinotomi/assets/js/heandline.js"></script>
+<script src="template/kinotomi/assets/js/isotope.pkgd.min.js"></script>
+<script src="template/kinotomi/assets/js/magnific-popup.min.js"></script>
+<script src="template/kinotomi/assets/js/owl.carousel.min.js"></script>
+<script src="template/kinotomi/assets/js/wow.min.js"></script>
+<script src="template/kinotomi/assets/js/countdown.min.js"></script>
+<script src="template/kinotomi/assets/js/odometer.min.js"></script>
+<script src="template/kinotomi/assets/js/viewport.jquery.js"></script>
+<script src="template/kinotomi/assets/js/nice-select.js"></script>
+<script src="template/kinotomi/assets/js/main.js?v=42"></script><script src="modules/cinema_carts/js/cinema_carts.js?v=377700206"></script>
+<script src="libs/js/notifIt/notifIt.js"></script>
+<script src="modules/header/js/header.js"></script>
+<script src="modules/popup/js/popup.js?v=1717950609"></script>
+<script src="libs/js/jquery.validate.min.js"></script>
+<script src="modules/newsletters_subscribers/js/newsletters_subscribers.js?v=627380967"></script>
+<!--<script>    $( document ).ready(function() {        $(".select-bar").val($(".select-bar option:first").val());        $('.select-bar').niceSelect('destroy');        $('.select-bar').niceSelect();    });</script> --></body></html><script>
+    var btPopupUuid = '2b7a123a-e029-4253-af5d-bdda7158ecc2';
+</script>

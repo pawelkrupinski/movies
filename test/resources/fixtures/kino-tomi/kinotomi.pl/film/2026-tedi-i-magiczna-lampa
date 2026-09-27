@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <base href="https://kinotomi.pl/"/>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width,            initial-scale=1.0,            maximum-scale=1.0,            user-scalable=no"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>KinoTomi - Tedi i magiczna lampa</title>
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+         <meta name="author" content="BORTOS Production">
+          <link rel="shortcut icon" href="files/sites/5873/20201009_140004_1001452111.png" type="image/png">
+    <link rel="icon" href="files/sites/5873/20201009_140004_1001452111.png" type="image/png">
+        <link rel="stylesheet" href="template/kinotomi/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/css/bootstrapBT.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/all.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/animate.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/flaticon.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/magnific-popup.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/odometer.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/owl.carousel.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/owl.theme.default.min.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/nice-select.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/jquery.animatedheadline.css">
+    <link rel="stylesheet" href="template/kinotomi/assets/css/main.css?v=49">
+    <link rel="shortcut icon" href="template/kinotomi/assets/images/favicon.png" type="image/x-icon">
+    
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-53GR3LK');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-68774732-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-68774732-1');
+    </script>
+
+    
+    <link rel="stylesheet" href="modules/popup/css/popup.css?v=963745894" type="text/css">
+<link rel="stylesheet" href="libs/js/notifIt/notifIt.css" type="text/css">
+ 
+    <style>
+        /* Styl dla popupa */
+        .popup-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .popup-content {
+            display: none;
+            position: absolute;
+            left: -150px; /* Ustaw odpowiednią odległość od lewej strony */
+            top: 0;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1;
+        }
+
+        .popup-container:hover .popup-content {
+            display: block;
+        }
+    </style>
+    <div class="cookie-banner" id="cookieBanner">
+        <p>Nasza strona używa ciasteczek, aby zapewnić najlepsze doświadczenie użytkownika. Kontynuując korzystanie z naszej strony, zgadzasz się na używanie ciasteczek. <a href="https://kinotomi.pl/files/files/3048/20201013_232423_368198138.pdf" style="color: #4CAF50;">Dowiedz się więcej</a>.</p>
+        <button onclick="acceptCookies()">Akceptuję</button>
+    </div>
+</head>
+
+
+<body>
+
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-53GR3LK"
+                  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+
+<!-- ==========Preloader========== --><div class="preloader">    <div class="preloader-inner">        <div class="preloader-icon">            <span></span>            <span></span>        </div>    </div>    </div></div>
+<!-- ==========Preloader========== --><!-- ==========Overlay========== -->
+<div class="overlay"></div>
+<a href="#0" class="scrollToTop"> <i class="fas fa-angle-up"></i></a><!-- ==========Overlay========== -->
+<!-- ==========Header-Section========== -->
+<header class="header-section" style="background: #0a1e5e;">
+    <div class="container" style="max-width: 1300px;">
+        <div class="header-wrapper">             <div class="logo"><a href="/"> <img alt="KinoTomi - Tedi i magiczna lampa - Logo" src="files/sites/9217/20221209_173350_185886706.png"> </a></div>
+                         <ul class="menu">                 <li class="color-3"><a class="nav-link " href="/repertuarr">Repertuar </a>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="filmy/na-ekranie">Filmy </a>
+                                        <ul class="submenu">                         <li><a href="filmy/na-ekranie" target="_self">Aktualnie na ekranach </a></li>
+                                                <li><a href="filmy/zapowiedzi" target="_self">Zapowiedzi </a></li>
+                                                <li><a href="filmy/archiwum" target="_self">Archiwum </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="">TOMI DZIECIOM </a>
+                                        <ul class="submenu">                         <li><a href="3-seanse-szkolne" target="_self">TOMI Z KLASĄ </a></li>
+                                                <li><a href="18-seanse-przyjazne-sensorycznie" target="_self">SEANSE PRZYJAZNE SENSORYCZNIE </a></li>
+                                                <li><a href="19-iedzielne-poranki" target="_self">NIEDZIELNE PORANKI </a></li>
+                                                <li><a href="35-polityka-ochrony-maloletnich" target="_self">POLITYKA OCHRONY MAŁOLETNICH </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="">NASZE PROJEKTY </a>
+                                        <ul class="submenu">                         <li><a href="4-tomi-dla-kobiet" target="_self">TOMI DLA KOBIET </a></li>
+                                                <li><a href="17-maratony" target="_self">MARATONY KINA TOMI </a></li>
+                                                <li><a href="5-akademia-filmowa" target="_self">AKADEMIA FILMOWA </a></li>
+                                                <li><a href="20-kino-z-krzyzykiem" target="_self">KINO Z KRZYŻYKIEM </a></li>
+                                                <li><a href="24-oferta-firmowa" target="_self">OFERTA FIRMOWA </a></li>
+                                                <li><a href="21-tomi-dzieciom" target="_self">TOMI DZIECIOM </a></li>
+                                                <li><a href="23-kocham-dziwne-kino" target="_self">KOCHAM DZIWNE KINO </a></li>
+                                                <li><a href="25-kino-plenerowe" target="_self">KINO PLENEROWE </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="1-cennik">Cennik </a>
+                                        <ul class="submenu">                         <li><a href="1-cennik" target="_self">BIlety </a></li>
+                                                <li><a href="7-bilety-zbiorowe" target="_self">Bilety zbiorowe </a></li>
+                                                <li><a href="8-vouchery-i-karnety" target="_self">Vouchery i karnety </a></li>
+                        
+                    </ul>
+                                    </li>
+                                <li class="color-3"><a class="nav-link " href="kontakt">Kontakt </a>
+                                    </li>
+                                 <li class="header-button pr-0">  <a
+                        href="uzytkownik/logowanie">Zaloguj</a>                 </li>
+            </ul>
+                        <div class="header-bar d-lg-none"><span></span> <span></span> <span></span></div>
+        </div>
+    </div>
+
+
+</header><!-- ==========Header-Section========== -->
+
+<section class="details-banner bg_img" data-background="./template/kinotomi/assets/images/banner/banner04.jpg">
+    <div class="container">
+        <div class="details-banner-wrapper">
+            <div class="details-banner-thumb l0"><img
+                    src="files/cinema_movies/5483/main_20260904_110657_1468224934.jpg" alt="Tedi i magiczna lampa"> <a
+                    href="//www.youtube.com/?v=Wwrcx9LnBmw" class="video-popup"> <img
+                    src="template/kinotomi/assets/images/movie/video-button.png" alt="Tedi i magiczna lampa - zwiastun"> </a>
+            </div>
+            <div class="details-banner-content offset-lg-3"><h3 class="title">Tedi i magiczna lampa</h3>                  <div class="movie-tags">  <span>Animacja</span>
+                     <span>Komedia</span>
+                     <span>Przygodowy</span>
+                    
+                </div>
+                                <div class="social-and-duration">
+                    <div class="duration-area">                         <div class="item"><i class="fas fa-calendar-alt"></i> <span>2026-09-18</span></div>
+                                                <div class="item"><i class="far fa-clock"></i> <span>1 godz 30 min</span>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="book-section bg-one">
+    <div class="container">
+        <div class="book-wrapper offset-lg-3">
+            <div class="left-side"> 
+            </div>
+            <a href="./repertuarr?movie=1902"
+               class="custom-button">Kup bilet </a></div>
+    </div>
+</section>
+<section class="movie-details-section padding-top padding-bottom">
+    <div class="container">
+        <div class="row justify-content-center flex-wrap-reverse mb--50">
+            <div class="col-lg-3 col-sm-10 col-md-6 mb-50">
+                <div class="widget-1 widget-offer">
+                    <div class="offer-body">                      </div>
+                </div>
+                
+            </div>
+            <div class="col-lg-9 mb-50">
+                <div class="movie-details">  <h3 class="title">Galeria</h3>
+                    <div class="details-photos owl-carousel">                          <div class="thumb"><a href="/files/cinema_movies_photos/1953/20260904_110658_1015452404.png" class="img-pop"> <img
+                                src="/files/cinema_movies_photos/1953/main_20260904_110658_1015452404.png"
+                                alt="Tedi i magiczna lampa - zdjęcie 1"> </a></div>
+                        
+                    </div>
+                                        <div class="tab summery-review">
+                        <ul class="tab-menu">
+                            <li class="active"> Opis</li>
+                                                        <li> Seanse</li>
+                                                    </ul>
+                        <div class="tab-area">
+                            <div class="tab-item active">
+                                <div class="item"> <p>Oli, nieustraszona dwuletnia c&oacute;rka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują magiczną lampę, Mumia prosi ją o przeniesienie w czasie do Paititi w Peru w 1502 roku. Tad, Sara i cała ekipa będą musieli podążyć za Mumią w przeszłość, zanim coś zmieni bieg historii... Podr&oacute;ż zabierze ich przez Ocean Atlantycki z Peru do Grecji, a stamtąd w głąb Bliskiego Wschodu, aż do jaskini Ali Baby i czterdziestu rozb&oacute;jnik&oacute;w.</p>
+
+                                    <ul>                                         <li>Rok: 2026</li>
+                                                                                 <li>Ograniczenia: 12+</li>
+                                                                                 <li>Reżyser: Enrique Gato</li>
+                                                                             </ul>
+                                </div>
+                            </div>
+                                                        <div class="tab-item">
+                                <div class="ticket-plan-section">
+                                    <div class="row justify-content-center">
+                                        <div class="col-lg-12 mb-lg-0">  <p class="event-date">niedziela -
+                                                2026-09-27</p>
+                                            <ul class="seat-plan-wrapper bg-five" data-date="2026-09-27">
+                                                                                                <li>
+                                                    <div class="movie-name"><a href="film/2026-tedi-i-magiczna-lampa"
+                                                                               title="Tedi i magiczna lampa"
+                                                                               class="name">Tedi i magiczna lampa<br>
+                                                        <span>                                                                          - Dubbing                                        </span>
+                                                    </a></div>
+                                                    <div class="movie-schedule">                                                         <a class="item"
+                                                           href="zamowienie/sala?event=0db065ba-f7bd-46b0-b398-0d29f878273d">
+                                                            11:30 </a>                                                         <a class="item"
+                                                           href="zamowienie/sala?event=3ac1dc66-6957-44e8-baf8-e8fbf5456bc4">
+                                                            15:45 </a> 
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>
+                                             <p class="event-date">poniedziałek -
+                                                2026-09-28</p>
+                                            <ul class="seat-plan-wrapper bg-five" data-date="2026-09-28">
+                                                                                                <li>
+                                                    <div class="movie-name"><a href="film/2026-tedi-i-magiczna-lampa"
+                                                                               title="Tedi i magiczna lampa"
+                                                                               class="name">Tedi i magiczna lampa<br>
+                                                        <span>                                                                          - Dubbing                                        </span>
+                                                    </a></div>
+                                                    <div class="movie-schedule">                                                         <a class="item"
+                                                           href="zamowienie/sala?event=23c8fb29-2959-4380-86b0-712b523587e3">
+                                                            15:00 </a> 
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>
+                                             <p class="event-date">wtorek -
+                                                2026-09-29</p>
+                                            <ul class="seat-plan-wrapper bg-five" data-date="2026-09-29">
+                                                                                                <li>
+                                                    <div class="movie-name"><a href="film/2026-tedi-i-magiczna-lampa"
+                                                                               title="Tedi i magiczna lampa"
+                                                                               class="name">Tedi i magiczna lampa<br>
+                                                        <span>                                                                          - Dubbing                                        </span>
+                                                    </a></div>
+                                                    <div class="movie-schedule">                                                         <a class="item"
+                                                           href="zamowienie/sala?event=0117589d-1778-4aac-979e-a446d471d7e1">
+                                                            15:30 </a> 
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>
+                                             <p class="event-date">środa -
+                                                2026-09-30</p>
+                                            <ul class="seat-plan-wrapper bg-five" data-date="2026-09-30">
+                                                                                                <li>
+                                                    <div class="movie-name"><a href="film/2026-tedi-i-magiczna-lampa"
+                                                                               title="Tedi i magiczna lampa"
+                                                                               class="name">Tedi i magiczna lampa<br>
+                                                        <span>                                                                          - Dubbing                                        </span>
+                                                    </a></div>
+                                                    <div class="movie-schedule">                                                         <a class="item"
+                                                           href="zamowienie/sala?event=2d54b24f-9bf1-4536-b715-cd00e3dbf25d">
+                                                            08:30 </a>                                                         <a class="item"
+                                                           href="zamowienie/sala?event=2d660597-14af-4544-b3e9-25b61ed525ca">
+                                                            16:30 </a> 
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>
+                                             <p class="event-date">czwartek -
+                                                2026-10-01</p>
+                                            <ul class="seat-plan-wrapper bg-five" data-date="2026-10-01">
+                                                                                                <li>
+                                                    <div class="movie-name"><a href="film/2026-tedi-i-magiczna-lampa"
+                                                                               title="Tedi i magiczna lampa"
+                                                                               class="name">Tedi i magiczna lampa<br>
+                                                        <span>                                                                          - Dubbing                                        </span>
+                                                    </a></div>
+                                                    <div class="movie-schedule">                                                         <a class="item"
+                                                           href="zamowienie/sala?event=6b266a94-d44a-4703-a0e2-5ad4c9c8c7e3">
+                                                            16:00 </a> 
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section><!-- ==========Newslater-Section========== -->
+<footer class="footer-section"> <div class="newslater-section padding-bottom">
+    <div class="container">
+        <div
+                class="newslater-container bg_img"
+                data-background="./template/kinotomi/assets/images/newslater/newslater-bg01.jpg"
+        >
+            <div class="newslater-wrapper">
+                <h5 class="cate">Zapisz się do newslettera</h5>
+                <h3 class="title">aby być na bieżąco z nowościami</h3>
+                <form
+                        class="newslater-form"
+                        id="addToNewslettterForm"
+                        method="post"
+                >
+                    <input
+                            id="addToNewslettterEmail"
+                            type="email"
+                            name="email"
+                            required
+                            placeholder="Adres email"
+                    >
+                    <button type="submit">Zapisz</button>
+                </form>
+                <p style="
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+">
+                    <input id="addToNewslettterRules" type="checkbox" name="add_to_newslettter_rules" value="1" style="
+    width: 20px;
+    margin-right: 10px;
+">
+
+                    <label for="addToNewslettterRules" style="color: #ffffff;">Wyrażam zgodę na przetwarzanie moich danych osobowych w celach marketingowych.</label></p>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="container">
+        <div class="footer-top">             <div class="logo"><a href="/"> <img alt=" - Logo" src="files/sites/9217/20221209_173350_185886706.png" class="img-fluid"
+                                                style="max-width:150px;"> </a></div>
+                        <ul class="social-icons">                 <li><a href="https://www.facebook.com/kino.tomi" target="_blank" title="Facebook"> <img style="max-width:24px;"
+                                                                                 src="https://static.bortos.pl/images/email/icons/icon_facebook.png"
+                                                                                 alt="Facebook"> </a></li>
+                
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-area">                 <ul class="links">                     <li><a href="1-regulamin" target="_self">Regulamin</a></li>
+                                        <li><a href="files/files/3048/20201013_232423_368198138.pdf" target="_self">Polityka prywatności</a></li>
+                    
+                </ul>
+                            </div>
+            <div class="footer-bottom-area ">
+                <div class="col-md-12 text-center pt-5"><p>Copyright © 2020 - 2026. All Rights Reserved By <a
+                            href="https://kinotomi.pl/">F.K.R. TOMI Tomasz Chmielewski</a>. </p>
+                    <p class="text-center pt-5 pb-5"><a href="https://bortos.pl" target="_blank" rel="nofollow"
+                                                        class="mx-auto"> <img
+                            src="https://static.bortos.pl/images/bortos/logotypes/bortos_powered_white.png"
+                            alt="BORTOS Production"> </a></p></div>
+            </div>
+        </div>
+    </div>
+</footer><!-- ==========Newslater-Section========== -->
+<script>
+    function checkCookie() {
+        var cookieAccepted = getCookie("cookieAccepted");
+        if (!cookieAccepted) {
+            document.getElementById("cookieBanner").style.display = "block";
+        }
+    }
+
+    function acceptCookies() {
+        setCookie("cookieAccepted", "true", 365);
+        document.getElementById("cookieBanner").style.display = "none";
+    }
+
+    function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function eraseCookie(name) {
+        document.cookie = name + '=; Max-Age=-99999999;';
+    }
+
+    // Sprawdź ciasteczka po załadowaniu strony
+    window.onload = checkCookie;
+</script>
+<script src="template/kinotomi/assets/js/jquery-3.3.1.min.js"></script>
+<script src="template/kinotomi/assets/js/modernizr-3.6.0.min.js"></script>
+<script src="template/kinotomi/assets/js/plugins.js"></script>
+<script src="template/kinotomi/assets/js/bootstrap.min.js"></script>
+<script src="template/kinotomi/assets/js/heandline.js"></script>
+<script src="template/kinotomi/assets/js/isotope.pkgd.min.js"></script>
+<script src="template/kinotomi/assets/js/magnific-popup.min.js"></script>
+<script src="template/kinotomi/assets/js/owl.carousel.min.js"></script>
+<script src="template/kinotomi/assets/js/wow.min.js"></script>
+<script src="template/kinotomi/assets/js/countdown.min.js"></script>
+<script src="template/kinotomi/assets/js/odometer.min.js"></script>
+<script src="template/kinotomi/assets/js/viewport.jquery.js"></script>
+<script src="template/kinotomi/assets/js/nice-select.js"></script>
+<script src="template/kinotomi/assets/js/main.js?v=42"></script><script src="libs/js/notifIt/notifIt.js"></script>
+<script src="modules/header/js/header.js"></script>
+<script src="modules/popup/js/popup.js?v=963745894"></script>
+<script src="libs/js/jquery.validate.min.js"></script>
+<script src="modules/newsletters_subscribers/js/newsletters_subscribers.js?v=1608699540"></script>
+<!--<script>    $( document ).ready(function() {        $(".select-bar").val($(".select-bar option:first").val());        $('.select-bar').niceSelect('destroy');        $('.select-bar').niceSelect();    });</script> --></body></html><script>
+    var btPopupUuid = '2b7a123a-e029-4253-af5d-bdda7158ecc2';
+</script>
