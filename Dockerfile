@@ -5,11 +5,11 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Eclipse Temurin (HotSpot) JRE 25 — the current LTS, and the highest
-# Java version Play 3.0.x has shipped tested. Scala 3.8.3 emits Java 21
-# bytecode (the highest output version it accepts); JRE 25 loads those
-# class files unchanged. CI builds on the same JDK 25 — toolchain
-# consistent end-to-end.
+# Eclipse Temurin (HotSpot) JRE 27 — the current feature release (25 is the
+# LTS; 27 is supported until JDK 28 ships in March 2027, which is the next
+# move). Scala 3.9 emits Java 21 bytecode (the highest output version it
+# accepts); JRE 27 loads those class files unchanged. CI builds on the same
+# JDK 27 — toolchain consistent end-to-end.
 # One image, two apps. `BIN` selects which staged launcher the container
 # runs: `web` (the Play serving app, Fly app `kinowo`) or `worker` (the
 # scrape/enrich `def main` app, Fly app `kinowo-worker`). Each app's deploy
@@ -18,7 +18,46 @@
 # `COPY stage/` stays a single fixed path and only the launcher name differs.
 # The Play `-D` props below are harmless no-op system properties for the
 # worker (it isn't a Play app).
-FROM eclipse-temurin:25-jre
+FROM ubuntu:26.04
+# THE TEMURIN JRE, INSTALLED HERE BECAUSE `eclipse-temurin:27-jre` IS NOT PUBLISHED YET. JDK 27
+# went GA on 2026-09-15 and Adoptium ships its binaries, but Docker Hub's official image lags.
+# This block is that image's own Dockerfile (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
+# the same OS packages, locale, JAVA_HOME and CDS archive, with the tarball's SHA-256 pinned here
+# instead of a GPG check against a keyserver on every build. Once the official tag exists, replace
+# everything down to the `java --version` line with `FROM eclipse-temurin:27-jre`.
+# JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with.
+# BUILD IT NATIVELY. A `--platform linux/amd64` build on Apple Silicon fails at the `tar` below with
+# `Cannot open: Function not implemented` for every file in a subdirectory: 26.04's GNU tar makes a
+# syscall neither QEMU nor Rosetta translates. A real amd64 kernel has it (checked on k3s-worker-1,
+# 2026-09-27), and CI builds on one. Locally, build for the Mac's own arm64.
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH=$JAVA_HOME/bin:$PATH
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+ENV JAVA_VERSION=jdk-27+35
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        fontconfig ca-certificates p11-kit tzdata locales wget; \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen; \
+    locale-gen en_US.UTF-8; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) ESUM='2cb1b81ab49f516e5aeb28ee8acf3c73d64c77ca432ac959c6511a335342d8e9'; \
+             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jre_x64_linux_hotspot_27_35.tar.gz' ;; \
+      arm64) ESUM='a41b54098373f1ca8f75ee344db19b93ac39eca6c529c3ee9dc50f4b3e7857de'; \
+             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jre_aarch64_linux_hotspot_27_35.tar.gz' ;; \
+      *) echo "Unsupported arch: $(dpkg --print-architecture)"; exit 1 ;; \
+    esac; \
+    wget --progress=dot:giga -O /tmp/openjdk.tar.gz "$BINARY_URL"; \
+    echo "$ESUM */tmp/openjdk.tar.gz" | sha256sum -c -; \
+    mkdir -p "$JAVA_HOME"; \
+    tar --extract --file /tmp/openjdk.tar.gz --directory "$JAVA_HOME" --strip-components 1 --no-same-owner; \
+    rm -f /tmp/openjdk.tar.gz; \
+    apt-get purge -y --auto-remove wget; \
+    rm -rf /var/lib/apt/lists/*; \
+    find "$JAVA_HOME/lib" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
+    ldconfig; \
+    java -Xshare:dump; \
+    java --version
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 ARG BIN=web

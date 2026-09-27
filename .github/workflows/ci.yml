@@ -168,7 +168,7 @@ jobs:
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
@@ -490,7 +490,7 @@ jobs:
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
@@ -593,7 +593,7 @@ jobs:
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1

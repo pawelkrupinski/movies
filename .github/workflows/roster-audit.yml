@@ -35,12 +35,12 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 25
+            # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 27
             # with sbt dependency caching.
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1

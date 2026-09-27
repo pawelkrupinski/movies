@@ -40,7 +40,7 @@ Live at **<https://kinowo.net>**.
 | Cache       | Caffeine (in-process, write-through to Mongo) |
 | Scraping    | jsoup, with Zyte proxy for bot-blocked sources |
 | DI          | Compile-time (Play `BuiltInComponents`, `modules.AppLoader`) |
-| Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
+| Build       | sbt 1.12, JDK 27 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
 | Hosting     | k3s on Hetzner (web + worker pods, `infra/`)  |
 

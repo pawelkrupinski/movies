@@ -393,7 +393,7 @@ jobs:
               if: steps.changed.outputs.changed == 'true'
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
@@ -590,7 +590,7 @@ jobs:
               if: steps.changed.outputs.changed == 'true'
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 27
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1

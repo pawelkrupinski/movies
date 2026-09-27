@@ -36,7 +36,7 @@ ThisBuild / scalacOptions ++= Seq(
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",
   // Scala 3.9.0 caps `-java-output-version` at 21 (higher values are rejected).
-  // JRE 25 loads Java 21 class files unchanged: build on JDK 25, emit 21, run 25.
+  // JRE 27 loads Java 21 class files unchanged: build on JDK 27, emit 21, run 27.
   "-java-output-version", "21",
   // Twirl-generated warnings come out without a parseable category — filter by
   // path. `app/views/` only holds Twirl templates. (No-op outside web.)
