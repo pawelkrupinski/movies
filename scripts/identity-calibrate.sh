@@ -3,6 +3,8 @@
 # Regenerates the identity resolver's calibrated evidence model from data
 # (docs/design/identity-resolver.md §14):
 #
+#   common/src/main/resources/identity-decorations.json      the learned venue decorations, with provenance (learned first:
+#                                                            the title shapes the weights are fitted on read them)
 #   common/src/main/resources/identity-weights.json          weights, calibration map, thresholds, cannot-link rules
 #   test/resources/fixtures/identity/identity-labels.json.gz  the labelled set, with its train/calibration/test split
 #   $REPORT/calibration-report.{md,json}, contradicted-prod-resolutions.tsv, prod-cross-check-mismatches.tsv
@@ -18,6 +20,9 @@
 #
 # The report formats numbers in the JVM locale: the command pins it to en-US ("0.97", not "0,97").
 #
+# --decorations-only relearns identity-decorations.json alone (CORPORA and FIXTURES only; PROD is not read)
+# without refitting the weights (scripts.IdentityDecorationsLearn).
+#
 # Usage:
 #   CORPORA=… FIXTURES=… PROD=… [REPORT=…] [EPSILON=certified|<rate>] [CASES=<jsonl>] [WEIGHTS=… LABELS=…] scripts/identity-calibrate.sh [--extract-prod]
 #   CASES lists {"listingKey","tmdbId","name"} whose probabilities the report shows under both the
@@ -27,6 +32,9 @@ cd "$(dirname "$0")/.."
 
 : "${CORPORA:?set CORPORA to the dir of cinema-scrapes-<cc>.json.gz}"
 : "${FIXTURES:?set FIXTURES to the dir of enrichment-<cc>/ trees}"
+if [[ "${1:-}" == "--decorations-only" ]]; then
+  exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
+fi
 : "${PROD:?set PROD to the dir of the production snapshot (prod-<db>.jsonl)}"
 REPORT="${REPORT:-target/identity-calibration}"
 EPSILON="${EPSILON:-certified}"

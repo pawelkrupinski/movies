@@ -2,7 +2,7 @@ package scripts
 
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.identity.{IdentityCalibration, IdentityMeasures}
+import services.identity.{IdentityCalibration, IdentityMeasures, TitleDecorations}
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
 import services.identity.IdentityMeasures.{Category, Film, Measure, Missing, Number}
 import scripts.IdentityCalibrationData.*
@@ -51,7 +51,7 @@ object IdentityCalibrate {
 
   final case class Config(corpora: Path, fixtures: Path, hardClusters: Path, prod: Option[Path], weightsOut: Path,
                           labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,
-                          cases: Option[Path] = None)
+                          cases: Option[Path] = None, decorationsOut: Path = IdentityDecorationsLearn.Artefact)
 
   def main(args: Array[String]): Unit = {
     val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
@@ -71,7 +71,8 @@ object IdentityCalibrate {
       version      = opts.getOrElse("version", "unversioned"),
       // A JSONL of {"listingKey", "tmdbId", "name"}: cases whose two models' probabilities the
       // report lists side by side — evaluation only, never an input to a weight.
-      cases        = path("cases"))
+      cases        = path("cases"),
+      decorationsOut = path("decorations").getOrElse(IdentityDecorationsLearn.Artefact))
     run(cfg)
   }
 
@@ -118,13 +119,13 @@ object IdentityCalibrate {
                                ll: Seq[LlPair], prodFilms: Map[String, ProdFilm], details: Int => Option[Details],
                                stats: Map[String, Int])
 
-  private def load(cfg: Config, country: Country, startIdx: Int): CountryData = {
+  private def load(cfg: Config, country: Country, startIdx: Int, decorations: TitleDecorations): CountryData = {
     val cc = country.code
     val corpora = Seq(
       "full" -> cfg.corpora.resolve(s"cinema-scrapes-$cc.json.gz"),
       "hard-clusters" -> cfg.hardClusters.resolve(s"cinema-scrapes-hard-clusters-$cc.json.gz")).filter(p => Files.exists(p._2))
     val prod = cfg.prod.map(d => prodSnapshot(d.resolve(s"prod-${country.mongoDb}.jsonl"))).getOrElse(ProdSnapshot(Map.empty, Nil))
-    val obs = listings(country, corpora, prod, startIdx).toIndexedSeq
+    val obs = listings(country, corpora, prod, startIdx, decorations).toIndexedSeq
     val answers = new TmdbAnswers(Seq(cfg.fixtures.resolve(s"enrichment-$cc")).filter(Files.isDirectory(_)),
       responsesFile(cfg.hardClusters.resolve(s"hard-clusters-responses-$cc.json.gz")), languageOf(country))
     println(s"[$cc] ${obs.size} listings (${obs.groupMapReduce(_.source)(_ => 1)(_ + _)}), ${prod.films.size} production films")
@@ -606,7 +607,11 @@ object IdentityCalibrate {
     Files.createDirectories(cfg.reportDir)
     val countries = Country.all.filter(c => cfg.countries.contains(c.code))
     var next = 0
-    val data = countries.map { c => val d = load(cfg, c, next); next += d.obs.size; d }
+    // The venue decorations first (`IdentityDecorationsLearn`): the title shapes every pair below is
+    // measured on read them, as the resolver's do.
+    val decorations = IdentityDecorationsLearn.learn(cfg.corpora, cfg.fixtures, cfg.hardClusters, cfg.version)
+    IdentityDecorationsLearn.write(decorations, cfg.decorationsOut)
+    val data = countries.map { c => val d = load(cfg, c, next, decorations.decorationsOf); next += d.obs.size; d }
     val obsAll: Map[Int, Obs] = data.flatMap(_.obs).map(o => o.idx -> o).toMap
     val evidence0: Map[Int, Evidence] = data.flatMap(_.evidence).toMap
 

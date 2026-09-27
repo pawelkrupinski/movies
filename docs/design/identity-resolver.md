@@ -418,6 +418,20 @@ permutation checks still test, and the lazy-lookup mutant stays detectable. The 
 Each must be proven the way the rest was: a hard cluster, and a mutation that the checks catch
 (dropping the whole-segment rule merges Faust; pooling in arrival order fails P1).
 
+**Learned venue decorations.** An undelimited decoration ("Girls Like Girls Unlimited Screening",
+"(4DX Rewind) Shrek", "Lalka 2D PL", "André Rieu. Niech żyje Maastricht! w Helios na Scenie")
+leaves no segment to search or to relate. `scripts.IdentityDecorationsLearn` (run by
+`scripts/identity-calibrate.sh`, or alone with `--decorations-only`) LEARNS which token runs are
+decorations: an edge run of listing titles whose remainder is another listing's whole title, for
+at least two different remainders (a decorated spelling of one remainder counts once), and which
+no recorded film record's title, original title or alternative title carries anywhere — "OPERA",
+"Exhibition on Screen", "Throwback" and "The" are words TMDB titles use, so they stay the film's.
+It writes `identity-decorations.json` with each decoration's side, film, venue and title counts and
+example remainders; the resolver strips them ADDITIVELY (`TitleDecorations.strip`: the undecorated
+spelling becomes one more title shape, so it is searched, related and segment-linked), and never
+changes the listing's own title, so a programme's card stays its own (§ programme prefixes). No word
+list: a new venue's decoration is learned by the next refit.
+
 ---
 
 ## 8. Migration plan
@@ -928,6 +942,7 @@ reproducible script. Nothing in it is hand-tuned; §14.7 lists the constants tha
 | artefact | what |
 |---|---|
 | `common/src/main/resources/identity-weights.json` | the RESOLVER's artefact (`IdentityCalibration.resolver`), the only one a refit writes: per scope (`listing-film`, `listing-listing`): a prior and one log-likelihood-ratio weight per signal value (numeric signals in data-derived bins), an isotonic calibration map, the show-ratings and cannot-link thresholds with their held-out errors; plus the learned cannot-link rules with their measured false-veto rates; plus provenance |
+| `common/src/main/resources/identity-decorations.json` | the venue decorations the resolver's title shapes strip (`TitleDecorations.resolver`, §7b), learned from the corpora and the recorded film records, each with its provenance (side, films, venues, titles, example remainders); written by the refit before the weights, whose measured title shapes read it |
 | `common/src/main/resources/identity-weights-gate.json` | the live rating gate's PINNED artefact (`IdentityCalibration.ratingGate`, §13.2) — never written by a refit |
 | `test/resources/fixtures/identity/identity-labels.json.gz` | the labelled set (142,503 listings: corroborated or contradicted, with split and family) and the held-out listing pairs; the resolver's benchmark reads only `split == "test"` |
 | `services.identity.IdentityMeasures` | the measurements (pure, primitives in): title relation, original-title relation, signed year delta, director relation, runtime delta, country, search rank, popularity, rivals, corroborating venues; listing-listing adds venue and chain id. Both the calibration and the resolver call it, so the fitted weights and the scored values are one definition |
@@ -1098,7 +1113,8 @@ runtime or year differs at all (`runtime.delta >= 1 AND venue in {same}`: 26% he
 | G-test 5%, Wilson 95%, Bonferroni 5% | bins, bounds, rules | statistical conventions, not domain constants | none needed |
 | Jeffreys α = 0.5 | smoothing | standard non-informative prior | none needed |
 | name words ≥ 3 letters (shared name), original-title words ≥ 4 | `IdentityMeasures` | what counts as a shared word | learn a word-weight table (IDF over the corpus) |
-| delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings |
+| delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings (undelimited edge runs are learned already: `TitleDecorations`, §7b) |
+| a decoration recurs around ≥ 2 films | `TitleDecorations.MinFilms` | the smallest count that says "recurs", not a tuned number | none needed |
 | ≤ 20 listing pairs per member in blocks over 41 | pair sampling | cost | none needed: sampling does not bias a unit-counted estimate |
 | 4 neutral missing values | fitting | sampling artefacts of the recorded trees | fetch every candidate's details in the recording pass (§9), then fit them |
 | title order `decorated ≥ overlap ≥ none` | `IdentityMeasures.EvidenceOrder` | more of the film's title named is never weaker evidence; an order, never a weight | derive the order from the relations' own containment (a category whose matches imply another's ranks above it) |

@@ -80,21 +80,24 @@ final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime:
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
  *  question, and the resolver treats them as one node. */
 final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
-                          runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil) {
+                          runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil,
+                          decorations: TitleDecorations = TitleDecorations.None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000")
 
-  /** The evidence as the calibrated measures read a listing. */
+  /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
+   *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
-    IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries)
+    IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
+      decorations = decorations)
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
 }
 
 object Evidence {
-  def of(listing: Listing, detail: Option[DetailFacts]): Evidence = Evidence(
+  def of(listing: Listing, detail: Option[DetailFacts], decorations: TitleDecorations = TitleDecorations.None): Evidence = Evidence(
     title         = listing.title,
     cleanTitle    = listing.cleanTitle,
     rawTitle      = listing.rawTitle,
@@ -102,7 +105,8 @@ object Evidence {
     directors     = (if (listing.directors.nonEmpty) listing.directors else detail.map(_.directors).getOrElse(Nil)).sorted,
     runtime       = listing.runtime.orElse(detail.flatMap(_.runtime).filter(_ > 0)),
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
-    countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted)
+    countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
+    decorations   = decorations)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

@@ -95,12 +95,14 @@ object IdentityResolver {
    *  above every derived tier, and a derived edge the pins contradict is dropped. */
   def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
               calibration: IdentityCalibration = IdentityCalibration.resolver,
-              pins: PinConstraints = PinConstraints(Nil)): Resolution =
-    resolveWith(listings, lookups, normalizer, calibration, Mutation.None, pins)
+              pins: PinConstraints = PinConstraints(Nil),
+              decorations: TitleDecorations = TitleDecorations.resolver): Resolution =
+    resolveWith(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
 
   private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                     calibration: IdentityCalibration, mutation: Mutation,
-                                    pins: PinConstraints = PinConstraints(Nil)): Resolution = {
+                                    pins: PinConstraints = PinConstraints(Nil),
+                                    decorations: TitleDecorations = TitleDecorations.None): Resolution = {
     val arrival  = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins
     // One listing per key, the smallest by the total order — never the first to arrive.
     val all      = listings.toSeq.sorted.distinctBy(_.key)
@@ -111,7 +113,7 @@ object IdentityResolver {
     def detailOf(l: Listing): Option[DetailFacts] =
       if (!lookups.hasDetail(l)) None
       else details.getOrElseUpdate((l.venue, l.page.getOrElse("")), lookups.detail(l)).toOption.flatten
-    val withEvidence = ordered.map(l => l -> Evidence.of(l, detailOf(l)))
+    val withEvidence = ordered.map(l => l -> Evidence.of(l, detailOf(l), decorations))
     // A pinned listing is a node of its own kind: identical evidence under different pins is not
     // one question any more.
     val nodes = withEvidence.groupBy { case (l, e) => (e.key, pins.blockKeys(l.key)) }.values.toSeq

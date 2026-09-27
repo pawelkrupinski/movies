@@ -1,0 +1,822 @@
+{
+  "version" : "decorations-2026-09-27",
+  "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders, that no recorded film record's title, original title or alternative title carries",
+  "inputs" : {
+    "listingTitles" : 167465,
+    "venues" : 7408,
+    "recordTitles" : 232228
+  },
+  "decorations" : [ {
+    "side" : "suffix",
+    "decoration" : "mlode horyzonty",
+    "films" : 49,
+    "venues" : 1,
+    "titles" : 50,
+    "examples" : [ "billy elliot", "biuro detektywistyczne lassego i mai tajemnica skorpiona", "block 5", "chlopiec na krancach swiata szkice na lodzie", "ciekawski tobi i tajemniczy wladca ziemi" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "knt",
+    "films" : 22,
+    "venues" : 44,
+    "titles" : 22,
+    "examples" : [ "500 mil", "asterix i obelix misja kleopatra", "camino dla opornych", "chlopiec w rozowych spodniach", "drzewo magii" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "okladka",
+    "films" : 17,
+    "venues" : 1,
+    "titles" : 17,
+    "examples" : [ "bezdroza oddech od swiata", "big water theory", "festiwal sily marzen", "gory islandii", "instrumenty dete drewniane czy blaszane a moze elektryczne" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d dubbing",
+    "films" : 15,
+    "venues" : 8,
+    "titles" : 17,
+    "examples" : [ "avengers koniec gry dogrywka", "avengers koniec gry wersja rozszerzona", "baranek shaun i kudlata bestia", "folwark zwierzecy", "ksiega pustyni" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "dkf",
+    "films" : 13,
+    "venues" : 7,
+    "titles" : 15,
+    "examples" : [ "glos z ksiezyca", "gorzkie swieta", "homo sapiens", "kandydaci smierci", "kura" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d napisy",
+    "films" : 13,
+    "venues" : 3,
+    "titles" : 15,
+    "examples" : [ "500 mil", "dkf homo sapiens", "gorzkie swieta", "historie rownolegle", "ice cream man" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kntj",
+    "films" : 13,
+    "venues" : 38,
+    "titles" : 13,
+    "examples" : [ "basia mam swoj swiat", "chlopiec na krancach swiata", "dzieci z bullerbyn", "folwark zwierzecy", "ksiega pustyni" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pokaz w dkf megaron",
+    "films" : 9,
+    "venues" : 1,
+    "titles" : 9,
+    "examples" : [ "crash", "czlowiek do wszystkiego", "labirynt fauna", "milosc smierc i dojrzewanie w camp miasma", "orlando" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d dub",
+    "films" : 8,
+    "venues" : 3,
+    "titles" : 8,
+    "examples" : [ "folwark zwierzecy", "luna i rozgadana swinka", "podrecznik dla superbohaterow", "pucio kocha zwierzaki", "spider man calkiem nowy dzien" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "splat filmfest",
+    "films" : 8,
+    "venues" : 2,
+    "titles" : 8,
+    "examples" : [ "anymart", "diably", "labirynt fauna", "luger", "opi" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "w helios na scenie",
+    "films" : 8,
+    "venues" : 52,
+    "titles" : 8,
+    "examples" : [ "always lalisa", "andre rieu niech zyje maastricht", "bts world tour arirang in buenos aires live viewing", "bts world tour arirang in sao paulo live viewing", "linkin park unshatter" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "4dx rewind",
+    "films" : 7,
+    "venues" : 34,
+    "titles" : 7,
+    "examples" : [ "backrooms", "michael", "obsession", "project hail mary", "shrek" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "filmowy klub seniora",
+    "films" : 7,
+    "venues" : 2,
+    "titles" : 7,
+    "examples" : [ "arek mama panorama", "czas ktory nie nadszedl", "dzien dziecka ksiedza jana kaczkowskiego", "kura", "lalka" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "opera 2026 2027",
+    "films" : 7,
+    "venues" : 1,
+    "titles" : 7,
+    "examples" : [ "cosi fan tutte", "dziewczyna z dzikiego zachodu", "makbet", "manon", "otello" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "dkf",
+    "films" : 7,
+    "venues" : 3,
+    "titles" : 7,
+    "examples" : [ "frances ha", "oasis don t look back in anger", "obcy", "powiedz mi co czujesz", "roza" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "festiwal tauron mlode horyzonty seanse hdd",
+    "films" : 7,
+    "venues" : 52,
+    "titles" : 7,
+    "examples" : [ "basia humor w paski mam kocia szajka", "dzieci z bullerbyn", "froggy kontra kosmiczne slimaki", "kim jest julian", "niesamowite przygody skarpetek 4 do roboty" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "napisy",
+    "films" : 7,
+    "venues" : 4,
+    "titles" : 7,
+    "examples" : [ "500 mil", "lalka dolly", "naznaczony wyjscie z mrocznego wymiaru", "odyseja", "resident evil" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "w helios replay",
+    "films" : 7,
+    "venues" : 52,
+    "titles" : 10,
+    "examples" : [ "avengers koniec gry wersja rozszerzona", "casino royale", "diably", "donnie darko", "labirynt fauna" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kmw",
+    "films" : 6,
+    "venues" : 1,
+    "titles" : 6,
+    "examples" : [ "baranek shaun i kudlata bestia", "kreciolek", "luna i rozgadana swinka", "podrecznik dla superbohaterow", "superfutrzak i zlosliwa wiewiorka" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "met opera 2026 27",
+    "films" : 6,
+    "venues" : 1026,
+    "titles" : 6,
+    "examples" : [ "cosi fan tutte", "macbeth", "manon", "otello", "parsifal" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "rodzina w kinie",
+    "films" : 6,
+    "venues" : 1,
+    "titles" : 6,
+    "examples" : [ "baranek shaun i kudlata bestia", "kreciolek", "mira", "podrecznik dla superbohaterow", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "edukacja mlode horyzonty",
+    "films" : 6,
+    "venues" : 1,
+    "titles" : 6,
+    "examples" : [ "block 5", "fleak futrzak i ja", "kacper i emma najlepsi przyjaciele", "lydia i wladca burz", "niesamowite przygody skarpetek 3 ale kosmos" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d nap",
+    "films" : 5,
+    "venues" : 2,
+    "titles" : 5,
+    "examples" : [ "andre rieu z maastricht 2026", "niebo nad normandia", "ojczyzna", "spa weekend", "tony" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d pl",
+    "films" : 5,
+    "venues" : 7,
+    "titles" : 5,
+    "examples" : [ "100 dni misja zeus", "dzien dziecka ksiedza jana kaczkowskiego", "lalka", "mistyczka", "violetta villas" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "dubbing kino wybrzeze",
+    "films" : 5,
+    "venues" : 1,
+    "titles" : 5,
+    "examples" : [ "baranek shaun i kudlata bestia", "supermocni", "tedi i magiczna lampa", "totalna magia 2", "zapomniana wyspa" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "fks",
+    "films" : 5,
+    "venues" : 3,
+    "titles" : 5,
+    "examples" : [ "egon schiele poza tabu", "kumotry", "maryja matka papieza", "odzyskany", "takie jest zycie" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino dla seniora",
+    "films" : 5,
+    "venues" : 1,
+    "titles" : 5,
+    "examples" : [ "dzien dziecka ksiedza jana kaczkowskiego", "inna mamusia", "niebo nad normandia", "rolling loud", "w sercu dziczy" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "sensory friendly screening",
+    "films" : 5,
+    "venues" : 16,
+    "titles" : 5,
+    "examples" : [ "coraline", "other mommy", "shaun the sheep the beast of mossy bottom", "the incredibles", "verity" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "tani poniedzialek",
+    "films" : 5,
+    "venues" : 1,
+    "titles" : 5,
+    "examples" : [ "100 dni misja zeus", "folwark zwierzecy", "lalka", "luna i rozgadana swinka", "ma to sens" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "dkf zamek",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "amelia", "frances ha", "nagi instynkt", "przeklenstwa niewinnosci" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "horror season 2026",
+    "films" : 4,
+    "venues" : 83,
+    "titles" : 4,
+    "examples" : [ "from dusk till dawn", "the craft", "the others", "train to busan" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kino kobiet",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "jak zyc zeby nie zwariowac", "lalka", "przepis na swieta", "violetta villas" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "klub konesera",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "500 mil", "homo sapiens", "obcy", "tony" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "poranek dla dzieci",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "flavia de luce", "pucio kocha zwierzaki", "tajemnica spiewajacych ptakow", "vincent legenda oceanu" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "rbo cinema season 2026 27",
+    "films" : 4,
+    "venues" : 519,
+    "titles" : 4,
+    "examples" : [ "carmen", "cosi fan tutte", "macbeth", "manon" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "tani wtorek",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "lalka", "ma to sens", "obcy", "powiedz mi co czujesz" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "wielka sztuka w kinoteatrze rialto",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "egon schiele poza tabu", "michal aniol milosc i smierc", "najwiekszy lek hitlera proces przeciwko sztuce zdegenerowanej", "whistler prekursor modernizmu" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino przy herbatce",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "kura", "lalka", "rozwazna i romantyczna", "the social reckoning w sieci konsekwencji" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino wybrzeze",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "baranek shaun i kudlata bestia dubbing", "czas ktory nie nadszedl", "lalka pol", "odzyskany pol" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "malayalam",
+    "films" : 4,
+    "venues" : 38,
+    "titles" : 4,
+    "examples" : [ "aaram", "bethlehem kudumba unit", "dhoomakethu", "pradhama drishtiya kuttakkar" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "metropolitan opera live in hd 2026 27",
+    "films" : 4,
+    "venues" : 1,
+    "titles" : 4,
+    "examples" : [ "carmen", "cosi fan tutte", "makbet", "samson i dalila" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pokaz przedpremierowy",
+    "films" : 4,
+    "venues" : 2,
+    "titles" : 4,
+    "examples" : [ "roza", "splat filmfest on tour grzesznicy nie zaznaja spokoju", "splat filmfest on tour opi", "splat filmfest on tour rola zycia i smierci" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pokaz specjalny",
+    "films" : 4,
+    "venues" : 3,
+    "titles" : 4,
+    "examples" : [ "diably", "lalka", "orlando", "spotkac budde" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "cykl ale kino",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "drugie zycie", "father mother sister brother", "wedrowka na polnoc" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kino na obcasach",
+    "films" : 3,
+    "venues" : 26,
+    "titles" : 3,
+    "examples" : [ "jak zyc zeby nie zwariowac", "lalka", "przepis na swieta" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "odyssey 2026",
+    "films" : 3,
+    "venues" : 3,
+    "titles" : 3,
+    "examples" : [ "2046", "in the mood for love", "the last emperor" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "toddler club",
+    "films" : 3,
+    "venues" : 43,
+    "titles" : 3,
+    "examples" : [ "paw patrol the dino movie", "the super mario galaxy movie", "we re going on a bear hunt the tiger who came to tea" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "10 10 klasyka filmowa",
+    "films" : 3,
+    "venues" : 3,
+    "titles" : 3,
+    "examples" : [ "fargo", "stowarzyszenie umarlych poetow", "uwierz w ducha" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d dub sps",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "pucio kocha zwierzaki", "super futrzak i zlosliwa wiewiorka", "vincent legenda oceanu" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "dubbed",
+    "films" : 3,
+    "venues" : 21,
+    "titles" : 3,
+    "examples" : [ "ninja scroll", "princess mononoke", "spirited away" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino konesera 24 ffol",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "hot spot", "nasza rewolucja", "powiedz mi co czujesz" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "napisy nasze kino",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "gorzkie swieta", "obcy", "roza" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "nasze kino",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "dzien dziecka ksiedza jana kaczkowskiego", "mistyczka", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "prelekcja",
+    "films" : 3,
+    "venues" : 2,
+    "titles" : 3,
+    "examples" : [ "crash", "egon schiele poza tabu", "pasazer andrzej munk" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "premiera 2d napisy",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "niebo nad normandia", "spa weekend", "witajcie w hope" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "premiera krajowa",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "resident evil 2d napisy", "tedi i magiczna lampa 2d dubbing", "w sercu dziczy 2d napisy" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "przedpremiera",
+    "films" : 3,
+    "venues" : 2,
+    "titles" : 3,
+    "examples" : [ "najlepsza owsianka na swiecie", "primetime", "roza" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "spanish dubbed",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "forgotten island", "heart of the beast", "resident evil 2026" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "sps",
+    "films" : 3,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "pucio kocha zwierzaki 2d dub", "super futrzak i zlosliwa wiewiorka 2d dub", "vincent legenda oceanu 2d dub" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "subtitled",
+    "films" : 3,
+    "venues" : 21,
+    "titles" : 3,
+    "examples" : [ "ninja scroll", "princess mononoke", "spirited away" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "ukrainski dubbing",
+    "films" : 3,
+    "venues" : 8,
+    "titles" : 3,
+    "examples" : [ "resident evil", "spider man calkiem nowy dzien", "the social reckoning w sieci konsekwencji" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "akademia kina swiatowego",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "alcarras", "orlando" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "ars independent festival paul verhoeven retrospektywa",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "nagi instynkt", "showgirls" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "cineworld 30",
+    "films" : 2,
+    "venues" : 87,
+    "titles" : 2,
+    "examples" : [ "the dark knight", "the matrix" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "dismember the alamo 2026",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "chicago", "omaha" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "dkf kropka dla dzieci",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "chlopiec na krancach swiata", "mira" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "edukacja mh",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "johnny", "miss moxy kocia ekipa" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "filmowy klub seniora i seniorki",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "ma to sens", "obcy" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kino dla ducha",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "dzien dziecka ksiedza jana kaczkowskiego", "odzyskany" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kino dostepne",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "tony", "vivaldi i ja" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kino seniora",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "lalka", "vivaldi i ja" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "klub filmowy urania",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "milosc smierc i dojrzewanie w camp miasma", "tony" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "konwicki",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "dolina issy", "jak daleko stad jak blisko" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "kps",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 3,
+    "examples" : [ "100 dni misja zeus", "marsupilami" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "met opera live im kino",
+    "films" : 2,
+    "venues" : 162,
+    "titles" : 2,
+    "examples" : [ "cosi fan tutte", "macbeth" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "najlepsze z najgorszych",
+    "films" : 2,
+    "venues" : 3,
+    "titles" : 2,
+    "examples" : [ "atak potworkow", "kupilem motocykl ktory jest wampirem" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "pokaz specjalny",
+    "films" : 2,
+    "venues" : 3,
+    "titles" : 2,
+    "examples" : [ "diuna czesc trzecia", "do utraty tchu" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "przeglad lyncha",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "mulholland drive", "zagubiona autostrada" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "relaxed screening",
+    "films" : 2,
+    "venues" : 11,
+    "titles" : 2,
+    "examples" : [ "sense and sensibility", "shaun the sheep the beast of mossy bottom" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "royal ballet and opera sezon kinowy 2026 27",
+    "films" : 2,
+    "venues" : 16,
+    "titles" : 2,
+    "examples" : [ "carmen", "manon" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "seans przyjazny sensorycznie",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "arco", "luna i rozgadana swinka" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "terror tuesday",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "sleepy hollow", "the thing 1982" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "wajda re wizje",
+    "films" : 2,
+    "venues" : 10,
+    "titles" : 2,
+    "examples" : [ "bez znieczulenia", "krajobraz po bitwie" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "wajda re wizje przeglad filmow andrzeja wajdy w 100 rocznice urodzin",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "bez znieczulenia", "krajobraz po bitwie" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "wsp",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "lalka", "roza przedpremiera" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "112",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "asterix i obelix misja kleopatra", "milosc smierc i dojrzewanie w camp miasma" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d dub bo",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "psi patrol i dinozaury", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d dub knt",
+    "films" : 2,
+    "venues" : 5,
+    "titles" : 2,
+    "examples" : [ "avengers koniec gry re release", "spider man calkiem nowy dzien" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d nap 15",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "buntownik", "gwiazdozbior psa" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "2d napisy premiera krajowa",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "resident evil", "w sercu dziczy" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "30 rocznica",
+    "films" : 2,
+    "venues" : 39,
+    "titles" : 2,
+    "examples" : [ "crash", "trainspotting" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "3d imax",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "afrykanska przygoda", "hubble" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "atmos",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "avengers koniec gry wersja rozszerzona dubbing infinity vision w helios replay", "avengers koniec gry wersja rozszerzona infinity vision w helios replay" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "chkf",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "camino dla opornych", "mistyczka" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "dobre kino po sasiedzku",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "drugie zycie", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "english friendly",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "everytime", "lalka" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "festiwal kina krajow portugalskojezycznych mare",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "nocni pasazerowie", "swist wiatru pomiedzy zurawiami" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino dostepne",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "kandydaci smierci", "tony" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino kobiet",
+    "films" : 2,
+    "venues" : 52,
+    "titles" : 2,
+    "examples" : [ "drugie zycie", "lalka" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kino konesera",
+    "films" : 2,
+    "venues" : 47,
+    "titles" : 2,
+    "examples" : [ "pianista", "wszyscy moi wrogowie" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kinoteka jest kobieta w blasku musicali",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "la la land", "west side story" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "kinoteka kultury i sztuki",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "fleabag", "mizantrop" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "live viewing w helios na scenie",
+    "films" : 2,
+    "venues" : 22,
+    "titles" : 2,
+    "examples" : [ "bts world tour arirang in buenos aires", "bts world tour arirang in sao paulo" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "mala sala",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "kura", "orlando" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "napisy dkf reksio nasze kino",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "proces", "requiem dla snu" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "napisy kino wybrzeze",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "jak zyc zeby nie zwariowac", "the social reckoning w siseci konsekwencji" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "napisy pl tylko sztuka cie nie oszuka",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "andy warhol amerykanski sen", "prawdziwa historia tamary lempickiej" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pjm",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "kino bez barier gorzkie swieta ad cc", "kino bez barier ojczyzna ad cc" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pl en sub",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "gorzkie swieta", "obcy" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "pol kino wybrzeze",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "lalka", "odzyskany" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "poniedzialki z wong kar waiem",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "2046", "spragnieni milosci" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "premiera filmowa",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "hot spot", "lalka" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "przed filmem wyklad prof marka hendrykowskiego",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "notting hill", "romeo i julia" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "punjabi",
+    "films" : 2,
+    "venues" : 4,
+    "titles" : 2,
+    "examples" : [ "singh vs kaur 2", "tutt paini english ne" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "w helios replay atmos",
+    "films" : 2,
+    "venues" : 2,
+    "titles" : 2,
+    "examples" : [ "avengers koniec gry wersja rozszerzona dubbing infinity vision", "avengers koniec gry wersja rozszerzona infinity vision" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "zestaw mlode horyzonty",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "niesamowite przygody skarpetek 4 do roboty", "pucio kocha zwierzaki" ]
+  } ]
+}

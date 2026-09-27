@@ -23,10 +23,12 @@ import services.resolution.SearchTitles
  */
 object IdentityMeasures {
 
-  /** What one venue published about one film. */
+  /** What one venue published about one film. `decorations`: the venue decorations learned around
+   *  titles (`TitleDecorations`), which the title shapes read — not a fact the venue published. */
   final case class Listing(title: String, rawTitle: Option[String] = None, originalTitle: Option[String] = None,
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
-                           countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None) {
+                           countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
+                           decorations: TitleDecorations = TitleDecorations.None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
@@ -377,15 +379,16 @@ object IdentityMeasures {
 
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
-      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)))
+      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)), l.decorations)
   }
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
-   *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"), to a fixpoint:
-   *  every shape still a whole delimited piece of one of the titles. */
-  private def shapes(titles: Seq[String]): Seq[String] =
+   *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"; "(4DX Rewind) Shrek"
+   *  → "Shrek" by a learned `decorations` run), to a fixpoint: every shape still a whole delimited
+   *  or decorated piece of one of the titles. */
+  private def shapes(titles: Seq[String], decorations: TitleDecorations = TitleDecorations.None): Seq[String] =
     Iterator.iterate(titles.map(_.trim).filter(_.nonEmpty).distinct)(s =>
-        (s ++ s.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct)
+        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip)).map(_.trim).filter(_.nonEmpty).distinct)
       .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 
   private def jaccard(a: Set[String], b: Set[String]): Double =

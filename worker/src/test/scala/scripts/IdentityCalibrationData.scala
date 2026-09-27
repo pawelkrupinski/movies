@@ -3,7 +3,7 @@ package scripts
 import clients.tools.RecordingHttpFetch
 import models.{Cinema, CinemaMovie, Country}
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.identity.{IdentityMeasures, TmdbFilmRecord}
+import services.identity.{IdentityMeasures, TitleDecorations, TmdbFilmRecord}
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Number}
 import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
 import tools.CorpusFixture
@@ -87,6 +87,9 @@ object IdentityCalibrationData {
         (Seq(d.film.title) ++ d.film.originalTitle ++ d.film.alternativeTitles).map(IdentityMeasures.key).filter(_.nonEmpty).distinct.map(_ -> id)
       }).groupMap(_._1)(_._2).view.mapValues(_.distinct.sorted).toMap
 
+    /** Every film record the recorded answers hold, by id. */
+    def films: Seq[Film] = movieDirFiles.keys.toSeq.sorted.flatMap(details).map(_.film)
+
     private val searchCache  = mutable.HashMap.empty[String, Option[Seq[Hit]]]
     private val detailsCache = mutable.HashMap.empty[Int, Option[Details]]
 
@@ -145,16 +148,19 @@ object IdentityCalibrationData {
 
   private val Separator = "␟"
 
-  private def listingOf(cm: CinemaMovie): Listing =
+  private def listingOf(cm: CinemaMovie, decorations: TitleDecorations): Listing =
     Listing(cm.movie.title, cm.movie.rawTitle, cm.movie.originalTitle.filter(_.trim.nonEmpty), cm.movie.releaseYear,
-      cm.movie.runtimeMinutes.filter(_ > 0), cm.director.map(_.trim).filter(_.nonEmpty).distinct, cm.movie.countries)
+      cm.movie.runtimeMinutes.filter(_ > 0), cm.director.map(_.trim).filter(_.nonEmpty).distinct, cm.movie.countries,
+      decorations = decorations)
 
   /**
    * Every listing of a country: the recorded corpora (full and hard-cluster), then every
    * production slot no corpus listing is filed under (production's current programme), each
-   * joined to the production film it is filed under.
+   * joined to the production film it is filed under. Each listing's title shapes read the learned
+   * `decorations`, as the resolver's do.
    */
-  def listings(country: Country, corpora: Seq[(String, Path)], prod: ProdSnapshot, startIdx: Int): Seq[Obs] = {
+  def listings(country: Country, corpora: Seq[(String, Path)], prod: ProdSnapshot, startIdx: Int,
+               decorations: TitleDecorations = TitleDecorations.None): Seq[Obs] = {
     val normalizer = TitleNormalizer.forCountry(country)
     val bySlotKey  = prod.slots.map { case (film, slotKey, _) => slotKey -> film }.toMap
     val byRaw      = prod.slots.flatMap { case (film, slotKey, slot) =>
@@ -175,7 +181,7 @@ object IdentityCalibrationData {
             val slot = s"${cinema.displayName}$Separator${ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)}"
             val film = bySlotKey.get(slot).orElse(byRaw.get((cinema.displayName, raw))).orElse(byRaw.get((cinema.displayName, cm.movie.title)))
             if (film.isDefined) used += slot
-            out += Obs(idx, country.code, cinema.displayName, lk, listingOf(cm), cm.filmUrl.filter(_.trim.nonEmpty),
+            out += Obs(idx, country.code, cinema.displayName, lk, listingOf(cm, decorations), cm.filmUrl.filter(_.trim.nonEmpty),
               cm.externalIds, source, film)
             idx += 1
           }
@@ -195,7 +201,8 @@ object IdentityCalibrationData {
         if (title.nonEmpty && seen.add(lk)) {
           out += Obs(idx, country.code, venue, lk,
             Listing(title, raw, (slot \ "originalTitle").asOpt[String].filter(_.trim.nonEmpty), year,
-              (slot \ "runtimeMinutes").asOpt[Int].filter(_ > 0), dirs, (slot \ "countries").asOpt[Seq[String]].getOrElse(Nil)),
+              (slot \ "runtimeMinutes").asOpt[Int].filter(_ > 0), dirs, (slot \ "countries").asOpt[Seq[String]].getOrElse(Nil),
+              decorations = decorations),
             url, Map.empty, "prod", Some(film))
           idx += 1
         }
