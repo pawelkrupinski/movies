@@ -41,18 +41,16 @@ import scala.util.Try
  *      detail page is already scoped to a single film).
  *
  * The card-grid skin's detail page also carries a plain-Polish synopsis in an
- * off-canvas info panel (`#offcanvasRightInfo .offcanvas-body`) — and that is
- * the ONLY film-level metadata ekobilet exposes there: no production year,
- * director, cast, country, genre or runtime anywhere on the page (verified
- * across venues: no labelled block, no `Movie` JSON-LD, no OG tags). So the
- * deferred [[fetchFilmDetail]] supplies a synopsis only — pure display
- * enrichment with no TMDB-identity hints — which is why `defersTmdbResolution`
- * is overridden to false: the row resolves immediately off its listing title
- * rather than waiting for a detail that can't disambiguate it. (Resolution
- * disambiguation for yearless arthouse titles still has to come from
- * TMDB/IMDb, not this source.) The chrono-row skin never sets `filmUrl` at all
- * (its only per-row link is a session's booking URL, not a shared film page),
- * so those rows simply carry no synopsis.
+ * off-canvas info panel (`#offcanvasRightInfo .offcanvas-body`). Some venues
+ * publish nothing else there (no labelled block, no `Movie` JSON-LD, no OG
+ * tags), but others (Kino Rejs in Słupsk; Kino Meduza in Opole on some films)
+ * open the panel with a hand-typed metadata paragraph — "Francja, Belgia 2026,
+ * 88 min / reżyseria: Philippe Riche" — which [[EkobiletClient.parseDetail]]
+ * reads into countries, year, runtime and director. Those are TMDB-identity
+ * hints the listing never carries, so resolution waits for the detail (the
+ * default `defersTmdbResolution`). The chrono-row skin never sets `filmUrl` at
+ * all (its only per-row link is a session's booking URL, not a shared film
+ * page), so those rows carry no detail and resolve off their title alone.
  *
  * One instance per venue, captured by its `slug` + `cinema` (OCP). Fetches: the
  * landing (chrono-row: done) or the landing + one page per available day + each
@@ -78,12 +76,8 @@ class EkobiletClient(
   // venue-scoped: `ekobilet.pl/<slug>/<film>`.)
   override def detailGroup: String = cinema.slug
 
-  // The synopsis is display-only and supplies no TMDB-identity hint, so the row
-  // resolves straight off its listing title and the synopsis merges in later.
-  override def defersTmdbResolution: Boolean = false
-
-  /** Deferred per-film detail — the synopsis off the off-canvas info panel, the
-   *  only film-level field ekobilet exposes. None on a fetch failure so the task
+  /** Deferred per-film detail — the synopsis (plus, where the venue types one,
+   *  the metadata line) off the off-canvas info panel. None on a fetch failure so the task
    *  stays stale and retries rather than recording an empty result as fresh.
    *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
@@ -226,16 +220,36 @@ object EkobiletClient {
       } yield (title, date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
     }.distinctBy(identity)
 
-  /** Parse a film detail page into its (synopsis-only) `FilmDetail`. The synopsis
-   *  is the prose paragraph in the off-canvas info panel
-   *  (`#offcanvasRightInfo .offcanvas-body p`); that panel's body also embeds the
-   *  venue's own boilerplate "about the cinema" blurb after a `.line` divider, so
-   *  read only the first `<p>` (the film synopsis) rather than the whole body.
-   *  No other film-level field (year, director, cast, country, genre, runtime)
-   *  exists on the page, so this is all the detail there is. */
-  private[cinemas] def parseDetail(document: Document): FilmDetail =
+  /** Parse a film detail page into its `FilmDetail`, off the off-canvas info
+   *  panel (`#offcanvasRightInfo .offcanvas-body`). Its `<p>`s are the film's
+   *  own; the venue's "about the cinema" blurb sits after a `.line` divider,
+   *  outside the body. Usually the only `<p>` is the synopsis. Some venues put
+   *  a metadata paragraph first ("Francja, Belgia 2026, 88 min" then
+   *  "reżyseria: Philippe Riche"), which becomes countries, year, runtime and
+   *  director; the synopsis is then the first paragraph that is NOT that line. */
+  private[cinemas] def parseDetail(document: Document): FilmDetail = {
+    val paragraphs = document.select("#offcanvasRightInfo .offcanvas-body p").asScala.toSeq
+      .map(_.text.trim).filter(_.nonEmpty)
+    val metadata = paragraphs.collectFirst(Function.unlift(MetadataLine.findPrefixMatchOf))
     FilmDetail(
-      synopsis = Option(document.selectFirst("#offcanvasRightInfo .offcanvas-body p"))
-        .map(_.text.trim).filter(_.nonEmpty)
+      synopsis       = paragraphs.find(p => MetadataLine.findPrefixMatchOf(p).isEmpty),
+      director       = metadata.flatMap(m => Option(m.group(DirectorGroup))).toSeq
+                         .flatMap(_.split(',')).map(_.trim).filter(_.nonEmpty),
+      runtimeMinutes = metadata.flatMap(m => Option(m.group(RuntimeGroup))).flatMap(_.toIntOption),
+      releaseYear    = metadata.flatMap(m => m.group(YearGroup).toIntOption),
+      countries      = metadata.toSeq.flatMap(_.group(CountriesGroup).split(',')).map(_.trim).filter(_.nonEmpty)
     )
+  }
+
+  private val CountriesGroup = "countries"
+  private val YearGroup      = "year"
+  private val RuntimeGroup   = "runtime"
+  private val DirectorGroup  = "director"
+
+  /** The metadata paragraph's text: "<countries> <year>[, <N> min][ reżyseria: <names>]",
+   *  e.g. "Francja, Belgia 2026, 88 min reżyseria: Philippe Riche". Anchored at
+   *  the paragraph's start and requiring a letters-only country list before the
+   *  year, so a synopsis that merely mentions a year never matches. */
+  private val MetadataLine =
+    raw"""(?i)^(?<$CountriesGroup>\p{L}[\p{L} ,.-]*?)\s+(?<$YearGroup>\d{4})(?:\s*,\s*(?<$RuntimeGroup>\d+)\s*min\.?)?(?:\s*reżyseria:\s*(?<$DirectorGroup>.+))?$$""".r
 }

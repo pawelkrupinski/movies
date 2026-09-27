@@ -35,6 +35,7 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("Nowe Horyzonty", new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6))),
     ("Nove Kino",      new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", models.KinoAtlantic)),
     ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"))),
+    ("Ekobilet",       new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy", models.KinoMeduza, LocalDate.of(2026, 6, 8))),
     ("Cinema City",    new CinemaCityScraper(new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer), "1078", models.CinemaCityPoznanPlaza))
   )
 
@@ -54,8 +55,6 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
   private val optOutOfDeferral: Seq[(String, CinemaScraper & DetailEnricher)] = Seq(
     ("Alternatywy",       new AlternatywyClient(new FakeHttpFetch("alternatywy"),
                             today = LocalDate.of(2026, 6, 7), titles = titleNormalizer)),
-    ("Ekobilet",          new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy",
-                            models.KinoMeduza, today = LocalDate.of(2026, 6, 8))),
     ("Kino Pod Baranami", new KinoPodBaranamiClient(new FakeHttpFetch("kino-pod-baranami"),
                             models.KinoPodBaranami, LocalDate.of(2026, 6, 7))),
     ("Kino Paradox",      new KinoParadoxClient(new FakeHttpFetch("kino-paradox"), models.KinoParadox)),

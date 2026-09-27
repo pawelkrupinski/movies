@@ -2,7 +2,7 @@ package clients.ekobilet
 
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoTon, KinoZaciszeWasosz}
+import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoRejs, KinoTon, KinoZaciszeWasosz}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.EkobiletClient
@@ -77,8 +77,8 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val detail = jaworzynaClient.fetchFilmDetail(ref).value
     detail.synopsis.value shouldBe
       "Seryjny morderca i inteligentna agentka łączą siły, by znaleźć przestępcę obdzierającego ze skóry swoje ofiary."
-    // ekobilet pages carry no other film-level metadata — assert the gap so a
-    // future page shape that *does* add it shows up as a failing expectation.
+    // Jaworzyna's page has no leading metadata paragraph (see the Kino Rejs case
+    // below), so nothing beyond the synopsis is invented.
     detail.releaseYear shouldBe None
     detail.director    shouldBe empty
     detail.cast        shouldBe empty
@@ -90,6 +90,34 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val detail = jaworzynaClient.fetchFilmDetail(ref).value
     detail.synopsis.value should startWith("Marina wraca do rodzinnej Galicji")
     detail.synopsis.value should not include "Małopolskiej Sieci Kin Cyfrowych" // the venue blurb
+  }
+
+  // ── 2026-09-27 detail pages with and without the metadata paragraph ────────
+  // Some venues (Kino Rejs, Słupsk) open the off-canvas info panel with a
+  // metadata paragraph — "<strong>Francja, Belgia 2026, 88 min</strong><br>
+  // <strong>reżyseria: </strong>Philippe Riche" — BEFORE the synopsis <p>.
+  // Reading the first <p> stored that line as the synopsis and dropped the plot.
+  private val rejsClient =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-detail"), "kinorejs", KinoRejs, today = LocalDate.of(2026, 9, 27))
+
+  it should "read the synopsis past a leading metadata paragraph and parse that paragraph's fields" in {
+    val detail = rejsClient.fetchFilmDetail("https://ekobilet.pl/kinorejs/luna-i-rozgadana-swinka-63624").value
+    detail.synopsis.value should startWith("Jedenastoletnia Luna, fanka serii książek")
+    detail.synopsis.value should not include "reżyseria"
+    detail.countries      shouldBe Seq("Francja", "Belgia")
+    detail.releaseYear    shouldBe Some(2026)
+    detail.runtimeMinutes shouldBe Some(88)
+    detail.director       shouldBe Seq("Philippe Riche")
+  }
+
+  it should "keep an ordinary synopsis-only detail page's synopsis and invent no metadata" in {
+    val tonClient = new EkobiletClient(new FakeHttpFetch("ekobilet-detail"), "kinoton", KinoTon, today = LocalDate.of(2026, 9, 27))
+    val detail = tonClient.fetchFilmDetail("https://ekobilet.pl/kinoton/ice-cream-man-63797").value
+    detail.synopsis.value should startWith("Fabuła filmu przenosi nas do idyllicznego, wakacyjnego miasteczka")
+    detail.countries      shouldBe empty
+    detail.releaseYear    shouldBe None
+    detail.runtimeMinutes shouldBe None
+    detail.director       shouldBe empty
   }
 
   it should "return None when the detail-page fetch fails (no fixture)" in {
