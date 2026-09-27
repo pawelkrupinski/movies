@@ -30,13 +30,14 @@ import scala.collection.mutable
  *      calibrated probability clears the calibration's cut AND its own facts (not TMDB's ranking)
  *      favour it over the runner-up; otherwise it follows its cluster. Then:
  *        1. constraint edges between nodes sharing a block key — must-links by tier (0 pinned, 1
- *           same accepted film, 2 same sanitised title, 3 same search form or original title, 4 one's
- *           title a delimited segment of the other's, unless the rest of the other's names a film of
- *           its own) and
+ *           same accepted film, 2 same sanitised title, 3 same search form — unless either title names
+ *           a film or a listing's title beside it — or original title, 4 one's title a delimited
+ *           segment of the other's, unless the rest of the other's names a film of its own) and
  *           cannot-links (different accepted films; a node denying the other's film; the two
  *           listings' own evidence apart, `ListingConstraints.learnedListingListing`: a learned rule
  *           or the "listing-listing" cut, only when the two compare a fact both published) —
- *           solved by [[ConstraintSolver]] (cannot wins; an ambiguous node stays alone, A2);
+ *           solved by [[ConstraintSolver]] (cannot wins, and no component holds two films however
+ *           the must-links chain; an ambiguous node stays alone, A2);
  *        2. GROUP-LEVEL VOTING: a cluster no member of which accepted a film scores its members'
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
  *           and the winner, if accepted — and no rival the title names by the same pieces fits the
@@ -549,17 +550,31 @@ object IdentityResolver {
       pins.admits(FamilyClosure.Edge(nodeById(e.a).listings.head.key, nodeById(e.b).listings.head.key, e.must, e.reason))
 
 
-    /** Does the rest of `decorated`'s title name a film of its own, beside `whole`'s title — a
-     *  candidate it may still take whose naming pieces share no word with `whole`'s? "Lalka (Dolly)"
+    /** Does the rest of `decorated`'s title name a film of its own, beside the title `whole` — a
+     *  candidate it may still take whose naming pieces share no word with `whole`? "Lalka (Dolly)"
      *  carries "Lalka" whole, but its "Dolly" names Blackhurst's film: it is not merely a decorated
      *  "Lalka", and the segment must not decide between the two for it. */
-    def namesBeside(decorated: Node, whole: Node): Boolean = {
-      val words = services.movies.TitleContainment.tokens(whole.evidence.cleanTitle).toSet
+    def namesBeside(decorated: Node, whole: String): Boolean = {
+      val words = services.movies.TitleContainment.tokens(whole).toSet
       scopeOf(decorated).of(decorated).exists { s =>
         val pieces = IdentityMeasures.namingPieces(decorated.evidence.measured, s.c.film)
         !s.denied && pieces.nonEmpty && pieces.forall(p => (p.toSet intersect words).isEmpty)
       }
     }
+    /** Does `n`'s title carry, beside its search form `form`, a delimited segment that is ANOTHER
+     *  listing's whole title sharing no word with the form? Kino Oaza's "\"Kumotry\" - film, V
+     *  FESTIWAL WAPI 2026" searches as its festival's suffix, which every film of the festival shares,
+     *  while its quoted segment is the title other venues list the film by: the form is then the
+     *  festival's, not the film's, and says nothing about which film the spelling is. */
+    val wholeTitles: Set[String] = nodes.map(n => sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty).toSet
+    def titlesBeside(n: Node, form: String): Boolean = {
+      val words = services.movies.TitleContainment.tokens(form).toSet
+      segmentsOf(n.id).exists(seg => wholeTitles(seg) && (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
+    }
+    /** Does `n`'s title name a film or a listing's title BESIDE its search form `form` ([[namesBeside]],
+     *  [[titlesBeside]]) — so that a search form it shares with another title is no evidence the two
+     *  are one film? */
+    def besideItsForm(n: Node, form: String): Boolean = namesBeside(n, form) || titlesBeside(n, form)
 
     /** The must-link tiers a title draws (`edgesOf`): same title, same search form or original
      *  title, one title a segment of the other. */
@@ -581,7 +596,10 @@ object IdentityResolver {
         val musts = Seq(
           Option.when(sameFilm)((1, "same-film")),
           Option.when(titleX.nonEmpty && titleX == sanitized(ey.cleanTitle))((2, "same-title")),
-          Option.when(searchForm(ex.cleanTitle).nonEmpty && searchForm(ex.cleanTitle) == searchForm(ey.cleanTitle))((3, "same-search-form")),
+          // Unless the form is only what the two titles share BESIDE the films they name: a
+          // festival's spellings of its films all search as the festival's suffix.
+          Option.when(searchForm(ex.cleanTitle).nonEmpty && searchForm(ex.cleanTitle) == searchForm(ey.cleanTitle) &&
+            !besideItsForm(x, searchForm(ex.cleanTitle)) && !besideItsForm(y, searchForm(ey.cleanTitle)))((3, "same-search-form")),
           Option.when(originals.contains(titleX) || originals.contains(sanitized(ey.cleanTitle)) ||
             (ex.originalTitle.isDefined && ex.originalTitle.map(sanitized) == ey.originalTitle.map(sanitized) && originals.nonEmpty))((3, "original-title")),
           // One listing's whole title is a delimited SEGMENT of the other's ("Oficjalna premiera:
@@ -589,12 +607,12 @@ object IdentityResolver {
           // voting and the venue signal reach it. Whole segments only — "Zärtlich kreist die Faust"
           // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
           // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
-          Option.when((segmentOf(x, y) && !namesBeside(y, x)) || (segmentOf(y, x) && !namesBeside(x, y)))((4, "title-segment"))
+          Option.when((segmentOf(x, y) && !namesBeside(y, ex.cleanTitle)) || (segmentOf(y, x) && !namesBeside(x, ey.cleanTitle)))((4, "title-segment"))
         ).flatten
         cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (t, r) => edge(must = true, t, r) }
       }.filter(admitted)
 
-    def solve(members: Seq[Node], edges: Seq[ResolverEdge]): Seq[Seq[Node]] = {
+    def solve(members: Seq[Node], edges: Seq[ResolverEdge], filmOf: String => Option[Int]): Seq[Seq[Node]] = {
       val constraints = edges.map(e => ConstraintSolver.Constraint(e.a, e.b, e.must, e.tier, e.reason))
       val presentation = if (mutation == Mutation.FirstWins) ConstraintSolver.Presentation.AsGiven else ConstraintSolver.Presentation.Canonical
       val presented = if (mutation == Mutation.FirstWins) {
@@ -605,7 +623,8 @@ object IdentityResolver {
         val position = presented.zipWithIndex.map { case (n, i) => n.id -> i }.toMap
         constraints.sortBy(c => (math.min(position(c.a), position(c.b)), math.max(position(c.a), position(c.b))))
       } else constraints
-      ConstraintSolver.solveAs(presented.map(_.id), cs, presentation).map(_.map(nodeById))
+      ConstraintSolver.solveAs(presented.map(_.id), cs, presentation, members.flatMap(n => filmOf(n.id).map(n.id -> _)).toMap)
+        .map(_.map(nodeById))
     }
 
     /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
@@ -734,7 +753,7 @@ object IdentityResolver {
       val scope   = scopes(family)
       val accepted: Map[String, Int] = members.flatMap(n => acceptedAll.get(n.id).map(n.id -> _)).toMap
 
-      val roundA = solve(members, roundAByFamily.getOrElse(family, Nil))
+      val roundA = solve(members, roundAByFamily.getOrElse(family, Nil), accepted.get)
       // Group-level voting over the clusters no member matched alone.
       val unaccepted = roundA.filter(_.forall(n => !accepted.contains(n.id)))
       // A facts-free cluster in a split title family follows the family's clear majority
@@ -753,7 +772,7 @@ object IdentityResolver {
                                      else vote(c, scope)).toMap
       val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
       val edges    = edgesOf(members, filmOf)
-      val clusters = solve(members, edges)
+      val clusters = solve(members, edges, filmOf)
       finalEdges ++= edges
 
       val clusterIndex = clusters.zipWithIndex.flatMap { case (c, i) => c.map(_.id -> i) }.toMap

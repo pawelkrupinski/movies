@@ -8,11 +8,17 @@ package services.identity
  * partition. The canonical rule:
  *
  *   1. CANNOT-LINK WINS. Two components are never united while any cannot-link joins them, so no
- *      component ever holds a cannot-linked pair (P3) — by construction, not by check.
+ *      component ever holds a cannot-linked pair (P3) — by construction, not by check. Nor while
+ *      they hold two different FILMS: a node's film ([[solve]]'s `films`) is a cannot-link to
+ *      every node of another film, drawn between the components rather than node by node — the
+ *      caller draws its cannot-links only between nodes sharing a key, and must-links chain
+ *      through nodes that do not ("Kumotry" and "Ścieżki życia" joined through a festival's
+ *      spellings of both).
  *   2. Must-links are applied in TIERS (strongest evidence first), and within a tier in the order
  *      `(min node, max node)`.
  *   3. An AMBIGUOUS node is left alone for its tier: one whose must-links of this tier reach two
- *      components (as they stand at the START of the tier) that are cannot-linked to each other. A
+ *      components (as they stand at the START of the tier) that are cannot-linked to each other, or
+ *      that hold different films. A
  *      bare "A Star Is Born" beside the 1954 and 2018 films is evidence for neither, and rule 2
  *      alone would hand it to whichever sorts first.
  *
@@ -30,11 +36,14 @@ object ConstraintSolver {
 
   private[identity] enum Presentation { case Canonical, AsGiven }
 
-  /** Components as sorted node lists, themselves sorted by their smallest node. */
-  def solve[K](nodes: Seq[K], constraints: Seq[Constraint[K]])(implicit ord: Ordering[K]): Seq[Seq[K]] =
-    solveAs(nodes, constraints, Presentation.Canonical)
+  /** Components as sorted node lists, themselves sorted by their smallest node. `films`: the film
+   *  each node already holds, if any — no component ever holds two. */
+  def solve[K](nodes: Seq[K], constraints: Seq[Constraint[K]], films: Map[K, Int] = Map.empty[K, Int])
+              (implicit ord: Ordering[K]): Seq[Seq[K]] =
+    solveAs(nodes, constraints, Presentation.Canonical, films)
 
-  private[identity] def solveAs[K](nodes: Seq[K], constraints: Seq[Constraint[K]], presentation: Presentation)
+  private[identity] def solveAs[K](nodes: Seq[K], constraints: Seq[Constraint[K]], presentation: Presentation,
+                                   films: Map[K, Int] = Map.empty[K, Int])
                                   (implicit ord: Ordering[K]): Seq[Seq[K]] = {
     val canonical   = presentation == Presentation.Canonical
     val sortedNodes = if (canonical) nodes.distinct.sorted else nodes.distinct
@@ -49,11 +58,15 @@ object ConstraintSolver {
       val (a, b) = (index(c.a), index(c.b))
       if (a != b) { cannotOf(a) += b; cannotOf(b) += a }
     }
-    def forbidden(ra: Int, rb: Int): Boolean = cannot.get(ra).exists(_.contains(rb))
+    // Each ROOT's film, maintained through every union.
+    val film = scala.collection.mutable.HashMap.from(sortedNodes.indices.flatMap(i => films.get(sortedNodes(i)).map(i -> _)))
+    def forbidden(ra: Int, rb: Int): Boolean =
+      cannot.get(ra).exists(_.contains(rb)) || (film.contains(ra) && film.contains(rb) && film(ra) != film(rb))
     def union(ra: Int, rb: Int): Unit = {
       // The smaller rank survives: a choice by the node's place in the total order.
       val (keep, gone) = if (ra < rb) (ra, rb) else (rb, ra)
       parent(gone) = keep
+      film.remove(gone).foreach(f => film(keep) = f)
       cannot.remove(gone).foreach { gs =>
         gs.foreach { r => cannot.get(r).foreach { s => s -= gone; s += keep } }
         cannotOf(keep) ++= gs

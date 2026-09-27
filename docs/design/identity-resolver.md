@@ -153,9 +153,14 @@ There is one module, `services.movies.ListingConstraints` (prerequisite b), and 
 | cannot | – | different bracketed years, with no shared film | `EmbeddedYear` (to be routed through `ListingConstraints`) |
 
 **Solving** (`ConstraintSolver` in the prototype). Cannot-link wins: two components never unite
-while a cannot-link joins them, so P3 holds by construction. Must-links are applied tier by tier,
+while a cannot-link joins them, so P3 holds by construction. Nor while they hold two different
+films: a node's film is a cannot-link to every node of another film, kept per component, because
+edges are drawn only between nodes sharing a key and must-links chain through nodes that share
+none (PL recording 36321731194: a festival's spellings joined "Kumotry", "Ścieżki życia" and
+"Niesamowite przygody skarpetek 3" into one cluster and the resolve failed its own invariant).
+Must-links are applied tier by tier,
 and within a tier in the order `(min key, max key)`. A node whose tier edges reach two components
-that are cannot-linked to each other is **ambiguous** and is left alone for that tier. That is the
+that are cannot-linked to each other, or hold different films, is **ambiguous** and is left alone for that tier. That is the
 bare "A Star Is Born" beside 1954 and 2018. Because the solver reads its input only through sorts
 under a total order, the partition is a function of the set.
 
@@ -1735,6 +1740,7 @@ The resolver has no per-title, per-venue, per-chain or per-franchise rule of its
 - Cannot-links are the artefact's learned rules and certified cuts, reached through `ListingConstraints.learned`. The probability cut reads the listing's **own facts** only, not the ranking priors. A candidate is not vetoed for ranking second in TMDB's search.
 - A node accepts a film **alone** only when its own facts favour it over the runner-up. Otherwise it follows the film its cluster's credited members chose, or the pooled vote. The confidence is the calibrated probability.
 - One member's denial never vetoes the pooled vote for the whole cluster. When the whole cluster's pooled facts (modal year, median runtime, every director) still carry the vote's best film, the members whose own evidence denies it split off (a `denies-film` cannot-link), and the rest take it when their own pooled facts carry it too: a fact compared, and the facts-only probability over the cut. UK "Ozzy & Black Sabbath: Back to the Beginning" (229 listings) was vetoed whole by the 46 venues crediting only a co-director TMDB does not name.
+- Two spellings sharing a search form are not must-linked by it (tier 3) when either names a film, or carries another listing's whole title as a segment, BESIDE the form (`IdentityResolver.besideItsForm`): PL Kino Oaza bills a festival's films as "\"Kumotry\" - film, V FESTIWAL WAPI 2026", which the title rules search as the festival's suffix, so every film of the festival shared one search form.
 - A decorated spelling joins its plain sibling through a whole-segment must-link (tier 4) — unless the rest of its title names a film of its own (`IdentityResolver.namesBeside`): PL "Lalka (Dolly)" carries "Lalka" whole, but its "Dolly" names Blackhurst's horror, which Polish venues also bill as "Lalka"; the segment linked it to Kawalski's film.
 - A title that names two candidates by DISJOINT pieces (`IdentityMeasures.namedApart`) names both alike, so "own facts favour it" compares them without the title relation (`IdentityResolver.favours`). Nested pieces are no tie: "Joker: Folie à deux" names its film whole.
 - The pooled vote (`IdentityResolver.pooledAccepted`) does not take a film when the title names another candidate by the very same pieces and the pooled published facts fit that one better: four PL "Camino dla opornych" (original title "Santiago", 113 minutes) took the 93-minute 1956 "Santiago" TMDB ranked first over the 113-minute one it ranked fourth. A rival the title names less specifically ("Mad Max" inside "Mad Max 2: The Road Warrior", whose venues' runtime fits the first film) or not at all is no such rival, and namesakes the facts fit alike stay the calibration's to separate — its ranking priors and the family's venue count are measured evidence there (a bare "Resident Evil" at 148 UK venues, "The Omen" at 78): requiring a compared fact, or comparing whole own evidence (where "The Omen" as an alternative title of a Taiwanese film outscores Donner's exact title), cost 500–900 right UK/US listings in the measurement. Two films the title names by disjoint pieces are not namesakes, so only the facts may pick one.

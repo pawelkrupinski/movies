@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.util.Random
 
 /** A2 at the solver: the partition is a function of the node and constraint SETS, no component
- *  holds a cannot-linked pair, and the ambiguity rule leaves a node reaching two cannot-linked
+ *  holds a cannot-linked pair or two films, and the ambiguity rule leaves a node reaching two cannot-linked
  *  components alone — each against the first-wins mutant. */
 class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
 
@@ -60,5 +60,26 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
     // …which first-wins decides by order: {A,B}{C} one way, {A}{B,C} the other.
     ConstraintSolver.solveAs(Seq("A", "B", "C"), cs, Presentation.AsGiven) should not be
       ConstraintSolver.solveAs(Seq("C", "B", "A"), cs.reverse, Presentation.AsGiven)
+  }
+
+  it should "never put two films in one component, though no cannot-link joins their nodes" in {
+    // The PL festival chain: A holds one film, D another, and must-links run A ~ B, B ~ C, C ~ D
+    // across tiers with no cannot-link between A and D — they share no key.
+    val cs = Seq(Constraint("B", "C", must = true, 3, "same-search-form"), Constraint("A", "B", must = true, 4, "title-segment"),
+      Constraint("C", "D", must = true, 4, "title-segment"))
+    ConstraintSolver.solve(Seq("A", "B", "C", "D"), cs) shouldBe Seq(Seq("A", "B", "C", "D"))
+    val films = Map("A" -> 1, "D" -> 2)
+    val components = ConstraintSolver.solve(Seq("A", "B", "C", "D"), cs, films)
+    components.foreach(c => c.flatMap(films.get).distinct.size should be <= 1)
+    // Tier 4 joins A's film first, in the canonical order; D's then stays apart.
+    components shouldBe Seq(Seq("A", "B", "C"), Seq("D"))
+  }
+
+  it should "never put two films in one component, whatever the graph" in {
+    (1L to 3000L).foreach { seed =>
+      val (nodes, cs) = graph(seed)
+      val films = nodes.zipWithIndex.collect { case (n, i) if i % 3 == 0 => n -> (i % 2) }.toMap
+      ConstraintSolver.solve(nodes, cs, films).foreach(c => c.flatMap(films.get).distinct.size should be <= 1)
+    }
   }
 }

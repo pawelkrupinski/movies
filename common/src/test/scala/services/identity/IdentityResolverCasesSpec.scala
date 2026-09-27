@@ -1,7 +1,8 @@
 package services.identity
 
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany,
-  HeliosMagnolia, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, MultikinoPasazGrunwaldzki, Rialto}
+  HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Multikino,
+  MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingConstraints, ListingKey, SingleCountryNormalizer}
@@ -1045,6 +1046,43 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bannered = listing(KinoMuza, "Tani wtorek: Obcy", Some(2025), Some("Zuzanna Grajcewska"))
     val r = IdentityResolver.resolve(Seq(bannered), new Table(films), normalizer, IdentityCalibration.resolver)
     withClue(r.decisionOf(bannered.key).render) { r.decisionOf(bannered.key).film shouldBe Some(1429348) }
+  }
+
+  "A festival's spellings chained through one another's segments" should
+    "never put two films in one cluster, though no key relates the films' own listings" in {
+    // PL recording run 36321731194: Kino Oaza lists a festival's films as "\"<title>\" - film,
+    // V FESTIWAL WAPI 2026". Its title rules leave "film, V FESTIWAL WAPI 2026" as the clean title
+    // of two of them, which is a segment of every other spelling (tier 4), while each spelling's
+    // quoted segment is the plain listings' title of its own film (tier 4). The plain "Ścieżki
+    // życia" and the plain "Kumotry" share no block key, so no cannot-link was drawn between them:
+    // through the festival's spellings the solver joined three films' listings into one cluster
+    // and the resolve failed its own invariant.
+    val films = Seq(F(1127625, "The Salt Path", 2025, "Marianne Elliott", 116, 8),
+      F(1454157, "Kumotry", 2025, "Emilia Śniegoska", 70, 2),
+      F(1646671, "Niesamowite przygody skarpetek 3. Ale kosmos!", 2026, "Elżbieta Wąsik", 55, 1))
+    def scraped(venue: Cinema, title: String, director: Option[String] = None, runtime: Option[Int] = None, year: Option[Int] = None) =
+      listing(venue, title, year, director, runtime).copy(cleanTitle = services.movies.ScrapeListing.cleanTitle(venue, title, normalizer)._1)
+    val plain = Seq(
+      scraped(StacjaFalenica, "Ścieżki życia", Some("Marianne Elliot"), Some(116)),
+      scraped(KinoDKFRumcajs, "Ścieżki życia", Some("Marianne Elliott")),
+      scraped(StacjaFalenica, "Kumotry", Some("Emilia Śniegoska"), Some(70)),
+      scraped(KinoMikro, "Kumotry"),
+      scraped(KinoCytadela, "Niesamowite przygody skarpetek 3. Ale kosmos!", Some("Elżbieta Wąsik"), Some(55), Some(2026)))
+    val festival = Seq("\" Kicia Kocia w podróży \" - film, V FESTIWAL WAPI 2026", "\" ŚCIEŻKI ŻYCIA\" - film, V FESTIWAL WAPI 2026",
+      "\"Bałtyk\"- film, V FESTIWAL WAPI 2026", "\"CIEMNA STRONA MOUNT EVEREST\" - film. V FESTIWAL WAPI 2026",
+      "\"Kumotry\" - film, V FESTIWAL WAPI 2026", "\"Niesamowite przygody skarpetek 3. Ale kosmos!\" - film, V FESTIWAL WAPI 2026")
+      .map(scraped(KinoOaza, _))
+    val all = plain ++ festival
+    val r = IdentityResolver.resolve(all, new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(plain(0).key).film shouldBe Some(1127625)
+      r.decisionOf(plain(2).key).film shouldBe Some(1454157)
+      r.decisionOf(plain(4).key).film shouldBe Some(1646671)
+      // Each spelling takes its own film or none: the festival's shared suffix names no film.
+      festival.map(l => r.decisionOf(l.key).film).zip(Seq(None, Some(1127625), None, None, Some(1454157), Some(1646671)))
+        .foreach { case (took, own) => Seq(None, own) should contain(took) }
+    }
+    r.violations shouldBe 0
   }
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
