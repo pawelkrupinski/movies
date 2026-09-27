@@ -61,6 +61,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   private val pipelineCache = configuration.identityPipelineCache
   /** Off for a resolver-variant run: the measures below that resolve the corpus again. */
   private val robustness = configuration.identityShadowRobustness.value
+  private val focus      = configuration.identityFocus
 
   /** One corpus's measurements, for the summary table. */
   private final case class Row(label: String, listings: Int, nodes: Int, families: Int,
@@ -104,6 +105,16 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language,
         retrySleep = (_: Long) => ()), w.detailEnrichers, c.misses)
       val lookups = new Memo(source)
+      // Focus mode: resolve only the families of the named titles, print their decisions, stop.
+      focus.foreach { f =>
+        val tokens = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++
+          services.movies.TitleContainment.tokens(l.cleanTitle).toSet
+        val focused = listings.filter(l => (tokens(l) intersect f.words).nonEmpty)
+        val (r, secs) = timed(IdentityResolver.resolve(focused, lookups, c.normalizer, calibration))
+        report.line(f"[${c.label}] FOCUS ${f.words.mkString(",")}: ${focused.size} listing(s) resolved alone in $secs%.1fs")
+        focused.map(l => r.decisionOf(l.key)).distinct.foreach(d => report.line(d.render))
+        cancel(s"focus mode: ${focused.size} listing(s) resolved; the corpus-wide measures need every listing")
+      }
       val requestsBefore = c.fetch.requests.get()
       val (resolution, resolveSeconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, calibration))
       val resolverRequests = c.fetch.requests.get() - requestsBefore
