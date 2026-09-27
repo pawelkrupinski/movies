@@ -587,12 +587,17 @@ object IdentityResolver {
     val wholeTitles: Set[String] = nodes.map(n => sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     def titlesBeside(n: Node, form: String): Boolean = {
       val words = services.movies.TitleContainment.tokens(form).toSet
-      segmentsOf(n.id).exists(seg => wholeTitles(seg) && (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
+      // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
+      // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
+      val formKey = sanitized(form)
+      segmentsOf(n.id).exists(seg => wholeTitles(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
+        (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
     }
-    /** Does `n`'s title name a film or a listing's title BESIDE its search form `form` ([[namesBeside]],
-     *  [[titlesBeside]]) — so that a search form it shares with another title is no evidence the two
-     *  are one film? */
-    def besideItsForm(n: Node, form: String): Boolean = namesBeside(n, form) || titlesBeside(n, form)
+    /** Does `n`'s title carry another listing's title BESIDE its search form `form` ([[titlesBeside]]),
+     *  so that a search form it shares with another title is no evidence the two are one film? Not
+     *  "names a film beside it": a spelling whose original title reaches its OWN film ("Pieśni lasu |
+     *  Pokaz …", "Whispers in the Woods") would then lose the plain listings it is the only bridge for. */
+    def besideItsForm(n: Node, form: String): Boolean = titlesBeside(n, form)
 
     /** The must-link tiers a title draws (`edgesOf`): same title, same search form or original
      *  title, one title a segment of the other. */

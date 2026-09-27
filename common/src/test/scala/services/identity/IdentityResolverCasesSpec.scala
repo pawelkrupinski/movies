@@ -1,8 +1,6 @@
 package services.identity
 
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany,
-  HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Multikino,
-  MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingConstraints, ListingKey, SingleCountryNormalizer}
@@ -1071,6 +1069,31 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bannered = listing(KinoMuza, "Tani wtorek: Obcy", Some(2025), Some("Zuzanna Grajcewska"))
     val r = IdentityResolver.resolve(Seq(bannered), new Table(films), normalizer, IdentityCalibration.resolver)
     withClue(r.decisionOf(bannered.key).render) { r.decisionOf(bannered.key).film shouldBe Some(1429348) }
+  }
+
+  "A spelling whose original title reaches its OWN film" should
+    "still join the plain listings that share its search form" in {
+    // PL, main 5424e7874 lost 40 "Pieśni lasu" listings: the plain ones carry no fact and their
+    // Polish title is not the record's, so they took the film only through Kinoteka's decorated
+    // "Pieśni lasu | Pokaz z kompozycją zapachową od Alba1913", which publishes the original title
+    // "Whispers in the Woods". The festival rule dropped their same-search-form link: it read the
+    // spelling's OWN segment "Pieśni lasu" — sanitised, without spaces — as another listing's title
+    // sharing no word with the form, and its original title's own film as a film named beside it.
+    val films = Seq(F(1309373, "Le Chant des forêts", 2025, "Vincent Munier", 95, 3.0, alternatives = Seq("Whispers in the Woods")))
+    def scraped(venue: Cinema, title: String) =
+      listing(venue, title).copy(cleanTitle = services.movies.ScrapeListing.cleanTitle(venue, title, normalizer)._1)
+    // Its clean title keeps the banner; only its SEARCH form is "Pieśni lasu", as the plain ones'.
+    val decorated = listing(Kinoteka, "Pieśni lasu | Pokaz z kompozycją zapachową od Alba1913", None, Some("Vincent Munier"), Some(94))
+      .copy(originalTitle = Some("Whispers in the Woods"))
+    // One plain venue credits the director, as Kino IKM does; the others publish only the title.
+    val plain = scraped(StacjaFalenica, "Pieśni lasu").copy(directors = Seq("Vincent Munier")) +:
+      Seq(KinoMikro, KinoCytadela).map(scraped(_, "Pieśni lasu"))
+    val all = decorated +: plain
+    val r = IdentityResolver.resolve(all, new Table(films), normalizer, IdentityCalibration.resolver)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(decorated.key).film shouldBe Some(1309373)
+      plain.foreach(l => r.decisionOf(l.key).film shouldBe Some(1309373))
+    }
   }
 
   "A festival's spellings chained through one another's segments" should
