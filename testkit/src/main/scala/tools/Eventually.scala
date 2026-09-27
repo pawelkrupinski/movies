@@ -13,12 +13,15 @@ object Eventually {
                  pollMs: Long = 20): org.scalatest.Assertion = {
     val deadline = System.nanoTime() / 1000000 + timeoutMs
     while (true) {
+      // Only an attempt STARTED at or after the deadline is the last: one that began before it and
+      // overran it (a stalled machine) still leaves the try at the deadline owed.
+      val startedAt = System.nanoTime() / 1000000
       try return check
       catch {
         case t: Throwable =>
+          if (startedAt >= deadline) throw t
           val remaining = deadline - System.nanoTime() / 1000000
-          if (remaining <= 0) throw t
-          Thread.sleep(math.min(pollMs, remaining))
+          if (remaining > 0) Thread.sleep(math.min(pollMs, remaining))
       }
     }
     throw new IllegalStateException("unreachable")

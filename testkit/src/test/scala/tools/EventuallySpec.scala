@@ -17,4 +17,13 @@ class EventuallySpec extends AnyFlatSpec with Matchers {
     // budget, so the only attempt that can pass is one made AFTER the deadline's sleep.
     Eventually.eventually(assert(System.nanoTime() / 1000000 - start >= 150), timeoutMs = 200, pollMs = 500)
   }
+
+  it should "still try at the deadline when an earlier attempt itself ran past it" in {
+    // A loaded machine can stall the first attempt beyond the whole budget (a GC pause, a busy
+    // scheduler): the check must then get its try at the deadline, not fail on the stale attempt.
+    var attempts = 0
+    Eventually.eventually({ attempts += 1; if (attempts == 1) { Thread.sleep(250); fail("stalled first attempt") } else succeed },
+      timeoutMs = 200, pollMs = 20)
+    attempts shouldBe 2
+  }
 }
