@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html class="no-js" lang="pl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="keywords" content=""/>
+	<meta name="description" content=""/>
+	<meta name="author" content="SoftCOM - http://www.softcom.wroc.pl"/>
+	<meta name="robots" content="all"/>
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-191923486-1"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+
+		function gtag() {
+			dataLayer.push(arguments);
+		}
+
+		gtag('js', new Date());
+
+		gtag('config', 'UA-191923486-1');
+	</script>
+
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Rubik:400,500,700&amp;subset=latin-ext">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/magnific-popup.min.css"/>
+	<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" href="/css/styles.css?v=12"/>
+			<script type="text/javascript" src="/js-common/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.matchHeight/0.7.2/jquery.matchHeight-min.js" integrity="sha256-+oeQRyZyY2StGafEsvKyDuEGNzJWAbWqiO2L/ctxF6c=" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js" integrity="sha256-P93G0oq6PBPWTP1IR8Mz/0jHHUpaWL0aBJTKauisG7Q=" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.cycle2/2.1.6/jquery.cycle2.min.js" integrity="sha256-iMTCex8BQ+iVxpZO83MoRkKBaoh9Dz9h3tEVrM5Rxqo=" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="/js-common/jquery.countdown.js"></script>
+	<script type="text/javascript" src="/js-common/jquery.countdown-pl.js"></script>
+	<script type="text/javascript" src="/js-common/core.js"></script>
+	<script type="text/javascript" src="/js/scripts.js?v=4"></script>
+	<script src="/js-common/jquery.validate.min.js"></script>
+<script src="/js-common/jquery-ui.min.js"></script>
+<script src="/js-common/jquery.form.js"></script>
+<script src="/js-common/jquery.maskedinput.js"></script>
+	<script>//<![CDATA[
+$(document).ready(function(){$("html").removeClass("no-js").addClass("js");});
+//]]></script>
+	<title>Repertuar - Rezerwacja biletów online do Kino PLON</title>
+	<link rel="icon" type="image/png" href="/favicon.png"/>
+
+</head>
+<body   class="c-index a-repertuar">
+<header>
+	<div class="container">
+		<nav class="navbar" id="navbar">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse-1" aria-expanded="false">
+					<span class="sr-only">Przełącz menu</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="navbar-brand" href="http://kinoplon.pl"><img src="/images/layout/logo/logo.png" id="logo" alt="Rezerwacja biletów online do Kino PLON"></a>
+			</div>
+			<div class="collapse navbar-collapse" id="navbar-collapse-1">
+				<ul class="nav navbar-nav navbar-right" id="nav">
+					<li><a href="/">Strona główna</a></li><li><a href="https://kinoplon.pl/index/repertuar.html">Repertuar</a></li><li><a href="/regulamin.html">Regulamin</a></li><li><a href="https://kinoplon.pl/index/cennik-biletow.html">Cennik</a></li><li><a href="https://kinoplon.pl/cms/polityka-ochrony-danych-osobowych.html">Polityka RODO</a></li><li><a href="https://kinoplon.pl/cms/dostepne-formy-reklamy-w-kinie-plon-w-hrubieszowie.html">Reklama w kinie</a></li><li><a href="https://kinoplon.pl/index/kontakt.html">Kontakt</a></li><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Użytkownik</a><div class="dropdown-menu"><a class="dropdown-item" href = "https://kinoplon.pl/uzytkownik/login.html">Zaloguj</a><a class="dropdown-item" href = "https://kinoplon.pl/uzytkownik/rejestracja.html">Rejestracja</a></div></li>				</ul>
+			</div>
+		</nav>
+	</div>
+</header>
+
+<!--        <div class="container">
+            <div class="row">
+                <div class="col-xs-6 col-md-4" id="block-basket" onclick="document.location.href = 'https://kinoplon.pl/koszyk/index.html'">
+                                            <div>
+                            Wartość: <span id="koszyk-wartosc">0.00</span>
+                            Liczba biletów: <span id="koszyk-bilety-ilosc">0</span>
+                        </div>
+                                            <div id="block-clock">
+                        Czas na złożenie zamówienia: <span id="clock">–</span>
+                    </div>
+                                    </div>
+            </div>
+        </div>-->
+	<div id="pasek">
+		<div class="container">
+			<div class="col-md-6 text-left">
+
+			</div>
+			<div class="col-md-6 text-right">
+							</div>
+		</div>
+	</div>
+	<div id="top-info">
+		<!--            <p class="bg-danger no-js">--><!--, żeby korzystać z systemu</p>-->
+		<!--            <p class="bg-danger" id="messageError" --><!-- >--><!--</p>-->
+		<!--            <p class="bg-danger" id="messageWarning" --><!-- >--><!--</p>-->
+		<!--            <p class="bg-info" id="messageInfo" --><!-- >--><!--</p>-->
+	</div>
+	<div id="page">
+	<div class="container">
+    <h1 class="title">Repertuar</h1>
+    <div class="row">
+                <!--<div class="col-md-3"><a href="https://kinoplon.pl/repertuar.html" class="btn">Wszystkie wydarzenia</a></div>-->
+    </div>
+    
+<div id="dni">
+    <div class="poprzedni">
+        <span class="glyphicon glyphicon-menu-left" aria-hidden="true"></span><span class="sr-only">poprzedni</span>
+    </div>
+    <div id="dni-daty" data-nr="0">
+                    <a href="https://kinoplon.pl/repertuar.html?data=2026-09-27" class="dzien ">
+                <span>nd</span>
+                <span>27.09</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-01" class="dzien ">
+                <span>cz</span>
+                <span>01.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-02" class="dzien active">
+                <span>pt</span>
+                <span>02.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-03" class="dzien ">
+                <span>so</span>
+                <span>03.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-04" class="dzien ">
+                <span>nd</span>
+                <span>04.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-08" class="dzien ">
+                <span>cz</span>
+                <span>08.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-09" class="dzien ">
+                <span>pt</span>
+                <span>09.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-10-10" class="dzien ">
+                <span>so</span>
+                <span>10.10</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-11-24" class="dzien ">
+                <span>wt</span>
+                <span>24.11</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-11-28" class="dzien ">
+                <span>so</span>
+                <span>28.11</span>
+            </a>
+                        <a href="https://kinoplon.pl/repertuar.html?data=2026-12-19" class="dzien ">
+                <span>so</span>
+                <span>19.12</span>
+            </a>
+                </div>
+    <div class="nastepny">
+        <span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span><span class="sr-only">następny</span>
+    </div>
+</div>
+<div class="terminy">
+                <div class="termin" title="Kliknij, aby kupić lub zarezerwować bilety">
+                <span class="nazwa">Pucio kocha zwierzaki</span>
+                 / 45'<br>                    <div class="row">
+                                                    <div class="col-md-3">
+                                                                <a href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4421&amp;identyfikator=a33812aa3fdae187c720243aaca97137" data-content="&lt;span class=&quot;x&quot; title=&quot;kliknij aby zamknąć&quot;&gt;&times;&lt;/span&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4421&amp;identyfikator=a33812aa3fdae187c720243aaca97137&amp;d=4&quot;&gt;Kup&lt;/a&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4421&amp;identyfikator=a33812aa3fdae187c720243aaca97137&amp;d=3&quot;&gt;Rezerwuj&lt;/a&gt;" ">10:00</a>
+
+                                                            </div>
+                            <div class="col-md-9 text-right">
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4421&amp;identyfikator=a33812aa3fdae187c720243aaca97137&amp;d=4">Kup</a>
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4421&amp;identyfikator=a33812aa3fdae187c720243aaca97137&amp;d=3">Rezerwuj</a>
+                                                            </div>
+                                                </div>
+                                </div>
+            <div class="clearfix"></div>
+            <hr>
+                        <div class="termin" title="Kliknij, aby kupić lub zarezerwować bilety">
+                <span class="nazwa">Tedi i magiczna lampa</span>
+                 / 90'<br>                    <div class="row">
+                                                    <div class="col-md-3">
+                                                                <a href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4425&amp;identyfikator=2408d101d334cce2f4022c6474542335" data-content="&lt;span class=&quot;x&quot; title=&quot;kliknij aby zamknąć&quot;&gt;&times;&lt;/span&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4425&amp;identyfikator=2408d101d334cce2f4022c6474542335&amp;d=4&quot;&gt;Kup&lt;/a&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4425&amp;identyfikator=2408d101d334cce2f4022c6474542335&amp;d=3&quot;&gt;Rezerwuj&lt;/a&gt;" ">16:00</a>
+
+                                                            </div>
+                            <div class="col-md-9 text-right">
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4425&amp;identyfikator=2408d101d334cce2f4022c6474542335&amp;d=4">Kup</a>
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4425&amp;identyfikator=2408d101d334cce2f4022c6474542335&amp;d=3">Rezerwuj</a>
+                                                            </div>
+                                                </div>
+                                </div>
+            <div class="clearfix"></div>
+            <hr>
+                        <div class="termin" title="Kliknij, aby kupić lub zarezerwować bilety">
+                <span class="nazwa">Dzień dziecka księdza Jana Kaczkowskiego</span>
+                 / 75'<br>                    <div class="row">
+                                                    <div class="col-md-3">
+                                                                <a href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4429&amp;identyfikator=96aee34279953bbf1624d392e9b65173" data-content="&lt;span class=&quot;x&quot; title=&quot;kliknij aby zamknąć&quot;&gt;&times;&lt;/span&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4429&amp;identyfikator=96aee34279953bbf1624d392e9b65173&amp;d=4&quot;&gt;Kup&lt;/a&gt; &lt;a href=&quot;https://kinoplon.pl/rezerwacja/numerowane.html?id=4429&amp;identyfikator=96aee34279953bbf1624d392e9b65173&amp;d=3&quot;&gt;Rezerwuj&lt;/a&gt;" ">18:00</a>
+
+                                                            </div>
+                            <div class="col-md-9 text-right">
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4429&amp;identyfikator=96aee34279953bbf1624d392e9b65173&amp;d=4">Kup</a>
+                                                                    <a class="btn btn-small" href="https://kinoplon.pl/rezerwacja/numerowane.html?id=4429&amp;identyfikator=96aee34279953bbf1624d392e9b65173&amp;d=3">Rezerwuj</a>
+                                                            </div>
+                                                </div>
+                                </div>
+            <div class="clearfix"></div>
+            <hr>
+            </div></div>
+
+</div>
+
+<div id="logotypy" class="clearfix">
+    <div class="container">
+        <a href="http://www.hdk-hrubieszow.pl/" target="_blank"><img src="/images/layout/logo/slider/hdk.png" alt="Hrubieszowski Dom Kultury"></a>
+        <a href="https://kinads.pl/" target="_blank"><img src="/images/layout/logo/slider/kinads.png" alt="KinAds"></a>
+        <a href="https://pisf.pl/" target="_blank"><img src="/images/layout/logo/slider/pisf.png" alt="Polski Instytut Sztuki Filmowej"></a>
+    </div>
+</div>
+<!--<section id="kontakt" class="clearfix">-->
+<!--    <div class="container">-->
+<!--        <div class="row">-->
+<!--            <div class="col-sm-6">-->
+<!--                <address>-->
+<!--                    <h1>Hrubieszowski Dom Kultury</h1>-->
+<!--                    <div class="adres">--><!--</div>-->
+<!--                    <div class="mail"><a href="mailto:--><!--">--><!--</a></div>-->
+<!--                    <div class="tel">--><!--: <a href="tel:+48846962615">+48 84 696 26 15</a><br>--><!--: <a href="tel:+48846964744">+48 84 696 47 44</a></div>-->
+<!--                </address>-->
+<!--                <a class="facebook" href="--><!--" target="_blank"><span class="sr-only">Facebook</span></a>-->
+<!--                <div class="copy">-->
+<!--                    Copyright © 2017 <a href="http://www.hdk-hrubieszow.pl/">Hrubieszowski Dom Kultury</a><br>-->
+<!--                    <a href="http://www.iksoris.pl" title="System rezerwacji i sprzedaży biletów iKsoris">System rezerwacji i sprzedaży biletów iKsoris</a> - <a href="http://softcom.wroc.pl/">SoftCOM</a>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            <div class="col-sm-6 f-kontakt">-->
+<!--                <h1>--><!--</h1>-->
+<!--                --><!--				<center><h6>--><!--</h6><center>-->
+<!--				<p style="text-align: justify"><span style="font-size: xx-small">--><!--</span></p>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</section>-->
+
+<div id="notice-modal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zamknij</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <div class="container-mini">
+        <img src="/images/layout/logo/logo-pisf.png" alt="" style="width: 156px">
+        <div class="txt">
+            „Wdrożenie elektronicznego systemu sprawdzania biletów oraz modernizacja strony internetowej w Kinie PLON” jest współfinansowane przez Polski Instytut Sztuki Filmowej        </div>
+    </div>
+<!--    <img src="/images/layout/l.png" alt="" id="img-l">-->
+<!--    <img src="/images/layout/p.png" alt="" id="img-p">-->
+
+</footer>
+</body>
+</html>

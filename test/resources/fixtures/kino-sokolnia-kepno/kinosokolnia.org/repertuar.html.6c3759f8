@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html class="no-js"
+      lang="pl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport"
+	      content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible"
+	      content="IE=edge">
+	<meta name="keywords"
+	      content=""/>
+	<meta name="description"
+	      content=""/>
+	<meta name="author"
+	      content="SoftCOM - https://www.softcom.wroc.pl"/>
+	<meta name="robots"
+	      content="all"/>
+	<link rel="stylesheet"
+	      type="text/css"
+	      href="https://fonts.googleapis.com/css?family=Titillium+Web:400,600,700">
+	<link rel="stylesheet"
+	      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet"
+	      href="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/magnific-popup.min.css"/>
+	<link rel="stylesheet"
+	      type="text/css"
+	      href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+	<link rel="stylesheet"
+	      type="text/css"
+	      href="/css/styles.css?v=6"/>
+			<script type="text/javascript"
+	        src="/js-common/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"
+	        integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8="
+	        crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.matchHeight/0.7.2/jquery.matchHeight-min.js"
+	        integrity="sha256-+oeQRyZyY2StGafEsvKyDuEGNzJWAbWqiO2L/ctxF6c="
+	        crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js"
+	        integrity="sha256-P93G0oq6PBPWTP1IR8Mz/0jHHUpaWL0aBJTKauisG7Q="
+	        crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.cycle2/2.1.6/jquery.cycle2.min.js"
+	        integrity="sha256-iMTCex8BQ+iVxpZO83MoRkKBaoh9Dz9h3tEVrM5Rxqo="
+	        crossorigin="anonymous"></script>
+	<script type="text/javascript"
+	        src="/js-common/jquery.countdown.js"></script>
+	<script type="text/javascript"
+	        src="/js-common/jquery.countdown-pl.js"></script>
+	<script type="text/javascript"
+	        src="/js-common/core.js"></script>
+	<script type="text/javascript"
+	        src="/js/scripts.js?v=5"></script>
+	<script src="/js/jquery.matchHeight-min.js"></script>
+<script src="/js/repertuar.js?v=5"></script>
+	<script>//<![CDATA[
+$(document).ready(function(){$("html").removeClass("no-js").addClass("js");});
+//]]></script>
+	<title>Repertuar - Kino Sokolnia</title>
+</head>
+<body   class="c-index a-repertuar" data-page-nazwa="rezerwacja_index_repertuar">
+<!--<div id="top-info">-->
+<!--		<p class="bg-danger no-js">--><!--			, żeby korzystać z systemu</p>-->
+<!--	<p class="bg-danger"-->
+<!--	   id="messageError" --><!-- >--><!--</p>-->
+<!--	<p class="bg-danger"-->
+<!--	   id="messageWarning" --><!-- >--><!--</p>-->
+<!--	<p class="bg-info"-->
+<!--	   id="messageInfo" --><!-- >--><!--</p>-->
+<!--</div>-->
+<header>
+	<div class="container container-fluid-md">
+		<nav class="navbar"
+		     id="navbar">
+			<div class="navbar-header">
+				<button type="button"
+				        class="navbar-toggle collapsed"
+				        data-toggle="collapse"
+				        data-target="#navbar-collapse-1"
+				        aria-expanded="false">
+					<span class="sr-only">Przełącz menu</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="navbar-brand"
+				   href="https://kinosokolnia.org/">
+					<img src="/images/layout/logo/logo.png"
+					     id="logo"
+					     alt="Kino Sokolnia"><span>w Kępnie</span>
+				</a>
+			</div>
+			<div class="collapse navbar-collapse"
+			     id="navbar-collapse-1">
+				<ul class="nav navbar-nav navbar-right"
+				    id="nav">
+					<li class="home">
+						<a href="/" title="strona główna"><span class="icon"></span></a>
+					</li>
+					<li><a href="https://kinosokolnia.org/index/aktualnosci.html">Aktualności</a></li><li><a href="https://kinosokolnia.org/index/repertuar.html">Repertuar</a></li><li><a href="https://kinosokolnia.org/cms/regulamin.html">Regulamin</a></li><li><a href="https://kinosokolnia.org/index/kontakt.html">Kontakt</a></li>								<li class="dropdown">
+									<a class="dropdown-toggle" type="button" data-toggle="dropdown" href="#">Użytkownik										<span class="caret"></span>
+									</a>
+									<ul class="dropdown-menu">
+																						<li>
+													<a href="https://kinosokolnia.org/uzytkownik/login.html">Zaloguj się</a>
+												</li>
+																								<li>
+													<a href="https://kinosokolnia.org/uzytkownik/rejestracja.html">Rejestracja</a>
+												</li>
+																					</ul>
+								</li>
+
+												</ul>
+			</div>
+		</nav>
+	</div>
+</header>
+
+<!--        <div class="container">
+            <div class="row">
+                <div class="col-xs-6 col-md-4" id="block-basket" onclick="document.location.href = 'https://kinosokolnia.org/koszyk/index.html'">
+                                            <div>
+                            Wartość: <span id="koszyk-wartosc">0.00</span>
+                            Liczba biletów: <span id="koszyk-bilety-ilosc">0</span>
+                        </div>
+                                            <div id="block-clock">
+                        Czas na złożenie zamówienia: <span id="clock">–</span>
+                    </div>
+                                    </div>
+            </div>
+        </div>-->
+	<div id="pasek">
+		<div class="container">
+			<div class="col-md-6 text-left">
+
+			</div>
+			<div class="col-md-6 text-right">
+							</div>
+		</div>
+	</div>
+	<div id="page">
+	<div class="container">
+	<h1 class="title">Repertuar</h1>
+	<div class="row">
+				<!--<div class="col-md-3"><a href="https://kinosokolnia.org/repertuar.html" class="btn">Wszystkie wydarzenia</a></div>-->
+	</div>
+	
+<div id="dni">
+	<div class="poprzedni icon"><span class="sr-only">poprzedni</span></div>
+	<div id="dni-daty" data-nr="0">
+					<a href="https://kinosokolnia.org/repertuar.html?data=2026-09-27" class="dzien ">
+				<span>nd</span>
+				<span>27.09</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-09-29" class="dzien ">
+				<span>wt</span>
+				<span>29.09</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-09-30" class="dzien ">
+				<span>śr</span>
+				<span>30.09</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-01" class="dzien ">
+				<span>cz</span>
+				<span>01.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-02" class="dzien active">
+				<span>pt</span>
+				<span>02.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-03" class="dzien ">
+				<span>so</span>
+				<span>03.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-04" class="dzien ">
+				<span>nd</span>
+				<span>04.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-06" class="dzien ">
+				<span>wt</span>
+				<span>06.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-07" class="dzien ">
+				<span>śr</span>
+				<span>07.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-08" class="dzien ">
+				<span>cz</span>
+				<span>08.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-09" class="dzien ">
+				<span>pt</span>
+				<span>09.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-10" class="dzien ">
+				<span>so</span>
+				<span>10.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-11" class="dzien ">
+				<span>nd</span>
+				<span>11.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-13" class="dzien ">
+				<span>wt</span>
+				<span>13.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-14" class="dzien ">
+				<span>śr</span>
+				<span>14.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-15" class="dzien ">
+				<span>cz</span>
+				<span>15.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-16" class="dzien ">
+				<span>pt</span>
+				<span>16.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-17" class="dzien ">
+				<span>so</span>
+				<span>17.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-18" class="dzien ">
+				<span>nd</span>
+				<span>18.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-20" class="dzien ">
+				<span>wt</span>
+				<span>20.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-21" class="dzien ">
+				<span>śr</span>
+				<span>21.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-22" class="dzien ">
+				<span>cz</span>
+				<span>22.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-23" class="dzien ">
+				<span>pt</span>
+				<span>23.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-24" class="dzien ">
+				<span>so</span>
+				<span>24.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-25" class="dzien ">
+				<span>nd</span>
+				<span>25.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-27" class="dzien ">
+				<span>wt</span>
+				<span>27.10</span>
+			</a>
+						<a href="https://kinosokolnia.org/repertuar.html?data=2026-10-29" class="dzien ">
+				<span>cz</span>
+				<span>29.10</span>
+			</a>
+				</div>
+	<div class="nastepny icon"><span class="sr-only">następny</span></div>
+</div>
+<div class="repertuar-info" style="visibility: hidden">Kliknij godzinę, aby kupić lub zarezerwować bilety</div>
+<hr>
+<div class="terminy">
+			<div class="row">
+							<div class="col-xs-6 col-md-4 termin-box">
+					<h3 class="kalendarium-nazwa-wydarzenia">TEDI I MAGICZNA LAMPA - dubbing / <span class="czas-trwania">96'</span></h3>
+					<div class="termin-start">14:45</div>
+					<div class="termin-przyciski"><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7503&amp;identyfikator=ebe0937045356d056dfa5f179f903918&amp;d=4" class="btn btn-kup">Kup</a><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7503&amp;identyfikator=ebe0937045356d056dfa5f179f903918&amp;d=3" class="btn btn-rezerwuj">Rezerwuj</a></div>
+					<img class="termin-img" src="/images/wydarzenia/full/tedi_i_magiczna_lampa_plakat_net_jpg_1.jpg"/>
+				</div>
+								<div class="col-xs-6 col-md-4 termin-box">
+					<h3 class="kalendarium-nazwa-wydarzenia">RESIDENT EVIL - napisy / <span class="czas-trwania">90'</span></h3>
+					<div class="termin-start">17:00</div>
+					<div class="termin-przyciski"><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7514&amp;identyfikator=5bd3225fbdb553d0d8d0c011df956359&amp;d=4" class="btn btn-kup">Kup</a><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7514&amp;identyfikator=5bd3225fbdb553d0d8d0c011df956359&amp;d=3" class="btn btn-rezerwuj">Rezerwuj</a></div>
+					<img class="termin-img" src="/images/wydarzenia/full/oficjalny_plakat_1.jpg"/>
+				</div>
+								<div class="col-xs-6 col-md-4 termin-box">
+					<h3 class="kalendarium-nazwa-wydarzenia">"LALKA" / Premiera / <span class="czas-trwania">162'</span></h3>
+					<div class="termin-start">19:15</div>
+					<div class="termin-przyciski"><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7474&amp;identyfikator=9cbecf057f9d71b8ba2ce49945865126&amp;d=4" class="btn btn-kup">Kup</a><a href="https://kinosokolnia.org/rezerwacja/numerowane.html?id=7474&amp;identyfikator=9cbecf057f9d71b8ba2ce49945865126&amp;d=3" class="btn btn-rezerwuj">Rezerwuj</a></div>
+					<img class="termin-img" src="/images/wydarzenia/full/7981_1.jpg"/>
+				</div>
+						</div>
+		</div></div>
+
+</div>
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-6 col-sm-push-6 ciemne kontakt">
+                <h1>Kino Sokolnia</h1>
+                <ul>
+                    <li class="tel">
+                        Telefon: 573 360 997<br><small>(czynny godzinę przed rozpoczęciem pierwszego seansu do godz. 20:00)</small><br /><br />
+                        <small>Prosimy również o kontakt z kinem za pośrednictwem poczty internetowej oraz aplikacji Facebook Messenger. Profil kina na portalu Facebook:                             <a href="https://www.facebook.com/kinosokolniakepno/">https://www.facebook.com/kinosokolniakepno</a></small><br /><br />
+                    </li>
+                    <li class="adr">Adres: ul. Sportowa 3, 63-600 Kępno</li>
+                    <li class="mail">E-mail: <a href="mailto:kinosokolnia@kok.kepno.pl">kinosokolnia@kok.kepno.pl</a></li>
+                </ul>
+                <div class="social">
+                                        <a href="https://facebook.com/kinosokolniakepno/" target="_blank" class="kolo">
+                        <span class="fa fa-facebook" aria-hidden="true"></span>
+                        <span class="sr-only">Facebook - Kino Sokolnia Kępno</span>
+                    </a>
+                                    </div>
+            </div>
+            <div class="col-sm-6 col-sm-pull-6 jasne">
+                <div class="logo">
+                    <a href="https://stowarzyszeniekinstudyjnych.pl/" target="_blank"><img src="/images/layout/logo/sks-3.png" alt="Stowarzyszenie Kin Studyjnych" style="height: 61px"></a>
+                    <a href="https://www.pisf.pl/" target="_blank"><img src="/images/layout/logo/pisf.png" alt="Polski Instytut Sztuki Filmowej"></a>
+                    <a href="https://www.um.kepno.pl/" target="_blank"><img src="/images/layout/logo/kepno.png" alt="Urząd Miasta i Gminy w Kępnie"></a>
+                    <a href="https://kok.kepno.pl/" target="_blank"><img src="/images/layout/logo/kok.png" alt="Kępiński Ośrodek Kultury" style="width: 88px; height: 49px"></a>
+                    <a href="https://www.youtube.com/channel/UCcwTlGprJT5sRAxTrYWElvg" target="_blank"><img src="/images/layout/logo/dzien-dobry.png" alt="Dzień dobry w Kępnie"></a>
+                    <a href="https://www.c-kino.pl/" target="_blank"><img src="/images/layout/logo/SPKC.png" alt="Sieć Polskich Kin Cyfrowych"></a>
+                </div>
+                <p>Remont Kina Sokolnia został sfinansowany ze środków Gminy Kępno oraz współfinansowany przez Państwowy Instytut Sztuki Filmowej.</p>
+                Copyright © 2017 Kino Sokolnia                <div><a href="https://www.iksoris.pl" title="System rezerwacji i sprzedaży biletów iKsoris">System rezerwacji i sprzedaży biletów iKsoris</a> - <a href="http://softcom.wroc.pl/">SoftCOM</a></div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+
+<!-- Modal -->
+<div id="noticemodal" class="modal fade" role="dialog">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal">&times;</button>
+			</div>
+			<div class="modal-body">
+				...			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Zamknij</button>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+</body>
+</html>
