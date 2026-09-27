@@ -1,11 +1,11 @@
-package clients.kino_centrum_kultury_blonie
+package clients.kino_bajka_blonie
 
 import clients.tools.{FailingHttpFetch, FakeHttpFetch}
-import models.KinoCentrumKulturyBlonie
+import models.KinoBajkaBlonie
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.pl.KinoCentrumKulturyBlonieClient
+import services.cinemas.pl.KinoBajkaBlonieClient
 import tools.HttpStatusException
 
 import java.time.{LocalDate, LocalDateTime}
@@ -15,14 +15,14 @@ import java.time.{LocalDate, LocalDateTime}
  *  page, and each screening film's `base_cinema_film_dates` POST (cursor
  *  2026-09-26, so the pinned `today` must stay 2026-09-27 for the bodies to match).
  *  Fixture directory: test/resources/fixtures/kino-centrum-kultury-blonie/ */
-class KinoCentrumKulturyBlonieClientSpec extends AnyFlatSpec with Matchers with OptionValues {
+class KinoBajkaBlonieClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today  = LocalDate.of(2026, 9, 27)
-  private val movies = new KinoCentrumKulturyBlonieClient(new FakeHttpFetch("kino-centrum-kultury-blonie"), KinoCentrumKulturyBlonie, today).fetch()
+  private val movies = new KinoBajkaBlonieClient(new FakeHttpFetch("kino-bajka-blonie"), KinoBajkaBlonie, today).fetch()
 
-  "KinoCentrumKulturyBlonieClient" should "return every film with scheduled screenings, and none of the dateless announcements" in {
+  "KinoBajkaBlonieClient" should "return every film with scheduled screenings, and none of the dateless announcements" in {
     movies.map(_.movie.title) shouldBe Seq("Lalka", "Powiedz mi, co czujesz", "Tedi i magiczna lampa", "Zapomniana wyspa")
-    movies.map(_.cinema).toSet shouldBe Set(KinoCentrumKulturyBlonie)
+    movies.map(_.cinema).toSet shouldBe Set(KinoBajkaBlonie)
   }
 
   it should "read every day past the four-day carousel from the film-dates endpoint" in {
@@ -60,7 +60,7 @@ class KinoCentrumKulturyBlonieClientSpec extends AnyFlatSpec with Matchers with 
   }
 
   it should "propagate a listing failure instead of reporting an empty (white) scrape" in {
-    val client = new KinoCentrumKulturyBlonieClient(new FailingHttpFetch(503), KinoCentrumKulturyBlonie, today)
+    val client = new KinoBajkaBlonieClient(new FailingHttpFetch(503), KinoBajkaBlonie, today)
     a[HttpStatusException] should be thrownBy client.fetch()
   }
 }

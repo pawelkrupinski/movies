@@ -1383,7 +1383,7 @@
   "cinemaObject": "KinoIskra",
   "displayName": "Kino Iskra",
   "town": "Augustów",
-  "annotation": "Augustów — filmweb 457"
+  "annotation": "Augustów — own site kino-iskra.pl"
  },
  {
   "citySlug": "belchatow",
@@ -1397,7 +1397,7 @@
   "cinemaObject": "KinoKulturaBelchatow",
   "displayName": "Kino Kultura Bełchatów",
   "town": "Bełchatów",
-  "annotation": "Bełchatów — filmweb 1330"
+  "annotation": "Bełchatów — iKsoris bilety.mckbelchatow.pl"
  },
  {
   "citySlug": "biala-podlaska",
@@ -1698,7 +1698,7 @@
   "cinemaObject": "KinoGwiazdaKetrzyn",
   "displayName": "Kino Gwiazda Kętrzyn",
   "town": "Kętrzyn",
-  "annotation": "Kętrzyn — filmweb 1686"
+  "annotation": "Kętrzyn — own site kino.ketrzyn.pl"
  },
  {
   "citySlug": "gizycko",
@@ -1789,7 +1789,7 @@
   "cinemaObject": "KinoPlon",
   "displayName": "Kino Plon",
   "town": "Hrubieszów",
-  "annotation": "Hrubieszów — filmweb 2330"
+  "annotation": "Hrubieszów — iKsoris kinoplon.pl"
  },
  {
   "citySlug": "ilawa",
@@ -1985,7 +1985,7 @@
   "cinemaObject": "KinoSokolniaKepno",
   "displayName": "Kino Sokolnia Kępno",
   "town": "Kępno",
-  "annotation": "Kępno — filmweb 2358"
+  "annotation": "Kępno — iKsoris kinosokolnia.org"
  },
  {
   "citySlug": "klodzko",
@@ -2251,7 +2251,7 @@
   "cinemaObject": "KinoCKZambrow",
   "displayName": "Kino Centrum Kultury Zambrów",
   "town": "Zambrów",
-  "annotation": "Zambrów — filmweb 1644"
+  "annotation": "Zambrów — own site kino.mokzambrow.pl"
  },
  {
   "citySlug": "lubin",
@@ -2279,7 +2279,7 @@
   "cinemaObject": "KinoLukow",
   "displayName": "Kino Łuków",
   "town": "Łuków",
-  "annotation": "Łuków — filmweb 1808"
+  "annotation": "Łuków — own site kino.lukow.pl"
  },
  {
   "citySlug": "miechow",
@@ -2307,7 +2307,7 @@
   "cinemaObject": "KinoEva",
   "displayName": "Kino Eva",
   "town": "Międzyzdroje",
-  "annotation": "Międzyzdroje — filmweb 1662"
+  "annotation": "Międzyzdroje — own site kino-eva.com.pl"
  },
  {
   "citySlug": "mielec",
@@ -2594,7 +2594,7 @@
   "cinemaObject": "KinoTomi",
   "displayName": "Kino Tomi",
   "town": "Pabianice",
-  "annotation": "Pabianice — filmweb 1404"
+  "annotation": "Pabianice — own site kinotomi.pl"
  },
  {
   "citySlug": "pabianice",
@@ -3035,14 +3035,14 @@
   "cinemaObject": "KinoSokolNisko",
   "displayName": "Kino Sokół Nisko",
   "town": "Nisko",
-  "annotation": "Nisko — filmweb 2407"
+  "annotation": "Nisko — own site nck.nisko.pl"
  },
  {
   "citySlug": "stalowa-wola",
   "cinemaObject": "KinoMetalowiecNowaDeba",
   "displayName": "Kino Metalowiec Nowa Dęba",
   "town": "Nowa Dęba",
-  "annotation": "Nowa Dęba — filmweb 1903"
+  "annotation": "Nowa Dęba — own site soknowadeba.pl"
  },
  {
   "citySlug": "stalowa-wola",
@@ -3434,7 +3434,7 @@
   "cinemaObject": "KinoWars",
   "displayName": "Kino Wars",
   "town": "Wysokie Mazowieckie",
-  "annotation": "Wysokie Mazowieckie — filmweb 2348"
+  "annotation": "Wysokie Mazowieckie — own site kino.wysokiemazowieckie.pl"
  },
  {
   "citySlug": "wyszkow",
@@ -3476,7 +3476,7 @@
   "cinemaObject": "KinoStylowy",
   "displayName": "CKF Stylowy",
   "town": "Zamość",
-  "annotation": "Zamość — filmweb 1670"
+  "annotation": "Zamość — own site stylowy.net"
  },
  {
   "citySlug": "zary",
@@ -3620,10 +3620,10 @@
  },
  {
   "citySlug": "zyrardow",
-  "cinemaObject": "KinoCentrumKulturyBlonie",
-  "displayName": "Kino Centrum Kultury Błonie",
+  "cinemaObject": "KinoBajkaBlonie",
+  "displayName": "Kino Bajka Błonie",
   "town": "Błonie",
-  "annotation": "Błonie — filmweb 1514"
+  "annotation": "Błonie — kino.blonie.pl"
  },
  {
   "citySlug": "zyrardow",
@@ -3644,7 +3644,7 @@
   "cinemaObject": "KinoRomaRawa",
   "displayName": "Kino Roma Rawa Mazowiecka",
   "town": "Rawa Mazowiecka",
-  "annotation": "Rawa Mazowiecka — filmweb 2332"
+  "annotation": "Rawa Mazowiecka — own site mdkrawa.pl"
  },
  {
   "citySlug": "zyrardow",

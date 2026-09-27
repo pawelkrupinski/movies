@@ -37,13 +37,13 @@ import scala.util.Try
  * The site publishes no director or production year. Tickets are sold at the box
  * office only, so no booking URL is surfaced.
  */
-class KinoCentrumKulturyBlonieClient(
+class KinoBajkaBlonieClient(
   http:  HttpFetch,
-  override val cinema: Cinema = KinoCentrumKulturyBlonie,
+  override val cinema: Cinema = KinoBajkaBlonie,
   today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
-  import KinoCentrumKulturyBlonieClient._
+  import KinoBajkaBlonieClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(HomeUrl)
   override def sourceUrl: Option[String] = Some(HomeUrl)
@@ -67,7 +67,7 @@ class KinoCentrumKulturyBlonieClient(
   }
 }
 
-object KinoCentrumKulturyBlonieClient {
+object KinoBajkaBlonieClient {
 
   val HomeUrl  = "https://kino.blonie.pl/"
   val FilmsUrl = s"${HomeUrl}filmy/"

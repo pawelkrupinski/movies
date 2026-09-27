@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
-import services.cinemas.pl.{BiletynaClient, Bilety24OrganizerClient, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
+import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
 import services.cinemas.us.{AmcClient, RegalClient}
@@ -221,6 +221,30 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       val movies = switchedCatalog.all.find(_.cinema == cinema).value.fetch()
       movies.map(_.cinema).toSet shouldBe Set(cinema)
       (movies.size, movies.map(_.showtimes.size).sum) shouldBe ((films, showtimes))
+    }
+
+  // The Filmweb-only venues whose own sites needed a scraper of their own
+  // (2026-09-27): each is wired to it, so none is left reading Filmweb.
+  private val ownSiteScrapers: Seq[(Cinema, Class[? <: CinemaScraper])] = Seq(
+    KinoCKZambrow          -> classOf[ModernEventsCalendarClient],
+    KinoSokolNisko         -> classOf[ModernEventsCalendarClient],
+    KinoKulturaBelchatow   -> classOf[IksorisBookingClient],
+    KinoSokolniaKepno      -> classOf[IksorisRepertoireClient],
+    KinoPlon               -> classOf[IksorisRepertoireClient],
+    KinoGwiazdaKetrzyn     -> classOf[KinoGwiazdaKetrzynClient],
+    KinoIskra              -> classOf[KinoIskraClient],
+    KinoLukow              -> classOf[KinoLukowClient],
+    KinoWars               -> classOf[KinoWarsClient],
+    KinoStylowy            -> classOf[KinoStylowyClient],
+    KinoTomi               -> classOf[KinoTomiClient],
+    KinoRomaRawa           -> classOf[KinoRomaRawaClient],
+    KinoBajkaBlonie        -> classOf[KinoBajkaBlonieClient],
+    KinoMetalowiecNowaDeba -> classOf[KinoMetalowiecNowaDebaClient],
+    KinoEva                -> classOf[KinoEvaClient],
+  )
+  for ((cinema, scraper) <- ownSiteScrapers)
+    it should s"scrape ${cinema.displayName} off its own site with ${scraper.getSimpleName}" in {
+      catalog().all.find(_.cinema == cinema).value.getClass shouldBe scraper
     }
 
   it should "keep Sucha Beskidzka's systembiletowy feed to its cinema, not the cabaret and musicals it also sells" in {

@@ -10,9 +10,6 @@ import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-/** The origin of one venue's iKsoris ticketing site (`https://kinoplon.pl`). */
-final case class IksorisOrigin(value: String) extends AnyVal
-
 /**
  * The day-by-day repertoire of an iKsoris ticketing site (SoftCOM Wrocław's
  * white-label platform — "System rezerwacji i sprzedaży biletów iKsoris" in

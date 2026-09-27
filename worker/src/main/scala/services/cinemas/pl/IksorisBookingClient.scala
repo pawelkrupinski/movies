@@ -15,8 +15,8 @@ import scala.jdk.CollectionConverters._
 /** One venue's install of the iKsoris ticketing platform: the host it runs on
  *  and the event group (`idg`) that holds its film screenings — other groups on
  *  the same install are concerts and theatre. */
-final case class IksorisSite(baseUrl: String, eventGroup: Int = 1) {
-  def terminUrl: String = s"$baseUrl/rezerwacja/termin.html?idg=$eventGroup"
+final case class IksorisBookingPage(origin: IksorisOrigin, eventGroup: Int = 1) {
+  def url: String = s"${origin.value}/rezerwacja/termin.html?idg=$eventGroup"
 }
 
 /**
@@ -51,15 +51,15 @@ final case class IksorisSite(baseUrl: String, eventGroup: Int = 1) {
  * only opens a film's page about a week ahead, so the listing is short but
  * complete for what can be booked.
  */
-class IksorisClient(http: HttpFetch, site: IksorisSite, override val cinema: Cinema) extends CinemaScraper {
+class IksorisBookingClient(http: HttpFetch, page: IksorisBookingPage, override val cinema: Cinema) extends CinemaScraper {
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(site.baseUrl)
-  override def sourceUrl: Option[String] = Some(site.terminUrl)
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page.origin.value)
+  override def sourceUrl: Option[String] = Some(page.url)
 
-  def fetch(): Seq[CinemaMovie] = IksorisClient.parse(http.get(site.terminUrl), site, cinema)
+  def fetch(): Seq[CinemaMovie] = IksorisBookingClient.parse(http.get(page.url), page, cinema)
 }
 
-object IksorisClient {
+object IksorisBookingClient {
 
   // "Kanada, USA 89min" — comma-list countries, then the runtime glued to "min".
   private val DescPat = """^(.*?)\s*(\d+)\s*min\s*$""".r
@@ -76,8 +76,8 @@ object IksorisClient {
     poster:    Option[String]
   )
 
-  def parse(html: String, site: IksorisSite, cinema: Cinema): Seq[CinemaMovie] = {
-    val document = Jsoup.parse(html, site.baseUrl)
+  def parse(html: String, page: IksorisBookingPage, cinema: Cinema): Seq[CinemaMovie] = {
+    val document = Jsoup.parse(html, page.origin.value)
     val slots    = programmeSlots(document) ++ tableSlots(document)
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>

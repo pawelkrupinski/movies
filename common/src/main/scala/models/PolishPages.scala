@@ -165,7 +165,7 @@ private[models] object PolishPages {
     Row("zlocieniec", "Złocieniec", "Złocieńcu", 53.5329, 16.0113, "Zachodniopomorskie", multiTown = true, Seq(KinoGoplana, KinoMewaZlocieniec, KinoOKDrawsko)),
     Row("zlotow", "Złotów", "Złotowie", 53.3635, 17.0408, "Wielkopolskie", multiTown = true, Seq(KinoRodlo, KinoOKJastrowie, KinoGOKLipka)),
     Row("zory", "Żory", "Żorach", 50.0452, 18.7006, "Śląskie", multiTown = false, Seq(HeliosZory, KinoNaStarowce)),
-    Row("zyrardow", "Żyrardów", "Żyrardowie", 52.0488, 20.446, "Mazowieckie", multiTown = true, Seq(KinoGrodziskieCentrumKultury, KinoCentrumKulturyBlonie, KinoODEON, KinoLen, KinoRomaRawa, KinoFenix)),
+    Row("zyrardow", "Żyrardów", "Żyrardowie", 52.0488, 20.446, "Mazowieckie", multiTown = true, Seq(KinoGrodziskieCentrumKultury, KinoBajkaBlonie, KinoODEON, KinoLen, KinoRomaRawa, KinoFenix)),
     Row("zywiec", "Żywiec", "Żywcu", 49.6853, 19.1924, "Śląskie", multiTown = true, Seq(KinoJanosik, KinoPromyk)),
   )
 

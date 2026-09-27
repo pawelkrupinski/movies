@@ -62,6 +62,11 @@ object KinoMetalowiecNowaDebaClient {
   private val AgeYears     = """(\d+)\s*\+""".r
   private val YouTubeUrl   = """"youtube_url":"([^"]+)"""".r
   private val DetailsMark  = "DATA WYŚWIETLANIA"
+  // The film block's `<strong>` field labels, upper-cased as parsed.
+  private val SynopsisLabel = "OPIS FILMU"
+  private val GenreLabel    = "GATUNEK"
+  private val RuntimeLabel  = "CZAS TRWANIA"
+  private val AgeLabel      = "OGRANICZENIE WIEKOWE"
 
   private case class RawSlot(title: String, dateTime: LocalDateTime)
 
@@ -150,11 +155,11 @@ object KinoMetalowiecNowaDebaClient {
         title     = title,
         posterUrl = widgets.filter(_.hasClass("elementor-widget-image"))
                       .flatMap(w => Option(w.selectFirst("img[src]"))).map(_.attr("abs:src")).find(_.nonEmpty),
-        synopsis  = fields.get("OPIS FILMU").filter(_.nonEmpty),
-        genres    = fields.get("GATUNEK").toSeq.flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty),
-        runtime   = fields.get("CZAS TRWANIA").flatMap(Minutes.findFirstMatchIn).map(_.group(1).toInt),
+        synopsis  = fields.get(SynopsisLabel).filter(_.nonEmpty),
+        genres    = fields.get(GenreLabel).toSeq.flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty),
+        runtime   = fields.get(RuntimeLabel).flatMap(Minutes.findFirstMatchIn).map(_.group(1).toInt),
         // "b/o" (no restriction) is a marker, not a rating, so only "N+" counts.
-        age       = fields.get("OGRANICZENIE WIEKOWE").flatMap(AgeYears.findFirstMatchIn).map(m => s"${m.group(1)}+"),
+        age       = fields.get(AgeLabel).flatMap(AgeYears.findFirstMatchIn).map(m => s"${m.group(1)}+"),
         trailer   = widgets.filter(_.hasClass("elementor-widget-video"))
                       .flatMap(w => YouTubeUrl.findFirstMatchIn(w.attr("data-settings")))
                       .flatMap(m => ScraperParse.canonicalTrailer(m.group(1).replace("\\/", "/")))

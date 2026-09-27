@@ -5,7 +5,7 @@ import clients.tools.FakeHttpFetch
 import models.{KinoKulturaBelchatow, KinoRCKDrzewica}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.pl.{IksorisClient, IksorisSite}
+import services.cinemas.pl.{IksorisBookingClient, IksorisBookingPage, IksorisOrigin}
 
 import java.time.LocalDateTime
 
@@ -18,15 +18,15 @@ import java.time.LocalDateTime
  *  - MCK Bełchatów's Kino Kultura (`bilety.mckbelchatow.pl`, captured
  *    2026-09-27), the older Bootstrap "table" theme — one row per showing. Its
  *    Filmweb page (the venue's only source before) is thin next to it. */
-class IksorisClientSpec extends AnyFlatSpec with Matchers with OptionValues {
+class IksorisBookingClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val drzewica = new IksorisClient(new FakeHttpFetch("kino-rck-drzewica"),
-    IksorisSite("https://bilety.rck.drzewica.pl"), KinoRCKDrzewica).fetch()
+  private val drzewica = new IksorisBookingClient(new FakeHttpFetch("kino-rck-drzewica"),
+    IksorisBookingPage(IksorisOrigin("https://bilety.rck.drzewica.pl")), KinoRCKDrzewica).fetch()
 
-  private val belchatow = new IksorisClient(new FakeHttpFetch("kino-kultura-belchatow"),
-    IksorisSite("https://bilety.mckbelchatow.pl"), KinoKulturaBelchatow).fetch()
+  private val belchatow = new IksorisBookingClient(new FakeHttpFetch("kino-kultura-belchatow"),
+    IksorisBookingPage(IksorisOrigin("https://bilety.mckbelchatow.pl")), KinoKulturaBelchatow).fetch()
 
-  "IksorisClient on the programme theme (Drzewica)" should "return a non-empty, single-cinema film list" in {
+  "IksorisBookingClient on the programme theme (Drzewica)" should "return a non-empty, single-cinema film list" in {
     drzewica should not be empty
     drzewica.map(_.cinema).toSet shouldBe Set(KinoRCKDrzewica)
     all(drzewica.map(_.showtimes)) should not be empty
@@ -61,7 +61,7 @@ class IksorisClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     vaiana.showtimes.map(_.dateTime) should contain (LocalDateTime.of(2026, 9, 30, 9, 0))
   }
 
-  "IksorisClient on the table theme (Bełchatów)" should "read every bookable film off the one-row-per-showing table" in {
+  "IksorisBookingClient on the table theme (Bełchatów)" should "read every bookable film off the one-row-per-showing table" in {
     belchatow.map(_.cinema).toSet shouldBe Set(KinoKulturaBelchatow)
     belchatow.map(_.movie.title) should contain theSameElementsAs Seq(
       "André Rieu. Niech żyje Maastricht!", "Dzień dziecka księdza Jana Kaczkowskiego", "Kręciołek",

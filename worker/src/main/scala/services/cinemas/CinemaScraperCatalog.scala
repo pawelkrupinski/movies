@@ -676,7 +676,7 @@ class CinemaScraperCatalog(
   private val piotrkowTrybunalskiScrapers = Seq(
     helios(HeliosNuxt.PiotrkowTrybunalski),   // Piotrków Trybunalski
     helios(HeliosNuxt.Belchatow),   // Bełchatów
-    filmweb(1330, KinoKulturaBelchatow),   // Bełchatów
+    new IksorisBookingClient(http, IksorisBookingPage(IksorisOrigin("https://bilety.mckbelchatow.pl")), KinoKulturaBelchatow),   // Bełchatów
     helios(HeliosNuxt.TomaszowMazowiecki),   // Tomaszów Mazowiecki
   )
   private val siedlceScrapers = Seq(
@@ -685,7 +685,7 @@ class CinemaScraperCatalog(
     filmweb(2073, KinoSokolSokolowPodlaski),   // Sokołów Podlaski
     biletyna(KinoSlawa),   // Międzyrzec Podlaski
     biletyna(KinoKongres),   // Węgrów
-    filmweb(1808, KinoLukow),   // Łuków
+    new KinoLukowClient(http, KinoLukow),   // Łuków
     cinemaCity("1100", CinemaCityBialaPodlaska),   // Biała Podlaska
     systemBiletowy(KinoWilga),   // Garwolin
   )
@@ -712,7 +712,7 @@ class CinemaScraperCatalog(
   )
   private val suwalkiScrapers = Seq(
     msi(KinoCinemaLumiereSuwalki),   // Suwałki
-    filmweb(457, KinoIskra),   // Augustów
+    new KinoIskraClient(http, KinoIskra, today),   // Augustów
     bilety24("https://www.bilety24.pl/kino/organizator/dom-kultury-w-goldapi-1089", KinoKulturaGoldap),   // Gołdap
     ekobilet("mazury-olecko", KinoMazur),   // Olecko
     biletyna(KinoECK),   // Ełk
@@ -721,15 +721,15 @@ class CinemaScraperCatalog(
   private val stalowaWolaScrapers = Seq(
     helios(HeliosNuxt.StalowaWola),   // Stalowa Wola
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-stalowa-wola-1419", KinoWrzos),   // Stalowa Wola
-    filmweb(2407, KinoSokolNisko),   // Nisko
-    filmweb(1903, KinoMetalowiecNowaDeba),   // Nowa Dęba
+    new ModernEventsCalendarClient(http, ModernEventsCalendarPage("https://nck.nisko.pl/kino-sokol/repertuar/"), KinoSokolNisko, today),   // Nisko
+    new KinoMetalowiecNowaDebaClient(http, KinoMetalowiecNowaDeba, today),   // Nowa Dęba
     filmweb(1489, KinoBCK),   // Biłgoraj
   )
   private val zamoscScrapers = Seq(
-    filmweb(1670, KinoStylowy),   // Zamość
+    new KinoStylowyClient(http, KinoStylowy, today),   // Zamość
     bilety24("https://www.bilety24.pl/kino/organizator/chelmski-dom-kultury-1718", KinoZorzaChelm),   // Chełm
     biletyna(KinoMorskieOko),   // Krasnystaw
-    filmweb(2330, KinoPlon),   // Hrubieszów
+    new IksorisRepertoireClient(http, IksorisOrigin("https://kinoplon.pl"), KinoPlon, today),   // Hrubieszów
   )
   private val lesznoScrapers = Seq(
     multikino("0044", MultikinoLeszno),   // Leszno
@@ -741,9 +741,9 @@ class CinemaScraperCatalog(
   private val lomzaScrapers = Seq(
     helios(HeliosNuxt.Lomza),   // Łomża
     bilety24("https://www.bilety24.pl/kino/organizator/ostroleckie-centrum-kultury-1068", KinoJantar),   // Ostrołęka
-    filmweb(1644, KinoCKZambrow),   // Zambrów
+    new ModernEventsCalendarClient(http, ModernEventsCalendarPage("https://kino.mokzambrow.pl/"), KinoCKZambrow, today),   // Zambrów
     msi(KinoOstrovia),   // Ostrów Mazowiecka
-    filmweb(2348, KinoWars),   // Wysokie Mazowieckie
+    new KinoWarsClient(http, KinoWars),   // Wysokie Mazowieckie
     biletyna(KinoDomKulturyGrajewo),   // Grajewo
   )
   private val pulawyScrapers = Seq(
@@ -754,7 +754,7 @@ class CinemaScraperCatalog(
     biletyna(KinoPolonez),   // Skierniewice
     biletyna(KinoCKiSSkierniewice),   // Skierniewice
     biletyna(KinoLen),   // Żyrardów
-    filmweb(2332, KinoRomaRawa),   // Rawa Mazowiecka
+    new KinoRomaRawaClient(http, KinoRomaRawa, today),   // Rawa Mazowiecka
     systemBiletowy(KinoFenix),   // Łowicz
   )
   private val starogardGdanskiScrapers = Seq(
@@ -772,7 +772,7 @@ class CinemaScraperCatalog(
     filmweb(2034, KinoSyrena),   // Wieluń
     msi(KinoTeatrSieradz),   // Sieradz
     filmweb(2334, KinoSlonce),   // Wieruszów
-    filmweb(2358, KinoSokolniaKepno),   // Kępno
+    new IksorisRepertoireClient(http, IksorisOrigin("https://kinosokolnia.org"), KinoSokolniaKepno, today),   // Kępno
   )
   private val chojniceScrapers = Seq(
     msi(KinoChDK),   // Chojnice
@@ -789,7 +789,7 @@ class CinemaScraperCatalog(
     bilety24("https://www.bilety24.pl/kino/organizator/miejskie-centrum-kultury-1291", KinoteatrHarmonia),   // Nowe Miasto Lubawskie
   )
   private val ketrzynScrapers = Seq(
-    filmweb(1686, KinoGwiazdaKetrzyn),   // Kętrzyn
+    new KinoGwiazdaKetrzynClient(http, KinoGwiazdaKetrzyn),   // Kętrzyn
     ekobilet("mck-mragowo", KinoZodiak),   // Mrągowo
   )
   private val zakopaneScrapers = Seq(
@@ -2166,7 +2166,7 @@ class CinemaScraperCatalog(
   private val nearbyTowns: Map[String, Seq[CinemaScraper]] = Map(
     "szczecin" -> Seq(
       biletyna(KinoMOKPolice),   // Police
-      filmweb(1662, KinoEva),   // Międzyzdroje
+      new KinoEvaClient(http, KinoEva),   // Międzyzdroje
       biletyna(KinoGryfinskiDomKultury),   // Gryfino
     ),
     "bielsko-biala" -> Seq(
@@ -2183,7 +2183,7 @@ class CinemaScraperCatalog(
       biletyna(KinoBasn),   // Piastów
       biletyna(KinoKasynoOficerskie),   // Nowy Dwór Mazowiecki
       bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-gminy-grodzisk-mazowiecki-1231", KinoGrodziskieCentrumKultury),   // Grodzisk Mazowiecki
-      filmweb(1514, KinoCentrumKulturyBlonie),   // Błonie
+      new KinoBajkaBlonieClient(http, KinoBajkaBlonie, today),   // Błonie
       filmweb(1683, KinoGrojeckiOsrodekKultury),   // Grójec
       biletyna(KinoUciecha),   // Góra Kalwaria
       helios(HeliosNuxt.Wolomin),   // Wołomin
@@ -2196,7 +2196,7 @@ class CinemaScraperCatalog(
     ),
     "lodz" -> Seq(
       biletyna(KinoMOKGlowno),   // Głowno
-      filmweb(1404, KinoTomi),   // Pabianice
+      new KinoTomiClient(http, KinoTomi),   // Pabianice
       helios(HeliosNuxt.Pabianice),   // Pabianice
       msi(KinoGornikLeczyca),   // Łęczyca
     ),
@@ -2320,7 +2320,7 @@ class CinemaScraperCatalog(
     "radom" -> Seq(
       ekobilet("centrum-kultury-i-turystyki-w-ilzy-8211", KinoCKiTIlza),   // Iłża
       biletyna(KinoKsiazka),   // Stara Błotnica
-      new IksorisClient(http, IksorisSite("https://bilety.rck.drzewica.pl"), KinoRCKDrzewica),   // Drzewica
+      new IksorisBookingClient(http, IksorisBookingPage(IksorisOrigin("https://bilety.rck.drzewica.pl")), KinoRCKDrzewica),   // Drzewica
     ),
     "zlocieniec" -> Seq(
       biletyna(KinoChDKChoszczno),   // Choszczno
