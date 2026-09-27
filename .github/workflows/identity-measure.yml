@@ -1,0 +1,149 @@
+#
+# The identity resolver's whole-corpus MEASUREMENT, on GitHub's runners instead of a laptop.
+#
+# `IdentityShadowIntegrationSpec` over a full country corpus is the loop every resolver change
+# is judged by (new wrong / recovered / lost against a baseline), and five countries of it
+# held three 8 GB JVMs on one Mac for a quarter of an hour per variant. Here each country is
+# its own runner, so a variant costs one country's wall clock, and the laptop none.
+#
+# DISPATCH-ONLY, never on push: it takes one runner per country from the same 20-job
+# allowance Main's run needs (`CiRunnerBudgetSpec`), so it runs when someone asks for a
+# measurement and at no other time.
+#
+# A VARIANT IS A PATCH, not a branch — only `main` is ever pushed. `scripts/identity-measure-ci.sh`
+# diffs a worktree against its merge-base with origin/main and dispatches the pair; the job
+# checks out the base and applies the patch.
+#
+# It replays the PINNED recorded pair (`convergence-setup`, hermetic), the one the convergence
+# legs render verdicts from, so two variants measured on the same day compare on identical
+# inputs. The booted pipeline is cached per corpus and per non-identity code: a variant that
+# only touches `services/identity` skips the boot and spends its minutes resolving.
+#
+name: Identity measure
+run-name: identity measure ${{ inputs.variant }}
+
+on:
+    workflow_dispatch:
+        inputs:
+            variant:
+                description: The variant's name — the artifacts are identity-measure-<variant>-<cc>.
+                required: true
+                type: string
+            base:
+                description: The commit to measure (a patch applies on top of it). Must be on origin.
+                required: false
+                type: string
+                default: main
+            patch:
+                description: base64 of a gzipped `git diff --binary` against `base`. Empty measures the base itself.
+                required: false
+                type: string
+                default: ''
+            countries:
+                description: Comma-separated country codes.
+                required: false
+                type: string
+                default: pl,uk,de,us,es
+            robustness:
+                description: "`off` skips the determinism / outage / perturbation re-resolves (5x faster)."
+                required: false
+                type: string
+                default: 'off'
+            focus:
+                description: KINOWO_IDENTITY_FOCUS — comma-separated title phrases; empty resolves every listing.
+                required: false
+                type: string
+                default: ''
+
+concurrency:
+    group: identity-measure-${{ inputs.variant }}
+    cancel-in-progress: false
+
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+
+permissions:
+    contents: read
+
+jobs:
+    countries:
+        name: countries
+        runs-on: ubuntu-latest
+        timeout-minutes: 2
+        outputs:
+            codes: ${{ steps.codes.outputs.codes }}
+        steps:
+            - id: codes
+              shell: bash
+              env:
+                  COUNTRIES: ${{ inputs.countries }}
+              run: |
+                  set -euo pipefail
+                  codes=$(tr ',' '\n' <<< "$COUNTRIES" | tr -d ' ' | grep -E '^(pl|uk|de|us|es)$' | jq -R . | jq -cs .)
+                  [ "$codes" != "[]" ] || { echo "::error::no known country in '$COUNTRIES'"; exit 1; }
+                  echo "codes=$codes" >> "$GITHUB_OUTPUT"
+
+    measure:
+        name: measure (${{ matrix.code }})
+        needs: countries
+        strategy:
+            fail-fast: false
+            matrix:
+                code: ${{ fromJson(needs.countries.outputs.codes) }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 330
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ inputs.base }}
+
+            - name: Apply the variant's patch
+              if: inputs.patch != ''
+              shell: bash
+              env:
+                  PATCH: ${{ inputs.patch }}
+              run: |
+                  set -euo pipefail
+                  base64 -d <<< "$PATCH" | gunzip | git apply --binary --index
+                  git diff --cached --stat | tail -1
+
+            - uses: ./.github/actions/convergence-setup
+              with:
+                  code:  ${{ matrix.code }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            # The boot depends on the corpus and on every line of pipeline code EXCEPT the resolver.
+            - name: Restore the booted pipeline
+              uses: actions/cache@v5
+              with:
+                  path: ${{ runner.temp }}/identity-pipeline-cache
+                  key: identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', '!**/services/identity/**') }}
+
+            - name: Measure the ${{ matrix.code }} corpus
+              shell: bash
+              timeout-minutes: 300
+              run: |
+                  set -o pipefail
+                  mkdir -p "$KINOWO_IDENTITY_OUT"
+                  git log --oneline -1 > "$KINOWO_IDENTITY_OUT/variant.txt"
+                  sbt -J-Xmx10g -J-Duser.language=en -J-Duser.country=US \
+                      "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec" 2>&1 \
+                      | tee "$KINOWO_IDENTITY_OUT/run.log"
+              env:
+                  MONGODB_URI:                    mongodb://127.0.0.1:27017/?directConnection=true
+                  KINOWO_IDENTITY_FULL:           ${{ matrix.code }}
+                  KINOWO_IDENTITY_CORPUS_DIR:     ${{ github.workspace }}/test/resources/fixtures/corpus
+                  KINOWO_IDENTITY_OUT:            ${{ runner.temp }}/identity-out
+                  KINOWO_IDENTITY_PIPELINE_CACHE: ${{ runner.temp }}/identity-pipeline-cache
+                  KINOWO_IDENTITY_ROBUSTNESS:     ${{ inputs.robustness }}
+                  KINOWO_IDENTITY_FOCUS:          ${{ inputs.focus }}
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-measure-${{ inputs.variant }}-${{ matrix.code }}
+                  path: ${{ runner.temp }}/identity-out
+                  retention-days: 14
