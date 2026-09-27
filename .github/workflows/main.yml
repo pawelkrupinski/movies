@@ -389,7 +389,7 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               if: steps.changed.outputs.changed == 'true'
               with:
                   distribution: temurin
@@ -586,7 +586,7 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               if: steps.changed.outputs.changed == 'true'
               with:
                   distribution: temurin

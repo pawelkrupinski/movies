@@ -325,7 +325,7 @@ runs:
               echo "unresolved film's rating slugs live, and publishes the cache it builds."
           fi
 
-    - uses: actions/setup-java@v5
+    - uses: ./.github/actions/setup-jdk
       with:
           distribution: temurin
           java-version: 27

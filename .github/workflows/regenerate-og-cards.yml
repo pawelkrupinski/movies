@@ -80,7 +80,7 @@ jobs:
 
             # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
             # dependency caching).
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               with:
                   distribution: temurin
                   java-version: 27

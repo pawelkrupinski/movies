@@ -37,7 +37,7 @@ jobs:
 
             # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 27
             # with sbt dependency caching.
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               with:
                   distribution: temurin
                   java-version: 27

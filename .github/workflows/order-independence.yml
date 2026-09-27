@@ -78,7 +78,7 @@ jobs:
                   repository: pawelkrupinski/movies-gitops
                   path: infra/kubernetes
 
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               with:
                   distribution: temurin
                   java-version: 27
@@ -117,7 +117,7 @@ jobs:
             - uses: actions/checkout@v5
 
             - name: Set up JDK 17
-              uses: actions/setup-java@v5
+              uses: ./.github/actions/setup-jdk
               with:
                   distribution: temurin
                   java-version: '17'
@@ -164,7 +164,7 @@ jobs:
             - uses: actions/checkout@v5
 
             - name: Set up JDK 17
-              uses: actions/setup-java@v5
+              uses: ./.github/actions/setup-jdk
               with:
                   distribution: temurin
                   java-version: '17'

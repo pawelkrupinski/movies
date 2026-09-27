@@ -52,7 +52,7 @@ jobs:
                   echo "retired=$retired" >> "$GITHUB_OUTPUT"
                   cat "$RUNNER_TEMP/pr-body.md" >> "$GITHUB_STEP_SUMMARY"
 
-            - uses: actions/setup-java@v5
+            - uses: ./.github/actions/setup-jdk
               if: steps.retire.outputs.retired != '0'
               with:
                   distribution: temurin
