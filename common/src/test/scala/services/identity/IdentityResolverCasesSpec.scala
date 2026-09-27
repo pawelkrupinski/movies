@@ -498,6 +498,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val whole   = listing(here, "Chicago")
     shipped(Seq(banner), chicago).decisionOf(banner.key).film shouldBe Some(1574)
     shipped(Seq(whole), chicago).decisionOf(whole.key).film shouldBe Some(1574)
+    // US, "Charlotte (2021)" at a Charlotte venue: the city and a year are the whole title.
+    val charlotte = Seq(F(844135, "Charlotte", 2021, "Tahir Rana", 92, 6), F(2, "Charlotte", 1974, "Someone Else", 90, 1))
+    val there     = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.labels.nominative == "Charlotte")).get
+    val dated     = listing(there, "Charlotte (2021)")
+    withClue(shipped(Seq(dated), charlotte).decisionOf(dated.key).render)(shipped(Seq(dated), charlotte).decisionOf(dated.key).film shouldBe Some(844135))
   }
 
   "A title naming two films by disjoint pieces" should "take neither on the title alone, nor its plain piece's film" in {

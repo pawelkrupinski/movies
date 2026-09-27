@@ -205,11 +205,15 @@ object IdentityResolver {
      *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
      *  OCEANU" bills the venue, not *The Rock*, whose Polish title is "Twierdza"; the Alamo
      *  Drafthouse circuit's "Dismember the Alamo 2026 - Chicago" at its Chicago venue names the
-     *  city, not the musical. The whole title always names its film, whatever the venue is called. */
+     *  city, not the musical. A title that is the venue's name and nothing more (a year aside) still
+     *  names its film, whatever the venue is called. */
     def namesOnlyItsVenue(n: Node, f: IdentityMeasures.Film): Boolean = {
       val whole  = services.movies.TitleContainment.tokens(n.evidence.title)
       val pieces = IdentityMeasures.namingPieces(n.evidence.measured, f)
-      pieces.nonEmpty && pieces.forall(p => p != whole && n.listings.forall(l => placesOf(l.cinema).exists(_.containsSlice(p))))
+      // The rest of the title must say something beside the venue: "Charlotte (2021)" at a
+      // Charlotte venue is the film, its year only dating it.
+      def besideIt(p: Seq[String]) = whole.diff(p).exists(_.exists(Character.isLetter))
+      pieces.nonEmpty && pieces.forall(p => besideIt(p) && n.listings.forall(l => placesOf(l.cinema).exists(_.containsSlice(p))))
     }
 
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
