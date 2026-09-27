@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.LocalDateTime
@@ -32,17 +32,31 @@ import scala.jdk.CollectionConverters._
  *     line (date announced, time not yet) has no time and yields nothing.
  *   - a YouTube "ZWIASTUN" link     → the trailer.
  *
- * Every date carries its year, so no `today` is needed. The per-film page adds
- * only a longer prose synopsis (no structured director/year/original title), so
- * no detail enrichment. Stage shows in the same listing ("Królowe życia -
- * spektakl") are left to [[NonMovieEventClassifier]] at the scrape seam.
+ * Every date carries its year, so no `today` is needed. The listing shows only
+ * each post's intro; the per-film page (`filmUrl`) carries the full article,
+ * where foreign titles add plain-text credit lines below the fold —
+ * "Występują: Austin Abrams, Zach Cherry, Kali Reis i Paul Walter Hauser." and
+ * "Reżyseria: Zach Cregger". The deferred [[fetchFilmDetail]] reads those (one
+ * page per film, via the `EnrichDetails` task, never inline in the scrape);
+ * Polish titles carry no such lines and stay empty. Stage shows in the same
+ * listing ("Królowe życia - spektakl") are left to [[NonMovieEventClassifier]]
+ * at the scrape seam.
  */
-class KinoWarsClient(http: HttpFetch, override val cinema: Cinema = KinoWars) extends CinemaScraper {
+class KinoWarsClient(http: HttpFetch, override val cinema: Cinema = KinoWars) extends CinemaScraper with DetailEnricher {
 
   import KinoWarsClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
+
+  // A standalone venue: its own slug is the dedup/freshness scope.
+  override def detailGroup: String = cinema.slug
+
+  /** Deferred per-film detail — the director and cast lines off the film's own
+   *  page. None on a transient fetch failure so the task stays stale and retries;
+   *  a durable 404/410 escapes (see [[DetailFetchOutcome]]). */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html, BaseUrl)))
 
   // The first page's failure propagates (a red scrape, never a white "0 films");
   // a later page failing does too — a half-read programme is not a scrape result.
@@ -123,6 +137,25 @@ object KinoWarsClient {
         ageRating  = post.ageRating
       )
     }
+  }
+
+  /** A per-film page's credit-line labels: "Reżyseria: Zach Cregger",
+   *  "Występują: A, B i C." */
+  private val DirectorLabel = "Reżyseria"
+  private val CastLabel     = "Występują"
+  /** A credit list's separators: commas and the final Polish " i " ("and"). */
+  private val PeopleSeparator = """\s*,\s*|\s+i\s+""".r
+
+  /** Director and cast off a per-film page's article body — each a
+   *  `Label: names` line, present on foreign titles only. */
+  private[pl] def parseDetail(document: Document): FilmDetail = {
+    val lines = document.select("[itemprop=articleBody] p").asScala.toSeq.flatMap(ScraperParse.linesOf)
+    def people(label: String): Seq[String] =
+      lines.collectFirst { case line if line.startsWith(s"$label:") => line.stripPrefix(s"$label:") }.toSeq
+        .flatMap(PeopleSeparator.split)
+        .map(_.trim.stripSuffix(".").trim)
+        .filter(_.nonEmpty)
+    FilmDetail(director = people(DirectorLabel), cast = people(CastLabel))
   }
 
   private def parsePost(item: Element): Option[Post] =

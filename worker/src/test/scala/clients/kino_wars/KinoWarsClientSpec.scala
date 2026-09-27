@@ -81,6 +81,28 @@ class KinoWarsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     movies.map(_.movie.title) should not contain "Luna i rozgadana świnka"
   }
 
+  // ── Per-film page (deferred detail) ────────────────────────────────────────
+  // The listing shows only a post's intro; the credits sit below the fold on the
+  // per-film page, as plain-text lines on foreign titles:
+  //   "Występują: Austin Abrams, Zach Cherry, Kali Reis i Paul Walter Hauser."
+  //   "Reżyseria: Zach Cregger"
+  private val client = new KinoWarsClient(new FakeHttpFetch("kino-wars"))
+
+  it should "read the director and cast lines off a foreign film's own page" in {
+    val detail = client.fetchFilmDetail(film("Resident Evil").filmUrl.value).value
+    detail.director shouldBe Seq("Zach Cregger")
+    detail.cast     shouldBe Seq("Austin Abrams", "Zach Cherry", "Kali Reis", "Paul Walter Hauser")
+  }
+
+  it should "leave director and cast empty on a page without those lines" in {
+    val polish = client.fetchFilmDetail(film("100 dni: Misja Zeus").filmUrl.value).value
+    polish.director shouldBe empty
+    polish.cast     shouldBe empty
+    val foreignWithout = client.fetchFilmDetail(film("Gwiazdozbiór psa").filmUrl.value).value
+    foreignWithout.director shouldBe empty
+    foreignWithout.cast     shouldBe empty
+  }
+
   it should "propagate a fetch failure instead of reporting an empty (white) scrape" in {
     a[HttpStatusException] should be thrownBy new KinoWarsClient(new FailingHttpFetch(503)).fetch()
   }
