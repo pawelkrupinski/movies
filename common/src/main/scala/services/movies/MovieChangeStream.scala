@@ -108,6 +108,17 @@ final class MovieChangeStream(
    *  behind a gauge if this ever needs watching in prod. */
   def applyBacklog: Int = backlog.get()
 
+  /** Block until every apply queued before this call has run — the apply thread is single and
+   *  FIFO, so a no-op queued behind them runs only after them. The happens-before a spec needs to
+   *  read what an apply wrote (its resume position, its liveness count) without betting on how
+   *  long the apply thread takes to get there. Not a cursor's event, so it owes no demand.
+   *  False when `timeoutSeconds` passed first, or the stream is closed. */
+  private[movies] def awaitQueuedApplies(timeoutSeconds: Long = 10): Boolean = {
+    val ran = new java.util.concurrent.CountDownLatch(1)
+    scala.util.Try(changeApply.execute(() => ran.countDown())).isSuccess &&
+      ran.await(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+  }
+
   /** Enqueue one change-stream apply for an event `collection`'s cursor delivered: count it
    *  into the backlog and into that cursor's [[ChangeStreamLiveness]] apply lag, and release a
    *  unit of the cursor's demand once it has actually run. Every hand-off to `changeApply` goes

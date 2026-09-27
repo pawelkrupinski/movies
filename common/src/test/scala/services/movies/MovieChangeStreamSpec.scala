@@ -22,7 +22,7 @@ import scala.collection.mutable
  * synchronously: a `movie_slots` or `screenings` change must re-read the film and fan it
  * out as an upsert, and a burst on one film must collapse onto one re-read.
  */
-class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest.concurrent.Eventually {
+class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
 
   /** Hands the observer back so the spec can push events; counts the opens, since ONE
    *  shared cursor for any number of listeners is the point of the fan-out. */
@@ -80,6 +80,14 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       if (id == forId) count.incrementAndGet()
       Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
     }
+
+  /** A resume token whose advance stalls, as a loaded machine can stall the apply thread between
+   *  the listener it has just run and the position it moves next. A wait on that position must be
+   *  a happens-before with the apply thread, not a bet on how long the gap lasts: this is the gap
+   *  a 150 ms `eventually` lost under load. */
+  private final class StallingResumeToken extends ChangeStreamResumeToken("movies", database = None, enabled = false) {
+    override def advance(token: BsonDocument, deliveredAt: Long): Unit = { Thread.sleep(400); super.advance(token, deliveredAt) }
+  }
 
   private def stream(
     source:            HandFedSource,
@@ -417,7 +425,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // so a restart resumes after events that were never applied — and never replays them.
   it should "advance the resume position only once the event's apply has run" in {
     val source = new HandFedSource
-    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token  = new StallingResumeToken
     val gate   = new CountDownLatch(1)
     val under  = stream(source, resumeToken = token, reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
     val applied = new CountDownLatch(1)
@@ -429,7 +437,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
 
       gate.countDown()
       applied.await(5, TimeUnit.SECONDS) shouldBe true
-      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024"))))
+      under.awaitQueuedApplies() shouldBe true
+      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024")))
     } finally { handle.close(); under.close() }
   }
 
@@ -448,7 +457,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       entered.await(5, TimeUnit.SECONDS) shouldBe true
       token.current shouldBe None // the listener has not finished — the event is not applied yet
       release.countDown()
-      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024"))))
+      under.awaitQueuedApplies() shouldBe true
+      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024")))
     } finally { release.countDown(); handle.close(); under.close() }
   }
 
@@ -467,7 +477,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     try {
       source.emit(event("insert", "good|2024", StoredMovieDto.fromDomain("good|2024", MovieRecord(), Instant.EPOCH)))
       delivered.poll(5, TimeUnit.SECONDS) shouldBe "good|2024"
-      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-good|2024"))))
+      under.awaitQueuedApplies() shouldBe true
+      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-good|2024")))
 
       source.emit(event("insert", "broken|2024", StoredMovieDto.fromDomain("broken|2024", MovieRecord(), Instant.EPOCH)))
       source.emit(event("insert", "later|2024", StoredMovieDto.fromDomain("later|2024", MovieRecord(), Instant.EPOCH)))
@@ -521,8 +532,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       delivered.poll(10, TimeUnit.SECONDS) shouldBe "broken|2024"
       source.emit(event("insert", "later|2024", StoredMovieDto.fromDomain("later|2024", MovieRecord(), Instant.EPOCH)))
       delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024"
+      under.awaitQueuedApplies() shouldBe true
       withClue("the failed film is applied, so the next applied event moves the position again: ")(
-        eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-later|2024")))))
+        token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-later|2024"))))
     } finally { handle.close(); under.close() }
   }
 
@@ -699,7 +711,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       gate.countDown()
       delivered.poll(5, TimeUnit.SECONDS) should not be null
       delivered.poll(5, TimeUnit.SECONDS) should not be null
-      eventually(under.liveness.pendingApplies(Movies) + under.liveness.pendingApplies(Slots) shouldBe 0)
+      under.awaitQueuedApplies() shouldBe true
+      under.liveness.pendingApplies(Movies) + under.liveness.pendingApplies(Slots) shouldBe 0
       under.liveness.applyLagSeconds(Movies, clock.instant()) shouldBe 0.0
       under.liveness.applyLagSeconds(Slots, clock.instant())  shouldBe 0.0
     } finally { handle.close(); under.close() }
