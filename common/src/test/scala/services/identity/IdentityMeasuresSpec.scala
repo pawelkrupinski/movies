@@ -306,7 +306,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Twoje imię", Some("君の名は。"), alternativeTitles = Seq("Your Name.")))("originalTitle") shouldBe Category("segment")
   }
 
-  "an original title copying the listing's own title" should "repeat it whether whole, a delimited piece or a truncation" in {
+  "an original title copying the listing's own title" should "repeat it whether whole or a truncation" in {
     // UK BTS relays: the venue's original-title field is its own title cut short ("…: Live").
     val bts = "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING"
     IdentityMeasures.repeatsItsTitle(Listing(bts, originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))) shouldBe true
@@ -318,6 +318,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.repeatsItsTitle(Listing("De Gaulle: Part 2 - Liberte", originalTitle = Some("La Bataille de Gaulle - Partie 2 : J’écris ton nom"))) shouldBe false
     IdentityMeasures.repeatsItsTitle(Listing("Alien", originalTitle = Some("Alien: Romulus"))) shouldBe false
     IdentityMeasures.repeatsItsTitle(Listing("Alien")) shouldBe false
+    // UK Everyman: an original title that holds the title as one piece of more is not a copy. Read as
+    // one, it stopped counting against Zeffirelli's 1968 film and the Royal Ballet's staging took it.
+    IdentityMeasures.repeatsItsTitle(Listing("Royal Ballet and Opera: Romeo and Juliet",
+      originalTitle = Some("Royal Ballet and Opera: Romeo and Juliet (INACTIVE)"))) shouldBe false
   }
 
   it should "be absent against a film the title names, and stay what it measures against one it does not" in {

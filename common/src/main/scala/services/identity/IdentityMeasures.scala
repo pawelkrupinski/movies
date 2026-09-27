@@ -580,18 +580,19 @@ object IdentityMeasures {
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
   /** Does the listing's original title only repeat its own title — the whole of it (a venue
    *  filling the field with the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2:
-   *  Judgment Day"), a delimited piece of it, or a run cut off one edge of it ("BTS World Tour
-   *  'ARIRANG' In Buenos Aires: Live" beside "…: LIVE VIEWING")? Then it carries nothing the title
-   *  does not: it is the title again, not a second fact, and — as a title relation alone — never
-   *  vetoes. Read by [[originalTitleRelation]] against the listing's own titles, so one definition
-   *  of "carries" serves both. An original title LONGER than the listing's (a `decorated` one)
-   *  says more than the title, and stays a fact. */
+   *  Judgment Day") or a run cut off one edge of it ("BTS World Tour 'ARIRANG' In Buenos Aires:
+   *  Live" beside "…: LIVE VIEWING")? Then it carries nothing the title does not: it is the title
+   *  again, not a second fact. Read by [[originalTitleRelation]] against the listing's own titles
+   *  (`match` or `fragment`), so one definition of "carries" serves both. An original title that
+   *  adds to the listing's — a `decorated` one, or a `segment` one that holds the title as one
+   *  delimited piece ("Royal Ballet and Opera: Romeo and Juliet (INACTIVE)") — says more than the
+   *  title, and stays a fact. */
   def repeatsItsTitle(l: Listing): Boolean =
     originalTitleRelation(l.originalTitle, l.rawTitle.toSeq :+ l.title) match {
       case Category(c) => CopiesOfTheTitle(c)
       case _           => false
     }
-  private val CopiesOfTheTitle: Set[String] = Set("match", "segment", "fragment")
+  private val CopiesOfTheTitle: Set[String] = Set("match", "fragment")
 
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its
