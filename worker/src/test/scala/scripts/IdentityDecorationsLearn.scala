@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import play.api.libs.json.Json
 import services.identity.TitleDecorations
-import scripts.IdentityCalibrationData.{ProdSnapshot, TmdbAnswers, languageOf, listings, responsesFile}
+import scripts.IdentityCalibrationData.{ProdSnapshot, TmdbAnswers, languageOf, listings, queries, responsesFile}
 
 import java.nio.file.{Files, Path, Paths}
 
@@ -40,21 +40,30 @@ object IdentityDecorationsLearn {
       val sources = Seq(
         "full" -> corpora.resolve(s"cinema-scrapes-$cc.json.gz"),
         "hard-clusters" -> hardClusters.resolve(s"cinema-scrapes-hard-clusters-$cc.json.gz")).filter(p => Files.exists(p._2))
-      val titled = listings(country, sources, ProdSnapshot(Map.empty, Nil), 0)
-        .flatMap(o => (Seq(o.listing.title) ++ o.listing.rawTitle).distinct.map(o.venue -> _))
+      val observed = listings(country, sources, ProdSnapshot(Map.empty, Nil), 0)
+      val titled = observed.flatMap(o => (Seq(o.listing.title) ++ o.listing.rawTitle).distinct.map(o.venue -> _))
       val answers = new TmdbAnswers(Seq(fixtures.resolve(s"enrichment-$cc")).filter(Files.isDirectory(_)),
         responsesFile(hardClusters.resolve(s"hard-clusters-responses-$cc.json.gz")), languageOf(country))
+      // Whether each listing title's own searches were all recorded and all found nothing.
+      val searches = observed.flatMap { o =>
+        val qs = queries(o.listing)
+        val empty = qs.nonEmpty && qs.forall(q => answers.search(q).exists(_.isEmpty))
+        (Seq(o.listing.title) ++ o.listing.rawTitle).distinct.map(_ -> empty)
+      }
       val films = answers.films
       println(s"[$cc] ${titled.size} listing titles, ${films.size} film records")
-      (titled, films.flatMap(f => Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles))
+      (titled, films.flatMap(f => Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles), searches)
     }
     val titled  = perCountry.flatMap(_._1)
     val records = perCountry.flatMap(_._2)
     TitleDecorations.Artefact(version,
       s"an edge token run of listing titles whose remainder is another listing's whole title, for >= ${TitleDecorations.MinFilms} " +
-        "different remainders, that no recorded film record's title, original title or alternative title carries",
+        s"different remainders — or for one remainder that is a recorded film record's title exactly, at >= ${TitleDecorations.MinVenues} venues, " +
+        "where the decorated title's own recorded searches found nothing and no longer record title runs on from the remainder into " +
+        "the run — that no recorded film record's title, original title or " +
+        "alternative title carries",
       Map("listingTitles" -> titled.size, "venues" -> titled.map(_._1).distinct.size, "recordTitles" -> records.distinct.size),
-      TitleDecorations.learn(titled, records))
+      TitleDecorations.learn(titled, records, perCountry.flatMap(_._3)))
   }
 
   def write(artefact: TitleDecorations.Artefact, out: Path): Unit = {

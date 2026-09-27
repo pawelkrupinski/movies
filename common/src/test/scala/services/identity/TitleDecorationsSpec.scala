@@ -40,6 +40,48 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "Learning a run seen around ONE film" should "take it when two venues carry it, its rest is a record's title and no longer record's title runs into it" in {
+    // UK, Cineworld's "Girls Like Girls Unlimited Screening" (×87): the only film the run is seen
+    // around, so the two-film rule never learns it, and the whole title's own search is empty.
+    val cineworld = Seq("Cineworld Aberdeen", "Cineworld Swindon").map(_ -> "Girls Like Girls Unlimited Screening")
+    val plain     = Seq("Odeon Birmingham" -> "Girls Like Girls")
+    val empty     = Seq("Girls Like Girls Unlimited Screening" -> true, "Girls Like Girls" -> false)
+    val learned   = TitleDecorations.learn(cineworld ++ plain, Seq("Girls Like Girls"), empty)
+    learned.map(d => (d.side, d.decoration, d.films, d.venues)) shouldBe Seq(("suffix", "unlimited screening", 1, 2))
+    learned.head.examples shouldBe Seq("girls like girls")
+    // At one venue only it is indistinguishable from that venue's title for another film.
+    TitleDecorations.learn(cineworld.take(1) ++ plain, Seq("Girls Like Girls"), empty) shouldBe Nil
+    // A rest no record is titled is no evidence the run decorates a film.
+    TitleDecorations.learn(cineworld ++ plain, Seq("Girls Like Girls 2"), empty) shouldBe Nil
+  }
+
+  it should "keep a run that starts with another film's title: the title is a programme of two" in {
+    // PL, Helios's "Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty…".
+    val bill = Seq("Helios Alfa", "Helios Bielany").map(_ -> "Basia. Humor w paski mam + Kocia Szajka - Seanse HDD") :+
+      ("Kino Muza" -> "Basia. Humor w paski mam")
+    val empty = Seq("Basia. Humor w paski mam + Kocia Szajka - Seanse HDD" -> true)
+    TitleDecorations.learn(bill, Seq("Basia. Humor w paski mam", "Kocia Szajka"), empty) shouldBe Nil
+    TitleDecorations.learn(bill, Seq("Basia. Humor w paski mam"), empty).map(_.decoration) shouldBe Seq("kocia szajka seanse hdd")
+  }
+
+  it should "keep a run whose decorated title's own search found a film: the title names that one" in {
+    // US Alamo's "Michael Mann's Manhunter: The Final Cut" beside the biopic "Michael": its own
+    // searches find "Manhunter", so "Mann's Manhunter: The Final Cut" is no decoration of "Michael".
+    val alamo = Seq("Alamo Chicago", "Alamo Omaha").map(_ -> "Michael Mann's Manhunter: The Final Cut") :+ ("AMC" -> "Michael")
+    TitleDecorations.learn(alamo, Seq("Michael", "Manhunter"), Seq("Michael Mann's Manhunter: The Final Cut" -> false)) shouldBe Nil
+    // Unrecorded is not empty.
+    TitleDecorations.learn(alamo, Seq("Michael", "Manhunter")) shouldBe Nil
+  }
+
+  it should "keep a run a longer record's title continues into: the rest is not the film the title names" in {
+    // "Friday the 13th (1980)" beside a listing of F. Gary Gray's "Friday": the title names the
+    // record "Friday the 13th", whose words run on past "Friday" into the run.
+    val listings = Seq("Picture House" -> "Friday the 13th (1980)", "Prince Charles" -> "Friday the 13th (1980)", "Cinema B" -> "Friday")
+    val empty    = Seq("Friday the 13th (1980)" -> true)
+    TitleDecorations.learn(listings, Seq("Friday", "Friday the 13th"), empty) shouldBe Nil
+    TitleDecorations.learn(listings, Seq("Friday"), empty).map(_.decoration) shouldBe Seq("the 13th 1980")
+  }
+
   "Stripping" should "cut a learned decoration off either edge, keeping the title's own text" in {
     val d = TitleDecorations(Set(Seq("4dx", "rewind")), Set(Seq("2d", "pl"), Seq("w", "helios", "na", "scenie"), Seq("pokaz", "w", "dkf")))
     d.strip("(4DX Rewind) Shrek") shouldBe Seq("Shrek")
@@ -74,7 +116,8 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     val artefact = TitleDecorations.fromResource(TitleDecorations.ResourcePath).get
     artefact.decorations.foreach { d =>
       Set("prefix", "suffix") should contain(d.side)
-      d.films should be >= TitleDecorations.MinFilms
+      d.films should be >= 1
+      if (d.films < TitleDecorations.MinFilms) d.venues should be >= TitleDecorations.MinVenues
       d.examples should not be empty
     }
     artefact.decorations shouldBe artefact.decorations.sortBy(d => (-d.films, d.side, d.decoration))

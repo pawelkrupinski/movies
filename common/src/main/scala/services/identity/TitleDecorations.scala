@@ -16,7 +16,14 @@ import services.movies.TitleContainment
  *  - it is an EDGE of listing titles whose remainder is itself a listing's whole title, for at
  *    least [[MinFilms]] different remainders (a remainder that is only a decorated spelling of
  *    another, "Lalka 2D" beside "Lalka", counts once) — it recurs across films, it is not part of
- *    one; and
+ *    one — or, around ONE remainder, when it recurs across venues instead: at least [[MinVenues]]
+ *    carry it, the remainder is a film record's title exactly, the decorated title's own searches
+ *    found no film at all (what it names, if anything, is the remainder's), and no record title
+ *    crosses from the remainder into the run or starts the run where the remainder ends ("Girls
+ *    Like Girls Unlimited Screening" beside the record "Girls Like Girls"; never "Friday the 13th
+ *    (1980)" beside "Friday", whose title names the record "Friday the 13th", nor "Michael Mann's
+ *    Manhunter: The Final Cut" beside "Michael", whose search finds "Manhunter", nor the double
+ *    bill "Basia. Humor w paski mam + Kocia Szajka"); and
  *  - no film record's title, original title or alternative title carries it anywhere: "OPERA",
  *    "Exhibition on Screen", "Throwback" and "The" are words TMDB titles use, so they are the
  *    film's, not the venue's.
@@ -49,6 +56,9 @@ object TitleDecorations {
    *  not a tuned number — a run with one remainder is indistinguishable from a film's own title. */
   val MinFilms = 2
 
+  /** "Recurs" for a run seen around ONE film: two venues carrying it. */
+  val MinVenues = 2
+
   /** One learned decoration and where it was learned: the remainders it was seen around (up to
    *  [[ProvenanceExamples]], sorted), how many there are, and how many venues and listing titles
    *  carry it. */
@@ -78,7 +88,8 @@ object TitleDecorations {
   /** The decorations `listings` (each a venue and one of its titles) carry that no title of
    *  `recordTitles` does, strongest first (most films, then the text). A function of the two SETS:
    *  any order of either learns the same list. */
-  def learn(listings: Iterable[(String, String)], recordTitles: Iterable[String]): Seq[Learned] = {
+  def learn(listings: Iterable[(String, String)], recordTitles: Iterable[String],
+            searches: Iterable[(String, Boolean)] = Nil): Seq[Learned] = {
     val byTokens: Map[Seq[String], Set[String]] = listings.iterator
       .map { case (venue, title) => TitleContainment.tokens(title) -> venue }.filter(_._1.nonEmpty).toSeq
       .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
@@ -93,8 +104,23 @@ object TitleDecorations {
         note("suffix", tokens.takeRight(k), tokens.dropRight(k), venues)
       }
     }
+    val recordKeys = recordTitles.iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSet
+    // A title's own searches answered empty, by its words: every spelling of them.
+    val searchedEmpty: Set[Seq[String]] = searches.iterator.map { case (t, empty) => TitleContainment.tokens(t) -> empty }.toSeq
+      .groupMapReduce(_._1)(_._2)(_ && _).collect { case (ws, true) if ws.nonEmpty => ws }.toSet
+    /** One film only: its rest is a record's title, two venues carry it, the decorated title's own
+     *  searches found nothing, and no record's title crosses from the rest into the run or starts
+     *  the run where the rest ends — the title goes on with another film's ("Basia. Humor w paski
+     *  mam + Kocia Szajka", "Toddler Club: Tabby McTat + Room on the Broom"): a programme. */
+    def aroundOneFilm(side: String, run: Seq[String], byRest: Map[Seq[String], Set[String]], rest: Seq[String]): Boolean = {
+      val decorated = if (side == "prefix") run ++ rest else rest ++ run
+      val runsOn = (rest.size + 1 to decorated.size).exists(n => recordKeys(if (side == "prefix") decorated.takeRight(n) else decorated.take(n)))
+      val nextFilm = (1 to run.size).exists(n => recordKeys(if (side == "prefix") run.takeRight(n) else run.take(n)))
+      recordKeys(rest) && searchedEmpty(decorated) && byRest.values.flatten.toSet.size >= MinVenues && !runsOn && !nextFilm
+    }
     val recurring = seen.toSeq.map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }
-      .filter(_._2._2.size >= MinFilms)
+      .filter { case ((side, run), (byRest, films)) =>
+        films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head)) }
     val inRecords = carried(recordTitles, recurring.map(_._1._2).toSet)
     recurring.collect { case ((side, run), (byRest, films)) if !inRecords(run) =>
       Learned(side, run.mkString(" "), films.size, byRest.values.flatten.toSet.size, byRest.size,

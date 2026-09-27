@@ -466,6 +466,14 @@ decorations: an edge run of listing titles whose remainder is another listing's 
 at least two different remainders (a decorated spelling of one remainder counts once), and which
 no recorded film record's title, original title or alternative title carries anywhere — "OPERA",
 "Exhibition on Screen", "Throwback" and "The" are words TMDB titles use, so they stay the film's.
+A run seen around ONE remainder ("Girls Like Girls Unlimited Screening", "Verity Early Access",
+"Avengers: Doomsday RealD 3D Fan Event", "Cabin Fever 4K Director's Cut") recurs across venues
+instead: at least two carry it, the remainder is a recorded record's title exactly, the decorated
+title's own recorded searches found nothing (so the remainder is the only film it can name), and no
+longer record title starts with the remainder and runs on into the run. Each guard is a failure the
+corpus showed without it: "Fallen Angels by Noël Coward" and "Michael Mann's Manhunter: The Final
+Cut" have searches that find the play's and Mann's records, "Friday the 13th (1980)" names the
+record "Friday the 13th", not "Friday".
 It writes `identity-decorations.json` with each decoration's side, film, venue and title counts and
 example remainders; the resolver strips them ADDITIVELY (`TitleDecorations.strip`: the undecorated
 spelling becomes one more title shape, so it is searched and read by the title relation to a FILM),
@@ -1175,6 +1183,7 @@ runtime or year differs at all (`runtime.delta >= 1 AND venue in {same}`: 26% he
 | name words ≥ 3 letters (shared name), original-title words ≥ 4 | `IdentityMeasures` | what counts as a shared word | learn a word-weight table (IDF over the corpus) |
 | delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings (undelimited edge runs are learned already: `TitleDecorations`, §7b) |
 | a decoration recurs around ≥ 2 films | `TitleDecorations.MinFilms` | the smallest count that says "recurs", not a tuned number | none needed |
+| a decoration seen around one film recurs at ≥ 2 venues | `TitleDecorations.MinVenues` | the smallest count that says "recurs" across venues, not a tuned number | none needed |
 | ≤ 20 listing pairs per member in blocks over 41 | pair sampling | cost | none needed: sampling does not bias a unit-counted estimate |
 | 4 neutral missing values | fitting | sampling artefacts of the recorded trees | fetch every candidate's details in the recording pass (§9), then fit them |
 | title order `decorated ≥ overlap ≥ none` | `IdentityMeasures.EvidenceOrder` | more of the film's title named is never weaker evidence; an order, never a weight | derive the order from the relations' own containment (a category whose matches imply another's ranks above it) |

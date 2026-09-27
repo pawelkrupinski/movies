@@ -1,6 +1,6 @@
 {
   "version" : "decorations-2026-09-27",
-  "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders, that no recorded film record's title, original title or alternative title carries",
+  "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders — or for one remainder that is a recorded film record's title exactly, at >= 2 venues, where the decorated title's own recorded searches found nothing and no longer record title runs on from the remainder into the run — that no recorded film record's title, original title or alternative title carries",
   "inputs" : {
     "listingTitles" : 167458,
     "venues" : 7406,
@@ -818,5 +818,89 @@
     "venues" : 1,
     "titles" : 2,
     "examples" : [ "niesamowite przygody skarpetek 4 do roboty", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "fallen angels by noel",
+    "films" : 1,
+    "venues" : 688,
+    "titles" : 1,
+    "examples" : [ "coward" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "niesamowita historia",
+    "films" : 1,
+    "venues" : 2,
+    "titles" : 1,
+    "examples" : [ "mumbo jumbo" ]
+  }, {
+    "side" : "prefix",
+    "decoration" : "odeon pride nights we will find",
+    "films" : 1,
+    "venues" : 13,
+    "titles" : 1,
+    "examples" : [ "happiness" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "25th anniversary studio ghibli fest 2026",
+    "films" : 1,
+    "venues" : 10,
+    "titles" : 1,
+    "examples" : [ "spirited away" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "35 rocznica",
+    "films" : 1,
+    "venues" : 2,
+    "titles" : 1,
+    "examples" : [ "terminator 2 dzien sadu" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "4k director s cut",
+    "films" : 1,
+    "venues" : 11,
+    "titles" : 1,
+    "examples" : [ "cabin fever" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "by noel coward",
+    "films" : 1,
+    "venues" : 688,
+    "titles" : 1,
+    "examples" : [ "fallen angels" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "early access",
+    "films" : 1,
+    "venues" : 29,
+    "titles" : 1,
+    "examples" : [ "verity" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "reald 3d fan event",
+    "films" : 1,
+    "venues" : 12,
+    "titles" : 1,
+    "examples" : [ "avengers doomsday" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "recorded intro",
+    "films" : 1,
+    "venues" : 39,
+    "titles" : 1,
+    "examples" : [ "her private hell" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "szkice na lodzie",
+    "films" : 1,
+    "venues" : 2,
+    "titles" : 1,
+    "examples" : [ "chlopiec na krancach swiata" ]
+  }, {
+    "side" : "suffix",
+    "decoration" : "unlimited screening",
+    "films" : 1,
+    "venues" : 87,
+    "titles" : 1,
+    "examples" : [ "girls like girls" ]
   } ]
 }
