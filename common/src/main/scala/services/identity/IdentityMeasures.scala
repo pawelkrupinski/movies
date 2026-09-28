@@ -572,12 +572,14 @@ object IdentityMeasures {
    *  the film's titles (the whole title, a banner segment), or one of the film's titles as a run
    *  along one edge of the listing's (a decoration). Empty when no piece names it. */
   def namingPieces(l: Listing, f: Film): Set[Seq[String]] = {
-    val filmTitles = (Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).filter(t => key(t).nonEmpty)
-    val keys       = filmTitles.map(key).toSet
-    val segments   = titleShapes(l).filter(s => keys(key(s))).map(words)
-    val edgeRuns   = for {
-      own  <- (Seq(l.title) ++ l.rawTitle).map(words)
-      film <- filmTitles.map(words) if TitleContainment.isTokenRun(film, own)
+    // The record's and the listing's forms, each normalised once per instance: this runs for every
+    // node against every candidate (`namesOnlyItsVenue`), a quarter of a resolve when it re-ran the regexes.
+    val filmForms = f.forms.filter(_.key.nonEmpty)
+    val keys      = filmForms.map(_.key).toSet
+    val segments  = l.shapeKeys.zip(l.shapeWords).collect { case (shapeKey, shapeWords) if keys(shapeKey) => shapeWords }
+    val edgeRuns  = for {
+      own  <- l.ownForms.map(_.words)
+      film <- filmForms.map(_.words) if TitleContainment.isTokenRun(film, own)
     } yield film
     (segments ++ edgeRuns).filter(_.nonEmpty).toSet
   }
@@ -842,10 +844,14 @@ object IdentityMeasures {
    *  undecorated title nobody lists bare) backs nothing. One per resolve or calibration pass; not
    *  thread-safe. */
   final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
-    private val memo = scala.collection.mutable.HashMap.empty[(String, Film), Set[String]]
+    // By the record INSTANCE, not its value: hashing a whole record (every title, credit and
+    // country) per lookup cost more than the backing it saved. An equal record held twice is only
+    // computed twice, to the same venues.
+    private val memo = scala.collection.mutable.HashMap.empty[String, java.util.IdentityHashMap[Film, Set[String]]]
     /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
     def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-      (titleGroups.iterator.flatMap(g => memo.getOrElseUpdate((g, f), backingVenues(f, groups.getOrElse(g, Nil)))).toSet - ownVenue).size
+      (titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
+        .computeIfAbsent(f, film => backingVenues(film, groups.getOrElse(group, Nil)))).toSet - ownVenue).size
   }
 
   /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the
