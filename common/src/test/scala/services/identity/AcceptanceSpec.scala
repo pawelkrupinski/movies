@@ -46,6 +46,25 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(misanthrope, bare :+ cut *)) shouldBe None
   }
 
+  it should "not take its house's record over a candidate the title names that the listing's facts fit at least as well" in {
+    // Everyman's "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day" publishes nothing but
+    // its title; its banner, learned as TMDB's "The Making of" house, took the making-of documentary
+    // at 3.4% over Cameron's film at 54% and split it from the film's other listings.
+    val listing = Listing("Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day")
+    val makingOf = Film("The Making of 'Terminator 2: Judgment Day'", year = Some(1991))
+    val learned = IdentityMeasures.billing(listing, makingOf).map(billed => Houses(Map(billed.listingHouse -> billed.filmHouse)))
+    learned should not be empty
+    val film = Film("Terminator 2: Judgment Day", year = Some(1991), runtime = Some(137))
+    def scored(tmdbId: Int, candidate: Film, rank: Int) = {
+      val measures = IdentityMeasures.listingFilm(listing, candidate, Some(rank), 0, 0, learned.get)
+      Scored(Candidate(tmdbId, candidate), calibration.probability(ListingFilm, measures), measures, denied = false, listing, Some(rank),
+        houseProduction = IdentityMeasures.billsUnderItsHouse(listing, candidate, learned.get))
+    }
+    val candidates = Seq(scored(280, film, 1), scored(473793, makingOf, 2)).sortBy(candidate => -candidate.probability)
+    candidates.find(_.candidate.tmdbId == 473793).map(_.houseProduction) shouldBe Some(true)
+    acceptance.houseProduction(candidates) shouldBe None
+  }
+
   it should "not take another house's record of the work" in {
     val rsc = (1693712, Film("RSC Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
     taken(ranked(misanthrope, bare :+ rsc *)) shouldBe None
