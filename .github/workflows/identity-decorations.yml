@@ -1,0 +1,80 @@
+#
+# Relearn the identity resolver's VENUE DECORATIONS on one recording, on GitHub's runners.
+#
+# `identity-decorations.json` is learned from the recorded corpora and enrichment trees alone
+# (`scripts/identity-calibrate.sh --decorations-only`; no production data, so no secret), and it
+# goes stale as venues bill new programmes: a season's "ENCORE" screenings ("The Metropolitan
+# Opera: Macbeth ENCORE (2026)") are unknown to decorations learned before they were listed.
+# Dispatch-only; the learned file comes back as an artifact to review and commit, never pushed.
+#
+name: Identity decorations
+run-name: identity decorations ${{ inputs.recording }}
+
+on:
+    workflow_dispatch:
+        inputs:
+            recording:
+                description: The `Record scrape fixtures` run whose five corpora and enrichment trees to learn from.
+                required: true
+                type: string
+
+concurrency:
+    group: identity-decorations-${{ inputs.recording }}
+    cancel-in-progress: false
+
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+
+permissions:
+    contents: read
+
+jobs:
+    learn:
+        name: learn
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Restore the recording's corpora and enrichment trees
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDING: ${{ inputs.recording }}
+              run: |
+                  set -euo pipefail
+                  for cc in pl uk de us es; do
+                      gh run download "$RECORDING" --name "scrape-fixtures-$cc" --dir "scrape-$cc"
+                      tar -xzf "scrape-$cc/scrapes-$cc.tar.gz" || true
+                      gh release download "$FIXTURE_RELEASE_TAG" --pattern "enrichment-$cc-$RECORDING.tar.gz" --dir tree --clobber
+                      tar -xzf "tree/enrichment-$cc-$RECORDING.tar.gz"
+                      rm -rf "scrape-$cc" tree
+                  done
+                  for f in test/resources/fixtures/corpus/cinema-scrapes-??.json.gz; do echo "corpus $f"; done
+
+            - uses: ./.github/actions/setup-jdk
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+            - uses: sbt/setup-sbt@v1
+
+            - name: Learn the decorations
+              shell: bash
+              timeout-minutes: 75
+              run: |
+                  set -o pipefail
+                  CORPORA=test/resources/fixtures/corpus FIXTURES=test/resources/fixtures VERSION="decorations-${{ inputs.recording }}" \
+                      scripts/identity-calibrate.sh --decorations-only 2>&1 | tee decorations.log
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-decorations-${{ inputs.recording }}
+                  path: |
+                      common/src/main/resources/identity-decorations.json
+                      decorations.log
+                  retention-days: 14
