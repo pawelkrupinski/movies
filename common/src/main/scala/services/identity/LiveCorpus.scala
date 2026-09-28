@@ -85,7 +85,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def titleComponents(keys: Iterable[ListingKey]): Seq[Seq[ListingKey]] = {
     val wanted = keys.toSet
     val byNode = nodes.values.filter(_.node.listings.exists(listing => wanted(listing.key))).map(live =>
-      live.id -> (live.node.listings.map(_.key).filter(wanted), TitleLinks.titleKeys(live.node, normalizer, pins))).toMap
+      live.id -> (live.node.listings.map(_.key).filter(wanted), TitleLinks.titleKeys(live.node, normalizer, pins, wholeTitle))).toMap
     FamilyClosure.families(byNode.map { case (id, (_, blockKeys)) => id -> blockKeys }).groupMap(_._2)(_._1).toSeq.sortBy(_._1)
       .map { case (_, ids) => ids.toSeq.sorted.flatMap(id => byNode(id)._1) }
   }

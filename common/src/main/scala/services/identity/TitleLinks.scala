@@ -10,7 +10,7 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
   def sanitized(title: String): String  = normalizer.sanitize(title)
   def searchForm(title: String): String = normalizer.searchQuery(title)
 
-  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins)
+  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins, wholeTitle)
 
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
     (IdentityMeasures.titleShapes(node.evidence.published).map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
@@ -47,10 +47,14 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
 }
 
 private[identity] object TitleLinks {
-  /** The keys a node's title blocks under: its sanitised title, search form, original title and
-   *  segments, and its pins' keys — a family's seed before any match grows it. */
-  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints): Set[String] =
+  /** The keys a node's title blocks under: its sanitised title, search form, original title, the
+   *  segments of it that are some listing's WHOLE title (`wholeTitle`, sanitised), and its pins' keys
+   *  — a family's seed before any match grows it. A segment no listing carries whole is a banner
+   *  shared across films, not a film's title: "Sensory Friendly Screening", "Part 2", "Młode
+   *  Horyzonty" chained PL's festivals and programmes into one family of ~75% of its listings. */
+  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean): Set[String] =
     FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
-      segments = IdentityMeasures.titleShapes(node.evidence.published) :+ node.evidence.cleanTitle) ++
+      segments = IdentityMeasures.titleShapes(node.evidence.published).filter(segment => wholeTitle(normalizer.sanitize(segment))) :+
+        node.evidence.cleanTitle) ++
       pins.blockKeys(node.listings.head.key)
 }

@@ -1272,6 +1272,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     candidates.last.render should include ("DENIED")
   }
 
+  "A programme's banner" should "not chain its films into one family, while a film's own title still joins its spellings" in {
+    // UK "Coraline - Sensory Friendly Screening" and "Verity - Sensory Friendly Screening" were one
+    // family by their shared banner; PL's biggest family (~75% of the corpus) was glued the same way.
+    val films     = Seq(F(14836, "Coraline", 2009, "Henry Selick", 100), F(1283515, "Verity", 2026, "Michael Showalter", 110))
+    val coraline  = listing(Helios, "Coraline - Sensory Friendly Screening")
+    val verity    = listing(Helios, "Verity - Sensory Friendly Screening")
+    val plain     = listing(Multikino, "Coraline", Some(2009), Some("Henry Selick"))
+    val r = resolve(Seq(coraline, verity, plain), films)
+    r.familyOf(coraline.key) should not be r.familyOf(verity.key)
+    r.familyOf(coraline.key) shouldBe r.familyOf(plain.key)
+  }
+
   "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {
     val films   = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162))
     val plain   = listing(Helios, "Lalka", Some(2026), Some("Maciej Kawalski"))
