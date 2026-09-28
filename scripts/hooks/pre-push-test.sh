@@ -84,6 +84,9 @@ if command -v shellcheck >/dev/null; then
     "$(cd "$repo" && pwd -P)" "$(cat "$scratch/sbt-ran-in")"
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar web/run" sleep 300) &
   live_sbt=$!
+  # The hook finds it by name: wait until the background shell has exec'd under it, or a busy
+  # runner's hook looks before it has, and checks in place (Main run 36374330375).
+  for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar' >/dev/null && break; sleep 0.1; done
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
