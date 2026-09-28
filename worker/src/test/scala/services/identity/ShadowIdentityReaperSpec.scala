@@ -47,8 +47,9 @@ class ShadowIdentityReaperSpec extends AnyFlatSpec with Matchers {
   }
 
   private def reaper(runs: ShadowRunStore, metrics: ShadowIdentityMetrics, pins: PinStore = new InMemoryPinStore,
-                     lookups: () => IdentityLookups = () => OneFilm, clock: MutableClock = new MutableClock(TestWiring.FixedInstant)) =
-    new ShadowIdentityReaper(() => listings, () => Seq(pipeline), () => (lookups(), new ObservationGaps), pins, normalizer, calibration,
+                     lookups: () => IdentityLookups = () => OneFilm, clock: MutableClock = new MutableClock(TestWiring.FixedInstant),
+                     pipelineFilms: () => Seq[StoredMovieRecord] = () => Seq(pipeline)) =
+    new ShadowIdentityReaper(() => listings, pipelineFilms, () => (lookups(), new ObservationGaps), pins, normalizer, calibration,
       runs, ShadowRetention(8.days), metrics, clock)
 
   "a shadow tick" should "persist the resolve's decisions and its diff against the pipeline, and export the gauges" in {
@@ -66,6 +67,14 @@ class ShadowIdentityReaperSpec extends AnyFlatSpec with Matchers {
     metrics.films shouldBe Map(ShadowRelation.Identical -> 1, ShadowRelation.Split -> 0, ShadowRelation.Merged -> 0, ShadowRelation.Moved -> 0)
     metrics.crossings shouldBe Some(0)
     tick.listings shouldBe 2
+  }
+
+  it should "time its diff against the pipeline apart from its resolve" in {
+    // UK ticks took 774–835s on 2026-09-28 and nobody knew the diff's share: reading the pipeline's
+    // films and diffing them is its own measured phase.
+    val runs = ShadowRunStore.inMemory(new MutableClock(TestWiring.FixedInstant))
+    val tick = reaper(runs, new Recorded, pipelineFilms = () => { Thread.sleep(60); Seq(pipeline) }).tick()
+    tick.diffSeconds should be >= 0.06
   }
 
   it should "resolve under the curation pins" in {

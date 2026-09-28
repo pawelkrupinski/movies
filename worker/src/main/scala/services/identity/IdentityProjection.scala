@@ -53,8 +53,9 @@ object IdentityProjectionMetrics {
  * `movies` / `movie_slots` / `screenings` keep their shape, so `ReadModelProjector` and every
  * enrichment keyed by the film read them unchanged, and switching the country back leaves rows the
  * landing reads. Every family is resolved on each projection: resolving the whole set is resolving
- * each touched family, and costs seconds per corpus (§17.3); only the films that changed are
- * written. A second projection over an unchanged listing set writes nothing (P2).
+ * each touched family — at a cost that grows with the answers the store holds (the UK shadow's
+ * whole-corpus resolve took 774–835s on 2026-09-28, not the seconds §17.3 measured on an emptier
+ * store); only the films that changed are written. A second projection over an unchanged listing set writes nothing (P2).
  */
 final class IdentityProjection(
   listings:    () => Seq[(Cinema, Seq[CinemaMovie])],

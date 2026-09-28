@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
 /** One shadow resolve's outcome: the run it persisted (none when the resolve refused), what it
  *  cost, and how much of its evidence the observations could not supply. */
 final case class ShadowTick(run: Option[ShadowRun], listings: Int, crossings: Int, gaps: Long, resolveSeconds: Double,
-                            gapsByKind: Map[String, Long] = Map.empty) {
+                            gapsByKind: Map[String, Long] = Map.empty, diffSeconds: Double = 0.0) {
   def films: Map[ShadowRelation, Int] = run.fold(Map.empty[ShadowRelation, Int])(r => ShadowDiff.counts(r.clusters))
 }
 
@@ -38,7 +38,9 @@ object ShadowIdentityMetrics {
  * touching them, and issues no external lookup (`lookups` is built over the store alone,
  * `ObservedIdentityLookups`; a gap is an `Unknown` node). Every family is resolved in each tick —
  * a resolve is a pure function of the listing set, and resolving every family is resolving each
- * touched one, at the measured cost of seconds per corpus (the design doc, §15).
+ * touched one. That cost grows with how many answers the store holds, not with the corpus alone:
+ * UK's ~28k listings took 774–835s a tick on 2026-09-28 with the fill two thirds done, pinning the
+ * worker's heap — whole-corpus resolving does not scale with a full store.
  *
  * A resolve that finds a constraint edge crossing a family (`IdentityResolver.FamilyCrossing`) is
  * refused — the closure's own guard — and reported, and the previous run stays the latest. No
@@ -66,14 +68,16 @@ final class ShadowIdentityReaper(
     try {
       val resolution = IdentityResolver.resolve(corpus, source, normalizer, calibration, ListingConstraints.pinned(pins.all()))
       val seconds    = (System.nanoTime() - started) / 1e9
+      val diffing    = System.nanoTime()
       val (clusters, families) = ShadowDiff.of(resolution, PipelineFilms.of(corpus, pipelineFilms(), normalizer))
+      val diffSeconds = (System.nanoTime() - diffing) / 1e9
       val run = ShadowRun(at, clusters, families)
       runs.record(run, retention)
       metrics.crossings(0)
       metrics.resolved(ShadowDiff.counts(clusters), seconds)
-      val tick = ShadowTick(Some(run), corpus.size, 0, gaps.total, seconds, gaps.byKind)
+      val tick = ShadowTick(Some(run), corpus.size, 0, gaps.total, seconds, gaps.byKind, diffSeconds)
       logger.info(f"identity shadow: ${corpus.size} listings → ${clusters.size} clusters " +
-        f"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}) in $seconds%.1fs; " +
+        f"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}) in $seconds%.1fs, diffed against the pipeline in $diffSeconds%.1fs; " +
         s"${gaps.total} unobserved lookups (${gaps.byKind.toSeq.sortBy(-_._2).map { case (k, n) => s"$k $n" }.mkString(", ")}); " +
         s"${families.size} families differ from the pipeline")
       tick
