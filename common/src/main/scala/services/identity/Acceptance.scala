@@ -160,14 +160,18 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  The Misanthrope" is the National Theatre's 2026 broadcast, "National Theatre Live: The
    *  Misanthrope", though TMDB's search ranks three bare records of Molière's play above it — a
    *  house's banner names its production as a season names one ([[seasonProduction]]). Two such
-   *  records (a broadcast and its encore) are no answer, and neither is one that another candidate
+   *  records (a broadcast and its encore) are no answer — nor are two records carrying one title,
+   *  however each reads as billed (US "NT Live: Hamlet": the National Theatre's 2010 and 2015
+   *  broadcasts) — and neither is one that another candidate
    *  the title names fits at least as well on the listing's own facts: a banner is learned, not
    *  known, and Everyman's "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day",
    *  publishing nothing but its title, is Cameron's film, not TMDB's making-of documentary. */
   def houseProduction(ranked: Seq[Scored]): Option[Accepted] = {
     val eligible = eligibleOf(ranked)
     eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate)) match {
-      case Seq(one) if !eligible.exists(other => (other ne one) && other.titleNamesIt && own(other) >= own(one)) =>
+      case Seq(one) if !eligible.exists(other => (other ne one) &&
+          (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(one.candidate.film.title) ||
+            (other.titleNamesIt && own(other) >= own(one)))) =>
         Some(one -> one.probability)
       case _ => None
     }

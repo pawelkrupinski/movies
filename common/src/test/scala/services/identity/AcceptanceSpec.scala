@@ -41,6 +41,17 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(misanthrope, bare :+ national :+ encore *)) shouldBe None
   }
 
+  it should "take nothing when another record carries the house record's very title, whatever its flags" in {
+    // US "NT Live: Hamlet" (204 minutes): TMDB holds the National Theatre's 2010 and 2015 Hamlets
+    // under one title; only the 2010 record read as billed under the house.
+    val listing = Listing("NT Live: Hamlet", runtime = Some(204))
+    val older   = (436484, Film("National Theatre Live: Hamlet", year = Some(2010)), Some(1))
+    val later   = (396227, Film("National Theatre Live: Hamlet", year = Some(2015), runtime = Some(217)), Some(2))
+    val candidates = ranked(listing, older, later).map(scored =>
+      if (scored.candidate.tmdbId == 396227) scored.copy(houseProduction = false) else scored)
+    acceptance.houseProduction(candidates) shouldBe None
+  }
+
   it should "take nothing when its runtime contradicts the house's record" in {
     val cut = national.copy(_2 = national._2.copy(runtime = Some(120)))
     taken(ranked(misanthrope, bare :+ cut *)) shouldBe None
