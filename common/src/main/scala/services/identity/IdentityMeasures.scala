@@ -829,14 +829,18 @@ object IdentityMeasures {
 
   /** Every venue of `group` whose own facts back `f` ([[corroboratingVenues]] before the asking
    *  venue is taken out): one answer per title group and film ([[VenueBacking]]). */
-  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] =
-    group.iterator.filter { case (_, l) =>
-      // The venue's title must NAME the film: a year or a director alone backs every film of that
-      // year or that director, and the walk of a director's filmography turns up all of them.
-      namesFilm(l, f) && (
-        l.statedYear.exists(y => f.year.contains(y)) ||
-          f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
-    }.map(_._1).toSet
+  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = {
+    // A node's venues share one listing: its answer is found once, not once per venue.
+    val backs = new java.util.IdentityHashMap[Listing, java.lang.Boolean]()
+    group.iterator.filter { case (_, l) => backs.computeIfAbsent(l, listing => Boolean.box(backsFilm(listing, f))) }.map(_._1).toSet
+  }
+  /** Do the listing's own facts back `f`? The venue's title must NAME the film: a year or a director
+   *  alone backs every film of that year or that director, and the walk of a director's filmography
+   *  turns up all of them. */
+  private def backsFilm(l: Listing, f: Film): Boolean =
+    namesFilm(l, f) && (
+      l.statedYear.exists(y => f.year.contains(y)) ||
+        f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
    *  of a film found once: a wide release lists one title at thousands of venues over one candidate
