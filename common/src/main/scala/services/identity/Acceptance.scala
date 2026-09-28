@@ -169,11 +169,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
    *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts
-   *  it: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2" and a 2022 "Troll" above it.
-   *  Two such records are no answer. */
+   *  it — a credited director included: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2"
+   *  and a 2022 "Troll" above it. Two such records are no answer. */
   def datedTitle(ranked: Seq[Scored]): Option[Accepted] =
     eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
-      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= 1) && !contradicted(candidate)) match {
+      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= 1) && !contradicted(candidate) &&
+      !candidate.category("director").contains("different")) match {
       case Seq(one) => Some(one -> one.probability)
       case _        => None
     }

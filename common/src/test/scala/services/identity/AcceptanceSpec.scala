@@ -56,6 +56,10 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(troll, films *)) shouldBe Some(33061)
     // Two records of that title from that year are no answer.
     taken(ranked(troll, films :+ (33062, Film("Troll", year = Some(1986)), Some(4)) *)) shouldBe None
+    // Nor is the record whose director the listing's credit contradicts: two UK venues credit
+    // "Dracula (1931)" to Karl Freund, its cinematographer, not Tod Browning.
+    val dracula = Listing("Dracula (1931)", directors = Seq("Karl Freund"))
+    taken(ranked(dracula, (138, Film("Dracula", year = Some(1931), directors = Some(Seq("Tod Browning"))), Some(3)))) shouldBe None
   }
 
   "a listing billing its work under a house" should "take the one record billing the work under that house over bare records of the work" in {
