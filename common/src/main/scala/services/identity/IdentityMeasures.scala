@@ -141,15 +141,20 @@ object IdentityMeasures {
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
    *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
    *  record's titles, its "National Theatre at Home" alternative aside ([[billings]]); a record titled
-   *  the work alone ("The Misanthrope") bills no house at all. Only when NEITHER names a season: a
-   *  season names its production (`namesSeasonProduction`), so a record of one season's broadcast is
-   *  not a season-free listing's — TMDB filing the Paris Opera's works only under the Met's 2026/27
-   *  records teaches the Paris banner to be the Met — nor is a season-free record a "MetOpera
-   *  2025-26" listing's. And not a banner numbering its edition otherwise than the record's: a
+   *  the work alone ("The Misanthrope") bills no house at all. Never for a listing naming a season:
+   *  a season names its production (`namesSeasonProduction`), and a season-free record is not a
+   *  "MetOpera 2025-26" listing's. A season's record is a season-free listing's only when the
+   *  listing's banner spells the house ([[spellsItsHouse]]): TMDB filing the Paris Opera's works only
+   *  under the Met's 2026/27 records teaches the Paris banner to be the Met. And not a banner numbering its edition otherwise than the record's: a
    *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
-    listing.seasonYear.isEmpty && filmSeason(film).isEmpty &&
-      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse))
+    listing.seasonYear.isEmpty &&
+      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
+        (filmSeason(film).isEmpty || spellsItsHouse(billed)))
+  /** Does the listing's banner SPELL the record's house — two of its words or more ("Royal Ballet and
+   *  Opera" of "Royal Ballet & Opera")? A season-free listing takes a season's record only then: the
+   *  Paris Opera's banner, learned as the Met from TMDB's filing, shares only "opera". */
+  private def spellsItsHouse(billed: Billing): Boolean = (billed.listingWords.toSet intersect billed.filmWords.toSet).sizeIs >= 2
   private val Digits = "\\d+".r
   private def numbersIn(house: String): Set[String] = Digits.findAllIn(house).toSet
 

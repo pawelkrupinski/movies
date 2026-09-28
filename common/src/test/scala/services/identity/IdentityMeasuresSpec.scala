@@ -162,6 +162,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       w("nt live", "rsc live", "macbeth"))) shouldBe Houses(Map("ntlive" -> "nationaltheatrelive"))
   }
 
+  "a season-free listing" should "take its house's current-season record only when its banner spells that house" in {
+    // UK venues list "Royal Ballet and Opera: Così fan tutte" beside TMDB's "Royal Ballet & Opera
+    // 2026/27: Così fan tutte"; the Paris Opera's banner, learned as the Met, shares only "opera".
+    val houses = Houses(Map("royalballetandopera" -> "royalballetopera", "operanationaldeparis" -> "themetropolitanopera"))
+    IdentityMeasures.billsUnderItsHouse(Listing("Royal Ballet and Opera: Così fan tutte"),
+      Film("Royal Ballet & Opera 2026/27: Così fan tutte"), houses) shouldBe true
+    IdentityMeasures.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+      Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
+  }
+
   "a record billing the listing's work under several banners" should "bill it under the listing's house when any of its titles does" in {
     // TMDB's 1693710 carries the National Theatre's broadcast title and, as alternatives, its "At
     // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.
