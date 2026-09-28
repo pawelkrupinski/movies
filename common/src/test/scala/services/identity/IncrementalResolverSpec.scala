@@ -217,6 +217,41 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
+  "a family's size" should "name its busiest nodes by their published titles, readable in a log line" in {
+    val size = IncrementalResolver.FamilySize(3, 2, 4, Seq("Pressure\u0000Pressure\u0000\u0000Anthony Maras\u0000100" -> 2, "Pressure" -> 1))
+    size.render shouldBe "3 listings / 2 nodes / 4 keys (Pressure×2, Pressure×1)"
+  }
+
+  "an answer filed before its event arrives" should "not fail a re-resolve that reads it, and move the family once its event does" in {
+    // Production: the fill files answers while the model drains, so a region's resolve can read a
+    // newer answer than the corpus context was told of — here a director walk reaching a film no
+    // other question reaches. The answer's own event follows on the next drain.
+    import FilmTable.{F, listing}
+    import models.{Helios, Multikino}
+    val films   = Seq(F(1, "Lalka", 1968, "Wojciech Has", 159), F(2, "Lalka", 2025, "Maciej Kawalski", 112),
+                      F(3, "Sanatorium pod Klepsydrą", 1973, "Wojciech Has", 124))
+    val table   = new FilmTable(films, normalizer)
+    var walked  = false
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = false
+      def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = q match {
+        case _: CandidateQuery.Director if !walked => Answer.Unknown
+        case _                                     => table.candidates(q)
+      }
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+    }
+    val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
+    val bare  = listing(Helios, "Lalka")
+    val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.listingsSeen(Seq(dated))
+    walked = true                                                          // filed; its event not yet drained
+    noException should be thrownBy model.listingsSeen(Seq(bare))
+    model.answersChanged(AnswersChanged(model.gaps.queries, Set.empty))
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(
+      IdentityResolver.resolveWith(Seq(dated, bare), lookups, normalizer, calibration, IdentityResolver.Mutation.None))
+  }
+
   "the incremental resolver's work" should "re-resolve only the families an event can move" in {
     import FilmTable.{F, listing}
     import models.{Helios, Multikino}

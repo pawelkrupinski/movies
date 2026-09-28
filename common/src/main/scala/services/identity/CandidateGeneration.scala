@@ -69,8 +69,14 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   // title forms a record caches are computed once per resolve, not once per node that scores it.
   private val held = mutable.HashMap.empty[Int, Option[Candidate]]
   /** A record with the titles the venues publish for it (`IdentityMeasures.venueTitles`). */
-  def candidateOf(id: Int): Option[Candidate] = held.getOrElseUpdate(id, context.candidate(id))
-  /** A record some node reached: every one is known to the context. */
+  def candidateOf(id: Int): Option[Candidate] = held.getOrElseUpdate(id, context.candidate(id).orElse(filedSince(id)))
+  /** A record this resolve's own answers reach that the corpus's context does not hold yet: an
+   *  answer filed after the context last heard of it (the fill files while the model drains). Its
+   *  event is queued, and re-resolves the family with the context that knows it; until then the
+   *  record is read from this resolve's own hits. */
+  private def filedSince(id: Int): Option[Candidate] =
+    if (corpus.isEmpty) None else hitsById.get(id).map(hits => Candidate.of(id, hits, lookups.film(id).toOption.flatten))
+  /** A record some node reached: every one is known to the context, or filed since it last heard. */
   def candidateById(id: Int): Candidate = candidateOf(id).getOrElse(throw new NoSuchElementException(s"no candidate $id in the corpus context"))
   /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
    *  own evidence — a credited director, a detail page's original title — that its own did not:

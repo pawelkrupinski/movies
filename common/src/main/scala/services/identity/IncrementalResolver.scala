@@ -271,8 +271,9 @@ object IncrementalResolver {
   /** One family's size: its listings, evidence nodes and block keys, and the nodes most of its
    *  listings share (node key → listings). */
   final case class FamilySize(listings: Int, nodes: Int, blockKeys: Int, busiest: Seq[(String, Int)]) {
-    // A node key repeats its title per field: each word once reads as the title it is.
-    def render: String = s"$listings listings / $nodes nodes / $blockKeys keys (${busiest.map { case (node, n) => s"${node.trim.split("\\s+").distinct.mkString(" ")}×$n" }.mkString(", ")})"
+    // A node key joins its evidence fields with NULs and repeats its title across them: the first
+    // field, the title as published, is what a log reader needs.
+    def render: String = s"$listings listings / $nodes nodes / $blockKeys keys (${busiest.map { case (node, n) => s"${node.takeWhile(_ != '\u0000')}×$n" }.mkString(", ")})"
   }
 
   /** The model's largest families, the most nodes any family holds, and how many families are
