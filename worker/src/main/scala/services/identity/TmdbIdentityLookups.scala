@@ -17,22 +17,19 @@ import scala.util.Try
  * candidates is made here (that is the resolver's score), and nothing is memoised across calls,
  * so an answer is a function of its argument and of what the source holds.
  *
- * `misses` counts the requests the source could NOT answer (a hermetic replay's gaps); a lookup
- * during which it grew is [[Answer.Unknown]], never an empty answer — `TmdbClient` turns a failed
- * read into an empty one, which would read as "no such film". A lookup that throws is `Unknown`
- * too. Production builds it over the observation store (`ObservedIdentityLookups`,
- * `CutoverIdentityLookups`); the offline harness over a recorded replay.
+ * A lookup that throws, or that met a request its source could not answer (`gaps`: a hermetic
+ * replay's), is [[Answer.Unknown]], never an empty answer — `TmdbClient` turns a failed read into
+ * an empty one, which would read as "no such film". Production builds it over the observation
+ * store (`ObservedIdentityLookups`, `CutoverIdentityLookups`), where lookups run side by side on
+ * the prefetch's threads; the offline harness over a recorded replay, one lookup at a time.
  */
-final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher], misses: () => Long = () => 0L)
+final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher],
+                                gaps: TmdbIdentityLookups.Gaps = TmdbIdentityLookups.NoGaps)
     extends IdentityLookups {
 
   private val enricherOf: Map[Cinema, DetailEnricher] = enrichers.map(e => e.cinema -> e).toMap
 
-  /** `read` as an [[Answer]]: `Unknown` when it threw or a request inside it went unanswered. */
-  private def answered[A](read: => A): Answer[A] = synchronized {
-    val before = misses()
-    Try(read).toOption.filter(_ => misses() == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
-  }
+  private def answered[A](read: => A): Answer[A] = gaps.answered(read)
 
   private def hit(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)
 
@@ -62,4 +59,26 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
   }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
+}
+
+object TmdbIdentityLookups {
+  /** `read` as an [[Answer]]: `Unknown` when it threw or met a gap in its source. */
+  trait Gaps {
+    def answered[A](read: => A): Answer[A]
+  }
+
+  /** A source that answers every request it is asked (a live one, or the observation store with
+   *  its own fallbacks): only a throw is `Unknown`, and lookups read side by side. */
+  object NoGaps extends Gaps {
+    def answered[A](read: => A): Answer[A] = Try(read).fold(_ => Answer.Unknown, Answer.Known(_))
+  }
+
+  /** A replay counting the requests it could not answer in one counter (`misses`): a lookup during
+   *  which it grew met a gap. The counter is the replay's, not the lookup's, so lookups take turns. */
+  final class CountedGaps(misses: () => Long) extends Gaps {
+    def answered[A](read: => A): Answer[A] = synchronized {
+      val before = misses()
+      Try(read).toOption.filter(_ => misses() == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
+    }
+  }
 }

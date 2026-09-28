@@ -52,4 +52,29 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     hits.map(h => (h.tmdbId, h.title, h.year)) shouldBe Seq((1774981, "Caligula: The Ultimate Cut", Some(2024)))
     fetch.calls.map(_._2).filter(_.contains("/find/")) should have size 1
   }
+
+  "lookups over a live source" should "read side by side, so a prefetch's threads overlap their round-trips" in {
+    val body = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(
+      "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92")), java.nio.charset.StandardCharsets.UTF_8)
+    // Each read lingers until another is in flight (or a second passes): lookups that took turns never overlap.
+    val inFlight = new java.util.concurrent.atomic.AtomicInteger
+    val overlap  = new java.util.concurrent.atomic.AtomicInteger
+    val fetch    = new tools.HttpFetch {
+      def get(url: String): String = {
+        overlap.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+        val until = System.nanoTime() + 1_000_000_000L
+        while (inFlight.get < 2 && System.nanoTime() < until) Thread.onSpinWait()
+        overlap.accumulateAndGet(inFlight.get, math.max)
+        inFlight.decrementAndGet()
+        body
+      }
+      def post(url: String, body: String, contentType: String): String = throw new java.io.IOException("no posts")
+    }
+    val lookups = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil)
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+    try Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(20, java.util.concurrent.TimeUnit.SECONDS))
+    finally pool.shutdownNow()
+    overlap.get shouldBe 2
+  }
 }

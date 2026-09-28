@@ -103,7 +103,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
       // ── the resolver ─────────────────────────────────────────────────────────────────
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language,
-        retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.misses)
+        retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, new TmdbIdentityLookups.CountedGaps(c.misses))
       val lookups = new Memo(source)
       // Focus mode: resolve only the families of the named titles, print their decisions, stop.
       focus.foreach { f =>

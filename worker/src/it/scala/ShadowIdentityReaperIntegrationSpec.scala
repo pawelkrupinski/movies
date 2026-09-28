@@ -110,7 +110,7 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val offlineSource = new TmdbIdentityLookups(
         new TmdbClient(offlineFetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
         new services.enrichment.ImdbClient(offlineFetch),
-        w.detailEnrichers.map(e => new ObservingDetailEnricher(new DetailGapsFail(e, c.misses), observations)), c.misses)
+        w.detailEnrichers.map(e => new ObservingDetailEnricher(new DetailGapsFail(e, c.misses), observations)), new TmdbIdentityLookups.CountedGaps(c.misses))
       val offline = IdentityResolver.resolve(listings, offlineSource, c.normalizer, IdentityCalibration.resolver)
 
       // 2. one production tick over the store alone

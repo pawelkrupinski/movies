@@ -26,14 +26,24 @@ import scala.util.control.NoStackTrace
 
 /** The questions one resolve found unanswered, counted by KIND — the method, host and path with
  *  ids and query stripped (`GET api.themoviedb.org/3/search/movie`, `DETAIL`) — so a tick says
- *  which service its Unknowns wait on. */
-final class ObservationGaps {
-  private val count  = new AtomicLong()
-  private val kinds  = new java.util.concurrent.ConcurrentHashMap[String, AtomicLong]()
+ *  which service its Unknowns wait on.
+ *
+ *  A gap is recorded on the thread whose lookup met it, and counted per thread too: a lookup is
+ *  `Unknown` when ITS thread met one, so lookups on a prefetch's threads read side by side instead
+ *  of taking turns around one counter. */
+final class ObservationGaps extends TmdbIdentityLookups.Gaps {
+  private val count    = new AtomicLong()
+  private val kinds    = new java.util.concurrent.ConcurrentHashMap[String, AtomicLong]()
+  private val onThread = ThreadLocal.withInitial[java.lang.Long](() => 0L)
   def record(query: LookupQuery): Unit = {
     count.incrementAndGet()
+    onThread.set(onThread.get + 1)
     kinds.computeIfAbsent(ObservationGaps.kindOf(query), _ => new AtomicLong()).incrementAndGet()
     ()
+  }
+  def answered[A](read: => A): Answer[A] = {
+    val before = onThread.get
+    scala.util.Try(read).toOption.filter(_ => onThread.get == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
   }
   def total: Long = count.get()
   def byKind: Map[String, Long] = { import scala.jdk.CollectionConverters._; kinds.asScala.view.mapValues(_.get).toMap }
@@ -119,6 +129,6 @@ object ObservedIdentityLookups {
     val gaps  = new ObservationGaps
     val fetch = new ObservedHttpFetch(store, gaps, reads)
     (new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedDetailEnricher(_, store, gaps, reads)),
-      () => gaps.total), gaps)
+      gaps), gaps)
   }
 }

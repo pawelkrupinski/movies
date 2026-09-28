@@ -77,4 +77,19 @@ class ObservedIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     shadow.detail(listing("https://kinomuza.pl/inna")) shouldBe Answer.Unknown
     gaps.total shouldBe 1
   }
+
+  "a gap" should "make Unknown only the lookup whose thread met it, while another reads beside it" in {
+    val gaps    = new ObservationGaps
+    val inGap   = new java.util.concurrent.CountDownLatch(1)
+    val readOn  = new java.util.concurrent.CountDownLatch(1)
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(2)
+    try {
+      // The clean lookup is in flight while the other records its gap, and ends after it.
+      val clean  = pool.submit(() => gaps.answered { inGap.await(); readOn.countDown(); "answered" })
+      val missed = pool.submit(() => gaps.answered { gaps.record(LookupQuery.of("GET", "https://api.themoviedb.org/3/movie/1")); inGap.countDown(); readOn.await(); "never" })
+      clean.get(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe Answer.Known("answered")
+      missed.get(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe Answer.Unknown
+    } finally pool.shutdownNow()
+    gaps.total shouldBe 1
+  }
 }

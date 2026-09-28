@@ -150,7 +150,7 @@ final class ShadowLookupFill(
     val gaps    = new ObservationGaps
     val fetch   = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
     val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch),
-      enrichers.map(new ObservedDetailEnricher(_, store, gaps)), () => gaps.total)
+      enrichers.map(new ObservedDetailEnricher(_, store, gaps)), gaps)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
