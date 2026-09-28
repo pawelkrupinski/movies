@@ -94,6 +94,27 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "be refitted monotone in the SHIPPED weights, from their own counts, without a relearn" in {
+    // The learner has fitted under direction since r5, but the shipped r5 weights predate it and the
+    // full relearn drifts elsewhere: `--monotone-only` applies the same step to the shipped counts.
+    val shipped = services.identity.IdentityCalibration.resolver
+    val refit   = IdentityCalibrate.monotoneOnly(shipped)
+    val venues  = refit.scopes(IdentityMeasures.ListingFilm).signals("venues.corroborating")
+    withClue(venues.bins.mkString("\n")) {
+      venues.bins.map(_.weight).sliding(2).foreach { case Seq(a, b) => b should be >= a; case _ => }
+      venues.weight(Some(IdentityMeasures.Number(153))) should be >= venues.weight(Some(IdentityMeasures.Number(108)))
+    }
+    // Every other signal, and every other scope, is the shipped one.
+    refit.scopes.foreach { case (scope, model) =>
+      model.signals.foreach { case (signal, weights) =>
+        if (!(scope == IdentityMeasures.ListingFilm && IdentityMeasures.NumericDirection.contains(signal)))
+          weights shouldBe shipped.scopes(scope).signals(signal)
+      }
+    }
+    // Refitting again changes nothing: the transform is idempotent.
+    IdentityCalibrate.monotoneOnly(refit) shouldBe refit
+  }
+
   it should "never weigh a lower search rank above a higher one, nor a longer runtime gap above a shorter" in {
     val rank = IdentityCalibrate.fitSignal("search.rank",
       numbers("search.rank", 1, 500, 50) ++ numbers("search.rank", 5, 20, 200) ++ numbers("search.rank", 12, 0, 300) ++

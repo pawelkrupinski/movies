@@ -54,6 +54,15 @@ object IdentityCalibrate {
                           cases: Option[Path] = None, decorationsOut: Path = IdentityDecorationsLearn.Artefact)
 
   def main(args: Array[String]): Unit = {
+    // `--monotone-only [weights path]`: the shipped artefact's directed numeric signals refitted by
+    // [[monotone]] from their own counts, in place — no corpus, no relearn ([[monotoneOnly]]).
+    if (args.headOption.contains("--monotone-only")) {
+      val file  = args.lift(1).map(Paths.get(_)).getOrElse(ResolverArtefact)
+      val model = Json.parse(Files.readString(file)).as[IdentityCalibration]
+      Files.writeString(file, Json.prettyPrint(Json.toJson(monotoneOnly(model))) + "\n")
+      println(s"refitted monotone: $file")
+      return
+    }
     val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
     def path(k: String) = opts.get(k).map(Paths.get(_))
     val cfg = Config(
@@ -372,6 +381,36 @@ object IdentityCalibrate {
         missing = miss,
         counts = cats.map { case (v, (p, n)) => v -> Seq(p, n) } ++ missing.map { case (s, (p, n)) => s"missing:$s" -> Seq(p, n) },
         neutral = missing.keys.flatMap(s => Neutral.get(signal -> s).map(s -> _)).toMap), totP, totN)
+    }
+  }
+
+  /** `model` with the listing-film scope's directed numeric signals ([[IdentityMeasures.NumericDirection]])
+   *  refitted by [[monotone]] from the positives and negatives their bins and missing cells hold — what
+   *  [[fitSignal]] fits them to since r5, applied to weights fitted before it without relearning
+   *  (the full relearn moves the certified cut). A signal already monotone comes back as it was;
+   *  every other signal and scope is untouched. */
+  def monotoneOnly(model: IdentityCalibration): IdentityCalibration = {
+    val scope = model.scopes.get(IdentityMeasures.ListingFilm)
+    scope.fold(model) { listingFilm =>
+      val refitted = listingFilm.signals.map { case (signal, weights) =>
+        signal -> IdentityMeasures.NumericDirection.get(signal).filter(_ => weights.bins.nonEmpty).fold(weights) { direction =>
+          val missingCounts = weights.missing.keys.toSeq.flatMap(side =>
+            weights.counts.get(s"missing:$side").collect { case Seq(p, n) => side -> (p, n) })
+          val totP = weights.bins.map(_.positives).sum + missingCounts.map(_._2._1).sum
+          val totN = weights.bins.map(_.negatives).sum + missingCounts.map(_._2._2).sum
+          val edges = weights.bins.map(bin => (bin.atLeast.getOrElse(Double.NegativeInfinity), bin.atMost.getOrElse(Double.PositiveInfinity),
+            bin.positives, bin.negatives))
+          val pooled = monotone(edges, direction, llr(_, _, totP, totN, edges.size + weights.missing.size))
+          val cells  = pooled.size + weights.missing.size
+          weights.copy(
+            bins = pooled.map { case (lo, hi, p, n) =>
+              IdentityCalibration.Bin(Option.when(!lo.isInfinite)(lo), Option.when(!hi.isInfinite)(hi), llr(p, n, totP, totN, cells), p, n) },
+            missing = weights.missing.map { case (side, weight) =>
+              side -> (if (weights.neutral.contains(side)) 0.0
+                       else missingCounts.collectFirst { case (`side`, (p, n)) => llr(p, n, totP, totN, cells) }.getOrElse(weight)) })
+        }
+      }
+      model.copy(scopes = model.scopes.updated(IdentityMeasures.ListingFilm, listingFilm.copy(signals = refitted)))
     }
   }
 

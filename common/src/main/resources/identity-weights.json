@@ -130,138 +130,90 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : 4.167289943213761,
+            "weight" : 4.167954604511236,
             "positives" : 2955,
             "negatives" : 329
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 2.4878887141130237,
+            "weight" : 2.488553375410498,
             "positives" : 922,
             "negatives" : 551
           }, {
             "atLeast" : 1.5,
             "atMost" : 2.5,
-            "weight" : 1.1196054596642937,
+            "weight" : 1.1202701209617678,
             "positives" : 239,
             "negatives" : 562
           }, {
             "atLeast" : 2.5,
-            "atMost" : 3.5,
-            "weight" : 0.6951583396014112,
-            "positives" : 157,
-            "negatives" : 565
-          }, {
-            "atLeast" : 3.5,
             "atMost" : 4.5,
-            "weight" : 0.9488666347446024,
-            "positives" : 177,
-            "negatives" : 494
+            "weight" : 0.821192340049302,
+            "positives" : 334,
+            "negatives" : 1059
           }, {
             "atLeast" : 4.5,
             "atMost" : 5.5,
-            "weight" : 0.4551994131336432,
+            "weight" : 0.4558640744311169,
             "positives" : 128,
             "negatives" : 586
           }, {
             "atLeast" : 5.5,
             "atMost" : 6.5,
-            "weight" : -0.02545950230392524,
+            "weight" : -0.02479484100645113,
             "positives" : 73,
             "negatives" : 542
           }, {
             "atLeast" : 6.5,
             "atMost" : 10.5,
-            "weight" : -0.92712912016896,
+            "weight" : -0.9264644588714859,
             "positives" : 116,
             "negatives" : 2118
           }, {
             "atLeast" : 10.5,
             "atMost" : 15.5,
-            "weight" : -1.7869185400939922,
+            "weight" : -1.7862538787965176,
             "positives" : 55,
             "negatives" : 2384
           }, {
             "atLeast" : 15.5,
-            "atMost" : 17.5,
-            "weight" : -2.5080715010192023,
-            "positives" : 9,
-            "negatives" : 839
-          }, {
-            "atLeast" : 17.5,
-            "atMost" : 18.5,
-            "weight" : -4.642622008240918,
-            "positives" : 0,
-            "negatives" : 373
-          }, {
-            "atLeast" : 18.5,
             "atMost" : 20.5,
-            "weight" : -1.923312356405459,
-            "positives" : 16,
-            "negatives" : 812
+            "weight" : -2.400291745118462,
+            "positives" : 25,
+            "negatives" : 2024
           }, {
             "atLeast" : 20.5,
-            "atMost" : 42.5,
-            "weight" : -3.2630737007225186,
-            "positives" : 35,
-            "negatives" : 6674
-          }, {
-            "atLeast" : 42.5,
-            "atMost" : 44.5,
-            "weight" : -4.854186057610954,
-            "positives" : 0,
-            "negatives" : 461
-          }, {
-            "atLeast" : 44.5,
             "atMost" : 47.5,
-            "weight" : -2.163626329996543,
-            "positives" : 10,
-            "negatives" : 657
+            "weight" : -3.169096847495215,
+            "positives" : 45,
+            "negatives" : 7792
           }, {
             "atLeast" : 47.5,
-            "atMost" : 49.5,
-            "weight" : -4.744361518131793,
-            "positives" : 0,
-            "negatives" : 413
-          }, {
-            "atLeast" : 49.5,
             "atMost" : 50.5,
-            "weight" : -2.084533741159327,
+            "weight" : -3.1955641389397673,
             "positives" : 3,
-            "negatives" : 202
+            "negatives" : 615
           }, {
             "atLeast" : 50.5,
-            "atMost" : 55.5,
-            "weight" : -5.517086225168813,
-            "positives" : 0,
-            "negatives" : 895
-          }, {
-            "atLeast" : 55.5,
             "atMost" : 62.5,
-            "weight" : -3.0954610253283326,
+            "weight" : -3.6547115979933733,
             "positives" : 7,
-            "negatives" : 1192
+            "negatives" : 2087
           }, {
             "atLeast" : 62.5,
-            "atMost" : 76.5,
-            "weight" : -6.6446807331027795,
-            "positives" : 0,
-            "negatives" : 2765
-          }, {
-            "atLeast" : 76.5,
             "atMost" : 77.5,
-            "weight" : -3.026018816606233,
+            "weight" : -5.622619249942229,
             "positives" : 1,
-            "negatives" : 222
+            "negatives" : 2987
           }, {
             "atLeast" : 77.5,
-            "weight" : -7.827956277560444,
+            "weight" : -7.827291616262971,
             "positives" : 0,
             "negatives" : 9029
           } ],
           "missing" : {
             "film" : 0,
-            "listing" : -0.0799339697382524
+            "listing" : -0.07926930844077829
           },
           "counts" : {
             "missing:film" : [ 29, 2750 ],
@@ -276,50 +228,44 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 1.5,
-            "weight" : 3.4755478870917447,
+            "weight" : 3.475662742056253,
             "positives" : 2715,
             "negatives" : 552
           }, {
             "atLeast" : 1.5,
             "atMost" : 2.5,
-            "weight" : -0.5264234845758122,
+            "weight" : -0.5263086296113038,
             "positives" : 191,
             "negatives" : 2131
           }, {
             "atLeast" : 2.5,
             "atMost" : 3.5,
-            "weight" : -1.5741515763705713,
+            "weight" : -1.5740367214060629,
             "positives" : 58,
             "negatives" : 1856
           }, {
             "atLeast" : 3.5,
             "atMost" : 4.5,
-            "weight" : -2.120480079238035,
+            "weight" : -2.1203652242735265,
             "positives" : 30,
             "negatives" : 1671
           }, {
             "atLeast" : 4.5,
             "atMost" : 8.5,
-            "weight" : -2.7998496484530797,
+            "weight" : -2.7997347934885712,
             "positives" : 51,
             "negatives" : 5567
           }, {
             "atLeast" : 8.5,
             "atMost" : 14.5,
-            "weight" : -3.98503395931127,
+            "weight" : -3.984919104346761,
             "positives" : 18,
             "negatives" : 6542
           }, {
             "atLeast" : 14.5,
-            "atMost" : 16.5,
-            "weight" : -6.355002681624277,
-            "positives" : 0,
-            "negatives" : 1891
-          }, {
-            "atLeast" : 16.5,
-            "weight" : -4.396405382915013,
+            "weight" : -4.831438991256722,
             "positives" : 6,
-            "negatives" : 3468
+            "negatives" : 5359
           } ],
           "missing" : {
             "not-returned" : 0
@@ -512,86 +458,26 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : -1.3840366917600364,
+            "weight" : -1.383004013398124,
             "positives" : 995,
             "negatives" : 23410
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 3.256059774683664,
+            "weight" : 3.2570924530455763,
             "positives" : 878,
             "negatives" : 199
           }, {
             "atLeast" : 1.5,
-            "atMost" : 9.5,
-            "weight" : 4.932538360243039,
-            "positives" : 1730,
-            "negatives" : 73
-          }, {
-            "atLeast" : 9.5,
-            "atMost" : 13.5,
-            "weight" : 6.67893288182486,
-            "positives" : 67,
-            "negatives" : 0
-          }, {
-            "atLeast" : 13.5,
             "atMost" : 16.5,
-            "weight" : 3.7195682524417437,
-            "positives" : 38,
-            "negatives" : 5
+            "weight" : 4.926664359896869,
+            "positives" : 1835,
+            "negatives" : 78
           }, {
             "atLeast" : 16.5,
-            "atMost" : 152.5,
-            "weight" : 6.211592369998609,
-            "positives" : 211,
-            "negatives" : 2
-          }, {
-            "atLeast" : 152.5,
-            "atMost" : 155.5,
-            "weight" : -0.42356647394978886,
-            "positives" : 0,
-            "negatives" : 4
-          }, {
-            "atLeast" : 155.5,
-            "atMost" : 185.5,
-            "weight" : 4.7180970825528705,
-            "positives" : 9,
-            "negatives" : 0
-          }, {
-            "atLeast" : 185.5,
-            "atMost" : 192.5,
-            "weight" : 2.3614447682885498,
-            "positives" : 4,
-            "negatives" : 2
-          }, {
-            "atLeast" : 192.5,
-            "atMost" : 614.5,
-            "weight" : 6.51859023174968,
-            "positives" : 57,
-            "negatives" : 0
-          }, {
-            "atLeast" : 614.5,
-            "atMost" : 623.5,
-            "weight" : 1.7736581033864312,
-            "positives" : 1,
-            "negatives" : 1
-          }, {
-            "atLeast" : 623.5,
-            "atMost" : 1218,
-            "weight" : 5.270165664852911,
-            "positives" : 16,
-            "negatives" : 0
-          }, {
-            "atLeast" : 1218,
-            "atMost" : 1401.5,
-            "weight" : 1.2628324796204407,
-            "positives" : 1,
-            "negatives" : 2
-          }, {
-            "atLeast" : 1401.5,
-            "weight" : 4.7180970825528705,
-            "positives" : 9,
-            "negatives" : 0
+            "weight" : 5.064065589724581,
+            "positives" : 308,
+            "negatives" : 11
           } ],
           "missing" : { },
           "counts" : { },
