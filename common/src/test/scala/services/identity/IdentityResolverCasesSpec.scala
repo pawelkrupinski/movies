@@ -1309,6 +1309,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       PinConstraints(Nil), _ => false, _ => false)
     labelled should not contain ("t:" + normalizer.sanitize("2D DUB"))
     labelled should not contain ("t:" + normalizer.sanitize("KNT"))
+    // ...also when the normaliser drops the label itself, so the published title normalises to the
+    // cleaned one: Kino na Boku's "Lalka | PREMIERA" and "Luna i rozgadana świnka | PREMIERA" welded
+    // Lalka's and Luna's families through "PREMIERA" (carried by 7 titles, under the banner spread).
+    val premiere = listing(Helios, "Lalka | PREMIERA").copy(cleanTitle = "Lalka", title = "Lalka")
+    TitleLinks.titleKeys(new EvidenceNode(Evidence.of(premiere, None, TitleDecorations.None), Seq(premiere)), normalizer,
+      PinConstraints(Nil), _ => false, _ => false) should not contain ("t:" + normalizer.sanitize("PREMIERA"))
     // An event's banner beside its film is dropped, the film kept: the screening IS the film.
     val event = keys("Dzień Dziecka Księdza Jana Kaczkowskiego: Luna i rozgadana świnka",
       Set("Dzień Dziecka Księdza Jana Kaczkowskiego", "Luna i rozgadana świnka"))

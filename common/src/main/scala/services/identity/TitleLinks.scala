@@ -71,10 +71,12 @@ private[identity] object TitleLinks {
             bannerSegment: String => Boolean): Keyed = {
     val whole   = normalizer.sanitize(node.evidence.cleanTitle)
     val pieces  = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
-    // The listing's own cleaned title is a work too — when cleaning took labels off it, so that it is
-    // a proper piece of what the venue published: "Spider-Man. Całkiem nowy dzień" beside "2D DUB", "KNT".
-    val published = normalizer.sanitize(node.evidence.published.rawTitle.getOrElse(node.evidence.published.title))
-    val isWhole = pieces.collect { case (_, key) if (key != whole && wholeTitle(key)) || (key == whole && whole != published) => key }.toSet
+    // The listing's own cleaned title is a work too, when another piece of what the venue published
+    // lies OUTSIDE it: "Spider-Man. Całkiem nowy dzień" beside "2D DUB", "KNT"; "Lalka" beside
+    // "PREMIERA", though the normaliser drops "premiera" from the whole. Pieces inside it ("Così fan
+    // tutte" in "RBO Cinema Season 2026-27: Così fan tutte") say nothing of what is beside it.
+    val besideIt = pieces.exists { case (_, key) => key.nonEmpty && key != whole && !whole.contains(key) }
+    val isWhole = pieces.collect { case (_, key) if (key != whole && wholeTitle(key)) || (key == whole && besideIt) => key }.toSet
     def reasonToDrop(key: String): Option[String] =
       if (isWhole(key) || key == whole) None
       else isWhole.find(_ != key).map(work => s"banner beside the work '$work', which a listing carries whole")
