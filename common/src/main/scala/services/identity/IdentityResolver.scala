@@ -443,8 +443,25 @@ object IdentityResolver {
       val eligible = ranked.filterNot(_.denied)
       seasonProductionOf(ranked).getOrElse(
         calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
-          .orElse(topHit(ranked))).map(editionNamed(ranked))
+          .orElse(topHit(ranked)).orElse(directorsWork(ranked))).map(editionNamed(ranked))
     }
+    /** The one candidate whose WORK the listing bills under another subtitle, by the director it
+     *  credits, that no published year or runtime contradicts (`IdentityMeasures.sharesWork`):
+     *  Multikino's "Cirque du Soleil: Kurios - Gabinet osobliwości" by Michel Laprise is his "…:
+     *  KURIOS - Cabinet des curiosités". The pipeline took such hits by their director on 3,247
+     *  listings with no wrong match; two candidates fitting alike (a director's sequels of one
+     *  work) are no answer. */
+    def directorsWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      def contradicted(s: Scored) =
+        s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 1; case _ => false } ||
+          s.measures.get("runtime.delta").exists { case IdentityMeasures.Number(d) => d >= 30; case _ => false }
+      ranked.filterNot(_.denied).filter(s => s.measures.get("director").contains(IdentityMeasures.Category("same_person")) &&
+        IdentityMeasures.sharesWork(s.listing, s.c.film) && !contradicted(s)) match {
+        case Seq(one) => Some(one -> one.p)
+        case _        => None
+      }
+    }
+
     /** Do the listing's own facts favour `best` over `other`? Its own evidence — without the title
      *  when the title names the two by disjoint pieces ([[IdentityMeasures.namedApart]]: "Lalka
      *  (Dolly)"), since it then names both alike and how each piece spells its film is no fact

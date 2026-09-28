@@ -52,6 +52,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   private def together(r: Resolution, a: Listing, b: Listing) = r.decisionOf(a.key) eq r.decisionOf(b.key)
 
+  "A listing whose work matches a film's, under a translated subtitle" should "take that film when its director is the film's" in {
+    // PL, Multikino's "Cirque du Soleil: Kurios - Gabinet osobliwości" (×38): the record is "Cirque du
+    // Soleil: KURIOS - Cabinet des curiosités", same director. The pipeline searched the work and
+    // took the hit its director verified — no wrong match among the 3,247 listings it decided that way.
+    val films = Seq(F(558130, "Cirque du Soleil: KURIOS - Cabinet des curiosités", 2018, "Michel Laprise", 85, 3))
+    val ls    = Seq(Multikino, Helios).map(v => listing(v, "Cirque du Soleil: Kurios - Gabinet osobliwości", director = Some("Michel Laprise"),
+      runtime = Some(89)).copy(originalTitle = Some("Cirque du Soleil: KURIOS – Cabinet of Curiosities")))
+    val r = shipped(ls, films)
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(558130)))
+  }
+
   "A decorated spelling" should "take the film its plain siblings' own evidence matched" in {
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
     val plain = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))

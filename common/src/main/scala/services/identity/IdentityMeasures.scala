@@ -449,6 +449,18 @@ object IdentityMeasures {
       if (s.length == l.length) s.substring(i + 1) == l.substring(i + 1) else s.substring(i) == l.substring(i + 1)
     }
 
+  /** The WORK a title's subtitle hangs off: what stands before its first dash ("Cirque du Soleil:
+   *  Kurios" of "Cirque du Soleil: Kurios - Gabinet osobliwości"), when a subtitle follows it. */
+  private val SubtitleDash = """\s+[-–—]\s+""".r
+  private def workOf(t: String): Option[String] =
+    SubtitleDash.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim).filter(w => TitleContainment.tokens(w).sizeIs >= 2)
+  /** Do the listing and the film bill the same work under different subtitles — a venue's translated
+   *  subtitle ("Gabinet osobliwości" for "Cabinet des curiosités")? */
+  def sharesWork(l: Listing, f: Film): Boolean = {
+    val works = (Seq(f.title) ++ f.originalTitle).flatMap(workOf).map(key).toSet
+    (Seq(l.title) ++ l.rawTitle).flatMap(workOf).map(key).exists(works)
+  }
+
   /** How the listing's title names the film: its localised title exactly, its original title,
    *  an alternative title, one whole banner segment, the film's title as a token run along one edge
    *  of the listing's (`decorated`: "Ken Russell's The Devils"), the listing's title as a run along
