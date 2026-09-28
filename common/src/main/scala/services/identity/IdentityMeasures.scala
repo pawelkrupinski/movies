@@ -368,6 +368,21 @@ object IdentityMeasures {
     NonWord.matcher(tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)).replaceAll("")
   private val NonWord = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
 
+  /** [[key]] of the title spelt in Latin letters: Cyrillic transliterated letter by letter, as
+   *  Polish venues list Ukrainian films ("Potyag Chervona ruta" for "Потяг «Червона Рута»"). Only an
+   *  EQUAL transliteration names a title: one letter-by-letter scheme, no fuzzing. */
+  def latinKey(s: String): String = {
+    val lower = s.toLowerCase(Locale.ROOT)
+    if (!lower.exists(Cyrillic.contains)) key(s)
+    else key(lower.flatMap(c => Cyrillic.getOrElse(c, c.toString)))
+  }
+  private val Cyrillic: Map[Char, String] = Map(
+    'а' -> "a", 'б' -> "b", 'в' -> "v", 'г' -> "g", 'ґ' -> "g", 'д' -> "d", 'е' -> "e", 'є' -> "ye", 'ё' -> "yo",
+    'ж' -> "zh", 'з' -> "z", 'и' -> "y", 'і' -> "i", 'ї' -> "yi", 'й' -> "y", 'к' -> "k", 'л' -> "l", 'м' -> "m",
+    'н' -> "n", 'о' -> "o", 'п' -> "p", 'р' -> "r", 'с' -> "s", 'т' -> "t", 'у' -> "u", 'ф' -> "f", 'х' -> "kh",
+    'ц' -> "ts", 'ч' -> "ch", 'ш' -> "sh", 'щ' -> "shch", 'ъ' -> "", 'ы' -> "y", 'ь' -> "", 'э' -> "e", 'ю' -> "yu",
+    'я' -> "ya")
+
   /** One title's comparison forms, each computed on first use: the same titles are compared across
    *  a whole family pool, and normalising them again per pair was nearly all of a resolve's time. */
   private[identity] final case class TitleForm(text: String) {
@@ -375,6 +390,7 @@ object IdentityMeasures {
     lazy val words: Seq[String]     = IdentityMeasures.words(text)
     lazy val wordSet: Set[String]   = words.toSet
     lazy val yearless: String       = yearlessTokens(text).mkString
+    lazy val latinKey: String       = IdentityMeasures.latinKey(text)
   }
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
@@ -540,7 +556,8 @@ object IdentityMeasures {
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     val (titleForm, rest) = (all.head, all.tail)
     val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
-    if (own.contains(titleForm.key) || ls.exists(a => oneTypoApart(a.words, titleForm.words))) Category("exact")
+    if (own.contains(titleForm.key) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
+        (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey))) Category("exact")
     else if (originalForms.map(_.key).exists(own)) Category("original")
     else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None
@@ -665,6 +682,7 @@ object IdentityMeasures {
         // The same title once years and seasons are dropped: "The Metropolitan Opera: Così fan tutte
         // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
         else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t))) ||
+                 others.map(latinKey).contains(latinKey(o)) ||
                  (yearAgrees(o, filmYear) && others.exists(t => yearlessTokens(t).nonEmpty && yearlessTokens(t) == yearlessTokens(o))))
           Category("match")
         else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {

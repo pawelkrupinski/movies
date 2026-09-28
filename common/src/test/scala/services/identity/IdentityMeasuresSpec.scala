@@ -170,6 +170,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
   }
 
+  "a title transliterated from another script" should "name the record carrying it in that script" in {
+    // Helios lists Oleksii Esakov's Ukrainian film as "Potyag Chervona ruta" (and in Cyrillic with that
+    // as its original title); TMDB titles it "Потяг «Червона Рута»".
+    val record = Film("Потяг «Червона Рута»", originalTitle = Some("Потяг «Червона Рута»"), year = Some(2026))
+    IdentityMeasures.titleRelation(Listing("Potyag Chervona ruta"), record) shouldBe Category("exact")
+    IdentityMeasures.originalTitleRelation(Some("Potyag Chervona ruta"), Seq(record.title)) shouldBe Category("match")
+    // Only the whole title: a transliteration naming another film is not one.
+    IdentityMeasures.titleRelation(Listing("Potyag"), record) should not be Category("exact")
+  }
+
   "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
     def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
     val tied = Houses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))
