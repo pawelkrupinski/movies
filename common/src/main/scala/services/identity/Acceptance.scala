@@ -39,16 +39,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  evidence class's when the film is the listing's accepted exact top hit, or the one the priors
    *  lent when the listing's facts accepted it ([[calibrated]]). */
   def confidenceOf(ranked: Seq[Scored], film: Int): Double =
-    topHit(ranked).filter(_._1.c.tmdbId == film).map(_._2)
-      .orElse(calibrated(ranked).filter(_._1.c.tmdbId == film).map(_._2))
-      .orElse(pooled(ranked).filter(_._1.c.tmdbId == film).map(_._2))
-      .getOrElse(eligibleOf(ranked).find(_.c.tmdbId == film).fold(0.0)(_.p))
+    topHit(ranked).filter(_._1.candidate.tmdbId == film).map(_._2)
+      .orElse(calibrated(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
+      .orElse(pooled(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
+      .getOrElse(eligibleOf(ranked).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
 
   /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
    *  class, or the ranking priors lending ([[EvidenceWeights.priorsLent]]). */
-  def liftedBy(ranked: Seq[Scored], s: Scored, confidence: Double): String =
-    if (confidence <= s.p) ""
-    else if (topHit(ranked).exists(_._1.c.tmdbId == s.c.tmdbId)) " as its exact top hit"
+  def liftedBy(ranked: Seq[Scored], scored: Scored, confidence: Double): String =
+    if (confidence <= scored.probability) ""
+    else if (topHit(ranked).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
     else " with the ranking priors lending, never withdrawing"
 
   // ── the rules ──────────────────────────────────────────────────────────────────────────
@@ -63,12 +63,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  withdraws it. */
   def topHit(ranked: Seq[Scored]): Option[Accepted] = ranked.headOption.flatMap { any =>
     val eligible = eligibleOf(ranked)
-    IdentityMeasures.exactTopHits(any.listing, ranked.map(s => (s.c.tmdbId, s.c.film, s.rank))) match {
+    IdentityMeasures.exactTopHits(any.listing, ranked.map(scored => (scored.candidate.tmdbId, scored.candidate.film, scored.rank))) match {
       case Seq(id) =>
-        eligible.find(_.c.tmdbId == id)
-          .filter(best => !speaksAgainst(best) && eligible.forall(r => (r eq best) || !fitsBetter(r, best)))
-          .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(cp => best -> math.max(best.p, cp)))
-          .filter(x => calibration.showsRatings(x._2))
+        eligible.find(_.candidate.tmdbId == id)
+          .filter(best => !speaksAgainst(best) && eligible.forall(rival => (rival eq best) || !fitsBetter(rival, best)))
+          .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(classProbability => best -> math.max(best.probability, classProbability)))
+          .filter(accepted => calibration.showsRatings(accepted._2))
       case _ => None
     }
   }
@@ -77,7 +77,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  ([[EvidenceWeights.priorsLent]]) — clears the calibration's cut. */
   def calibrated(ranked: Seq[Scored]): Option[Accepted] = {
     val eligible = eligibleOf(ranked)
-    eligible.headOption.map(b => b -> priorsLent(b, eligible)).filter(x => calibration.showsRatings(x._2))
+    eligible.headOption.map(best => best -> priorsLent(best, eligible)).filter(accepted => calibration.showsRatings(accepted._2))
   }
 
   /** [[calibrated]], when the listing's own facts also favour it over the runner-up. */
@@ -97,11 +97,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  namesakes: only the facts may pick one of "Lalka (Dolly)"'s two. */
   def unrivalledCalibrated(ranked: Seq[Scored]): Option[Accepted] =
     calibrated(ranked).filter { case (best, _) =>
-      eligibleOf(ranked).forall(r => (r eq best) || {
-        val pieces = IdentityMeasures.namingPieces(r.listing, r.c.film)
-        val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.c.film)
-        val apart  = IdentityMeasures.namedApart(best.listing, best.c.film, r.c.film)
-        !(alike && facts(r) > facts(best)) && !(apart && facts(r) >= facts(best))
+      eligibleOf(ranked).forall(rival => (rival eq best) || {
+        val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
+        val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
+        val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
+        !(alike && facts(rival) > facts(best)) && !(apart && facts(rival) >= facts(best))
       })
     }
 
@@ -114,15 +114,15 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  listing's own facts favour neither — ambiguity, so nothing is taken, on the season or on
    *  the database's ranking. The confidence stays the calibrated probability. */
   def seasonProduction(ranked: Seq[Scored]): Option[Option[Accepted]] =
-    ranked.filter(s => !s.denied && s.seasonProduction).sortBy(s => (-own(s), s.c.tmdbId)) match {
+    ranked.filter(scored => !scored.denied && scored.seasonProduction).sortBy(scored => (-own(scored), scored.candidate.tmdbId)) match {
       case Seq()       => None
-      case Seq(one)    => Some(Some(one -> one.p))
-      case a +: b +: _ => Some(Option.when(own(a) > own(b))(a -> a.p))
+      case Seq(one)    => Some(Some(one -> one.probability))
+      case first +: second +: _ => Some(Option.when(own(first) > own(second))(first -> first.probability))
     }
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
-  def contradicted(s: Scored): Boolean =
-    s.number("year.distance").exists(_ > 1) || s.number("runtime.delta").exists(_ >= 30)
+  def contradicted(scored: Scored): Boolean =
+    scored.number("year.distance").exists(_ > 1) || scored.number("runtime.delta").exists(_ >= 30)
 
   /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
    *  candidate, and no other candidate is one the title names — the rest only a director's
@@ -131,8 +131,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two"). */
   def soleWork(ranked: Seq[Scored]): Option[Accepted] = {
     val eligible = eligibleOf(ranked)
-    eligible.filter(s => s.rank.contains(1) && IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(_ >= 2) && !contradicted(s)) match {
-      case Seq(one) if !eligible.exists(o => (o ne one) && o.titleNamesIt) => Some(one -> one.p)
+    eligible.filter(scored => scored.rank.contains(1) && IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2) && !contradicted(scored)) match {
+      case Seq(one) if !eligible.exists(other => (other ne one) && other.titleNamesIt) => Some(one -> one.probability)
       case _                                                                 => None
     }
   }
@@ -146,11 +146,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  candidates fitting alike (a director's sequels of one work) are no answer. A one-word work
    *  also needs the published year, a word being many films' title. */
   def directorsWork(ranked: Seq[Scored]): Option[Accepted] = {
-    def bareWork(s: Scored) = IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(words =>
-      words >= 2 || s.number("year.distance").exists(_ <= 1))
-    eligibleOf(ranked).filter(s => IdentityMeasures.sameDirector(s.measures) &&
-      (IdentityMeasures.sharesWork(s.listing, s.c.film) || bareWork(s)) && !contradicted(s)) match {
-      case Seq(one) => Some(one -> one.p)
+    def bareWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(words =>
+      words >= 2 || scored.number("year.distance").exists(_ <= 1))
+    eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
+      (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored)) && !contradicted(scored)) match {
+      case Seq(one) => Some(one -> one.probability)
       case _        => None
     }
   }
@@ -163,7 +163,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  records (a broadcast and its encore) are no answer. */
   def houseProduction(ranked: Seq[Scored]): Option[Accepted] =
     eligibleOf(ranked).filter(candidate => candidate.houseProduction && !contradicted(candidate)) match {
-      case Seq(one) => Some(one -> one.p)
+      case Seq(one) => Some(one -> one.probability)
       case _        => None
     }
 
@@ -188,9 +188,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     val named = Acceptance.namedAs(work.category("title"))
     // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
     if (named == Acceptance.NamedAsItsOwn || work.category("originalTitle").contains("match")) accepted
-    else ranked.filter(e => (e ne work) && !e.deniedByPin && Acceptance.namedAs(e.category("title")) > named && (
-      if (named == 0) IdentityMeasures.editionOf(e.c.film, work.c.film)
-      else IdentityMeasures.editionOf(e.c.film, work.c.film.copy(alternativeTitles = Nil)) && !e.category("director").contains("different"))) match {
+    else ranked.filter(edition => (edition ne work) && !edition.deniedByPin && Acceptance.namedAs(edition.category("title")) > named && (
+      if (named == 0) IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film)
+      else IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film.copy(alternativeTitles = Nil)) && !edition.category("director").contains("different"))) match {
       case Seq(edition) => edition -> confidence
       case _            => accepted
     }

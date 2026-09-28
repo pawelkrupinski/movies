@@ -126,36 +126,36 @@ object IdentityResolver {
     val decisions = new ResolverDecisions(scoring, families, acceptance)
 
     def solve(members: Seq[EvidenceNode], edges: Seq[ResolverEdge], filmOf: String => Option[Int]): Seq[Seq[EvidenceNode]] = {
-      val constraints = edges.map(e => ConstraintSolver.Constraint(e.a, e.b, e.must, e.tier, e.reason))
+      val constraints = edges.map(edge => ConstraintSolver.Constraint(edge.a, edge.b, edge.must, edge.tier, edge.reason))
       val presentation = if (mutation == Mutation.FirstWins) ConstraintSolver.Presentation.AsGiven else ConstraintSolver.Presentation.Canonical
       val presented = if (mutation == Mutation.FirstWins) {
-        val position = ordered.zipWithIndex.map { case (l, i) => l.sortKey -> i }.toMap
-        members.sortBy(n => n.listings.map(l => position(l.sortKey)).min)
+        val position = ordered.zipWithIndex.map { case (listing, index) => listing.sortKey -> index }.toMap
+        members.sortBy(node => node.listings.map(listing => position(listing.sortKey)).min)
       } else members
-      val cs = if (mutation == Mutation.FirstWins) {
-        val position = presented.zipWithIndex.map { case (n, i) => n.id -> i }.toMap
-        constraints.sortBy(c => (math.min(position(c.a), position(c.b)), math.max(position(c.a), position(c.b))))
+      val orderedConstraints = if (mutation == Mutation.FirstWins) {
+        val position = presented.zipWithIndex.map { case (node, index) => node.id -> index }.toMap
+        constraints.sortBy(constraint => (math.min(position(constraint.a), position(constraint.b)), math.max(position(constraint.a), position(constraint.b))))
       } else constraints
-      ConstraintSolver.solveAs(presented.map(_.id), cs, presentation, members.flatMap(n => filmOf(n.id).map(n.id -> _)).toMap)
+      ConstraintSolver.solveAs(presented.map(_.id), orderedConstraints, presentation, members.flatMap(node => filmOf(node.id).map(node.id -> _)).toMap)
         .map(_.map(nodeById))
     }
 
-    val acceptedAll: Map[String, Int] = families.bestOf.map { case (id, (s, _)) => id -> s.c.tmdbId } ++ families.pinnedFilm
+    val acceptedAll: Map[String, Int] = families.bestOf.map { case (id, (scored, _)) => id -> scored.candidate.tmdbId } ++ families.pinnedFilm
     // Round A's edges over EVERY pair of nodes sharing a block key, then the family check: an
     // edge between two families means the scoping would silently drop it, so the resolve stops.
     val roundAEdges = edges.of(nodes, acceptedAll.get)
-    val crossings = FamilyClosure.crossings(familyOf, roundAEdges.map(e => FamilyClosure.Edge(e.a, e.b, e.must, e.reason)))
+    val crossings = FamilyClosure.crossings(familyOf, roundAEdges.map(edge => FamilyClosure.Edge(edge.a, edge.b, edge.must, edge.reason)))
     if (crossings.nonEmpty) throw new FamilyCrossing(crossings.size, s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
-    val roundAByFamily = roundAEdges.groupBy(e => familyOf(e.a))
+    val roundAByFamily = roundAEdges.groupBy(edge => familyOf(edge.a))
 
-    val perFamily = nodes.groupBy(n => familyOf(n.id)).toSeq.sortBy(_._1).map { case (family, members0) =>
+    val perFamily = nodes.groupBy(node => familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members0) =>
       val members = members0.sortBy(_.id)
       val scope   = scopes(family)
-      val accepted: Map[String, Int] = members.flatMap(n => acceptedAll.get(n.id).map(n.id -> _)).toMap
+      val accepted: Map[String, Int] = members.flatMap(node => acceptedAll.get(node.id).map(node.id -> _)).toMap
 
       val roundA = solve(members, roundAByFamily.getOrElse(family, Nil), accepted.get)
       // Group-level voting over the clusters no member matched alone.
-      val unaccepted = roundA.filter(_.forall(n => !accepted.contains(n.id)))
+      val unaccepted = roundA.filter(_.forall(node => !accepted.contains(node.id)))
       // A facts-free cluster in a split title family follows the family's clear majority
       // (`ClusterVoting.familyMajority`); every other cluster votes on its pooled evidence.
       val familyTaken: Map[String, (Int, Double, String)] =
@@ -163,19 +163,19 @@ object IdentityResolver {
         else {
           // The title family: the round's title must-links (same title, search form, original
           // title, segment), however the solver then split the nodes they join.
-          val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(e => e.must && ConstraintEdges.TitleTiers(e.tier))
-          unaccepted.flatMap(c => voting.familyMajority(c, members, accepted, titleEdges).toSeq.flatMap(t => c.map(_.id -> t))).toMap
+          val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
+          unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
         }
       val voted: Map[String, (Int, Double)] =
         if (mutation == Mutation.NoVoting) Map.empty
-        else unaccepted.flatMap(c => if (c.exists(n => familyTaken.contains(n.id))) c.map(n => n.id -> (familyTaken(n.id)._1, familyTaken(n.id)._2))
-                                     else voting.vote(c, scope)).toMap
+        else unaccepted.flatMap(cluster => if (cluster.exists(node => familyTaken.contains(node.id))) cluster.map(node => node.id -> (familyTaken(node.id)._1, familyTaken(node.id)._2))
+                                     else voting.vote(cluster, scope)).toMap
       val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
       val familyEdges = edges.of(members, filmOf)
       val clusters    = solve(members, familyEdges, filmOf)
 
-      val clusterIndex = clusters.zipWithIndex.flatMap { case (c, i) => c.map(_.id -> i) }.toMap
-      val violations   = familyEdges.count(e => !e.must && clusterIndex(e.a) == clusterIndex(e.b))
+      val clusterIndex = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap
+      val violations   = familyEdges.count(edge => !edge.must && clusterIndex(edge.a) == clusterIndex(edge.b))
       (familyEdges, clusters.map(decisions.of(_, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken)), violations)
     }
 
@@ -183,7 +183,7 @@ object IdentityResolver {
     Resolution(
       decisions      = decided,
       nodes          = nodes.size,
-      familyOf       = nodes.flatMap(n => n.listings.map(_.key -> familyOf(n.id))).toMap,
+      familyOf       = nodes.flatMap(node => node.listings.map(_.key -> familyOf(node.id))).toMap,
       edges          = perFamily.flatMap(_._1),
       queries        = issued.toSeq,
       filmLookups    = records.size,

@@ -13,8 +13,8 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
   /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
    *  whole spelling, its original title or a segment) names the film's and not another
    *  instalment of its series (`IdentityMeasures.namesFilm`)? */
-  private def titleNames(n: EvidenceNode, film: Candidate): Boolean =
-    ownSearch(n.id).contains(film.tmdbId) || IdentityMeasures.namesFilm(n.evidence.measured, film.film)
+  private def titleNames(node: EvidenceNode, film: Candidate): Boolean =
+    ownSearch(node.id).contains(film.tmdbId) || IdentityMeasures.namesFilm(node.evidence.measured, film.film)
 
   /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
    *  title names, which only a credited director's filmography reached, only when nothing else
@@ -23,9 +23,9 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  among a director's films the listing's facts favour another of (a lecture on "Trzy kolory:
    *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
   private def votedFor(cluster: Seq[EvidenceNode], ranked: Seq[Scored]): Option[Accepted] =
-    acceptance.pooled(ranked).filter { case (s, _) =>
-      cluster.exists(titleNames(_, s.c)) ||
-        ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && weights.own(r) <= weights.own(s))
+    acceptance.pooled(ranked).filter { case (winner, _) =>
+      cluster.exists(titleNames(_, winner.candidate)) ||
+        ranked.filterNot(rival => rival.denied || (rival eq winner)).forall(rival => rival.probability < winner.probability && weights.own(rival) <= weights.own(winner))
     }
 
   /** The GROUP VOTE of a cluster no member matched alone: each voting member → the film and its
@@ -38,12 +38,12 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  ([[EvidenceWeights.carriedByOwnFacts]]): bare siblings never outvote a member's denial on a
    *  title and the database's ranking. */
   def vote(cluster: Seq[EvidenceNode], scope: FamilyScope): Seq[(String, (Int, Double))] = {
-    def to(voters: Seq[EvidenceNode], accepted: Accepted) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
+    def to(voters: Seq[EvidenceNode], accepted: Accepted) = voters.map(node => node.id -> (accepted._1.candidate.tmdbId, accepted._2))
     val ranked = scope.pooled(cluster)
-    votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && weights.carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
-      val rest = cluster.filterNot(n => scope.of(n).exists(o => o.c.tmdbId == vetoed.c.tmdbId && o.denied))
+    votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(winner => winner.denied && weights.carriedByOwnFacts(winner)).toSeq.flatMap { vetoed =>
+      val rest = cluster.filterNot(node => scope.of(node).exists(other => other.candidate.tmdbId == vetoed.candidate.tmdbId && other.denied))
       Option.when(rest.nonEmpty && rest.size < cluster.size)(rest).flatMap(rest => votedFor(rest, scope.pooled(rest))
-        .filter { case (s, _) => s.c.tmdbId == vetoed.c.tmdbId && weights.carriedByOwnFacts(s) }
+        .filter { case (winner, _) => winner.candidate.tmdbId == vetoed.candidate.tmdbId && weights.carriedByOwnFacts(winner) }
         .map(to(rest, _))).getOrElse(Nil)
     })
   }
@@ -69,13 +69,13 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
                      titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
     Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
       val inside   = cluster.map(_.id).toSet
-      val linked   = titleEdges.flatMap(e => if (inside(e.a)) Seq(e.b) else if (inside(e.b)) Seq(e.a) else Nil).toSet -- inside
+      val linked   = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
       // A sibling whose title names a SEASON names a house's production of the work, which the
       // bare title does not: its venues say nothing about which house's the bare one is.
-      val venuesOf = members.filter(y => linked(y.id) && accepted.contains(y.id) && y.evidence.measured.seasonYear.isEmpty)
-        .groupMapReduce(y => accepted(y.id))(_.venues)(_ ++ _)
+      val venuesOf = members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
+        .groupMapReduce(sibling => accepted(sibling.id))(_.venues)(_ ++ _)
       Option.when(venuesOf.sizeIs >= 2) {
-        val (film, venues) = venuesOf.toSeq.minBy { case (f, vs) => (-vs.size, f) }
+        val (film, venues) = venuesOf.toSeq.minBy { case (filmId, filmVenues) => (-filmVenues.size, filmId) }
         val own   = cluster.flatMap(_.venues).toSet -- venues
         val total = (venuesOf.values.flatten ++ own).toSet.size
         val bound = RateBounds.lower95(venues.size, total)

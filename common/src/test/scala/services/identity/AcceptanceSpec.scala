@@ -19,9 +19,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       val measures = IdentityMeasures.listingFilm(listing, film, rank, close - (if (rivalling(film)) 1 else 0), 0, houses)
       Scored(Candidate(tmdbId, film), calibration.probability(ListingFilm, measures), measures, denied = false, listing, rank,
         houseProduction = IdentityMeasures.billsUnderItsHouse(listing, film, houses))
-    }.sortBy(scored => (-scored.p, scored.c.tmdbId))
+    }.sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
-  private def taken(candidates: Seq[Scored]): Option[Int] = acceptance.alone(candidates).map(_._1.c.tmdbId)
+  private def taken(candidates: Seq[Scored]): Option[Int] = acceptance.alone(candidates).map(_._1.candidate.tmdbId)
 
   // Flicks' UK and US "NT Live: The Misanthrope" (155 listings): TMDB's search for the play ranks
   // three bare records of Molière's work above the National Theatre's 2026 broadcast.
