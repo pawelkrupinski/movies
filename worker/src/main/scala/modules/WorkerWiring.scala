@@ -165,11 +165,13 @@ class WorkerWiring(
       model
     }
   }
-  /** The threads the model's lookups prefetch on: each question a store round-trip, so a take-up is
-   *  bound by their latency, not by CPU. Eight: the store's own pool, not a node's cores, is the limit. */
+  /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
+   *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
+   *  their reads into one `$in` per batch (`CoalescedObservationBackend`), so they share one
+   *  connection of the pool instead of each holding one. */
   protected lazy val identityPrefetchPool: java.util.concurrent.ExecutorService =
-    java.util.concurrent.Executors.newFixedThreadPool(8, { (task: Runnable) =>
-      val thread = new Thread(task, s"identity-prefetch-${country.code}"); thread.setDaemon(true); thread })
+    java.util.concurrent.Executors.newFixedThreadPool(WorkerWiring.IdentityPrefetchThreads,
+      Thread.ofVirtual().name(s"identity-prefetch-${country.code}-", 0).factory())
 
   /** One daemon thread for the model: it is not thread-safe, and every event is drained on it. */
   protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
@@ -518,6 +520,9 @@ object WorkerWiring {
   /** How long the identity model lets events gather before one drain takes them together: a venue
    *  scraped twice, or a family several venues touch, in that window is resolved once. */
   val IdentityModelSettle: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "seconds")
+  /** Questions the model's prefetch keeps in flight: 64 fill a coalesced read's batch about eight
+   *  times as full as the eight platform threads that each held a connection. */
+  val IdentityPrefetchThreads = 64
 
   /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
    *  most seconds a tick) and the fill's per-round allowance were measured against. */

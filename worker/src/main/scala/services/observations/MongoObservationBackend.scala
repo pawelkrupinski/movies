@@ -42,6 +42,11 @@ final class MongoObservationBackend(db: MongoDatabase, collection: String, ttlMi
   def current(key: String): Option[StoredObservation] =
     Await.result(coll.find(currentOf(key)).headOption(), Timeout).map(decode)
 
+  override def currents(keys: Seq[String]): Map[String, StoredObservation] =
+    if (keys.isEmpty) Map.empty
+    else Await.result(coll.find(Filters.and(Filters.in("key", keys.distinct*), Filters.equal("current", true))).toFuture(), Timeout)
+      .map(decode).groupBy(_.key).map { case (key, found) => key -> found.head }
+
   def history(key: String): Seq[StoredObservation] =
     Await.result(coll.find(Filters.equal("key", key)).sort(Sorts.ascending("observedAt")).toFuture(), Timeout).map(decode)
 
@@ -95,5 +100,5 @@ object MongoObservationBackend {
   /** The store over a country's database: its two shadow collections. */
   def store(db: MongoDatabase, clock: java.time.Clock, ttlMismatches: TtlIndexMismatches): ObservationStore =
     new ObservationStore(new MongoObservationBackend(db, ObservationStore.ListingsCollection, ttlMismatches),
-      new MongoObservationBackend(db, ObservationStore.LookupsCollection, ttlMismatches), clock)
+      new CoalescedObservationBackend(new MongoObservationBackend(db, ObservationStore.LookupsCollection, ttlMismatches)), clock)
 }

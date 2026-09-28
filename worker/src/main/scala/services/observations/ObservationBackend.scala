@@ -31,6 +31,11 @@ trait ObservationBackend {
   /** The current observation of `key`, expired or not — the store filters. */
   def current(key: String): Option[StoredObservation]
 
+  /** The current observations of `keys`, in one round-trip where the backend can: what many
+   *  concurrent readers' `current` calls cost together ([[CoalescedObservationBackend]]). */
+  def currents(keys: Seq[String]): Map[String, StoredObservation] =
+    keys.flatMap(key => current(key).map(key -> _)).toMap
+
   /** Every observation of `key`, oldest first, expired or not. */
   def history(key: String): Seq[StoredObservation]
 
