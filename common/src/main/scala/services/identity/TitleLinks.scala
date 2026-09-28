@@ -58,13 +58,36 @@ private[identity] object TitleLinks {
    *  is a banner by how many titles carry it (`bannerSegment`: a festival's films rarely have a
    *  listing of their own, so "Młode Horyzonty: …" has no whole-title piece beside the banner). */
   def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
-                bannerSegment: String => Boolean): Set[String] = {
-    val whole    = normalizer.sanitize(node.evidence.cleanTitle)
-    val pieces   = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
-    val isWhole  = pieces.collect { case (_, key) if key != whole && wholeTitle(key) => key }.toSet
-    val segments = pieces.collect { case (segment, key) if isWhole(key) || (!isWhole.exists(_ != key) && !bannerSegment(key)) => segment }
-    FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
-      segments = segments :+ node.evidence.cleanTitle) ++
-      pins.blockKeys(node.listings.head.key)
+                bannerSegment: String => Boolean): Set[String] =
+    keyed(node, normalizer, pins, wholeTitle, bannerSegment).keys
+
+  /** A node's family keys, each with WHY it has it, and the title pieces it does NOT block under,
+   *  each with why not — what [[titleKeys]] decides, told (`IdentityResolver.explain`). */
+  final case class Keyed(kept: Seq[(String, String)], dropped: Seq[(String, String)]) {
+    def keys: Set[String] = kept.map(_._1).toSet
+  }
+
+  def keyed(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+            bannerSegment: String => Boolean): Keyed = {
+    val whole   = normalizer.sanitize(node.evidence.cleanTitle)
+    val pieces  = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
+    val isWhole = pieces.collect { case (_, key) if key != whole && wholeTitle(key) => key }.toSet
+    def reasonToDrop(key: String): Option[String] =
+      if (isWhole(key) || key == whole) None
+      else isWhole.find(_ != key).map(work => s"banner beside the work '$work', which a listing carries whole")
+        .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
+    val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
+    val blocked = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
+      segments = keptPieces.map(_._1) :+ node.evidence.cleanTitle)
+    def why(key: String): String =
+      if (key == "t:" + whole) "its title"
+      else if (key == "q:" + normalizer.searchQuery(node.evidence.cleanTitle)) "its title's search form"
+      else if (node.evidence.originalTitle.exists(original => key == "t:" + normalizer.sanitize(original) || key == "q:" + normalizer.searchQuery(original)))
+        "its original title"
+      else if (isWhole(key.drop(2))) "a piece of its title that a listing carries whole"
+      else "a piece of its title beside no work (kept as the work)"
+    val pinned = pins.blockKeys(node.listings.head.key).toSeq.sorted.map(_ -> "a curation pin")
+    Keyed(blocked.toSeq.sorted.map(key => key -> why(key)) ++ pinned,
+      droppedPieces.flatMap { case (segment, key) => reasonToDrop(key).map(reason => s"'$segment'" -> reason) }.distinctBy(_._1))
   }
 }

@@ -114,6 +114,10 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         report.line(f"[${c.label}] FOCUS ${f.phrases.map(_.mkString(" ")).mkString(",")}: ${focused.size} listing(s), " +
           f"resolved ${if (f.alone) "alone" else s"with the whole corpus (${listings.size})"} in $secs%.1fs")
         focused.map(l => r.decisionOf(l.key)).distinct.foreach(d => report.line(d.render))
+        // Why each focused node resolved as it did and sits in its family (`IdentityResolver.explain`).
+        report.line(s"[${c.label}] FOCUS explanations:")
+        IdentityResolver.explain(if (f.alone) focused else listings, lookups, c.normalizer, calibration)(focused.map(_.key).toSet)
+          .foreach(told => told.render.foreach(line => report.line(s"  $line")))
         // Each focused node's candidates as its family scored them: why it took what it took.
         val focusedKeys = focused.map(_.key).toSet
         report.line(s"[${c.label}] FOCUS candidates (tmdb, probability, search rank, flags, record — measures):")

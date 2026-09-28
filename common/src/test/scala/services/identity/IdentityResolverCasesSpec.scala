@@ -1311,6 +1311,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     double should not contain ("t:" + normalizer.sanitize("Luna i rozgadana świnka"))
   }
 
+  "A listing's explanation" should "say why it has each family key, why a piece is no key, how it joined its family and what it decided" in {
+    val films    = Seq(F(14836, "Coraline", 2009, "Henry Selick", 100), F(1283515, "Verity", 2026, "Michael Showalter", 110))
+    val sensory  = listing(Helios, "Coraline - Sensory Friendly Screening")
+    val verity   = listing(Helios, "Verity - Sensory Friendly Screening")
+    val plain    = listing(Multikino, "Coraline", Some(2009), Some("Henry Selick"))
+    val plainToo = listing(KinoMuza, "Coraline", Some(2009), Some("Henry Selick"))
+    val told = IdentityResolver.explain(Seq(sensory, verity, plain, plainToo), new FilmTable(films, normalizer), normalizer, weights)(Set(sensory.key)).head
+    val coraline = "t:" + normalizer.sanitize("Coraline")
+    told.keys.toMap.get(coraline) shouldBe Some("a piece of its title that a listing carries whole")
+    told.dropped.map(_._1) should contain ("'Sensory Friendly Screening'")
+    told.dropped.toMap.apply("'Sensory Friendly Screening'") should include ("banner beside the work")
+    told.chain should not be empty
+    (told.keys.map(_._1) should contain (told.chain.head._1)) // the first link is one of its own keys
+    told.render.mkString("\n") should include ("in this family by:")
+  }
+
   "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {
     val films   = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162))
     val plain   = listing(Helios, "Lalka", Some(2026), Some("Maciej Kawalski"))
