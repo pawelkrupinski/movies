@@ -33,6 +33,7 @@ object IdentityReferee {
     "rsc"       -> """royal shakespeare|\brsc\b""".r,
     "australia" -> """opera australia""".r,
     "wien"      -> """wiener staatsoper|vienna state opera""".r)
+  private val WrittenYear = """(?<!\d)(?:18|19|20)\d{2}(?!\d)""".r
   private def fold(s: String): String =
     java.text.Normalizer.normalize(s.toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "")
   private def housesOf(s: String): Set[String] = Houses.collect { case (h, p) if p.findFirstIn(fold(s)).isDefined => h }.toSet
@@ -43,9 +44,13 @@ object IdentityReferee {
     val yearFar = m.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 2; case _ => false }
     val runtimeFar = e.runtime.zip(f.runtime.filter(_ > 0)).exists { case (a, b) => math.abs(a - b) >= 30 }
     val seasonAfter = e.measured.seasonYear.zip(f.year).exists { case (s, y) => s - y > 1 }
+    // A year the ORIGINAL title writes ("The Royal Ballet: The Nutcracker (2024)") is a published year too.
+    val originalYears = e.originalTitle.toSeq.flatMap(WrittenYear.findAllIn(_).map(_.toInt))
+    val originalYearFar = e.year.isEmpty && originalYears.nonEmpty && f.year.exists(y => originalYears.forall(w => math.abs(w - y) > 2))
     val (lh, fh) = (housesOf(e.rawTitle), housesOf((Seq(f.title) ++ f.originalTitle).mkString(" ")))
     val house = lh.nonEmpty && fh.nonEmpty && (lh intersect fh).isEmpty
-    val denials = Seq("year" -> yearFar, "director" -> deny("director"), "runtime" -> runtimeFar, "season" -> seasonAfter, "house" -> house)
+    val denials = Seq("year" -> yearFar, "director" -> deny("director"), "runtime" -> runtimeFar, "season" -> seasonAfter,
+      "originalTitleYear" -> originalYearFar, "house" -> house)
       .collect { case (name, true) => name }
     if (house || denials.sizeIs >= 2) (Verdict.Wrong, denials)
     else if (agree.nonEmpty && denials.isEmpty) (Verdict.Right, Nil)

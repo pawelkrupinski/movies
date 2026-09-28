@@ -275,8 +275,10 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val e = evidenceOf(l.key)
         (l, pipelineFilm(l.key).map(a => IdentityReferee.judge(e, a.film)), resolverFilm(l.key).map(a => IdentityReferee.judge(e, a.film)))
       }
+      // `denied`: matches any fact of the listing's denies — the count no change may raise.
       def tally(side: Seq[Option[(IdentityReferee.Verdict, Seq[String])]]) =
-        IdentityReferee.Verdict.values.map(v => s"${v.toString.toLowerCase} ${side.count(_.exists(_._1 == v))}").mkString(" / ")
+        IdentityReferee.Verdict.values.map(v => s"${v.toString.toLowerCase} ${side.count(_.exists(_._1 == v))}").mkString(" / ") +
+          s" [denied ${side.count(_.exists(_._2.nonEmpty))}]"
       report.line(s"[${c.label}] referee (each side alone): old ${tally(judged.map(_._2))} | new ${tally(judged.map(_._3))}")
       val newWrong = judged.filter(_._3.exists(_._1 == IdentityReferee.Verdict.Wrong))
       if (newWrong.nonEmpty) report.line(s"[${c.label}] referee: the RESOLVER's wrong matches (${newWrong.size}):\n    " +

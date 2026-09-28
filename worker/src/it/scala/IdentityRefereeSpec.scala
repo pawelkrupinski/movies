@@ -39,6 +39,13 @@ class IdentityRefereeSpec extends AnyFlatSpec with Matchers {
       film("Labirynt fauna", 2006, Seq("Guillermo del Toro"), Some(118), Some("El laberinto del fauno")))._1 should not be Verdict.Wrong
   }
 
+  it should "read a year the original title writes, and not call the film of another year right" in {
+    val (v, denials) = IdentityReferee.judge(ev("The Royal Ballet: The Nutcracker", original = Some("The Royal Ballet: The Nutcracker (2024)")),
+      film("The Royal Ballet: The Nutcracker", 2015))
+    denials should contain("originalTitleYear")
+    v should not be Verdict.Right
+  }
+
   it should "judge a match its facts back right" in {
     IdentityReferee.judge(ev("Lalka", Some(2026), Seq("Maciej Kawalski")), film("Lalka", 2026, Seq("Maciej Kawalski"), Some(162)))._1 shouldBe Verdict.Right
   }
