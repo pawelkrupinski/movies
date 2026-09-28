@@ -170,6 +170,14 @@ enum CandidateQuery {
 
 object CandidateQuery {
   implicit val ordering: Ordering[CandidateQuery] = Ordering.by(_.sortKey)
+
+  /** The query a [[CandidateQuery.sortKey]] names. */
+  def fromSortKey(key: String): Option[CandidateQuery] = key.split("\u0000", 2) match {
+    case Array("t", text) => Some(Title(text))
+    case Array("d", name) => Some(Director(name))
+    case Array("i", text) => Some(Imdb(text))
+    case _                => None
+  }
 }
 
 /**

@@ -19,39 +19,66 @@ package services.identity
  * A family resolved alone against the corpus's context decides exactly as the whole resolve does
  * (A3). This is the seam an incremental model keeps current instead of re-deriving it per resolve.
  */
-private[identity] final class CorpusContext(
-  val venueTitles:    Map[Int, Seq[String]],
-  val candidates:     Map[Int, Candidate],
-  val houseEvidence:  Seq[IdentityMeasures.Billing],
-  val titleGroups:    Map[String, Seq[(String, IdentityMeasures.Listing)]],
-  val wholeTitles:    Set[String],
-  val reachedByTitle: Map[String, Seq[(String, Set[Int])]]
-) {
+private[identity] trait CorpusContext {
+  /** A record any node's answers named, with the titles venues publish for it. */
+  def candidate(id: Int): Option[Candidate]
   /** Which house each listing banner is. */
-  lazy val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(houseEvidence)
+  def houses: IdentityMeasures.Houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
-  lazy val houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = IdentityMeasures.Houses.ranking(houseEvidence)
-  /** One per resolve: its memo is not thread-safe. */
-  lazy val backing: IdentityMeasures.VenueBacking = new IdentityMeasures.VenueBacking(titleGroups)
+  def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]]
+  /** Every listing carrying title key `key`, with its venue, in node order. */
+  def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)]
+  /** Is `sanitised` some node's whole title? */
+  def wholeTitle(sanitised: String): Boolean
+  /** Every node carrying title key `key`, with the candidates its own evidence reached, in node order. */
+  def reachedBy(key: String): Seq[(String, Set[Int])]
+  /** The films `query`'s answer names, best first; `None` when the answer is not known. */
+  def ranked(query: CandidateQuery): Option[Seq[Int]]
+  /** The evidence the context already holds for `listing` — one instance kept across resolves, so
+   *  what it caches (its measured listing's title forms) is computed once — or `None`. */
+  def evidenceOf(listing: Listing): Option[Evidence] = None
+
+  /** A fresh one per resolve (`CandidateScoring` takes one): its memo is not thread-safe, and a
+   *  context kept across events would serve a group's backing after the group moved. */
+  def backing: IdentityMeasures.VenueBacking = new IdentityMeasures.VenueBacking(CorpusContext.KeyedView(key => Option(titleGroup(key)).filter(_.nonEmpty)))
 
   /** What of this context a family with `reads` can read — equal slices, equal decisions (A3). */
   def slice(reads: CorpusContext.Reads): CorpusContext.Slice = CorpusContext.Slice(
-    reachedByTitle.filter { case (title, _) => reads.titles(title) },
-    titleGroups.filter { case (group, _) => reads.groups(group) },
-    wholeTitles intersect reads.segments,
-    houses.of.filter { case (banner, _) => reads.banners(banner) },
-    candidates.filter { case (id, _) => reads.films(id) })
+    reads.titles.map(key => key -> reachedBy(key)).toMap,
+    reads.groups.map(key => key -> titleGroup(key)).toMap,
+    reads.segments.filter(wholeTitle),
+    reads.banners.flatMap(banner => houses.of.get(banner).map(banner -> _)).toMap,
+    reads.films.flatMap(id => candidate(id).map(id -> _)).toMap,
+    reads.queries.map(query => query -> ranked(query)).toMap)
 
   /** The candidates the other nodes of `node`'s IDENTICAL title reached by their own evidence that
    *  its own did not (`CandidateGeneration.sharedOf`). */
   def sharedOf(node: EvidenceNode): Set[Int] = {
-    val sameTitled = reachedByTitle.getOrElse(CorpusContext.titleOf(node), Nil)
+    val sameTitled = reachedBy(CorpusContext.titleOf(node))
     if (sameTitled.sizeIs < 2) Set.empty
     else {
       val own = sameTitled.collectFirst { case (id, reached) if id == node.id => reached }.getOrElse(Set.empty)
       sameTitled.collect { case (id, reached) if id != node.id => reached }.flatten.toSet -- own
     }
   }
+}
+
+/** The context of one resolve's own listings, derived whole from them ([[CorpusContext.of]]). */
+private[identity] final class WholeCorpusContext(
+  answers:        CandidateQuery => Option[Seq[Int]],
+  candidates:     Map[Int, Candidate],
+  houseEvidence:  Seq[IdentityMeasures.Billing],
+  titleGroups:    Map[String, Seq[(String, IdentityMeasures.Listing)]],
+  wholeTitles:    Set[String],
+  reachedByTitle: Map[String, Seq[(String, Set[Int])]]
+) extends CorpusContext {
+  def candidate(id: Int): Option[Candidate] = candidates.get(id)
+  lazy val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(houseEvidence)
+  lazy val houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = IdentityMeasures.Houses.ranking(houseEvidence)
+  def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] = titleGroups.getOrElse(key, Nil)
+  def wholeTitle(sanitised: String): Boolean = wholeTitles(sanitised)
+  def reachedBy(key: String): Seq[(String, Set[Int])] = reachedByTitle.getOrElse(key, Nil)
+  def ranked(query: CandidateQuery): Option[Seq[Int]] = answers(query)
 }
 
 private[identity] object CorpusContext {
@@ -61,24 +88,52 @@ private[identity] object CorpusContext {
    *  unchanged is certain to decide as before: its nodes' title keys (`reachedByTitle`), their title
    *  groups (`titleGroups`), their titles' sanitised shapes (`wholeTitles`), every banner a node bills
    *  a pool film's work under (`houses`), and every film its answers named or it decided. */
-  final case class Reads(titles: Set[String], groups: Set[String], segments: Set[String], banners: Set[String], films: Set[Int])
+  final case class Reads(titles: Set[String], groups: Set[String], segments: Set[String], banners: Set[String], films: Set[Int],
+                         queries: Set[CandidateQuery]) {
+    /** The keys [[Changed.keys]] names them by — a title group is filed under its title key. */
+    def keys: Set[String] = (titles ++ groups).map("t:" + _) ++ segments.map("s:" + _) ++ banners.map("b:" + _) ++ films.map("f:" + _)
+  }
   object Reads {
-    def of(members: Seq[EvidenceNode], pool: Seq[IdentityMeasures.Film], films: Set[Int], sanitize: String => String): Reads = Reads(
+    def of(members: Seq[EvidenceNode], pool: Seq[IdentityMeasures.Film], films: Set[Int], queries: Set[CandidateQuery],
+           sanitize: String => String): Reads = Reads(
       members.map(titleOf).toSet,
       members.flatMap(node => IdentityMeasures.titleGroups(node.evidence.measured)).toSet,
       members.flatMap(node => IdentityMeasures.titleShapes(node.evidence.published).map(sanitize)).toSet,
       members.flatMap(node => pool.flatMap(film => IdentityMeasures.billings(node.evidence.measured, film).map(_.listingHouse))).toSet,
-      films)
+      films, queries)
   }
+
+  /** The keys an event moved facts under: title keys (their nodes' reached candidates and title
+   *  groups), whole-title shapes, banners, and films whose candidate changed. A family whose
+   *  [[Reads]] touch none of them reads exactly what it read before. */
+  final case class Changed(titles: Set[String], segments: Set[String], banners: Set[String], films: Set[Int]) {
+    def keys: Set[String] = titles.map("t:" + _) ++ segments.map("s:" + _) ++ banners.map("b:" + _) ++ films.map("f:" + _)
+    def ++(other: Changed): Changed = Changed(titles ++ other.titles, segments ++ other.segments, banners ++ other.banners, films ++ other.films)
+  }
+  object Changed { val None: Changed = Changed(Set.empty, Set.empty, Set.empty, Set.empty) }
 
   /** The values a family read, as [[CorpusContext.slice]] cut them. */
   final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, IdentityMeasures.Listing)]],
-                         wholeTitles: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate])
+                         wholeTitles: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate],
+                         answers: Map[CandidateQuery, Option[Seq[Int]]]) {
+    /** 64 bits of the slice's content — what a stored family keeps to tell, after a restart, whether
+     *  it still reads what it read: its structural hash beside a hash of its (content-ordered) text. */
+    def digest: Long = (hashCode.toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(toString) & 0xffffffffL)
+  }
+
+  /** A map that only answers lookups by key — what `VenueBacking` asks of its groups — over a
+   *  context that keeps them per key rather than as one map. */
+  final case class KeyedView[K, V](lookup: K => Option[V]) extends scala.collection.immutable.AbstractMap[K, V] {
+    def get(key: K): Option[V] = lookup(key)
+    def iterator: Iterator[(K, V)] = throw new UnsupportedOperationException("a keyed view answers lookups only")
+    def removed(key: K): Map[K, V] = throw new UnsupportedOperationException("a keyed view answers lookups only")
+    def updated[V1 >: V](key: K, value: V1): Map[K, V1] = throw new UnsupportedOperationException("a keyed view answers lookups only")
+  }
 
   /** The context of exactly `nodes`: what a whole resolve of them reads. `reached` is each node's
    *  own candidates (its searches' and walks'), `recorded` every record their answers named. */
   def of(nodes: Seq[EvidenceNode], reached: EvidenceNode => Seq[Int], recorded: Map[Int, Candidate],
-         sanitize: String => String): CorpusContext = {
+         answers: CandidateQuery => Option[Seq[Int]], sanitize: String => String): CorpusContext = {
     val venueTitles = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
     val candidates  = recorded.map { case (id, candidate) =>
       id -> candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, venueTitles.getOrElse(id, Nil))) }
@@ -88,6 +143,6 @@ private[identity] object CorpusContext {
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>
       title -> sameTitled.map(node => node.id -> reached(node).toSet) }
-    new CorpusContext(venueTitles, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle)
+    new WholeCorpusContext(answers, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle)
   }
 }

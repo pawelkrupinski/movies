@@ -155,6 +155,35 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         f"(${resolution.decisions.count(_.film.isDefined)} matched) in $resolveSeconds%.1fs; lookups ${lookups.sizes} (details, queries, films), " +
         s"unanswerable ${lookups.unknown}; $resolverRequests HTTP requests; cannot-linked pairs inside a cluster: ${resolution.violations}")
 
+      // The same corpus kept INCREMENTALLY: taken whole, one title-key component at a time (a new
+      // country, or a rebuild after the rules change), it must decide exactly as the whole resolve;
+      // then the steady state — a venue re-scraped unchanged, a venue leaving and coming back, and
+      // ten venues leaving and coming back in one batch.
+      {
+        def liveMb(): Long = { System.gc(); val runtime = Runtime.getRuntime; (runtime.totalMemory - runtime.freeMemory) >> 20 }
+        def signature(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet
+        val byVenue = listings.groupBy(_.venue).toSeq.sortBy(_._1).map(_._2)
+        val before  = liveMb()
+        val model   = new IncrementalResolver(lookups, c.normalizer, calibration)
+        val (_, seedSeconds) = timed(model.seed(listings))
+        val held    = liveMb() - before
+        val seeded  = model.familiesResolved
+        val same    = signature(model.decisions) == signature(resolution.decisions)
+        def cost(body: => Unit): (Int, Double) = { val start = model.familiesResolved; val (_, seconds) = timed(body); (model.familiesResolved - start, seconds) }
+        val venue   = byVenue.maxBy(_.size)
+        val ten     = byVenue.sortBy(-_.size).slice(1, 11).flatten
+        val (unchanged, unchangedSeconds) = cost(model.listingsSeen(venue))
+        val (cycle, cycleSeconds)         = cost { model.listingsGone(venue.map(_.key)); model.listingsSeen(venue) }
+        val (tenCycle, tenSeconds)        = cost { model.batch(Nil, ten.map(_.key), AnswersChanged.Empty); model.batch(ten, Nil, AnswersChanged.Empty) }
+        val sameAfter = signature(model.decisions) == signature(resolution.decisions)
+        report.line(f"[${c.label}] incremental: seeded whole in $seedSeconds%.1fs ($seeded family resolves, ${resolution.families} families), " +
+          f"model holds ~${held}MB live; equals the whole resolve: $same; the largest venue (${venue.size} listings) re-scraped unchanged: " +
+          f"$unchanged resolves in ${unchangedSeconds * 1000}%.0f ms; gone and back: $cycle resolves in ${cycleSeconds * 1000}%.0f ms; " +
+          f"the next ten venues (${ten.size} listings) gone and back, one batch each: $tenCycle resolves in ${tenSeconds * 1000}%.0f ms; still equal: $sameAfter; " +
+          s"time in ${model.timings.render}")
+        withClue(s"${c.label}: the incremental model decides as the whole resolve") { same shouldBe true; sameAfter shouldBe true }
+      }
+
       // Why the resolver left listings unmatched: (a) nothing answerable, (b) below the cut, (c) vetoed.
       val unmatched = listings.flatMap(l => decisionOf.get(l.key)).filterNot(_.basis.matched)
         .groupMapReduce(_.basis.toString)(_ => 1)(_ + _)

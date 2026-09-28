@@ -89,7 +89,7 @@ object IdentityResolver {
              decorations: TitleDecorations = TitleDecorations.resolver): Unit = {
     val once = new AskedOnce(lookups)
     listings.toSeq.sorted.distinctBy(_.key).grouped(chunk).foreach(part =>
-      new CandidateGeneration(part, once, normalizer, PinConstraints(Nil), decorations, lazyLookups = false))
+      new CandidateGeneration(part, once, normalizer, PinConstraints(Nil), decorations, lazyLookups = false).records)
   }
 
   /** `lookups`, remembering only WHICH candidate queries and films it asked, never the answers. */
@@ -114,7 +114,7 @@ object IdentityResolver {
     val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups, corpus)
     val acceptance = new Acceptance(calibration)
     val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
-    val links      = new TitleLinks(generation.nodes, normalizer, pins, generation.context.wholeTitles)
+    val links      = new TitleLinks(generation.nodes, normalizer, pins, generation.context.wholeTitle)
     val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
   }
 
@@ -172,7 +172,8 @@ object IdentityResolver {
    *  to merge with it), the questions and records its answers came from, and the corpus-wide facts
    *  it could read ([[CorpusContext.Reads]]). */
   private[identity] final case class RegionFamily(listings: Set[ListingKey], decisions: Seq[ResolverDecision], blockKeys: Set[String],
-                                                  queries: Set[CandidateQuery], films: Set[Int], reads: CorpusContext.Reads)
+                                                  queries: Set[CandidateQuery], films: Set[Int], reads: CorpusContext.Reads,
+                                                  nodeKeys: Map[ListingKey, String])
 
   /** Resolve `listings` — a union of whole families — against the corpus's `corpus` context, family
    *  by family: A3 with the corpus's facts, so each decides as the whole resolve would. */
@@ -189,13 +190,15 @@ object IdentityResolver {
       val films = members.flatMap(node => generation.queriesOf(node.id).flatMap(query => generation.answers(query).toOption.getOrElse(Nil)).map(_.tmdbId)).toSet
       val decisions = resolution.decisions.filter(_.members.exists(keys))
       RegionFamily(keys, decisions, members.flatMap(node => families.blockKeysOf(node.id)).toSet, queries, films,
-        CorpusContext.Reads.of(members, pool.map(_.film), films ++ pool.map(_.tmdbId) ++ decisions.flatMap(_.film), normalizer.sanitize))
+        CorpusContext.Reads.of(members, pool.map(_.film), films ++ pool.map(_.tmdbId) ++ decisions.flatMap(_.film), queries, normalizer.sanitize),
+        members.flatMap(node => node.listings.map(listing =>
+          listing.key -> CandidateGeneration.nodeKeyText(CandidateGeneration.nodeKey(listing, node.evidence, pins)))).toMap)
     }
   }
 
   private def run(stages: Stages, mutation: Mutation): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
-    import generation.{answers, candidateById, details, issued, nodeById, nodes, records}
+    import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
     import families.{familyOf, scopes}
 
     // ── B. global assignment, per family ─────────────────────────────────────────────────
@@ -264,11 +267,11 @@ object IdentityResolver {
       familyOf       = nodes.flatMap(node => node.listings.map(_.key -> familyOf(node.id))).toMap,
       edges          = perFamily.flatMap(_._1),
       queries        = issued.toSeq,
-      filmLookups    = records.size,
+      filmLookups    = if (generation.partOfCorpus) 0 else records.size,
       unknownQueries = answers.count(!_._2.isKnown),
       unknownDetails = details.count(!_._2.isKnown),
-      unknownFilms   = records.count(!_._2.isKnown),
+      unknownFilms   = if (generation.partOfCorpus) 0 else records.count(!_._2.isKnown),
       violations     = perFamily.map(_._3).sum,
-      films          = decided.flatMap(_.film).distinct.flatMap(id => candidateById.get(id).map(id -> _.film)).toMap)
+      films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap)
   }
 }

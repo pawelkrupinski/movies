@@ -16,10 +16,10 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten
-  val withEvidence = ordered.map(listing => listing -> Evidence.of(listing, detailOf(listing), decorations))
+  val withEvidence = ordered.map(listing => listing -> corpus.flatMap(_.evidenceOf(listing)).getOrElse(Evidence.of(listing, detailOf(listing), decorations)))
   // A pinned listing is a node of its own kind: identical evidence under different pins is not
   // one question any more.
-  val nodes = withEvidence.groupBy { case (listing, evidence) => (evidence.key, pins.blockKeys(listing.key)) }.values.toSeq
+  val nodes = withEvidence.groupBy { case (listing, evidence) => CandidateGeneration.nodeKey(listing, evidence, pins) }.values.toSeq
     .map(group => new EvidenceNode(group.head._2, group.map(_._1).sorted))
     .sortBy(_.id)
   val nodeById = nodes.map(node => node.id -> node).toMap
@@ -40,27 +40,26 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
     })
   } else queriesOf.values.flatten.toSeq.distinct.sorted.foreach(ask)
 
-  val isTitle: CandidateQuery => Boolean = { case _: CandidateQuery.Title => true; case _ => false }
-  // Each candidate a node's own title searches named, at the best (1-based) rank any gave it.
-  val ownSearch: Map[String, Map[Int, Int]] = nodes.map { node =>
-    node.id -> queriesOf(node.id).filter(isTitle).flatMap(query => answers(query).toOption.getOrElse(Nil).zipWithIndex)
-      .groupMapReduce(_._1.tmdbId)(_._2 + 1)(math.min)
-  }.toMap
-  // Each candidate a node's other paths reached: its credited directors' filmographies, and the
-  // films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank.
-  val ownWalk: Map[String, Set[Int]] = nodes.map(node =>
-    node.id -> queriesOf(node.id).filterNot(isTitle).flatMap(query => answers(query).toOption.getOrElse(Nil)).map(_.tmdbId).toSet).toMap
+  val ownSearch: Map[String, Map[Int, Int]] = nodes.map(node => node.id -> CandidateGeneration.ownSearch(queriesOf(node.id), answers)).toMap
+  val ownWalk: Map[String, Set[Int]]        = nodes.map(node => node.id -> CandidateGeneration.ownWalk(queriesOf(node.id), answers)).toMap
   val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
-  val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
-  val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
+  // Looked up only when these listings are the whole corpus: a region reads its candidates from
+  // the corpus's context, which holds every record already.
+  lazy val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
+  lazy val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
+  /** Whether these listings are part of a larger corpus, read through its context. */
+  def partOfCorpus: Boolean = corpus.isDefined
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
-  def reached(node: EvidenceNode): Seq[Int] = (ownSearch(node.id).keys ++ ownWalk(node.id)).toSeq.distinct.sorted
+  def reached(node: EvidenceNode): Seq[Int] = CandidateGeneration.reached(ownSearch(node.id), ownWalk(node.id))
 
   /** What these listings' families read from the whole corpus: `corpus` when they are part of a
    *  larger one, else their own. */
-  lazy val context: CorpusContext = corpus.getOrElse(CorpusContext.of(nodes, reached, recorded, normalizer.sanitize))
-  /** Each record with the titles the venues publish for it (`IdentityMeasures.venueTitles`). */
-  lazy val candidateById: Map[Int, Candidate] = context.candidates
+  lazy val context: CorpusContext = corpus.getOrElse(CorpusContext.of(nodes, reached, recorded,
+    query => answers.get(query).flatMap(_.toOption).map(CandidateGeneration.ranked), normalizer.sanitize))
+  /** A record with the titles the venues publish for it (`IdentityMeasures.venueTitles`). */
+  def candidateOf(id: Int): Option[Candidate] = context.candidate(id)
+  /** A record some node reached: every one is known to the context. */
+  def candidateById(id: Int): Candidate = candidateOf(id).getOrElse(throw new NoSuchElementException(s"no candidate $id in the corpus context"))
   /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
    *  own evidence — a credited director, a detail page's original title — that its own did not:
    *  "Vincent. Legenda oceanu" at a venue publishing nothing else searches empty (TMDB titles the
@@ -68,4 +67,25 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
    *  it. A path to a candidate, never evidence for it: the node scores it on its own facts (no
    *  search rank), and still denies it when they rule it out. */
   def sharedOf(node: EvidenceNode): Set[Int] = context.sharedOf(node)
+}
+
+private[identity] object CandidateGeneration {
+  /** Which node a listing is one of: identical evidence, and — a pinned listing being a node of
+   *  its own kind — the same pins. */
+  def nodeKey(listing: Listing, evidence: Evidence, pins: PinConstraints): (String, Set[String]) = (evidence.key, pins.blockKeys(listing.key))
+
+  private val isTitle: CandidateQuery => Boolean = { case _: CandidateQuery.Title => true; case _ => false }
+  /** Each candidate a node's own title searches named, at the best (1-based) rank any gave it. */
+  def ownSearch(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Map[Int, Int] =
+    queries.filter(isTitle).flatMap(query => answer(query).toOption.getOrElse(Nil).zipWithIndex).groupMapReduce(_._1.tmdbId)(_._2 + 1)(math.min)
+  /** Each candidate a node's other paths reached: its credited directors' filmographies, and the
+   *  films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank. */
+  def ownWalk(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
+    queries.filterNot(isTitle).flatMap(query => answer(query).toOption.getOrElse(Nil)).map(_.tmdbId).toSet
+  /** Every candidate a node's own evidence reached: its searches' and its walks'. */
+  def reached(ownSearch: Map[Int, Int], ownWalk: Set[Int]): Seq[Int] = (ownSearch.keys ++ ownWalk).toSeq.distinct.sorted
+  /** The films an answer names, best first. */
+  def ranked(hits: Seq[Hit]): Seq[Int] = hits.map(_.tmdbId).distinct
+  /** A node's key as text: its evidence's, and its pins'. */
+  def nodeKeyText(key: (String, Set[String])): String = (key._1 +: key._2.toSeq.sorted).mkString("\u0000")
 }

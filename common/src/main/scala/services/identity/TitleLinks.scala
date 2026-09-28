@@ -5,15 +5,12 @@ import services.movies.TitleNormalizer
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
 private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints,
-                                         wholeTitles: Set[String]) {
+                                         wholeTitle: String => Boolean) {
 
   def sanitized(title: String): String  = normalizer.sanitize(title)
   def searchForm(title: String): String = normalizer.searchQuery(title)
 
-  def titleKeys(node: EvidenceNode): Set[String] =
-    FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
-      segments = IdentityMeasures.titleShapes(node.evidence.published) :+ node.evidence.cleanTitle) ++
-      pins.blockKeys(node.listings.head.key)
+  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins)
 
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
     (IdentityMeasures.titleShapes(node.evidence.published).map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
@@ -44,7 +41,16 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
     // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
     // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
     val formKey = sanitized(form)
-    segmentsOf(node.id).exists(seg => wholeTitles(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
+    segmentsOf(node.id).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
       (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
   }
+}
+
+private[identity] object TitleLinks {
+  /** The keys a node's title blocks under: its sanitised title, search form, original title and
+   *  segments, and its pins' keys — a family's seed before any match grows it. */
+  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints): Set[String] =
+    FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
+      segments = IdentityMeasures.titleShapes(node.evidence.published) :+ node.evidence.cleanTitle) ++
+      pins.blockKeys(node.listings.head.key)
 }

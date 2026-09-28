@@ -1,7 +1,7 @@
 package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, Indexes, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.{MongoTtlIndex, TtlIndexMismatches}
@@ -81,21 +81,15 @@ object MongoShadowRunBackend {
   private def document(fields: (String, BsonValue)*): BsonDocument =
     fields.foldLeft(new BsonDocument()) { case (d, (k, v)) => d.append(k, v) }
 
-  private[identity] def encodeCluster(c: ShadowCluster): BsonDocument = document(
-    "family"         -> BsonInt32(c.family),
-    "members"        -> ListingKeyBson.encodeAll(c.decision.members),
-    "film"           -> optInt(c.decision.film),
-    "confidence"     -> BsonDouble(c.decision.confidence),
-    "basis"          -> BsonString(c.decision.basis.toString),
-    "explanation"    -> strings(c.decision.explanation),
-    "contradictions" -> strings(c.decision.contradictions),
-    "relation"       -> c.relation.fold[BsonValue](BsonNull())(r => BsonString(r.label)),
-    "pipelineFilms"  -> BsonArray.fromIterable(c.pipelineFilms.map(encodeFilm)))
+  private[identity] def encodeCluster(c: ShadowCluster): BsonDocument =
+    ResolverDecisionBson.encode(c.decision)
+      .append("family", BsonInt32(c.family))
+      .append("relation", c.relation.fold[BsonValue](BsonNull())(r => BsonString(r.label)))
+      .append("pipelineFilms", BsonArray.fromIterable(c.pipelineFilms.map(encodeFilm)))
 
   private[identity] def decodeCluster(d: BsonDocument): ShadowCluster = {
     ShadowCluster(
-      ResolverDecision(ListingKeyBson.decodeAll(d.getArray("members")), readInt(d, "film"), d.getDouble("confidence").getValue,
-        ResolverDecision.Basis.valueOf(d.getString("basis").getValue), readStrings(d, "explanation"), readStrings(d, "contradictions")),
+      ResolverDecisionBson.decode(d),
       d.getInt32("family").getValue,
       Option(d.get("relation")).filter(_.isString).flatMap(v => ShadowRelation.fromLabel(v.asString.getValue)),
       d.getArray("pipelineFilms").getValues.asScala.toSeq.map(v => decodeFilm(v.asDocument)))

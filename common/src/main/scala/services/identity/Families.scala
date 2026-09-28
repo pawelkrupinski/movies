@@ -13,7 +13,7 @@ import scala.annotation.tailrec
 private[identity] final class Families(scoring: CandidateScoring, acceptance: Acceptance, links: TitleLinks,
                                        normalizer: TitleNormalizer, narrow: Boolean) {
   import scoring.{evidenceDenies, houses, pins}
-  import scoring.generation.{candidateById, nodeById, nodes}
+  import scoring.generation.{candidateOf, nodeById, nodes}
 
   val pinnedFilm: Map[String, Int] = nodes.flatMap(node => pins.filmOf(node.listings.head.key).map(node.id -> _)).toMap
 
@@ -66,7 +66,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  evidence against the film's record? */
   def denies(node: EvidenceNode, film: Int): Boolean =
     scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedFilms(node.listings.head.key)(film) || {
-      candidateById.get(film).exists { candidate =>
+      candidateOf(film).exists { candidate =>
         evidenceDenies(node.evidence.measured, candidate.film, IdentityMeasures.listingFilm(node.evidence.measured, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers))
       }
     })(_.denied)

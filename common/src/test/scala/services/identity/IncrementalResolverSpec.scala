@@ -20,57 +20,21 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
   private val Seeds       = 1L to 24L
 
-  /** `inner` with some questions not answered yet: `answer` closes them, as a fill round does. */
-  private final class Filling(inner: IdentityLookups, rnd: Random) extends IdentityLookups {
-    private val openQueries = mutable.HashSet.empty[CandidateQuery]
-    private val openFilms   = mutable.HashSet.empty[Int]
-    private val seenQueries = mutable.HashSet.empty[CandidateQuery]
-    private val seenFilms   = mutable.HashSet.empty[Int]
-    // A question is a gap the first time it is seen with probability 0.3, and stays one until answered.
-    private def gapQuery(q: CandidateQuery) = { if (seenQueries.add(q) && rnd.nextDouble() < 0.3) openQueries += q; openQueries(q) }
-    private def gapFilm(id: Int)            = { if (seenFilms.add(id) && rnd.nextDouble() < 0.3) openFilms += id; openFilms(id) }
-    def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
-    def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
-    def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (gapQuery(q)) Answer.Unknown else inner.candidates(q)
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (gapFilm(id)) Answer.Unknown else inner.film(id)
-    /** Answer about half of the open questions; what changed. */
-    def answer(): AnswersChanged = {
-      val queries = openQueries.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
-      val films   = openFilms.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
-      openQueries --= queries; openFilms --= films
-      AnswersChanged(queries, films)
-    }
-  }
-
-  private def signature(decisions: Seq[ResolverDecision], familyOf: Map[ListingKey, Int]) =
-    (decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet,
-     familyOf.groupMap(_._2)(_._1).values.map(_.toSet).toSet)
-  private def signature(r: Resolution): (Set[(Set[ListingKey], Option[Int], Long, ResolverDecision.Basis)], Set[Set[ListingKey]]) =
-    signature(r.decisions, r.familyOf)
 
   /** The first event after which the model differs from a resolve of what it holds. */
   private def divergence(seed: Long, mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None): Option[String] = {
     val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
-    val rnd     = new Random(seed)
-    val lookups = new Filling(corpus.lookups, new Random(seed * 31))
+    val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
     val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, mutation = mutation)
-    val held    = mutable.LinkedHashMap.empty[ListingKey, Listing]
-    val pending = mutable.Queue.from(rnd.shuffle(corpus.listings))
-    Iterator.range(0, 40).flatMap { step =>
-      val label = rnd.nextInt(10) match {
-        case 0 | 1 | 2 | 3 if pending.nonEmpty =>
-          val batch = Seq.fill(1 + rnd.nextInt(6))(()).flatMap(_ => Option.when(pending.nonEmpty)(pending.dequeue()))
-          batch.foreach(l => held(l.key) = l); model.listingsSeen(batch); s"seen ${batch.size}"
-        case 4 | 5 if held.nonEmpty =>
-          val gone = rnd.shuffle(held.keys.toSeq).take(1 + rnd.nextInt(3))
-          gone.foreach(held.remove); pending ++= gone.flatMap(key => corpus.listings.find(_.key == key))
-          model.listingsGone(gone); s"gone ${gone.size}"
-        case _ =>
-          val answered = lookups.answer(); model.answersChanged(answered)
-          s"answered ${answered.queries.size}+${answered.films.size}"
+    val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
+    random.events.zipWithIndex.flatMap { case (event, step) =>
+      event match {
+        case IdentityEvent.Seen(listings) => model.listingsSeen(listings)
+        case IdentityEvent.Gone(keys)     => model.listingsGone(keys)
+        case IdentityEvent.Answered(c)    => model.answersChanged(c)
       }
-      val expected = IdentityResolver.resolveWith(held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
-      Option.when(signature(model.decisions, model.familyOf) != signature(expected))(s"seed $seed, step $step ($label)")
+      val expected = IdentityResolver.resolveWith(random.held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+      Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(expected))(s"seed $seed, step $step (${event.label})")
     }.nextOption()
   }
 
@@ -92,27 +56,12 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
       val alone = IdentityResolver.resolveWith(keys.map(byKey), lookups, normalizer, calibration, IdentityResolver.Mutation.None,
         corpus = Option.when(withContext)(context))
       val mine = keys.toSet
-      Option.when(signature(alone)._1 != signature(whole)._1.filter(_._1.forall(mine)))(keys.map(_.toString).mkString(", "))
+      Option.when(ResolutionSignature.of(alone)._1 != ResolutionSignature.of(whole)._1.filter(_._1.forall(mine)))(keys.map(_.toString).mkString(", "))
     }.nextOption()
   }
 
-  /** Families whose decisions hang on what OTHER families hold — the corpus-wide facts
-   *  (`CorpusContext`) an incremental model must keep current. Taken from the house incidents
-   *  (`IdentityResolverCasesSpec`): a banner's house is learned from its other works' records. */
-  private val crossFamily: Seq[(String, Seq[Listing], IdentityLookups)] = {
-    import FilmTable.{F, listing}
-    import models.{Helios, KinoApollo, Multikino, Rialto}
-    val rboFilms = Seq(F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),
-      F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 3),
-      F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 5),
-      F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 5))
-    def rbo(work: String) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
-    def met(work: String) = Seq(Multikino, Rialto).map(listing(_, s"Met Opera 2026-27: $work"))
-    Seq(
-      ("a banner's house learned from its other works (RBO's Manon)",
-        rbo("Swan Lake") ++ rbo("Alice's Adventures in Wonderland") ++ rbo("Manon") ++ met("Manon") ++ met("Macbeth"),
-        new FilmTable(rboFilms, normalizer)))
-  }
+  private val crossFamily: Seq[(String, Seq[Listing], IdentityLookups)] =
+    CrossFamilyCorpora.all(normalizer).filter(_.decides).map(corpus => (corpus.label, corpus.listings, corpus.lookups))
 
   /** The case's families arriving one at a time, in every order (and leaving again): the first
    *  event after which the model differs from a resolve of what it holds. */
@@ -125,7 +74,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
       val held  = mutable.LinkedHashMap.empty[ListingKey, Listing]
       def check(label: String) = {
         val expected = IdentityResolver.resolveWith(held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
-        Option.when(signature(model.decisions, model.familyOf) != signature(expected))(s"order ${order.mkString}: $label")
+        Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(expected))(s"order ${order.mkString}: $label")
       }
       order.iterator.flatMap { i => groups(i).foreach(l => held(l.key) = l); model.listingsSeen(groups(i)); check(s"+$i") } ++
         order.reverse.iterator.flatMap { i => held --= groups(i).map(_.key); model.listingsGone(groups(i).map(_.key)); check(s"-$i") }
@@ -140,6 +89,113 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   it should "be caught on a cross-family case when it ignores the corpus context (the teeth)" in {
     crossFamily.filter { case (_, listings, lookups) => arrivals(listings, lookups, IncrementalResolver.Mutation.IgnoreContext).isEmpty }
       .map(_._1) shouldBe empty
+  }
+
+  /** The events of a random sequence merged into batches — consecutive events whose listings do not
+   *  clash — the model equal to a resolve of what it holds after each batch. */
+  private def batchedDivergence(seed: Long): Option[String] = {
+    val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
+    val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
+    val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
+    val events  = random.events.map(event => event -> random.held.toMap).toSeq
+    val batches = events.foldLeft(Vector.empty[Vector[(IdentityEvent, Map[ListingKey, Listing])]]) { case (acc, next) =>
+      def keys(event: IdentityEvent): Set[ListingKey] = event match {
+        case IdentityEvent.Seen(ls) => ls.map(_.key).toSet
+        case IdentityEvent.Gone(ks) => ks.toSet
+        case _                      => Set.empty
+      }
+      acc.lastOption match {
+        case Some(open) if open.size < 3 && !open.exists(e => (keys(e._1) intersect keys(next._1)).nonEmpty) => acc.init :+ (open :+ next)
+        case _ => acc :+ Vector(next)
+      }
+    }
+    batches.zipWithIndex.iterator.flatMap { case (batch, index) =>
+      val seen     = batch.collect { case (IdentityEvent.Seen(ls), _) => ls }.flatten
+      val gone     = batch.collect { case (IdentityEvent.Gone(ks), _) => ks }.flatten
+      val answered = batch.collect { case (IdentityEvent.Answered(c), _) => c }
+      model.batch(seen, gone, AnswersChanged(answered.flatMap(_.queries).toSet, answered.flatMap(_.films).toSet))
+      val expected = IdentityResolver.resolveWith(batch.last._2.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+      Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(expected))(s"seed $seed, batch $index (${batch.map(_._1.label).mkString(", ")})")
+    }.nextOption()
+  }
+
+  it should "equal a resolve of what it holds after every batch of events" in {
+    Seeds.flatMap(batchedDivergence) shouldBe empty
+  }
+
+  it should "equal a resolve when it takes a corpus whole, component by component, and after events that follow" in {
+    val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
+      .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
+    cases.flatMap { case (label, listings, lookups) =>
+      val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+      def differs(expected: Iterable[Listing]) =
+        ResolutionSignature.of(model) != ResolutionSignature.of(IdentityResolver.resolveWith(expected, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
+      val (half, rest) = listings.splitAt(listings.size / 2)
+      model.seed(listings)
+      val seeded = Option.when(differs(listings))(s"$label: seeded")
+      model.listingsGone(half.map(_.key))
+      val left   = Option.when(differs(rest))(s"$label: after half left")
+      model.listingsSeen(half)
+      val back   = Option.when(differs(listings))(s"$label: after half came back")
+      Seq(seeded, left, back).flatten
+    } shouldBe empty
+  }
+
+  it should "take a corpus whole resolving each of its families about once" in {
+    val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
+    val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.seed(corpus.listings)
+    val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
+    model.familiesResolved should be <= (whole.families * 2)
+  }
+
+  "the incremental resolver's resolution" should "carry the whole resolve's decisions, families and decided films" in {
+    val corpus = GeneratedIdentityCorpus.generate(3L, normalizer, films = 12, listings = 48)
+    val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.seed(corpus.listings)
+    val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+    ResolutionSignature.of(model.resolution) shouldBe ResolutionSignature.of(whole)
+    model.resolution.films shouldBe whole.films
+  }
+
+  "the incremental resolver's gaps" should "name what the lookups cannot answer yet, and only what the source never answers once the fill ran dry" in {
+    val corpus  = GeneratedIdentityCorpus.generate(4L, normalizer, films = 12, listings = 48)
+    val lookups = new FillingLookups(corpus.lookups, new Random(4L))
+    val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.seed(corpus.listings)
+    model.gaps.isEmpty shouldBe false
+    Iterator.continually(lookups.answer()).takeWhile(!_.isEmpty).foreach(model.answersChanged)
+    // The generated source leaves some questions unanswered for good (its GAPS): only those remain.
+    model.gaps.queries.filter(query => corpus.lookups.candidates(query).isKnown) shouldBe empty
+    model.gaps.films.filter(id => corpus.lookups.film(id).isKnown) shouldBe empty
+    ResolutionSignature.of(model) shouldBe
+      ResolutionSignature.of(IdentityResolver.resolveWith(corpus.listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
+  }
+
+  "a detail page answered anew" should "move its listing as the evidence it adds decides" in {
+    import FilmTable.{F, listing}
+    import models.{Helios, Multikino}
+    val films   = Seq(F(1, "Lalka", 1968, "Wojciech Has", 159), F(2, "Lalka", 2025, "Maciej Kawalski", 112))
+    val table   = new FilmTable(films, normalizer)
+    var credits = Map.empty[ListingKey, Seq[String]]
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = true
+      def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(credits.get(l.key).map(ds => DetailFacts(None, ds, None, None)))
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+    }
+    val bare  = listing(Helios, "Lalka")
+    val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
+    val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.listingsSeen(Seq(bare, dated))
+    def whole = IdentityResolver.resolveWith(Seq(bare, dated), lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
+    credits = Map(bare.key -> Seq("Maciej Kawalski"))
+    model.answersChanged(AnswersChanged(Set.empty, Set.empty, Set(bare.key)))
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
+    model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
   "the incremental resolver's work" should "re-resolve only the families an event can move" in {
