@@ -110,9 +110,12 @@ final class IdentityModelService(
 
   /** Take up the model the store kept, over the archive's listings; what queued meanwhile follows. */
   def takeUp(): Unit = {
-    val engine = newModel()
+    val started = System.nanoTime()
+    val engine  = newModel()
     engine.restore(archive())
     model = Some(engine)
+    // The gauges from the moment the model is up, not from its first event.
+    metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, (System.nanoTime() - started) / 1e9))
     logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
       s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()})")
   }

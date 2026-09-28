@@ -120,6 +120,18 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
     world.reads.changedBy(Seq("q:" + CandidateQuery.Title("Matilda").sortKey)).queries shouldBe empty
   }
 
+  it should "report its families as soon as it has taken up its model, before any event" in {
+    val world    = new World
+    world.scrapes = Map(Multikino -> Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")))
+    val reported = scala.collection.mutable.ArrayBuffer.empty[ModelBatch]
+    val service  = new IdentityModelService(
+      () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
+      world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = () })
+    service.takeUp()
+    reported.map(_.families) shouldBe Seq(2)
+  }
+
   it should "drain nothing before it has taken up its model" in {
     val world   = new World
     val service = world.service()
