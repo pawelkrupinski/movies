@@ -111,6 +111,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
           weights shouldBe shipped.scopes(scope).signals(signal)
       }
     }
+    refit.version shouldBe shipped.version.stripSuffix(IdentityCalibrate.MonotoneSuffix) + IdentityCalibrate.MonotoneSuffix
     // Refitting again changes nothing: the transform is idempotent.
     IdentityCalibrate.monotoneOnly(refit) shouldBe refit
   }
