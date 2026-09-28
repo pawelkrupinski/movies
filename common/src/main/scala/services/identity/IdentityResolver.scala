@@ -42,7 +42,7 @@ import scala.collection.mutable
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
  *           and the winner, if accepted — and no rival the title names by the same pieces fits the
  *           pooled facts better, nor is it one of two films the title names by disjoint pieces
- *           (`pooledAccepted`) — becomes every member's film. A winner some members' own
+ *           (`Acceptance.pooled`) — becomes every member's film. A winner some members' own
  *           evidence denies is not a veto of the whole cluster: those members split off and the
  *           rest take it when their own pooled facts carry it (`vote`). A winner no member's title
  *           names — only a credited director's filmography reached it — must also be the one
@@ -87,16 +87,6 @@ object IdentityResolver {
   private def placesOf(cinema: models.Cinema): Seq[Seq[String]] =
     (Seq(cinema.displayName) ++ models.City.forCinema(cinema).map(_.labels.nominative))
       .map(services.movies.TitleContainment.tokens).filter(_.nonEmpty)
-
-  /** How much as ITS OWN a title relation names a record: by the record's own title or original
-   *  title ([[NamedAsItsOwn]]), by one of the alternative titles the database files beside them,
-   *  or not whole (0). */
-  private val NamedAsItsOwn = 2
-  private def namedAs(titleRelation: Option[String]): Int = titleRelation match {
-    case Some("exact") | Some("original") => NamedAsItsOwn
-    case Some("alternative")              => 1
-    case _                                => 0
-  }
 
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
@@ -179,30 +169,9 @@ object IdentityResolver {
       id -> c.copy(film = IdentityMeasures.withVenueTitles(c.film, venueTitles.getOrElse(id, Nil))) }
 
     // ── scoring ──────────────────────────────────────────────────────────────────────────
-    /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
-     *  1-based). `seasonProduction`: the film's record names the listing's season production
-     *  (`IdentityMeasures.namesSeasonProduction`). `deniedByPin`: a pin, not the listing's
-     *  evidence, is (part of) why it is `denied`. */
-    final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean,
-                            listing: IdentityMeasures.Listing, rank: Option[Int], seasonProduction: Boolean = false,
-                            deniedByPin: Boolean = false)
+    val acceptance = new Acceptance(calibration)
+    val weights    = acceptance.weights
 
-    /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
-     *  title and country measures — as opposed to the film database's ranking priors (search rank,
-     *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
-    val Priors = IdentityMeasures.RankingPriors ++ IdentityMeasures.PooledMeasures
-    def ownContributions(measures: Map[String, Measure]): Double =
-      calibration.contributions(ListingFilm, measures).collect { case (name, w) if !Priors(name) => w }.sum
-    /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
-     *  film the listing's facts do not contradict is never vetoed merely for ranking second in
-     *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
-     *  different film. */
-    def factsProbability(measures: Map[String, Measure]): Double = {
-      // A measure that only AGREES (`IdentityMeasures.AgreesOnly`) never pushes toward a veto.
-      val veto = calibration.contributions(ListingFilm, measures).collect {
-        case (name, w) if !Priors(name) && !(IdentityMeasures.AgreesOnly(name) && w < 0) => w }.sum
-      calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
-    }
     /** Which house each listing banner is, learned from how every node's candidates bill its works
      *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
      *  naming it, and a season production must be of it when it is known. */
@@ -218,7 +187,7 @@ object IdentityResolver {
     def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
         (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
-        ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined
+        ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).isDefined
     }
 
     /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
@@ -279,11 +248,10 @@ object IdentityResolver {
         // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
         // "Niesamowite przygody skarpetek 4. Do roboty! – zestaw" is part 4, not the 2025 first set
         // whose animators it credits).
-        def numeral(s: Scored) = s.measures.get("numeral").collect { case IdentityMeasures.Category(c) => c }
-        val instalment = scored.exists(s => !s.denied && numeral(s).contains("same"))
+        val instalment = scored.exists(s => !s.denied && s.category("numeral").contains("same"))
         scored.map(s =>
           if (titled && !IdentityMeasures.NamingRelations(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures)) s.copy(denied = true)
-          else if (instalment && numeral(s).exists(IdentityMeasures.OtherInstalment)) s.copy(denied = true)
+          else if (instalment && s.category("numeral").exists(IdentityMeasures.OtherInstalment)) s.copy(denied = true)
           else s)
           .sortBy(s => (-s.p, s.c.tmdbId))
       }
@@ -317,208 +285,6 @@ object IdentityResolver {
       }
     }
 
-    def ownEvidence(s: Scored): Double = ownContributions(s.measures)
-    /** Does anything the listing PUBLISHED weigh against the film — an own-fact measure the listing
-     *  did not leave missing, with a negative weight? */
-    def speaksAgainst(s: Scored): Boolean =
-      calibration.contributions(ListingFilm, s.measures).exists { case (name, w) =>
-        !Priors(name) && w < 0 && !s.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing])
-      }
-
-    /** The listing's EXACT TOP HIT, accepted on what the calibration measured for its evidence as a
-     *  CLASS (`IdentityCalibration.classProbability`): the one film its whole title names exactly
-     *  that its own title search returned first, in TMDB's order ([[IdentityMeasures.exactTopHits]]),
-     *  when the listing's own evidence rules it out on nothing, published nothing against it, and
-     *  gives no rival a better fit ([[fitsBetter]]). A bare title credits it with the naive-Bayes sum of missing
-     *  facts, a low popularity and its same-titled rivals, which undersells what the class measured
-     *  on the labels; here the search standing LENDS confidence and never withdraws it. */
-    def topHit(ranked: Seq[Scored]): Option[(Scored, Double)] = ranked.headOption.flatMap { any =>
-      val eligible = ranked.filterNot(_.denied)
-      IdentityMeasures.exactTopHits(any.listing, ranked.map(s => (s.c.tmdbId, s.c.film, s.rank))) match {
-        case Seq(id) =>
-          eligible.find(_.c.tmdbId == id)
-            .filter(best => !speaksAgainst(best) && eligible.forall(r => (r eq best) || !fitsBetter(r, best)))
-            .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(cp => best -> math.max(best.p, cp)))
-            .filter(x => calibration.showsRatings(x._2))
-        case _ => None
-      }
-    }
-
-    /** Does the listing's own evidence fit `rival` better than `top`, its exact top hit? A rival the
-     *  listing's title does not even NAME ([[IdentityMeasures.NamingRelations]]) is weighed only on
-     *  the facts `top`'s record answers: a credit or a running time the record leaves missing is
-     *  missing evidence, not evidence against it. Otherwise a director's other work, reached by
-     *  walking the credit, out-weighs the very record the title names on the facts that record
-     *  lacks (Ocine's "BTS … IN BUENOS AIRES: LIVE VIEWING", 195 minutes, "Jungjae HA": TMDB's
-     *  exact, rank-1 record credits nobody and states no runtime; his "… in Busan" credits him at
-     *  195). A rival the title names as well — a namesake, an edition — is weighed on everything:
-     *  there the facts are what tells the two apart. */
-    def fitsBetter(rival: Scored, top: Scored): Boolean =
-      if (rival.measures.get("title").exists { case IdentityMeasures.Category(c) => IdentityMeasures.NamingRelations(c); case _ => false })
-        ownEvidence(rival) > ownEvidence(top)
-      else {
-        val unanswered = top.measures.collect { case (name, IdentityMeasures.MissingFilm) => name }.toSet
-        def answered(s: Scored) = ownContributions(s.measures.filterNot { case (name, _) => unanswered(name) })
-        answered(rival) > answered(top)
-      }
-
-    /** The probability that `film` is the listing's film — the decision's confidence, on the scale
-     *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
-     *  evidence class's when the film is the listing's accepted exact top hit, or the one the priors
-     *  lent when the listing's facts accepted it ([[calibrated]]). */
-    def confidenceOf(ranked: Seq[Scored], film: Int): Double =
-      topHit(ranked).filter(_._1.c.tmdbId == film).map(_._2)
-        .orElse(calibrated(ranked).filter(_._1.c.tmdbId == film).map(_._2))
-        .orElse(pooledAccepted(ranked).filter(_._1.c.tmdbId == film).map(_._2))
-        .getOrElse(ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p))
-    /** `best`'s probability with the database's ranking priors and the family's pooled count
-     *  LENDING confidence but never withdrawing it — each one's negative weight capped at 0 — when
-     *  the listing's own facts decide: it compares a fact, nothing it published weighs against the
-     *  film, and its facts favour the film over every other eligible candidate. Otherwise the
-     *  calibrated probability: a namesake the facts fit alike is told apart only by the ranking,
-     *  which then keeps its full weight. */
-    def priorsLent(best: Scored, eligible: Seq[Scored]): Double =
-      if (!IdentityMeasures.comparesAFact(ListingFilm, best.measures) || speaksAgainst(best) ||
-          eligible.exists(r => (r ne best) && ownEvidence(r) >= ownEvidence(best))) best.p
-      else {
-        val scope = calibration.scopes(ListingFilm)
-        val lent  = calibration.contributions(ListingFilm, best.measures).map { case (name, w) => if (Priors(name)) math.max(0.0, w) else w }.sum
-        math.max(best.p, scope.calibration(scope.prior + lent))
-      }
-    /** The best eligible candidate, when its probability — the priors lending, never withdrawing
-     *  ([[priorsLent]]) — clears the calibration's cut. */
-    def calibrated(ranked: Seq[Scored]): Option[(Scored, Double)] = {
-      val eligible = ranked.filterNot(_.denied)
-      eligible.headOption.map(b => b -> priorsLent(b, eligible)).filter(x => calibration.showsRatings(x._2))
-    }
-    /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
-     *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
-     *  film on that identity, whatever the calibrated probability (the fitted weights do not read a
-     *  season yet): a season names its production as a published year names a film, and the
-     *  namesakes it rules out are already denied (`ListingConstraints.seasonsApart`).
-     *  `Some(None)`: two records do (two houses' stagings of one work in one season) and the
-     *  listing's own facts favour neither — ambiguity, so nothing is taken, on the season or on
-     *  the database's ranking. The confidence stays the calibrated probability. */
-    def seasonProductionOf(ranked: Seq[Scored]): Option[Option[(Scored, Double)]] =
-      ranked.filter(s => !s.denied && s.seasonProduction).sortBy(s => (-ownEvidence(s), s.c.tmdbId)) match {
-        case Seq()        => None
-        case Seq(one)     => Some(Some(one -> one.p))
-        case a +: b +: _  => Some(Option.when(ownEvidence(a) > ownEvidence(b))(a -> a.p))
-      }
-    /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
-     *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
-     *  — "Radiohead X Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu"), which the listing
-     *  names by its whole title MORE as its own than it names the film ([[namedAs]]). The listing's
-     *  facts chose the work, and an edition carries its work's facts — the venue credits Murnau,
-     *  TMDB the edition's maker — so they do not deny the edition; a pin still does. With the
-     *  confidence of the work. The film itself when the listing names it as its own — by its title
-     *  or its own original title — or no edition, or two.
-     *
-     *  A work the title names only by one of its ALTERNATIVE titles, while another record carries
-     *  that title as its own, is named as closely by the title as that record: TMDB files "Caligula:
-     *  The Ultimate Cut" among the 1979 "Caligula"'s alternatives beside the re-cut's own record, and
-     *  "Nosferatu: A Symphony of Horror" among Murnau's beside David Lee Fisher's 2023 remake. Then
-     *  the record is an edition by the work's OWN titles, and the listing's credit decides: a record
-     *  crediting another person than the listing's is another film, one crediting nobody else is the
-     *  work's edition — its running time is the cut's own. */
-    def editionNamed(ranked: Seq[Scored])(accepted: (Scored, Double)): (Scored, Double) = {
-      val (work, confidence) = accepted
-      def category(s: Scored, measure: String) = s.measures.get(measure).collect { case IdentityMeasures.Category(c) => c }
-      val named = namedAs(category(work, "title"))
-      // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
-      if (named == NamedAsItsOwn || category(work, "originalTitle").contains("match")) accepted
-      else ranked.filter(e => (e ne work) && !e.deniedByPin && namedAs(category(e, "title")) > named && (
-        if (named == 0) IdentityMeasures.editionOf(e.c.film, work.c.film)
-        else IdentityMeasures.editionOf(e.c.film, work.c.film.copy(alternativeTitles = Nil)) && !category(e, "director").contains("different"))) match {
-        case Seq(edition) => edition -> confidence
-        case _            => accepted
-      }
-    }
-
-    /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
-     *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
-     *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
-     *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
-    def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
-      val eligible = ranked.filterNot(_.denied)
-      seasonProductionOf(ranked).getOrElse(soleWork(ranked).orElse(
-        calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
-          .orElse(topHit(ranked)).orElse(directorsWork(ranked)))).map(editionNamed(ranked))
-    }
-    /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
-     *  the director it credits, that no published year or runtime contradicts
-     *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`; three venues' "Leonas" is Cotelo's "Leonas, el
-     *  instinto más salvaje", fifth in TMDB's search for the word):
-     *  Multikino's "Cirque du Soleil: Kurios - Gabinet osobliwości" by Michel Laprise is his "…:
-     *  KURIOS - Cabinet des curiosités". The pipeline took such hits by their director on 3,247
-     *  listings with no wrong match; two candidates fitting alike (a director's sequels of one
-     *  work) are no answer. */
-    /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
-    def contradicted(s: Scored): Boolean =
-      s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 1; case _ => false } ||
-        s.measures.get("runtime.delta").exists { case IdentityMeasures.Number(d) => d >= 30; case _ => false }
-
-    /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
-     *  candidate, and no other candidate is one the title names — the rest only a director's
-     *  filmography reached. US venues' "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES" (×1,915 with São
-     *  Paulo) is "…: Live Viewing", not the 2022 Seoul concert film its director also made; neither
-     *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two"). */
-    def soleWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
-      val eligible = ranked.filterNot(_.denied)
-      def named(s: Scored) = s.measures.get("title").exists { case IdentityMeasures.Category(v) => IdentityMeasures.NamingRelations(v); case _ => false }
-      eligible.filter(s => s.rank.contains(1) && IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(_ >= 2) && !contradicted(s)) match {
-        case Seq(one) if !eligible.exists(o => (o ne one) && named(o)) => Some(one -> one.p)
-        case _                                                          => None
-      }
-    }
-
-    def directorsWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
-      // The listing is the film's work alone ("Leonas" of "Leonas, el instinto más salvaje"); a
-      // one-word work also needs the published year, a word being many films' title.
-      def bareWork(s: Scored) = IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(words =>
-        words >= 2 || s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d <= 1; case _ => false })
-      ranked.filterNot(_.denied).filter(s => s.measures.get("director").contains(IdentityMeasures.Category("same_person")) &&
-        (IdentityMeasures.sharesWork(s.listing, s.c.film) || bareWork(s)) && !contradicted(s)) match {
-        case Seq(one) => Some(one -> one.p)
-        case _        => None
-      }
-    }
-
-    /** Do the listing's own facts favour `best` over `other`? Its own evidence — without the title
-     *  when the title names the two by disjoint pieces ([[IdentityMeasures.namedApart]]: "Lalka
-     *  (Dolly)"), since it then names both alike and how each piece spells its film is no fact
-     *  about which film the listing is. */
-    def favours(best: Scored, other: Scored): Boolean =
-      if (IdentityMeasures.namedApart(best.listing, best.c.film, other.c.film)) factsOf(best) > factsOf(other)
-      else ownEvidence(best) > ownEvidence(other)
-    /** What the listing's published FACTS alone contribute: its own evidence without the title relation. */
-    def factsOf(s: Scored): Double =
-      ownEvidence(s) - calibration.contributions(ListingFilm, s.measures).collect { case ("title", w) => w }.sum
-
-    /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
-     *  best eligible candidate the calibration accepts — unless the title names another candidate
-     *  by the very same pieces and the pooled FACTS ([[factsOf]]) fit that one better: four
-     *  "Camino dla opornych" whose original title "Santiago" names two films, and whose 113
-     *  minutes fit the fourth the search returned, do not take the 93-minute first. A candidate
-     *  the title names less specifically ("Mad Max" inside "Mad Max 2: The Road Warrior") or not
-     *  at all is no such rival, and namesakes the facts fit alike stay the calibration's to tell
-     *  apart — its ranking priors and the family's venue count are measured evidence there (a
-     *  bare "Resident Evil" at 148 venues). Two films the title names by disjoint pieces
-     *  ([[IdentityMeasures.namedApart]]) are not namesakes: only the facts may pick one of
-     *  "Lalka (Dolly)"'s two. Each the edition of it the listing names, if any ([[editionNamed]]). */
-    def pooledAccepted(ranked: Seq[Scored]): Option[(Scored, Double)] = {
-      val eligible = ranked.filterNot(_.denied)
-      seasonProductionOf(ranked).getOrElse(
-        calibrated(ranked).filter { case (best, _) =>
-          eligible.forall(r => (r eq best) || {
-            val pieces = IdentityMeasures.namingPieces(r.listing, r.c.film)
-            val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.c.film)
-            val apart  = IdentityMeasures.namedApart(best.listing, best.c.film, r.c.film)
-            !(alike && factsOf(r) > factsOf(best)) && !(apart && factsOf(r) >= factsOf(best))
-          })
-        }.orElse(topHit(ranked))).map(editionNamed(ranked))
-    }
-
     /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
      *  whole spelling, its original title or a segment) names the film's and not another
      *  instalment of its series (`IdentityMeasures.namesFilm`)? */
@@ -531,9 +297,9 @@ object IdentityResolver {
      *  among a director's films the listing's facts favour another of (a lecture on "Trzy kolory:
      *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
     def votedFor(cluster: Seq[Node], ranked: Seq[Scored]): Option[(Scored, Double)] =
-      pooledAccepted(ranked).filter { case (s, _) =>
+      acceptance.pooled(ranked).filter { case (s, _) =>
         cluster.exists(titleNames(_, s.c)) ||
-          ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && ownEvidence(r) <= ownEvidence(s))
+          ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && weights.own(r) <= weights.own(s))
       }
 
 
@@ -589,7 +355,7 @@ object IdentityResolver {
       scopes = nodes.groupBy(n => familyOf(n.id)).map { case (f, ms) => f -> new FamilyScope(ms.sortBy(_.id)) }
       bestOf = nodes.groupBy(n => familyOf(n.id)).toSeq.flatMap { case (f, members) =>
         val scope = scopes(f)
-        withoutSiblingDenials(members, scope, members.flatMap(n => acceptedAlone(scope.of(n)).map(n.id -> _)).toMap)
+        withoutSiblingDenials(members, scope, members.flatMap(n => acceptance.alone(scope.of(n)).map(n.id -> _)).toMap)
       }.toMap
       val grown = nodes.map(n => n.id -> (matchedIds.getOrElse(n.id, Set.empty[Int]) ++ bestOf.get(n.id).map(_._1.c.tmdbId) ++
         pinnedFilm.get(n.id))).toMap
@@ -723,13 +489,6 @@ object IdentityResolver {
         .map(_.map(nodeById))
     }
 
-    /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
-     *  class, or the ranking priors lending ([[priorsLent]]). */
-    def liftedBy(ranked: Seq[Scored], s: Scored, confidence: Double): String =
-      if (confidence <= s.p) ""
-      else if (topHit(ranked).exists(_._1.c.tmdbId == s.c.tmdbId)) " as its exact top hit"
-      else " with the ranking priors lending, never withdrawing"
-
     /** The GROUP VOTE of a cluster no member matched alone: each voting member → the film and its
      *  confidence. The pooled scoring marks a film denied when ANY member's own evidence denies it
      *  (`FamilyScope.pooled`). When that vetoes the cluster's best film but the cluster's POOLED
@@ -740,15 +499,13 @@ object IdentityResolver {
      *  published fact compared (`IdentityMeasures.comparesAFact`), and `factsProbability`, without
      *  the ranking priors, clearing the cut: bare siblings never outvote a member's denial on a title
      *  and the database's ranking. */
-    def carriedByOwnFacts(s: Scored): Boolean =
-      IdentityMeasures.comparesAFact(ListingFilm, s.measures) && calibration.showsRatings(factsProbability(s.measures))
     def vote(cluster: Seq[Node], scope: FamilyScope): Seq[(String, (Int, Double))] = {
       def to(voters: Seq[Node], accepted: (Scored, Double)) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
       val ranked = scope.pooled(cluster)
-      votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
+      votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && weights.carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
         val rest = cluster.filterNot(n => scope.of(n).exists(o => o.c.tmdbId == vetoed.c.tmdbId && o.denied))
         Option.when(rest.nonEmpty && rest.size < cluster.size)(rest).flatMap(rest => votedFor(rest, scope.pooled(rest))
-          .filter { case (s, _) => s.c.tmdbId == vetoed.c.tmdbId && carriedByOwnFacts(s) }
+          .filter { case (s, _) => s.c.tmdbId == vetoed.c.tmdbId && weights.carriedByOwnFacts(s) }
           .map(to(rest, _))).getOrElse(Nil)
       })
     }
@@ -804,7 +561,7 @@ object IdentityResolver {
         cluster.flatMap(n => familyTaken.get(n.id)).filter(_._1 == f).map(_._2).minOption)
       val confidence =
         if (pinned) 1.0
-        else film.fold(eligible.map(1 - _.p).product)(f => math.max(confidenceOf(scored, f), familyBound.getOrElse(0.0)))
+        else film.fold(eligible.map(1 - _.p).product)(f => math.max(acceptance.confidenceOf(scored, f), familyBound.getOrElse(0.0)))
       val unknown = cluster.flatMap(n => queriesOf(n.id)).distinct.count(q => !answers(q).isKnown)
       val basis =
         if (pinned) ResolverDecision.Basis.Pinned
@@ -815,7 +572,7 @@ object IdentityResolver {
         else ResolverDecision.Basis.BelowThreshold
       val ids   = cluster.map(_.id).toSet
       val own   = cluster.flatMap(n => bestOf.get(n.id).map { case (s, c) =>
-        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)}${liftedBy(scope.of(n), s, c)} " +
+        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)}${acceptance.liftedBy(scope.of(n), s, c)} " +
           s"(${calibration.explain(ListingFilm, s.measures)})" })
       val joins = edges.filter(e => e.must && ids(e.a) && ids(e.b)).groupBy(_.reason).toSeq.sortBy(_._1)
         .map { case (r, es) => s"joined by $r ×${es.size}" }
