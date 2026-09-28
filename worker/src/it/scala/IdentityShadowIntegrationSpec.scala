@@ -253,6 +253,19 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       IdentityDisagreements.write(disagreementsDir.resolve(s"listings-${c.label}.jsonl"), listings.map(l =>
         IdentityDisagreements.listingJson(c.country.code, if (c.isHardCluster) "hc" else "full", l, evidenceOf(l.key), pipelineFilm(l.key),
           clusterIndex(l.key), decisionOf(l.key), resolution, heldOutLabels.get(l.key.toString))))
+      // The absolute referee on every listing, old and new alone: an old match judged wrong counts as
+      // unresolved (unresolved beats wrong); a new one is the resolver's error, which must not grow.
+      val judged = listings.map { l =>
+        val e = evidenceOf(l.key)
+        (l, pipelineFilm(l.key).map(a => IdentityReferee.judge(e, a.film)), resolverFilm(l.key).map(a => IdentityReferee.judge(e, a.film)))
+      }
+      def tally(side: Seq[Option[(IdentityReferee.Verdict, Seq[String])]]) =
+        IdentityReferee.Verdict.values.map(v => s"${v.toString.toLowerCase} ${side.count(_.exists(_._1 == v))}").mkString(" / ")
+      report.line(s"[${c.label}] referee (each side alone): old ${tally(judged.map(_._2))} | new ${tally(judged.map(_._3))}")
+      val newWrong = judged.filter(_._3.exists(_._1 == IdentityReferee.Verdict.Wrong))
+      if (newWrong.nonEmpty) report.line(s"[${c.label}] referee: the RESOLVER's wrong matches (${newWrong.size}):\n    " +
+        newWrong.groupBy(j => (j._1.rawTitle, resolverFilm(j._1.key).map(_.tmdbId))).toSeq.sortBy(-_._2.size).take(20)
+          .map { case ((t, id), js) => s"'$t' → ${id.getOrElse("—")} ×${js.size} (denied by ${js.head._3.get._2.mkString(",")})" }.mkString("\n    "))
       val unlabelledCells = cellLines.filter { case (_, _, ks, _) => ks.forall(k => !heldOutLabels.contains(k.toString)) }
       val adjudicated = unlabelledCells.groupMapReduce(_._2.verdict)(_ => 1)(_ + _)
       val pipelineRightMoved = unlabelledCells.filter { case (kind, adj, _, _) => kind == "moved" && adj.verdict == "pipeline-right" }

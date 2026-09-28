@@ -124,7 +124,13 @@ object IdentityDisagreements {
       "resolver" -> decision.film.flatMap(id => resolution.films.get(id).map(filmFacts(id, _))).getOrElse[JsValue](JsNull),
       "cluster" -> cluster, "basis" -> decision.basis.toString, "confidence" -> decision.confidence,
       "explanation" -> decision.explanation.take(4),
-      "label" -> label.fold[JsValue](JsNull)(x => Json.obj("tmdbId" -> x.tmdbId, "corroborated" -> x.corroborated)))
+      "label" -> label.fold[JsValue](JsNull)(x => Json.obj("tmdbId" -> x.tmdbId, "corroborated" -> x.corroborated)),
+      // The absolute referee, each side alone (`IdentityReferee`).
+      "pipelineVerdict" -> pipeline.fold[JsValue](JsNull)(a => verdict(IdentityReferee.judge(e, a.film))),
+      "resolverVerdict" -> decision.film.flatMap(resolution.films.get).fold[JsValue](JsNull)(f => verdict(IdentityReferee.judge(e, f))))
+
+  private def verdict(v: (IdentityReferee.Verdict, Seq[String])): JsValue =
+    Json.obj("verdict" -> v._1.toString.toLowerCase, "denials" -> v._2)
 
   def write(path: Path, lines: Seq[JsObject]): Unit = {
     Files.createDirectories(path.getParent)
