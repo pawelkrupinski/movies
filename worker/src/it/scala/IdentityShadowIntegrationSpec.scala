@@ -113,6 +113,20 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val (r, secs) = timed(IdentityResolver.resolve(focused, lookups, c.normalizer, calibration))
         report.line(f"[${c.label}] FOCUS ${f.phrases.map(_.mkString(" ")).mkString(",")}: ${focused.size} listing(s) resolved alone in $secs%.1fs")
         focused.map(l => r.decisionOf(l.key)).distinct.foreach(d => report.line(d.render))
+        // Old against new for the focused listings, each side refereed alone: which film each
+        // gives them, how each groups them, and whether the listings' own facts back it.
+        def side(id: Option[Int], film: Option[IdentityMeasures.Film], e: Evidence): String =
+          id.fold("unmatched")(i => s"$i ${film.fold("?")(f => s"${f.title} (${f.year.getOrElse("?")})")}" +
+            film.fold("")(f => { val (v, d) = IdentityReferee.judge(e, f); s" [${v.toString.toLowerCase}${if (d.nonEmpty) d.mkString(": ", ",", "") else ""}]" }))
+        report.line(s"[${c.label}] FOCUS old vs new (listings | old film [referee] | new film [referee] | spellings):")
+        focused.groupBy { l =>
+          val e = Evidence.of(l, if (lookups.hasDetail(l)) lookups.detail(l).toOption.flatten else None)
+          val old = pipelineOf.get(l.key).flatMap(i => films(i).tmdbId.map(_ -> films(i).film))
+          val neu = r.decisionOf(l.key).film.map(id => id -> r.films.get(id))
+          (side(old.map(_._1), old.flatMap(_._2), e), side(neu.map(_._1), neu.flatMap(_._2), e))
+        }.toSeq.sortBy(-_._2.size).foreach { case ((o, n), ls) =>
+          report.line(f"    ${ls.size}%4d | old $o | new $n | ${ls.map(_.rawTitle).distinct.sorted.take(4).mkString(" / ")}")
+        }
         cancel(s"focus mode: ${focused.size} listing(s) resolved; the corpus-wide measures need every listing")
       }
       val requestsBefore = c.fetch.requests.get()
