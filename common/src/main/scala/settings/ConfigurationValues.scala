@@ -200,10 +200,12 @@ final case class IdentityPipelineCache(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_ROBUSTNESS=off` — the identity shadow run skips its re-resolving robustness
  *  measures (arrival orders, outage, perturbation). */
 final case class IdentityShadowRobustness(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_FOCUS` — title phrases a measurement run resolves ALONE (their families), for a
- *  seconds-long check of a resolver change instead of a whole corpus. A title is in focus when it
- *  holds EVERY word of one phrase, so "dark city" is Dark City, not every dark or city title. */
-final case class IdentityFocus(phrases: Seq[Set[String]]) {
+/** `KINOWO_IDENTITY_FOCUS` — title phrases a measurement run shows old against new, and stops. A
+ *  title is in focus when it holds EVERY word of one phrase, so "dark city" is Dark City, not every
+ *  dark or city title. The whole corpus is resolved and only the focus shown, so a focused answer is
+ *  the measurement's; `alone` (`KINOWO_IDENTITY_FOCUS_ALONE`) resolves the focused listings by
+ *  themselves instead — seconds, but a family member outside the focus can change the answer. */
+final case class IdentityFocus(phrases: Seq[Set[String]], alone: Boolean = false) {
   def covers(titleWords: Set[String]): Boolean = phrases.exists(_.subsetOf(titleWords))
 }
 /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks. */

@@ -110,8 +110,9 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val tokens = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++
           services.movies.TitleContainment.tokens(l.cleanTitle).toSet
         val focused = listings.filter(l => f.covers(tokens(l)))
-        val (r, secs) = timed(IdentityResolver.resolve(focused, lookups, c.normalizer, calibration))
-        report.line(f"[${c.label}] FOCUS ${f.phrases.map(_.mkString(" ")).mkString(",")}: ${focused.size} listing(s) resolved alone in $secs%.1fs")
+        val (r, secs) = timed(IdentityResolver.resolve(if (f.alone) focused else listings, lookups, c.normalizer, calibration))
+        report.line(f"[${c.label}] FOCUS ${f.phrases.map(_.mkString(" ")).mkString(",")}: ${focused.size} listing(s), " +
+          f"resolved ${if (f.alone) "alone" else s"with the whole corpus (${listings.size})"} in $secs%.1fs")
         focused.map(l => r.decisionOf(l.key)).distinct.foreach(d => report.line(d.render))
         // Old against new for the focused listings, each side refereed alone: which film each
         // gives them, how each groups them, and whether the listings' own facts back it.

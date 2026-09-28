@@ -25,4 +25,11 @@ class IdentityFocusSettingSpec extends AnyFlatSpec with Matchers {
     focus() shouldBe None
     focus("KINOWO_IDENTITY_FOCUS" -> " , ") shouldBe None
   }
+
+  it should "resolve the whole corpus and show only the focus, unless asked to resolve the focus alone" in {
+    // Resolved alone, UK "Lalka (The Doll)" matched; in the full run its family vetoed it: only the
+    // whole resolve answers as the measurement does.
+    focus("KINOWO_IDENTITY_FOCUS" -> "lalka").map(_.alone) shouldBe Some(false)
+    focus("KINOWO_IDENTITY_FOCUS" -> "lalka", "KINOWO_IDENTITY_FOCUS_ALONE" -> "true").map(_.alone) shouldBe Some(true)
+  }
 }

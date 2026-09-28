@@ -348,7 +348,8 @@ final class ProcessConfiguration(val env: Env) {
    *  of one of these comma-separated phrases, print their decisions and stop: a fast check. */
   def identityFocus: Option[IdentityFocus] =
     text("KINOWO_IDENTITY_FOCUS").map(v => IdentityFocus(v.split(",").toSeq
-      .map(p => services.movies.TitleContainment.tokens(p).toSet).filter(_.nonEmpty))).filter(_.phrases.nonEmpty)
+      .map(p => services.movies.TitleContainment.tokens(p).toSet).filter(_.nonEmpty), alone = env.flag("KINOWO_IDENTITY_FOCUS_ALONE")))
+      .filter(_.phrases.nonEmpty)
   /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
    *  against a scratch fixture root. */
   def identityRecordCheck: Option[IdentityRecordCheck] =
