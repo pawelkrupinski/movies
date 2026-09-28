@@ -489,5 +489,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK, 64 "Lalka" / "Lalka (The Doll)" listings, originally "Lalka", were taken for "Lalkar" (1972).
     IdentityMeasures.originalTitleRelation(Some("Lalka"), Seq("Lalkar")) should not be IdentityMeasures.Category("match")
     IdentityMeasures.titleRelation(Listing("Lalka"), Film("Lalkar")) should not be IdentityMeasures.Category("exact")
+  "an original title" should "match a film's title that differs only by a year or a season" in {
+    // DE, 153 "MET Opera Live im Kino: Così Fan Tutte" listings, originally "The Metropolitan Opera: Così
+    // fan tutte (2026)", against the record "The Metropolitan Opera 2026/27: Così fan tutte".
+    IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
+      Seq("The Metropolitan Opera 2026/27: Così fan tutte")) shouldBe IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Dune (2021)"), Seq("Dune")) shouldBe IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Carmen (2026)"),
+      Seq("Royal Ballet & Opera 2026/27: Carmen")) should not be IdentityMeasures.Category("match")
   }
 }

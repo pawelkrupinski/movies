@@ -615,7 +615,11 @@ object IdentityMeasures {
       case Some(o) =>
         val others = otherTitles.map(_.trim).filter(_.nonEmpty)
         if (others.isEmpty) MissingFilm
-        else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t)))) Category("match")
+        // The same title once years and seasons are dropped: "The Metropolitan Opera: Così fan tutte
+        // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
+        else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t))) ||
+                 others.exists(t => yearlessTokens(t).nonEmpty && yearlessTokens(t) == yearlessTokens(o)))
+          Category("match")
         else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {
           val ow = words(o).filter(_.length >= 4).toSet
           if (others.exists(t => (words(t).filter(_.length >= 4).toSet intersect ow).nonEmpty)) Category("overlap")
