@@ -4,7 +4,8 @@ import services.movies.TitleNormalizer
 
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
-private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints) {
+private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints,
+                                         wholeTitles: Set[String]) {
 
   def sanitized(title: String): String  = normalizer.sanitize(title)
   def searchForm(title: String): String = normalizer.searchQuery(title)
@@ -29,8 +30,6 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
       originals.contains(sanitized(evidence.cleanTitle)) || originals.contains(sanitized(otherEvidence.cleanTitle)) ||
       segmentOf(node, other) || segmentOf(other, node)
   }
-
-  private val wholeTitles: Set[String] = nodes.map(node => sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
 
   /** Does `n`'s title carry, beside its search form `form`, a delimited segment that is ANOTHER
    *  listing's whole title sharing no word with the form — so that a search form it shares with

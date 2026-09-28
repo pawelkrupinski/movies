@@ -8,18 +8,14 @@ import services.movies.ListingConstraints
  *  and which titles the venues list together (`venues.corroborating`). */
 private[identity] final class CandidateScoring(val generation: CandidateGeneration, val calibration: IdentityCalibration,
                                                weights: EvidenceWeights, val pins: PinConstraints) {
-  import generation.{candidateById, nodes, ownSearch, ownWalk}
   import EvidenceNode.placesOf
 
   /** Which house each listing banner is, learned from how every node's candidates bill its works
    *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
    *  naming it, and a season production must be of it when it is known. */
-  private val houseEvidence: Seq[IdentityMeasures.Billing] = nodes.flatMap { node =>
-    IdentityMeasures.Houses.evidence(node.evidence.measured, (ownSearch(node.id).keys ++ ownWalk(node.id)).toSeq.distinct.sorted.map(candidateById(_).film))
-  }
-  val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(houseEvidence)
+  val houses: IdentityMeasures.Houses = generation.context.houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
-  lazy val houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = IdentityMeasures.Houses.ranking(houseEvidence)
+  def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = generation.context.houseRanking
   def namesItsSeasonProduction(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
     IdentityMeasures.namesSeasonProduction(listing, film) && !IdentityMeasures.billing(listing, film).exists(houses.other)
 
@@ -47,12 +43,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     pieces.nonEmpty && pieces.forall(piece => besideIt(piece) && node.listings.forall(listing => placesOf(listing.cinema).exists(_.containsSlice(piece))))
   }
 
-  /** The listings by title key, with their venues: `venues.corroborating`'s groups. Every node's,
-   *  not a family's: a title a learned decoration wraps (`IdentityMeasures.titleGroups`) is listed
-   *  plain by venues whose listings are not title-linked to it, so not in its family. */
-  val titleGroups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
-    nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (listing.venue -> node.evidence.measured)))
-      .groupMap(_._1)(_._2)
-  val backing = new IdentityMeasures.VenueBacking(titleGroups)
+  /** Which venues back a listing's film, over the corpus's title groups (`CorpusContext.titleGroups`):
+   *  every node's, not a family's — a title a learned decoration wraps (`IdentityMeasures.titleGroups`)
+   *  is listed plain by venues whose listings are not title-linked to it, so not in its family. */
+  val backing: IdentityMeasures.VenueBacking = generation.context.backing
 
 }

@@ -105,15 +105,16 @@ object IdentityResolver {
   /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
    *  and for [[candidatesOf]]. */
   private final class Stages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-                             calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations) {
+                             calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations,
+                             corpus: Option[CorpusContext] = None) {
     private val arrival = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins
     // One listing per key, the smallest by the total order — never the first to arrive.
     private val all     = listings.toSeq.sorted.distinctBy(_.key)
     val ordered: Seq[Listing] = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
-    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups)
+    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups, corpus)
     val acceptance = new Acceptance(calibration)
     val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
-    val links      = new TitleLinks(generation.nodes, normalizer, pins)
+    val links      = new TitleLinks(generation.nodes, normalizer, pins, generation.context.wholeTitles)
     val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
   }
 
@@ -151,11 +152,48 @@ object IdentityResolver {
     }
   }
 
+  /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
+   *  resolved alone with `corpus = Some(...)`, needs to decide as the whole resolve does. */
+  private[identity] def contextOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                                  pins: PinConstraints = PinConstraints(Nil),
+                                  decorations: TitleDecorations = TitleDecorations.None): CorpusContext =
+    new CandidateGeneration(listings.toSeq.sorted.distinctBy(_.key), lookups, normalizer, pins, decorations, lazyLookups = false).context
+
   private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                     calibration: IdentityCalibration, mutation: Mutation,
                                     pins: PinConstraints = PinConstraints(Nil),
-                                    decorations: TitleDecorations = TitleDecorations.None): Resolution = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, mutation, pins, decorations)
+                                    decorations: TitleDecorations = TitleDecorations.None,
+                                    corpus: Option[CorpusContext] = None): Resolution = {
+    run(new Stages(listings, lookups, normalizer, calibration, mutation, pins, decorations, corpus), mutation)
+  }
+
+  /** One family of a region's resolve ([[resolveRegion]]): its listings, its decisions, the keys it
+   *  blocks under (its title keys and the films its members matched — what another family must share
+   *  to merge with it), the questions and records its answers came from, and the corpus-wide facts
+   *  it could read ([[CorpusContext.Reads]]). */
+  private[identity] final case class RegionFamily(listings: Set[ListingKey], decisions: Seq[ResolverDecision], blockKeys: Set[String],
+                                                  queries: Set[CandidateQuery], films: Set[Int], reads: CorpusContext.Reads)
+
+  /** Resolve `listings` — a union of whole families — against the corpus's `corpus` context, family
+   *  by family: A3 with the corpus's facts, so each decides as the whole resolve would. */
+  private[identity] def resolveRegion(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                                      calibration: IdentityCalibration, pins: PinConstraints, decorations: TitleDecorations,
+                                      corpus: CorpusContext): Seq[RegionFamily] = {
+    val stages     = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations, Some(corpus))
+    val resolution = run(stages, Mutation.None)
+    import stages.{families, generation}
+    generation.nodes.groupBy(node => families.familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members) =>
+      val keys  = members.flatMap(_.listings.map(_.key)).toSet
+      val pool  = families.scopes(family).pool
+      val queries = members.flatMap(node => generation.queriesOf(node.id)).toSet
+      val films = members.flatMap(node => generation.queriesOf(node.id).flatMap(query => generation.answers(query).toOption.getOrElse(Nil)).map(_.tmdbId)).toSet
+      val decisions = resolution.decisions.filter(_.members.exists(keys))
+      RegionFamily(keys, decisions, members.flatMap(node => families.blockKeysOf(node.id)).toSet, queries, films,
+        CorpusContext.Reads.of(members, pool.map(_.film), films ++ pool.map(_.tmdbId) ++ decisions.flatMap(_.film), normalizer.sanitize))
+    }
+  }
+
+  private def run(stages: Stages, mutation: Mutation): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateById, details, issued, nodeById, nodes, records}
     import families.{familyOf, scopes}

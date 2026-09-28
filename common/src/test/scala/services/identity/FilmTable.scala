@@ -1,0 +1,40 @@
+package services.identity
+
+import models.Cinema
+import services.movies.{ListingKey, TitleNormalizer}
+
+/** A film database of `films`: search by all-words containment of a title or an alternative title,
+ *  the directors' filmographies, the films IMDb lists under a title (its own, exactly), and each
+ *  film's record. */
+final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) extends IdentityLookups {
+  import FilmTable.F
+  private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
+  private def hit(f: F) = Hit(f.id, f.title, None, Some(f.year), f.popularity)
+  override def hasDetail(l: Listing): Boolean = false
+  override def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+  override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
+    case CandidateQuery.Title(text) =>
+      val want = words(text)
+      films.filter(f => f.searched && want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
+    case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
+    case CandidateQuery.Imdb(title)    => films.filter(f => words(f.title) == words(title)).map(hit)
+  })
+  // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
+  override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
+    Answer.Known(films.find(_.id == id).map(f =>
+      IdentityMeasures.Film(f.title, None, f.alternatives, Some(f.year), Some(f.runtime).filter(_ > 0), Some(Seq(f.director).filter(_.nonEmpty)),
+        Some(f.countries).filter(_.nonEmpty), Some(f.popularity))))
+}
+
+object FilmTable {
+  /** `searched`: TMDB's search returns the film (a record its index misses is reached only by the
+   *  IMDb id IMDb lists under its title). */
+  final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
+                     alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil)
+
+  /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
+  def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
+              runtime: Option[Int] = None): Listing =
+    Listing(venue, ListingKey.Published(venue.displayName, title, year, director.toSeq), title, title, title, year,
+      director.toSeq, runtime, None, None)
+}

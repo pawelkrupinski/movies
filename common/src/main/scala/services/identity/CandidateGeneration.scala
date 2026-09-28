@@ -10,7 +10,8 @@ import scala.collection.mutable
  *  every film any answer names looked up once. `ordered` is the listings in the order they are
  *  walked; `lazyLookups` is the teeth tests' `Mutation.LazyLookups`. */
 private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-                                                  pins: PinConstraints, decorations: TitleDecorations, lazyLookups: Boolean) {
+                                                  pins: PinConstraints, decorations: TitleDecorations, lazyLookups: Boolean,
+                                                  corpus: Option[CorpusContext] = None) {
   val details = mutable.LinkedHashMap.empty[(String, String), Answer[Option[DetailFacts]]]
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
@@ -49,23 +50,22 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   // films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank.
   val ownWalk: Map[String, Set[Int]] = nodes.map(node =>
     node.id -> queriesOf(node.id).filterNot(isTitle).flatMap(query => answers(query).toOption.getOrElse(Nil)).map(_.tmdbId).toSet).toMap
+  val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
+  val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
+  val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
+  /** Every candidate a node's own evidence reached: its searches' and its walks'. */
+  def reached(node: EvidenceNode): Seq[Int] = (ownSearch(node.id).keys ++ ownWalk(node.id)).toSeq.distinct.sorted
+
+  /** What these listings' families read from the whole corpus: `corpus` when they are part of a
+   *  larger one, else their own. */
+  lazy val context: CorpusContext = corpus.getOrElse(CorpusContext.of(nodes, reached, recorded, normalizer.sanitize))
+  /** Each record with the titles the venues publish for it (`IdentityMeasures.venueTitles`). */
+  lazy val candidateById: Map[Int, Candidate] = context.candidates
   /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
    *  own evidence — a credited director, a detail page's original title — that its own did not:
    *  "Vincent. Legenda oceanu" at a venue publishing nothing else searches empty (TMDB titles the
    *  film "The Last Whale Singer"), while the same title credited elsewhere walks its director to
    *  it. A path to a candidate, never evidence for it: the node scores it on its own facts (no
    *  search rank), and still denies it when they rule it out. */
-  val titleOf: EvidenceNode => String = node => IdentityMeasures.key(node.evidence.title)
-  val sharedOf: Map[String, Set[Int]] = nodes.groupBy(titleOf).filter { case (title, sameTitled) => title.nonEmpty && sameTitled.size > 1 }.values.toSeq
-    .flatMap { sameTitled =>
-      val reached = sameTitled.map(node => node.id -> (ownSearch(node.id).keySet ++ ownWalk(node.id))).toMap
-      sameTitled.map(node => node.id -> (sameTitled.filterNot(_ eq node).flatMap(other => reached(other.id)).toSet -- reached(node.id)))
-    }.toMap.withDefaultValue(Set.empty)
-  val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
-  val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
-  val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
-  // Each record with the titles the venues publish for it (`IdentityMeasures.venueTitles`).
-  val venueTitles = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
-  val candidateById: Map[Int, Candidate] = recorded.map { case (id, candidate) =>
-    id -> candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, venueTitles.getOrElse(id, Nil))) }
+  def sharedOf(node: EvidenceNode): Set[Int] = context.sharedOf(node)
 }
