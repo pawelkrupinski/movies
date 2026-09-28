@@ -134,13 +134,14 @@ object IdentityMeasures {
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
    *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do; a record titled
-   *  the work alone ("The Misanthrope") bills no house at all. Not a record of one SEASON's broadcast
-   *  when the listing names no season — the season names that production (`namesSeasonProduction`),
-   *  and TMDB filing the Paris Opera's works only under the Met's 2026/27 records teaches the Paris
-   *  banner to be the Met — and not a banner numbering its edition otherwise than the record's:
-   *  a house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
+   *  the work alone ("The Misanthrope") bills no house at all. Only when NEITHER names a season: a
+   *  season names its production (`namesSeasonProduction`), so a record of one season's broadcast is
+   *  not a season-free listing's — TMDB filing the Paris Opera's works only under the Met's 2026/27
+   *  records teaches the Paris banner to be the Met — nor is a season-free record a "MetOpera
+   *  2025-26" listing's. And not a banner numbering its edition otherwise than the record's: a
+   *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
-    (listing.seasonYear.isDefined || filmSeason(film).isEmpty) &&
+    listing.seasonYear.isEmpty && filmSeason(film).isEmpty &&
       billing(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse))
   private val Digits = "\\d+".r
   private def numbersIn(house: String): Set[String] = Digits.findAllIn(house).toSet
