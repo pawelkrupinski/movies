@@ -56,7 +56,7 @@ groups:
             worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper
             that has started scheduling faster than the pool can drain (panels 20/30 on the
             application dashboard split enqueued from worked), or a task type failing and being
-            retried forever (panel 25, waiting by type). `WorkerQueueStalled` below is the other
+            retried forever (panel 25, waiting by type — its held series). `WorkerQueueStalled` below is the other
             half of this: if nothing is being claimed at all, that one fires instead and is the
             more urgent of the two.
 

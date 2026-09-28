@@ -229,7 +229,17 @@ object WorkerTaskMetrics {
 
     private val waitingByType = Gauge.builder()
       .name("kinowo_worker_queue_waiting_by_type")
-      .help("Waiting (claimable) tasks currently in the queue, by country and type. Sampled from the bounded active snapshot.")
+      .help("Waiting tasks currently in the queue, by country and type — claimable AND held back (see kinowo_worker_queue_held_by_type; claimable = waiting - held). Sampled from the bounded active snapshot.")
+      .labelNames("country", "task_type")
+      .register(registry)
+
+    // Most of the waiting set is often work the queue is holding back on purpose — a chunked
+    // venue's whole staggered fan-out counts as waiting the instant it is planned. Without
+    // this split a planned burst reads as a backlog: 2026-09-21..28 held chunks were 75-95%
+    // of every waiting spike, with the pool mostly idle through them.
+    private val heldByType = Gauge.builder()
+      .name("kinowo_worker_queue_held_by_type")
+      .help("Waiting tasks the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due), by country and type — the not-yet-claimable part of kinowo_worker_queue_waiting_by_type. Sampled from the bounded active snapshot.")
       .labelNames("country", "task_type")
       .register(registry)
 
@@ -511,6 +521,7 @@ object WorkerTaskMetrics {
           Outcomes.foreach(o => finished.labelValues(c, t.name, o))
           duration.labelValues(c, t.name)
           waitingByType.labelValues(c, t.name).set(0.0)
+          heldByType.labelValues(c, t.name).set(0.0)
           oldestWaitingAge.labelValues(c, t.name).set(0.0)
           parkedMax.labelValues(c, t.name).set(0.0)
         }
@@ -722,8 +733,9 @@ object WorkerTaskMetrics {
           .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
           .getOrElse(0.0)
         oldestWaitingAge.labelValues(country, t.name).set(age)
-        val parked = rows.flatMap(_.nextEligibleAt).filter(_.isAfter(now))
-          .map(until => until.getEpochSecond - now.getEpochSecond).maxOption.getOrElse(0L)
+        val holds  = rows.flatMap(_.nextEligibleAt).filter(_.isAfter(now))
+        heldByType.labelValues(country, t.name).set(holds.size.toDouble)
+        val parked = holds.map(until => until.getEpochSecond - now.getEpochSecond).maxOption.getOrElse(0L)
         parkedMax.labelValues(country, t.name).set(parked.toDouble)
       }
     }

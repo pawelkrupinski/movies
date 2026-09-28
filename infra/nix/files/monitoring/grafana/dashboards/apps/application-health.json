@@ -1015,7 +1015,7 @@
         {
           "id": 24,
           "title": "Worker — queue depth",
-          "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining — correlate it with the worker CPU panel at the top: a backlog with flat CPU means the pool is blocked on upstreams, a backlog with pegged CPU means it is genuinely saturated.",
+          "description": "Live size of the durable task queue, from worker /metrics: claimable (waiting AND past any hold — the real backlog), held (waiting but deliberately held back: a chunked venue's staggered fan-out, retry backoff — scheduled work, not a backlog), worked_on (leased by a worker right now). worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'claimable' is a backlog the pool isn't draining — correlate it with the worker CPU panel at the top: a backlog with flat CPU means the pool is blocked on upstreams, a backlog with pegged CPU means it is genuinely saturated.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1072,8 +1072,17 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(kinowo_worker_queue_depth{country=~\"$country\",state=\"waiting\"})",
-              "legendFormat": "waiting",
+              "expr": "sum(kinowo_worker_queue_depth{country=~\"$country\",state=\"waiting\"}) - sum(kinowo_worker_queue_held_by_type{country=~\"$country\"})",
+              "legendFormat": "claimable",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "D",
+              "expr": "sum(kinowo_worker_queue_held_by_type{country=~\"$country\"})",
+              "legendFormat": "held",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
@@ -1101,8 +1110,8 @@
         },
         {
           "id": 25,
-          "title": "Worker — waiting tasks by type",
-          "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
+          "title": "Worker — waiting tasks by type (claimable / held)",
+          "description": "Waiting tasks by type, split into CLAIMABLE (the real backlog the pool can pick up now) and HELD (deliberately held back: a chunked venue's staggered fan-out, retry backoff). A big held ScrapeChunk band is scheduled work, not a backlog; a type stuck in held for hours is one failing and retrying. Sampled from the bounded active snapshot. Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1132,8 +1141,17 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "kinowo_worker_queue_waiting_by_type{country=~\"$country\"} > 0",
-              "legendFormat": "{{country}} {{task_type}}",
+              "expr": "(kinowo_worker_queue_waiting_by_type{country=~\"$country\"} - kinowo_worker_queue_held_by_type{country=~\"$country\"}) > 0",
+              "legendFormat": "{{country}} {{task_type}} claimable",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "kinowo_worker_queue_held_by_type{country=~\"$country\"} > 0",
+              "legendFormat": "{{country}} {{task_type}} held",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

@@ -255,6 +255,29 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="StagingFold"} 0""")
   }
 
+  // The waiting count includes every chunk the planner staggered with `notBefore`: a
+  // venue's whole fan-out lands in it the instant it is planned. 2026-09-21..28 that was
+  // 75-95% of every "queue spike" in every country — UK peaked at 246 waiting with 0.6 of
+  // 4 workers busy. Held and claimable must be told apart for a spike to mean backlog.
+  it should "count the waiting tasks the queue is holding back, per type" in {
+    val (_, series) = newPl()
+    val snapshot = QueueSnapshot(
+      counts = Map(TaskState.Waiting -> 4L),
+      active = Seq(
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(10), Some(now.plusSeconds(200))),
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(10), Some(now.plusSeconds(100))),
+        // Its hold has run out: claimable, not held.
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(10), Some(now.minusSeconds(5))),
+        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(60), None)
+      ))
+
+    val out = scrapePl(series, snapshot)
+
+    out should include ("""kinowo_worker_queue_waiting_by_type{country="pl",task_type="ScrapeChunk"} 3""")
+    out should include ("""kinowo_worker_queue_held_by_type{country="pl",task_type="ScrapeChunk"} 2""")
+    out should include ("""kinowo_worker_queue_held_by_type{country="pl",task_type="ResolveTmdb"} 0""")
+  }
+
   it should "seed every task type to 0 so the series exists from boot" in {
     val (_, series) = newPl()
     val out = scrapePl(series)
