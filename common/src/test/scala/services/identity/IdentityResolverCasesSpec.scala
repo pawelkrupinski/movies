@@ -1300,6 +1300,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     keys("RBO Cinema Season 2026-27: Così fan tutte", Set.empty) should contain ("t:" + normalizer.sanitize("Così fan tutte"))
     // A piece carried by many titles and nobody's whole title is a banner, even with no work beside it.
     keys("Młode Horyzonty: Pieśni lasu", Set.empty, banners = Set("Młode Horyzonty")) should not contain ("t:" + normalizer.sanitize("Młode Horyzonty"))
+    // Format and label pieces beside the listing's OWN title are no keys: PL's largest family meshed
+    // ~4k listings through "2D DUB", "AF", "KNT", "napisy", "15+" beside each film's own title.
+    // Cleaned, the listing's own title is the work beside those labels, as the normaliser strips them.
+    val raw   = listing(Helios, "Spider-Man. Całkiem nowy dzień - 2D DUB - KNT")
+    val clean = raw.copy(cleanTitle = "Spider-Man. Całkiem nowy dzień", title = "Spider-Man. Całkiem nowy dzień")
+    val labelled = TitleLinks.titleKeys(new EvidenceNode(Evidence.of(clean, None, TitleDecorations.None), Seq(clean)), normalizer,
+      PinConstraints(Nil), _ => false, _ => false)
+    labelled should not contain ("t:" + normalizer.sanitize("2D DUB"))
+    labelled should not contain ("t:" + normalizer.sanitize("KNT"))
     // An event's banner beside its film is dropped, the film kept: the screening IS the film.
     val event = keys("Dzień Dziecka Księdza Jana Kaczkowskiego: Luna i rozgadana świnka",
       Set("Dzień Dziecka Księdza Jana Kaczkowskiego", "Luna i rozgadana świnka"))
