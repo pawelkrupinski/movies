@@ -26,6 +26,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     def id: String        = node.id
     val titleKey: String  = CorpusContext.titleOf(node)
     val whole: String     = normalizer.sanitize(node.evidence.cleanTitle)
+    val pieces: Set[String] = CorpusContext.piecesOf(node, normalizer.sanitize)
     def translated: Boolean = node.evidence.measured.originalTitle.nonEmpty
   }
 
@@ -58,6 +59,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val rankingOf    = mutable.HashMap.empty[String, Seq[IdentityMeasures.Houses.Contender]]
   private val groups       = mutable.HashMap.empty[String, mutable.TreeMap[String, Seq[(String, IdentityMeasures.Listing)]]]
   private val wholes       = mutable.HashMap.empty[String, Int]
+  // per title piece, the whole titles carrying it, with how many nodes carry each (`segmentSpread`)
+  private val spreads      = mutable.HashMap.empty[String, mutable.HashMap[String, Int]]
   private val reachedByKey = mutable.HashMap.empty[String, mutable.TreeMap[String, Set[Int]]]
 
   // ── CorpusContext ───────────────────────────────────────────────────────────────────────────
@@ -74,6 +77,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
     groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
+  def segmentSpread(sanitised: String): Int = spreads.get(sanitised).fold(0)(_.size)
   def reachedBy(key: String): Seq[(String, Set[Int])] = reachedView.getOrElseUpdate(key, reachedByKey.get(key).fold(Seq.empty)(_.toSeq))
   def ranked(query: CandidateQuery): Option[Seq[Int]] = named.get(query).flatten
   override def evidenceOf(listing: Listing): Option[Evidence] =
@@ -86,7 +90,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def titleComponents(keys: Iterable[ListingKey]): Seq[Seq[ListingKey]] = {
     val wanted = keys.toSet
     val byNode = nodes.values.filter(_.node.listings.exists(listing => wanted(listing.key))).map(live =>
-      live.id -> (live.node.listings.map(_.key).filter(wanted), TitleLinks.titleKeys(live.node, normalizer, pins, wholeTitle))).toMap
+      live.id -> (live.node.listings.map(_.key).filter(wanted), TitleLinks.titleKeys(live.node, normalizer, pins, wholeTitle, bannerSegment))).toMap
     FamilyClosure.families(byNode.map { case (id, (_, blockKeys)) => id -> blockKeys }).groupMap(_._2)(_._1).toSeq.sortBy(_._1)
       .map { case (_, ids) => ids.toSeq.sorted.flatMap(id => byNode(id)._1) }
   }
@@ -148,8 +152,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val segments  = mutable.HashSet.empty[String]
     val moved     = mutable.HashSet.empty[Int]
     val rebuilt   = touched ++ reasked.flatMap(askers.getOrElse(_, Set.empty))
-    // 1. nodes: unhook the old, re-ask what was asked anew, hook the new
-    rebuilt.foreach(key => nodes.remove(key).foreach(old => { films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
+    // 1. nodes: unhook the old, re-ask what was asked anew, hook the new — noting each touched piece's
+    // banner bit before, so a piece crossing `CorpusContext.BannerSpread` dirties the families reading it
+    val bannersBefore = mutable.HashMap.empty[String, Boolean]
+    def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bannerSegment(piece)))
+    rebuilt.foreach(key => nodes.remove(key).foreach(old => { noteBefore(old.pieces); films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
     val built = rebuilt.toSeq.flatMap(key => members.get(key).map { held =>
       val listed  = held.values.toSeq
       val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
@@ -167,6 +174,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
         val live = new Node(node, queries,
           CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer)))
         nodes(key) = live
+        noteBefore(live.pieces)
         films ++= link(key, live, answer)
         titleKeys += live.titleKey
         segments += live.whole
@@ -224,6 +232,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     if (banners.nonEmpty) housesView = None
     groupView --= titleKeys
     reachedView --= titleKeys
+    segments ++= bannersBefore.collect { case (piece, before) if bannerSegment(piece) != before => piece }
     CorpusContext.Changed(titleKeys.toSet, segments.toSet, banners.toSet, moved.toSet)
   }
 
@@ -242,6 +251,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     old.reached.foreach(id => reachers.updateWith(id)(_.map(_ - key).filter(_.nonEmpty)))
     groups.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) groups.remove(old.titleKey) }
     if (old.whole.nonEmpty) wholes.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0))
+    old.pieces.foreach(piece => spreads.get(piece).foreach { byWhole =>
+      byWhole.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0)); if (byWhole.isEmpty) spreads.remove(piece) })
     reachedByKey.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) reachedByKey.remove(old.titleKey) }
     if (old.translated) translatedBy.updateWith(old.titleKey)(_.map(_ - key).filter(_.nonEmpty))
     films
@@ -262,6 +273,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     live.reached.foreach(id => reachers.updateWith(id)(held => Some(held.getOrElse(Set.empty) + key)))
     groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => listing.venue -> live.node.evidence.measured)
     if (live.whole.nonEmpty) wholes.updateWith(live.whole)(count => Some(count.getOrElse(0) + 1))
+    live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).updateWith(live.whole)(count => Some(count.getOrElse(0) + 1)))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet
     if (live.translated) translatedBy.updateWith(live.titleKey)(held => Some(held.getOrElse(Set.empty) + key))
     films

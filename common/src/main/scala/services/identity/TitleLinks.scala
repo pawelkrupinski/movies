@@ -5,12 +5,12 @@ import services.movies.TitleNormalizer
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
 private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints,
-                                         wholeTitle: String => Boolean) {
+                                         wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
 
   def sanitized(title: String): String  = normalizer.sanitize(title)
   def searchForm(title: String): String = normalizer.searchQuery(title)
 
-  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins, wholeTitle)
+  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment)
 
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
     (IdentityMeasures.titleShapes(node.evidence.published).map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
@@ -54,12 +54,15 @@ private[identity] object TitleLinks {
    *  "Coraline", and "Sensory Friendly Screening", "Part 2", "Młode Horyzonty" as keys chained PL's
    *  programmes and festivals into one family of ~75% of its listings. A title no piece of which is
    *  anyone's whole title keeps every piece: "RBO Cinema Season 2026-27: Così fan tutte" joins the
-   *  RBO's and the Met's other spellings of the work only through "Così fan tutte". */
-  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean): Set[String] = {
+   *  RBO's and the Met's other spellings of the work only through "Così fan tutte" — unless the piece
+   *  is a banner by how many titles carry it (`bannerSegment`: a festival's films rarely have a
+   *  listing of their own, so "Młode Horyzonty: …" has no whole-title piece beside the banner). */
+  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+                bannerSegment: String => Boolean): Set[String] = {
     val whole    = normalizer.sanitize(node.evidence.cleanTitle)
     val pieces   = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
     val isWhole  = pieces.collect { case (_, key) if key != whole && wholeTitle(key) => key }.toSet
-    val segments = pieces.collect { case (segment, key) if isWhole(key) || !isWhole.exists(_ != key) => segment }
+    val segments = pieces.collect { case (segment, key) if isWhole(key) || (!isWhole.exists(_ != key) && !bannerSegment(key)) => segment }
     FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
       segments = segments :+ node.evidence.cleanTitle) ++
       pins.blockKeys(node.listings.head.key)

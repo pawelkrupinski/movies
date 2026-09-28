@@ -87,7 +87,7 @@ object IdentityResolver {
     val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups, corpus)
     val acceptance = new Acceptance(calibration)
     val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
-    val links      = new TitleLinks(generation.nodes, normalizer, pins, generation.context.wholeTitle)
+    val links      = new TitleLinks(generation.nodes, normalizer, pins, generation.context.wholeTitle, generation.context.bannerSegment)
     val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
   }
 

@@ -1289,15 +1289,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // banner is no key. "RBO Cinema Season 2026-27: Così fan tutte": no piece is anyone's whole title,
     // so the work stays a key — the RBO's season-free "Royal Ballet and Opera: Così fan tutte" reaches
     // its record, and the Met's same-work listings stay beside it to be kept apart, only through it.
-    def keys(title: String, wholes: Set[String]) = {
+    def keys(title: String, wholes: Set[String], banners: Set[String] = Set.empty) = {
       val l = listing(Helios, title)
       TitleLinks.titleKeys(new EvidenceNode(Evidence.of(l, None, TitleDecorations.None), Seq(l)), normalizer, PinConstraints(Nil),
-        wholes.map(normalizer.sanitize))
+        wholes.map(normalizer.sanitize), banners.map(normalizer.sanitize))
     }
     val sensory = keys("Coraline - Sensory Friendly Screening", Set("Coraline"))
     sensory should contain ("t:" + normalizer.sanitize("Coraline"))
     sensory should not contain ("t:" + normalizer.sanitize("Sensory Friendly Screening"))
     keys("RBO Cinema Season 2026-27: Così fan tutte", Set.empty) should contain ("t:" + normalizer.sanitize("Così fan tutte"))
+    // A piece carried by many titles and nobody's whole title is a banner, even with no work beside it.
+    keys("Młode Horyzonty: Pieśni lasu", Set.empty, banners = Set("Młode Horyzonty")) should not contain ("t:" + normalizer.sanitize("Młode Horyzonty"))
   }
 
   "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {

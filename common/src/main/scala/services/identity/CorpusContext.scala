@@ -30,6 +30,12 @@ private[identity] trait CorpusContext {
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)]
   /** Is `sanitised` some node's whole title? */
   def wholeTitle(sanitised: String): Boolean
+  /** How many distinct whole titles carry `sanitised` as one of their pieces ([[bannerSegment]]). */
+  def segmentSpread(sanitised: String): Int
+  /** Is `sanitised` a BANNER shared across films rather than a work: no listing's whole title, and a
+   *  piece of [[CorpusContext.BannerSpread]] whole titles or more ("Młode Horyzonty" ×48,
+   *  "Splat!FilmFest" ×60)? A banner is no family key (`TitleLinks.titleKeys`). */
+  final def bannerSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.BannerSpread
   /** Every node carrying title key `key`, with the candidates its own evidence reached, in node order. */
   def reachedBy(key: String): Seq[(String, Set[Int])]
   /** The films `query`'s answer names, best first; `None` when the answer is not known. */
@@ -47,6 +53,7 @@ private[identity] trait CorpusContext {
     reads.titles.map(key => key -> reachedBy(key)).toMap,
     reads.groups.map(key => key -> titleGroup(key)).toMap,
     reads.segments.filter(wholeTitle),
+    reads.segments.filter(bannerSegment),
     reads.banners.flatMap(banner => houses.of.get(banner).map(banner -> _)).toMap,
     reads.films.flatMap(id => candidate(id).map(id -> _)).toMap,
     reads.queries.map(query => query -> ranked(query)).toMap)
@@ -70,8 +77,10 @@ private[identity] final class WholeCorpusContext(
   houseEvidence:  Seq[IdentityMeasures.Billing],
   titleGroups:    Map[String, Seq[(String, IdentityMeasures.Listing)]],
   wholeTitles:    Set[String],
-  reachedByTitle: Map[String, Seq[(String, Set[Int])]]
+  reachedByTitle: Map[String, Seq[(String, Set[Int])]],
+  segmentSpreads: Map[String, Int]
 ) extends CorpusContext {
+  def segmentSpread(sanitised: String): Int = segmentSpreads.getOrElse(sanitised, 0)
   def candidate(id: Int): Option[Candidate] = candidates.get(id)
   lazy val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(houseEvidence)
   lazy val houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = IdentityMeasures.Houses.ranking(houseEvidence)
@@ -83,6 +92,21 @@ private[identity] final class WholeCorpusContext(
 
 private[identity] object CorpusContext {
   def titleOf(node: EvidenceNode): String = IdentityMeasures.key(node.evidence.title)
+
+  /** A segment carried by this many distinct whole titles, and by none as its own whole title, is a
+   *  banner ([[CorpusContext.bannerSegment]]): PL's gluing programme and festival banners span 11–60
+   *  titles, a work's spellings across banners a handful. */
+  val BannerSpread = 8
+
+  /** A node's title pieces other than its whole title, sanitised: what [[CorpusContext.segmentSpread]] counts. */
+  def piecesOf(node: EvidenceNode, sanitize: String => String): Set[String] = {
+    val whole = sanitize(node.evidence.cleanTitle)
+    IdentityMeasures.titleShapes(node.evidence.published).map(sanitize).filter(piece => piece.nonEmpty && piece != whole).toSet
+  }
+  /** Each piece's number of distinct whole titles among `nodes`. */
+  def spreads(nodes: Seq[EvidenceNode], sanitize: String => String): Map[String, Int] =
+    nodes.flatMap(node => piecesOf(node, sanitize).map(_ -> sanitize(node.evidence.cleanTitle))).groupMap(_._1)(_._2)
+      .map { case (piece, wholes) => piece -> wholes.distinct.size }
 
   /** Every key of the context a family's resolve can read — a superset, so a family whose slice is
    *  unchanged is certain to decide as before: its nodes' title keys (`reachedByTitle`), their title
@@ -114,7 +138,7 @@ private[identity] object CorpusContext {
 
   /** The values a family read, as [[CorpusContext.slice]] cut them. */
   final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, IdentityMeasures.Listing)]],
-                         wholeTitles: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate],
+                         wholeTitles: Set[String], bannerSegments: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate],
                          answers: Map[CandidateQuery, Option[Seq[Int]]]) {
     /** 64 bits of the slice's content — what a stored family keeps to tell, after a restart, whether
      *  it still reads what it read: its structural hash beside a hash of its (content-ordered) text. */
@@ -143,6 +167,6 @@ private[identity] object CorpusContext {
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>
       title -> sameTitled.map(node => node.id -> reached(node).toSet) }
-    new WholeCorpusContext(answers, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle)
+    new WholeCorpusContext(answers, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle, spreads(nodes, sanitize))
   }
 }
