@@ -180,7 +180,6 @@ class WorkerWiring(
         liveFetch   = enrichmentFetch,
         enrichers   = detailEnrichers,
         normalizer  = titleNormalizer,
-        calibration = services.identity.IdentityCalibration.resolver,
         rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
         window      = identityShadowInterval,
         metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),

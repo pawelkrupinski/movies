@@ -2,6 +2,8 @@ package services.identity
 
 import services.movies.{ListingKey, TitleNormalizer}
 
+import scala.collection.mutable
+
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the
  * answers of a lookup source (docs/design/identity-resolver.md, phase 2). Production code that
@@ -74,6 +76,31 @@ object IdentityResolver {
               pins: PinConstraints = PinConstraints(Nil),
               decorations: TitleDecorations = TitleDecorations.resolver): Resolution =
     resolveWith(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
+
+  /** Every question a resolve of `listings` asks — each detail page, each node's candidate
+   *  queries, each named film's record — each once, `chunk` listings at a time: for a caller that
+   *  wants the ASKING, not the resolution (the shadow fill, which files the answers). A resolve
+   *  holds every answer and record of the corpus until it returns; this holds one chunk's. A
+   *  node's questions are its own evidence's and a film lookup is its hits', so the chunks ask
+   *  exactly the resolve's questions; a query or film an earlier chunk asked answers `Unknown`
+   *  here, the film lookups it led to asked with it. A detail page is asked again when two chunks
+   *  share it: it is evidence, and an `Unknown` would change the questions its listing asks. */
+  def askAll(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, chunk: Int,
+             decorations: TitleDecorations = TitleDecorations.resolver): Unit = {
+    val once = new AskedOnce(lookups)
+    listings.toSeq.sorted.distinctBy(_.key).grouped(chunk).foreach(part =>
+      new CandidateGeneration(part, once, normalizer, PinConstraints(Nil), decorations, lazyLookups = false))
+  }
+
+  /** `lookups`, remembering only WHICH candidate queries and films it asked, never the answers. */
+  private final class AskedOnce(lookups: IdentityLookups) extends IdentityLookups {
+    private val queries = mutable.HashSet.empty[CandidateQuery]
+    private val films   = mutable.HashSet.empty[Int]
+    def hasDetail(listing: Listing): Boolean = lookups.hasDetail(listing)
+    def detail(listing: Listing): Answer[Option[DetailFacts]] = lookups.detail(listing)
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]] = if (queries.add(query)) lookups.candidates(query) else Answer.Unknown
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = if (films.add(tmdbId)) lookups.film(tmdbId) else Answer.Unknown
+  }
 
   private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                     calibration: IdentityCalibration, mutation: Mutation,

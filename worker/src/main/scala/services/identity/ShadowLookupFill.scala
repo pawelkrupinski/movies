@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
 
 /** One fill round's live asks: at most `allowance`, one per `pace`, and none to a host after it
  *  overloaded. `deferred` counts the gaps it had no budget left for. Single-threaded by
- *  construction (a round is one resolve on one thread); the counters are atomic for the metrics
+ *  construction (a round is one question walk on one thread); the counters are atomic for the metrics
  *  reader. */
 final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long => Unit) {
   private var used       = 0
@@ -107,9 +107,9 @@ object ShadowLookupMetrics {
  * The PACED LIVE LOOKUP FILL for the identity shadow run (docs/design/identity-resolver.md §19):
  * the shadow run answers only from the observation store, and most of the resolver's questions
  * (yearless searches, director walks, candidate records) are ones the pipeline never asks. After
- * each shadow tick, a round resolves the same listing set once more over the store — so the
- * questions are exactly the resolver's own (`CandidateQueries`, the query set
- * `IdentityLookupSweep` records), with no second list — and asks each unobserved TMDB or IMDb
+ * each shadow tick, a round walks the same listing set's questions over the store, a chunk at a
+ * time (`IdentityResolver.askAll`) — so the questions are exactly the resolver's own
+ * (`CandidateQueries`, the query set `IdentityLookupSweep` records), with no second list — and asks each unobserved TMDB or IMDb
  * suggestion question live, at most `rate` per minute over the round's `window` (the shadow run's interval, so a
  * round's allowance is what fits before the next tick), through `liveFetch` (the pipeline's
  * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick
@@ -130,7 +130,6 @@ final class ShadowLookupFill(
   liveFetch:   HttpFetch,
   enrichers:   Seq[DetailEnricher],
   normalizer:  TitleNormalizer,
-  calibration: IdentityCalibration,
   rate:        => IdentityShadowLookupRate,
   window:      => settings.IdentityShadowInterval,
   metrics:     ShadowLookupMetrics,
@@ -154,8 +153,10 @@ final class ShadowLookupFill(
     val fetch   = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
     val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch),
       enrichers.map(new ObservedDetailEnricher(_, store, gaps)), () => gaps.total)
-    try IdentityResolver.resolve(listings(), lookups, normalizer, calibration)
-    catch { case crossing: IdentityResolver.FamilyCrossing => logger.warn(s"identity shadow fill: ${crossing.getMessage}") }
+    // The resolver's questions, a chunk at a time — never a resolve: a whole-corpus resolve holds
+    // every answer and record at once for the round's whole paced half hour, beside the tick's
+    // own, which OOMed worker-uk on 2026-09-28.
+    IdentityResolver.askAll(listings(), lookups, normalizer, ShadowLookupFill.ChunkListings)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityShadowLookupRate((at.perMinute * 2).min(rate.perMinute)))
     val r = ShadowLookupRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
@@ -172,4 +173,10 @@ final class ShadowLookupFill(
         try round() catch { case NonFatal(e) => logger.warn(s"identity shadow fill: round failed: $e") }
         finally running.set(false)
       }
+}
+
+object ShadowLookupFill {
+  /** Listings per question chunk: what one chunk's answers and records hold at a time. UK's
+   *  ~28k listings walk in ~29 chunks; a node split across two re-reads its answers from the store. */
+  val ChunkListings = 1000
 }
