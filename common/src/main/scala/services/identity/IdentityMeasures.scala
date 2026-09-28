@@ -427,6 +427,28 @@ object IdentityMeasures {
   private def jaccard(a: Set[String], b: Set[String]): Double =
     if (a.isEmpty || b.isEmpty) 0.0 else (a intersect b).size.toDouble / (a union b).size
 
+  /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
+   *  Mossy Botton", "Pradhama Drishtiya Kuttakkar") — where both spellings of that word run to five
+   *  letters and neither is a number: a sequel's numeral ("Scary Movie 3", "Mission: Impossible II")
+   *  or a short word ("Hunt"/"Hurt") is a different title, not a typo. */
+  private[identity] def oneTypoApart(a: Seq[String], b: Seq[String]): Boolean =
+    a.size == b.size && a != b && {
+      val differing = a.indices.filter(i => a(i) != b(i))
+      differing.sizeIs == 1 && {
+        val (x, y) = (a(differing.head), b(differing.head))
+        x.length >= 5 && y.length >= 5 && !Seq(x, y).exists(w => w.exists(_.isDigit) || RomanNumeral.pattern.matcher(w).matches()) &&
+          editDistanceOne(x, y)
+      }
+    }
+  /** One insertion, deletion or substitution apart. */
+  private def editDistanceOne(x: String, y: String): Boolean =
+    if (math.abs(x.length - y.length) > 1) false
+    else {
+      val (s, l) = if (x.length <= y.length) (x, y) else (y, x)
+      val i = s.indices.find(i => s(i) != l(i)).getOrElse(s.length)
+      if (s.length == l.length) s.substring(i + 1) == l.substring(i + 1) else s.substring(i) == l.substring(i + 1)
+    }
+
   /** How the listing's title names the film: its localised title exactly, its original title,
    *  an alternative title, one whole banner segment, the film's title as a token run along one edge
    *  of the listing's (`decorated`: "Ken Russell's The Devils"), the listing's title as a run along
@@ -459,7 +481,7 @@ object IdentityMeasures {
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     val (titleForm, rest) = (all.head, all.tail)
     val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
-    if (own.contains(titleForm.key)) Category("exact")
+    if (own.contains(titleForm.key) || ls.exists(a => oneTypoApart(a.words, titleForm.words))) Category("exact")
     else if (originalForms.map(_.key).exists(own)) Category("original")
     else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None

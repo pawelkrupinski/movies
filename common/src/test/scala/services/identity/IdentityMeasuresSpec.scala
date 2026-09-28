@@ -461,4 +461,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.venueTitles(Seq(Listing("Diabły", originalTitle = Some("The Devils"))),
       Seq(31767 -> Film("Diabły", Some("The Devils")), 1491681 -> Film("The Devils"))) shouldBe Map.empty
   }
+
+  "a venue's one-letter typo in a long word" should "still name the film's title exactly" in {
+    // US: "Shaun the Sheep: The Beast of Mossy Botton" (×6) and "Pradhama Drishtiya Kuttakkar" (×16)
+    // found the film but measured the title as unrelated; the pipeline's fuzzy TMDB search took them.
+    IdentityMeasures.titleRelation(Listing("Shaun the Sheep: The Beast of Mossy Botton"), Film("Shaun the Sheep: The Beast of Mossy Bottom")) shouldBe IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(Listing("Pradhama Drishtiya Kuttakkar"), Film("Pradhama Drishtya Kuttakkar")) shouldBe IdentityMeasures.Category("exact")
+  }
+
+  it should "not reach a sequel's number, a short word, or two words" in {
+    IdentityMeasures.titleRelation(Listing("Scary Movie 3"), Film("Scary Movie 4")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(Listing("Mission: Impossible II"), Film("Mission: Impossible III")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(Listing("The Hunt"), Film("The Hurt")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(Listing("The Beast of Mossy Botton"), Film("The Feast of Mossy Bottom")) should not be IdentityMeasures.Category("exact")
+  }
 }
