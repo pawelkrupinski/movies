@@ -46,6 +46,17 @@ class IdentityRefereeSpec extends AnyFlatSpec with Matchers {
     v should not be Verdict.Right
   }
 
+  it should "deny a record numbering its edition otherwise than the listing's title, however the number is glued" in {
+    // "League of Legends Worlds 26" took TMDB's "… Worlds25 - …" record; neither judge saw it.
+    val (v, denials) = IdentityReferee.judge(ev("League of Legends Worlds 26 | Finals in Cinema", Some(2026)),
+      film("League of Legends Worlds25 - Finals in Cinema", 2026))
+    denials should contain("titleNumber")
+    v should not be Verdict.Right
+    // A number only one side writes is no such denial: a decoration's ("Cineworld 30: The Matrix"), a year.
+    IdentityReferee.judge(ev("Cineworld 30: The Matrix", Some(1999)), film("The Matrix", 1999))._2 should not contain "titleNumber"
+    IdentityReferee.judge(ev("Blade Runner 2049", Some(2017)), film("Blade Runner 2049", 2017))._2 should not contain "titleNumber"
+  }
+
   it should "judge a match its facts back right" in {
     IdentityReferee.judge(ev("Lalka", Some(2026), Seq("Maciej Kawalski")), film("Lalka", 2026, Seq("Maciej Kawalski"), Some(162)))._1 shouldBe Verdict.Right
   }
