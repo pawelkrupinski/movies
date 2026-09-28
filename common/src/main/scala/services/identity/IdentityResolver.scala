@@ -441,9 +441,9 @@ object IdentityResolver {
      *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
     def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       val eligible = ranked.filterNot(_.denied)
-      seasonProductionOf(ranked).getOrElse(
+      seasonProductionOf(ranked).getOrElse(soleWork(ranked).orElse(
         calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
-          .orElse(topHit(ranked)).orElse(directorsWork(ranked))).map(editionNamed(ranked))
+          .orElse(topHit(ranked)).orElse(directorsWork(ranked)))).map(editionNamed(ranked))
     }
     /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
      *  the director it credits, that no published year or runtime contradicts
@@ -453,14 +453,30 @@ object IdentityResolver {
      *  KURIOS - Cabinet des curiosités". The pipeline took such hits by their director on 3,247
      *  listings with no wrong match; two candidates fitting alike (a director's sequels of one
      *  work) are no answer. */
+    /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
+    def contradicted(s: Scored): Boolean =
+      s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 1; case _ => false } ||
+        s.measures.get("runtime.delta").exists { case IdentityMeasures.Number(d) => d >= 30; case _ => false }
+
+    /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
+     *  candidate, and no other candidate is one the title names — the rest only a director's
+     *  filmography reached. US venues' "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES" (×1,915 with São
+     *  Paulo) is "…: Live Viewing", not the 2022 Seoul concert film its director also made; neither
+     *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two"). */
+    def soleWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      val eligible = ranked.filterNot(_.denied)
+      def named(s: Scored) = s.measures.get("title").exists { case IdentityMeasures.Category(v) => IdentityMeasures.NamingRelations(v); case _ => false }
+      eligible.filter(s => s.rank.contains(1) && IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(_ >= 2) && !contradicted(s)) match {
+        case Seq(one) if !eligible.exists(o => (o ne one) && named(o)) => Some(one -> one.p)
+        case _                                                          => None
+      }
+    }
+
     def directorsWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       // The listing is the film's work alone ("Leonas" of "Leonas, el instinto más salvaje"); a
       // one-word work also needs the published year, a word being many films' title.
       def bareWork(s: Scored) = IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(words =>
         words >= 2 || s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d <= 1; case _ => false })
-      def contradicted(s: Scored) =
-        s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 1; case _ => false } ||
-          s.measures.get("runtime.delta").exists { case IdentityMeasures.Number(d) => d >= 30; case _ => false }
       ranked.filterNot(_.denied).filter(s => s.measures.get("director").contains(IdentityMeasures.Category("same_person")) &&
         (IdentityMeasures.sharesWork(s.listing, s.c.film) || bareWork(s)) && !contradicted(s)) match {
         case Seq(one) => Some(one -> one.p)

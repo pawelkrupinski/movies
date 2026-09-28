@@ -82,6 +82,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  "A listing that publishes a film's title without its colon subtitle" should "take that film when TMDB ranks it first and no other fits" in {
+    // US, 1,915 listings of "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES" / "… IN SÃO PAULO": TMDB's first
+    // hit is "BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", measured as a fragment of it; the
+    // director walk's 2022 Seoul concert film was the best candidate left. Neither pipeline matched them.
+    val films = Seq(F(1770237, "BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", 2026, "", 0, 5),
+      F(939984, "BTS: Permission to Dance on Stage - Seoul", 2022, "Jungjae HA", 195, 20))
+    val ls = Seq(Multikino, Helios).map(listing(_, "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES", director = Some("Jungjae HA"), runtime = Some(195)))
+    val r = shipped(ls, films)
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237)))
+  }
+
+  it should "not take a sequel whose title runs on from a film the listing names exactly" in {
+    val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
+    val l = listing(Multikino, "It")
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film should not be Some(474350))
+  }
+
   "A decorated spelling" should "take the film its plain siblings' own evidence matched" in {
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
     val plain = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
