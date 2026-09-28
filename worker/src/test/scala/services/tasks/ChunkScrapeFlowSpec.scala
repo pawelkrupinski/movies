@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaMovie, Movie, Multikino, Showtime}
+import models.{CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
 import services.events.TaskFinished
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -408,6 +408,31 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
 
     planner.plan(cinemaName) shouldBe 6
     costs.recent() shouldBe Map(ScrapeCinemaHandler.dedupKey(scraper.cinema) -> Seq(ScrapeCost(8)))
+  }
+
+  // The queue claims the eligible task with the oldest `submittedAt`. When every chunk of
+  // a run carried the planning instant, an OLDER run's stragglers — still ripening for the
+  // whole spread — beat a NEWER run's chunks that had been claimable for minutes: prod
+  // 2026-09-21..28 showed the head-of-line age pinned just under the 300s spread in every
+  // country while chunks were being claimed throughout. A chunk queues from when it
+  // becomes claimable, so claim order is eligibility order.
+  it should "claim an earlier-eligible chunk of a newer run before an older run's later-eligible one" in {
+    val queue   = new InMemoryTaskQueue
+    val store   = new InMemoryChunkScrapeStore
+    def slices(day: Int) = (0 until 2).map(i => f"2026-06-${day + i}%02d" -> Seq(film("F", day + i))).toMap
+    val older   = new FakeChunked(slices(10))
+    val newer   = new FakeChunked(slices(20)) { override val cinema: models.Cinema = KinoApollo }
+    def planAt(at: Instant, scraper: FakeChunked) =
+      new ChunkScrapePlanner(Map(scraper.cinema.displayName -> (scraper: ChunkedCinemaScraper)), store, queue, _ => (),
+        new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+        Clock.fixed(at, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(5.minutes)).plan(scraper.cinema.displayName)
+
+    planAt(now, older) shouldBe 2                   // chunks eligible at +0s and +150s
+    planAt(now.plusSeconds(60), newer) shouldBe 2   // chunks eligible at +60s and +210s
+    queue.claim("w", 30.seconds, now).map(_.payload) should not be empty // the older run's first chunk
+
+    // At +160s the older run's second chunk has been claimable 10s, the newer run's first 100s.
+    queue.claim("w", 30.seconds, now.plusSeconds(160)).map(_.payload("cinema")) shouldBe Some(KinoApollo.displayName)
   }
 
   /** Claim every currently-eligible waiting task at `at` (leaving them worked_on,

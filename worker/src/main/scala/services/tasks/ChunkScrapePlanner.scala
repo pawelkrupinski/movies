@@ -91,7 +91,12 @@ class ChunkScrapePlanner(
             queue.enqueue(TaskType.ScrapeChunk,
               ChunkScrapeKeys.chunkDedup(cinema, runId, k),
               ChunkScrapeKeys.chunkPayload(cinema, runId, k),
-              submittedAt = now, notBefore = notBefore) == EnqueueResult.Added
+              // Submitted as of when it becomes claimable, not the planning instant: the
+              // queue claims oldest `submittedAt` first, so a shared stamp let an older
+              // run's stragglers — ripening for the whole spread — keep beating a newer
+              // run's chunks claimable for minutes (head-of-line age pinned just under
+              // the spread in every country, 2026-09-21..28).
+              submittedAt = notBefore.getOrElse(now), notBefore = notBefore) == EnqueueResult.Added
           }
           logger.info(s"$cinema chunked scrape run $runId: enqueued $n/${keys.size} chunk task(s)" +
             (if (windowMillis > 0 && total > 1) s", spread over ${windowMillis / 1000}s" else ""))
