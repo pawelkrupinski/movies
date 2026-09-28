@@ -47,45 +47,43 @@ object ShadowIdentityMetrics {
  * failure here reaches the caller: the settle it rides must never fail on the shadow's account.
  */
 final class ShadowIdentityReaper(
-  listings:      () => Seq[Listing],
+  source:        () => Option[ShadowInput],
   pipelineFilms: () => Seq[StoredMovieRecord],
-  lookups:       () => (IdentityLookups, ObservationGaps),
-  pins:          PinStore,
   normalizer:    TitleNormalizer,
-  calibration:   IdentityCalibration,
   runs:          ShadowRunStore,
   retention:     ShadowRetention,
   metrics:       ShadowIdentityMetrics,
   clock:         Clock
 ) extends Logging {
 
-  /** One shadow resolve. Throws only what reading its inputs or writing the run throws. */
+  /** One shadow tick: the source's resolution, diffed against the pipeline's films and persisted.
+   *  None while the source has nothing yet (a model not taken up). Throws only what reading its
+   *  inputs or writing the run throws. */
   def tick(): ShadowTick = {
-    val at             = clock.instant()
-    val corpus         = listings()
-    val (source, gaps) = lookups()
-    val started        = System.nanoTime()
-    try {
-      val resolution = IdentityResolver.resolve(corpus, source, normalizer, calibration, ListingConstraints.pinned(pins.all()))
-      val seconds    = (System.nanoTime() - started) / 1e9
-      val diffing    = System.nanoTime()
-      val (clusters, families) = ShadowDiff.of(resolution, PipelineFilms.of(corpus, pipelineFilms(), normalizer))
-      val diffSeconds = (System.nanoTime() - diffing) / 1e9
-      val run = ShadowRun(at, clusters, families)
-      runs.record(run, retention)
-      metrics.crossings(0)
-      metrics.resolved(ShadowDiff.counts(clusters), seconds)
-      val tick = ShadowTick(Some(run), corpus.size, 0, gaps.total, seconds, gaps.byKind, diffSeconds)
-      logger.info(f"identity shadow: ${corpus.size} listings → ${clusters.size} clusters " +
-        f"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}) in $seconds%.1fs, diffed against the pipeline in $diffSeconds%.1fs; " +
-        s"${gaps.total} unobserved lookups (${gaps.byKind.toSeq.sortBy(-_._2).map { case (k, n) => s"$k $n" }.mkString(", ")}); " +
-        s"${families.size} families differ from the pipeline")
-      tick
+    val at = clock.instant()
+    try source() match {
+      case None =>
+        logger.info("identity shadow: the model is not taken up yet; nothing to diff")
+        ShadowTick(None, 0, 0, 0, 0)
+      case Some(input) =>
+        val diffing = System.nanoTime()
+        val (clusters, families) = ShadowDiff.of(input.resolution, PipelineFilms.of(input.listings, pipelineFilms(), normalizer))
+        val diffSeconds = (System.nanoTime() - diffing) / 1e9
+        val run = ShadowRun(at, clusters, families)
+        runs.record(run, retention)
+        metrics.crossings(0)
+        metrics.resolved(ShadowDiff.counts(clusters), input.seconds)
+        val tick = ShadowTick(Some(run), input.listings.size, 0, input.gaps, input.seconds, input.gapsByKind, diffSeconds)
+        logger.info(f"identity shadow: ${input.listings.size} listings → ${clusters.size} clusters " +
+          f"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}) resolved in ${input.seconds}%.1fs, diffed against the pipeline in $diffSeconds%.1fs; " +
+          s"${input.gaps} unobserved lookups (${input.gapsByKind.toSeq.sortBy(-_._2).map { case (k, n) => s"$k $n" }.mkString(", ")}); " +
+          s"${families.size} families differ from the pipeline")
+        tick
     } catch {
       case crossing: IdentityResolver.FamilyCrossing =>
         metrics.crossings(crossing.count)
         logger.error(s"identity shadow: resolve refused — ${crossing.getMessage}")
-        ShadowTick(None, corpus.size, crossing.count, gaps.total, (System.nanoTime() - started) / 1e9)
+        ShadowTick(None, 0, crossing.count, 0, 0)
     }
   }
 
@@ -93,4 +91,29 @@ final class ShadowIdentityReaper(
   def tickQuietly(): Unit =
     try { tick(); () }
     catch { case NonFatal(e) => logger.warn(s"identity shadow: tick failed; the previous run stays the latest: $e") }
+}
+
+/** What a shadow tick diffs: a resolution, the listings it covers, how many of its lookups the
+ *  observations could not answer (by kind), and how long it took to resolve. */
+final case class ShadowInput(resolution: Resolution, listings: Seq[Listing], gaps: Long, gapsByKind: Map[String, Long], seconds: Double)
+
+object ShadowIdentityReaper {
+  /** A WHOLE resolve of `listings` per tick — the shadow before the incremental model, and the
+   *  reference the specs hold the model to. */
+  def resolving(listings: () => Seq[Listing], lookups: () => (IdentityLookups, ObservationGaps), pins: PinStore,
+                normalizer: TitleNormalizer, calibration: IdentityCalibration): () => Option[ShadowInput] = () => {
+    val corpus         = listings()
+    val (source, gaps) = lookups()
+    val started        = System.nanoTime()
+    val resolution     = IdentityResolver.resolve(corpus, source, normalizer, calibration, ListingConstraints.pinned(pins.all()))
+    Some(ShadowInput(resolution, corpus, gaps.total, gaps.byKind, (System.nanoTime() - started) / 1e9))
+  }
+
+  /** The incremental model's current state — no resolve at all. */
+  def modelled(model: IdentityModelService): () => Option[ShadowInput] = () =>
+    model.resolution.map { resolution =>
+      val gaps = model.gaps
+      ShadowInput(resolution, model.listings, (gaps.queries.size + gaps.films.size).toLong,
+        Map("QUERY" -> gaps.queries.size.toLong, "RECORD" -> gaps.films.size.toLong).filter(_._2 > 0), 0.0)
+    }
 }

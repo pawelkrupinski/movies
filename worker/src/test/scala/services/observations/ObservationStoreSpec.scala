@@ -93,6 +93,17 @@ trait ObservationStoreBehaviour extends AnyFlatSpec with Matchers {
     s.lookup(search).map(_.answer) shouldBe Some(LookupAnswer.Body("ok"))
   }
 
+  it should "tell its listeners of every new answer, and of nothing it only saw again or kept behind a definitive one" in {
+    val s     = store(new MutableClock(t0))
+    val heard = scala.collection.mutable.ArrayBuffer.empty[String]
+    s.onNewLookup(heard += _)
+    s.observeLookup(search, LookupAnswer.Body("ok"))
+    s.observeLookup(search, LookupAnswer.Body("ok"))                                                      // seen again
+    s.observeLookup(search, LookupAnswer.failureOf(new HttpStatusException(503, "GET", "u", None), "GET")) // kept behind
+    s.observeLookup(search, LookupAnswer.Body("changed"))
+    heard.toSeq shouldBe Seq(search.key, search.key)
+  }
+
   it should "round-trip bytes exactly" in {
     val s     = store(new MutableClock(t0))
     val bytes = Array[Byte](0, -1, 7, 42)

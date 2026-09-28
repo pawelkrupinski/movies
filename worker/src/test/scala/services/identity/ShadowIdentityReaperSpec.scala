@@ -49,8 +49,8 @@ class ShadowIdentityReaperSpec extends AnyFlatSpec with Matchers {
   private def reaper(runs: ShadowRunStore, metrics: ShadowIdentityMetrics, pins: PinStore = new InMemoryPinStore,
                      lookups: () => IdentityLookups = () => OneFilm, clock: MutableClock = new MutableClock(TestWiring.FixedInstant),
                      pipelineFilms: () => Seq[StoredMovieRecord] = () => Seq(pipeline)) =
-    new ShadowIdentityReaper(() => listings, pipelineFilms, () => (lookups(), new ObservationGaps), pins, normalizer, calibration,
-      runs, ShadowRetention(8.days), metrics, clock)
+    new ShadowIdentityReaper(ShadowIdentityReaper.resolving(() => listings, () => (lookups(), new ObservationGaps), pins, normalizer, calibration),
+      pipelineFilms, normalizer, runs, ShadowRetention(8.days), metrics, clock)
 
   "a shadow tick" should "persist the resolve's decisions and its diff against the pipeline, and export the gauges" in {
     val runs    = ShadowRunStore.inMemory(new MutableClock(TestWiring.FixedInstant))

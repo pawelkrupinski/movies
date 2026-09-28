@@ -51,6 +51,8 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
     }
     w.bootStartup()
     val before = requests.get()
+    // The model the shadow diffs: taken up over the archive the scrapes filled.
+    w.identityModel.getOrElse(fail("the identity model is not wired")).takeUp()
     val tick   = w.shadowIdentityReaper.getOrElse(fail("the shadow run is not wired")).tick()
     (w, tick, requests.get() - before)
   }
@@ -61,6 +63,7 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
   private lazy val filled: (ShadowLookupRound, ShadowTick) = {
     val w     = wiring
     val round = w.shadowLookupFill.getOrElse(fail("the lookup fill is not wired")).round()
+    w.identityModel.foreach(_.drain())       // what the fill filed reaches the model as observations
     (round, w.shadowIdentityReaper.get.tick())
   }
 

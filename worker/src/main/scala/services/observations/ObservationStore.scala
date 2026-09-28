@@ -41,33 +41,44 @@ final class ObservationStore(
 ) {
   import ObservationStore._
 
+  private val lookupListeners = new java.util.concurrent.CopyOnWriteArrayList[String => Unit]()
+
+  /** Call `listener` with a lookup's key whenever the store files NEW content for it — never for
+   *  the same answer seen again, nor for a transient failure kept behind a definitive answer: what
+   *  a model built over the store must read again (`IdentityModelService`). */
+  def onNewLookup(listener: String => Unit): Unit = { lookupListeners.add(listener); () }
+
   // ── writes ────────────────────────────────────────────────────────────────
 
   def observeListing(cinema: Cinema, listing: CinemaMovie): Unit = {
     val evidence = ListingObservation.evidence(listing)
     record(listings, ListingKey.serialised(ListingKey.of(cinema, listing)), cinema.displayName,
       CinemaMovieJson.encode(Seq(evidence)), replaces = _ => true)
+    ()
   }
 
   def observeLookup(query: LookupQuery, answer: LookupAnswer): Unit =
-    record(lookups, query.key, query.host, Json.stringify(answerJson(answer)),
-      replaces = current => answer.definitive || !decodeAnswer(current).definitive)
+    if (record(lookups, query.key, query.host, Json.stringify(answerJson(answer)),
+          replaces = current => answer.definitive || !decodeAnswer(current).definitive))
+      lookupListeners.forEach(_(query.key))
 
+  /** File `content` under `key`; whether it was new. */
   private def record(backend: ObservationBackend, key: String, scope: String, content: String,
-                     replaces: StoredObservation => Boolean): Unit = lockFor(key).synchronized {
+                     replaces: StoredObservation => Boolean): Boolean = lockFor(key).synchronized {
     val now     = clock.instant()
     val hash    = sha256(content)
     val expires = now.plusMillis(window.toMillis)
     val stored  = backend.current(key)
     stored.filter(live(now)) match {
-      case Some(current) if current.hash == hash => backend.renew(key, Some(now), expires)
-      case Some(current) if !replaces(current)   => ()
+      case Some(current) if current.hash == hash => backend.renew(key, Some(now), expires); false
+      case Some(current) if !replaces(current)   => false
       case _ =>
         // An expired current row may still be physically present (TTL lag): it is retired too,
         // at its own expiry, so a key never has two current observations and nothing expired
         // comes back to life.
         stored.foreach(c => backend.retire(key, if (live(now)(c)) expires else c.expireAt))
         backend.insert(StoredObservation(key, scope, hash, gzip(content), now, now, expires, current = true))
+        true
     }
   }
 

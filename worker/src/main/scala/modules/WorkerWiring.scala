@@ -121,20 +121,50 @@ class WorkerWiring(
     mongoConnection.database.fold[services.identity.ShadowRunBackend](new services.identity.InMemoryShadowRunBackend)(
       services.identity.MongoShadowRunBackend.writer(_, workerMetrics.ttlIndexMismatches)), clock)
 
-  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = {
+  // ── The incremental identity model ─────────────────────────────────────────
+  // The shadow's resolver kept current by the pipeline's own events (docs/design/identity-resolver.md
+  // §20) instead of a whole-corpus resolve per tick: each venue's archived scrape (`IdentityModelFeed`
+  // on the scrapers' archive) and each new observation the store files (`onNewLookup`), drained on
+  // one thread; its families persist in `identity_model_families`, so a restart takes them up and
+  // re-resolves only what moved while it was down. Under the shadow switch, like the tick it replaces.
+  lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
+  lazy val identityModel: Option[services.identity.IdentityModelService] = {
     import services.identity._
-    identityObservations.filter(_ => configuration.identityShadow.value && !identityCutover).map(store => new ShadowIdentityReaper(
-      listings      = shadowListings,
+    identityObservations.filter(_ => configuration.identityShadow.value && !identityCutover).map { store =>
+      val pinStore = new MongoPinStore(mongoConnection.database)
+      val model = new IdentityModelService(
+        newModel   = () => {
+          val pins = services.movies.ListingConstraints.pinned(pinStore.all())
+          new IncrementalResolver(
+            new TrackedLookups(ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers, identityReads)._1, identityReads),
+            titleNormalizer, IdentityCalibration.resolver, pins,
+            store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
+            rules = IncrementalResolver.rulesVersion(configuration.commit.value, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
+        },
+        reads      = identityReads,
+        archive    = () => shadowListings(),
+        normalizer = titleNormalizer,
+        settle     = WorkerWiring.IdentityModelSettle,
+        scheduler  = identityModelScheduler,
+        metrics    = workerMetrics.identityModel.forCountry(country.code))
+      store.onNewLookup(model.observed)
+      model
+    }
+  }
+  /** One daemon thread for the model: it is not thread-safe, and every event is drained on it. */
+  protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
+    java.util.concurrent.Executors.newSingleThreadScheduledExecutor { (task: Runnable) =>
+      val thread = new Thread(task, s"identity-model-${country.code}"); thread.setDaemon(true); thread }
+
+  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = identityModel.map(model =>
+    new services.identity.ShadowIdentityReaper(
+      source        = services.identity.ShadowIdentityReaper.modelled(model),
       pipelineFilms = () => movieCache.snapshot(),
-      lookups       = () => ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers),
-      pins          = new MongoPinStore(mongoConnection.database),
       normalizer    = titleNormalizer,
-      calibration   = IdentityCalibration.resolver,
       runs          = shadowRuns,
-      retention     = ShadowRetention(services.observations.ObservationRetention.Window),
+      retention     = services.identity.ShadowRetention(services.observations.ObservationRetention.Window),
       metrics       = workerMetrics.identityShadow.forCountry(country.code),
       clock         = clock))
-  }
 
   // The shadow run's OWN schedule — not the settle's: the settle is a self-heal near-no-op, and the
   // shadow diffs against the pipeline's films as they are when it ticks (`movieCache.snapshot()`).
@@ -370,6 +400,7 @@ class WorkerWiring(
     // are not started, and neither is staging's below.
     if (!identityCutover) { unresolvedTmdbReaper.start(); detailReaper.start() }
     settleReaper.start()
+    identityModel.foreach(_.start())
     identityShadowSchedule.foreach(_.start())
     closureSchedule.start()
     omdbBackfillReaper.foreach(_.start())
@@ -460,6 +491,10 @@ object WorkerWiring {
   /** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE`'s compiled-in default: 60 asks a minute, about 2% of
    *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `shadowLookupFill`). */
   val DefaultShadowLookupRate: settings.IdentityShadowLookupRate = settings.IdentityShadowLookupRate(60)
+
+  /** How long the identity model lets events gather before one drain takes them together: a venue
+   *  scraped twice, or a family several venues touch, in that window is resolved once. */
+  val IdentityModelSettle: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "seconds")
 
   /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
    *  most seconds a tick) and the fill's per-round allowance were measured against. */

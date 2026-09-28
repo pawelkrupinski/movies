@@ -119,15 +119,17 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val runs    = new ShadowRunStore(MongoShadowRunBackend.writer(database, new TtlIndexMismatches), clock)
       val metrics = new Recorded
       val reaper  = new ShadowIdentityReaper(
-        // Production's own listing read: the worker's scrape archive, streamed a page at a time.
-        listings      = () => w.shadowListings(),
+        source        = ShadowIdentityReaper.resolving(
+          // Production's own listing read: the worker's scrape archive, streamed a page at a time.
+          listings    = () => w.shadowListings(),
+          // Another key than the offline client's: the observations are keyed with credentials masked.
+          lookups     = () => ObservedIdentityLookups.over(observations,
+            new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("shadow-key")), language = c.country.language), w.detailEnrichers),
+          pins        = new InMemoryPinStore,
+          normalizer  = c.normalizer,
+          calibration = IdentityCalibration.resolver),
         pipelineFilms = () => w.movieCache.snapshot(),
-        // Another key than the offline client's: the observations are keyed with credentials masked.
-        lookups       = () => ObservedIdentityLookups.over(observations,
-          new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("shadow-key")), language = c.country.language), w.detailEnrichers),
-        pins          = new InMemoryPinStore,
         normalizer    = c.normalizer,
-        calibration   = IdentityCalibration.resolver,
         runs          = runs,
         retention     = ShadowRetention(services.observations.ObservationRetention.Window),
         metrics       = metrics,

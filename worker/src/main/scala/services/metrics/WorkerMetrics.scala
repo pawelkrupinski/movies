@@ -90,6 +90,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
 
   // The identity resolver's shadow run, per country — see IdentityShadowMetrics.
   val identityShadow: IdentityShadowMetrics = new IdentityShadowMetrics(registry)
+  val identityModel: IdentityModelGauges = new IdentityModelGauges(registry)
   // A cut-over country's identity projection — see IdentityCutoverMetrics.
   val identityCutover: IdentityCutoverMetrics = new IdentityCutoverMetrics(registry)
 

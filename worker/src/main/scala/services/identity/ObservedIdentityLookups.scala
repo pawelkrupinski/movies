@@ -54,7 +54,7 @@ final class ObservationGap(query: String) extends RuntimeException(s"not observe
 
 /** Every request answered from the store's lookup observations, keyed exactly as
  *  `ObservingHttpFetch` filed them. */
-final class ObservedHttpFetch(store: ObservationStore, gaps: ObservationGaps) extends HttpFetch {
+final class ObservedHttpFetch(store: ObservationStore, gaps: ObservationGaps, reads: ObservationReads = ObservationReads.Untracked) extends HttpFetch {
 
   override def get(url: String): String = text("GET", url, None)
   // Headers are constant per client and not part of the key (as `ObservingHttpFetch` files it).
@@ -73,6 +73,7 @@ final class ObservedHttpFetch(store: ObservationStore, gaps: ObservationGaps) ex
   /** The live definitive answer; a definitive failure is thrown as the service threw it. */
   private def answer(method: String, url: String, body: Option[String]): LookupAnswer = {
     val query = LookupQuery.of(method, url, body)
+    reads.read(query.key)
     store.lookup(query).map(_.answer).filter(_.definitive) match {
       case Some(LookupAnswer.Failed(Some(status), failedMethod, _)) => throw new HttpStatusException(status, failedMethod, url, None)
       case Some(answer)                                             => answer
@@ -85,8 +86,8 @@ final class ObservedHttpFetch(store: ObservationStore, gaps: ObservationGaps) ex
 
 /** A venue's detail answered from the store's `DETAIL <page> <venue>` observations. Everything
  *  but the fetch is the wrapped enricher's; the wrapped enricher's own fetch is never called. */
-final class ObservedDetailEnricher(underlying: DetailEnricher, store: ObservationStore, gaps: ObservationGaps)
-    extends DetailEnricher {
+final class ObservedDetailEnricher(underlying: DetailEnricher, store: ObservationStore, gaps: ObservationGaps,
+                                   reads: ObservationReads = ObservationReads.Untracked) extends DetailEnricher {
 
   override def cinema: Cinema                             = underlying.cinema
   override def detailGroup: String                        = underlying.detailGroup
@@ -94,7 +95,8 @@ final class ObservedDetailEnricher(underlying: DetailEnricher, store: Observatio
   override def enrichmentServiceOverride: Option[String] = underlying.enrichmentServiceOverride
   override def defersTmdbResolution: Boolean              = underlying.defersTmdbResolution
 
-  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] = {
+    reads.read(LookupQuery.venueDetail(cinema.displayName, ref).key)
     ObservingDetailEnricher.detail(store, cinema, ref) match {
       case Some(Right(detail)) => detail
       // The venue answered with a failure: the offline source's call would have thrown too.
@@ -103,6 +105,7 @@ final class ObservedDetailEnricher(underlying: DetailEnricher, store: Observatio
         val query = LookupQuery.venueDetail(cinema.displayName, ref)
         gaps.record(query); throw new ObservationGap(query.key)
     }
+  }
 }
 
 object ObservedIdentityLookups {
@@ -111,10 +114,11 @@ object ObservedIdentityLookups {
    *  builds the deployment's TMDB client (key, language) over a fetch, the one the pipeline's
    *  observed client was built by, so this one asks exactly the requests that client filed. No
    *  answer here is transient, so the client never waits to retry. */
-  def over(store: ObservationStore, tmdb: HttpFetch => TmdbClient, enrichers: Seq[DetailEnricher]): (IdentityLookups, ObservationGaps) = {
+  def over(store: ObservationStore, tmdb: HttpFetch => TmdbClient, enrichers: Seq[DetailEnricher],
+           reads: ObservationReads = ObservationReads.Untracked): (IdentityLookups, ObservationGaps) = {
     val gaps  = new ObservationGaps
-    val fetch = new ObservedHttpFetch(store, gaps)
-    (new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedDetailEnricher(_, store, gaps)),
+    val fetch = new ObservedHttpFetch(store, gaps, reads)
+    (new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedDetailEnricher(_, store, gaps, reads)),
       () => gaps.total), gaps)
   }
 }

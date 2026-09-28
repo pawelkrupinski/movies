@@ -666,6 +666,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     }
     wiring.settleTick()
     wiring.shadowRuns.latestRun() shouldBe None
+    // Before its model is taken up the tick has nothing to diff; after, it persists the model's run.
+    wiring.identityShadowSchedule.map(_.tickIfClaimed()) shouldBe Some(true)
+    wiring.shadowRuns.latestRun() shouldBe None
+    wiring.identityModel.foreach(_.takeUp())
     wiring.identityShadowSchedule.map(_.tickIfClaimed()) shouldBe Some(true)
     wiring.shadowRuns.latestRun() shouldBe defined
     // Off, there is no schedule at all.

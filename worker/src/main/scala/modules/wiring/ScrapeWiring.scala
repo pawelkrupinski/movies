@@ -291,7 +291,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // Wrapped once more, outermost, to page for a gone venue nothing else pages for.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
     new GoneVenueAlertingArchive(
-      observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)),
+      identityModel.fold(observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)))(model =>
+        new services.identity.IdentityModelFeed(observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)), model)),
       venuesPagedElsewhere,
       fallbackPager("gone-venue")),
     landing = identityListingIntake)

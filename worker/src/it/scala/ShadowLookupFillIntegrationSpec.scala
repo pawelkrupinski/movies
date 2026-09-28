@@ -49,12 +49,17 @@ class ShadowLookupFillIntegrationSpec extends AnyFlatSpec with Matchers with Bef
           .orElse(configuration.env.get(key))),
         observations = Some(observations))
       bootPipeline(w)
+      // The model the shadow reads: taken up over the archive, then fed by what the fill files — the
+      // store tells it of each new answer, and a drain re-reads exactly the questions that read it.
+      val model  = w.identityModel.getOrElse(fail("the identity model is not wired"))
+      model.takeUp()
       val reaper = w.shadowIdentityReaper.getOrElse(fail("the shadow run is not wired"))
       val fill   = w.shadowLookupFill.getOrElse(fail("the lookup fill is not wired"))
       val allowance = fill.effectiveRate.allowanceOver(w.identityShadowInterval.value)
 
       def tick(): ShadowTick = {
         val before = c.fetch.requests.get()
+        model.drain()
         val t = reaper.tick()
         withClue(s"[${c.label}] a shadow tick made a request: ") { c.fetch.requests.get() shouldBe before }
         t
