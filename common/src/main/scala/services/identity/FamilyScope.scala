@@ -32,7 +32,7 @@ private[identity] final class FamilyScope(members: Seq[EvidenceNode], scoring: C
         backing.corroborating(groups, c.film, venue), houses, qualifiers)
       val p = calibration.probability(ListingFilm, measures)
       Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
-        namesItsSeasonProduction(l, c.film), deniedByPins(c.tmdbId))
+        namesItsSeasonProduction(l, c.film), deniedByPins(c.tmdbId), IdentityMeasures.billsUnderItsHouse(l, c.film, houses))
     }
     // The listing's whole title (or its original or an alternative title) and its credited
     // director name ONE film together: another film of that director, which its title does not

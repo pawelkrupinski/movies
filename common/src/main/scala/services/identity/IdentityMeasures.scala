@@ -131,6 +131,12 @@ object IdentityMeasures {
     }.nextOption()
   }
 
+  /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
+   *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
+   *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do; a record titled
+   *  the work alone ("The Misanthrope") bills no house at all. */
+  def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean = billing(listing, film).exists(houses.same)
+
   /** Which house each listing banner is, LEARNED from how the film records of its works bill them
    *  (`learn`): no house, banner or abbreviation is known in advance. */
   final case class Houses(of: Map[String, String]) {

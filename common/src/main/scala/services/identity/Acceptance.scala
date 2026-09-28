@@ -24,7 +24,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
    *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
   def alone(ranked: Seq[Scored]): Option[Accepted] =
-    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(soleWork, favouredCalibrated, topHit, directorsWork)))
+    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(soleWork, favouredCalibrated, topHit, directorsWork, houseProduction)))
       .map(editionNamed(ranked))
 
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
@@ -154,6 +154,18 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       case _        => None
     }
   }
+
+  /** The one eligible record billing the listing's work under the listing's OWN house
+   *  ([[Scored.houseProduction]]) that no published year or runtime contradicts: Flicks' "NT Live:
+   *  The Misanthrope" is the National Theatre's 2026 broadcast, "National Theatre Live: The
+   *  Misanthrope", though TMDB's search ranks three bare records of Molière's play above it — a
+   *  house's banner names its production as a season names one ([[seasonProduction]]). Two such
+   *  records (a broadcast and its encore) are no answer. */
+  def houseProduction(ranked: Seq[Scored]): Option[Accepted] =
+    eligibleOf(ranked).filter(candidate => candidate.houseProduction && !contradicted(candidate)) match {
+      case Seq(one) => Some(one -> one.p)
+      case _        => None
+    }
 
   /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
    *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
