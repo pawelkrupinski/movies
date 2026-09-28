@@ -41,12 +41,6 @@ class CostSpacedPhaseOffsetSpec extends AnyFlatSpec with Matchers {
     peakFiveMinuteCost(spaced(cost))      should be <= meanFiveMinuteCost + cost.values.max
   }
 
-  it should "place a cinema with no measured cost as if it cost the median" in {
-    val unmeasured = light.head
-    val median     = 2.0 // 270 light at 2, 30 heavy at 60
-    spaced(cost - unmeasured).millis(heavy.last, period) shouldBe spaced(cost.updated(unmeasured, median)).millis(heavy.last, period)
-  }
-
   // A thin venue re-scraped on half the period runs twice as often, so it loads the
   // queue as much as a venue of twice its cost on the full period.
   it should "weigh a venue by how often it runs, not only by what one run costs" in {
@@ -78,9 +72,11 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
     Seq(10, 30).foreach(n => store.record("scrape|A", ScrapeCost(n)))
     store.record("scrape|B", ScrapeCost(1))
     store.record("scrape|C", ScrapeCost(5))
-    val phases = new CostSpacedPhaseOffset
-    new ScrapePhasePlanner(roster, store, _ => period, phases).replan()
+    val phases    = new CostSpacedPhaseOffset
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
+    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates).replan()
 
+    estimates.costOf("scrape|A") shouldBe 20.0
     val expected = CostSpacedPhaseOffset.fractions(roster, Map("scrape|A" -> 20.0, "scrape|B" -> 1.0, "scrape|C" -> 5.0), _ => period.toMillis)
     roster.foreach(key => phases.millis(key, period.toMillis) shouldBe (expected(key) * period.toMillis).toLong)
   }
@@ -88,16 +84,18 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
   it should "keep the plan in place when the costs can't be read" in {
     val store = new InMemoryScrapeCostStore
     store.record("scrape|A", ScrapeCost(40))
-    val phases  = new CostSpacedPhaseOffset
-    new ScrapePhasePlanner(roster, store, _ => period, phases).replan()
+    val phases    = new CostSpacedPhaseOffset
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
+    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates).replan()
     val planned = roster.map(phases.millis(_, period.toMillis))
 
     val unreadable = new ScrapeCostStore {
       def record(dedupKey: String, cost: ScrapeCost): Unit = ()
       def recent(): Map[String, Seq[ScrapeCost]] = throw new IllegalStateException("Mongo down")
     }
-    new ScrapePhasePlanner(roster, unreadable, _ => period, phases).replan()
+    new ScrapePhasePlanner(roster, unreadable, _ => period, phases, estimates).replan()
     roster.map(phases.millis(_, period.toMillis)) shouldBe planned
+    estimates.costOf("scrape|A") shouldBe 40.0
   }
 }
 
@@ -107,5 +105,22 @@ class InMemoryScrapeCostStoreSpec extends AnyFlatSpec with Matchers {
     (1 to 7).foreach(n => store.record("scrape|A", ScrapeCost(n)))
     store.record("scrape|B", ScrapeCost(9))
     store.recent() shouldBe Map("scrape|A" -> (3 to 7).map(ScrapeCost(_)), "scrape|B" -> Seq(ScrapeCost(9)))
+  }
+}
+
+class ScrapeCostEstimatesSpec extends AnyFlatSpec with Matchers {
+
+  "ScrapeCostEstimates" should "use the configured prior until anything is measured" in {
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(36))
+    estimates.costOf("scrape|A") shouldBe 36.0
+    estimates.typical            shouldBe 36.0
+  }
+
+  it should "use a cinema's own measured cost, and the median of the measured for one without" in {
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(36))
+    estimates.update(Map("scrape|A" -> 2.0, "scrape|B" -> 10.0, "scrape|C" -> 80.0))
+    estimates.costOf("scrape|C")      shouldBe 80.0
+    estimates.costOf("scrape|Unseen") shouldBe 10.0
+    estimates.typical                 shouldBe 10.0
   }
 }

@@ -413,11 +413,57 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), tasksPerVenue = settings.ScrapeTasksPerVenue(10))
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), costs = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(10)))
 
     // Empty queue, 5 cinemas due, a 20-task budget and 10 tasks per venue → 2 venues.
     // Without the conversion this admits all 5, i.e. ~50 tasks against a budget of 20.
     reaper.tick() shouldBe 2
+  }
+
+  // The flat per-venue number is a country-wide guess; each venue's own measured cost
+  // replaces it once scrapes have recorded one. Five venues measured at 4 tasks fit a
+  // 20-task budget, where the guess of 10 a venue admitted only 2.
+  it should "admit venues by their own measured cost once one is recorded" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(10))
+    estimates.update(scrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema) -> 4.0).toMap)
+    val reaper = new ScrapeReaper(scrapers, new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
+      costs = estimates)
+
+    reaper.tick() shouldBe 5
+  }
+
+  // Priced per venue, not at the typical cost: four venues at 1 task and one at 18 are 22
+  // tasks, which a 20-task budget cannot take in one tick — though at the typical (median)
+  // cost of 1 all five would look like 5.
+  it should "price each venue at its own cost, not the typical one" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
+    estimates.update(scrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema) -> (if (s.cinema == Multikino) 18.0 else 1.0)).toMap)
+    val reaper = new ScrapeReaper(scrapers, new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
+      costs = estimates)
+
+    reaper.tick() should be < 5
+  }
+
+  // Admission stops at the first venue that doesn't fit, so a venue heavier than the whole
+  // budget would never fit and would stay overdue forever. It goes alone once the room
+  // could hold a typical venue.
+  it should "still admit a venue heavier than the whole budget, alone" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza).map(c => new FakeScraper(c, movieAt(c)))
+    val fresh     = new InMemoryFreshnessStore
+    Seq(KinoApollo, KinoMuza).foreach(c => fresh.markFresh(ScrapeCinemaHandler.dedupKey(c), FreshnessKind.CinemaScrape, specClock.instant()))
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
+    estimates.update(Map(ScrapeCinemaHandler.dedupKey(Multikino) -> 100.0,
+      ScrapeCinemaHandler.dedupKey(KinoApollo) -> 4.0, ScrapeCinemaHandler.dedupKey(KinoMuza) -> 4.0))
+    val reaper = new ScrapeReaper(scrapers, new InMemoryTaskQueue, fresh, clock = specClock,
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
+      costs = estimates)
+
+    reaper.tick() shouldBe 1
+    reaper.tick() shouldBe 0 // its 100 tasks now fill the budget
   }
 
   // A chunked venue is stamped by whichever step TERMINATES its scrape, not by the
@@ -449,7 +495,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
       dueWindow = new DueWindow(2.minutes), interval = services.tasks.ScrapeReaper.TickInterval(1.minute),
       maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
-      tasksPerVenue = settings.ScrapeTasksPerVenue(10), chunkSpread = settings.ScrapeChunkSpread(3.minutes))
+      costs = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(10)), chunkSpread = settings.ScrapeChunkSpread(3.minutes))
 
     reaper.tick() shouldBe 5
   }
@@ -480,7 +526,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), tasksPerVenue = settings.ScrapeTasksPerVenue(10))
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), costs = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(10)))
 
     // First tick admits 2 venues (20-task budget / 10). They are still WAITING — none
     // has fanned out — so the budget is already fully committed and the next tick must

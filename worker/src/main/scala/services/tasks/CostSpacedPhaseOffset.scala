@@ -19,8 +19,7 @@ import java.util.concurrent.atomic.AtomicReference
  * PL 95→78), and the peak by more.
  *
  * Load is cost / period, so a venue on a shortened period (VenueScrapeCadence) weighs
- * in by how often it actually runs. A cinema with no recorded cost yet weighs in at
- * the median of those that have one.
+ * in by how often it actually runs. Costs come from [[ScrapeCostEstimates]].
  *
  * This holds the current plan; [[ScrapePhasePlanner]] rebuilds it from the persisted
  * costs. A moved phase is safe only because the scrape [[DueWindow]] counts each
@@ -46,14 +45,11 @@ final class CostSpacedPhaseOffset extends PhaseOffset {
 object CostSpacedPhaseOffset {
 
   /** Each key's phase as a fraction of its period: the roster in hashed order, each
-   *  key starting where the running share of load (cost / period) before it ends. A
-   *  key with no measured cost weighs in at the median of those that have one. */
-  def fractions(keys: Seq[String], meanCost: Map[String, Double], periodMillisOf: String => Long): Map[String, Double] = {
-    val known    = meanCost.values.toVector.sorted
-    val fallback = if (known.isEmpty) 1.0 else known(known.size / 2)
-    val ordered  = keys.distinct.sortBy(key => (DueBoundary.hashedPhaseMillis(key, Int.MaxValue.toLong), key))
-    val loads    = ordered.map(key => meanCost.getOrElse(key, fallback).max(0.0) / periodMillisOf(key).max(1L).toDouble)
-    val total    = loads.sum
+   *  key starting where the running share of load (cost / period) before it ends. */
+  def fractions(keys: Seq[String], costOf: String => Double, periodMillisOf: String => Long): Map[String, Double] = {
+    val ordered = keys.distinct.sortBy(key => (DueBoundary.hashedPhaseMillis(key, Int.MaxValue.toLong), key))
+    val loads   = ordered.map(key => costOf(key).max(0.0) / periodMillisOf(key).max(1L).toDouble)
+    val total   = loads.sum
     if (total <= 0) Map.empty
     else ordered.zip(loads.scanLeft(0.0)(_ + _)).map { case (key, before) => key -> before / total }.toMap
   }

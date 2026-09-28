@@ -12,7 +12,7 @@ import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.observations.ObservingScrapeArchive
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.tasks.{InMemoryScrapeCostStore, MongoScrapeCostStore, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
+import services.tasks.{InMemoryScrapeCostStore, MongoScrapeCostStore, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
 import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
@@ -315,8 +315,12 @@ trait ScrapeWiring { self: WorkerWiring =>
   // planner (fan-out) and read by `scrapePhasePlanner` to space the scrape schedule.
   lazy val scrapeCostStore: ScrapeCostStore =
     mongoConnection.database.fold[ScrapeCostStore](new InMemoryScrapeCostStore)(new MongoScrapeCostStore(_))
+  // What each venue is expected to cost: its measured mean, else the country's median,
+  // else the configured prior. Read by the reaper's admission and the phase plan alike.
+  lazy val scrapeCostEstimates = new ScrapeCostEstimates(scrapeTasksPerVenue)
   lazy val scrapePhasePlanner = new ScrapePhasePlanner(
-    cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases)
+    cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
+    scrapeCostEstimates)
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
@@ -346,15 +350,15 @@ trait ScrapeWiring { self: WorkerWiring =>
   // work by the fan-out factor. Sized in ScrapeCadence. See ScrapeReaper's parameter.
   def maxOutstandingScrapeTasks: ScrapeMaxOutstandingTasks =
     configuration.scrapeMaxOutstandingTasks(ScrapeMaxOutstandingTasks(ScrapeCadence.MaxOutstandingScrapeTasks))
-  // What one venue costs in scrape tasks, so the budget above can be spent in the unit
-  // it is written in. Per country because the fan-out is a property of that country's
-  // scrapers — see ScrapeReaper's `tasksPerVenue`. Default 1 (unchunked).
+  // What a venue costs in scrape tasks BEFORE any is measured — the prior under
+  // `scrapeCostEstimates`. Per country because the fan-out is a property of that
+  // country's scrapers. Default 1 (unchunked).
   def scrapeTasksPerVenue: ScrapeTasksPerVenue = configuration.scrapeTasksPerVenue(ScrapeTasksPerVenue(1))
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelay,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
-      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
+      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
       chunkSpread = settings.ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread),
       inFlight = chunkRunInFlight,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)

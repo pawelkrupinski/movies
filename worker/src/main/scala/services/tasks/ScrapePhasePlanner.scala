@@ -9,8 +9,9 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Rebuilds the scrape schedule's [[CostSpacedPhaseOffset]] from each cinema's recorded
- * costs (the mean of its last [[ScrapeCostStore.RecentRuns]] scrapes): once at start,
+ * Refreshes the scrape schedule's [[ScrapeCostEstimates]] from each cinema's recorded
+ * costs (the mean of its last [[ScrapeCostStore.RecentRuns]] scrapes), and rebuilds the
+ * [[CostSpacedPhaseOffset]] from them: once at start,
  * then every [[ScrapePhasePlanner.ReplanInterval]]. An unreadable store keeps the plan
  * already in place — an unknown cost is not a zero one.
  */
@@ -18,7 +19,8 @@ final class ScrapePhasePlanner(
   roster:    Seq[String],
   costs:     ScrapeCostStore,
   periodFor: String => FiniteDuration,
-  phases:    CostSpacedPhaseOffset
+  phases:    CostSpacedPhaseOffset,
+  estimates: ScrapeCostEstimates
 ) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("scrape-phase-plan")
@@ -27,9 +29,9 @@ final class ScrapePhasePlanner(
     Try(costs.recent()).fold(
       e => logger.warn(s"Scrape phase plan kept: costs unreadable (${e.getMessage})"),
       recent => {
-        val means = recent.collect { case (key, runs) if runs.nonEmpty => key -> runs.map(_.tasks.toDouble).sum / runs.size }
-        phases.plan(CostSpacedPhaseOffset.fractions(roster, means, key => periodFor(key).toMillis))
-        logger.info(s"Scrape phase plan: ${roster.size} cinema(s), ${roster.count(means.contains)} with a measured cost.")
+        estimates.update(recent.collect { case (key, runs) if runs.nonEmpty => key -> runs.map(_.tasks.toDouble).sum / runs.size })
+        phases.plan(CostSpacedPhaseOffset.fractions(roster, estimates.costOf, key => periodFor(key).toMillis))
+        logger.info(s"Scrape phase plan: ${roster.size} cinema(s), ${estimates.measuredCount(roster)} with a measured cost, typical ${estimates.typical} task(s).")
       })
 
   def start(): Unit = {

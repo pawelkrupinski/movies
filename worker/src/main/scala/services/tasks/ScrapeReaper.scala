@@ -111,13 +111,14 @@ class ScrapeReaper(
   // on 2026-07-28 kinowo-worker-uk's ScrapeCinema draining 19 -> 0 put ScrapeChunk
   // 244 -> 791 in a single step, from a reaper that believed it was under budget.
   //
-  // Per country, because the fan-out is a property of the scrapers a country wires:
-  // ~36 for a UK Flicks venue (one chunk per advertised day), ~16 for a German
-  // Filmstarts one, 1 for an unchunked Polish venue. Set in each worker app's toml via
-  // `KINOWO_SCRAPE_TASKS_PER_VENUE`. It only has to be right to within a factor of
-  // two — it sizes a burst bound, not a schedule. Default 1 = unchunked, which leaves
-  // the bound behaving exactly as a venue count for callers that don't set it.
-  tasksPerVenue: ScrapeTasksPerVenue = ScrapeTasksPerVenue(1),
+  // Per VENUE, measured: each scrape records what it fanned out to (the planner, one
+  // chunk per advertised day, the reduce — ~36 for a UK Flicks venue, ~16 for a German
+  // Filmstarts one, 1 for an unchunked Polish venue), and a venue is admitted against
+  // the mean of its own recent runs. Until a venue has one, the country's median; until
+  // the country has any, its configured prior (`KINOWO_SCRAPE_TASKS_PER_VENUE`). Default:
+  // a flat prior of 1, which leaves the bound behaving exactly as a venue count for
+  // callers that don't wire costs.
+  costs: ScrapeCostEstimates = new ScrapeCostEstimates(ScrapeTasksPerVenue(1)),
   // Cinemas whose scrape is already running are left OUT of the due set. A chunked
   // venue is not stamped until its run terminates (deliberately — see
   // [[ScrapeInFlight]]), so without this it stays most-overdue for its own duration
@@ -178,14 +179,20 @@ class ScrapeReaper(
    *  so holding cadence needs `venuesPerTick x spreadTicks` of them in flight at once,
    *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
    *  roster ages without bound, which is not "backing off", it is falling behind. */
-  private val cadenceTaskFloor: Int = {
+  //
+  // Re-read each tick: it is priced at the TYPICAL venue's measured cost, which moves as
+  // costs are re-measured.
+  private def cadenceTaskFloor: Int = {
     val spreadTicks = math.max(1L, chunkSpread.value.toMillis / math.max(1L, interval.value.toMillis))
-    cadenceVenuesPerTick * spreadTicks.toInt * math.max(1, tasksPerVenue.value)
+    cadenceVenuesPerTick * spreadTicks.toInt * typicalVenueCost
   }
 
-  private val spreadAwareOutstandingBudget: Int =
+  private def spreadAwareOutstandingBudget: Int =
     if (maxOutstandingScrapeTasks.value == Int.MaxValue) Int.MaxValue
     else math.max(maxOutstandingScrapeTasks.value, cadenceTaskFloor)
+
+  /** A typical venue's cost in whole tasks, never under one. */
+  private def typicalVenueCost: Int = math.max(1, math.ceil(costs.typical).toInt)
   // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
   private val rampAnchor = new AtomicReference[Option[Instant]](None)
 
@@ -265,7 +272,6 @@ class ScrapeReaper(
     // planner is an INTENTION to enqueue ~36 more, and a budget that ignores that keeps
     // admitting against room it has already committed. Prod showed exactly that shape —
     // ScrapeCinema=13 waiting with ScrapeChunk=0, ~470 tasks of pending fan-out read as 13.
-    val perVenue = math.max(1, tasksPerVenue.value)
     // A backlog that cannot be READ is not an empty backlog. `waitingCount` throws on a
     // failed read (it used to answer 0 — the reading of an empty queue, so a Mongo blip
     // was the one moment the whole budget got admitted on top of an unknown pile).
@@ -274,7 +280,7 @@ class ScrapeReaper(
     val outstanding = Try(
       queue.waitingCount(TaskType.ScrapeChunk) +
       queue.waitingCount(TaskType.ScrapeChunkReduce) +
-      queue.waitingCount(TaskType.ScrapeCinema) * perVenue
+      queue.waitingCount(TaskType.ScrapeCinema) * typicalVenueCost
     ) match {
       case scala.util.Success(count) => count
       case scala.util.Failure(exception) =>
@@ -282,15 +288,11 @@ class ScrapeReaper(
         return 0
     }
 
-    /** Venues admissible under a budget expressed in TASKS. Integer division floors, so
-     *  room smaller than one venue's fan-out admits nothing rather than overshooting. */
-    def venuesWithin(taskBudget: Int): Int =
-      if (taskBudget == Int.MaxValue) Int.MaxValue
-      else math.max(0, taskBudget - outstanding) / perVenue
+    val room = TaskRoom(spreadAwareOutstandingBudget, outstanding)
 
     if (enqueueSpread.value <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
-      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget)))
+      val enqueued = enqueueUpTo(due, rampedCap(now), room)
       if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
       enqueued
     } else {
@@ -299,11 +301,11 @@ class ScrapeReaper(
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
       // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget))), enqueueSpread.value)
-      val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
+      val plan = planSlices(admissible(due.take(rampedCap(now)), room), enqueueSpread.value)
+      val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size, TaskRoom.Unbounded) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {
-          val n = Try(enqueueUpTo(group, group.size)).getOrElse(0)
+          val n = Try(enqueueUpTo(group, group.size, TaskRoom.Unbounded)).getOrElse(0)
           if (n > 0) logger.info(s"ScrapeReaper enqueued $n stale cinema(s) (spread slice at +${offset.toSeconds}s).")
         })
       }
@@ -314,16 +316,43 @@ class ScrapeReaper(
     }
   }
 
-  /** Enqueue due cinemas in order until `cap` NEW tasks have been added; already-
-   *  waiting/working cinemas dedup for free (they don't count against the cap).
-   *  Returns the number of tasks actually added. */
-  private def enqueueUpTo(due: Vector[(String, String)], cap: Int): Int = {
-    var enqueued = 0
-    due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>
-      if (queue.enqueue(TaskType.ScrapeCinema, key,
-            Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added)
-        enqueued += 1
+  /** The room left under a budget in TASKS, and the one rule for what fits in it: each
+   *  venue priced at its own expected cost, so one heavy venue takes the room of many
+   *  light ones. Admission stops at the first venue that doesn't fit rather than
+   *  skipping it for lighter ones behind, or it would never get in; and a venue heavier
+   *  than the whole budget still goes, first and alone, once the room could hold a
+   *  typical venue — without that it would stay overdue forever. */
+  private final case class TaskRoom(budget: Int, outstanding: Int) {
+    private val room = if (budget == Int.MaxValue) Double.MaxValue else math.max(0, budget - outstanding).toDouble
+    def fits(spent: Double, key: String, first: Boolean): Boolean =
+      spent + costs.costOf(key) <= room || (first && room >= typicalVenueCost)
+  }
+  private object TaskRoom { val Unbounded: TaskRoom = TaskRoom(Int.MaxValue, 0) }
+
+  /** The oldest-first prefix of `due` that fits `room`. */
+  private def admissible(due: Vector[(String, String)], room: TaskRoom): Vector[(String, String)] = {
+    var spent = 0.0
+    due.takeWhile { case (key, _) =>
+      val ok = room.fits(spent, key, first = spent == 0.0)
+      if (ok) spent += costs.costOf(key)
+      ok
     }
+  }
+
+  /** Enqueue due cinemas in order until `cap` NEW tasks have been added or the next
+   *  doesn't fit `room`; already-waiting/working cinemas dedup for free (they count
+   *  against neither). Returns the number of tasks actually added. */
+  private def enqueueUpTo(due: Vector[(String, String)], cap: Int, room: TaskRoom): Int = {
+    var enqueued = 0
+    var spent    = 0.0
+    due.iterator.takeWhile { case (key, _) => enqueued < cap && room.fits(spent, key, first = enqueued == 0) }
+      .foreach { case (key, displayName) =>
+        if (queue.enqueue(TaskType.ScrapeCinema, key,
+              Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added) {
+          enqueued += 1
+          spent    += costs.costOf(key)
+        }
+      }
     enqueued
   }
 
