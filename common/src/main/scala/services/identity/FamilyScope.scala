@@ -64,7 +64,7 @@ private[identity] final class FamilyScope(members: Seq[EvidenceNode], scoring: C
   def pooled(cluster: Seq[EvidenceNode]): Seq[Scored] = {
     def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
       values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (v, w) => (-w, v) }.headOption.map(_._1)
-    val lead     = cluster.sortBy(n => (-n.weight, n.id)).head
+    val lead     = cluster.minBy(n => (-n.weight, n.id))
     val runtimes = cluster.flatMap(n => n.evidence.runtime.toSeq.flatMap(r => Seq.fill(n.weight)(r))).sorted
     val year     = modal(cluster.flatMap(n => n.evidence.year.map(_ -> n.weight)))
     val listing  = lead.evidence.measured.copy(
