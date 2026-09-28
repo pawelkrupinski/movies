@@ -172,6 +172,23 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.listingFilm(nt, record, None, 0, 0, houses)("title") shouldBe Category("segment")
   }
 
+  "a record billing the listing's work under the listing's own house" should "be one of the house, not a season's or another edition's" in {
+    val houses = Houses(Map("ntlive" -> "nationaltheatrelive",
+      // TMDB files the Paris Opera's broadcasts' works only under the Met's records, so its banner is
+      // learned as the Met; League of Legends' two finals banners share every word but the number.
+      "operanationaldeparis" -> "themetropolitanopera", "leagueoflegendsworlds26" -> "leagueoflegendsworlds25"))
+    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("National Theatre Live: The Misanthrope"), houses) shouldBe true
+    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("The Misanthrope"), houses) shouldBe false
+    // A record of one SEASON's broadcast names its production by the season, which the listing does not.
+    IdentityMeasures.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+      Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
+    // A banner numbering its edition otherwise than the record's is another edition.
+    IdentityMeasures.billsUnderItsHouse(Listing("League of Legends Worlds 26 | Finals in Cinema"),
+      Film("League of Legends Worlds25 - Finals in Cinema"), houses) shouldBe false
+    IdentityMeasures.billsUnderItsHouse(Listing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
+      Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), Houses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
+  }
+
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
     val q = IdentityMeasures.Qualifiers.learn(Seq("Chocolate - Director's Cut",
       "The Great War: Director's Cut", "The Promise (Director's Cut)", "Director's Cut", "Dark City", "Manhunter").map(Film(_)))
