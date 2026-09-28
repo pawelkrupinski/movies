@@ -430,10 +430,11 @@ object IdentityMeasures {
 
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
    *  Mossy Botton", "Pradhama Drishtiya Kuttakkar") — where both spellings of that word run to five
-   *  letters and neither is a number: a sequel's numeral ("Scary Movie 3", "Mission: Impossible II")
+   *  letters and neither is a number, in a title of two words or more: a sequel's numeral ("Scary Movie 3", "Mission: Impossible II")
    *  or a short word ("Hunt"/"Hurt") is a different title, not a typo. */
   private[identity] def oneTypoApart(a: Seq[String], b: Seq[String]): Boolean =
-    a.size == b.size && a != b && {
+    // Two words at least: a one-word title a letter from another is another film ("Lalka"/"Lalkar").
+    a.size >= 2 && a.size == b.size && a != b && {
       val differing = a.indices.filter(i => a(i) != b(i))
       differing.sizeIs == 1 && {
         val (x, y) = (a(differing.head), b(differing.head))

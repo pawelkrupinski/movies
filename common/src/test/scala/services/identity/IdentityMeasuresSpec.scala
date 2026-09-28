@@ -484,4 +484,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.originalTitleRelation(Some("Pradhama Drishtiya Kuttakkar"), Seq("Pradhama Drishtya Kuttakkar")) shouldBe IdentityMeasures.Category("match")
     IdentityMeasures.originalTitleRelation(Some("Scary Movie 3"), Seq("Scary Movie 4")) should not be IdentityMeasures.Category("match")
   }
+
+  it should "not reach a one-word title: a letter apart there is another film" in {
+    // UK, 64 "Lalka" / "Lalka (The Doll)" listings, originally "Lalka", were taken for "Lalkar" (1972).
+    IdentityMeasures.originalTitleRelation(Some("Lalka"), Seq("Lalkar")) should not be IdentityMeasures.Category("match")
+    IdentityMeasures.titleRelation(Listing("Lalka"), Film("Lalkar")) should not be IdentityMeasures.Category("exact")
+  }
 }
