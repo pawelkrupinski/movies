@@ -36,9 +36,11 @@ class LiveCorpusSpec extends AnyFlatSpec with Matchers {
     divergence(s"seed $seed", corpus.listings, corpus.lookups, seed)
   }
 
-  private def divergence(label: String, listings: Seq[Listing], inner: IdentityLookups, seed: Long): Option[String] = {
+  private def divergence(label: String, listings: Seq[Listing], inner: IdentityLookups, seed: Long,
+                         slices: LiveCorpus.Slices = LiveCorpus.Slices.Default,
+                         observed: IdentityLookups => IdentityLookups = identity): Option[String] = {
     val lookups = new FillingLookups(inner, new Random(seed * 31))
-    val live    = new LiveCorpus(lookups, normalizer, PinConstraints(Nil), TitleDecorations.None)
+    val live    = new LiveCorpus(observed(lookups), normalizer, PinConstraints(Nil), TitleDecorations.None, slices)
     val random  = new RandomIdentityEvents(listings, lookups, seed)
     random.events.zipWithIndex.flatMap { case (event, step) =>
       event match {
@@ -57,5 +59,24 @@ class LiveCorpusSpec extends AnyFlatSpec with Matchers {
   it should "equal it on the corpora whose families read each other's facts" in {
     (for { corpus <- CrossFamilyCorpora.all(normalizer); seed <- Seeds }
       yield divergence(s"${corpus.label} / $seed", corpus.listings, corpus.lookups, seed)).flatten shouldBe empty
+  }
+
+  it should "prefetch in bounded slices, and equal the whole one however small they are" in {
+    val prefetched = scala.collection.mutable.ArrayBuffer.empty[(Int, Int, Int)]
+    val slices     = LiveCorpus.Slices(nodes = 2, details = 3, records = 4)
+    def counting(inner: IdentityLookups): IdentityLookups = new IdentityLookups {
+      def hasDetail(listing: Listing)          = inner.hasDetail(listing)
+      def detail(listing: Listing)             = inner.detail(listing)
+      def candidates(query: CandidateQuery)    = inner.candidates(query)
+      def film(tmdbId: Int)                    = inner.film(tmdbId)
+      override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
+        prefetched += ((queries.size, films.size, details.size))
+    }
+    Seeds.flatMap { seed =>
+      val corpus = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
+      divergence(s"seed $seed", corpus.listings, corpus.lookups, seed, slices, counting)
+    } shouldBe empty
+    prefetched.map(_._2).max should (be > 0 and be <= slices.records)
+    prefetched.map(_._3).max should (be > 0 and be <= slices.details)
   }
 }

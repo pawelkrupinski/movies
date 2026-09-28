@@ -18,7 +18,8 @@ import scala.collection.mutable
  * listings held — `LiveCorpusSpec` asserts it after every event.
  */
 private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: TitleNormalizer, pins: PinConstraints,
-                                         decorations: TitleDecorations) extends CorpusContext {
+                                         decorations: TitleDecorations,
+                                         slices: LiveCorpus.Slices = LiveCorpus.Slices.Default) extends CorpusContext {
   private type NodeKey = (String, Set[String])
 
   private final class Node(val node: EvidenceNode, val queries: Seq[CandidateQuery], val reached: Seq[Int]) {
@@ -102,16 +103,19 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // ── events ──────────────────────────────────────────────────────────────────────────────────
   def seen(arrived: Seq[Listing]): CorpusContext.Changed = {
     val touched = mutable.HashSet.empty[NodeKey]
-    lookups.prefetch(Nil, Nil, arrived.filter(lookups.hasDetail))
-    arrived.foreach { listing =>
-      listings.remove(listing.key).foreach(key => touched += leave(listing.key, key))
-      val evidence = derive(listing)
-      val key      = CandidateGeneration.nodeKey(listing, evidence, pins)
-      listings(listing.key) = key
-      val held = members.getOrElseUpdate(key, mutable.TreeMap.empty)
-      held(listing.sortKey) = listing
-      if (held.head._2.key == listing.key) heads(key) = listing.key -> evidence
-      touched += key
+    // A slice of detail pages at a time: what a prefetch holds is bounded, however many listings arrive.
+    arrived.grouped(slices.details).foreach { slice =>
+      lookups.prefetch(Nil, Nil, slice.filter(lookups.hasDetail))
+      slice.foreach { listing =>
+        listings.remove(listing.key).foreach(key => touched += leave(listing.key, key))
+        val evidence = derive(listing)
+        val key      = CandidateGeneration.nodeKey(listing, evidence, pins)
+        listings(listing.key) = key
+        val held = members.getOrElseUpdate(key, mutable.TreeMap.empty)
+        held(listing.sortKey) = listing
+        if (held.head._2.key == listing.key) heads(key) = listing.key -> evidence
+        touched += key
+      }
     }
     refresh(touched.toSet, Set.empty, Set.empty)
   }
@@ -146,9 +150,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val rebuilt   = touched ++ reasked.flatMap(askers.getOrElse(_, Set.empty))
     // 1. nodes: unhook the old, re-ask what was asked anew, hook the new
     rebuilt.foreach(key => nodes.remove(key).foreach(old => { films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
-    // Answers are read for this refresh only, each question once.
-    val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
-    val answer  = (query: CandidateQuery) => answers.getOrElseUpdate(query, lookups.candidates(query))
     val built = rebuilt.toSeq.flatMap(key => members.get(key).map { held =>
       val listed  = held.values.toSeq
       val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
@@ -156,19 +157,26 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val node    = new EvidenceNode(head, listed)
       (key, node, CandidateQueries.of(node.evidence))
     })
-    lookups.prefetch(built.flatMap(_._3).distinct, Nil, Nil)
-    built.foreach { case (key, node, queries) =>
-      val live = new Node(node, queries,
-        CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer)))
-      nodes(key) = live
-      films ++= link(key, live, answer)
-      titleKeys += live.titleKey
-      segments += live.whole
+    // A slice of nodes at a time, its answers read for that slice only and dropped with it: a
+    // refresh of the whole corpus (a take-up) never holds every answer at once.
+    built.grouped(slices.nodes).foreach { slice =>
+      val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
+      val answer  = (query: CandidateQuery) => answers.getOrElseUpdate(query, lookups.candidates(query))
+      lookups.prefetch(slice.flatMap(_._3).distinct, Nil, Nil)
+      slice.foreach { case (key, node, queries) =>
+        val live = new Node(node, queries,
+          CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer)))
+        nodes(key) = live
+        films ++= link(key, live, answer)
+        titleKeys += live.titleKey
+        segments += live.whole
+      }
     }
     // 2. films: each one's base candidate, and the title keys it files under
     val filedUnder = mutable.HashSet.empty[String]
-    lookups.prefetch(Nil, films.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
-    films.foreach { id =>
+    films.toSeq.sorted.grouped(slices.records).foreach { slice =>
+    lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
+    slice.foreach { id =>
       base.remove(id).foreach(old => filmKeys(old.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)) })
       bestHits.get(id) match {
         case Some(byQuery) =>
@@ -178,6 +186,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
           filmKeys(candidate.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)) }
         case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
       }
+    }
     }
     // 3. venue titles of every title key a touched node carries, or whose original a touched film files under
     val retitled = mutable.HashSet.empty[Int] ++ films
@@ -277,4 +286,10 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       moved
     }
   }
+}
+
+private[identity] object LiveCorpus {
+  /** How many nodes, detail pages and records one prefetch — and one slice's answers — may hold. */
+  final case class Slices(nodes: Int, details: Int, records: Int)
+  object Slices { val Default: Slices = Slices(nodes = 500, details = 1000, records = 2000) }
 }

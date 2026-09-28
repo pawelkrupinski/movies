@@ -241,9 +241,9 @@ object IncrementalResolver {
       }
   }
 
-  /** The most listings resolved together — in a full build or an event's update alike: about one
-   *  wide release's venues. A region is bounded by it unless one family is larger. */
-  val RegionBatch = 2000
+  /** The most listings resolved together — in a full build or an event's update alike. A region is
+   *  bounded by it unless one family is larger; 2,000 took over a minute a region in production. */
+  val RegionBatch = 500
 
   /** The version of the rules a model's families are decided under: the resolver's code
    *  ([[IdentityRules.codeVersion]]), the calibration and decorations it runs with, and the pins.
