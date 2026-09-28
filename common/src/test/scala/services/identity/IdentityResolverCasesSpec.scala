@@ -1290,6 +1290,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "A focused listing's candidates" should "be reported as its family scored them, the one its facts deny marked" in {
+    val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 120), F(2, "Lalka", 1968, "Wojciech Jerzy Has", 159))
+    val focused = listing(Multikino, "Lalka", year = Some(2026), director = Some("Maciej Kawalski"))
+    val other   = listing(Helios, "Kurier")
+    val report  = IdentityResolver.candidatesOf(Seq(focused, other), new Table(films), normalizer, weights)(_ == focused)
+    report.map(_._1) shouldBe Seq("'Lalka' [2026] {Maciej Kawalski} ×1")
+    val candidates = report.head._2
+    candidates.map(_.tmdbId) shouldBe Seq(1, 2)
+    candidates.head.denied shouldBe false
+    candidates.last.denied shouldBe true
+    candidates.last.render should include ("DENIED")
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

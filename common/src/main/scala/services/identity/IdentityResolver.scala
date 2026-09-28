@@ -102,22 +102,52 @@ object IdentityResolver {
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = if (films.add(tmdbId)) lookups.film(tmdbId) else Answer.Unknown
   }
 
+  /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
+   *  and for [[candidatesOf]]. */
+  private final class Stages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                             calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations) {
+    private val arrival = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins
+    // One listing per key, the smallest by the total order — never the first to arrive.
+    private val all     = listings.toSeq.sorted.distinctBy(_.key)
+    val ordered: Seq[Listing] = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
+    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups)
+    val acceptance = new Acceptance(calibration)
+    val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
+    val links      = new TitleLinks(generation.nodes, normalizer, pins)
+    val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
+  }
+
+  /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
+  final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
+                                  denied: Boolean, seasonProduction: Boolean, houseProduction: Boolean, explanation: String) {
+    def render: String =
+      f"$tmdbId%8d ${ResolverDecision.percent(probability)}%6s rank ${searchRank.fold("-")(_.toString)}%2s" +
+        s"${if (denied) " DENIED" else ""}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
+        s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
+  }
+
+  /** Every node holding a listing `focused` selects, with its candidates as its family scores them,
+   *  best first — the resolve's own stages, so the report shows what the resolve read. */
+  def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                   calibration: IdentityCalibration = IdentityCalibration.resolver,
+                   pins: PinConstraints = PinConstraints(Nil),
+                   decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[(String, Seq[CandidateScore])] = {
+    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
+    stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
+      node.label -> stages.families.scopeOf(node).of(node).map { scored =>
+        CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
+          scored.denied, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures))
+      }
+    }
+  }
+
   private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                     calibration: IdentityCalibration, mutation: Mutation,
                                     pins: PinConstraints = PinConstraints(Nil),
                                     decorations: TitleDecorations = TitleDecorations.None): Resolution = {
-    val arrival  = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins
-    // One listing per key, the smallest by the total order — never the first to arrive.
-    val all      = listings.toSeq.sorted.distinctBy(_.key)
-    val ordered  = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
-
-    // ── A. candidate generation, scoring and families ────────────────────────────────────
-    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups)
+    val stages = new Stages(listings, lookups, normalizer, calibration, mutation, pins, decorations)
+    import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateById, details, issued, nodeById, nodes, records}
-    val acceptance = new Acceptance(calibration)
-    val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
-    val links      = new TitleLinks(nodes, normalizer, pins)
-    val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
     import families.{familyOf, scopes}
 
     // ── B. global assignment, per family ─────────────────────────────────────────────────
