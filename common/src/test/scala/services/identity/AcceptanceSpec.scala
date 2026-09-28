@@ -62,6 +62,17 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(dracula, (138, Film("Dracula", year = Some(1931), directors = Some(Seq("Tod Browning"))), Some(3)))) shouldBe None
   }
 
+  it should "take the one record its title only decorates, years aside, from the year it dates it" in {
+    // US "The Metropolitan Opera: La Fanciulla del West Encore (2027)" is the Met's 2026/27 broadcast;
+    // its 2018 staging is nine years off.
+    val encore = Listing("The Metropolitan Opera: La Fanciulla del West Encore (2027)")
+    val staging2018 = (543704, Film("The Metropolitan Opera: La Fanciulla del West", year = Some(2018)), Some(1))
+    val season      = (1703629, Film("The Metropolitan Opera 2026/27: La Fanciulla del West", year = Some(2027)), Some(2))
+    taken(ranked(encore, staging2018, season)) shouldBe Some(1703629)
+    // A title that is only a word of the listing's is not decorated by it.
+    taken(ranked(Listing("Fanciulla Encore (2027)"), (1, Film("Encore", year = Some(2027)), Some(1)))) shouldBe None
+  }
+
   "a listing billing its work under a house" should "take the one record billing the work under that house over bare records of the work" in {
     taken(ranked(misanthrope, bare :+ national *)) shouldBe Some(1693710)
   }

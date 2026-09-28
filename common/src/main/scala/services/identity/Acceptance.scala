@@ -170,7 +170,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
    *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts
    *  it — a credited director included: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2"
-   *  and a 2022 "Troll" above it. Two such records are no answer. */
+   *  and a 2022 "Troll" above it ([[namedButForItsYear]]: decorated, as "… Encore (2027)", too). Two
+   *  such records are no answer. */
   def datedTitle(ranked: Seq[Scored]): Option[Accepted] =
     eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
       candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= 1) && !contradicted(candidate) &&
@@ -179,10 +180,13 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       case _        => None
     }
 
-  /** Is the listing's title, its dating year aside, the candidate's own title or original title? */
+  /** Is the listing's title, years aside, the candidate's own title or original title — or that
+   *  title of two words or more decorated along one edge ("La Fanciulla del West Encore" of the
+   *  Met's "… 2026/27: La Fanciulla del West")? */
   private def namedButForItsYear(candidate: Scored): Boolean = {
     val titles = (Seq(candidate.candidate.film.title) ++ candidate.candidate.film.originalTitle).map(IdentityMeasures.yearlessTokens)
-    (Seq(candidate.listing.title) ++ candidate.listing.rawTitle).map(IdentityMeasures.yearlessTokens).exists(own => own.nonEmpty && titles.contains(own))
+    (Seq(candidate.listing.title) ++ candidate.listing.rawTitle).map(IdentityMeasures.yearlessTokens).exists(own => own.nonEmpty &&
+      titles.exists(title => title == own || (title.sizeIs >= 2 && services.movies.TitleContainment.isTokenRun(title, own))))
   }
 
   /** The one eligible record billing the listing's work under the listing's OWN house
