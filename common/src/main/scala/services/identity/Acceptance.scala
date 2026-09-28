@@ -24,7 +24,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
    *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
   def alone(ranked: Seq[Scored]): Option[Accepted] =
-    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(soleWork, favouredCalibrated, topHit, directorsWork, houseProduction)))
+    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(soleWork, favouredCalibrated, topHit, directorsWork, directorsTitle, datedTitle, houseProduction)))
       .map(editionNamed(ranked))
 
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
@@ -153,6 +153,35 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       case Seq(one) => Some(one -> one.probability)
       case _        => None
     }
+  }
+
+  /** The one eligible candidate the listing's title names EXACTLY that credits the director the
+   *  listing credits, when no published year or runtime contradicts it: a title and its director
+   *  name one film together, however the database's search ranks it or however few venues list it
+   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"). Two such
+   *  records are no answer. */
+  def directorsTitle(ranked: Seq[Scored]): Option[Accepted] =
+    eligibleOf(ranked).filter(candidate => candidate.category("title").contains("exact") &&
+      IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate)) match {
+      case Seq(one) => Some(one -> one.probability)
+      case _        => None
+    }
+
+  /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
+   *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts
+   *  it: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2" and a 2022 "Troll" above it.
+   *  Two such records are no answer. */
+  def datedTitle(ranked: Seq[Scored]): Option[Accepted] =
+    eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
+      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= 1) && !contradicted(candidate)) match {
+      case Seq(one) => Some(one -> one.probability)
+      case _        => None
+    }
+
+  /** Is the listing's title, its dating year aside, the candidate's own title or original title? */
+  private def namedButForItsYear(candidate: Scored): Boolean = {
+    val titles = (Seq(candidate.candidate.film.title) ++ candidate.candidate.film.originalTitle).map(IdentityMeasures.yearlessTokens)
+    (Seq(candidate.listing.title) ++ candidate.listing.rawTitle).map(IdentityMeasures.yearlessTokens).exists(own => own.nonEmpty && titles.contains(own))
   }
 
   /** The one eligible record billing the listing's work under the listing's OWN house

@@ -32,6 +32,32 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     (700002, Film("The Misanthrope", year = Some(2011), runtime = Some(125)), Some(4)))
   private val national = (1693710, Film("National Theatre Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
 
+  "a listing crediting a director" should "take the one record its title names exactly by that director, however the database ranks it" in {
+    // US "Man of Iron" {Andrzej Wajda}: TMDB's search ranks Wajda's 1981 film seventh, behind "Iron Man".
+    val listing = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(153))
+    val wajda   = (225, Film("Man of Iron", year = Some(1981), runtime = Some(144), directors = Some(Seq("Andrzej Wajda"))), Some(7))
+    val favreau = (1726, Film("Iron Man", year = Some(2008), runtime = Some(126), directors = Some(Seq("Jon Favreau")), popularity = Some(40.0)), Some(1))
+    taken(ranked(listing, favreau, wajda)) shouldBe Some(225)
+  }
+
+  it should "take nothing when its runtime contradicts that record, or two such records are candidates" in {
+    val listing = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(200))
+    val wajda   = (225, Film("Man of Iron", year = Some(1981), runtime = Some(144), directors = Some(Seq("Andrzej Wajda"))), Some(7))
+    taken(ranked(listing, wajda)) shouldBe None
+    val cut     = (226, Film("Man of Iron", year = Some(1982), runtime = Some(195), directors = Some(Seq("Andrzej Wajda"))), Some(8))
+    taken(ranked(listing.copy(runtime = Some(170)), wajda, cut)) shouldBe None
+  }
+
+  "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {
+    // US "Troll (1986)": TMDB ranks "Troll 2" and the 2022 "Troll" above the 1986 film.
+    val troll = Listing("Troll (1986)")
+    val films = Seq((1180831, Film("Troll 2", year = Some(2025), popularity = Some(20.0)), Some(1)),
+      (736526, Film("Troll", year = Some(2022), popularity = Some(10.0)), Some(2)), (33061, Film("Troll", year = Some(1986)), Some(3)))
+    taken(ranked(troll, films *)) shouldBe Some(33061)
+    // Two records of that title from that year are no answer.
+    taken(ranked(troll, films :+ (33062, Film("Troll", year = Some(1986)), Some(4)) *)) shouldBe None
+  }
+
   "a listing billing its work under a house" should "take the one record billing the work under that house over bare records of the work" in {
     taken(ranked(misanthrope, bare :+ national *)) shouldBe Some(1693710)
   }
