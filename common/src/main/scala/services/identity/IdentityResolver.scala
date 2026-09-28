@@ -104,6 +104,32 @@ object IdentityResolver {
    *  candidates bill it under with the houses contending for that banner, best first, and the one learned. */
   final case class NodeCandidates(label: String, candidates: Seq[CandidateScore], banners: Seq[String])
 
+  /** One of the largest families, taken apart: its size, the block keys holding the most of its
+   *  nodes, and for each of those the nodes the family's largest piece keeps once that key is dropped
+   *  — a key that alone glues the family together leaves a small piece. For a report finding why
+   *  a family grew far past one film. */
+  final case class FamilyAnatomy(listings: Int, nodes: Int, keys: Seq[(String, Int)], withoutKey: Seq[(String, Int)]) {
+    def render: Seq[String] =
+      s"family of $listings listing(s) in $nodes node(s)" +:
+        (s"  keys by nodes: ${keys.map { case (key, count) => s"$key ×$count" }.mkString(", ")}" +:
+          withoutKey.map { case (key, largest) => s"  without $key: largest piece $largest node(s)" })
+  }
+
+  def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                    calibration: IdentityCalibration = IdentityCalibration.resolver,
+                    decorations: TitleDecorations = TitleDecorations.resolver)(largest: Int): Seq[FamilyAnatomy] = {
+    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
+    import stages.families.{blockKeysOf, familyOf}
+    stages.generation.nodes.groupBy(node => familyOf(node.id)).values.toSeq.sortBy(members => -members.map(_.weight).sum).take(largest).map { members =>
+      val keysOf = members.map(node => node.id -> blockKeysOf(node.id)).toMap
+      val byKey  = keysOf.toSeq.flatMap { case (id, keys) => keys.map(_ -> id) }.groupMap(_._1)(_._2)
+      val ranked = byKey.toSeq.map { case (key, ids) => key -> ids.size }.sortBy { case (key, count) => (-count, key) }
+      def largestPieceWithout(dropped: String): Int =
+        FamilyClosure.families(keysOf.map { case (id, keys) => id -> (keys - dropped) }).groupBy(_._2).values.map(_.size).maxOption.getOrElse(0)
+      FamilyAnatomy(members.map(_.weight).sum, members.size, ranked.take(25), ranked.take(15).map { case (key, _) => key -> largestPieceWithout(key) })
+    }
+  }
+
   /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
    *  what the resolve read. */
   def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,

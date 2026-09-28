@@ -154,6 +154,10 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       report.line(f"[${c.label}] resolver: ${resolution.nodes} nodes in ${resolution.families} families → ${resolution.decisions.size} clusters " +
         f"(${resolution.decisions.count(_.film.isDefined)} matched) in $resolveSeconds%.1fs; lookups ${lookups.sizes} (details, queries, films), " +
         s"unanswerable ${lookups.unknown}; $resolverRequests HTTP requests; cannot-linked pairs inside a cluster: ${resolution.violations}")
+      // The largest families taken apart: which block keys glue one far past a film (PL held ~75% of
+      // its listings in one family, so the incremental model re-resolved most of PL on any event).
+      IdentityResolver.familyAnatomy(listings, lookups, c.normalizer, calibration)(2)
+        .foreach(anatomy => anatomy.render.foreach(line => report.line(s"[${c.label}] $line")))
 
       // The same corpus kept INCREMENTALLY: taken whole, one title-key component at a time (a new
       // country, or a rebuild after the rules change), it must decide exactly as the whole resolve;

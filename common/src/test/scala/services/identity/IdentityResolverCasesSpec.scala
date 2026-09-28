@@ -1272,6 +1272,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     candidates.last.render should include ("DENIED")
   }
 
+  "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {
+    val films   = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162))
+    val plain   = listing(Helios, "Lalka", Some(2026), Some("Maciej Kawalski"))
+    val premier = listing(Multikino, "Oficjalna premiera: Lalka")
+    val anatomy = IdentityResolver.familyAnatomy(Seq(plain, premier), new FilmTable(films, normalizer), normalizer, weights)(1).head
+    anatomy.listings shouldBe 2
+    anatomy.nodes shouldBe 2
+    val glue = "t:" + normalizer.sanitize("Lalka")
+    anatomy.keys should contain (glue -> 2)
+    anatomy.withoutKey.toMap.get(glue) shouldBe Some(2) // the film's id key still holds them together
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
