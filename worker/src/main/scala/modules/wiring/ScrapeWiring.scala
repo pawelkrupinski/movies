@@ -12,7 +12,7 @@ import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.observations.ObservingScrapeArchive
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.tasks.{ScrapeCadence, ScrapeCinemaHandler, ScrapeFreshnessPolicy, ScrapeReaper}
+import services.tasks.{InMemoryScrapeCostStore, MongoScrapeCostStore, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
 import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
@@ -311,13 +311,21 @@ trait ScrapeWiring { self: WorkerWiring =>
   // both the scrape reaper (enqueue) and the scrape handler (pickup re-gate), so
   // they agree on what's due and a cinema's scrapes spread across the freshness
   // window instead of falling due in a lockstep wave.
+  // Each cinema's recent scrape costs, recorded by the handler (plain) and the chunk
+  // planner (fan-out) and read by `scrapePhasePlanner` to space the scrape schedule.
+  lazy val scrapeCostStore: ScrapeCostStore =
+    mongoConnection.database.fold[ScrapeCostStore](new InMemoryScrapeCostStore)(new MongoScrapeCostStore(_))
+  lazy val scrapePhasePlanner = new ScrapePhasePlanner(
+    cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases)
+
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
     cinemaScrapeRunner, freshnessStore, scrapeDueWindow,
     chunkPlanner = Some(chunkScrapePlanner), scrapeFreshness = Some(scrapeFreshnessPolicy),
     // The same archive the runner writes: it is what says whether a venue is
     // merely failing or has 404'd for over a day.
-    scrapeArchive = scrapeArchive
+    scrapeArchive = scrapeArchive,
+    costs = scrapeCostStore
   )
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up

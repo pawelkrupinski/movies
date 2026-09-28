@@ -8,9 +8,9 @@ import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor}
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
-import services.cadence.RatingCadence
+import services.cadence.{DueBoundary, RatingCadence}
 import services.metrics.WorkerMetrics
-import services.tasks.{DueWindow, VenueCadenceStore}
+import services.tasks.{CostSpacedPhaseOffset, DueWindow, VenueCadenceStore}
 import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 
 /**
@@ -264,7 +264,13 @@ class WorkerWiring(
   // most cinemas get the country's own cadence (the store's own fallback), but a
   // venue whose freshest listing runs dry sooner gets a shorter one — see
   // `VenueScrapeCadence`.
-  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, scrapeFreshness.value)
+  //
+  // Its phases are spaced by each cinema's measured COST rather than hashed evenly by
+  // count, so heavy chunked venues don't land together and spike the queue — see
+  // `CostSpacedPhaseOffset`; `scrapePhasePlanner` (ScrapeWiring) keeps the plan fresh.
+  // Because a re-plan moves phases, a scrape counts toward its nearest boundary.
+  val scrapePhases    = new CostSpacedPhaseOffset
+  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, scrapeFreshness.value, scrapePhases, DueBoundary.NearestBoundary)
   // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
   // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
   // own TTL is defined as "shorter than this window" and pinned by a spec against
@@ -371,6 +377,7 @@ class WorkerWiring(
     shareCardReapers.foreach(_.start())
     startFacebookRescrapes()
     auditReapers.foreach(_.start())
+    scrapePhasePlanner.start()
     scrapeReaper.start()
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
@@ -416,6 +423,7 @@ class WorkerWiring(
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
     scrapeReaper.stop()
+    scrapePhasePlanner.stop()
     chunkScrapeReaper.stop()
     enrichmentReaper.stop()
     unresolvedTmdbReaper.stop()

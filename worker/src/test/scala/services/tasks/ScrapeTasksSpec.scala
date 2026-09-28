@@ -14,7 +14,6 @@ import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
-import scala.util.hashing.MurmurHash3
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
@@ -62,6 +61,20 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     scraper.fetchCount shouldBe 1
     fresh.isFresh(key, FreshnessKind.CinemaScrape, specClock.instant()) shouldBe true
+  }
+
+  // A plain scrape is one queue task: that is its cost to the cost-spaced schedule.
+  // A failed one records nothing, so a broken venue's retries don't skew its cost.
+  it should "record a plain scrape's cost as one task, and nothing for a failed scrape" in {
+    val costs  = new InMemoryScrapeCostStore
+    val ok     = new FakeScraper(Multikino, movieAt(Multikino))
+    val broken = new FakeScraper(KinoApollo, throw new java.io.IOException("down"))
+    val h = new ScrapeCinemaHandler(
+      Map(ScrapeCinemaHandler.scraperKey(Multikino) -> ok, ScrapeCinemaHandler.scraperKey(KinoApollo) -> broken),
+      freshRunner(), new InMemoryFreshnessStore, clock = specClock, costs = costs)
+    h.handle(task(Multikino))  shouldBe HandlerOutcome.Done
+    h.handle(task(KinoApollo)) shouldBe HandlerOutcome.Done
+    costs.recent() shouldBe Map(ScrapeCinemaHandler.dedupKey(Multikino) -> Seq(ScrapeCost(1)))
   }
 
   // ── Thin-venue cadence: durant/moab's mechanism, end to end ─────────────────
@@ -233,7 +246,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val period    = 15.minutes
     val due        = new DueWindow(period)
     val key        = ScrapeCinemaHandler.dedupKey(Multikino)
-    val phase      = Math.floorMod(MurmurHash3.stringHash(key).toLong, period.toMillis)
+    val phase      = services.cadence.DueBoundary.hashedPhaseMillis(key, period.toMillis)
     val w          = 100L
     val stampedAt  = Instant.ofEpochMilli(phase + w * period.toMillis + period.toMillis - 60000) // 1 min before boundary
     val now        = Instant.ofEpochMilli(phase + (w + 1) * period.toMillis + 60000)             // 1 min after  boundary

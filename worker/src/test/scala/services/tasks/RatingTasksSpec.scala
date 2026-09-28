@@ -11,7 +11,6 @@ import services.movies.CacheKey
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.hashing.MurmurHash3
 
 class RatingTasksSpec extends AnyFlatSpec with Matchers {
 
@@ -134,7 +133,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     // refreshing it. Both now share DueWindow, so a due task is always acted on.
     val period = 4.hours.toMillis
     val dedup  = "imdb|dune|2024"
-    val phase  = Math.floorMod(MurmurHash3.stringHash(dedup).toLong, period)
+    val phase  = services.cadence.DueBoundary.hashedPhaseMillis(dedup, period)
     val w      = 100L
     val stampedAt = Instant.ofEpochMilli(phase + w * period + period - 60000)       // 1 min before the boundary (window w)
     val now       = Instant.ofEpochMilli(phase + (w + 1) * period + 60000)          // 1 min after  the boundary (window w+1)

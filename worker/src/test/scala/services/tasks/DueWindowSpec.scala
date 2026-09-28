@@ -3,6 +3,8 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import services.cadence.DueBoundary
+
 import java.time.Instant
 import scala.concurrent.duration._
 
@@ -56,5 +58,40 @@ class DueWindowSpec extends AnyFlatSpec with Matchers {
     val byMinute = firstDueMinute.groupBy(identity).view.mapValues(_.size).toMap
     byMinute.values.max should be < 40            // 300 keys / 30 min ≈ 10 avg; no minute holds the whole wave
     firstDueMinute.distinct.size should be >= 20  // genuinely spread across most minutes of the window
+  }
+
+  // Under nearest-boundary counting (the scrape schedule's), a refresh that ran late —
+  // past half its window, behind a backlog — counts toward the next boundary, instead of
+  // leaving the key due again there, a second refresh moments after the first.
+  it should "count a refresh that ran late in its window toward the next boundary, when counting to the nearest" in {
+    val period = 60.minutes
+    val phase  = FixedPhase(10.minutes)
+    val dw     = new DueWindow(_ => period, period, phase, DueBoundary.NearestBoundary)
+    val key    = "scrape|Foo"
+    val lateRun = t0.plusSeconds(10 * 60 + 45 * 60)                    // 45 min past the t0+10min boundary
+    dw.isDue(key, Some(lateRun), t0.plusSeconds(70 * 60 + 1)) shouldBe false   // the next boundary, 15 min later
+    dw.isDue(key, Some(lateRun), t0.plusSeconds(130 * 60))    shouldBe true    // the one after it
+  }
+
+  // Moving a key's phase — a cost-spaced plan rebuilt — must not re-run it at once or
+  // leave it for up to two periods. Under preceding-boundary counting a phase change
+  // made about half the corpus due the moment it landed.
+  it should "keep the gap after a phase change within half to one-and-a-half periods, when counting to the nearest" in {
+    val period  = 60.minutes
+    val rng     = new scala.util.Random(7)
+    val gaps = (0 until 500).map { i =>
+      val key      = s"scrape|Cinema$i"
+      val oldPhase = FixedPhase(rng.nextInt(60).minutes)
+      val newPhase = FixedPhase(rng.nextInt(60).minutes)
+      val lastRun  = t0.plusSeconds(oldPhase.offset.toSeconds + rng.nextInt(120))   // ran just after its old boundary
+      val moved    = new DueWindow(_ => period, period, newPhase, DueBoundary.NearestBoundary)
+      (1 to 180).find(m => moved.isDue(key, Some(lastRun), lastRun.plusSeconds(m * 60L))).get
+    }
+    gaps.min should be >= 30
+    gaps.max should be <= 91
+  }
+
+  private final case class FixedPhase(offset: FiniteDuration) extends PhaseOffset {
+    def millis(dedupKey: String, periodMillis: Long): Long = offset.toMillis % periodMillis
   }
 }

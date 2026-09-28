@@ -395,6 +395,21 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     claimAllWaiting(queue, now.plusSeconds(6 * 60)) shouldBe 5   // the rest, once their window opens
   }
 
+  // What the cost-spaced scrape schedule spaces venues by: the planner task, one per
+  // chunk, and the reduce.
+  it should "record the run's fan-out as the venue's scrape cost" in {
+    val queue   = new InMemoryTaskQueue
+    val costs   = new InMemoryScrapeCostStore
+    val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
+    val scraper = new FakeChunked(slices)
+    val planner = new ChunkScrapePlanner(Map(cinemaName -> (scraper: ChunkedCinemaScraper)), new InMemoryChunkScrapeStore, queue, _ => (),
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+      Clock.fixed(now, ZoneOffset.UTC), costs = costs)
+
+    planner.plan(cinemaName) shouldBe 6
+    costs.recent() shouldBe Map(ScrapeCinemaHandler.dedupKey(scraper.cinema) -> Seq(ScrapeCost(8)))
+  }
+
   /** Claim every currently-eligible waiting task at `at` (leaving them worked_on,
    *  not completed), returning how many were claimable. */
   private def claimAllWaiting(queue: InMemoryTaskQueue, at: Instant): Int = {

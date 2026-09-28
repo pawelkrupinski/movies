@@ -48,7 +48,10 @@ class ChunkScrapePlanner(
   // drains before the run is abandoned to a partial reduce. Default `Zero` disables
   // the spread, leaving the flow tests that drive `plan()` + `drain(now)` directly
   // (and the deterministic fixture harness) unaffected.
-  chunkSpread:   ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero)
+  chunkSpread:   ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
+  // Where each planned run's fan-out is recorded, so the scrape schedule can space
+  // venues by what they cost ([[CostSpacedPhaseOffset]]).
+  costs:         ScrapeCostStore = ScrapeCostStore.Discarding
 ) extends Logging {
 
   def isChunked(cinema: String): Boolean = chunkScrapers.contains(cinema)
@@ -92,6 +95,8 @@ class ChunkScrapePlanner(
           }
           logger.info(s"$cinema chunked scrape run $runId: enqueued $n/${keys.size} chunk task(s)" +
             (if (windowMillis > 0 && total > 1) s", spread over ${windowMillis / 1000}s" else ""))
+          // The planner task + one per chunk + the reduce.
+          costs.record(ScrapeCinemaHandler.dedupKey(scraper.cinema), ScrapeCost(total + 2))
           n
       }
   }

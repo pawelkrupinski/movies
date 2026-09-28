@@ -2,7 +2,6 @@ package services.cadence
 
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
-import scala.util.hashing.MurmurHash3
 
 /**
  * Pure shaping of the `rating_cadence` records into the dev cadence page's view
@@ -37,18 +36,17 @@ object CadenceReport {
     else                                s"${d.toMinutes}m"
   }
 
-  /** When this `(source, film)` is next due for a refresh: the next period-boundary
-   *  strictly after its last check. MIRRORS [[services.tasks.DueWindow]]'s phase-spread
-   *  windowing (boundaries at `phase + n·period`, `phase = hash(key) mod period`),
-   *  so the page's "next refresh" matches what the reaper actually does. Always in
-   *  `(lastCheckedAt, lastCheckedAt + interval]`. The reaper still ticks on a cadence
-   *  and gates on throttle/caps, so it's an estimate, not a guarantee. */
+  /** When this `(source, film)` is next due for a refresh — the same [[DueBoundary]]
+   *  arithmetic [[services.tasks.DueWindow]] decides with (boundaries at
+   *  `phase + n·period`, `phase = hash(key) mod period`, counted from the boundary
+   *  before the check), so the page's "next refresh" matches what the reaper actually
+   *  does. Always in `(lastCheckedAt, lastCheckedAt + interval]`. The reaper still
+   *  ticks on a cadence and gates on throttle/caps, so it's an estimate, not a
+   *  guarantee. */
   def nextRefreshAt(key: String, lastCheckedAt: Instant, interval: FiniteDuration): Instant = {
-    val period       = interval.toMillis
-    val phase        = Math.floorMod(MurmurHash3.stringHash(key).toLong, period)
-    val last         = lastCheckedAt.toEpochMilli
-    val nextBoundary = phase + (Math.floorDiv(last - phase, period) + 1) * period
-    Instant.ofEpochMilli(nextBoundary)
+    val period = interval.toMillis
+    Instant.ofEpochMilli(DueBoundary.nextDueMillis(lastCheckedAt.toEpochMilli,
+      DueBoundary.hashedPhaseMillis(key, period), period, DueBoundary.PrecedingBoundary))
   }
 
   private val TmdbKey = """(.+)\|tmdb:(\d+)""".r

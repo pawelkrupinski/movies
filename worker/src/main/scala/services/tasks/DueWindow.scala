@@ -1,8 +1,9 @@
 package services.tasks
 
 import java.time.Instant
+import services.cadence.DueBoundary
+
 import scala.concurrent.duration.FiniteDuration
-import scala.util.hashing.MurmurHash3
 
 /**
  * A single, deterministic per-key refresh schedule, shared by a periodic *reaper*
@@ -21,40 +22,48 @@ import scala.util.hashing.MurmurHash3
  * the handler skips a task iff the reaper would no longer enqueue it, so a due task
  * is always acted on.
  *
- * Each key refreshes once per its `period`, at a deterministic phase offset in
- * `[0, period)` hashed from its dedup key — stable across restarts and needing no
- * storage — so a synchronized corpus is spread evenly across the period instead of
- * bursting at the boundary. Keys embed their source/cinema, so they land on
- * independent phases.
+ * Each key refreshes once per its `period`, at a phase offset in `[0, period)` chosen
+ * by its [[PhaseOffset]] — by default hashed from its dedup key, stable across
+ * restarts and needing no storage — so a synchronized corpus is spread across the
+ * period instead of bursting at the boundary. The scrape schedule spaces the phases
+ * by each cinema's measured cost instead ([[CostSpacedPhaseOffset]]), and since those
+ * phases move as costs are re-measured it counts a refresh toward its NEAREST
+ * boundary — see [[services.cadence.DueBoundary]] for both countings.
  *
  * The period is resolved PER KEY via `periodFor`, so a schedule can adapt to a
  * key's own history (the rating reaper feeds the per-film adaptive interval from
- * [[services.cadence.RatingCadence]]). A constant schedule (scraping) uses the
- * fixed-period auxiliary constructor.
+ * [[services.cadence.RatingCadence]]). A constant schedule uses the fixed-period
+ * auxiliary constructor.
  */
-class DueWindow(periodFor: String => FiniteDuration, val period: FiniteDuration) {
+class DueWindow(
+  periodFor:  String => FiniteDuration,
+  val period: FiniteDuration,
+  phase:      PhaseOffset = HashedPhaseOffset,
+  counting:   DueBoundary.Counting = DueBoundary.PrecedingBoundary
+) {
 
-  /** Fixed schedule: every key shares `period` (scrape cadence, tests). */
+  /** Fixed schedule: every key shares `period` (tests, fixed-period reapers). */
   def this(period: FiniteDuration) = this(_ => period, period)
 
-  /** Per-key phase offset in `[0, period)`, deterministic from the dedup key. */
-  private def phaseMillis(dedupKey: String, periodMillis: Long): Long =
-    Math.floorMod(MurmurHash3.stringHash(dedupKey).toLong, periodMillis)
-
-  /** Which period-length window (counted from this key's own phase) `atMillis`
-   *  falls in. A new window means the key is due for another refresh. */
-  private def windowIndex(atMillis: Long, dedupKey: String, periodMillis: Long): Long =
-    Math.floorDiv(atMillis - phaseMillis(dedupKey, periodMillis), periodMillis)
-
-  /** Due iff never refreshed, or `now` has entered a new period-window since the
-   *  last refresh (the key's personal phase boundary has passed). The key's
-   *  current period is resolved once here, so both window indices compare on the
-   *  same boundary even as the adaptive period shifts between calls. */
+  /** Due iff never refreshed, or a boundary after the one its last refresh counts
+   *  toward has passed. The key's current period is resolved once here, so both
+   *  sides compare on the same boundaries even as the adaptive period shifts. */
   def isDue(dedupKey: String, lastFetchedAt: Option[Instant], now: Instant): Boolean =
     lastFetchedAt match {
       case None    => true
       case Some(t) =>
         val periodMillis = periodFor(dedupKey).toMillis
-        windowIndex(now.toEpochMilli, dedupKey, periodMillis) > windowIndex(t.toEpochMilli, dedupKey, periodMillis)
+        DueBoundary.isDue(t.toEpochMilli, now.toEpochMilli, phase.millis(dedupKey, periodMillis), periodMillis, counting)
     }
+}
+
+/** Where in its period a key's refresh boundary sits. */
+trait PhaseOffset {
+  /** The key's offset in `[0, periodMillis)`. */
+  def millis(dedupKey: String, periodMillis: Long): Long
+}
+
+/** The default: an offset hashed from the key, so keys spread evenly by COUNT. */
+object HashedPhaseOffset extends PhaseOffset {
+  def millis(dedupKey: String, periodMillis: Long): Long = DueBoundary.hashedPhaseMillis(dedupKey, periodMillis)
 }

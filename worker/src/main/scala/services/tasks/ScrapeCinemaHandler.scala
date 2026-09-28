@@ -40,7 +40,10 @@ class ScrapeCinemaHandler(
   // Read to tell a venue that is BROKEN from one that is GONE — a page 404ing for
   // over a day. Defaults to the no-op archive, under which nothing is ever gone
   // and this handler behaves exactly as it did before.
-  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty
+  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty,
+  // Where a plain scrape records its cost (one task) for the cost-spaced schedule;
+  // a chunked venue's is recorded by the planner, which knows its fan-out.
+  costs:         ScrapeCostStore = ScrapeCostStore.Discarding
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -94,6 +97,7 @@ class ScrapeCinemaHandler(
           val touched = runner.run(scraper)
           val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, touched.map(_._1), clock)
           outcome.succeeded(key, Some(horizon))
+          costs.record(key, ScrapeCost(1))
           Done
         } catch {
           case e: Exception =>

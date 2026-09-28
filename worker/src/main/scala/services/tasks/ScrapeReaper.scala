@@ -26,10 +26,10 @@ import scala.util.Try
  * on a chunked country with a big roster is many times PL's hour. The overlays
  * hold the live values and `WorkerScrapeCadenceConfigSpec` asserts the sweep
  * still fits each one — read them there, not from a number in this comment, which
- * is how the figures quoted here went stale before. Each cinema's boundary sits at a
- * deterministic phase offset hashed from its key, so a country's cinemas spread
- * evenly across the period instead of all falling due together and scraping in a
- * lockstep wave. Enqueue is deduped by the queue, so a
+ * is how the figures quoted here went stale before. Each cinema's boundary sits at its
+ * own phase offset, spaced by what the cinema costs the queue ([[CostSpacedPhaseOffset]]),
+ * so a country's scrape load spreads evenly across the period instead of all falling
+ * due together and scraping in a lockstep wave. Enqueue is deduped by the queue, so a
  * cinema with a task already waiting/working isn't queued twice; the handler
  * re-checks the SAME `DueWindow` and skips only if a concurrent run already
  * refreshed it this window (never a still-due task — that churn is what [[DueWindow]] fixes).
