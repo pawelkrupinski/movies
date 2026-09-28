@@ -1300,6 +1300,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     keys("RBO Cinema Season 2026-27: Così fan tutte", Set.empty) should contain ("t:" + normalizer.sanitize("Così fan tutte"))
     // A piece carried by many titles and nobody's whole title is a banner, even with no work beside it.
     keys("Młode Horyzonty: Pieśni lasu", Set.empty, banners = Set("Młode Horyzonty")) should not contain ("t:" + normalizer.sanitize("Młode Horyzonty"))
+    // An event's banner beside its film is dropped, the film kept: the screening IS the film.
+    val event = keys("Dzień Dziecka Księdza Jana Kaczkowskiego: Luna i rozgadana świnka",
+      Set("Dzień Dziecka Księdza Jana Kaczkowskiego", "Luna i rozgadana świnka"))
+    event should contain ("t:" + normalizer.sanitize("Luna i rozgadana świnka"))
+    // A title naming two WORKS other listings carry whole — a double bill — welds their families: it
+    // is neither one film, so neither work is its key (PL's largest family meshed ~4k listings so).
+    val double = keys("Tedi i magiczna lampa + Luna i rozgadana świnka", Set("Tedi i magiczna lampa", "Luna i rozgadana świnka"))
+    double should not contain ("t:" + normalizer.sanitize("Tedi i magiczna lampa"))
+    double should not contain ("t:" + normalizer.sanitize("Luna i rozgadana świnka"))
   }
 
   "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {

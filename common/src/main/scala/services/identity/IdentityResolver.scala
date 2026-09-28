@@ -108,11 +108,14 @@ object IdentityResolver {
    *  nodes, and for each of those the nodes the family's largest piece keeps once that key is dropped
    *  — a key that alone glues the family together leaves a small piece. For a report finding why
    *  a family grew far past one film. */
-  final case class FamilyAnatomy(listings: Int, nodes: Int, keys: Seq[(String, Int)], withoutKey: Seq[(String, Int)]) {
+  final case class FamilyAnatomy(listings: Int, nodes: Int, keys: Seq[(String, Int)], withoutKey: Seq[(String, Int)],
+                                 connectors: Seq[(String, Seq[String])] = Nil, withoutKind: Seq[(String, Int)] = Nil) {
     def render: Seq[String] =
       s"family of $listings listing(s) in $nodes node(s)" +:
         (s"  keys by nodes: ${keys.map { case (key, count) => s"$key ×$count" }.mkString(", ")}" +:
-          withoutKey.map { case (key, largest) => s"  without $key: largest piece $largest node(s)" })
+          (withoutKind.map { case (kind, largest) => s"  without every $kind key: largest piece $largest node(s)" } ++
+            withoutKey.map { case (key, largest) => s"  without $key: largest piece $largest node(s)" } ++
+            connectors.map { case (node, shared) => s"  connector $node: ${shared.mkString(", ")}" }))
   }
 
   def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
@@ -124,9 +127,23 @@ object IdentityResolver {
       val keysOf = members.map(node => node.id -> blockKeysOf(node.id)).toMap
       val byKey  = keysOf.toSeq.flatMap { case (id, keys) => keys.map(_ -> id) }.groupMap(_._1)(_._2)
       val ranked = byKey.toSeq.map { case (key, ids) => key -> ids.size }.sortBy { case (key, count) => (-count, key) }
-      def largestPieceWithout(dropped: String): Int =
-        FamilyClosure.families(keysOf.map { case (id, keys) => id -> (keys - dropped) }).groupBy(_._2).values.map(_.size).maxOption.getOrElse(0)
-      FamilyAnatomy(members.map(_.weight).sum, members.size, ranked.take(25), ranked.take(15).map { case (key, _) => key -> largestPieceWithout(key) })
+      def largestPieceKeeping(kept: String => Boolean): Int =
+        FamilyClosure.families(keysOf.map { case (id, keys) => id -> keys.filter(kept) }).groupBy(_._2).values.map(_.size).maxOption.getOrElse(0)
+      def largestPieceWithout(dropped: String): Int = largestPieceKeeping(_ != dropped)
+      // Which KIND of key meshes it: a sanitised title or segment (t:), a search form (q:), a film
+      // members accepted (id:), a pin's group.
+      val withoutKind = Seq("t:", "q:", "id:").map(kind => kind -> largestPieceKeeping(key => !key.startsWith(kind))) :+
+        ("t: and q:" -> largestPieceKeeping(key => !key.startsWith("t:") && !key.startsWith("q:")))
+      // The nodes joining the most keys other members carry: in a mesh no single key bridges, these weld it.
+      // Each title key with the inputs the segment rule read: its spread and whether it is a whole title.
+      val context = stages.generation.context
+      def explained(key: String) =
+        if (key.startsWith("t:")) s"$key(spread ${context.segmentSpread(key.drop(2))}${if (context.wholeTitle(key.drop(2))) ", whole" else ""})" else key
+      val connectors = members.map(node => node -> keysOf(node.id).filter(key => byKey(key).sizeIs > 1).toSeq.sorted)
+        .filter(_._2.sizeIs >= 2).sortBy { case (node, shared) => (-shared.size, node.id) }.take(40)
+        .map { case (node, shared) => s"${node.label} «${node.evidence.published.rawTitle.getOrElse(node.evidence.title)}»" -> shared.map(explained) }
+      FamilyAnatomy(members.map(_.weight).sum, members.size, ranked.take(25), ranked.take(15).map { case (key, _) => key -> largestPieceWithout(key) },
+        connectors, withoutKind)
     }
   }
 
