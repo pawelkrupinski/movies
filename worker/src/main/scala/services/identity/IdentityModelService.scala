@@ -13,7 +13,8 @@ import scala.util.control.NonFatal
 final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing])
 
 /** What the model did with one drained batch of events. */
-final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double)
+final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double,
+                            sizes: IncrementalResolver.FamilySizes)
 
 /** The model's gauges; the Prometheus ones live in `services.metrics`. */
 trait IdentityModelMetrics {
@@ -102,7 +103,8 @@ final class IdentityModelService(
       val seen    = scraped.flatMap(_._2)
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       engine.batch(seen, gone, reads.changedBy(keys))
-      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, (System.nanoTime() - started) / 1e9)
+      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, (System.nanoTime() - started) / 1e9,
+        engine.sizes)
       metrics.batch(batch)
       batch
     }
@@ -115,9 +117,10 @@ final class IdentityModelService(
     engine.restore(archive())
     model = Some(engine)
     // The gauges from the moment the model is up, not from its first event.
-    metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, (System.nanoTime() - started) / 1e9))
+    val sizes   = engine.sizes
+    metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, (System.nanoTime() - started) / 1e9, sizes))
     logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
-      s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()})")
+      s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()}); ${sizes.render}")
   }
 
   private def safely(what: String)(body: => Unit): Unit =

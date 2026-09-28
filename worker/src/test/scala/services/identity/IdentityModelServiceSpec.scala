@@ -2,6 +2,7 @@ package services.identity
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.LoneElement
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
 
@@ -12,7 +13,7 @@ import scala.concurrent.duration._
 /** The model kept by the pipeline's events: venues' archived scrapes diffed into listings seen and
  *  gone, new observations mapped back to the questions that read them, a restart taking up what
  *  the store kept — after every drain, what a whole resolve of the listings held decides. */
-class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
+class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElement {
 
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.resolver
@@ -130,6 +131,21 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
       metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = () })
     service.takeUp()
     reported.map(_.families) shouldBe Seq(2)
+  }
+
+  it should "report how large its families are: the largest, its busiest node, and none past a region" in {
+    val world    = new World
+    world.scrapes = Map(Multikino -> Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")), Helios -> Seq(movie(Helios, "Lalka")))
+    val reported = scala.collection.mutable.ArrayBuffer.empty[ModelBatch]
+    val service  = new IdentityModelService(
+      () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
+      world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = () })
+    service.takeUp()
+    val sizes = reported.loneElement.sizes
+    sizes.largest.map(_.listings) shouldBe Seq(2, 1)
+    sizes.largest.head.busiest.map(_._2) shouldBe Seq(2)                                   // both Lalkas one node
+    (sizes.largestListings, sizes.largestNodes, sizes.large) shouldBe ((2, 1, 0))
   }
 
   it should "drain nothing before it has taken up its model" in {

@@ -40,6 +40,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   // whether it still reads the same, and it holds no copy of another family's records.
   private final case class Family(resolved: RegionFamily, digest: Long) {
     val storeId: String = StoredFamily.idOf(resolved.listings)
+    lazy val nodes: Int = resolved.nodeKeys.values.toSet.size
   }
 
   private val held          = mutable.HashMap.empty[ListingKey, Listing]
@@ -131,6 +132,19 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   /** How many families the model holds, and how many listings. */
   def familyCount: Int = families.size
   def heldCount: Int   = held.size
+  /** How large the model's families are: a family grown past a region resolves slowly every time
+   *  anything in it moves, so its size is what a slow model shows first. */
+  def sizes: IncrementalResolver.FamilySizes = {
+    val largest = families.values.toSeq.sortBy(family => (-family.resolved.listings.size, family.storeId)).take(IncrementalResolver.Largest)
+    IncrementalResolver.FamilySizes(
+      largest.map { family =>
+        val perNode = family.resolved.nodeKeys.values.groupMapReduce(identity)(_ => 1)(_ + _)
+        IncrementalResolver.FamilySize(family.resolved.listings.size, family.nodes, family.resolved.blockKeys.size,
+          perNode.toSeq.sortBy { case (node, count) => (-count, node) }.take(IncrementalResolver.Largest))
+      },
+      largestNodes = families.values.map(_.nodes).maxOption.getOrElse(0),
+      large        = families.values.count(_.resolved.listings.size > IncrementalResolver.RegionBatch))
+  }
   /** How many families the model has re-resolved since it was made: the work its events cost. */
   def familiesResolved: Int = reResolved
   /** Where the model's time went since it was made: keeping the corpus context, resolving regions,
@@ -250,6 +264,23 @@ object IncrementalResolver {
    *  Stored families decided under another version are re-resolved on restore. */
   def rulesVersion(code: String, calibration: IdentityCalibration, decorations: TitleDecorations, pins: PinConstraints): String =
     Seq(code, calibration.hashCode, decorations.hashCode, pins.hashCode).mkString(":")
+
+  /** How many of the largest families, and of each one's busiest nodes, the model reports. */
+  val Largest = 3
+
+  /** One family's size: its listings, evidence nodes and block keys, and the nodes most of its
+   *  listings share (node key → listings). */
+  final case class FamilySize(listings: Int, nodes: Int, blockKeys: Int, busiest: Seq[(String, Int)]) {
+    // A node key repeats its title per field: each word once reads as the title it is.
+    def render: String = s"$listings listings / $nodes nodes / $blockKeys keys (${busiest.map { case (node, n) => s"${node.trim.split("\\s+").distinct.mkString(" ")}×$n" }.mkString(", ")})"
+  }
+
+  /** The model's largest families, the most nodes any family holds, and how many families are
+   *  larger than one region. */
+  final case class FamilySizes(largest: Seq[FamilySize], largestNodes: Int, large: Int) {
+    def largestListings: Int = largest.headOption.fold(0)(_.listings)
+    def render: String = s"$large families over $RegionBatch listings; largest ${if (largest.isEmpty) "none" else largest.map(_.render).mkString("; ")}"
+  }
 
   /** Seconds spent in each part of the model's work. */
   final class Timings {
