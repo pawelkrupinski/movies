@@ -162,6 +162,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       w("nt live", "rsc live", "macbeth"))) shouldBe Houses(Map("ntlive" -> "nationaltheatrelive"))
   }
 
+  "a record billing the listing's work under several banners" should "bill it under the listing's house when any of its titles does" in {
+    // TMDB's 1693710 carries the National Theatre's broadcast title and, as alternatives, its "At
+    // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.
+    val record = Film("National Theatre Live: The Misanthrope", originalTitle = Some("National Theatre Live: The Misanthrope"),
+      alternativeTitles = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope"), year = Some(2026), runtime = Some(105))
+    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
+  }
+
   "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
     def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
     val tied = Houses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))

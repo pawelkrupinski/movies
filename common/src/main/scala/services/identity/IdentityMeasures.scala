@@ -117,23 +117,30 @@ object IdentityMeasures {
 
   /** How the listing and the film bill one work (the longest they share), when both titles add a
    *  banner to it. `None`: no shared work, or one title is the work alone. */
-  def billing(l: Listing, f: Film): Option[Billing] = {
+  def billing(l: Listing, f: Film): Option[Billing] = billings(l, f).headOption
+
+  /** EVERY way the listing and the film bill the longest work they share under banners, in
+   *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
+   *  title ("National Theatre at Home: …") bills the work under both. */
+  def billings(listing: Listing, film: Film): Seq[Billing] = {
     def banner(title: Seq[String], work: Seq[String]): Option[Seq[String]] =
       Option.when(title.lengthIs > work.length)(
         if (title.endsWith(work)) Some(title.dropRight(work.length)) else if (title.startsWith(work)) Some(title.drop(work.length)) else None
       ).flatten
-    val works = (l.billedWorks intersect f.billedWorks).toSeq.sortBy(w => (-w.length, w.mkString(" ")))
-    works.iterator.flatMap { w =>
+    val works = (listing.billedWorks intersect film.billedWorks).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
+    works.iterator.map { work =>
       (for {
-        lh <- l.billedTitles.flatMap(banner(_, w))
-        fh <- f.billedTitles.flatMap(banner(_, w))
-      } yield Billing(lh, fh, w.mkString)).sortBy(b => (b.listingHouse, b.filmHouse, b.listingWords.mkString(" "), b.filmWords.mkString(" "))).headOption
-    }.nextOption()
+        listingHouse <- listing.billedTitles.flatMap(banner(_, work))
+        filmHouse    <- film.billedTitles.flatMap(banner(_, work))
+      } yield Billing(listingHouse, filmHouse, work.mkString))
+        .sortBy(billed => (billed.listingHouse, billed.filmHouse, billed.listingWords.mkString(" "), billed.filmWords.mkString(" ")))
+    }.find(_.nonEmpty).getOrElse(Nil)
   }
 
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
-   *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do; a record titled
+   *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
+   *  record's titles, its "National Theatre at Home" alternative aside ([[billings]]); a record titled
    *  the work alone ("The Misanthrope") bills no house at all. Only when NEITHER names a season: a
    *  season names its production (`namesSeasonProduction`), so a record of one season's broadcast is
    *  not a season-free listing's — TMDB filing the Paris Opera's works only under the Met's 2026/27
@@ -142,7 +149,7 @@ object IdentityMeasures {
    *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
     listing.seasonYear.isEmpty && filmSeason(film).isEmpty &&
-      billing(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse))
+      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse))
   private val Digits = "\\d+".r
   private def numbersIn(house: String): Set[String] = Digits.findAllIn(house).toSet
 
