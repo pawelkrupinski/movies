@@ -14,9 +14,12 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   /** Which house each listing banner is, learned from how every node's candidates bill its works
    *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
    *  naming it, and a season production must be of it when it is known. */
-  val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(nodes.flatMap { node =>
+  private val houseEvidence: Seq[IdentityMeasures.Billing] = nodes.flatMap { node =>
     IdentityMeasures.Houses.evidence(node.evidence.measured, (ownSearch(node.id).keys ++ ownWalk(node.id)).toSeq.distinct.sorted.map(candidateById(_).film))
-  })
+  }
+  val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(houseEvidence)
+  /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
+  lazy val houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = IdentityMeasures.Houses.ranking(houseEvidence)
   def namesItsSeasonProduction(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
     IdentityMeasures.namesSeasonProduction(listing, film) && !IdentityMeasures.billing(listing, film).exists(houses.other)
 

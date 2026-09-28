@@ -162,6 +162,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       w("nt live", "rsc live", "macbeth"))) shouldBe Houses(Map("ntlive" -> "nationaltheatrelive"))
   }
 
+  "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
+    def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
+    val tied = Houses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))
+    tied("ntlive").map(_.render) shouldBe Seq("nationaltheatrelive (words 1, works 1)", "rsclive (words 1, works 1)")
+    Houses.chosen(tied("ntlive")) shouldBe None
+    Houses.learn(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth"))) shouldBe Houses.Unknown
+  }
+
   "a record billing the listing's work under its learned house" should "be a segment of its title, and only under that house" in {
     val nt = Listing("NT Live: The Importance of Being Earnest")
     val record = Film("National Theatre Live: The Importance of Being Earnest")

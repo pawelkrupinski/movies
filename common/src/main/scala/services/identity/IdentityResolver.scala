@@ -126,18 +126,28 @@ object IdentityResolver {
         s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
   }
 
-  /** Every node holding a listing `focused` selects, with its candidates as its family scores them,
-   *  best first — the resolve's own stages, so the report shows what the resolve read. */
+  /** A focused node, its candidates as its family scores them (best first), and each banner its
+   *  candidates bill it under with the houses contending for that banner, best first, and the one learned. */
+  final case class NodeCandidates(label: String, candidates: Seq[CandidateScore], banners: Seq[String])
+
+  /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
+   *  what the resolve read. */
   def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                    calibration: IdentityCalibration = IdentityCalibration.resolver,
                    pins: PinConstraints = PinConstraints(Nil),
-                   decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[(String, Seq[CandidateScore])] = {
+                   decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
+    import stages.scoring.{houseRanking, houses}
     stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
-      node.label -> stages.families.scopeOf(node).of(node).map { scored =>
-        CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
-          scored.denied, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures))
-      }
+      val scored  = stages.families.scopeOf(node).of(node)
+      val banners = scored.flatMap(candidate => IdentityMeasures.billing(node.evidence.measured, candidate.candidate.film)).map(_.listingHouse).distinct.sorted
+      NodeCandidates(node.label,
+        scored.map { candidate =>
+          CandidateScore(candidate.candidate.tmdbId, candidate.candidate.film.title, candidate.candidate.film.year, candidate.probability, candidate.rank,
+            candidate.denied, candidate.seasonProduction, candidate.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, candidate.measures))
+        },
+        banners.map(banner => s"banner '$banner' → ${houses.of.getOrElse(banner, "no house")}; contenders: " +
+          houseRanking.getOrElse(banner, Nil).take(4).map(_.render).mkString(", ")))
     }
   }
 

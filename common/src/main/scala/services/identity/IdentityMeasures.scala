@@ -167,17 +167,31 @@ object IdentityMeasures {
      *  coincidence — a programme banner showing a film a house also staged — not a house, unless the
      *  banner's words name it. A tie on both is no house. */
     def learn(billings: Iterable[Billing]): Houses =
-      Houses(billings.toSeq.distinct.groupBy(_.listingHouse).flatMap { case (banner, bs) =>
-        val words  = bs.flatMap(_.listingWords).toSet
-        val ranked = bs.groupBy(_.filmHouse).toSeq.map { case (h, hb) =>
-          (h, (hb.flatMap(_.filmWords).toSet intersect words).size, hb.map(_.work).distinct.size)
-        }.sortBy { case (h, spelt, works) => (-spelt, -works, h) }
-        val best = ranked.head
-        val next = ranked.lift(1)
-        val spelt = next.fold(best._2 > 0)(_._2 < best._2)
-        val billed = best._3 >= 2 && next.forall(n => n._2 < best._2 || n._3 < best._3)
-        Option.when(spelt || billed)(banner -> best._1)
-      })
+      Houses(ranking(billings).flatMap { case (banner, ranked) => chosen(ranked).map(banner -> _.house) })
+
+    /** One house a banner's billings name, with how many of the banner's words its name shares
+     *  and how many of the banner's DISTINCT works it bills. */
+    final case class Contender(house: String, spelt: Int, works: Int) {
+      def render: String = s"$house (words $spelt, works $works)"
+    }
+
+    /** Each banner's contending houses, best first — what [[learn]] chooses among. */
+    def ranking(billings: Iterable[Billing]): Map[String, Seq[Contender]] =
+      billings.toSeq.distinct.groupBy(_.listingHouse).map { case (banner, bannerBillings) =>
+        val words = bannerBillings.flatMap(_.listingWords).toSet
+        banner -> bannerBillings.groupBy(_.filmHouse).toSeq.map { case (house, houseBillings) =>
+          Contender(house, (houseBillings.flatMap(_.filmWords).toSet intersect words).size, houseBillings.map(_.work).distinct.size)
+        }.sortBy(contender => (-contender.spelt, -contender.works, contender.house))
+      }
+
+    /** The house [[learn]] takes from a banner's ranked contenders, if any. */
+    def chosen(ranked: Seq[Contender]): Option[Contender] = {
+      val best = ranked.head
+      val next = ranked.lift(1)
+      val spelt  = next.fold(best.spelt > 0)(_.spelt < best.spelt)
+      val billed = best.works >= 2 && next.forall(runnerUp => runnerUp.spelt < best.spelt || runnerUp.works < best.works)
+      Option.when(spelt || billed)(best)
+    }
 
     /** What a listing's candidates say about its banner: how each record of its work bills it — of
      *  its season, when the listing names one (another season's record says nothing about which
