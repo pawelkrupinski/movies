@@ -138,7 +138,7 @@ jobs:
               uses: actions/cache@v5
               with:
                   path: ${{ runner.temp }}/identity-pipeline-cache
-                  key: identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', '!**/services/identity/**') }}
+                  key: identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', 'worker/src/it/scala/IdentityShadow.scala', '!**/services/identity/**') }}
 
             - name: Measure the ${{ matrix.code }} corpus
               shell: bash

@@ -116,11 +116,12 @@ object IdentityDisagreements {
   /** EVERY listing's outcome on both sides, one line each, so two runs (a baseline and a candidate
    *  resolver) can be diffed listing by listing. */
   def listingJson(country: String, corpus: String, l: Listing, e: Evidence, pipeline: Option[FilmAnswer], cluster: Int,
-                  decision: ResolverDecision, resolution: Resolution, label: Option[IdentityShadow.Label]): JsObject =
+                  decision: ResolverDecision, resolution: Resolution, label: Option[IdentityShadow.Label],
+                  pipelineBasis: Option[String] = None): JsObject =
     Json.obj("country" -> country, "corpus" -> corpus, "key" -> l.key.toString, "venue" -> l.venue, "rawTitle" -> l.rawTitle,
       "originalTitle" -> e.originalTitle, "year" -> e.year, "statedYear" -> e.statedYear, "directors" -> e.directors,
       "runtime" -> e.runtime,
-      "pipeline" -> pipeline.fold[JsValue](JsNull)(a => filmFacts(a.tmdbId, a.film)),
+      "pipeline" -> pipeline.fold[JsValue](JsNull)(a => filmFacts(a.tmdbId, a.film) + ("basis" -> Json.toJson(pipelineBasis))),
       "resolver" -> decision.film.flatMap(id => resolution.films.get(id).map(filmFacts(id, _))).getOrElse[JsValue](JsNull),
       "cluster" -> cluster, "basis" -> decision.basis.toString, "confidence" -> decision.confidence,
       "explanation" -> decision.explanation.take(4),

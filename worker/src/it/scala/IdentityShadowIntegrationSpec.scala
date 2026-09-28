@@ -267,7 +267,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       IdentityDisagreements.write(disagreementsDir.resolve(s"${c.country.code}.jsonl"), cellLines.map(_._4))
       IdentityDisagreements.write(disagreementsDir.resolve(s"listings-${c.label}.jsonl"), listings.map(l =>
         IdentityDisagreements.listingJson(c.country.code, if (c.isHardCluster) "hc" else "full", l, evidenceOf(l.key), pipelineFilm(l.key),
-          clusterIndex(l.key), decisionOf(l.key), resolution, heldOutLabels.get(l.key.toString))))
+          clusterIndex(l.key), decisionOf(l.key), resolution, heldOutLabels.get(l.key.toString),
+          pipelineOf.get(l.key).flatMap(i => films(i).basis))))
       // The absolute referee on every listing, old and new alone: an old match judged wrong counts as
       // unresolved (unresolved beats wrong); a new one is the resolver's error, which must not grow.
       val judged = listings.map { l =>

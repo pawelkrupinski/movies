@@ -89,8 +89,10 @@ object IdentityShadow {
   // ── today's pipeline ──────────────────────────────────────────────────────────────────
 
   /** One film the pipeline made: its key, its TMDB id and record, and its cinema slots. */
+  /** `basis`: how the pipeline concluded `tmdbId` (`TmdbBasis`: TitleOnly, YearScoped, DirectorWalk,
+   *  ExternalId) — which of its steps an old match rests on. */
   final case class PipelineFilm(key: String, tmdbId: Option[Int], film: Option[IdentityMeasures.Film],
-                                slots: Seq[(String, String, SourceData)])
+                                slots: Seq[(String, String, SourceData)], basis: Option[String] = None)
 
   /** The wiring both sides use (`FetchReplayWiring`): a throwaway database seeded with the corpus,
    *  every answer from the corpus's fetch, retries that never sleep on a replayed refusal. */
@@ -116,7 +118,7 @@ object IdentityShadow {
       PipelineFilm(f.id.value, f.record.tmdbId,
         f.record.tmdbId.map(_ => IdentityMeasures.Film(tmdb.flatMap(_.title).getOrElse(f.title), tmdb.flatMap(_.originalTitle), Nil,
           tmdb.flatMap(_.releaseYear), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.director).filter(_.nonEmpty), None)),
-        PipelineFilms.slotsOf(f))
+        PipelineFilms.slotsOf(f), f.record.tmdbBasis)
     }.sortBy(_.key)
   }
 
@@ -136,7 +138,7 @@ object IdentityShadow {
     /** Keys by their rendered form: the listing keys a corpus produces render uniquely. */
     def write(path: Path, b: BootedPipeline): Unit = {
       val js = Json.obj(
-        "films" -> b.films.map(f => Json.obj("key" -> f.key, "tmdbId" -> f.tmdbId, "film" -> f.film.map(filmJson))),
+        "films" -> b.films.map(f => Json.obj("key" -> f.key, "tmdbId" -> f.tmdbId, "film" -> f.film.map(filmJson), "basis" -> f.basis)),
         "filmOf" -> JsObject(b.filmOf.toSeq.map { case (k, i) => k.toString -> JsNumber(i) }),
         "seconds" -> b.seconds, "requests" -> b.requests, "unanswerable" -> b.unanswerable)
       Files.createDirectories(path.getParent)
@@ -151,7 +153,8 @@ object IdentityShadow {
       val filmOf = (js \ "filmOf").as[JsObject].value.toMap.map { case (k, i) =>
         byName.getOrElse(k, throw new IllegalStateException(s"$path names a listing the corpus does not list: $k")) -> i.as[Int] }
       BootedPipeline((js \ "films").as[Seq[JsValue]].map(f =>
-          PipelineFilm((f \ "key").as[String], (f \ "tmdbId").asOpt[Int], (f \ "film").asOpt[JsValue].filter(_ != JsNull).map(filmFrom), Nil)),
+          PipelineFilm((f \ "key").as[String], (f \ "tmdbId").asOpt[Int], (f \ "film").asOpt[JsValue].filter(_ != JsNull).map(filmFrom), Nil,
+            (f \ "basis").asOpt[String])),
         filmOf, (js \ "seconds").as[Double], (js \ "requests").as[Long], (js \ "unanswerable").as[Long])
     }
   }
