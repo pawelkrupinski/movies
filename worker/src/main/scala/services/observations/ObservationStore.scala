@@ -85,11 +85,13 @@ final class ObservationStore(
   // ── reads ─────────────────────────────────────────────────────────────────
 
   /** The current answer to `query`, if one is live. A READ renews it: a lookup something still
-   *  reads is evidence in use, whether or not anything re-fetched it. */
+   *  reads is evidence in use, whether or not anything re-fetched it — at most once a day
+   *  ([[ObservationRetention.RenewEvery]]), since each renewal is a write. */
   def lookup(query: LookupQuery): Option[LookupObservation] = lockFor(query.key).synchronized {
-    val now = clock.instant()
+    val now     = clock.instant()
+    val renewed = now.plusMillis(window.toMillis)
     lookups.current(query.key).filter(live(now)).map { o =>
-      lookups.renew(query.key, None, now.plusMillis(window.toMillis))
+      if (o.expireAt.isBefore(renewed.minusMillis(ObservationRetention.RenewEvery.toMillis))) lookups.renew(query.key, None, renewed)
       toLookup(o)
     }
   }

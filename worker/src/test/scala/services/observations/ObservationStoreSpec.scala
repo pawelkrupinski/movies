@@ -162,6 +162,25 @@ trait ObservationStoreBehaviour extends AnyFlatSpec with Matchers {
     s.lookup(search).map(_.answer) shouldBe Some(LookupAnswer.Body("v2"))
   }
 
+  it should "renew what is read at most once a day, and still keep it live a window after a later read" in {
+    val clock   = new MutableClock(t0)
+    var renewed = 0
+    val counting = new InMemoryObservationBackend {
+      override def renew(key: String, lastSeenAt: Option[java.time.Instant], expireAt: java.time.Instant): Unit = {
+        renewed += 1; super.renew(key, lastSeenAt, expireAt)
+      }
+    }
+    val s = new ObservationStore(new InMemoryObservationBackend, counting, clock)
+    s.observeLookup(search, LookupAnswer.Body("ok"))
+    (1 to 50).foreach { _ => advance(clock, 1.minute); s.lookup(search) }
+    renewed shouldBe 0                                            // a burst of reads within a day writes nothing
+    advance(clock, ObservationRetention.RenewEvery)
+    s.lookup(search)
+    renewed shouldBe 1                                            // the first read a day on renews
+    advance(clock, ObservationRetention.Window - 1.minute)
+    s.lookup(search).isDefined shouldBe true                      // live a window after that read
+  }
+
   it should "be derived from the pipeline's own longest re-ask period, not chosen" in {
     ObservationRetention.Window shouldBe (ObservationRetention.LongestReaskPeriod * 2)
     ObservationRetention.LongestReaskPeriod should be >= services.cadence.RatingCadence.MaxInterval

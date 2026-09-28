@@ -183,5 +183,5 @@ object IdentityProjection {
 
   /** The incremental model, brought up to now on its own thread — no resolve here. */
   def modelled(model: IdentityModelService, timeout: FiniteDuration): Seq[Listing] => Option[Resolved] = _ =>
-    model.current(timeout).map { case (resolution, held) => Resolved(resolution, held.map(_.key).toSet) }
+    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.map(_.key).toSet))
 }

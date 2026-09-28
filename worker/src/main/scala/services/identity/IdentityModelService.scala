@@ -9,6 +9,9 @@ import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
+/** The model as a reader sees it: its resolution, what its lookups do not know yet, its listings. */
+final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing])
+
 /** What the model did with one drained batch of events. */
 final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double)
 
@@ -35,8 +38,8 @@ object IdentityModelMetrics {
  * [[IncrementalResolver.batch]], so a family several venues touch in that window is resolved once.
  * On start it takes up the model its store kept ([[IncrementalResolver.restore]]) over the
  * archive's listings. A drain that fails leaves the engine half-updated, so the model is rebuilt
- * from its store rather than carried on. Readers on other threads see [[resolution]] and [[gaps]]
- * as of the last drain.
+ * from its store rather than carried on. Readers on other threads ask the model's thread for a
+ * snapshot ([[current]], [[peek]]), built only when asked.
  */
 final class IdentityModelService(
   newModel:   () => IncrementalResolver,
@@ -45,13 +48,14 @@ final class IdentityModelService(
   normalizer: TitleNormalizer,
   settle:     FiniteDuration,
   scheduler:  ScheduledExecutorService,
-  metrics:    IdentityModelMetrics = IdentityModelMetrics.Silent
+  metrics:    IdentityModelMetrics = IdentityModelMetrics.Silent,
+  // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
+  reading:    () => String = () => ""
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
   private val observations = ConcurrentHashMap.newKeySet[String]()
   private var model: Option[IncrementalResolver] = scala.None
-  @volatile private var current: Option[(Resolution, AnswersChanged, Seq[Listing])] = scala.None
 
   /** A venue's scrape was archived with `films`: its listings now. */
   def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
@@ -61,21 +65,26 @@ final class IdentityModelService(
   /** The observation store filed new content under `key`. */
   def observed(key: String): Unit = { observations.add(key); () }
 
-  /** The model as of the last drain, if it has been taken up yet. */
-  def resolution: Option[Resolution] = current.map(_._1)
-  /** What the model's lookups do not know yet, as of the last drain. */
-  def gaps: AnswersChanged = current.fold(AnswersChanged.Empty)(_._2)
-  /** The listings the model held at the last drain. */
-  def listings: Seq[Listing] = current.fold(Seq.empty[Listing])(_._3)
-
   /** The model brought up to NOW — taken up if it is not yet, every queued event drained — on its
-   *  own thread, with the listings it decided: what a projection reads. `None` when it cannot be
-   *  had within `timeout` (a rebuild still running) or the model could not be taken up. */
-  def current(timeout: FiniteDuration): Option[(Resolution, Seq[Listing])] =
-    scala.util.Try(scheduler.submit[Option[(Resolution, Seq[Listing])]] { () =>
-      safely("catch up") { if (model.isEmpty) takeUp(); drain(); () }
-      current.map { case (resolution, _, listings) => resolution -> listings }
-    }.get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten
+   *  own thread: what a projection reads. `None` when it cannot be had within `timeout` (a rebuild
+   *  still running) or the model could not be taken up. */
+  def current(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
+    safely("catch up") { if (model.isEmpty) takeUp(); drain(); () }
+    model.map(snapshotOf)
+  }
+
+  /** The model caught up with what queued, if it has been taken up — never a take-up: what the
+   *  shadow tick and the fill read, which must not wait on one. */
+  def peek(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
+    model.flatMap { _ => safely("catch up") { drain(); () }; model.map(snapshotOf) }
+  }
+
+  // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
+  // one is ~100k listings' worth of maps, and a drain runs every few seconds.
+  private def snapshotOf(engine: IncrementalResolver) = ModelSnapshot(engine.resolution, engine.gaps, engine.listings)
+
+  private def onModel[A](timeout: FiniteDuration)(body: => Option[A]): Option[A] =
+    scala.util.Try(scheduler.submit[Option[A]](() => body).get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten
 
   def start(): Unit = {
     scheduler.execute(() => safely("restore")(takeUp()))
@@ -93,8 +102,7 @@ final class IdentityModelService(
       val seen    = scraped.flatMap(_._2)
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       engine.batch(seen, gone, reads.changedBy(keys))
-      publish(engine)
-      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.decisions.size, (System.nanoTime() - started) / 1e9)
+      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, (System.nanoTime() - started) / 1e9)
       metrics.batch(batch)
       batch
     }
@@ -105,12 +113,9 @@ final class IdentityModelService(
     val engine = newModel()
     engine.restore(archive())
     model = Some(engine)
-    publish(engine)
-    logger.info(s"identity model: taken up — ${engine.listings.size} listings in ${engine.familyOf.values.toSet.size} families, " +
-      s"${engine.familiesResolved} re-resolved (${engine.timings.render})")
+    logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
+      s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()})")
   }
-
-  private def publish(engine: IncrementalResolver): Unit = current = Some((engine.resolution, engine.gaps, engine.listings))
 
   private def safely(what: String)(body: => Unit): Unit =
     try body

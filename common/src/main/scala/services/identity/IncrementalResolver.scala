@@ -31,11 +31,14 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                                 decorations: TitleDecorations = TitleDecorations.resolver,
                                 store: IdentityModelStore = new InMemoryIdentityModelStore,
                                 rules: String = "",
+                                regionBatch: Int = IncrementalResolver.RegionBatch,
                                 mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None) {
   import IdentityResolver.RegionFamily
   import IncrementalResolver.Mutation
 
-  private final case class Family(resolved: RegionFamily, slice: CorpusContext.Slice) {
+  // A family keeps the DIGEST of the corpus facts it read, not the facts: comparing digests tells
+  // whether it still reads the same, and it holds no copy of another family's records.
+  private final case class Family(resolved: RegionFamily, digest: Long) {
     val storeId: String = StoredFamily.idOf(resolved.listings)
   }
 
@@ -44,6 +47,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private val corpus        = new LiveCorpus(lookups, normalizer, pins, decorations)
   private val families      = mutable.HashMap.empty[Int, Family]
   private val readersOf     = mutable.HashMap.empty[String, Set[Int]]
+  // Which families asked each question and read each record: what an answer event re-resolves.
+  private val askersOf      = mutable.HashMap.empty[CandidateQuery, Set[Int]]
+  private val filmReadersOf = mutable.HashMap.empty[Int, Set[Int]]
   private val familyOfKey   = mutable.HashMap.empty[ListingKey, Int]
   private val familiesOfKey = mutable.HashMap.empty[String, Set[Int]]
   private var nextFamily    = 0
@@ -70,7 +76,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       redetailed.filterNot(listing => seen.exists(_.key == listing.key))
     arrived.foreach(hold)
     val moved   = clock.context(corpus.gone(left) ++ corpus.seen(arrived) ++ corpus.answered(answered))
-    val asked   = families.collect { case (id, family) if family.resolved.queries.exists(answered.queries) || family.resolved.films.exists(answered.films) => id }
+    val asked   = answered.queries.flatMap(askersOf.getOrElse(_, Set.empty)) ++ answered.films.flatMap(filmReadersOf.getOrElse(_, Set.empty))
     update((left ++ arrived.map(_.key)).flatMap(familyOfKey.get).toSet ++ asked, arrived.map(_.key).toSet, moved)
   }
 
@@ -93,22 +99,17 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     standing.foreach(family => remember(family.family, corpus))
     store.replace(fallen.map(_.id).toSet, Nil)
-    val loose = held.keys.filterNot(familyOfKey.contains).toSeq
-    clock.context(corpus.titleComponents(loose)).sortBy(_.size).foreach(component => update(Set.empty, component.toSet, CorpusContext.Changed.None))
+    update(Set.empty, held.keys.filterNot(familyOfKey.contains).toSet, CorpusContext.Changed.None)
     ruled()
   }
 
-  /** Take `listings` in whole — a new country, or a rebuild after the rules changed — one title-key
-   *  component at a time, so the build holds one component's answers and records, never the corpus's. */
+  /** Take `listings` in whole — a new country, or a rebuild after the rules changed — resolved a
+   *  bounded batch at a time, so the build holds one batch's answers and records, never the corpus's. */
   def seed(listings: Seq[Listing]): Unit = {
     val arrived = listings.filterNot(listing => held.get(listing.key).contains(listing))
     arrived.foreach(hold)
     val moved = clock.context(corpus.seen(arrived))
-    // Smallest first: a giant title family resolved last pulls every small one its films join in one
-    // region, rather than being re-resolved each time a later component joins it.
-    clock.context(corpus.titleComponents(arrived.map(_.key))).sortBy(_.size).zipWithIndex.foreach { case (component, index) =>
-      update(component.flatMap(familyOfKey.get).toSet, component.toSet, if (index == 0) moved else CorpusContext.Changed.None)
-    }
+    update(arrived.flatMap(listing => familyOfKey.get(listing.key)).toSet, arrived.map(_.key).toSet, moved)
   }
 
   /** The model as a [[Resolution]] — what the shadow diff and the projection read: its decisions,
@@ -127,6 +128,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   def decisions: Seq[ResolverDecision] = families.values.flatMap(_.resolved.decisions).toSeq.sortBy(_.members.head)(using ListingKey.ordering)
   /** Each listing's family. */
   def familyOf: Map[ListingKey, Int] = familyOfKey.toMap
+  /** How many families the model holds, and how many listings. */
+  def familyCount: Int = families.size
+  def heldCount: Int   = held.size
   /** How many families the model has re-resolved since it was made: the work its events cost. */
   def familiesResolved: Int = reResolved
   /** Where the model's time went since it was made: keeping the corpus context, resolving regions,
@@ -138,35 +142,46 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // A family reading none of the keys the event moved reads what it read before; one that does
     // is stale only if the values it reads changed.
     val stale = if (mutation == Mutation.IgnoreContext) Set.empty[Int]
-                else clock.slices(moved.keys.flatMap(readersOf.getOrElse(_, Set.empty)).filter(id => context.slice(families(id).resolved.reads) != families(id).slice))
+                else clock.slices(moved.keys.flatMap(readersOf.getOrElse(_, Set.empty)).filter(id => context.slice(families(id).resolved.reads).digest != families(id).digest))
     val replaced = mutable.HashSet.empty[Int] ++ touched ++ stale
     val settled  = mutable.LinkedHashMap.empty[Set[ListingKey], RegionFamily]
-    var region   = (touched ++ stale).flatMap(id => families(id).resolved.listings) ++ arrived
-    // Resolve the region; a family it produced that now shares a block key with a family left
-    // alone — or with one this update already settled — pulls that one in and is resolved again
-    // beside it. Every other result is final.
-    while (region.nonEmpty) {
-      val listings = region.flatMap(held.get)
-      val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context))
-      reResolved += result.size
-      val joins  = result.map { family =>
-        if (mutation == Mutation.NoExpansion) (family, Set.empty[Int], Seq.empty[RegionFamily])
-        else (family, family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced,
-              settled.values.filter(_.blockKeys.exists(family.blockKeys)).toSeq)
+    val loose    = arrived -- (touched ++ stale).flatMap(id => families(id).resolved.listings)
+    // What is resolved together: each family whole, and the listings no family holds a title
+    // component (or a batch's worth of one) at a time.
+    var units: Seq[Set[ListingKey]] = (touched ++ stale).toSeq.sorted.map(id => families(id).resolved.listings) ++
+      clock.context(corpus.titleComponents(loose)).sortBy(_.size).flatMap(_.grouped(regionBatch)).map(_.toSet)
+    // Resolve the units, packed into batches of at most `regionBatch` listings; a family a result now
+    // shares a block key with — one left alone, or one this update already settled — is pulled in
+    // and resolved again beside it, in the next round. Every other result is final. A region is so
+    // as large as the families it holds, never as every family an event touched.
+    while (units.nonEmpty) {
+      val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
+      IncrementalResolver.pack(units, regionBatch).foreach { batch =>
+        val listings = batch.toSeq.flatMap(held.get)
+        if (listings.nonEmpty) {
+          val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context))
+          reResolved += result.size
+          result.foreach { family =>
+            val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
+                         else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
+            val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
+                         else settled.values.filter(_.blockKeys.exists(family.blockKeys)).toSeq
+            if (joined.isEmpty && back.isEmpty) settled(family.listings) = family
+            else {
+              back.foreach(again => settled.remove(again.listings))
+              replaced ++= joined
+              next += family.listings ++ joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings)
+            }
+          }
+        }
       }
-      joins.collect { case (family, joined, back) if joined.isEmpty && back.isEmpty => settled(family.listings) = family }
-      val joined = joins.flatMap(_._2).toSet
-      val back   = joins.flatMap(_._3).distinct
-      back.foreach(family => settled.remove(family.listings))
-      replaced ++= joined
-      region = joins.collect { case (family, pulled, again) if pulled.nonEmpty || again.nonEmpty => family.listings }.flatten.toSet ++
-        joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings)
+      units = next.toSeq
     }
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
     clock.slices(settled.values.foreach(remember(_, context)))
     val added   = settled.values.toSeq.flatMap(family => familyOfKey.get(family.listings.head).flatMap(families.get))
-      .map(family => StoredFamily(family.storeId, family.resolved, family.slice.digest))
+      .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
     store.replace(removed -- added.map(_.id), added)
     ruled()
   }
@@ -186,18 +201,50 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     family.resolved.listings.foreach(key => if (familyOfKey.get(key).contains(id)) familyOfKey.remove(key))
     family.resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)))
     family.resolved.reads.keys.foreach(key => readersOf.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)))
+    family.resolved.queries.foreach(query => askersOf.updateWith(query)(_.map(_ - id).filter(_.nonEmpty)))
+    family.resolved.films.foreach(film => filmReadersOf.updateWith(film)(_.map(_ - id).filter(_.nonEmpty)))
   }
 
   private def remember(resolved: RegionFamily, context: CorpusContext): Unit = {
     val id = nextFamily; nextFamily += 1
-    families(id) = Family(resolved, context.slice(resolved.reads))
+    families(id) = Family(resolved, context.slice(resolved.reads).digest)
     resolved.listings.foreach(key => familyOfKey(key) = id)
     resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))
     resolved.reads.keys.foreach(key => readersOf.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))
+    resolved.queries.foreach(query => askersOf.updateWith(query)(ids => Some(ids.getOrElse(Set.empty) + id)))
+    resolved.films.foreach(film => filmReadersOf.updateWith(film)(ids => Some(ids.getOrElse(Set.empty) + id)))
   }
 }
 
 object IncrementalResolver {
+  /** `units` — each a set of listings resolved together, never split — merged where they overlap
+   *  and packed, smallest first, into batches of at most `limit` listings (a unit larger alone). */
+  def pack(units: Seq[Set[ListingKey]], limit: Int): Seq[Set[ListingKey]] = {
+    // Overlapping units merged by a union-find over their indices, each listing naming the first unit holding it.
+    val parent = Array.tabulate(units.size)(identity)
+    def root(i: Int): Int = { var r = i; while (parent(r) != r) r = parent(r); var j = i
+                              while (parent(j) != r) { val up = parent(j); parent(j) = r; j = up }; r }
+    val firstUnit = mutable.HashMap.empty[ListingKey, Int]
+    units.zipWithIndex.foreach { case (unit, i) =>
+      unit.foreach(key => firstUnit.get(key).fold(firstUnit(key) = i)(other => parent(root(i)) = root(other)))
+    }
+    val merged = units.indices.groupMapReduce(root)(units(_))(_ ++ _).values.toSeq
+    // Smallest first, ties by smallest listing: the packing is a function of the units, not of their order.
+    val byFirst = ListingKey.ordering
+    merged.map(unit => (unit.size, unit.min(using byFirst), unit)).sortWith { case ((sa, fa, _), (sb, fb, _)) =>
+      sa < sb || (sa == sb && byFirst.lt(fa, fb)) }.map(_._3)
+      .foldLeft(Vector.empty[Set[ListingKey]]) { (batches, unit) =>
+        batches.lastOption match {
+          case Some(open) if open.size + unit.size <= limit => batches.init :+ (open ++ unit)
+          case _                                            => batches :+ unit
+        }
+      }
+  }
+
+  /** The most listings resolved together — in a full build or an event's update alike: about one
+   *  wide release's venues. A region is bounded by it unless one family is larger. */
+  val RegionBatch = 2000
+
   /** The version of the rules a model's families are decided under: the resolver's code
    *  ([[IdentityRules.codeVersion]]), the calibration and decorations it runs with, and the pins.
    *  Stored families decided under another version are re-resolved on restore. */

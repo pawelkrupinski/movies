@@ -4,6 +4,7 @@ import play.api.Logging
 import services.movies.{ListingConstraints, StoredMovieRecord, TitleNormalizer}
 
 import java.time.Clock
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 /** One shadow resolve's outcome: the run it persisted (none when the resolve refused), what it
@@ -110,10 +111,10 @@ object ShadowIdentityReaper {
   }
 
   /** The incremental model's current state — no resolve at all. */
-  def modelled(model: IdentityModelService): () => Option[ShadowInput] = () =>
-    model.resolution.map { resolution =>
-      val gaps = model.gaps
-      ShadowInput(resolution, model.listings, (gaps.queries.size + gaps.films.size).toLong,
+  def modelled(model: IdentityModelService, timeout: FiniteDuration): () => Option[ShadowInput] = () =>
+    model.peek(timeout).map { snapshot =>
+      val gaps = snapshot.gaps
+      ShadowInput(snapshot.resolution, snapshot.listings, (gaps.queries.size + gaps.films.size).toLong,
         Map("QUERY" -> gaps.queries.size.toLong, "RECORD" -> gaps.films.size.toLong).filter(_._2 > 0), 0.0)
     }
 }

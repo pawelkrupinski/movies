@@ -144,10 +144,13 @@ class WorkerWiring(
         Some(store)))
     sources.map { case (listings, lookups, store) =>
       val pinStore = new MongoPinStore(mongoConnection.database)
+      var tracked  = Option.empty[TrackedLookups]
       val model = new IdentityModelService(
         newModel   = () => {
           val pins = services.movies.ListingConstraints.pinned(pinStore.all())
-          new IncrementalResolver(new TrackedLookups(lookups(), identityReads, Some(identityPrefetchPool)), titleNormalizer, IdentityCalibration.resolver, pins,
+          val lookupsNow = new TrackedLookups(lookups(), identityReads, Some(identityPrefetchPool))
+          tracked = Some(lookupsNow)
+          new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
             store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
             rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
         },
@@ -156,7 +159,8 @@ class WorkerWiring(
         normalizer = titleNormalizer,
         settle     = WorkerWiring.IdentityModelSettle,
         scheduler  = identityModelScheduler,
-        metrics    = workerMetrics.identityModel.forCountry(country.code))
+        metrics    = workerMetrics.identityModel.forCountry(country.code),
+        reading    = () => tracked.fold("")(_.render))
       store.foreach(_.onNewLookup(model.observed))
       model
     }
@@ -174,7 +178,7 @@ class WorkerWiring(
 
   lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = identityModel.filter(_ => !identityCutover).map(model =>
     new services.identity.ShadowIdentityReaper(
-      source        = services.identity.ShadowIdentityReaper.modelled(model),
+      source        = services.identity.ShadowIdentityReaper.modelled(model, WorkerWiring.IdentityModelPeek),
       pipelineFilms = () => movieCache.snapshot(),
       normalizer    = titleNormalizer,
       runs          = shadowRuns,
@@ -220,7 +224,7 @@ class WorkerWiring(
   lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
     shadowIdentityReaper.flatMap(_ => identityObservations).filter(_ => configuration.identityShadowLookups.value).map(store =>
       new services.identity.ShadowLookupFill(
-        questions   = () => identityModel.fold(services.identity.AnswersChanged.Empty)(_.gaps),
+        questions   = () => identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(services.identity.AnswersChanged.Empty)(_.gaps),
         store       = store,
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
@@ -506,6 +510,10 @@ object WorkerWiring {
   /** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE`'s compiled-in default: 60 asks a minute, about 2% of
    *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `shadowLookupFill`). */
   val DefaultShadowLookupRate: settings.IdentityShadowLookupRate = settings.IdentityShadowLookupRate(60)
+
+  /** How long the shadow tick and the fill wait for the model's thread to catch up and hand them a
+   *  snapshot — a drain, never a take-up. */
+  val IdentityModelPeek: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(2, "minutes")
 
   /** How long the identity model lets events gather before one drain takes them together: a venue
    *  scraped twice, or a family several venues touch, in that window is resolved once. */

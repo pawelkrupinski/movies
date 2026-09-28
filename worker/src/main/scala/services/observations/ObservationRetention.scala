@@ -28,4 +28,9 @@ object ObservationRetention {
     (RatingCadence.MaxInterval +: FreshnessKind.all.flatMap(Freshness.ttlFor)).max
 
   val Window: FiniteDuration = LongestReaskPeriod * 2
+
+  /** How often a READ renews an observation it finds: at most once a day. A read then always leaves
+   *  the evidence at least `Window` less a day from expiry — ample for anything still read — without
+   *  a write per read (a model taking up a corpus reads tens of thousands of answers). */
+  val RenewEvery: FiniteDuration = scala.concurrent.duration.Duration(1, "day")
 }

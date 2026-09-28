@@ -74,14 +74,36 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
   private val details = new java.util.concurrent.ConcurrentHashMap[services.movies.ListingKey, Answer[Option[DetailFacts]]]()
 
+  // Where a model's reading goes: asks served from a prefetch, asks made one by one, and the wall
+  // time of each kind — what a take-up's log line reports.
+  private val prefetchedAsks = new java.util.concurrent.atomic.AtomicLong()
+  private val servedAsks     = new java.util.concurrent.atomic.AtomicLong()
+  private val singleAsks     = new java.util.concurrent.atomic.AtomicLong()
+  private val prefetchNanos  = new java.util.concurrent.atomic.AtomicLong()
+  private val singleNanos    = new java.util.concurrent.atomic.AtomicLong()
+  def render: String =
+    f"reads: ${prefetchedAsks.get} prefetched in ${prefetchNanos.get / 1e9}%.1fs (${servedAsks.get} served), " +
+      f"${singleAsks.get} one by one in ${singleNanos.get / 1e9}%.1fs"
+
+  private def single[A](ask: => A): A = {
+    val started = System.nanoTime()
+    try ask finally { singleAsks.incrementAndGet(); singleNanos.addAndGet(System.nanoTime() - started) }
+  }
+  private def served[A](held: A): A = { servedAsks.incrementAndGet(); held }
   private def askQuery(query: CandidateQuery) = reads.asking(Question.Query(query))(inner.candidates(query))
   private def askFilm(id: Int)                = reads.asking(Question.Record(id))(inner.film(id))
   private def askDetail(listing: Listing)     = reads.asking(Question.Detail(listing.key))(inner.detail(listing))
 
   def hasDetail(listing: Listing): Boolean = inner.hasDetail(listing)
-  def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(details.remove(listing.key)).getOrElse(askDetail(listing))
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(queries.remove(query)).getOrElse(askQuery(query))
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).getOrElse(askFilm(tmdbId))
+  def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(details.remove(listing.key)).map(served).getOrElse(single(askDetail(listing)))
+  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(queries.remove(query)).map(served).getOrElse(single(askQuery(query)))
+  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
+
+  override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = {
+    asked.foreach(query => reads.forget(Question.Query(query)))
+    records.foreach(id => reads.forget(Question.Record(id)))
+    pages.foreach(key => reads.forget(Question.Detail(key)))
+  }
 
   override def prefetch(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[Listing]): Unit = pool.foreach { threads =>
     queries.clear(); films.clear(); details.clear()
@@ -91,8 +113,10 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
         pages.toSeq.map(listing => (() => { details.put(listing.key, askDetail(listing)); () }): java.util.concurrent.Callable[Unit])
     if (tasks.nonEmpty) {
       import scala.jdk.CollectionConverters._
+      val started = System.nanoTime()
       // A task that failed is simply not served from the prefetch: its ask, later, asks again.
       threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get()))
+      prefetchedAsks.addAndGet(tasks.size.toLong); prefetchNanos.addAndGet(System.nanoTime() - started)
     }
   }
 }

@@ -22,10 +22,12 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
 
 
   /** The first event after which the model differs from a resolve of what it holds. */
-  private def divergence(seed: Long, mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None): Option[String] = {
+  private def divergence(seed: Long, mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
+                         regionBatch: Int = IncrementalResolver.RegionBatch): Option[String] = {
     val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
     val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
-    val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, mutation = mutation)
+    val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None,
+      regionBatch = regionBatch, mutation = mutation)
     val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
     random.events.zipWithIndex.flatMap { case (event, step) =>
       event match {
@@ -40,6 +42,10 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
 
   "the incremental resolver" should "equal a resolve of what it holds after every event of a random sequence" in {
     Seeds.flatMap(divergence(_)) shouldBe empty
+  }
+
+  it should "equal it too when every update resolves in batches of a few listings" in {
+    Seeds.flatMap(divergence(_, regionBatch = 3)) shouldBe empty
   }
 
   it should "be caught by the sequence when it never pulls in a family it now shares a key with (the teeth)" in {
@@ -139,6 +145,19 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
       model.listingsSeen(half)
       val back   = Option.when(differs(listings))(s"$label: after half came back")
       Seq(seeded, left, back).flatten
+    } shouldBe empty
+  }
+
+  it should "decide as a whole resolve when a full build splits the corpus into small batches" in {
+    val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
+      .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
+    cases.flatMap { case (label, listings, lookups) =>
+      Seq(1, 3, 7).flatMap { batch =>
+        val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = batch)
+        model.seed(listings)
+        Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(
+          IdentityResolver.resolveWith(listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None)))(s"$label, batch $batch")
+      }
     } shouldBe empty
   }
 

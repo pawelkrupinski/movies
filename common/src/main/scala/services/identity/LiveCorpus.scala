@@ -116,8 +116,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     refresh(touched.toSet, Set.empty, Set.empty)
   }
 
-  def gone(keys: Seq[ListingKey]): CorpusContext.Changed =
-    refresh(keys.flatMap(key => listings.remove(key).map(leave(key, _))).toSet, Set.empty, Set.empty)
+  def gone(keys: Seq[ListingKey]): CorpusContext.Changed = {
+    val left = keys.flatMap(key => listings.remove(key).map(leave(key, _))).toSet
+    lookups.released(Nil, Nil, keys)
+    refresh(left, Set.empty, Set.empty)
+  }
 
   def answered(changed: AnswersChanged): CorpusContext.Changed =
     refresh(Set.empty, changed.queries.filter(askers.contains), changed.films.filter(bestHits.contains))
@@ -173,7 +176,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
           val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
           base(id) = candidate
           filmKeys(candidate.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)) }
-        case None => records.remove(id)
+        case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
       }
     }
     // 3. venue titles of every title key a touched node carries, or whose original a touched film files under
@@ -224,6 +227,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private def unlink(key: NodeKey, old: Node): Set[Int] = {
     old.queries.foreach(query => askers.updateWith(query)(_.map(_ - key).filter(_.nonEmpty)))
     val dropped = old.queries.filterNot(askers.contains).distinct
+    lookups.released(dropped, Nil, Nil)
     val films   = dropped.flatMap(query => named.remove(query).flatten.getOrElse(Nil)).toSet
     films.foreach(id => bestHits.updateWith(id)(_.map(_ -- dropped).filter(_.nonEmpty)))
     old.reached.foreach(id => reachers.updateWith(id)(_.map(_ - key).filter(_.nonEmpty)))

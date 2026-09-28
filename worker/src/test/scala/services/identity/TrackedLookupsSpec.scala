@@ -47,7 +47,16 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
     queries.foreach(q => reads.changedBy(Seq("q:" + q.sortKey)).queries shouldBe Set(q))
   }
 
-  it should "never serve a later ask what an earlier prefetch fetched and nobody asked" in {
+  "a released question" should "leave nothing behind in the reads index" in {
+    val reads   = new ObservationReads
+    val lookups = new TrackedLookups(new Store(reads), reads, Some(pool()))
+    lookups.prefetch(queries, Nil, Nil)
+    reads.keys shouldBe queries.size
+    lookups.released(queries, Nil, Nil)
+    reads.keys shouldBe 0
+  }
+
+  "a prefetch" should "never serve a later ask what an earlier prefetch fetched and nobody asked" in {
     val reads   = new ObservationReads
     val store   = new Store(reads)
     val lookups = new TrackedLookups(store, reads, Some(pool()))

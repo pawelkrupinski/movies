@@ -69,12 +69,12 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
     world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
     world.scrape(service, Helios, Seq(movie(Helios, "Lalka")))
     service.drain().map(_.venues) shouldBe Some(2)
-    decided(service.resolution.get.decisions) shouldBe world.expected
+    decided(service.peek(10.seconds).get.resolution.decisions) shouldBe world.expected
 
     world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))           // Matilda no longer listed
     service.drain()
-    decided(service.resolution.get.decisions) shouldBe world.expected
-    service.resolution.get.decisions.flatMap(_.film) should not contain 3
+    decided(service.peek(10.seconds).get.resolution.decisions) shouldBe world.expected
+    service.peek(10.seconds).get.resolution.decisions.flatMap(_.film) should not contain 3
   }
 
   it should "re-read exactly the questions a new observation answers" in {
@@ -90,7 +90,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
     val batch = service.drain()
     batch.map(_.observations) shouldBe Some(1)
     batch.map(_.familiesResolved) shouldBe Some(1)                                        // Matilda's family, not Lalka's
-    decided(service.resolution.get.decisions) shouldBe world.expected
+    decided(service.peek(10.seconds).get.resolution.decisions) shouldBe world.expected
     matilda.queries should not be empty
   }
 
@@ -103,8 +103,21 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers {
     first.drain()
     val again = world.service()
     again.takeUp()
-    decided(again.resolution.get.decisions) shouldBe world.expected
+    decided(again.peek(10.seconds).get.resolution.decisions) shouldBe world.expected
     again.drain() shouldBe None                                                           // nothing queued, nothing to do
+  }
+
+  it should "forget, in the reads index, the questions of a film no venue lists any more" in {
+    val world   = new World
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")))
+    service.drain()
+    val before = world.reads.keys
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka")))                      // Matilda gone
+    service.drain()
+    world.reads.keys should be < before
+    world.reads.changedBy(Seq("q:" + CandidateQuery.Title("Matilda").sortKey)).queries shouldBe empty
   }
 
   it should "drain nothing before it has taken up its model" in {
