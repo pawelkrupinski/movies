@@ -475,4 +475,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleRelation(Listing("The Hunt"), Film("The Hurt")) should not be IdentityMeasures.Category("exact")
     IdentityMeasures.titleRelation(Listing("The Beast of Mossy Botton"), Film("The Feast of Mossy Bottom")) should not be IdentityMeasures.Category("exact")
   }
+
+  it should "also name the film from a shape of the title, and from the original title" in {
+    // UK, Vue's "Pradhama Drishtiya Kuttakkar (Malayalam)" (×13), originally "Pradhama Drishtiya
+    // Kuttakkar": the language tag is a shape away, and the original title carries the same typo.
+    IdentityMeasures.titleRelation(Listing("Pradhama Drishtiya Kuttakkar (Malayalam)"), Film("Pradhama Drishtya Kuttakkar")).value should
+      (be("exact") or be("segment"))
+    IdentityMeasures.originalTitleRelation(Some("Pradhama Drishtiya Kuttakkar"), Seq("Pradhama Drishtya Kuttakkar")) shouldBe IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Scary Movie 3"), Seq("Scary Movie 4")) should not be IdentityMeasures.Category("match")
+  }
 }

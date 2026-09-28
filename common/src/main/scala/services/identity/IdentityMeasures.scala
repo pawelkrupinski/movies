@@ -49,6 +49,7 @@ object IdentityMeasures {
      *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
+    private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
@@ -506,7 +507,7 @@ object IdentityMeasures {
     else if (originalForms.map(_.key).exists(own)) Category("original")
     else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None
-          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)))).getOrElse(
+          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords)).getOrElse(
       if (ls.exists(a => all.exists(b => jaccard(a.wordSet, b.wordSet) > 0))) Category("overlap") else Category("none"))
   }
 
@@ -517,11 +518,14 @@ object IdentityMeasures {
    *  "It Ends with Us"). `alsoSegment` is another reason to read a segment (the title relation's
    *  season production), asked only when no shape matches. ONE definition for the title and the
    *  original-title relations. */
-  private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false): Option[Category] = {
+  private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false,
+                          shapeWords: Seq[Seq[String]] = Nil): Option[Category] = {
     val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
     val ow = own.map(_.words).filter(_.nonEmpty)
     val fw = others.map(_.words).filter(_.nonEmpty)
-    if (shapeKeys.exists(otherKeys) || alsoSegment) Some(Category("segment"))
+    // A shape one venue typo from the film's title is a segment too ("Pradhama Drishtiya Kuttakkar
+    // (Malayalam)" of "Pradhama Drishtya Kuttakkar", `oneTypoApart`).
+    if (shapeKeys.exists(otherKeys) || shapeWords.exists(sw => fw.exists(oneTypoApart(sw, _))) || alsoSegment) Some(Category("segment"))
     else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(b, a)))) Some(Category("decorated"))
     else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(a, b)))) Some(Category("fragment"))
     else None
@@ -610,7 +614,7 @@ object IdentityMeasures {
       case Some(o) =>
         val others = otherTitles.map(_.trim).filter(_.nonEmpty)
         if (others.isEmpty) MissingFilm
-        else if (others.map(key).contains(key(o))) Category("match")
+        else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t)))) Category("match")
         else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {
           val ow = words(o).filter(_.length >= 4).toSet
           if (others.exists(t => (words(t).filter(_.length >= 4).toSet intersect ow).nonEmpty)) Category("overlap")
