@@ -609,7 +609,16 @@ object IdentityMeasures {
   /** The listing's own ORIGINAL title against every title of the other side: the same title, a
    *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
    *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
-  def originalTitleRelation(original: Option[String], otherTitles: Seq[String]): Measure =
+  /** Does a year the original title writes ("… (2024)") agree with the film's — within one — when the
+   *  yearless comparison drops it? A title that writes no year drops nothing; one that does, against a
+   *  film whose year is unknown, is not read as agreeing: nothing else measures that year. */
+  private val WrittenYear = """(?<!\d)(?:18|19|20)\d{2}(?!\d)""".r
+  private def yearAgrees(title: String, filmYear: Option[Int]): Boolean = {
+    val written = WrittenYear.findAllIn(title).map(_.toInt).toSeq
+    written.isEmpty || filmYear.exists(y => written.exists(w => math.abs(w - y) <= 1))
+  }
+
+  def originalTitleRelation(original: Option[String], otherTitles: Seq[String], filmYear: Option[Int] = None): Measure =
     original.map(_.trim).filter(_.nonEmpty) match {
       case None => MissingListing
       case Some(o) =>
@@ -618,7 +627,7 @@ object IdentityMeasures {
         // The same title once years and seasons are dropped: "The Metropolitan Opera: Così fan tutte
         // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
         else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t))) ||
-                 others.exists(t => yearlessTokens(t).nonEmpty && yearlessTokens(t) == yearlessTokens(o)))
+                 (yearAgrees(o, filmYear) && others.exists(t => yearlessTokens(t).nonEmpty && yearlessTokens(t) == yearlessTokens(o))))
           Category("match")
         else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {
           val ow = words(o).filter(_.length >= 4).toSet
@@ -943,7 +952,7 @@ object IdentityMeasures {
    *  what it measures: Everyman's "Dracula (4K Restoration)" is not The Mummy its cinematographer
    *  directed. */
   private def ownOriginalTitle(l: Listing, f: Film, title: Category): Measure =
-    originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles) match {
+    originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles, f.year) match {
       case m if NamingRelations(title.value) && repeatsItsTitle(l) && m != Category("match") => MissingListing
       case m                                                                                 => m
     }

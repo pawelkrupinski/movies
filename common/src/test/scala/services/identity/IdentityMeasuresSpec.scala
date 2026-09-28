@@ -489,13 +489,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK, 64 "Lalka" / "Lalka (The Doll)" listings, originally "Lalka", were taken for "Lalkar" (1972).
     IdentityMeasures.originalTitleRelation(Some("Lalka"), Seq("Lalkar")) should not be IdentityMeasures.Category("match")
     IdentityMeasures.titleRelation(Listing("Lalka"), Film("Lalkar")) should not be IdentityMeasures.Category("exact")
+  }
+
   "an original title" should "match a film's title that differs only by a year or a season" in {
     // DE, 153 "MET Opera Live im Kino: Così Fan Tutte" listings, originally "The Metropolitan Opera: Così
     // fan tutte (2026)", against the record "The Metropolitan Opera 2026/27: Così fan tutte".
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
-      Seq("The Metropolitan Opera 2026/27: Così fan tutte")) shouldBe IdentityMeasures.Category("match")
-    IdentityMeasures.originalTitleRelation(Some("Dune (2021)"), Seq("Dune")) shouldBe IdentityMeasures.Category("match")
+      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Dune (2021)"), Seq("Dune"), filmYear = Some(2021)) shouldBe IdentityMeasures.Category("match")
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Carmen (2026)"),
       Seq("Royal Ballet & Opera 2026/27: Carmen")) should not be IdentityMeasures.Category("match")
+  }
+
+  it should "not match when the year it drops disagrees with the film's" in {
+    // UK, Cineworld's "The Royal Ballet: The Nutcracker", originally "... (2024)", went to the 2015 recording
+    // "The Royal Ballet: The Nutcracker" instead of the 2024/25 production.
+    IdentityMeasures.originalTitleRelation(Some("The Royal Ballet: The Nutcracker (2024)"), Seq("The Royal Ballet: The Nutcracker"),
+      filmYear = Some(2015)) should not be IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
+      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
   }
 }
