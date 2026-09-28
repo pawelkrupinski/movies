@@ -44,9 +44,17 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
 
   private def fill(store: ObservationStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty) =
-    new ShadowLookupFill(() => listings, store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
-      normalizer, IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
+    new ShadowLookupFill(() => modelGaps(store), store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
+      IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _)
+
+  /** What the identity model over the store's answers finds unanswered — what a round asks. */
+  private def modelGaps(s: ObservationStore): AnswersChanged = {
+    val (lookups, _) = ObservedIdentityLookups.over(s, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("other"))), Nil)
+    val model = new IncrementalResolver(lookups, normalizer, IdentityCalibration.resolver)
+    model.seed(listings)
+    model.gaps
+  }
 
   private def store() = ObservationStore.inMemory(Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
   private def gapsOf(s: ObservationStore) = {

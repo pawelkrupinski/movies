@@ -94,7 +94,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     standing.foreach(family => remember(family.family, corpus))
     store.replace(fallen.map(_.id).toSet, Nil)
     val loose = held.keys.filterNot(familyOfKey.contains).toSeq
-    clock.context(corpus.titleComponents(loose)).foreach(component => update(Set.empty, component.toSet, CorpusContext.Changed.None))
+    clock.context(corpus.titleComponents(loose)).sortBy(_.size).foreach(component => update(Set.empty, component.toSet, CorpusContext.Changed.None))
     ruled()
   }
 
@@ -104,7 +104,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val arrived = listings.filterNot(listing => held.get(listing.key).contains(listing))
     arrived.foreach(hold)
     val moved = clock.context(corpus.seen(arrived))
-    clock.context(corpus.titleComponents(arrived.map(_.key))).zipWithIndex.foreach { case (component, index) =>
+    // Smallest first: a giant title family resolved last pulls every small one its films join in one
+    // region, rather than being re-resolved each time a later component joins it.
+    clock.context(corpus.titleComponents(arrived.map(_.key))).sortBy(_.size).zipWithIndex.foreach { case (component, index) =>
       update(component.flatMap(familyOfKey.get).toSet, component.toSet, if (index == 0) moved else CorpusContext.Changed.None)
     }
   }
@@ -144,7 +146,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // alone — or with one this update already settled — pulls that one in and is resolved again
     // beside it. Every other result is final.
     while (region.nonEmpty) {
-      val result = clock.resolves(IdentityResolver.resolveRegion(region.flatMap(held.get), lookups, normalizer, calibration, pins, decorations, context))
+      val listings = region.flatMap(held.get)
+      val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context))
       reResolved += result.size
       val joins  = result.map { family =>
         if (mutation == Mutation.NoExpansion) (family, Set.empty[Int], Seq.empty[RegionFamily])
@@ -195,20 +198,26 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 }
 
 object IncrementalResolver {
-  /** The version of the rules a model's families are decided under: the deployment (its commit —
-   *  the resolver's code and the calibration and decorations it ships), and the pins. Stored
-   *  families decided under another version are re-resolved on restore. */
-  def rulesVersion(commit: String, calibration: IdentityCalibration, decorations: TitleDecorations, pins: PinConstraints): String =
-    Seq(commit, calibration.hashCode, decorations.hashCode, pins.hashCode).mkString(":")
+  /** The version of the rules a model's families are decided under: the resolver's code
+   *  ([[IdentityRules.codeVersion]]), the calibration and decorations it runs with, and the pins.
+   *  Stored families decided under another version are re-resolved on restore. */
+  def rulesVersion(code: String, calibration: IdentityCalibration, decorations: TitleDecorations, pins: PinConstraints): String =
+    Seq(code, calibration.hashCode, decorations.hashCode, pins.hashCode).mkString(":")
 
   /** Seconds spent in each part of the model's work. */
   final class Timings {
     private var contextNanos, resolveNanos, sliceNanos = 0L
+    // The slowest region resolves: (seconds, listings), the costliest few kept.
+    private var slowest = List.empty[(Double, Int)]
     private def timed[A](add: Long => Unit)(body: => A): A = { val start = System.nanoTime(); try body finally add(System.nanoTime() - start) }
     def context[A](body: => A): A  = timed(contextNanos += _)(body)
-    def resolves[A](body: => A): A = timed(resolveNanos += _)(body)
+    def resolves[A](listings: Int)(body: => A): A = timed { nanos =>
+      resolveNanos += nanos
+      slowest = ((nanos / 1e9, listings) :: slowest).sortBy(-_._1).take(5)
+    }(body)
     def slices[A](body: => A): A   = timed(sliceNanos += _)(body)
-    def render: String = f"context ${contextNanos / 1e9}%.1fs, resolves ${resolveNanos / 1e9}%.1fs, slices ${sliceNanos / 1e9}%.1fs"
+    def render: String = f"context ${contextNanos / 1e9}%.1fs, resolves ${resolveNanos / 1e9}%.1fs, slices ${sliceNanos / 1e9}%.1fs; " +
+      s"slowest regions ${slowest.map { case (s, n) => f"$s%.1fs/$n" }.mkString(" ")}"
   }
 
   /** The teeth tests' mutants: each drops one reason a family is re-resolved, and the

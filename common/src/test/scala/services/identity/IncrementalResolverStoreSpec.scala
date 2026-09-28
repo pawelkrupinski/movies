@@ -112,6 +112,10 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     store.rulesVersion shouldBe Some("v2")
   }
 
+  "the resolver's code version" should "be the build's digest of what the resolver is built from" in {
+    IdentityRules.codeVersion should fullyMatch regex "[0-9a-f]{64}"
+  }
+
   "a stored family" should "read back from its BSON as it was written" in {
     val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore

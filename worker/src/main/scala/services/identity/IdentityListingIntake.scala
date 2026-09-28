@@ -23,7 +23,8 @@ final class IdentityListingIntake(
   guards:        ScrapeGuardLedger,
   normalizer:    TitleNormalizer,
   maxRejections: Int,
-  clock:         Clock
+  clock:         Clock,
+  published:     (Cinema, Seq[CinemaMovie]) => Unit = (_, _) => ()
 ) extends ScrapeSink {
 
   /** The listing `cinema` is taken to publish now. */
@@ -54,6 +55,9 @@ final class IdentityListingIntake(
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)
     if (verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known)
       accepted.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), clock.instant(), listingComplete = true, verdict.accepted, error = None))
+    // What the venue is taken to publish now — its accepted listing, or the archive's when the intake
+    // kept none of its own — to whoever keeps a model of it (the identity model).
+    published(cinema, listingOf(cinema))
     Seq.empty
   }
 }

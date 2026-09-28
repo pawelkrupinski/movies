@@ -18,8 +18,9 @@ import tools.HttpFetch
  */
 
 /** `observed`, and `live` for what it has not observed. */
-final class ObservedFirstHttpFetch(store: ObservationStore, live: HttpFetch) extends HttpFetch {
-  private val observed = new ObservedHttpFetch(store, new ObservationGaps)
+final class ObservedFirstHttpFetch(store: ObservationStore, live: HttpFetch, reads: ObservationReads = ObservationReads.Untracked)
+    extends HttpFetch {
+  private val observed = new ObservedHttpFetch(store, new ObservationGaps, reads)
 
   private def firstObserved[A](read: HttpFetch => A): A =
     try read(observed) catch { case _: ObservationGap => read(live) }
@@ -31,8 +32,9 @@ final class ObservedFirstHttpFetch(store: ObservationStore, live: HttpFetch) ext
 }
 
 /** `live`'s detail, answered from the store when it has observed it. */
-final class ObservedFirstDetailEnricher(live: DetailEnricher, store: ObservationStore) extends DetailEnricher {
-  private val observed = new ObservedDetailEnricher(live, store, new ObservationGaps)
+final class ObservedFirstDetailEnricher(live: DetailEnricher, store: ObservationStore, reads: ObservationReads = ObservationReads.Untracked)
+    extends DetailEnricher {
+  private val observed = new ObservedDetailEnricher(live, store, new ObservationGaps, reads)
 
   override def cinema: Cinema                             = live.cinema
   override def detailGroup: String                        = live.detailGroup
@@ -47,11 +49,12 @@ final class ObservedFirstDetailEnricher(live: DetailEnricher, store: Observation
 object CutoverIdentityLookups {
 
   /** The projection's lookups: observed first when a store is wired, else the live source alone. */
-  def over(store: Option[ObservationStore], tmdb: HttpFetch => TmdbClient, live: HttpFetch, enrichers: Seq[DetailEnricher]): IdentityLookups =
+  def over(store: Option[ObservationStore], tmdb: HttpFetch => TmdbClient, live: HttpFetch, enrichers: Seq[DetailEnricher],
+           reads: ObservationReads = ObservationReads.Untracked): IdentityLookups =
     store match {
       case Some(s) =>
-        val fetch = new ObservedFirstHttpFetch(s, live)
-        new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedFirstDetailEnricher(_, s)))
+        val fetch = new ObservedFirstHttpFetch(s, live, reads)
+        new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), enrichers.map(new ObservedFirstDetailEnricher(_, s, reads)))
       case None    => new TmdbIdentityLookups(tmdb(live), new ImdbClient(live), enrichers)
     }
 }

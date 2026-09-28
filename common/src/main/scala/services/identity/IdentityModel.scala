@@ -188,6 +188,10 @@ object CandidateQuery {
 trait IdentityLookups {
   /** Whether the listing's venue publishes a detail page the source can answer for. */
   def hasDetail(listing: Listing): Boolean
+  /** The questions a caller is about to ask, one by one — a source that can answer them together
+   *  (in parallel, over the network) may, and serve the asks that follow from what it fetched.
+   *  Every read phase begins with one, so nothing fetched for an earlier phase is served to a later. */
+  def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = ()
   /** The venue's own detail page for the listing. */
   def detail(listing: Listing): Answer[Option[DetailFacts]]
   /** Every film a query names. */

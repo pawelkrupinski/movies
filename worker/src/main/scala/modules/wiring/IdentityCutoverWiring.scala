@@ -42,21 +42,24 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   lazy val filmIdCounterStore: FilmIdCounterStore =
     mongoConnection.database.fold[FilmIdCounterStore](new InMemoryFilmIdCounterStore)(new MongoFilmIdCounterStore(_))
 
+  // What each venue is taken to publish after every scrape reaches the identity model as its listings now.
   lazy val identityListingIntake: Option[IdentityListingIntake] = Option.when(identityCutover)(
     new IdentityListingIntake(acceptedListings, scrapeArchive, scrapeGuardLedger, titleNormalizer,
-      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock))
+      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock,
+      published = (cinema, films) => identityModel.foreach(_.venueScraped(cinema, films))))
 
   lazy val identityProjection: Option[IdentityProjection] = identityListingIntake.map { intake =>
     new IdentityProjection(
       listings    = () => intake.listings(cinemaScrapers.map(_.cinema)),
-      lookups     = () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, identityLookupFetch, detailEnrichers),
-      pins        = new MongoPinStore(mongoConnection.database),
+      resolve     = identityModel.fold(IdentityProjection.resolving(
+        () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, identityLookupFetch, detailEnrichers),
+        new MongoPinStore(mongoConnection.database), titleNormalizer, IdentityCalibration.resolver))(
+        IdentityProjection.modelled(_, IdentityCutoverWiring.ModelTimeout)),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
       details     = movieService.withFilmDetails,
       announce    = movieService.announceResolvedNewMovie,
       normalizer  = titleNormalizer,
-      calibration = IdentityCalibration.resolver,
       slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool),
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityCutover.forCountry(country.code),
@@ -67,4 +70,10 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
    *  path's task types completed unrun. */
   def identityPathHandlers(handlers: Seq[TaskHandler]): Seq[TaskHandler] =
     if (identityCutover) CutoverTaskHandlers.of(handlers) else handlers
+}
+
+object IdentityCutoverWiring {
+  /** How long a projection waits for the model to catch up — a rebuild after a deploy included —
+   *  before it refuses and the stored films keep serving. */
+  val ModelTimeout: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
 }

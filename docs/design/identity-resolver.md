@@ -2174,11 +2174,10 @@ capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
 shadow run's own claimed schedule, `WorkerWiring.identityShadowSchedule`, no longer the settle's),
 on its own daemon thread, one round at a time:
 
-- it walks the same listing set's questions over the store (`IdentityResolver.askAll`: stage A
-  only, 1,000 listings a chunk, each query and film asked once), so the questions are exactly the
-  resolver's own (`CandidateQueries`, the set `IdentityLookupSweep` records) — no second list. It
-  never resolves: a whole-corpus resolve holds every answer and film record at once, for the
-  round's whole paced window and beside the tick's own, which OOMed worker-uk twice on 2026-09-28;
+- it asks the identity model's gaps (`IncrementalResolver.gaps`: the questions its nodes asked that the
+  store cannot answer, and the film records it lacks), so the questions are exactly the resolver's own
+  (`CandidateQueries`) — no second list, and no walk of every listing's questions per round; a record
+  a newly answered search names is the model's gap after its next drain, and the next round's question;
 - each TMDB request the store holds no live definitive answer to is asked live — through the
   cut-over projection's `ObservedFirstHttpFetch` (§18), its live side a `ShadowLiveFetch` — over
   `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker and meters), wrapped in

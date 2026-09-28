@@ -2,10 +2,11 @@ package services.identity
 
 import models.{Cinema, CinemaMovie, MovieRecord}
 import play.api.Logging
-import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens, ShowtimesDigest,
+import services.movies.{CacheKey, ListingKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens, ShowtimesDigest,
   StoredMovieRecord, TitleNormalizer, WriteOutcome}
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -26,7 +27,7 @@ trait IdentityProjectionMetrics {
 
 object IdentityProjectionMetrics {
   enum Refusal {
-    case Crossing, UnreadableMap, Shrink
+    case Crossing, UnreadableMap, Shrink, NotReady
     def label: String = toString.toLowerCase
   }
   val noop: IdentityProjectionMetrics = new IdentityProjectionMetrics {
@@ -59,14 +60,12 @@ object IdentityProjectionMetrics {
  */
 final class IdentityProjection(
   listings:    () => Seq[(Cinema, Seq[CinemaMovie])],
-  lookups:     () => IdentityLookups,
-  pins:        PinStore,
+  resolve:     Seq[Listing] => Option[IdentityProjection.Resolved],
   cache:       MovieCache,
   filmIds:     FilmIdCounterStore,
   details:     (MovieRecord, Int) => Option[MovieRecord],
   announce:    (CacheKey, MovieRecord) => Unit,
   normalizer:  TitleNormalizer,
-  calibration: IdentityCalibration,
   slots:       CinemaSlotBuilder,
   tokens:      ScreeningTokens,
   metrics:     IdentityProjectionMetrics,
@@ -89,13 +88,18 @@ final class IdentityProjection(
     mapping.load() match {
       case Left(why) => refuse(IdentityProjectionMetrics.Refusal.UnreadableMap, why)
       case Right(counters) =>
-        Try(IdentityResolver.resolve(corpus.map(_.listing), lookups(), normalizer, calibration, ListingConstraints.pinned(pins.all()))) match {
+        Try(resolve(corpus.map(_.listing))) match {
           case Failure(crossing: IdentityResolver.FamilyCrossing) =>
             refuse(IdentityProjectionMetrics.Refusal.Crossing, crossing.getMessage)
           case Failure(other) => throw other
-          case Success(resolution) =>
+          case Success(None) =>
+            refuse(IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready")
+          case Success(Some(IdentityProjection.Resolved(resolution, held))) =>
             val at    = clock.instant()
-            val draft = IdentityProjectionPlan.draft(corpus, resolution, stored, counters, normalizer, slots, tokens, at)
+            // Exactly the listings the resolution decided: one that reached the intake after the
+            // model's snapshot is projected by the next tick, never left out of its film by this one.
+            val draft = IdentityProjectionPlan.draft(corpus.filter(row => held(row.listing.key)), resolution, stored, counters,
+              normalizer, slots, tokens, at)
             ProjectionGuard.refusal(draft, stored, LocalDateTime.ofInstant(at, ZoneOffset.UTC)) match {
               case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
                 consecutiveShrinks += 1
@@ -164,4 +168,20 @@ final class IdentityProjection(
       s"${parked.size} parked; the next projection retries")
     last.size
   }
+}
+
+object IdentityProjection {
+  /** A resolution and the listings it decided. */
+  final case class Resolved(resolution: Resolution, listings: Set[ListingKey])
+
+  /** A WHOLE resolve of the listings a projection reads — the projection before the incremental
+   *  model, and the reference the specs hold it to. */
+  def resolving(lookups: () => IdentityLookups, pins: PinStore, normalizer: TitleNormalizer,
+                calibration: IdentityCalibration): Seq[Listing] => Option[Resolved] = listings =>
+    Some(Resolved(IdentityResolver.resolve(listings, lookups(), normalizer, calibration, ListingConstraints.pinned(pins.all())),
+      listings.map(_.key).toSet))
+
+  /** The incremental model, brought up to now on its own thread — no resolve here. */
+  def modelled(model: IdentityModelService, timeout: FiniteDuration): Seq[Listing] => Option[Resolved] = _ =>
+    model.current(timeout).map { case (resolution, held) => Resolved(resolution, held.map(_.key).toSet) }
 }

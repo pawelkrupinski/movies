@@ -136,6 +136,20 @@ lazy val itReportSettings = Seq(
 lazy val common = (project in file("common"))
   .settings(
     name := "common",
+    // The identity model's rules version (`services.identity.IdentityRules`): a digest of everything the
+    // resolver is built from — common's sources and resources, paths and contents. A deploy that changes
+    // none of them keeps the model; one that changes any rebuilds it (a superset, never a miss).
+    Compile / resourceGenerators += Def.task {
+      val base   = baseDirectory.value / "src" / "main"
+      val digest = java.security.MessageDigest.getInstance("SHA-256")
+      (base ** "*").get.filter(_.isFile).sortBy(_.getPath).foreach { file =>
+        digest.update(IO.relativize(base, file).getOrElse(file.getPath).getBytes("UTF-8"))
+        digest.update(IO.readBytes(file))
+      }
+      val out = (Compile / resourceManaged).value / "identity-rules-version.txt"
+      IO.write(out, digest.digest.map("%02x".format(_)).mkString)
+      Seq(out)
+    }.taskValue,
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(
       play,             // play.api.Logging (the only Play API the shared code uses)

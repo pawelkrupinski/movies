@@ -130,33 +130,49 @@ class WorkerWiring(
   lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
   lazy val identityModel: Option[services.identity.IdentityModelService] = {
     import services.identity._
-    identityObservations.filter(_ => configuration.identityShadow.value && !identityCutover).map { store =>
+    // A cut-over country's model is its identity: the intake's accepted listings, answered observed
+    // first and live on a gap. Otherwise the shadow's: the archive's listings, from the store alone.
+    val sources: Option[(() => Seq[Listing], () => IdentityLookups, Option[services.observations.ObservationStore])] =
+      if (identityCutover) Some((
+        () => identityListingIntake.fold(Seq.empty[Listing])(intake =>
+          Listing.distinct(Listing.all(intake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer))),
+        () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, identityLookupFetch, detailEnrichers, identityReads),
+        observationStore))
+      else identityObservations.filter(_ => configuration.identityShadow.value).map(store => (
+        () => shadowListings(),
+        () => ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers, identityReads)._1,
+        Some(store)))
+    sources.map { case (listings, lookups, store) =>
       val pinStore = new MongoPinStore(mongoConnection.database)
       val model = new IdentityModelService(
         newModel   = () => {
           val pins = services.movies.ListingConstraints.pinned(pinStore.all())
-          new IncrementalResolver(
-            new TrackedLookups(ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers, identityReads)._1, identityReads),
-            titleNormalizer, IdentityCalibration.resolver, pins,
+          new IncrementalResolver(new TrackedLookups(lookups(), identityReads, Some(identityPrefetchPool)), titleNormalizer, IdentityCalibration.resolver, pins,
             store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-            rules = IncrementalResolver.rulesVersion(configuration.commit.value, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
+            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
         },
         reads      = identityReads,
-        archive    = () => shadowListings(),
+        archive    = listings,
         normalizer = titleNormalizer,
         settle     = WorkerWiring.IdentityModelSettle,
         scheduler  = identityModelScheduler,
         metrics    = workerMetrics.identityModel.forCountry(country.code))
-      store.onNewLookup(model.observed)
+      store.foreach(_.onNewLookup(model.observed))
       model
     }
   }
+  /** The threads the model's lookups prefetch on: each question a store round-trip, so a take-up is
+   *  bound by their latency, not by CPU. Eight: the store's own pool, not a node's cores, is the limit. */
+  protected lazy val identityPrefetchPool: java.util.concurrent.ExecutorService =
+    java.util.concurrent.Executors.newFixedThreadPool(8, { (task: Runnable) =>
+      val thread = new Thread(task, s"identity-prefetch-${country.code}"); thread.setDaemon(true); thread })
+
   /** One daemon thread for the model: it is not thread-safe, and every event is drained on it. */
   protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
     java.util.concurrent.Executors.newSingleThreadScheduledExecutor { (task: Runnable) =>
       val thread = new Thread(task, s"identity-model-${country.code}"); thread.setDaemon(true); thread }
 
-  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = identityModel.map(model =>
+  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = identityModel.filter(_ => !identityCutover).map(model =>
     new services.identity.ShadowIdentityReaper(
       source        = services.identity.ShadowIdentityReaper.modelled(model),
       pipelineFilms = () => movieCache.snapshot(),
@@ -204,12 +220,11 @@ class WorkerWiring(
   lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
     shadowIdentityReaper.flatMap(_ => identityObservations).filter(_ => configuration.identityShadowLookups.value).map(store =>
       new services.identity.ShadowLookupFill(
-        listings    = shadowListings,
+        questions   = () => identityModel.fold(services.identity.AnswersChanged.Empty)(_.gaps),
         store       = store,
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
         enrichers   = detailEnrichers,
-        normalizer  = titleNormalizer,
         rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
         window      = identityShadowInterval,
         metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),

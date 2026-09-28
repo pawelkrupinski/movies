@@ -68,6 +68,15 @@ final class IdentityModelService(
   /** The listings the model held at the last drain. */
   def listings: Seq[Listing] = current.fold(Seq.empty[Listing])(_._3)
 
+  /** The model brought up to NOW — taken up if it is not yet, every queued event drained — on its
+   *  own thread, with the listings it decided: what a projection reads. `None` when it cannot be
+   *  had within `timeout` (a rebuild still running) or the model could not be taken up. */
+  def current(timeout: FiniteDuration): Option[(Resolution, Seq[Listing])] =
+    scala.util.Try(scheduler.submit[Option[(Resolution, Seq[Listing])]] { () =>
+      safely("catch up") { if (model.isEmpty) takeUp(); drain(); () }
+      current.map { case (resolution, _, listings) => resolution -> listings }
+    }.get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten
+
   def start(): Unit = {
     scheduler.execute(() => safely("restore")(takeUp()))
     scheduler.scheduleWithFixedDelay(() => safely("drain")(drain()), settle.toMillis, settle.toMillis, TimeUnit.MILLISECONDS)

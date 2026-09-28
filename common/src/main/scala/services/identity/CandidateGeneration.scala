@@ -16,6 +16,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten
+  lookups.prefetch(Nil, Nil, ordered.filter(listing => corpus.flatMap(_.evidenceOf(listing)).isEmpty && lookups.hasDetail(listing)))
   val withEvidence = ordered.map(listing => listing -> corpus.flatMap(_.evidenceOf(listing)).getOrElse(Evidence.of(listing, detailOf(listing), decorations)))
   // A pinned listing is a node of its own kind: identical evidence under different pins is not
   // one question any more.
@@ -38,14 +39,22 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
         else answers.getOrElseUpdate(query, Answer.Known(Nil))
       case query => ask(query)
     })
-  } else queriesOf.values.flatten.toSeq.distinct.sorted.foreach(ask)
+  } else {
+    val asked = queriesOf.values.flatten.toSeq.distinct.sorted
+    lookups.prefetch(asked, Nil, Nil)
+    asked.foreach(ask)
+  }
 
   val ownSearch: Map[String, Map[Int, Int]] = nodes.map(node => node.id -> CandidateGeneration.ownSearch(queriesOf(node.id), answers)).toMap
   val ownWalk: Map[String, Set[Int]]        = nodes.map(node => node.id -> CandidateGeneration.ownWalk(queriesOf(node.id), answers)).toMap
   val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
   // Looked up only when these listings are the whole corpus: a region reads its candidates from
   // the corpus's context, which holds every record already.
-  lazy val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
+  lazy val records  = {
+    val ids = hitsById.keys.toSeq.sorted
+    lookups.prefetch(Nil, ids, Nil)
+    ids.map(id => id -> lookups.film(id)).toMap
+  }
   lazy val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
   /** Whether these listings are part of a larger corpus, read through its context. */
   def partOfCorpus: Boolean = corpus.isDefined
@@ -56,8 +65,11 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
    *  larger one, else their own. */
   lazy val context: CorpusContext = corpus.getOrElse(CorpusContext.of(nodes, reached, recorded,
     query => answers.get(query).flatMap(_.toOption).map(CandidateGeneration.ranked), normalizer.sanitize))
+  // One instance of each record for this resolve's whole length, whatever the context hands out: the
+  // title forms a record caches are computed once per resolve, not once per node that scores it.
+  private val held = mutable.HashMap.empty[Int, Option[Candidate]]
   /** A record with the titles the venues publish for it (`IdentityMeasures.venueTitles`). */
-  def candidateOf(id: Int): Option[Candidate] = context.candidate(id)
+  def candidateOf(id: Int): Option[Candidate] = held.getOrElseUpdate(id, context.candidate(id))
   /** A record some node reached: every one is known to the context. */
   def candidateById(id: Int): Candidate = candidateOf(id).getOrElse(throw new NoSuchElementException(s"no candidate $id in the corpus context"))
   /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their

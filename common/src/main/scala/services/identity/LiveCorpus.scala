@@ -102,6 +102,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // ── events ──────────────────────────────────────────────────────────────────────────────────
   def seen(arrived: Seq[Listing]): CorpusContext.Changed = {
     val touched = mutable.HashSet.empty[NodeKey]
+    lookups.prefetch(Nil, Nil, arrived.filter(lookups.hasDetail))
     arrived.foreach { listing =>
       listings.remove(listing.key).foreach(key => touched += leave(listing.key, key))
       val evidence = derive(listing)
@@ -145,21 +146,25 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     // Answers are read for this refresh only, each question once.
     val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
     val answer  = (query: CandidateQuery) => answers.getOrElseUpdate(query, lookups.candidates(query))
-    rebuilt.foreach(key => members.get(key).foreach { held =>
+    val built = rebuilt.toSeq.flatMap(key => members.get(key).map { held =>
       val listed  = held.values.toSeq
       val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
       heads(key)  = listed.head.key -> head
       val node    = new EvidenceNode(head, listed)
-      val queries = CandidateQueries.of(node.evidence)
+      (key, node, CandidateQueries.of(node.evidence))
+    })
+    lookups.prefetch(built.flatMap(_._3).distinct, Nil, Nil)
+    built.foreach { case (key, node, queries) =>
       val live = new Node(node, queries,
         CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer)))
       nodes(key) = live
       films ++= link(key, live, answer)
       titleKeys += live.titleKey
       segments += live.whole
-    })
+    }
     // 2. films: each one's base candidate, and the title keys it files under
     val filedUnder = mutable.HashSet.empty[String]
+    lookups.prefetch(Nil, films.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
     films.foreach { id =>
       base.remove(id).foreach(old => filmKeys(old.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)) })
       bestHits.get(id) match {
