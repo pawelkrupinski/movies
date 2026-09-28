@@ -445,18 +445,24 @@ object IdentityResolver {
         calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
           .orElse(topHit(ranked)).orElse(directorsWork(ranked))).map(editionNamed(ranked))
     }
-    /** The one candidate whose WORK the listing bills under another subtitle, by the director it
-     *  credits, that no published year or runtime contradicts (`IdentityMeasures.sharesWork`):
+    /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
+     *  the director it credits, that no published year or runtime contradicts
+     *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`; three venues' "Leonas" is Cotelo's "Leonas, el
+     *  instinto más salvaje", fifth in TMDB's search for the word):
      *  Multikino's "Cirque du Soleil: Kurios - Gabinet osobliwości" by Michel Laprise is his "…:
      *  KURIOS - Cabinet des curiosités". The pipeline took such hits by their director on 3,247
      *  listings with no wrong match; two candidates fitting alike (a director's sequels of one
      *  work) are no answer. */
     def directorsWork(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      // The listing is the film's work alone ("Leonas" of "Leonas, el instinto más salvaje"); a
+      // one-word work also needs the published year, a word being many films' title.
+      def bareWork(s: Scored) = IdentityMeasures.titleIsWorkOf(s.listing, s.c.film).exists(words =>
+        words >= 2 || s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d <= 1; case _ => false })
       def contradicted(s: Scored) =
         s.measures.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 1; case _ => false } ||
           s.measures.get("runtime.delta").exists { case IdentityMeasures.Number(d) => d >= 30; case _ => false }
       ranked.filterNot(_.denied).filter(s => s.measures.get("director").contains(IdentityMeasures.Category("same_person")) &&
-        IdentityMeasures.sharesWork(s.listing, s.c.film) && !contradicted(s)) match {
+        (IdentityMeasures.sharesWork(s.listing, s.c.film) || bareWork(s)) && !contradicted(s)) match {
         case Seq(one) => Some(one -> one.p)
         case _        => None
       }

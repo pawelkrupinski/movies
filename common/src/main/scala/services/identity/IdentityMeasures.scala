@@ -454,6 +454,14 @@ object IdentityMeasures {
   private val SubtitleDash = """\s+[-–—]\s+""".r
   private def workOf(t: String): Option[String] =
     SubtitleDash.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim).filter(w => TitleContainment.tokens(w).sizeIs >= 2)
+  /** Is the listing's whole title the film's WORK — its title before a subtitle, after a dash or a
+   *  comma ("Leonas" of "Leonas, el instinto más salvaje")? The words of the work, or None. */
+  def titleIsWorkOf(l: Listing, f: Film): Option[Int] = {
+    val own = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
+    (Seq(f.title) ++ f.originalTitle).flatMap(t => """\s*,\s+|\s+[-–—]\s+""".r.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim))
+      .find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
+  }
+
   /** Do the listing and the film bill the same work under different subtitles — a venue's translated
    *  subtitle ("Gabinet osobliwości" for "Cabinet des curiosités")? */
   def sharesWork(l: Listing, f: Film): Boolean = {

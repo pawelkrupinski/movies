@@ -63,6 +63,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(558130)))
   }
 
+  "A listing that publishes only a film's work, without its subtitle" should "take the film when its director and year are the film's" in {
+    // ES, three venues' "Leonas" (2026, Juan Manuel Cotelo, 94 min) is "Leonas, el instinto más
+    // salvaje": the calibration read the bare title as a fragment of the record's.
+    // TMDB ranks it fifth for "Leonas", below four other films of the word.
+    val films = Seq(F(9101, "Leonas", 2019, "Ana Ruiz", 88, 40), F(9102, "Las leonas", 2021, "Pedro Gil", 101, 35),
+      F(9103, "Leonas de Atlas", 2012, "Eva Sanz", 76, 30), F(9104, "Leonas del mar", 2008, "Luis Mora", 90, 25),
+      F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
+    val ls    = Seq(Multikino, Helios).map(listing(_, "Leonas", Some(2026), Some("Juan Manuel Cotelo"), Some(94)))
+    val r = shipped(ls, films)
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1651192)))
+  }
+
+  it should "not take a one-word work's film when no year says which" in {
+    val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
+    val l = listing(Multikino, "Leonas", None, Some("Juan Manuel Cotelo"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
   "A decorated spelling" should "take the film its plain siblings' own evidence matched" in {
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
     val plain = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
