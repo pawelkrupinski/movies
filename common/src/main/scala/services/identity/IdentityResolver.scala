@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{ListingFilm, Measure}
+import services.identity.IdentityMeasures.ListingFilm
 import services.movies.{ListingConstraints, ListingKey, TitleNormalizer}
 
 import scala.collection.mutable
@@ -73,21 +73,6 @@ object IdentityResolver {
     case NarrowFamilies
   }
 
-  /** A node: the listings sharing one evidence. Named by its smallest listing's sort key. */
-  private final class Node(val evidence: Evidence, val listings: Seq[Listing]) {
-    val id: String          = listings.head.sortKey
-    val weight: Int         = listings.size
-    val venue: String       = listings.head.venue
-    val venues: Set[String] = listings.map(_.venue).toSet
-    def label: String       = s"'${evidence.title}'${evidence.statedYear.fold("")(y => s" [$y]")}" +
-      (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "") + s" ×$weight"
-  }
-
-  /** A venue's own name and its city's, as words: what a title piece naming the venue spells. */
-  private def placesOf(cinema: models.Cinema): Seq[Seq[String]] =
-    (Seq(cinema.displayName) ++ models.City.forCinema(cinema).map(_.labels.nominative))
-      .map(services.movies.TitleContainment.tokens).filter(_.nonEmpty)
-
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
 
@@ -110,185 +95,20 @@ object IdentityResolver {
     val ordered  = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
 
     // ── A. candidate generation ──────────────────────────────────────────────────────────
-    val details = mutable.LinkedHashMap.empty[(String, String), Answer[Option[DetailFacts]]]
-    def detailOf(l: Listing): Option[DetailFacts] =
-      if (!lookups.hasDetail(l)) None
-      else details.getOrElseUpdate((l.venue, l.page.getOrElse("")), lookups.detail(l)).toOption.flatten
-    val withEvidence = ordered.map(l => l -> Evidence.of(l, detailOf(l), decorations))
-    // A pinned listing is a node of its own kind: identical evidence under different pins is not
-    // one question any more.
-    val nodes = withEvidence.groupBy { case (l, e) => (e.key, pins.blockKeys(l.key)) }.values.toSeq
-      .map(g => new Node(g.head._2, g.map(_._1).sorted))
-      .sortBy(_.id)
-    val nodeById = nodes.map(n => n.id -> n).toMap
-
-    val queriesOf: Map[String, Seq[CandidateQuery]] = nodes.map(n => n.id -> CandidateQueries.of(n.evidence)).toMap
-    val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
-    val issued  = mutable.ArrayBuffer.empty[CandidateQuery]
-    def ask(q: CandidateQuery): Answer[Seq[Hit]] = answers.getOrElseUpdate(q, { issued += q; lookups.candidates(q) })
-    if (mutation == Mutation.LazyLookups) {
-      val answeredShapes = mutable.HashSet.empty[String]
-      val arrivalNodes = ordered.flatMap(l => nodes.find(_.listings.contains(l))).distinct
-      arrivalNodes.foreach(n => queriesOf(n.id).foreach {
-        case q @ CandidateQuery.Title(text) =>
-          val shape = normalizer.sanitize(text)
-          if (!answeredShapes(shape)) { if (ask(q).toOption.exists(_.nonEmpty)) answeredShapes += shape }
-          else answers.getOrElseUpdate(q, Answer.Known(Nil))
-        case q => ask(q)
-      })
-    } else queriesOf.values.flatten.toSeq.distinct.sorted.foreach(ask)
-
-    val isTitle: CandidateQuery => Boolean = { case _: CandidateQuery.Title => true; case _ => false }
-    // Each candidate a node's own title searches named, at the best (1-based) rank any gave it.
-    val ownSearch: Map[String, Map[Int, Int]] = nodes.map { n =>
-      n.id -> queriesOf(n.id).filter(isTitle).flatMap(q => answers(q).toOption.getOrElse(Nil).zipWithIndex)
-        .groupMapReduce(_._1.tmdbId)(_._2 + 1)(math.min)
-    }.toMap
-    // Each candidate a node's other paths reached: its credited directors' filmographies, and the
-    // films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank.
-    val ownWalk: Map[String, Set[Int]] = nodes.map(n =>
-      n.id -> queriesOf(n.id).filterNot(isTitle).flatMap(q => answers(q).toOption.getOrElse(Nil)).map(_.tmdbId).toSet).toMap
-    /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their
-     *  own evidence — a credited director, a detail page's original title — that its own did not:
-     *  "Vincent. Legenda oceanu" at a venue publishing nothing else searches empty (TMDB titles the
-     *  film "The Last Whale Singer"), while the same title credited elsewhere walks its director to
-     *  it. A path to a candidate, never evidence for it: the node scores it on its own facts (no
-     *  search rank), and still denies it when they rule it out. */
-    val titleOf: Node => String = n => IdentityMeasures.key(n.evidence.title)
-    val sharedOf: Map[String, Set[Int]] = nodes.groupBy(titleOf).filter { case (t, ns) => t.nonEmpty && ns.size > 1 }.values.toSeq
-      .flatMap { ns =>
-        val reached = ns.map(n => n.id -> (ownSearch(n.id).keySet ++ ownWalk(n.id))).toMap
-        ns.map(n => n.id -> (ns.filterNot(_ eq n).flatMap(m => reached(m.id)).toSet -- reached(n.id)))
-      }.toMap.withDefaultValue(Set.empty)
-    val hitsById = nodes.flatMap(n => queriesOf(n.id).flatMap(q => answers(q).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
-    val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
-    val recorded: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
-    // Each record with the titles the venues publish for it (`IdentityMeasures.venueTitles`).
-    val venueTitles = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, c) => id -> c.film })
-    val candidateById: Map[Int, Candidate] = recorded.map { case (id, c) =>
-      id -> c.copy(film = IdentityMeasures.withVenueTitles(c.film, venueTitles.getOrElse(id, Nil))) }
-
+    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups)
+    import generation.{answers, candidateById, details, issued, nodeById, nodes, ownSearch, queriesOf, records}
     // ── scoring ──────────────────────────────────────────────────────────────────────────
     val acceptance = new Acceptance(calibration)
     val weights    = acceptance.weights
 
-    /** Which house each listing banner is, learned from how every node's candidates bill its works
-     *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
-     *  naming it, and a season production must be of it when it is known. */
-    val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(nodes.flatMap { n =>
-      IdentityMeasures.Houses.evidence(n.evidence.measured, (ownSearch(n.id).keys ++ ownWalk(n.id)).toSeq.distinct.sorted.map(candidateById(_).film))
-    })
-    def namesItsSeasonProduction(l: IdentityMeasures.Listing, f: IdentityMeasures.Film): Boolean =
-      IdentityMeasures.namesSeasonProduction(l, f) && !IdentityMeasures.billing(l, f).exists(houses.other)
+    val scoring = new CandidateScoring(generation, calibration, weights, pins)
+    import scoring.{evidenceDenies, houses}
 
-    /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-     *  probability below the certified cut, a season its title names that the film is not of, or
-     *  its season's production of its work by ANOTHER house than its banner's (`houses`). */
-    def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
-      ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
-        (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
-        ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).isDefined
-    }
-
-    /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
-     *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
-     *  OCEANU" bills the venue, not *The Rock*, whose Polish title is "Twierdza"; the Alamo
-     *  Drafthouse circuit's "Dismember the Alamo 2026 - Chicago" at its Chicago venue names the
-     *  city, not the musical. A title that is the venue's name and nothing more (a year aside) still
-     *  names its film, whatever the venue is called. */
-    def namesOnlyItsVenue(n: Node, f: IdentityMeasures.Film): Boolean = {
-      val whole  = services.movies.TitleContainment.tokens(n.evidence.title)
-      val pieces = IdentityMeasures.namingPieces(n.evidence.measured, f)
-      // The rest of the title must say something beside the venue: "Charlotte (2021)" at a
-      // Charlotte venue is the film, its year only dating it.
-      def besideIt(p: Seq[String]) = whole.diff(p).exists(_.exists(Character.isLetter))
-      pieces.nonEmpty && pieces.forall(p => besideIt(p) && n.listings.forall(l => placesOf(l.cinema).exists(_.containsSlice(p))))
-    }
-
-    /** The listings by title key, with their venues: `venues.corroborating`'s groups. Every node's,
-     *  not a family's: a title a learned decoration wraps (`IdentityMeasures.titleGroups`) is listed
-     *  plain by venues whose listings are not title-linked to it, so not in its family. */
-    val titleGroups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
-      nodes.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
-        .groupMap(_._1)(_._2)
-    val backing = new IdentityMeasures.VenueBacking(titleGroups)
-
-    final class FamilyScope(members: Seq[Node]) {
-      val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)
-      /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
-       *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
-       *  record titled only a listing's qualifier does not name it. The family's own pool, so a
-       *  family resolves alone as it does among the others. */
-      val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
-
-      /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
-       *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
-      def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-                deniedByPins: Int => Boolean): Seq[Scored] = {
-        val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses, qualifiers).value).toMap
-        val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || shared(c.tmdbId) ||
-          IdentityMeasures.names(relation(c.tmdbId), l, c.film))
-        val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
-        val groups    = IdentityMeasures.titleGroups(l)
-        val scored = reachable.map { c =>
-          val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
-          val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
-            backing.corroborating(groups, c.film, venue), houses, qualifiers)
-          val p = calibration.probability(ListingFilm, measures)
-          Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
-            namesItsSeasonProduction(l, c.film), deniedByPins(c.tmdbId))
-        }
-        // The listing's whole title (or its original or an alternative title) and its credited
-        // director name ONE film together: another film of that director, which its title does not
-        // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
-        // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
-        val titled = scored.exists(s => !s.denied && IdentityMeasures.Rivalling(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures))
-        // The listing's title numbers its instalment as an eligible record of its series does
-        // (`numeral` `same`): another instalment of that series — one the listing numbers and it
-        // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
-        // "Niesamowite przygody skarpetek 4. Do roboty! – zestaw" is part 4, not the 2025 first set
-        // whose animators it credits).
-        val instalment = scored.exists(s => !s.denied && s.category("numeral").contains("same"))
-        scored.map(s =>
-          if (titled && !IdentityMeasures.NamingRelations(relation(s.c.tmdbId)) && IdentityMeasures.sameDirector(s.measures)) s.copy(denied = true)
-          else if (instalment && s.category("numeral").exists(IdentityMeasures.OtherInstalment)) s.copy(denied = true)
-          else s)
-          .sortBy(s => (-s.p, s.c.tmdbId))
-      }
-
-      private val memo = mutable.HashMap.empty[String, Seq[Scored]]
-      def of(n: Node): Seq[Scored] = memo.getOrElseUpdate(n.id,
-        score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id), sharedOf(n.id),
-          id => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
-
-      /** The cluster's members read as ONE listing: the title most of its listings carry (the
-       *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
-       *  median runtime, the modal original title, and every candidate any of them named. The
-       *  directors credited beside that year are only those of the members publishing it. */
-      def pooled(cluster: Seq[Node]): Seq[Scored] = {
-        def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
-          values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (v, w) => (-w, v) }.headOption.map(_._1)
-        val lead     = cluster.sortBy(n => (-n.weight, n.id)).head
-        val runtimes = cluster.flatMap(n => n.evidence.runtime.toSeq.flatMap(r => Seq.fill(n.weight)(r))).sorted
-        val year     = modal(cluster.flatMap(n => n.evidence.year.map(_ -> n.weight)))
-        val listing  = lead.evidence.measured.copy(
-          year          = year,
-          yearCredits   = Some(cluster.filter(n => year.nonEmpty && n.evidence.year == year).flatMap(_.evidence.directors).distinct.sorted),
-          originalTitle = modal(cluster.flatMap(n => n.evidence.originalTitle.map(_ -> n.weight))),
-          directors     = cluster.flatMap(_.evidence.directors).distinct.sorted,
-          runtime       = runtimes.lift(runtimes.size / 2),
-          countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
-        val ranks = cluster.flatMap(n => ownSearch(n.id)).groupMapReduce(_._1)(_._2)(math.min)
-        score(listing, lead.venue, ranks, cluster.flatMap(n => ownWalk(n.id)).toSet, cluster.flatMap(n => sharedOf(n.id)).toSet,
-          id => cluster.exists(n => pins.deniedFilms(n.listings.head.key)(id) || namesOnlyItsVenue(n, candidateById(id).film)))
-          .map(s => if (s.denied || cluster.forall(n => !of(n).exists(o => o.c.tmdbId == s.c.tmdbId && o.denied))) s else s.copy(denied = true))
-      }
-    }
 
     /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
      *  whole spelling, its original title or a segment) names the film's and not another
      *  instalment of its series (`IdentityMeasures.namesFilm`)? */
-    def titleNames(n: Node, film: Candidate): Boolean =
+    def titleNames(n: EvidenceNode, film: Candidate): Boolean =
       ownSearch(n.id).contains(film.tmdbId) || IdentityMeasures.namesFilm(n.evidence.measured, film.film)
     /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
      *  title names, which only a credited director's filmography reached, only when nothing else
@@ -296,7 +116,7 @@ object IdentityResolver {
      *  and the calibration rates it strictly lower. A walk is a path to candidates; it cannot pick
      *  among a director's films the listing's facts favour another of (a lecture on "Trzy kolory:
      *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
-    def votedFor(cluster: Seq[Node], ranked: Seq[Scored]): Option[(Scored, Double)] =
+    def votedFor(cluster: Seq[EvidenceNode], ranked: Seq[Scored]): Option[(Scored, Double)] =
       acceptance.pooled(ranked).filter { case (s, _) =>
         cluster.exists(titleNames(_, s.c)) ||
           ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && weights.own(r) <= weights.own(s))
@@ -305,7 +125,7 @@ object IdentityResolver {
 
 
     // ── families ─────────────────────────────────────────────────────────────────────────
-    def titleKeys(n: Node): Set[String] =
+    def titleKeys(n: EvidenceNode): Set[String] =
       FamilyClosure.blockKeys(n.evidence.cleanTitle, n.evidence.originalTitle, None, normalizer,
         segments = IdentityMeasures.titleShapes(n.evidence.published) :+ n.evidence.cleanTitle) ++
         pins.blockKeys(n.listings.head.key)
@@ -319,11 +139,11 @@ object IdentityResolver {
     val searchForm = (s: String) => normalizer.searchQuery(s)
     val segmentsOf: Map[String, Set[String]] = nodes.map(n => n.id ->
       (IdentityMeasures.titleShapes(n.evidence.published).map(sanitized).toSet - sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
-    def segmentOf(whole: Node, decorated: Node): Boolean =
+    def segmentOf(whole: EvidenceNode, decorated: EvidenceNode): Boolean =
       segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
     /** Do two nodes' titles must-link them (tiers 2–4: same sanitised title, same search form,
      *  an original title naming the other, or one a whole segment of the other)? */
-    def titleLinked(x: Node, y: Node): Boolean = {
+    def titleLinked(x: EvidenceNode, y: EvidenceNode): Boolean = {
       val (ex, ey) = (x.evidence, y.evidence)
       val originals = (ex.originalTitle ++ ey.originalTitle).map(sanitized).filter(_.nonEmpty).toSet
       (sanitized(ex.cleanTitle).nonEmpty && sanitized(ex.cleanTitle) == sanitized(ey.cleanTitle)) ||
@@ -336,7 +156,7 @@ object IdentityResolver {
      *  DENIES the film: a bare "Samson i Dalila" beside the same venue family's "…: live in hd
      *  2026/27" has no evidence of its own against DeMille's 1949 film, but its sibling's season
      *  is. The node then goes to the group vote with its siblings, where every member's denial holds. */
-    def withoutSiblingDenials(members: Seq[Node], scope: FamilyScope,
+    def withoutSiblingDenials(members: Seq[EvidenceNode], scope: FamilyScope,
                               alone: Map[String, (Scored, Double)]): Map[String, (Scored, Double)] =
       alone.filter { case (id, (best, _)) =>
         val n = nodeById(id)
@@ -352,7 +172,7 @@ object IdentityResolver {
     var bestOf     = Map.empty[String, (Scored, Double)]
     var stable     = false
     while (!stable) {
-      scopes = nodes.groupBy(n => familyOf(n.id)).map { case (f, ms) => f -> new FamilyScope(ms.sortBy(_.id)) }
+      scopes = nodes.groupBy(n => familyOf(n.id)).map { case (f, ms) => f -> new FamilyScope(ms.sortBy(_.id), scoring) }
       bestOf = nodes.groupBy(n => familyOf(n.id)).toSeq.flatMap { case (f, members) =>
         val scope = scopes(f)
         withoutSiblingDenials(members, scope, members.flatMap(n => acceptance.alone(scope.of(n)).map(n.id -> _)).toMap)
@@ -365,8 +185,8 @@ object IdentityResolver {
     }
     val blockKeysOf: Map[String, Set[String]] =
       nodes.map(n => n.id -> (titleKeys(n) ++ matchedIds.getOrElse(n.id, Set.empty[Int]).map(i => s"id:$i"))).toMap
-    def scopeOf(n: Node): FamilyScope = scopes(familyOf(n.id))
-    def denies(n: Node, film: Int): Boolean =
+    def scopeOf(n: EvidenceNode): FamilyScope = scopes(familyOf(n.id))
+    def denies(n: EvidenceNode, film: Int): Boolean =
       scopeOf(n).of(n).find(_.c.tmdbId == film).fold(pins.deniedFilms(n.listings.head.key)(film) || {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
@@ -375,7 +195,7 @@ object IdentityResolver {
       })(_.denied)
 
     // ── B. global assignment, per family ─────────────────────────────────────────────────
-    def pairsSharingAKey(members: Seq[Node]): Seq[(Node, Node)] = {
+    def pairsSharingAKey(members: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
       val index = members.zipWithIndex.flatMap { case (n, i) => blockKeysOf(n.id).map(_ -> i) }.groupMap(_._1)(_._2)
       index.values.iterator.flatMap { is =>
         val sorted = is.distinct.sorted
@@ -384,7 +204,7 @@ object IdentityResolver {
     }
     // The two listings' own evidence apart: the seasons their titles name, or the learned
     // "listing-listing" scope when they compare a fact both published.
-    def listingsApart(x: Node, y: Node): Option[String] = {
+    def listingsApart(x: EvidenceNode, y: EvidenceNode): Option[String] = {
       val (a, b) = (x.evidence.published, y.evidence.published)
       lazy val m = IdentityMeasures.listingListing(a, b, sameVenue = (x.venues intersect y.venues).nonEmpty, sharedChainId = None)
       ListingConstraints.seasonsApart(a.seasonYear, b.seasonYear, b.year)
@@ -394,8 +214,8 @@ object IdentityResolver {
     }
 
     // The pins' own edges between `members`, and the derived edges they leave standing.
-    val nodeOfListing: Map[ListingKey, Node] = nodes.flatMap(n => n.listings.map(_.key -> n)).toMap
-    def pinEdges(members: Seq[Node], filmOf: String => Option[Int]): Seq[ResolverEdge] = {
+    val nodeOfListing: Map[ListingKey, EvidenceNode] = nodes.flatMap(n => n.listings.map(_.key -> n)).toMap
+    def pinEdges(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] = {
       val here = members.map(_.id).toSet
       def edge(e: FamilyClosure.Edge[ListingKey], tier: Int) =
         Option.when(here(nodeOfListing(e.a).id) && here(nodeOfListing(e.b).id) && nodeOfListing(e.a).id != nodeOfListing(e.b).id)(
@@ -411,7 +231,7 @@ object IdentityResolver {
      *  candidate it may still take whose naming pieces share no word with `whole`? "Lalka (Dolly)"
      *  carries "Lalka" whole, but its "Dolly" names Blackhurst's film: it is not merely a decorated
      *  "Lalka", and the segment must not decide between the two for it. */
-    def namesBeside(decorated: Node, whole: String): Boolean = {
+    def namesBeside(decorated: EvidenceNode, whole: String): Boolean = {
       val words = services.movies.TitleContainment.tokens(whole).toSet
       scopeOf(decorated).of(decorated).exists { s =>
         val pieces = IdentityMeasures.namingPieces(decorated.evidence.measured, s.c.film)
@@ -424,7 +244,7 @@ object IdentityResolver {
      *  while its quoted segment is the title other venues list the film by: the form is then the
      *  festival's, not the film's, and says nothing about which film the spelling is. */
     val wholeTitles: Set[String] = nodes.map(n => sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty).toSet
-    def titlesBeside(n: Node, form: String): Boolean = {
+    def titlesBeside(n: EvidenceNode, form: String): Boolean = {
       val words = services.movies.TitleContainment.tokens(form).toSet
       // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
       // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
@@ -436,13 +256,13 @@ object IdentityResolver {
      *  so that a search form it shares with another title is no evidence the two are one film? Not
      *  "names a film beside it": a spelling whose original title reaches its OWN film ("Pieśni lasu |
      *  Pokaz …", "Whispers in the Woods") would then lose the plain listings it is the only bridge for. */
-    def besideItsForm(n: Node, form: String): Boolean = titlesBeside(n, form)
+    def besideItsForm(n: EvidenceNode, form: String): Boolean = titlesBeside(n, form)
 
     /** The must-link tiers a title draws (`edgesOf`): same title, same search form or original
      *  title, one title a segment of the other. */
     val TitleTiers: Set[Int] = Set(2, 3, 4)
 
-    def edgesOf(members: Seq[Node], filmOf: String => Option[Int]): Seq[ResolverEdge] =
+    def edgesOf(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
       pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (x, y) =>
         val (ex, ey) = (x.evidence, y.evidence)
         val (fx, fy) = (filmOf(x.id), filmOf(y.id))
@@ -474,7 +294,7 @@ object IdentityResolver {
         cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (t, r) => edge(must = true, t, r) }
       }.filter(admitted)
 
-    def solve(members: Seq[Node], edges: Seq[ResolverEdge], filmOf: String => Option[Int]): Seq[Seq[Node]] = {
+    def solve(members: Seq[EvidenceNode], edges: Seq[ResolverEdge], filmOf: String => Option[Int]): Seq[Seq[EvidenceNode]] = {
       val constraints = edges.map(e => ConstraintSolver.Constraint(e.a, e.b, e.must, e.tier, e.reason))
       val presentation = if (mutation == Mutation.FirstWins) ConstraintSolver.Presentation.AsGiven else ConstraintSolver.Presentation.Canonical
       val presented = if (mutation == Mutation.FirstWins) {
@@ -499,8 +319,8 @@ object IdentityResolver {
      *  published fact compared (`IdentityMeasures.comparesAFact`), and `factsProbability`, without
      *  the ranking priors, clearing the cut: bare siblings never outvote a member's denial on a title
      *  and the database's ranking. */
-    def vote(cluster: Seq[Node], scope: FamilyScope): Seq[(String, (Int, Double))] = {
-      def to(voters: Seq[Node], accepted: (Scored, Double)) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
+    def vote(cluster: Seq[EvidenceNode], scope: FamilyScope): Seq[(String, (Int, Double))] = {
+      def to(voters: Seq[EvidenceNode], accepted: (Scored, Double)) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
       val ranked = scope.pooled(cluster)
       votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && weights.carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
         val rest = cluster.filterNot(n => scope.of(n).exists(o => o.c.tmdbId == vetoed.c.tmdbId && o.denied))
@@ -527,7 +347,7 @@ object IdentityResolver {
      *  re-release, and 4 of 84 is no majority. Siblings whose titles name a season do not count
      *  (Kino Amok's bare "Manon", a Met broadcast, beside 16 venues' "RBO Sezon Kinowy 2026-27:
      *  Manon"). `None` also when a member publishes a fact or the siblings hold fewer than two films. */
-    def familyMajority(cluster: Seq[Node], members: Seq[Node], accepted: Map[String, Int],
+    def familyMajority(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
                        titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
       Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
         val inside   = cluster.map(_.id).toSet
@@ -546,7 +366,7 @@ object IdentityResolver {
         }.flatten
       }.flatten
 
-    def decide(cluster: Seq[Node], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
+    def decide(cluster: Seq[EvidenceNode], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
                voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int],
                familyTaken: Map[String, (Int, Double, String)]): ResolverDecision = {
       val films = cluster.flatMap(n => filmOf(n.id)).distinct
