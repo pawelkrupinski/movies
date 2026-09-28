@@ -47,14 +47,21 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
 }
 
 private[identity] object TitleLinks {
-  /** The keys a node's title blocks under: its sanitised title, search form, original title, the
-   *  segments of it that are some listing's WHOLE title (`wholeTitle`, sanitised), and its pins' keys
-   *  — a family's seed before any match grows it. A segment no listing carries whole is a banner
-   *  shared across films, not a film's title: "Sensory Friendly Screening", "Part 2", "Młode
-   *  Horyzonty" chained PL's festivals and programmes into one family of ~75% of its listings. */
-  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean): Set[String] =
+  /** The keys a node's title blocks under: its sanitised title, search form, original title, its
+   *  segments except BANNERS, and its pins' keys — a family's seed before any match grows it. A
+   *  segment is a banner when it is no listing's whole title (`wholeTitle`, sanitised) while another
+   *  piece of the same title is one: in "Coraline - Sensory Friendly Screening" the work is
+   *  "Coraline", and "Sensory Friendly Screening", "Part 2", "Młode Horyzonty" as keys chained PL's
+   *  programmes and festivals into one family of ~75% of its listings. A title no piece of which is
+   *  anyone's whole title keeps every piece: "RBO Cinema Season 2026-27: Così fan tutte" joins the
+   *  RBO's and the Met's other spellings of the work only through "Così fan tutte". */
+  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean): Set[String] = {
+    val whole    = normalizer.sanitize(node.evidence.cleanTitle)
+    val pieces   = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
+    val isWhole  = pieces.collect { case (_, key) if key != whole && wholeTitle(key) => key }.toSet
+    val segments = pieces.collect { case (segment, key) if isWhole(key) || !isWhole.exists(_ != key) => segment }
     FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
-      segments = IdentityMeasures.titleShapes(node.evidence.published).filter(segment => wholeTitle(normalizer.sanitize(segment))) :+
-        node.evidence.cleanTitle) ++
+      segments = segments :+ node.evidence.cleanTitle) ++
       pins.blockKeys(node.listings.head.key)
+  }
 }

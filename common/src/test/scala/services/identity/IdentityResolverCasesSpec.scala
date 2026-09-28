@@ -1284,6 +1284,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.familyOf(coraline.key) shouldBe r.familyOf(plain.key)
   }
 
+  "A title's segments" should "be family keys when they are a work, and not when they are a banner beside a work" in {
+    // UK "Coraline - Sensory Friendly Screening": its other piece is a listing's whole title, so the
+    // banner is no key. "RBO Cinema Season 2026-27: Così fan tutte": no piece is anyone's whole title,
+    // so the work stays a key — the RBO's season-free "Royal Ballet and Opera: Così fan tutte" reaches
+    // its record, and the Met's same-work listings stay beside it to be kept apart, only through it.
+    def keys(title: String, wholes: Set[String]) = {
+      val l = listing(Helios, title)
+      TitleLinks.titleKeys(new EvidenceNode(Evidence.of(l, None, TitleDecorations.None), Seq(l)), normalizer, PinConstraints(Nil),
+        wholes.map(normalizer.sanitize))
+    }
+    val sensory = keys("Coraline - Sensory Friendly Screening", Set("Coraline"))
+    sensory should contain ("t:" + normalizer.sanitize("Coraline"))
+    sensory should not contain ("t:" + normalizer.sanitize("Sensory Friendly Screening"))
+    keys("RBO Cinema Season 2026-27: Così fan tutte", Set.empty) should contain ("t:" + normalizer.sanitize("Così fan tutte"))
+  }
+
   "A family's anatomy" should "name the key that glues it and the piece it leaves without that key" in {
     val films   = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162))
     val plain   = listing(Helios, "Lalka", Some(2026), Some("Maciej Kawalski"))
