@@ -60,4 +60,11 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
     helper should include("--workflow main.yml")
     measure should include("git apply --binary --index")
   }
+
+  // A new recording re-pins the pair between two dispatches: comparable measurements name one.
+  it should "replay a named recording in every country, and say which it replayed" in {
+    measure should include("hermetic-pair: ${{ steps.recording.outputs.pair }}")
+    measure should include("recording ${KINOWO_CONVERGENCE_CORPUS_RUN:-?}")
+    helper should include("-f recording=\"${RECORDING:-}\"")
+  }
 }

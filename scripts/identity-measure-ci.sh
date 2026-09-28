@@ -8,6 +8,8 @@
 #
 # usage: scripts/identity-measure-ci.sh <variant> [out-dir]
 #   COUNTRIES=pl,uk,de,us,es  ROBUSTNESS=off  FOCUS="phrase,phrase"  BASE_ONLY=1 (measure the base, no patch)
+#   RECORDING=<Record scrape fixtures run id>: replay that recording in every country, so measurements compare
+#   on one input (the default, each country's pinned pair, moves whenever a new recording is pinned)
 set -euo pipefail
 variant=${1:?usage: identity-measure-ci.sh <variant> [out-dir]}
 out=${2:-target/identity-measure/$variant}
@@ -34,7 +36,7 @@ done
 
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 gh workflow run "$workflow" --ref main -f variant="$variant" -f base="$base" -f patch="$patch" \
-  -f countries="${COUNTRIES:-pl,uk,de,us,es}" -f robustness="${ROBUSTNESS:-off}" -f focus="${FOCUS:-}"
+  -f countries="${COUNTRIES:-pl,uk,de,us,es}" -f robustness="${ROBUSTNESS:-off}" -f focus="${FOCUS:-}" -f recording="${RECORDING:-}"
 
 run=""
 for _ in $(seq 1 30); do

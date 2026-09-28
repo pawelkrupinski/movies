@@ -49,6 +49,14 @@ on:
                 required: false
                 type: string
                 default: 'off'
+            recording:
+                description: >-
+                    The `Record scrape fixtures` run whose corpus and enrichment tree every country replays.
+                    Empty takes each country's pinned pair — which a new recording moves, so two measurements
+                    meant to be compared name the same one.
+                required: false
+                type: string
+                default: ''
             focus:
                 description: KINOWO_IDENTITY_FOCUS — comma-separated title phrases; empty resolves every listing.
                 required: false
@@ -110,10 +118,20 @@ jobs:
                   base64 -d <<< "$PATCH" | gunzip | git apply --binary --index
                   git diff --cached --stat | tail -1
 
+            - name: Name the recording to replay
+              id: recording
+              shell: bash
+              env:
+                  RECORDING: ${{ inputs.recording }}
+              run: |
+                  set -euo pipefail
+                  [ -z "$RECORDING" ] || echo "pair=$RECORDING given enrichment-${{ matrix.code }}-$RECORDING.tar.gz" >> "$GITHUB_OUTPUT"
+
             - uses: ./.github/actions/convergence-setup
               with:
-                  code:  ${{ matrix.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  code:          ${{ matrix.code }}
+                  token:         ${{ secrets.GITHUB_TOKEN }}
+                  hermetic-pair: ${{ steps.recording.outputs.pair }}
 
             # The boot depends on the corpus and on every line of pipeline code EXCEPT the resolver.
             - name: Restore the booted pipeline
@@ -128,7 +146,8 @@ jobs:
               run: |
                   set -o pipefail
                   mkdir -p "$KINOWO_IDENTITY_OUT"
-                  git log --oneline -1 > "$KINOWO_IDENTITY_OUT/variant-${{ matrix.code }}.txt"
+                  { git log --oneline -1; echo "recording ${KINOWO_CONVERGENCE_CORPUS_RUN:-?} tree ${KINOWO_CONVERGENCE_TREE_ASSET:-?}"; } \
+                      > "$KINOWO_IDENTITY_OUT/variant-${{ matrix.code }}.txt"
                   sbt -J-Xmx10g -J-Duser.language=en -J-Duser.country=US \
                       "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec" 2>&1 \
                       | tee "$KINOWO_IDENTITY_OUT/run-${{ matrix.code }}.log"
