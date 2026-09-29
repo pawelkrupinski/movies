@@ -43,10 +43,12 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   }
 
   private def fill(store: ObservationStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
-                   rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty, normalized: Option[TmdbNormalizer] = None) =
-    new ShadowLookupFill(() => modelGaps(store), store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
+                   rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty, normalized: Option[TmdbNormalizer] = None,
+                   beforeRound: () => Unit = () => (), refreshes: () => Seq[CandidateQuery] = () => Nil,
+                   gaps: ObservationStore => AnswersChanged = modelGaps) =
+    new ShadowLookupFill(() => gaps(store), store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
       IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, normalized)
+      DaemonExecutors.directExecutor(), sleeps += _, normalized, beforeRound, refreshes)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: ObservationStore): AnswersChanged = {
@@ -75,6 +77,21 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("other"))), Nil)._1, new ObservationReads), normalizer, IdentityCalibration.resolver)
     model.seed(listings)
     model.gaps.queries.collect { case q: CandidateQuery.Title => q } shouldBe empty
+  }
+
+  "a fill round beside a normalized store" should "sweep TMDB's changes first, then ask aged questions live, within what its allowance has left" in {
+    val observations = store()
+    val tmdb    = new TmdbStore(new InMemoryTmdbDocuments, Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
+    val service = new Service
+    var swept   = 0
+    val aged    = (1 to 1000).map(i => CandidateQuery.Title(s"Aged film $i"))
+    val round = fill(observations, service, rate = 60, normalized = Some(new TmdbNormalizer(tmdb)),
+      beforeRound = () => { service.requests.size shouldBe 0; swept += 1 }, refreshes = () => aged,
+      gaps = _ => AnswersChanged.Empty).round()
+    swept shouldBe 1
+    service.requests.map(u => java.net.URLDecoder.decode(u, "UTF-8")).count(_.contains("query=Aged film")) shouldBe round.asked
+    round.asked should (be > 0 and be <= IdentityShadowLookupRate(60).allowanceOver(IdentityShadowInterval(30.minutes).value))
+    observations.currentLookups() shouldBe empty                                               // live, and never kept raw
   }
 
   "a fill round" should "ask every unobserved question once, into the store, so the next shadow resolve has no gap" in {

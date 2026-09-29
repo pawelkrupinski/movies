@@ -95,11 +95,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     if (hits.exists(_.isEmpty)) Answer.Unknown else Answer.Known(hits.flatten)
   }
 
-  private def questionIds(query: CandidateQuery): Seq[String] = query match {
-    case CandidateQuery.Title(text)    => Seq(TmdbStore.titleSearchId(language, text))
-    case CandidateQuery.Director(name) => Seq(personSearchOf(name))
-    case CandidateQuery.Imdb(title)    => Seq(TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title)))
-  }
+  private def questionIds(query: CandidateQuery): Seq[String] = Seq(TmdbStore.questionId(language, query))
 }
 
 object StoredTmdbLookups {

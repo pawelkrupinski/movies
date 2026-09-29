@@ -129,6 +129,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   def decisions: Seq[ResolverDecision] = families.values.flatMap(_.resolved.decisions).toSeq.sortBy(_.members.head)(using ListingKey.ordering)
   /** Each listing's family. */
   def familyOf: Map[ListingKey, Int] = familyOfKey.toMap
+  /** Each family's candidate questions, with its decisions: what the fill picks aged questions from. */
+  def familyQuestions: Seq[(Set[CandidateQuery], Seq[ResolverDecision])] =
+    families.values.toSeq.map(f => (f.resolved.queries, f.resolved.decisions))
+
   /** How many families the model holds, and how many listings. */
   def familyCount: Int = families.size
   def heldCount: Int   = held.size

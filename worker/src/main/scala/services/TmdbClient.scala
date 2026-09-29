@@ -399,6 +399,16 @@ class TmdbClient(
    *  than they can plausibly recover. Directing-known first keeps the common case
    *  at one round-trip — an actor sharing a director's name is still skipped, just
    *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
+  /** The films TMDB edited between `start` and `end` (at most 14 days apart), one page. */
+  def changedMovies(start: java.time.LocalDate, end: java.time.LocalDate, page: Int): (Seq[Int], Int) = authHeader.map { auth =>
+    TmdbClient.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))
+  }.getOrElse((Nil, 1))
+
+  /** What TMDB edited about one film between `start` and `end`: each key and its items' languages. */
+  def movieChanges(tmdbId: Int, start: java.time.LocalDate, end: java.time.LocalDate): Seq[TmdbClient.MovieEdit] = authHeader.map { auth =>
+    TmdbClient.movieEdits(httpGet(s"$ApiBase/movie/$tmdbId/changes?start_date=$start&end_date=$end${apiKeyParameter("&")}", auth))
+  }.getOrElse(Nil)
+
   def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
     TmdbClient.personCandidates(httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth))
       .take(TmdbClient.MaxPersonCandidates)
@@ -448,6 +458,29 @@ object TmdbClient {
     val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
     (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct
   }
+
+  /** A change list's page: the films (or people) TMDB edited in the window, and how many pages it has. */
+  def changedIds(body: String): (Seq[Int], Int) = {
+    val js = Json.parse(body)
+    ((js \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap(r => (r \ "id").asOpt[Int]),
+      (js \ "total_pages").asOpt[Int].getOrElse(1))
+  }
+
+  /** One key of a film's edits: the languages its items name and — for crew — each credited
+   *  person with their department, and the jobs (from an item's new or original value). */
+  final case class MovieEdit(key: String, languages: Set[String], jobs: Set[String], credits: Seq[(Int, String)] = Nil)
+
+  /** One film's edits in the window, a [[MovieEdit]] per changed key. */
+  def movieEdits(body: String): Seq[MovieEdit] =
+    (Json.parse(body) \ "changes").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap { change =>
+      (change \ "key").asOpt[String].map { key =>
+        val items  = (change \ "items").asOpt[Seq[JsValue]].getOrElse(Nil)
+        val values = items.flatMap(i => Seq(i \ "value", i \ "original_value").flatMap(_.toOption))
+        MovieEdit(key, items.flatMap(i => (i \ "iso_639_1").asOpt[String]).filter(_.nonEmpty).toSet,
+          values.flatMap(v => (v \ "job").asOpt[String]).toSet,
+          values.flatMap(v => (v \ "person_id").asOpt[Int].zip((v \ "department").asOpt[String])).distinct)
+      }
+    }
 
   /** A person's films credited in `department` (crew), once each, in TMDB's order. */
   def creditsIn(body: String, department: String): Seq[SearchResult] =

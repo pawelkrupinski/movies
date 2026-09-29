@@ -22,6 +22,8 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
   private val wanted     = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
   val asked    = new AtomicInteger()
   val answered = new AtomicInteger()
+  /** How many more asks this round's allowance has room for. */
+  def remaining: Int = synchronized(allowance - used)
   val failed   = new AtomicInteger()
   val deferred = new AtomicInteger()
 
@@ -133,7 +135,9 @@ final class ShadowLookupFill(
   metrics:     ShadowLookupMetrics,
   executor:    ExecutorService,
   sleep:       Long => Unit = Thread.sleep,
-  normalizer:  Option[TmdbNormalizer] = None
+  normalizer:  Option[TmdbNormalizer] = None,
+  beforeRound: () => Unit = () => (),
+  refreshes:   () => Seq[CandidateQuery] = () => Nil
 ) extends Logging {
 
   private val running = new AtomicBoolean(false)
@@ -160,9 +164,19 @@ final class ShadowLookupFill(
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
+    // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
+    // before the model's gaps and refreshes are chosen.
+    try beforeRound() catch { case NonFatal(e) => logger.warn(s"identity shadow fill: TMDB changes not swept, this round: $e") }
     val asked = questions()
     asked.queries.toSeq.sorted.foreach(lookups.candidates)
     asked.films.toSeq.sorted.foreach(lookups.film)
+    // Then, with what the allowance has left, questions asked again because they have aged
+    // (`TmdbRefreshes`) — live only: an answer stored raw is exactly the old one.
+    normalizer.foreach { n =>
+      val live = new TmdbIdentityLookups(tmdb(new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), n)),
+        new services.enrichment.ImdbClient(new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), n)), Nil)
+      refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(live.candidates)
+    }
     current = Some(if (budget.paceOverloaded) at.halved else IdentityShadowLookupRate((at.perMinute * 2).min(rate.perMinute)))
     val r = ShadowLookupRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)

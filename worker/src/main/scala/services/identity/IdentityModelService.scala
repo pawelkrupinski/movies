@@ -10,7 +10,8 @@ import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /** The model as a reader sees it: its resolution, what its lookups do not know yet, its listings. */
-final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing])
+final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing],
+                               questions: Seq[(Set[CandidateQuery], Boolean)] = Nil)
 
 /** What the model did with one drained batch of events. */
 final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double,
@@ -82,7 +83,8 @@ final class IdentityModelService(
 
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
-  private def snapshotOf(engine: IncrementalResolver) = ModelSnapshot(engine.resolution, engine.gaps, engine.listings)
+  private def snapshotOf(engine: IncrementalResolver) =
+    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, TmdbRefreshes.of(engine.familyQuestions))
 
   private def onModel[A](timeout: FiniteDuration)(body: => Option[A]): Option[A] =
     scala.util.Try(scheduler.submit[Option[A]](() => body).get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten

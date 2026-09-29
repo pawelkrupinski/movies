@@ -83,17 +83,21 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
     updateAll(kind, Seq(id))((_, before) => change(before))
 
   /** `change` each of `ids`' documents; write, and announce, only those whose value moved — in one
-   *  read and one write however many there are. */
+   *  read and one write however many there are. One whose value did not move is only re-stamped
+   *  (`fetchedAt`), at most once per [[TmdbStore.RenewEvery]], and announced to no one. */
   private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = synchronized {
-    val before = docs.get(kind, ids.distinct)
-    val moved  = ids.distinct.flatMap { id =>
-      def withoutStamp = before.get(id).map { d => val c = d.clone(); c.remove(ChangedAt); c }
-      val after = change(id, withoutStamp)   // `change` may edit what it is given: compare with a fresh copy
-      Option.when(!withoutStamp.contains(after))(id -> after.append(ChangedAt, BsonInt64(clock.millis())))
+    val now     = clock.millis()
+    val before  = docs.get(kind, ids.distinct)
+    val written = ids.distinct.flatMap { id =>
+      def value = before.get(id).map { d => val c = d.clone(); Stamps.foreach(c.remove); c }
+      val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
+      if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
+      else before.get(id).filter(d => fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
+        .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
     }
-    if (moved.nonEmpty) {
-      docs.put(kind, moved)
-      moved.foreach { case (id, _) => listeners.forEach(_(keyOf(kind, id))) }
+    if (written.nonEmpty) {
+      docs.put(kind, written.map { case (id, d, _) => id -> d })
+      written.collect { case (id, _, true) => id }.foreach(id => listeners.forEach(_(keyOf(kind, id))))
     }
   }
 
@@ -155,6 +159,13 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
 object TmdbStore {
   /** When a document's value last moved (epoch millis): the watermark a restart replays after. */
   val ChangedAt = "changedAt"
+  /** When TMDB last gave the document, changed or not (epoch millis, re-stamped at most once per
+   *  [[RenewEvery]]): how old an answer is when the fill picks what to ask again. */
+  val FetchedAt = "fetchedAt"
+  /** How often an unchanged answer is re-stamped at most — each re-stamp is a write. */
+  val RenewEvery: FiniteDuration = 1.day
+  private val Stamps = Seq(ChangedAt, FetchedAt)
+  def fetchedAt(d: BsonDocument): Option[Long] = Option(d.get(FetchedAt)).filter(_.isInt64).map(_.asInt64.getValue)
 
   /** A film's hit as the questions naming it read it: from its record once known, else the hit
    *  fields a search or credit gave. `None` when neither is held (the film was never named). */
@@ -171,6 +182,14 @@ object TmdbStore {
   enum Partial(val field: String) {
     case Local   extends Partial("local")
     case English extends Partial("english")
+  }
+
+  /** The document a candidate question is answered from first: its search, person search or IMDb
+   *  suggestions — the one whose age says when it was last asked. */
+  def questionId(language: String, query: CandidateQuery): String = query match {
+    case CandidateQuery.Title(text)    => titleSearchId(language, text)
+    case CandidateQuery.Director(name) => personSearchId(services.movies.TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
+    case CandidateQuery.Imdb(title)    => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(title))
   }
 
   // Question ids, by the parameters that decide their answer.

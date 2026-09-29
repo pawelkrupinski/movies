@@ -138,6 +138,15 @@ class WorkerWiring(
       mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_)))
   lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
   lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_))
+  /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
+   *  round, whenever the last complete sweep is from before today. */
+  lazy val identityTmdbChanges: Option[services.identity.TmdbChangesSweep] =
+    for { store <- identityTmdbStore; docs <- identityTmdbDocuments; normalizer <- identityTmdbNormalizer }
+    yield new services.identity.TmdbChangesSweep(store, docs,
+      tmdbClientOver(new services.identity.NormalizingHttpFetch(enrichmentFetch, normalizer)), country.language.toLanguageTag, clock)
+  /** The model's questions due to be asked again (`TmdbRefreshes`). */
+  lazy val identityTmdbRefreshes: Option[services.identity.TmdbRefreshes] =
+    identityTmdbStore.map(new services.identity.TmdbRefreshes(_, country.language.toLanguageTag, clock))
   lazy val identityModel: Option[services.identity.IdentityModelService] = {
     import services.identity._
     // A cut-over country's model is its identity: the intake's accepted listings, answered observed
@@ -251,6 +260,9 @@ class WorkerWiring(
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
         normalizer  = identityTmdbNormalizer,
+        beforeRound = () => identityTmdbChanges.filter(_.behind).foreach(_.sweep()),
+        refreshes   = () => identityTmdbRefreshes.fold(Seq.empty[services.identity.CandidateQuery])(r =>
+          identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(Seq.empty[services.identity.CandidateQuery])(s => r.due(s.questions))),
         enrichers   = detailEnrichers,
         rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
         window      = identityShadowInterval,
