@@ -192,6 +192,8 @@ trait IdentityLookups {
    *  (in parallel, over the network) may, and serve the asks that follow from what it fetched.
    *  Every read phase begins with one, so nothing fetched for an earlier phase is served to a later. */
   def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = ()
+  /** The asks a [[prefetch]] was for have been asked: what it fetched to answer them may go. */
+  def prefetchAnswered(): Unit = ()
   /** Questions no listing held asks any more — a source tracking what each question read may forget them. */
   def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit = ()
   /** The venue's own detail page for the listing. */

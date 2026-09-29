@@ -164,6 +164,26 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     gets.get should be <= 4
   }
 
+  /** …and holds the documents no longer than the asks that read them. Kept until the next
+   *  prefetch, a slice's searches and every film they name sat in the heap through the slice's
+   *  whole build and the resolves after it — UK's take-up then spent 72% of its time in full GCs. */
+  it should "drop the documents it fetched once the prefetch's own asks are answered" in {
+    val w       = new World
+    val titles  = (1 to 5).map(i => s"Film $i")
+    titles.zipWithIndex.foreach { case (text, i) =>
+      w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=${java.net.URLEncoder.encode(text, "UTF-8")}",
+        Success(s"""{"results":[{"id":${100 + i},"title":"$text","original_title":"$text","release_date":"2020-01-01","popularity":5.0}]}"""))
+    }
+    val reads   = new ObservationReads
+    val stored  = new StoredTmdbLookups(w.store, language, NoDetails, reads)
+    val lookups = new TrackedLookups(stored, reads, Some(java.util.concurrent.Executors.newFixedThreadPool(2)))
+    val queries = titles.map(CandidateQuery.Title(_))
+
+    lookups.prefetch(queries, Nil, Nil)
+    stored.heldDocuments shouldBe 0
+    queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
+  }
+
   "the backfill" should "move the raw TMDB answers the observation store holds into the normalized store, 404s included, once" in {
     import services.observations.{LookupAnswer, LookupQuery, ObservationStore}
     val w   = new World

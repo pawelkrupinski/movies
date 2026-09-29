@@ -117,12 +117,12 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
       asked.toSeq.map(query => (() => { queries.put(query, askQuery(query)); () }): java.util.concurrent.Callable[Unit]) ++
         records.toSeq.map(id => (() => { films.put(id, askFilm(id)); () }): java.util.concurrent.Callable[Unit]) ++
         pages.toSeq.map(listing => (() => { details.put(listing.key, askDetail(listing)); () }): java.util.concurrent.Callable[Unit])
-    if (tasks.nonEmpty) {
+    try if (tasks.nonEmpty) {
       import scala.jdk.CollectionConverters._
       val started = System.nanoTime()
       // A task that failed is simply not served from the prefetch: its ask, later, asks again.
       threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get()))
       prefetchedAsks.addAndGet(tasks.size.toLong); prefetchNanos.addAndGet(System.nanoTime() - started)
-    }
+    } finally inner.prefetchAnswered()
   }
 }

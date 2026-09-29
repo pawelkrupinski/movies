@@ -43,6 +43,14 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     details.prefetch(Nil, Nil, pages)
   }
 
+  // The documents a prefetch read stay only while its own asks are answered: held until the next
+  // prefetch, a slice's searches and every film they name sat in the heap through the slice's build
+  // and the resolves after it, and UK's take-up spent 72% of its time in full GCs.
+  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); details.prefetchAnswered() }
+
+  /** How many documents the last prefetch still holds. */
+  private[identity] def heldDocuments: Int = held.values.map(_.size).sum
+
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
 
