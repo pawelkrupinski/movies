@@ -33,5 +33,17 @@ class ContentHashSpec extends AnyFlatSpec with Matchers {
     ContentHash.of(("lalka", Some(1968), Seq(1.5, 2.0), Set("a", "b"))) shouldBe PinnedTuple
   }
 
+  // Every listing carries the corpus-wide learned decorations, one shared instance; walking it for
+  // each listing of each group of each slice made digests 9.5 s of a US take-up (UK 2.7 s). The
+  // decorations are already the rules version's (IncrementalResolver.rulesVersion): a change to
+  // them rebuilds every family, so a slice's digest has nothing to learn from them.
+  it should "not read the learned title decorations a listing carries" in {
+    val some  = TitleDecorations(Set(Seq("kino", "seniora")), Set(Seq("2d")))
+    val other = TitleDecorations(Set(Seq("ladies", "night")), Set.empty)
+    val listing = IdentityMeasures.Listing("Lalka", year = Some(2025))
+    ContentHash.of(listing.copy(decorations = some)) shouldBe ContentHash.of(listing.copy(decorations = other))
+    ContentHash.of(listing.copy(title = "Lalka 2")) should not be ContentHash.of(listing)
+  }
+
   private val PinnedTuple = 7427319714951912975L
 }

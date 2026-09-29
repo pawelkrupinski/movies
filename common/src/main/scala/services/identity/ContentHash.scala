@@ -16,6 +16,10 @@ private[identity] object ContentHash {
 
   def of(value: Any): Long = value match {
     case null                => 0x9e3779b97f4a7c15L
+    // The corpus-wide learned decorations every listing carries: the rules version's already
+    // (`IncrementalResolver.rulesVersion`), so a change rebuilds every family. Walked per listing,
+    // they were 9.5 s of a US take-up's digests.
+    case _: TitleDecorations => 0xdL
     case s: String           => (MurmurHash3.stringHash(s, 0x1b873593).toLong << 32) ^ (MurmurHash3.stringHash(s, 0x5bd1e995) & 0xffffffffL)
     case i: Int              => mix(i.toLong ^ 0x1L)
     case l: Long             => mix(l ^ 0x2L)
