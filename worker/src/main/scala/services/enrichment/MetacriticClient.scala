@@ -117,10 +117,11 @@ class MetacriticClient(http: HttpFetch) {
   private def verified(url: String, directors: Set[String]): Option[Resolved] =
     if (directors.isEmpty) Some(Resolved(url, None))   // nothing to check it against
     else EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(url))) match {
-      // Read and CONTRADICTED — a different film, drop it.
-      case Some(body) if !MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)) => None
-      // Read and consistent — keep it, and take the Metascore while we have the page.
-      case Some(body) => Some(Resolved(url, MetacriticClient.parseMetascore(body)))
+      case Some(body) =>
+        val page = JsonLdAggregateRating.of(body)
+        // Read and CONTRADICTED — a different film, drop it; consistent — keep it, and take the
+        // Metascore while we have the page.
+        Option.when(MetacriticClient.directorsCompatible(directors, page.directorNames))(Resolved(url, page.rating))
       // Could not read it. Silence is not contradiction: the search already
       // matched this page on title and year, so keep it exactly as before rather
       // than letting an unreadable page throw a good link away.
@@ -160,12 +161,13 @@ class MetacriticClient(http: HttpFetch) {
       // ladder instead of quietly reporting "no Metacritic page" — a failed read
       // is not an answer. See tools.EnrichmentRead.
       EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
-        .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
+        .map(JsonLdAggregateRating.of)
+        .filter(page => MetacriticClient.yearsCompatible(year, page.datePublishedYear))
         // Title and year are not always enough to name a film: Metacritic
         // carries two 2025 "Dreams", Franco's and Haugerud's, and the slug
         // probe hit whichever it hit. The page names its own director.
-        .filter(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
-        .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
+        .filter(page => MetacriticClient.directorsCompatible(directors, page.directorNames))
+        .map(page => Resolved(s"$Site/movie/$slug", page.rating))
     }
 
   /** Slugs to probe, best-first. When the film's year is known the year-suffixed
@@ -280,8 +282,8 @@ class MetacriticClient(http: HttpFetch) {
   /** The Metascore and the directors the page credits, off ONE fetch — the credit is
    *  what tells a refresh that a STORED url is another film's (`RatingPageIdentity`). */
   def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
-    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).map(body =>
-      MetacriticClient.Page(MetacriticClient.parseMetascore(body), JsonLdAggregateRating.directorNames(body)))
+    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).map(JsonLdAggregateRating.of).map(page =>
+      MetacriticClient.Page(page.rating, page.directorNames))
 }
 
 object MetacriticClient {
@@ -325,18 +327,6 @@ object MetacriticClient {
    * dimensions"). All other non-alphanumerics collapse to a single hyphen.
    */
   def slugify(title: String): String = RatingSiteSlug(title, separator = '-', preserve = "!")
-
-  /** Extract the Metascore (critic aggregate, 0–100) from a Metacritic movie
-   *  page's HTML. Reads the `<script type="application/ld+json">` block,
-   *  parses it, and returns `aggregateRating.ratingValue` as `Option[Int]`.
-   *  Returns None when MC hasn't aggregated a score yet (the JSON-LD
-   *  omits `aggregateRating`) or when parsing fails. */
-  def parseMetascore(html: String): Option[Int] = JsonLdAggregateRating.parseInt(html)
-
-  /** The film's release year off an MC movie page's JSON-LD `datePublished`.
-   *  Used only to reject a probed page whose year contradicts the film we're
-   *  resolving — see [[yearsCompatible]]. */
-  def parseReleaseYear(html: String): Option[Int] = JsonLdAggregateRating.datePublishedYear(html)
 
   /** Could a page naming `theirs` be the film whose directors are `ours`?
    *

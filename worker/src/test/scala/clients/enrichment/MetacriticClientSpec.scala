@@ -460,17 +460,17 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "parseMetascore" should "read aggregateRating.ratingValue from a real MC movie page" in {
     // The Dark Knight: MC Metascore 85 at time of capture.
-    MetacriticClient.parseMetascore(loadFixture(MovieWithMetascoreFixture)) shouldBe Some(85)
+    JsonLdAggregateRating.of(loadFixture(MovieWithMetascoreFixture)).rating shouldBe Some(85)
   }
 
   it should "return None when MC hasn't aggregated a score (no aggregateRating in JSON-LD)" in {
     // Girl Climber: 2025 indie, no critic consensus yet — JSON-LD omits
     // `aggregateRating` entirely.
-    MetacriticClient.parseMetascore(loadFixture(MovieWithoutMetascoreFixture)) shouldBe None
+    JsonLdAggregateRating.of(loadFixture(MovieWithoutMetascoreFixture)).rating shouldBe None
   }
 
   it should "return None for HTML that has no JSON-LD script (e.g. a 404 page)" in {
-    MetacriticClient.parseMetascore("<html><body>Page not found</body></html>") shouldBe None
+    JsonLdAggregateRating.of("<html><body>Page not found</body></html>").rating shouldBe None
   }
 
   it should "return None when the JSON-LD has aggregateRating but ratingValue is missing" in {
@@ -478,15 +478,15 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       """<html><head><script type="application/ld+json">{
         |"@type":"Movie","aggregateRating":{"@type":"AggregateRating","reviewCount":3}
         |}</script></head><body></body></html>""".stripMargin
-    MetacriticClient.parseMetascore(html) shouldBe None
+    JsonLdAggregateRating.of(html).rating shouldBe None
   }
 
   "parseReleaseYear" should "read the year from JSON-LD datePublished" in {
-    MetacriticClient.parseReleaseYear(moviePage("North", 1994, 33)) shouldBe Some(1994)
+    JsonLdAggregateRating.of(moviePage("North", 1994, 33)).datePublishedYear shouldBe Some(1994)
   }
 
   it should "return None when the page has no datePublished" in {
-    MetacriticClient.parseReleaseYear("<html><body>no json-ld here</body></html>") shouldBe None
+    JsonLdAggregateRating.of("<html><body>no json-ld here</body></html>").datePublishedYear shouldBe None
   }
 
   "yearsCompatible" should "treat a missing year on either side as compatible" in {
