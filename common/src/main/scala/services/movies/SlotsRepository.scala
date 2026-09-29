@@ -491,6 +491,9 @@ class MongoSlotsRepository(
   def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsForListingKeyChecked(_, listingKey, "SlotsRepository", logger.warn(_)))
 
+  override def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) =
+    coll.fold((Set.empty[String], true))(SlotKeyed.existingRowIdsChecked(_, ids, "SlotsRepository", logger.warn(_)))
+
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, SlotsRepository.Collection, writeMetrics, logger))
 

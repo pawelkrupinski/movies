@@ -76,6 +76,22 @@ class ListingKeyShadowReadSpec extends AnyFlatSpec with Matchers {
     shadow(slots, new UnreadableScreeningsRepository)._1.compare() shouldBe None
   }
 
+  // worker-us never published: each tick read every showtime of ~165 sampled films to learn which
+  // rows exist, and that read timed out at 60 s every time (2026-09-29), so every pass was dropped.
+  // Whether a screenings row exists is an id read; the showtimes are never compared.
+  it should "compare without reading the sampled films' showtimes" in {
+    val slots = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository {
+      override def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) = (Map.empty, false)
+    }
+    slots.upsertSlot("belle|2013", muranow, paged);    screenings.upsertSlot("belle|2013", muranow, stamped(muranow, paged))
+    slots.upsertSlot("belle|2013", kinoteka, pageless)
+
+    val report = shadow(slots, screenings)._1.compare()
+    report.map(_.disagreements) shouldBe Some(Nil)
+    report.map(_.compared.size) shouldBe Some(2)
+  }
+
   // A venue moved from Filmweb to its own-site scraper: its raw title lost " - KNT", so its listing
   // key moved, while its showtimes did not. The re-scrape reaches the store as a PATCH of the
   // cache's stripped records (`MovieCache.putIfPresent` -> `updateIfPresent`), never the

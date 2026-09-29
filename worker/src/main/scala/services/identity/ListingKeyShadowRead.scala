@@ -50,7 +50,9 @@ class ListingKeyShadowRead(
       val sampled   = random.shuffle(venueRows).take(sampleSize.value)
       val films     = sampled.map(SlotKeyed.filmIdOf).toSet
       val (slotRows, slotsRead)           = slots.findForFilmsChecked(films)
-      val (screeningRows, screeningsRead) = screenings.findForFilmsChecked(films)
+      // Only whether each sampled row has a showtimes twin — an id read, never the showtimes: the
+      // films' showtimes timed out at 60 s in the United States and dropped every pass.
+      val (screeningIds, screeningsRead)  = screenings.existingRowIdsChecked(sampled.toSet)
       Option.when(slotsRead && screeningsRead) {
         val compared = sampled.flatMap { id =>
           val (filmId, slotKey) = (SlotKeyed.filmIdOf(id), SlotKeyed.slotKeyOf(id))
@@ -58,7 +60,7 @@ class ListingKeyShadowRead(
           slotRows.get(filmId).flatMap(_.get(slotKey)).flatMap(StoredSlotDto.listingKeyOf(slotKey, _)).map { key =>
             val (slotsByKey, slotsOk)           = slots.rowIdsForListingKeyChecked(key)
             val (screeningsByKey, screeningsOk) = screenings.rowIdsForListingKeyChecked(key)
-            val screeningsBySlot = if (screeningRows.get(filmId).exists(_.contains(slotKey))) Set(id) else Set.empty[String]
+            val screeningsBySlot = if (screeningIds(id)) Set(id) else Set.empty[String]
             Option.when(slotsOk && screeningsOk)(Compared(id, key, Set(id), slotsByKey, screeningsBySlot, screeningsByKey))
           }
         }
@@ -67,9 +69,13 @@ class ListingKeyShadowRead(
     }
   }
 
-  def sample(): Unit = compare().foreach { report =>
-    Outcomes.foreach(o => outcomes.labelValues(country.code, o).set(report.count(o).toDouble))
-    report.disagreements.take(MaxLoggedDisagreements).foreach(d => logger.warn(s"$censusName ${country.code}: ${d.describe}"))
+  def sample(): Unit = compare() match {
+    case Some(report) =>
+      Outcomes.foreach(o => outcomes.labelValues(country.code, o).set(report.count(o).toDouble))
+      report.disagreements.take(MaxLoggedDisagreements).foreach(d => logger.warn(s"$censusName ${country.code}: ${d.describe}"))
+    // Said out loud: a pass that published nothing reads, on the gauge, exactly like a census
+    // that never started — the migration gate's week of agreement can't begin without it.
+    case None => logger.warn(s"$censusName ${country.code}: a read failed, nothing published this pass")
   }
 
   override protected val censusName: String = "listing-key-shadow-read"

@@ -32,6 +32,13 @@ trait SlotKeyedRows extends ListingKeyedRows {
    *  collections' id sets: a `screenings` row with no `movie_slots` twin projects nothing. */
   def rowIdsChecked(): (Set[String], Boolean)
 
+  /** Which of `ids` are rows here, plus whether the read succeeded — an existence check that
+   *  never reads the rows. A store that can look the ids up directly overrides it. */
+  def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) = {
+    val (all, read) = rowIdsChecked()
+    (all.intersect(ids), read)
+  }
+
   /** Every row `_id` with the instant it was last WRITTEN (`updatedAt`, which the no-op write
    *  guards leave alone), plus whether the read succeeded. A sweep that must not touch rows
    *  a newer deploy may have just written — [[RetiredVenueRows]] — ages them by this. */
@@ -151,6 +158,21 @@ object SlotKeyed {
     val (docs, read) = projectedRowsChecked(c, s"$label.rowIds", warn, paging, Projections.include("_id"))
     (docs.flatMap(idOfDoc).toSet, read)
   }
+
+  /** [[SlotKeyedRows.existingRowIdsChecked]] for a Mongo side collection: `_id $in`, `_id`s only,
+   *  a thousand ids a read — an index lookup per id, whatever the rows hold. */
+  def existingRowIdsChecked[T](c: MongoCollection[T], ids: Set[String], label: String,
+                               warn: String => Unit): (Set[String], Boolean) =
+    ids.toSeq.sorted.grouped(1000).foldLeft((Set.empty[String], true)) { case ((found, complete), batch) =>
+      if (!complete) (found, false)
+      else Try(Await.result(c.find[Document](Filters.in("_id", batch*)).projection(Projections.include("_id")).toFuture(), 30.seconds)) match {
+        case Success(docs) => (found ++ docs.flatMap(idOfDoc), true)
+        case Failure(exception) =>
+          warn(s"$label.existingRowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+            "reporting the read as incomplete.")
+          (found, false)
+      }
+    }
 
   /** The stamped listing key's field, on both side collections. */
   val ListingKeyField = "listingKey"

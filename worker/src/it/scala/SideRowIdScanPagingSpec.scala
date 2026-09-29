@@ -65,4 +65,34 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       client.close()
     }
   }
+
+  // The shadow read asks only whether its sampled rows exist. The whole-collection scan above is
+  // the wrong answer for that — and reading the films' showtimes timed out in the United States.
+  "the side collections' existence check" should "look up exactly the ids it is asked for, never scan" in {
+    val finds = new java.util.concurrent.ConcurrentLinkedQueue[org.bson.BsonDocument]()
+    val settings = MongoClientSettings.builder()
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .addCommandListener(new CommandListener {
+        override def commandStarted(event: CommandStartedEvent): Unit =
+          if (event.getCommandName == "find") finds.add(event.getCommand.clone())
+      })
+      .build()
+    val client = MongoClient(settings)
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-exists"))
+    try {
+      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
+      val when       = LocalDateTime.now().plusDays(2).withNano(0)
+      (1 to Films).foreach(n => screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None)))
+      val asked = Set(SlotKeyed.idOf("film2|2026", "Kino␟film 2"), SlotKeyed.idOf("film5|2026", "Kino␟film 5"), SlotKeyed.idOf("film9|2026", "Kino␟film 9"))
+
+      finds.clear()
+      screenings.existingRowIdsChecked(asked) shouldBe ((asked - SlotKeyed.idOf("film9|2026", "Kino␟film 9"), true))
+      val sent = finds.asScala.toSeq
+      sent should have size 1
+      sent.head.getDocument("filter").getDocument("_id").getArray("$in").size shouldBe 3
+    } finally {
+      Await.result(db.drop().toFuture(), 60.seconds)
+      client.close()
+    }
+  }
 }
