@@ -28,6 +28,20 @@ trait TmdbDocuments {
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
 }
 
+object TmdbDocuments {
+  /** How many of one read's batches are in flight at once — each holds one of the worker's pooled
+   *  connections, so a take-up's reads overlap without taking the pool from everything else. */
+  val InFlight = 4
+
+  /** `fetch` each batch, at most [[InFlight]] at a time, and every result together: a read of many
+   *  batches waits on its round-trips side by side, not one after another. */
+  def inBatches[A](batches: Seq[Seq[String]], timeout: FiniteDuration)(fetch: Seq[String] => scala.concurrent.Future[Seq[A]]): Seq[A] =
+    batches.grouped(InFlight).toSeq.flatMap { group =>
+      Await.result(scala.concurrent.Future.sequence(group.map(fetch))(using implicitly, scala.concurrent.ExecutionContext.parasitic), timeout)
+        .flatten
+    }
+}
+
 final class InMemoryTmdbDocuments extends TmdbDocuments {
   private val byKind = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, BsonDocument]()).toMap
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
@@ -43,12 +57,12 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
   private def coll(kind: TmdbKind): MongoCollection[BsonDocument] = db.getCollection[BsonDocument](kind.collection)
 
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
-    ids.distinct.grouped(Batch).flatMap { batch =>
-      Await.result(coll(kind).find(Filters.in("_id", batch*)).toFuture(), Timeout).map { d =>
+    TmdbDocuments.inBatches(ids.distinct.grouped(Batch).toSeq, Timeout) { batch =>
+      coll(kind).find(Filters.in("_id", batch*)).toFuture().map(_.map { d =>
         val id = d.getString("_id").getValue
         d.remove("_id")
         id -> d
-      }
+      })(using scala.concurrent.ExecutionContext.parasitic)
     }.toMap
 
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.grouped(Batch).foreach { batch =>

@@ -37,3 +37,27 @@ trait TmdbDocumentsBehaviour extends AnyFlatSpec with Matchers {
     d.get(TmdbKind.Film, Seq("1018"))("1018") shouldBe film("Lalka (1968)")
   }
 }
+
+/** A read of many batches waits on their round-trips side by side — at most `InFlight` at once —
+ *  and gives back every batch's result. */
+class TmdbDocumentsBatchingSpec extends AnyFlatSpec with Matchers {
+  "a batched read" should "keep several batches in flight, never more than InFlight, and return them all" in {
+    val inFlight = new java.util.concurrent.atomic.AtomicInteger
+    val peak     = new java.util.concurrent.atomic.AtomicInteger
+    val pool     = java.util.concurrent.Executors.newCachedThreadPool()
+    val batches  = (1 to 10).map(i => Seq(s"id$i"))
+    try {
+      val got = TmdbDocuments.inBatches(batches, scala.concurrent.duration.Duration(10, "seconds")) { batch =>
+        scala.concurrent.Future {
+          peak.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+          Thread.sleep(50)
+          inFlight.decrementAndGet()
+          batch
+        }(using scala.concurrent.ExecutionContext.fromExecutor(pool))
+      }
+      got shouldBe batches.flatten
+      peak.get should (be > 1 and be <= TmdbDocuments.InFlight)
+    } finally pool.shutdownNow()
+  }
+}
+
