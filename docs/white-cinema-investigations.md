@@ -212,6 +212,217 @@ and correctly found nothing, so this is a gap, not a bug." A time-range
 filter needs the bracket form, `_time:[<start>, <end>]` — the slash form
 from VictoriaLogs' own docs 404s against this deployment's query parser.
 
+### Sweep script (checked in 2026-09-29)
+
+Saved as a scratch `sweep.js` and run with
+`mongosh "$MONGODB_URI" --quiet sweep.js > sweep.json` (~40 s for all five DBs).
+Per DB it emits the white list (`bars` = the retained status string, oldest
+first; `arch` = `<age>d/<films>` from `cinema_scrapes`; `g2w` = a
+green→white transition in-window; `seas` = the seasonal-name regex), plus
+red/thin counts and per-service `fallback: true` bucket counts.
+
+```js
+const DBS=['kinowo','kinowo_uk','kinowo_de','kinowo_us','kinowo_es'];
+const seasonal=/(open ?air|freiluft|sommer|autokino|drive[- ]?in|summer|verano|terraza|plein|rooftop|garden|park kino|strand|kino am see|cine de verano)/i;
+const out={};
+for (const name of DBS){
+  const d=db.getSiblingDB(name);
+  const newest=d.uptimeBuckets.find().sort({bucket:-1}).limit(1).toArray()[0];
+  const rows=d.uptimeBuckets.aggregate([
+    {$match:{service:{$not:/(\|enrichment$|^img:)/}}},
+    {$sort:{bucket:1}},
+    {$group:{_id:'$service',b:{$push:{s:'$successes',f:'$failures',z:'$zeroes',fb:'$fallback',th:'$thin',t:'$bucket'}}}}
+  ],{allowDiskUse:true}).toArray();
+  const arch={}; d.cinema_scrapes.find({},{scrapedAt:1,films:1}).forEach(a=>{arch[a._id]={at:a.scrapedAt,n:Array.isArray(a.films)?a.films.length:(a.films||0)}});
+  let white=[],red=0,thin=[],fb=[],trans=[];
+  for(const r of rows){
+    const st=r.b.map(x=>{const f=x.f||0,s=x.s||0,z=x.z||0; if(f+s+z===0) return null; return f>0?(s+z>0?'Y':'R'):s>0?'G':'Z'}).filter(x=>x);
+    const act=r.b.filter(x=>(x.f||0)+(x.s||0)+(x.z||0)>0);
+    const last=st.slice(-3), lastB=act.slice(-3);
+    if(last.length&&last.every(x=>x==='Z')){
+      const a=arch[r._id]; const age=a?((Date.now()-a.at)/864e5):null;
+      const g2w = st.join('').match(/G+Z+$/)!=null;
+      white.push({svc:r._id,bars:st.join(''),arch:a?age.toFixed(1)+'d/'+a.n:'none',g2w,seas:seasonal.test(r._id)});
+    }
+    if(last.length&&last[last.length-1]==='R') red++;
+    if(last.length===3&&last.every(x=>x==='G')&&lastB.every(x=>x.th)) thin.push(r._id);
+    const nfb=act.filter(x=>x.fb).length; if(nfb) fb.push(r._id+' ('+nfb+'/'+act.length+')');
+  }
+  out[name]={newest:newest&&newest.bucket,services:rows.length,white:white.length,red,thin:thin.length,fb,
+    g2w:white.filter(w=>w.g2w).length, nonSeasArch10:white.filter(w=>!w.seas&&w.arch!=='none'&&parseFloat(w.arch)<=10).length,
+    seasonal:white.filter(w=>w.seas).length};
+  if(name==='kinowo'){out.plWhite=white; out.plThin=thin;}
+  out[name+'_list']=white;
+}
+print(JSON.stringify(out));
+```
+
+A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
+has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
+big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-09-29
+
+**Tenth all-five-country sweep.** Newest bucket 2026-09-29 12:00 UTC. PL was
+fully probed. UK/DE/ES were cut to non-seasonal whites with an archive of 10 days
+or less. US was cut to non-seasonal whites with an archive of 3 days or less,
+because its white count jumped. The probing went to three background subagents,
+and every BREAK claim was re-checked by hand before any fix.
+
+| DB | services | white | white % | red | green→white (in-window) | seasonal | probed |
+|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 536 | **9** | 1.7% | 2 | 1 | 0 | all 9 |
+| `kinowo_uk` | 852 | **56** | 6.6% | 0 | 0 | 1 | 13 (arch≤10d) |
+| `kinowo_de` | 1,524 | **364** | 23.9% | 22 | 0 | 144 | 14 (arch≤10d) |
+| `kinowo_us` | 5,035 | **1,142** | 22.7% | 2 | 0 | 271 | 272 (arch≤3d), 16 by hand |
+| `kinowo_es` | 607 | **198** | 32.6% | 0 | 2 | 22 | 27 (arch≤10d) |
+
+Compared with 2026-09-26:
+- **PL:** 6 → 9 white. UK 52 → 56. DE 383 → 364, and DE red 32 → 22. ES 187 → 198.
+- **US: 783 → 1,142 white.** 382 of the US whites had a content-bearing archive under 3 days old. The 09-26 run found only 111 with an archive under 10 days. This is not a parser break (see US below).
+- **`thin` counts** (all 3 last buckets green and thin): PL 68, UK 17, DE 18, ES 17, US 0. US reads 0 because no US service has 3 buckets inside the 24 h window at 840-min cadence.
+- **Max retained non-empty buckets:** US 2, DE 3, UK 5, ES 8, PL 38.
+
+The mongosh sweep used this run is in the methodology section's
+"Sweep script" note above (added this run, since no verbatim script was
+ever checked in).
+
+### The Filmweb fallback covered only five cities: fixed, @89bc8ed31
+
+**Found while diagnosing the red Kino Na Biegunach (Jarosław).** It is not
+white; it has been **red since 2026-09-22 23:17 UTC** (last archive). Its MSI
+host `jaroslaw.kinonabiegunach.pl` (80.51.20.70) times out at TCP connect from
+everywhere, both http and https. Its `filmwebFallback` doc read
+`UNCOVERED`, `fallbackRef: null`, with 74 failed runs, yet Filmweb 2172
+(`Kino Na Biegunach`, Jarosław) carries its full programme.
+
+The cause is that `FilmwebCinemaIdResolver` only fetched the
+`/showtimes/<City>` HTML listings of Poznań, Wrocław, Warszawa, Kraków and
+Trójmiasto. That limit dates from when PL had only those five cities.
+**220 of the 256 `kinowo.filmwebFallback` docs had no `fallbackRef`**, so any
+venue outside those five cities whose own scraper broke simply went dark.
+That covers every roster-sweep town.
+
+The resolver now uses Filmweb's JSON API:
+- `/api/v1/cities` (534 towns, `{id,name}`)
+- `/api/v1/city/<id>/cinemas`, per town the roster names (`City.townsOf`: the venue table's town, else the city's own)
+
+Measured: **241 of 524 PL venues resolve**, none disagreeing with an id the
+roster annotates. 144 of those carry no annotated id; all were eyeballed and
+look right. Boot cost is 295 tiny GETs, 12.8 s at 5-way concurrency, with no 429s.
+
+The spec replays a live 09-29 capture and asserts Jarosław → 2172/1707. It failed
+before the change and passes after. The old HTML listing fixtures were deleted.
+
+**Paging is unchanged.** Primary-empty plus Filmweb-empty stays a genuine empty
+with no spell. Primary-throws plus Filmweb-empty already paged UNCOVERED before.
+What changes: a venue whose own scraper empties or throws while Filmweb lists
+screenings now ENTERs the fallback. **Expect new ENTERs in the next run's
+`filmwebFallback` sweep.** Each one is a newly-visible broken scraper, not a
+regression.
+
+Kino Na Biegunach itself: kinonabiegunach.pl (a WordPress site) is up, but
+`/repertuar-kina/` renders only today; other days load through `admin-ajax`.
+Its ticketing is the dead MSI host. **Verdict: `fixed` via the fallback.**
+Re-check next run. If the MSI host is still dead, it becomes
+`needs-human: write a kinonabiegunach.pl admin-ajax client, or move permanently onto Filmweb 2172?`
+
+### Poland: 9 white, 1 fixed, 1 needs-human, 7 dormant
+
+**Kino Śnieżka (Dębica): fixed, @f5a9ae3de.** It had been white for all 38 retained
+buckets; its last archive was 1.1 d old with 9 films. `bilety.mokdebica.pl` (MSI)
+now serves empty month shells (0 `movies-movie__single`), while mokdebica.pl's
+"Repertuar kina" links to `mokdebica.bilety24.pl/repertuar/`. That page holds
+25 events, 13 of them films (about 52 showtimes, 09-29..10-29), and each
+`/wydarzenie/?id=N` page carries `Kup bilet - Film: … - YYYY-MM-DD HH:MM`
+buttons. The existing `Bilety24Client` (subdomain → event pages) reads it as-is,
+so this was a catalog move: MSI entry dropped, `bilety24Subdomains` gains Dębica.
+
+The `CinemaScraperCatalogSpec` routing test replays a live 09-29 capture
+(13 films, Lalka 10-02 18:45). It failed before (it asked MSI) and passes after.
+The dead 08-06 corpus fixtures `bilety.mokdebica.pl` were deleted, so Dębica's
+rows left the snapshots (same precedent as Mikro). Shared path: the other 43
+MSI venues were not white. 5 are thin (Powiśle, GOK, MOK Nowa Ruda,
+Manhattan, Ale! Kino), which is typical cultural-centre spacing.
+
+**Kino Kultura Chojnów: `needs-human: dates only in prose`.** Its one live
+card, André Rieu "Niech żyje Maastricht!", has a bare-date `Rozpoczęcie:
+2026-09-13` and `Zakończenie: 2026-10-11`. The real slots appear only in the
+description ("13 września o godz. 16:00 / 11 października o godz. 16:00").
+`KinoKulturaChojnowClient` keeps only `YYYY-MM-DD HH:MM`. That is one future
+screening, parsed from free prose, which is fragile for the gain. Fix it if the
+venue keeps publishing that way.
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Teatr Ziemi Rybnickiej (Rybnik) | own site | **intentionally-dormant**. This was the one green→white; the film listing has 0 items (October too) and all 25 events are concerts, plays and cabaret. Filmweb 3140 is `[]` as well. |
+| Kino Warszawa (Przeworsk) | MSI | **intentionally-dormant**. MSI months 09..01 are empty shells (control Nowa Ruda has 78 blocks), and Filmweb 2346 is `[]` 09-30..10-07. |
+| Kino PCA (Polkowice) | bilety24 organiser 1689 | **intentionally-dormant**. Its 3 own events are a play, stand-up and Pilates, with no `Film:`; Filmweb 1139 is `[]`. |
+| Kino Milenium (Milejów) | ekobilet | **intentionally-dormant**: "brak dostępnych wydarzeń" |
+| Dyskusyjny Klub Filmowy Politechnika | Filmweb 1645 | **intentionally-dormant**. dkf.pwr.edu.pl still shows nothing after May. The October checkpoint is still empty; re-check in November. |
+| Kino na Szekspirowskim | biletyna | **intentionally-dormant**: season over |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant**: closed for thermo-modernisation |
+
+Red (2):
+- **Kino Na Biegunach** (above).
+- **Kino Chatka Żaka** (`www.umcs.pl` connect timeouts on the last 3 buckets, after weeks of genuine-empty white). This is a host blip on a dormant venue. Re-check next run.
+
+### Filmweb-fallback sweep (PL only): 0 active, 2 recovered
+
+`kinowo.filmwebFallback` holds 256 docs. **None are `active`.** Two
+ENTER/RECOVERED events since 09-26: Mikro Bronowice RECOVERED 09-26 00:39 and
+Kino Mikro RECOVERED 09-26 01:49 UTC, both from the 09-26 fix. No bucket in
+`kinowo.uptimeBuckets` carries `fallback: true`. Kino Na Biegunach was
+`UNCOVERED`, meaning it had no fallback at all (fixed above). DE has 16 venues
+on its kinoprogramm.com fallback in-window; that is out of this target's scope,
+and the count is for the ratio only.
+
+### UK: 56 white, 13 probed, 0 bugs
+
+12 are EMPTY (`no-streaming-sessions`, no `data-date` tabs). **Taunton
+Brewhouse** is LAG: one tab, 10-07. Control Finsbury Park Picturehouse has
+74 tabs.
+
+### DE: 364 white, 14 probed, 0 bugs
+
+13 are EMPTY (`data-showtimes-dates="[]"`). **Lindenkino** (A0920) is LAG,
+with dates 10-04/06/07. "Studio Köln" didn't map to a raw-roster name. The only
+German "Studio" is A1161 (Sankt Augustin), which is `[]`. Control CinemaxX Kiel
+is populated.
+
+### US: 1,142 white (+359), 272 probed, 0 bugs. The jump is Flicks, plus fewer scrapes
+
+`FlicksClient` fetches `/cinema/<slug>/` and then one `/cinema/sessions/<slug>/<date>/`
+per `data-date` tab. All 272 candidates answered 200 with the timetable block.
+**263 render Flicks' own "Sorry, we haven't received movie times for this
+cinema yet"**. That includes Malco Wolfchase 8, Canandaigua and Auburn Movieplex,
+and their logs show "0 entries" on 09-28 and 09-29. The other 9 already show day
+tabs again. Control AMC Empire 25 has 81 tabs. The drive-in half of the jump is
+end of season.
+
+The other half is volume. "Refreshed" log lines per 12 h fell from about 4,350
+to about 3,400 on 09-28 and 09-29. That is right after the 09-28 cost-spaced scrape-phase
+change (f47d24d4b, b9700f37b, 92d550159, d0216d2cf). Fewer scrapes means older
+archives and a larger zero share (15% → 23%) with no more zeros in absolute
+terms: `uptimeBuckets` zeroes are flat at about 800/day. US `failures` rose from
+855 (09-28) to 3,322 (09-29).
+**`needs-human: is the ~20% US scrape-volume drop and 4× failure rise since the
+09-28 scheduling change intended?`** Neither is a white-cinema cause.
+
+### ES: 198 white, 27 probed, 0 fixable bugs
+
+26 are EMPTY. The two green→white (Cines Colci E0422, Zalla Zine E0874),
+Cines Redux and Cinemes Roses are all `[]` now; programmes ended around
+Sunday, which fits the shared ~1.7 d archive age. **Cine Central 3D** (E0831)
+is `unfixable: aggregator data`. SensaCine lists 09-29..10-01, but each day's
+single result has `"movie": null` (a 20:30 DUBBED slot with no film), and
+`WebediaShowtimesClient` needs a movie id and title. Control Cinesa Marineda
+City is populated. *Correction to the 09-19 note:* the
+`/_/showtimes/theater-<id>/d-<date>/p-1/` endpoint (the one the client uses)
+answers 200 with real data. Only the old `…/tag/<date>.json` shape is dead.
+
 ---
 
 ## 2026-09-27
