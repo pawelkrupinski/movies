@@ -492,10 +492,16 @@ object FilmCanonicalizer {
     // asks, so a decorated listing lands on its film's row instead of becoming a
     // newcomer this edge later folds.
     def titleTokens(s: String): Seq[String] = TitleContainment.tokens(s)
+    // A resolved film's bases are its key, its TMDB titles AND the spellings its own venues publish:
+    // which of those spellings keys the row is a canonical-rank choice that moves as venues come and
+    // go, and read by the key alone the edge folded PL's "Rolling Loud. Film 2026" on the day
+    // "Rolling Loud. Film" keyed its film and not on the day Cinema City's "Unlimited show - Rolling
+    // Loud. Film" did — its listings unchanged (PL convergence, recording 36584135207).
     val resolvedBaseRuns: Seq[(Seq[String], Int)] =
       rows.indices
         .filter(i => rows(i)._2.tmdbId.isDefined)
-        .flatMap(i => (rows(i)._2.tmdbTitleAliases + rows(i)._1.cleanTitle).iterator.map(titleTokens(_) -> i))
+        .flatMap(i => (rows(i)._2.tmdbTitleAliases + rows(i)._1.cleanTitle ++ rows(i)._2.cinemaData.values.flatMap(_.title))
+          .iterator.map(titleTokens(_) -> i))
         .toSeq
     // Index the resolved bases by their FIRST and LAST token so an unresolved row is
     // only checked against bases that could edge-match it, instead of every base
