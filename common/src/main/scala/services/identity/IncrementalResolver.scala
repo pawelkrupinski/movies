@@ -98,7 +98,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
         family.family.nodeKeys.forall { case (key, node) => corpus.nodeKeyOf(key).contains(node) } &&
         (mutation == Mutation.TrustStored || clock.slices(corpus.slice(family.family.reads).digest) == family.digest)
     }
-    standing.foreach(family => remember(family.family, corpus))
+    // A standing family's slice digests to what it stored — the check above just computed it — so it
+    // is kept, not digested again (half a UK take-up's hashing when it was).
+    standing.foreach(family => remember(family.family, family.digest))
     store.replace(fallen.map(_.id).toSet, Nil)
     update(Set.empty, held.keys.filterNot(familyOfKey.contains).toSet, CorpusContext.Changed.None)
     ruled()
@@ -197,7 +199,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
-    clock.slices(settled.values.foreach(remember(_, context)))
+    clock.slices(settled.values.foreach(family => remember(family, context.slice(family.reads).digest)))
     val added   = settled.values.toSeq.flatMap(family => familyOfKey.get(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
     store.replace(removed -- added.map(_.id), added)
@@ -223,9 +225,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     family.resolved.films.foreach(film => filmReadersOf.updateWith(film)(_.map(_ - id).filter(_.nonEmpty)))
   }
 
-  private def remember(resolved: RegionFamily, context: CorpusContext): Unit = {
+  private def remember(resolved: RegionFamily, digest: Long): Unit = {
     val id = nextFamily; nextFamily += 1
-    families(id) = Family(resolved, context.slice(resolved.reads).digest)
+    families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => familyOfKey(key) = id)
     resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))
     resolved.reads.keys.foreach(key => readersOf.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))

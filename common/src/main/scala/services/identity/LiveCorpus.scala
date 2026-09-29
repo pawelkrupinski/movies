@@ -212,11 +212,24 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     }
     // 5. billings, and each touched banner's house
     val banners = mutable.HashSet.empty[String]
+    // Film by film: each copied once, billed against every node here that reaches it, and dropped —
+    // a take-up bills every node, and a film reached by many nodes derived its title forms again for
+    // each (6 of a UK take-up's 16 s). A node's billings are its films' in its reached order, which is
+    // `Houses.evidence` over them all.
+    val billedBy = mutable.HashMap.empty[NodeKey, Map[Int, Seq[IdentityMeasures.Billing]]]
+    billed.iterator.flatMap(key => nodes.get(key).toSeq.flatMap(_.reached)).toSet.filter(candidates.contains).foreach { id =>
+      val film = fresh(candidates(id)).film
+      reachers.getOrElse(id, Set.empty).filter(billed).foreach { key =>
+        val own = IdentityMeasures.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
+        if (own.nonEmpty) billedBy.updateWith(key)(held => Some(held.getOrElse(Map.empty) + (id -> own)))
+      }
+    }
     billed.foreach { key =>
       billingsOf.remove(key).foreach(_.map(_.listingHouse).distinct.foreach { banner =>
         banners += banner; byBanner.updateWith(banner)(_.map(_ - key).filter(_.nonEmpty)) })
       nodes.get(key).foreach { live =>
-        val billings = IdentityMeasures.Houses.evidence(live.node.evidence.measured, live.reached.flatMap(candidates.get).map(fresh(_).film)).toSeq
+        val byFilm   = billedBy.getOrElse(key, Map.empty)
+        val billings = live.reached.flatMap(byFilm.getOrElse(_, Nil))
         if (billings.nonEmpty) {
           billingsOf(key) = billings
           billings.groupBy(_.listingHouse).foreach { case (banner, own) =>
