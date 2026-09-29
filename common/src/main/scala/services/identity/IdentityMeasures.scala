@@ -48,6 +48,8 @@ object IdentityMeasures {
     /** The title and raw title as comparison forms, and the shapes' keys, once per listing: the
      *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
+    /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
+    private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
@@ -512,9 +514,6 @@ object IdentityMeasures {
         (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip)).map(_.trim).filter(_.nonEmpty).distinct)
       .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 
-  private def jaccard(a: Set[String], b: Set[String]): Double =
-    if (a.isEmpty || b.isEmpty) 0.0 else (a intersect b).size.toDouble / (a union b).size
-
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
    *  Mossy Botton", "Pradhama Drishtiya Kuttakkar") — where both spellings of that word run to five
    *  letters and neither is a number, in a title of two words or more: a sequel's numeral ("Scary Movie 3", "Mission: Impossible II")
@@ -586,7 +585,7 @@ object IdentityMeasures {
   private def titleRelation(l: Listing, f: Film, houses: Option[Houses], qualifiers: Qualifiers): Category = {
     val ls  = l.ownForms
     val all = f.forms
-    val own = ls.map(_.key).filter(_.nonEmpty).toSet
+    val own = l.ownKeys
     lazy val qualifying = qualifiers.of(l)
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     val (titleForm, rest) = (all.head, all.tail)
@@ -597,7 +596,7 @@ object IdentityMeasures {
     else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None
           else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords)).getOrElse(
-      if (ls.exists(a => all.exists(b => jaccard(a.wordSet, b.wordSet) > 0))) Category("overlap") else Category("none"))
+      if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
   }
 
   /** How one side's titles name the other's once no whole title matches: a whole delimited piece
