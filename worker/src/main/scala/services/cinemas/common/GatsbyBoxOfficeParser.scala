@@ -82,13 +82,20 @@ object GatsbyBoxOfficeParser {
    *  both credited as directors; `runtime` is in seconds. */
   def parseDetails(json: String): Map[String, FilmDetails] =
     Try(Json.parse(json)).toOption.flatMap(_.asOpt[Seq[JsValue]]).getOrElse(Nil).flatMap { n =>
-      def names(field: String) = (n \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty)
-      (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty).map(id => id -> FilmDetails(
-        directors      = (names("direction") ++ names("coDirection")).distinct,
-        runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(seconds => math.round(seconds / 60.0).toInt),
-        cast           = names("casting"),
-        synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty)))
+      (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty).map(_ -> detailsOf(n))
     }.toMap
+
+  /** One film node of a `movies?ids=` response: `direction` and `coDirection` are separate arrays
+   *  on the wire but one director list here; `runtime` is seconds, read as whole minutes. The
+   *  ONE reading of that shape — Cineworld's deferred detail reads its film through it too. */
+  def detailsOf(n: JsValue): FilmDetails = {
+    def names(field: String) = (n \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty)
+    FilmDetails(
+      directors      = (names("direction") ++ names("coDirection")).distinct,
+      runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
+      cast           = names("casting"),
+      synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty))
+  }
 
   /** `data.allMovie.nodes[]` keyed by the same numeric id the schedule uses.
    *  Pure + public so a spec can assert the catalogue independently of any

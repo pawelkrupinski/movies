@@ -1,7 +1,7 @@
 package services.cinemas.uk
 
 import play.api.libs.json._
-import services.cinemas.common.FilmDetail
+import services.cinemas.common.{FilmDetail, GatsbyBoxOfficeParser}
 
 import scala.util.Try
 
@@ -49,19 +49,13 @@ object CineworldParser {
       .flatMap(_.asOpt[Seq[JsValue]])
       .map(_.headOption.fold(FilmDetail())(toFilmDetail))
 
-  private def toFilmDetail(m: JsValue): FilmDetail = FilmDetail(
-    synopsis       = (m \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
-    cast           = (m \ "casting").asOpt[Seq[String]].getOrElse(Seq.empty)
-                        .map(_.trim).filter(_.nonEmpty),
-    // `direction`/`coDirection` are separate arrays on the wire (a credited
-    // co-director is a distinct field, not folded into `direction`) but the
-    // app has one `director` list — concatenate.
-    director       = ((m \ "direction").asOpt[Seq[String]].getOrElse(Seq.empty) ++
-                       (m \ "coDirection").asOpt[Seq[String]].getOrElse(Seq.empty))
-                        .map(_.trim).filter(_.nonEmpty),
-    // The wire carries seconds ("runtime": 7500); the app wants whole minutes.
-    runtimeMinutes = (m \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
-    ageRating      = (m \ "certificate").asOpt[String].map(_.trim.toUpperCase)
-                        .filter(BbfcCertificates.contains)
-  )
+  private def toFilmDetail(m: JsValue): FilmDetail = {
+    val details = GatsbyBoxOfficeParser.detailsOf(m)
+    FilmDetail(
+      synopsis       = details.synopsis,
+      cast           = details.cast,
+      director       = details.directors,
+      runtimeMinutes = details.runtimeMinutes,
+      ageRating      = (m \ "certificate").asOpt[String].map(_.trim.toUpperCase).filter(BbfcCertificates.contains))
+  }
 }
