@@ -285,6 +285,26 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbNoMatch shouldBe false
   }
 
+  // A listing whose title brackets a year names a SPECIFIC film, and the recovery searches with
+  // that bracket stripped: "It (1990)" was asked as a bare "It", recovered Muschietti's 2017 film
+  // (tt1396484) for Tommy Lee Wallace's 1990 one, and the shared id grouped Cultplex Manchester
+  // with Showcase's bare "It" as one film — in one arrival order of the UK convergence leg only
+  // (recording 36584135207). Asked AT its bracket the matcher took "Strike It Rich" (1990): an
+  // id for a bracketed listing is a guess either way, so it is left without one.
+  it should "not stamp a recovered id onto a listing whose title brackets a year" in {
+    val (repository, anchor) = seeded(Helios, "It", None)
+    repository.upsert(Multikino, "It (1990)", None, listingRow(Multikino, "It (1990)", None))
+    val s = steps(repository, Seq.empty,
+      resolve = (_, _, r) => Some(r.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))),
+      recover = (_, _, _) => Some("tt1396484"))
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    s.recoverImdbFor(anchor)
+
+    repository.findAll().map(r => r.title -> r.record.imdbId).toMap shouldBe
+      Map("It" -> Some("tt1396484"), "It (1990)" -> None)
+  }
+
   // With nothing recovered there is nothing new for TMDB to see, so the conclusion
   // must STAND — otherwise the film re-searches every pass to reach the same answer.
   it should "leave a film TMDB could not name concluded when IMDb cannot name it either" in {

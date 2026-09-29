@@ -3,7 +3,7 @@ package services.staging
 import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{MovieRecordMerge, TitleNormalizer}
+import services.movies.{EmbeddedYear, MovieRecordMerge, TitleNormalizer}
 import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
@@ -324,10 +324,16 @@ class StagingSteps(
     // recovering for it separately would search on the variant's own title and stamp a
     // second id onto one film, which is the cross-stamp the grouping above exists to
     // prevent.
+    //
+    // Nor for a listing whose title brackets a year: it names a SPECIFIC film, and the search
+    // strips that bracket. "It (1990)" was asked as a bare "It" and given Muschietti's 2017 film
+    // for Tommy Lee Wallace's 1990 one, which then grouped Cultplex Manchester with a bare "It"
+    // (UK convergence, 2026-09-29); asked at its bracket, the matcher took "Strike It Rich"
+    // (1990). Either way a guess — the listing stays without an id rather than with a wrong one.
     val unidentified =
       if (fresh.exists(_.record.tmdbId.isDefined)) Seq.empty
       else fresh
-        .filter(r => r.record.tmdbId.isEmpty && r.record.imdbId.isEmpty)
+        .filter(r => r.record.tmdbId.isEmpty && r.record.imdbId.isEmpty && EmbeddedYear.of(r.title).isEmpty)
         .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     unidentified.headOption.foreach { needy =>
       val search = needy.record.originalTitle.getOrElse(stagingRepository.normalizer.apiQuery(needy.title))

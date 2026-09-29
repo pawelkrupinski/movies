@@ -221,8 +221,14 @@ object FilmCanonicalizer {
    *     trusted to put the two in one component. */
   private def reclaimOrphans(resolved: Seq[Cluster], orphans: Seq[Row], normalizer: TitleNormalizer): (Seq[Cluster], Seq[Row]) = {
     val homes: Seq[(Row, Option[Int])] = orphans.map { row =>
+      // A shared print is no proof against the venue's own year and director — the refusal the
+      // decoration proof already applies. A resolved row RETAINS a venue's synopsis after its slot
+      // leaves, so once Cultplex's "It (1990)" had sat on Muschietti's 2017 row in one arrival
+      // order, every later Cultplex row "shared a listing" with it and was reclaimed for good.
       val matches = resolved.zipWithIndex.filter { case (c, _) =>
-        c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) || decoratesResolvedCluster(c, row, normalizer)
+        (c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) &&
+          ListingConstraints.foldRefused(row._2, c.rows.map(_._2), normalizer).isEmpty) ||
+          decoratesResolvedCluster(c, row, normalizer)
       }
       row -> Option.when(matches.lengthIs == 1)(matches.head._2)
     }
@@ -328,7 +334,16 @@ object FilmCanonicalizer {
   private def contradictsHome(home: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
     val ev              = row._2.evidence
     val homeRuntime     = tmdbRuntime(home)
-    val yearContradicts = YearWindow.contradicts(ev.years, home.refYear, YearWindow.SlotYearImplausibility)
+    // Its slots' years, and — when it credits a director — the year its titles bracket: a
+    // repertory listing's only statement of which film it is. Cultplex's "It (1990)" publishes no
+    // year field, and read by fields alone Tommy Lee Wallace's 168-minute film folded onto
+    // Muschietti's 2017 one (UK convergence, 2026-09-29). A bracket beside NO credit is as often
+    // the screening's own date — "Queen Budapest (2026)", the 2012 concert film's anniversary —
+    // so it counts only with a credit, the bar `MixedFilmDetector.deniesFilm` sets for a year.
+    val credits         = row._2.cinemaData.values.exists(_.director.exists(_.trim.nonEmpty))
+    val bracketed       = if (!credits) None
+      else EmbeddedYear.ofAll(row._2.cinemaData.values.toSeq.flatMap(slot => slot.rawTitle ++ slot.title) :+ row._1.cleanTitle)
+    val yearContradicts = YearWindow.contradicts((ev.years ++ bracketed).distinct, home.refYear, YearWindow.SlotYearImplausibility)
     val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, homeRuntime.toSeq)
     val sharesCredit    = MixedFilmDetector.creditSamePerson(
       row._2.data.values.flatMap(_.director), home.rows.flatMap(_._2.data.values.flatMap(_.director)), normalizer)
