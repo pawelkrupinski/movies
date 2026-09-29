@@ -117,7 +117,7 @@ class ReadModelProjector(
   // every card of a row that was merged away — so the prune finds nothing (the rule).
   private val lastCardsByRow = scala.collection.mutable.Map.empty[String, Set[String]]
   // Per card: what was last written for each of its screenings rows — see [[WrittenScreening]].
-  private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, WrittenScreening]]
+  private val lastScreenings = new ScreeningMemo
   // Metadata-reuse cache (optimisation #1): per SOURCE ROW (keyed by the anchor
   // `ReadModelProjection.filmId`, stable across the display-title split), the
   // `metadataHash` of the last projection plus the projected `ResolvedMovie` variant(s)
@@ -263,7 +263,7 @@ class ReadModelProjector(
     lastCardsByRow.update(rowId, kept)
     // A venue this projection wrote is no phantom any more: if its row goes missing now, that
     // is a real loss the heal must repair.
-    val served = kept.flatMap(card => lastScreenings.get(card).fold(Set.empty[String])(_.keySet))
+    val served = kept.flatMap(card => lastScreenings.ids(card).toSet)
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
     metrics.recordWriteBurst(writing.seconds)
     written
@@ -282,7 +282,7 @@ class ReadModelProjector(
    *  once its hold has run out. */
   private def gate(rowId: String, projected: ResolvedMovie, screened: Boolean, now: Long): Option[ResolvedMovie] = {
     val id       = projected._id
-    val served   = lastMovie.contains(id) && lastScreenings.get(id).exists(_.nonEmpty)
+    val served   = lastMovie.contains(id) && lastScreenings.holdsAny(id)
     val firstOne = screened && !served && !shareCards.readyToPublish(projected)
     val hold     = Option.when(firstOne)(held.getOrElseUpdate(id, HeldCard(rowId, now + firstCardHold.value.toMillis)))
     if (!firstOne) held.remove(id)
@@ -417,7 +417,7 @@ class ReadModelProjector(
    *  built into one. A memo that cannot vouch — seeded from the read model at boot, or
    *  dropped by a heal — has no input hash, so every such venue is rebuilt. */
   private def planScreenings(filmId: String, venues: Seq[ReadModelProjection.VenueScreening]): Seq[PlannedScreening] = {
-    val previous = lastScreenings.getOrElse(filmId, Map.empty)
+    val previous = lastScreenings.of(filmId)
     val planned  = venues.map { venue =>
       val input = venue.inputHash
       val built = if (previous.get(venue._id).exists(_.input.contains(input))) None else Some(venue.screening)
@@ -430,7 +430,7 @@ class ReadModelProjector(
 
   /** Returns the number of screening documents written (upserts + deletes). */
   private def diffScreenings(filmId: String, next: Seq[PlannedScreening]): Int = {
-    val previous = lastScreenings.getOrElse(filmId, Map.empty)
+    val previous = lastScreenings.of(filmId)
     var upserted = 0
     val nextById = next.map { planned =>
       val output = planned.built match {
@@ -454,7 +454,7 @@ class ReadModelProjector(
       services.movies.RemovalAudit.screeningsCleared("read-model.diff", filmId, deletes.size,
         whole = nextById.isEmpty, reason = "reproject-trim")
     }
-    if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
+    lastScreenings.update(filmId, nextById)
     upserted + deletes.size
   }
 
@@ -469,7 +469,7 @@ class ReadModelProjector(
   /** Caller holds `lock`. Remove a card and the screenings this process remembers for
    *  it; `audit` names the path on the removal-audit line. */
   private def removeCard(filmId: String, audit: String): Unit = {
-    val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
+    val screeningIds = lastScreenings.ids(filmId)
     writer.deleteMovie(filmId)
     // The card is gone from here on, so its share-card files go and the memo forgets it even if a
     // screenings delete then throws — remembered, the row coming back unchanged would skip writing
@@ -616,7 +616,7 @@ class ReadModelProjector(
         continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
           writer.deleteScreening(ref._id)
           metrics.recordWrite(Target.Screening, Op.Delete, 1)
-          lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
+          lastScreenings.forget(ref.filmId, ref._id)
           prunedScreenings += 1
         }
       }
@@ -771,7 +771,7 @@ class ReadModelProjector(
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
         metrics.recordCardWrite(before.fold(Set.empty[String])(_.partsDifferingFrom(hash)))
         lastMovie.update(id, hash)
-        shareCards.onProjected(movie, screened = lastScreenings.get(id).exists(_.nonEmpty))
+        shareCards.onProjected(movie, screened = lastScreenings.holdsAny(id))
         written += 1
       }
     }
@@ -976,7 +976,7 @@ class ReadModelProjector(
     movieRepository.findById(id).flatMap { whole =>
       projectRow(whole, ProjectTrigger.Heal)
       // Forgotten above, so remembered now only if this projection produced and wrote it.
-      val written  = (venue: String) => lastScreenings.valuesIterator.exists(_.contains(venue))
+      val written  = (venue: String) => lastScreenings.holds(venue)
       val repaired = absentCards.exists(lastMovie.contains) || absentVenues.exists(written)
       val phantoms = absentVenues.filterNot(written).toSet
       if (phantoms.nonEmpty) healedClean.update(id.value, (metadataHash, phantomsOf(id.value, metadataHash) ++ phantoms))
@@ -1000,13 +1000,13 @@ class ReadModelProjector(
     lastMovie.remove(filmId)
     held.remove(filmId)
     pendingCards.remove(filmId)
-    lastScreenings.remove(filmId)
+    lastScreenings.forgetCard(filmId)
   }
 
   /** Drop one screenings row from the memo, by its id — its film is whichever memo
    *  entry holds the id, so the card id need not be parsed out of it. */
   private def forgetScreening(screeningId: String): Unit =
-    lastScreenings.mapValuesInPlace((_, byId) => byId - screeningId).filterInPlace((_, byId) => byId.nonEmpty)
+    lastScreenings.forget(screeningId)
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))
