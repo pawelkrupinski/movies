@@ -127,7 +127,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   private val MeasuredPeakMib = Map(
     ("web", "pl") ->  881, ("worker", "pl") ->  800,
     ("web", "de") ->  813, ("worker", "de") ->  963,
-    ("web", "uk") ->  816, ("worker", "uk") ->  781,
+    ("web", "uk") ->  816, ("worker", "uk") -> 1073,   // worker re-measured 2026-09-29: the 640m heap the identity take-up needs
     ("web", "es") ->  762, ("worker", "es") ->  757,
     ("web", "us") -> 1716, ("worker", "us") -> 1647,
   )
