@@ -15,7 +15,7 @@ object StoredLookupsEquivalence {
   def check(fetch: HttpFetch, language: java.util.Locale,
             asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]])): Result = {
     val (queries, films) = asked
-    val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.systemUTC())
+    val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val through = new NormalizingHttpFetch(fetch, new TmdbNormalizer(store))
     val filling = new TmdbIdentityLookups(new clients.TmdbClient(through, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
       language = language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(through), Nil)

@@ -59,7 +59,11 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
         new services.identity.ObservedFirstHttpFetch(services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), d)),
       // A budget with room: every call reaches the fetch it decorates.
       classOf[services.identity.ShadowLiveFetch] -> ((d: HttpFetch) =>
-        new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ())))
+        new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ()))),
+      // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
+      classOf[services.identity.NormalizingHttpFetch] -> ((d: HttpFetch) =>
+        new services.identity.NormalizingHttpFetch(d, new services.identity.TmdbNormalizer(
+          new services.identity.TmdbStore(new services.identity.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
     ),
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own
@@ -68,7 +72,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
           classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.observations.ObservingHttpFetch],
-          classOf[services.identity.ObservedFirstHttpFetch], classOf[services.identity.ShadowLiveFetch])
+          classOf[services.identity.ObservedFirstHttpFetch], classOf[services.identity.ShadowLiveFetch],
+          classOf[services.identity.NormalizingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

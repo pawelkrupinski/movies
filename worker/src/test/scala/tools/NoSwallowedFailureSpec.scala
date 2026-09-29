@@ -66,6 +66,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
    *  number so an entry survives unrelated edits above it, and a new swallow elsewhere in
    *  the file is not covered by an old entry that happens to share its text. */
   private val Allowlist: Map[(String, String, String), String] = Map(
+    ("worker/src/main/scala/services/identity/TmdbNormalizer.scala", "normalize",
+      "case Failure(_)                                          => None") ->
+      "None is 'write nothing': a transient failure is not an answer, so the store keeps what it held and the model's question stays a gap — the opposite of turning it into data",
     ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "fromNationalFeed",
       "catch { case e: Exception =>") ->
       "None is not 'no screenings' but 'read the venue's own place page instead', which still propagates its own failure",
