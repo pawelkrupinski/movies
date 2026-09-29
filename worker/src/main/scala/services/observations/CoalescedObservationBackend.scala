@@ -1,39 +1,42 @@
 package services.observations
 
 import java.time.Instant
-import java.util.concurrent.{ConcurrentLinkedQueue, TimeUnit}
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{ConcurrentLinkedQueue, Semaphore, TimeUnit}
 import scala.concurrent.{Await, Promise, TimeoutException}
 import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * `inner` with its `current` reads coalesced: a read queues its key, and whichever reader finds no
- * batch in flight fetches every queued key in one `currents` round-trip, again until none is
- * queued. Many concurrent readers — the identity model's prefetch — cost one round-trip per batch,
- * not one each, over one connection; a lone reader leads its own batch of one, at no added latency.
- * Everything but `current` is `inner`'s.
+ * `inner` with its `current` reads coalesced: a read queues its key, and a reader that finds a
+ * batch slot free fetches up to `maxBatch` queued keys in one `currents` round-trip. Many
+ * concurrent readers — the identity model's prefetch — cost one round-trip per batch, not one
+ * each, with at most `inFlight` batches (connections) at once; a lone reader leads its own batch of
+ * one, at no added latency. Everything but `current` is `inner`'s.
+ *
+ * Several batches, not one: a take-up profiled with ONE in flight left its 64 readers mostly
+ * waiting while the store was far from busy.
  */
-final class CoalescedObservationBackend(inner: ObservationBackend, maxBatch: Int = CoalescedObservationBackend.MaxBatch)
+final class CoalescedObservationBackend(inner: ObservationBackend, maxBatch: Int = CoalescedObservationBackend.MaxBatch,
+                                        inFlight: Int = CoalescedObservationBackend.InFlight)
     extends ObservationBackend {
 
   private val queued  = new ConcurrentLinkedQueue[(String, Promise[Option[StoredObservation]])]()
-  private val leading = new AtomicBoolean(false)
+  private val slots  = new Semaphore(inFlight)
 
   def current(key: String): Option[StoredObservation] = {
     val read = Promise[Option[StoredObservation]]()
     queued.add(key -> read)
     while (!read.isCompleted) {
-      if (leading.compareAndSet(false, true)) try fetchQueued() finally leading.set(false)
-      // A reader queued just as the leader stopped leads the next batch itself, at the next check.
+      if (!queued.isEmpty && slots.tryAcquire()) try fetchBatch() finally slots.release()
+      // A reader whose key another batch took, or that found every slot taken, looks again shortly.
       else try Await.ready(read.future, CoalescedObservationBackend.Recheck) catch { case _: TimeoutException => () }
     }
     read.future.value.get.get
   }
 
-  private def fetchQueued(): Unit = while (!queued.isEmpty) {
+  private def fetchBatch(): Unit = {
     val batch = Iterator.continually(queued.poll()).takeWhile(_ != null).take(maxBatch).toSeq
-    Try(inner.currents(batch.map(_._1).distinct)).fold(
+    if (batch.nonEmpty) Try(inner.currents(batch.map(_._1).distinct)).fold(
       failed => batch.foreach(_._2.tryFailure(failed)),
       found  => batch.foreach { case (key, read) => read.trySuccess(found.get(key)) })
   }
@@ -50,6 +53,8 @@ final class CoalescedObservationBackend(inner: ObservationBackend, maxBatch: Int
 object CoalescedObservationBackend {
   /** The most keys one round-trip asks for: an `$in` of this many ids stays a small query. */
   val MaxBatch = 256
+  /** How many batches may be in flight at once: each holds one of the worker's pooled connections. */
+  val InFlight = 4
   /** How soon a waiting reader looks again whether its key still needs a leader. */
   private val Recheck = FiniteDuration(2, TimeUnit.MILLISECONDS)
 }

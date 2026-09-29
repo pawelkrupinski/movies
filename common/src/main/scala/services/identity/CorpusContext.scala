@@ -141,8 +141,8 @@ private[identity] object CorpusContext {
                          wholeTitles: Set[String], bannerSegments: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate],
                          answers: Map[CandidateQuery, Option[Seq[Int]]]) {
     /** 64 bits of the slice's content — what a stored family keeps to tell, after a restart, whether
-     *  it still reads what it read: its structural hash beside a hash of its (content-ordered) text. */
-    def digest: Long = (hashCode.toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(toString) & 0xffffffffL)
+     *  it still reads what it read ([[ContentHash]]). */
+    def digest: Long = ContentHash.of(this)
   }
 
   /** A map that only answers lookups by key — what `VenueBacking` asks of its groups — over a

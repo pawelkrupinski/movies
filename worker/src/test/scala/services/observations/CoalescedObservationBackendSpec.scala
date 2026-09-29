@@ -45,6 +45,23 @@ class CoalescedObservationBackendSpec extends AnyFlatSpec with Matchers {
     backend.trips.get should be <= 16
   }
 
+  it should "keep several batches in flight at once, so readers never queue behind one round-trip" in {
+    val inFlight = new AtomicInteger
+    val overlap  = new AtomicInteger
+    val backend  = new InMemoryObservationBackend {
+      override def currents(keys: Seq[String]): Map[String, StoredObservation] = {
+        overlap.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+        val until = System.nanoTime() + 1_000_000_000L
+        while (inFlight.get < 2 && System.nanoTime() < until) Thread.onSpinWait()
+        overlap.accumulateAndGet(inFlight.get, math.max)
+        try super.currents(keys) finally inFlight.decrementAndGet()
+      }
+    }
+    val coalesced = new CoalescedObservationBackend(backend, maxBatch = 1)
+    concurrently(2)(i => coalesced.current(s"k$i")) shouldBe Seq(None, None)
+    overlap.get shouldBe 2
+  }
+
   it should "fail every reader of a batch whose round-trip failed, and serve the next batch anew" in {
     var failing = true
     val backend = new InMemoryObservationBackend {
