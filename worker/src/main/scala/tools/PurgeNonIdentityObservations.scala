@@ -80,7 +80,7 @@ object PurgeNonIdentityObservations {
     var more  = true
     while (more) {
       val page = Await.result(lookups.find(after.fold(Filters.empty())(Filters.gt("key", _)))
-        .projection(Projections.include("key")).sort(Sorts.ascending("key")).limit(pageSize).toFuture(), Timeout)
+        .projection(Projections.include("key")).sort(Sorts.ascending("key")).limit(pageSize).batchSize(tools.MongoReplies.Observations).toFuture(), Timeout)
       val keys  = page.flatMap(_.get[BsonString]("key").map(_.getValue))
       val found = doomed(keys)
       if (mode == Mode.Apply && found.nonEmpty)

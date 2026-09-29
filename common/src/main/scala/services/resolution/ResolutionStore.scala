@@ -160,7 +160,7 @@ class MongoResolutionStore(
    *  as a regex would let it drift from `ResolutionKeys.belongsTo`. */
   override def removeForFilm(cleanTitle: String): Int = coll.fold(0) { c =>
     Try {
-      val ids = Await.result(c.find().projection(Projections.include("_id")).toFuture(), 10.seconds)
+      val ids = Await.result(c.find().projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
         .map(_.getString("_id"))
         .filter(ResolutionKeys.belongsTo(_, cleanTitle, normalizer))
       if (ids.isEmpty) 0

@@ -58,7 +58,7 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
 
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
     TmdbDocuments.inBatches(ids.distinct.grouped(Batch).toSeq, Timeout) { batch =>
-      coll(kind).find(Filters.in("_id", batch*)).toFuture().map(_.map { d =>
+      coll(kind).find(Filters.in("_id", batch*)).batchSize(tools.MongoReplies.Default).toFuture().map(_.map { d =>
         val id = d.getString("_id").getValue
         d.remove("_id")
         id -> d

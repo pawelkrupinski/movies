@@ -130,7 +130,7 @@ class MongoEnrichmentAttemptReader(db: Option[MongoDatabase]) extends Enrichment
     else coll.fold(Map.empty[String, EnrichmentAttempt]) { c =>
       // A failed read THROWS: answered empty, the report said "never attempted" about a film
       // whose log it simply could not read.
-      Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds)
+      Await.result(c.find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
         .flatMap(EnrichmentAttempts.decodeRecord).toMap
     }
 }

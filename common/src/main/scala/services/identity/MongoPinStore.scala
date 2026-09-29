@@ -20,7 +20,7 @@ final class MongoPinStore(sharedDb: Option[MongoDatabase]) extends PinStore with
   private val coll: Option[MongoCollection[Document]] = sharedDb.map(_.getCollection[Document](MongoPinStore.Collection))
 
   def all(): Seq[Pin] =
-    coll.toSeq.flatMap(c => Await.result(c.find().toFuture(), 10.seconds)).flatMap { d =>
+    coll.toSeq.flatMap(c => Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).flatMap { d =>
       val pin = MongoPinStore.decode(d)
       if (pin.isEmpty) logger.warn(s"identity_pins: undecodable pin ${d.get("_id")}; ignored")
       pin

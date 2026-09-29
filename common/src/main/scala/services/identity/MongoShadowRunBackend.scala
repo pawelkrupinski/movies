@@ -47,7 +47,7 @@ final class MongoShadowRunBackend private (db: MongoDatabase, reconcile: MongoCo
   def latest(): Option[(ShadowRun, Instant)] =
     Await.result(decisions.find().sort(Sorts.descending("runAt")).limit(1).headOption(), Timeout).map { head =>
       val runAt = head.get[BsonDateTime]("runAt").get
-      def of(c: MongoCollection[Document]) = Await.result(c.find(Filters.equal("runAt", runAt)).sort(Sorts.ascending("seq")).toFuture(), Timeout)
+      def of(c: MongoCollection[Document]) = Await.result(c.find(Filters.equal("runAt", runAt)).sort(Sorts.ascending("seq")).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
       ShadowRun(Instant.ofEpochMilli(runAt.getValue), of(decisions).map(d => decodeCluster(d.toBsonDocument)), of(diff).map(d => decodeFamily(d.toBsonDocument))) ->
         Instant.ofEpochMilli(head.get[BsonDateTime]("expireAt").get.getValue)
     }

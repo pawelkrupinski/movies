@@ -240,7 +240,7 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
     else coll.fold(Map.empty[String, RatingChangeStats]) { c =>
       // A failed read THROWS: answered empty, the report showed no cadence history for a film
       // whose history it simply could not read.
-      Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds)
+      Await.result(c.find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
         .flatMap(MongoRatingCadenceStore.decodeRecord).toMap
     }
 }

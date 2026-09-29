@@ -104,7 +104,7 @@ class MongoReadModelRepository(
           keyOf          = _.getString("_id").getValue,
           fetchPage      = (afterId, limit) => {
             val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-            Await.result(c.find[BsonDocument](filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+            Await.result(c.find[BsonDocument](filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
           },
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
@@ -175,7 +175,7 @@ class MongoReadModelRepository(
         fetchPage      = (afterId, limit) => {
           val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
           Await.result(
-            c.find[BsonDocument](filter).projection(projection).sort(Sorts.ascending("_id")).limit(limit).toFuture(),
+            c.find[BsonDocument](filter).projection(projection).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(),
             60.seconds)
         },
         onIncomplete   = exception =>
@@ -207,9 +207,9 @@ class MongoReadModelRepository(
   override def findCard(id: String): Option[StoredCard] = (movies, screenings) match {
     case (Some(movieColl), Some(screeningColl)) =>
       Try {
-        val movie = Await.result(movieColl.find(Filters.eq("_id", id)).toFuture(), 10.seconds).headOption
+        val movie = Await.result(movieColl.find(Filters.eq("_id", id)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).headOption
         val rows  = Await.result(
-          screeningColl.find(Filters.and(Filters.gte("_id", s"$id|"), Filters.lt("_id", s"$id}"))).toFuture(), 30.seconds)
+          screeningColl.find(Filters.and(Filters.gte("_id", s"$id|"), Filters.lt("_id", s"$id}"))).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)
         StoredCard(movie, rows.filter(_.filmId == id))
       } match {
         case Success(card) => Some(card)

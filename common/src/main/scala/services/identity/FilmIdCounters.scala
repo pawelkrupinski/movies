@@ -113,7 +113,7 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
   }
 
   def allChecked(): (Seq[FilmIdCounter], Boolean) =
-    Try(Await.result(coll.find().toFuture(), 60.seconds)) match {
+    Try(Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
       case Success(docs) =>
         (docs.flatMap { d =>
           val doc = d.toBsonDocument

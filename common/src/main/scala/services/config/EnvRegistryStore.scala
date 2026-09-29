@@ -70,7 +70,7 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
       // nothing. Only rows that actually changed get an upsert, and a key no
       // longer read (or renamed) is deleted — the page stays correct without the
       // per-tick delete-all + insert-all churn.
-      val current = Await.result(c.find(Filters.eq("app", app)).toFuture(), 10.seconds).flatMap(fromDoc)
+      val current = Await.result(c.find(Filters.eq("app", app)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(fromDoc)
       val plan    = EnvRegistryStore.reconcile(current, knobs)
       if (plan.deleteIds.nonEmpty)
         Await.result(c.deleteMany(Filters.in("_id", plan.deleteIds*)).toFuture(), 10.seconds)
@@ -86,7 +86,7 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
   private def idOf(k: RegisteredKnob): String = s"${k.app}|${k.key}"
 
   def all(): Seq[RegisteredKnob] =
-    coll.flatMap(c => Try(Await.result(c.find().toFuture(), 10.seconds)).toOption)
+    coll.flatMap(c => Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption)
       .getOrElse(Seq.empty).flatMap(fromDoc)
 
   // Build the doc with only the fields that are present. A `null` value can't go

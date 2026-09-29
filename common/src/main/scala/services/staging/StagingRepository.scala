@@ -394,7 +394,7 @@ class MongoStagingRepository(
   /** The id fetch, as a seam a test can fail on purpose — the fallback below is the
    *  interesting behaviour and is otherwise unreachable without a broken database. */
   protected def fetchByIds(c: MongoCollection[StoredMovieDto], ids: Seq[String]): Try[Seq[StoredMovieDto]] =
-    Try(Await.result(c.find(Filters.in("_id", ids*)).toFuture(), 30.seconds))
+    Try(Await.result(c.find(Filters.in("_id", ids*)).batchSize(tools.MongoReplies.Films).toFuture(), 30.seconds))
 
   private val anchorById = new java.util.concurrent.ConcurrentHashMap[String, String]()
   /** The cinema half of the same row index — built in the same pass as the anchor, so a

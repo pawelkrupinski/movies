@@ -34,7 +34,7 @@ final class MongoClosureLedger(db: MongoDatabase) extends ClosureLedger {
   private val coll: MongoCollection[Document] = db.getCollection[Document](MongoClosureLedger.Collection)
 
   def confirmed(): Map[String, Instant] =
-    Await.result(coll.find().toFuture(), 10.seconds).map { d =>
+    Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).map { d =>
       d.getString("_id") -> Instant.ofEpochMilli(d.getDate("confirmedAt").getTime)
     }.toMap
 

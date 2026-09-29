@@ -73,7 +73,7 @@ class MongoFallbackStore(
   }
 
   private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find().toFuture(), 10.seconds)
+    val documents = Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
     var count = 0
     documents.foreach(document => fromDocument(document).foreach { s => mirror.put(s.cinema, s); count += 1 })
     if (count > 0) logger.info(s"Hydrated $count Filmweb-fallback state(s) from Mongo.")

@@ -222,7 +222,7 @@ class MongoFreshnessStore(
       keyOf          = _.getString("_id"),
       fetchPage      = (afterId, limit) => {
         val paged = afterId.fold(filter)(a => Filters.and(filter, Filters.gt("_id", a)))
-        Await.result(c.find(paged).sort(Sorts.ascending("_id")).limit(limit).toFuture(), timeout)
+        Await.result(c.find(paged).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), timeout)
       },
       onIncomplete   = exception => logger.warn(s"Freshness $label hydrate keyset scan failed: ${exception.getMessage}")
     )(batch => batch.foreach { document =>

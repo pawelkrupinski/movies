@@ -246,7 +246,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Aggregates.group("$state", Accumulators.sum("n", 1)))
       // A read failure PROPAGATES, as `waitingCount`'s does: an empty map is an empty
       // queue, and was exported as a queue depth of 0 while the queue was unreadable.
-      Await.result(c.aggregate(pipeline).toFuture(), 10.seconds)
+      Await.result(c.aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
         .flatMap { doc =>
           for {
             state <- doc.get("_id").filter(_.isString).map(_.asString().getValue)
@@ -289,7 +289,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
             c.find(Filters.eq("state", state))
               .sort(Indexes.ascending("submittedAt"))
               .limit(remaining)
-              .toFuture(),
+              .batchSize(tools.MongoReplies.Default).toFuture(),
             10.seconds).map(toSummary)
         }
       QueueSnapshot(countByState(), active)

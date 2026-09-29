@@ -243,7 +243,7 @@ class MongoScrapeArchiveRepository(
           stamps.find(filter)
             .projection(Projections.include("scrapedAt"))
             .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
-            .limit(limit).toFuture(),
+            .limit(limit).batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
           60.seconds)
       },
       onIncomplete   = exception =>
@@ -295,7 +295,7 @@ class MongoScrapeArchiveRepository(
       fetchPage      = (afterId, limit) => {
         val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
         Await.result(
-          c.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(),
+          c.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
           60.seconds)
       },
       onIncomplete   = exception =>

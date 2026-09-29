@@ -434,8 +434,8 @@ class MongoStagingFolder(
     // nothing about which rows fold.
     val candidates = candidateIds match {
       case Some(ids) if ids.isEmpty => Seq.empty
-      case Some(ids)                => await(staging.find(session, Filters.in("_id", ids.toSeq*)).toFuture())
-      case None                     => await(staging.find(session).toFuture())
+      case Some(ids)                => await(staging.find(session, Filters.in("_id", ids.toSeq*)).batchSize(tools.MongoReplies.Films).toFuture())
+      case None                     => await(staging.find(session).batchSize(tools.MongoReplies.Films).toFuture())
     }
     val stagingRows = StagingFold.selectStagingGroup(
       candidates.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer)),
@@ -445,7 +445,7 @@ class MongoStagingFolder(
       // Movies `key` = sanitize|year — match the sanitize group, any year. (`_id` is the
       // permanent film id; a document written before ids existed had its `key` backfilled
       // from `_id` at boot — `MongoMovieRepository.ensureIndexes`.)
-      val groupRows = await(movies.find(session, Filters.regex("key", s"^$sanitize\\|")).toFuture())
+      val groupRows = await(movies.find(session, Filters.regex("key", s"^$sanitize\\|")).batchSize(tools.MongoReplies.Films).toFuture())
         .map(StoredMovieDto.toDomain(_, normalizer))
       // Cross-title same-tmdbId siblings (any title, OUTSIDE this sanitize group),
       // so a cross-language duplicate already in `movies` merges at fold time (see
@@ -454,7 +454,7 @@ class MongoStagingFolder(
       val siblings = if (ids.isEmpty) Seq.empty
         else await(movies.find(session, Filters.and(
           Filters.in("tmdbId", ids.toSeq*),
-          Filters.not(Filters.regex("key", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
+          Filters.not(Filters.regex("key", s"^$sanitize\\|")))).batchSize(tools.MongoReplies.Films).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
       val group = groupRows ++ siblings
       // A brand-new film's id must not be a live document's — checked in THIS session, so
       // the write below cannot replace a film the fold never read.

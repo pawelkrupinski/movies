@@ -32,7 +32,7 @@ private[services] final class UptimeSync(
    *  query per interval — cost scales with the number of services in the window,
    *  not with the full 24h of retained history. */
   def poll(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find(pollFilter(clock.millis())).toFuture(), 10.seconds)
+    val documents = Await.result(c.find(pollFilter(clock.millis())).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
     documents.foreach { document =>
       for {
         service    <- Option(document.getString("service"))
@@ -70,7 +70,7 @@ private[services] final class UptimeSync(
    *  the materialised documents, so a retry can't double-count via `addAndGet`. */
   def hydrate(c: MongoCollection[Document]): Unit = Try {
     val documents = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
-      Await.result(c.find(hydrateFilter(clock.millis())).toFuture(), HydrateTimeout)
+      Await.result(c.find(hydrateFilter(clock.millis())).batchSize(tools.MongoReplies.Default).toFuture(), HydrateTimeout)
     }
     var count = 0
     documents.foreach { document =>

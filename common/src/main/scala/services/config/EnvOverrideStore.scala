@@ -57,7 +57,7 @@ class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverride
   def all(): Map[String, String] = cache
 
   def refresh(): Unit = coll.foreach { c =>
-    Try(Await.result(c.find().toFuture(), 10.seconds)).toOption.foreach { docs =>
+    Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption.foreach { docs =>
       cache = docs.flatMap { d =>
         for { k <- str(d, "_id"); v <- str(d, "value") } yield k -> v
       }.toMap

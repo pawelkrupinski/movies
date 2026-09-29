@@ -735,7 +735,7 @@ class MongoMovieRepository(
         fetchPage      = (afterId, limit) => {
           val page = afterId.fold(filter)(id => Filters.and(filter, Filters.gt("_id", id)))
           Await.result(
-            c.find(page).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+            c.find(page).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Films).toFuture(), 60.seconds)
         },
         onIncomplete   = exception => {
           logger.warn(s"MovieRepository keyset scan failed after retries: " +
@@ -808,7 +808,7 @@ class MongoMovieRepository(
           |    "as": "f",
           |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
       val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
-      val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds)
+      val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).batchSize(tools.MongoReplies.Films).toFuture(), 60.seconds)
       // Stitch slots like every other reader. This one reads `movies.sourceData`
       // straight out of an aggregation, so a migrated film — whose slots have moved to
       // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
@@ -891,7 +891,7 @@ class MongoMovieRepository(
       fetchPage      = (afterId, limit) => {
         val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
         Await.result(c.find[Document](filter).projection(Projections.include("_id"))
-          .sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+          .sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
           .map(_("_id").asString.getValue)
       },
       onIncomplete   = exception =>

@@ -63,7 +63,7 @@ class MongoBulkTaskResultStore(db: Option[MongoDatabase] = None, collectionName:
   override def latest(): Map[TaskType, BulkTaskResult] = coll match {
     case None => Map.empty
     case Some(c) =>
-      Try(Await.result(c.find().toFuture(), 10.seconds).flatMap(toResult).map(r => r.taskType -> r).toMap)
+      Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(toResult).map(r => r.taskType -> r).toMap)
         .recover { case exception =>
           logger.warn(s"BulkTaskResultStore.latest failed: ${exception.getMessage}")
           Map.empty[TaskType, BulkTaskResult]

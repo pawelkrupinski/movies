@@ -97,11 +97,11 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
     loadDocs(cinema, runId).map(d => d.getString("key") -> d.getString("value")).toMap
 
   private def loadDocs(cinema: String, runId: String): Seq[Document] = chunks.toSeq.flatMap { c =>
-    Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)
+    Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
   }
 
   def activeRuns(): Seq[ChunkRun] = runs.toSeq.flatMap { c =>
-    Await.result(c.find().toFuture(), 10.seconds).map(toRun)
+    Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).map(toRun)
   }
 
   def completeRun(cinema: String, runId: String): Unit = {
