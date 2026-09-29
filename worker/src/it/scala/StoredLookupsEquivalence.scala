@@ -10,7 +10,7 @@ import tools.HttpFetch
  * hit's own title/year only where its film holds no record (the resolver reads the record over it).
  */
 object StoredLookupsEquivalence {
-  final case class Result(questions: Int, films: Int, mismatches: Seq[String])
+  final case class Result(questions: Int, films: Int, mismatches: Seq[String], stored: IdentityLookups)
 
   /** `fetch` whose recording MISSES fail as what they are, a request never recorded: a transient
    *  failure, which normalizes to nothing (a gap), where a real 404 or empty answer is an answer. A
@@ -38,7 +38,7 @@ object StoredLookupsEquivalence {
     override def post(url: String, body: String, contentType: String): String = read("POST", url)(fetch.post(url, body, contentType))
   }
 
-  def check(fetch: HttpFetch, misses: () => Long, missed: () => Seq[String], language: java.util.Locale,
+  def check(fetch: HttpFetch, misses: () => Long, missed: () => Seq[String], language: java.util.Locale, details: IdentityLookups,
             asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]])): Result = {
     val (queries, films) = asked
     val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
@@ -48,7 +48,7 @@ object StoredLookupsEquivalence {
     queries.keys.toSeq.sorted.foreach(filling.candidates)
     films.keys.toSeq.sorted.foreach(filling.film)
 
-    val stored  = new StoredTmdbLookups(store, language.toLanguageTag, filling, new ObservationReads)
+    val stored  = new StoredTmdbLookups(store, language.toLanguageTag, details, new ObservationReads)
     stored.prefetch(queries.keys, films.keys, Nil)
     val recorded = films.collect { case (id, Answer.Known(Some(_))) => id }.toSet
     def bucketed(p: Double) = PopularityBucket.representative(PopularityBucket.of(p))
@@ -64,7 +64,7 @@ object StoredLookupsEquivalence {
       val want = expected match { case Answer.Known(f) => Answer.Known(f.map(r => r.copy(popularity = r.popularity.map(bucketed)))); case u => u }
       Option.when(want != stored.film(id))(s"film $id: recorded $want vs stored ${stored.film(id)}")
     }
-    Result(queries.size, films.size, queryMismatches ++ filmMismatches)
+    Result(queries.size, films.size, queryMismatches ++ filmMismatches, stored)
   }
 
   private def render(a: Answer[Seq[Hit]]): String = a match {

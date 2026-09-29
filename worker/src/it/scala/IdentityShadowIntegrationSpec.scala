@@ -195,11 +195,18 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       // The normalized TMDB store answers every question the resolve asked as the recorded responses did.
       {
         val counted = c.fetch.requests.get()
-        val equivalence = StoredLookupsEquivalence.check(c.fetch, c.misses, c.missedKeys, c.country.language, lookups.asked)
+        val equivalence = StoredLookupsEquivalence.check(c.fetch, c.misses, c.missedKeys, c.country.language, lookups, lookups.asked)
         c.fetch.requests.set(counted)
         report.line(s"[${c.label}] stored lookups: ${equivalence.questions} questions and ${equivalence.films} film records answered " +
           s"from the normalized store; ${equivalence.mismatches.size} differ from the recorded answers" +
           equivalence.mismatches.take(5).map("\n    " + _).mkString)
+        // …and the resolver reading it — popularity as its bucket — decides as over the recorded answers.
+        val overStore = IdentityResolver.resolve(listings, equivalence.stored, c.normalizer, calibration)
+        val filmOf    = (r: Resolution) => r.decisions.flatMap(d => d.listings.map(_ -> d.film)).toMap
+        val (was, now) = (filmOf(resolution), filmOf(overStore))
+        val moved     = listings.map(_.key).filter(k => was.get(k) != now.get(k))
+        report.line(s"[${c.label}] stored lookups decide: ${moved.size} of ${listings.size} listings move" +
+          moved.take(8).map(k => s"\n    ${listings.find(_.key == k).fold(k.toString)(_.rawTitle)}: ${was.get(k).flatten.getOrElse("—")} → ${now.get(k).flatten.getOrElse("—")}").mkString)
         withClue(s"${c.label}: the normalized store answers as the recorded responses") { equivalence.mismatches shouldBe empty }
       }
 
