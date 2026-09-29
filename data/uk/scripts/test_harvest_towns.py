@@ -3,7 +3,7 @@
 postal address.
 
 The rule is not a guess, and this is where that is kept honest. Cineworld's
-recorded venue fixture carries BOTH the free-text address Flicks-style parsing
+recorded venue list (testdata/cineworld-venues.json) carries BOTH the free-text address Flicks-style parsing
 has to cope with and the chain's own `addressInfo.city`, for 87 UK venues — so
 the parser is scored against a source that already knows the answer. It has to
 agree on every one of them.
@@ -15,13 +15,16 @@ postcode, not the position, is what marks the town.
 
 Run: python3 data/uk/scripts/test_harvest_towns.py
 """
-import glob
 import importlib.util
 import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+# A capture of Cineworld's old quickbook venue endpoint, kept here rather than
+# with the client fixtures: the client moved to the Gatsby box-office API and
+# dropped it, which silently took this corpus with it (every discover-cinemas
+# run from 2026-09-21 failed on the missing file).
+CINEWORLD_VENUES = os.path.join(HERE, "testdata", "cineworld-venues.json")
 
 spec = importlib.util.spec_from_file_location("harvest_towns", os.path.join(HERE, "harvest_towns.py"))
 ht = importlib.util.module_from_spec(spec)
@@ -119,9 +122,6 @@ def test_sync_of_an_unchanged_roster_fetches_nothing():
 
 def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
     """The real corpus: 87 UK venues, scored against the chain's own field."""
-    matches = glob.glob(
-        os.path.join(ROOT, "test/resources/fixtures/cineworld/**/cinemas/**/*.json"), recursive=True)
-    assert matches, "no recorded Cineworld venue fixture to score against"
 
     def venues(node):
         if isinstance(node, dict):
@@ -134,7 +134,7 @@ def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
                 yield from venues(value)
 
     scored, wrong, sharper = 0, [], []
-    for venue in venues(json.load(open(matches[0]))):
+    for venue in venues(json.load(open(CINEWORLD_VENUES))):
         city = (venue.get("addressInfo") or {}).get("city") or ""
         if not city:
             continue
