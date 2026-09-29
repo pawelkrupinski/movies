@@ -1360,6 +1360,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     anatomy.withoutKey.toMap.get(glue) shouldBe Some(2) // the film's id key still holds them together
   }
 
+  // Scoring a listing against its family's pool is the resolve's dominant cost (PL's 127-node
+  // "Lalka" family): a family a round of `Families.grow` left unchanged keeps its scores, and a
+  // cluster voting and the decisions both pool is pooled once.
+  "A resolve" should "score each node once when the next round leaves its family as it was" in {
+    val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
+    val ls    = Seq(Multikino, Helios).map(listing(_, "Leonas", Some(2026), Some("Juan Manuel Cotelo"), Some(94)))
+    val r     = shipped(ls, films)
+    ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1651192))
+    r.scorings shouldBe r.nodes + r.decisions.size
+  }
+
+  it should "pool a cluster once for its vote and its decision" in {
+    val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
+    val l = listing(Multikino, "Leonas", None, Some("Juan Manuel Cotelo"))
+    val r = shipped(Seq(l), films)
+    r.decisionOf(l.key).film shouldBe None
+    r.scorings shouldBe r.nodes + r.decisions.size
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

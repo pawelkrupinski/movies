@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
-private[identity] final class FamilyScope(members: Seq[EvidenceNode], scoring: CandidateScoring) {
+private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring) {
   import scoring.{backing, calibration, evidenceDenies, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, ownSearch, ownWalk, sharedOf}
 
@@ -15,12 +15,17 @@ private[identity] final class FamilyScope(members: Seq[EvidenceNode], scoring: C
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
    *  record titled only a listing's qualifier does not name it. The family's own pool, so a
    *  family resolves alone as it does among the others. */
+  /** How many listings (a node's own, or a cluster's pooled) this scope scored against its pool —
+   *  the resolve's dominant cost ([[Resolution.scorings]]). */
+  private[identity] var scorings: Int = 0
+
   val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
 
   /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
    *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByPins: Int => Boolean): Seq[Scored] = {
+    scorings += 1
     val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
@@ -61,7 +66,11 @@ private[identity] final class FamilyScope(members: Seq[EvidenceNode], scoring: C
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
    *  median runtime, the modal original title, and every candidate any of them named. The
    *  directors credited beside that year are only those of the members publishing it. */
-  def pooled(cluster: Seq[EvidenceNode]): Seq[Scored] = {
+  def pooled(cluster: Seq[EvidenceNode]): Seq[Scored] = pooledMemo.getOrElseUpdate(cluster.map(_.id), scorePooled(cluster))
+  // Voting, the vote on a cluster's rest and the decisions each pool the same clusters again.
+  private val pooledMemo = mutable.HashMap.empty[Seq[String], Seq[Scored]]
+
+  private def scorePooled(cluster: Seq[EvidenceNode]): Seq[Scored] = {
     def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
       values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (value, weight) => (-weight, value) }.headOption.map(_._1)
     val lead     = cluster.minBy(node => (-node.weight, node.id))

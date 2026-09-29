@@ -34,11 +34,22 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
         scope.of(sibling).exists(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied))
     }
 
+  private val built = scala.collection.mutable.ArrayBuffer.empty[FamilyScope]
+  /** How many listings every scope of every round scored ([[Resolution.scorings]]). */
+  def scorings: Int = built.iterator.map(_.scorings).sum
+
   private final case class Round(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int],
                                  scopes: Map[Int, FamilyScope], bestOf: Map[String, Accepted])
 
-  @tailrec private def grow(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int]): Round = {
-    val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) => family -> new FamilyScope(members.sortBy(_.id), scoring) }
+  /** Each round scores every family, but a family the last round left as it was scores as it did:
+   *  its scope (and the node scores it memoises) is kept, keyed by its members. Only the families a
+   *  round merged are scored again. */
+  @tailrec private def grow(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int],
+                            scored: Map[Seq[String], FamilyScope] = Map.empty): Round = {
+    val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) =>
+      val sorted = members.sortBy(_.id)
+      family -> scored.getOrElse(sorted.map(_.id), { val scope = new FamilyScope(sorted, scoring); built += scope; scope })
+    }
     val bestOf = nodes.groupBy(node => familyOf(node.id)).toSeq.flatMap { case (family, members) =>
       val scope = scopes(family)
       withoutSiblingDenials(members, scope, members.flatMap(node => acceptance.alone(scope.of(node)).map(node.id -> _)).toMap)
@@ -46,7 +57,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     val grown = nodes.map(node => node.id -> (matchedIds.getOrElse(node.id, Set.empty[Int]) ++ bestOf.get(node.id).map(_._1.candidate.tmdbId) ++
       pinnedFilm.get(node.id))).toMap
     if (grown == matchedIds || narrow) Round(grown, familyOf, scopes, bestOf)
-    else grow(grown, familiesOf(grown))
+    else grow(grown, familiesOf(grown), scopes.values.map(scope => scope.members.map(_.id) -> scope).toMap)
   }
   private val round = grow(Map.empty, familiesOf(Map.empty))
 
