@@ -161,6 +161,7 @@ runs:
                   ls -l scrape-archive/
               else
                   echo "::error::recording run $pinned's corpus is no longer downloadable — the pinned pair has expired; re-run Record scrape fixtures"
+                  exit 1
               fi
               exit 0
           fi
@@ -256,8 +257,8 @@ runs:
               exit 0
           fi
           if [ "${{ inputs.mode }}" != "record" ]; then
-              echo "::error::the pinned tree $ASSET is not in release $TAG — a hermetic leg replays nothing else"
-              exit 0
+              echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest two) — a hermetic leg replays nothing else"
+              exit 1
           fi
 
           # One-off bootstrap: before the release existed, legs published

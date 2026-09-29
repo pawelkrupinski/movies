@@ -54,6 +54,17 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("hermetic-$code.txt")
   }
 
+  // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
+  // older pin (`identity-measure-ci.sh`'s RECORDING) finds nothing; the step said `::error::` and
+  // exited 0, and a 2026-09-29 PL measurement "succeeded" with 0 of 9,981 listings matched.
+  it should "fail, not replay nothing, when the pinned pair's corpus or tree is gone" in {
+    Seq("Restore the recorded scrape corpus", "Restore the enrichment tree and remembered answers").foreach { name =>
+      val lines = RepoFile.step(setup, name).linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
+      val afterErrors = lines.zip(lines.drop(1)).collect { case (line, next) if line.startsWith("echo \"::error::") => next }
+      withClue(s"$name: ")(afterErrors should (not be empty and contain only "exit 1"))
+    }
+  }
+
   // The sample, the full leg and the bisect of one run must replay ONE pair, or a recorder
   // pinning a new pair mid-run would split a leg across two recordings.
   it should "replay the pair its sample replayed" in {
