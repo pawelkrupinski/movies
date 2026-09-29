@@ -66,4 +66,23 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
     lookups.prefetch(Nil, Nil, Nil)                                              // the next read phase
     lookups.candidates(query) shouldBe Answer.Known(Seq(Hit(9, "Film 1", None, Some(2026), 5)))
   }
+
+  // A take-up's "reads: N prefetched in Xs" said nothing of WHICH reads: a UK restore spent 8-10 s
+  // there with no way to tell detail pages from TMDB queries or film records. Each read phase asks
+  // one kind, so each kind's count and time can be named.
+  "the read report" should "name each kind's asks, and the store's own batched loads beside them" in {
+    val reads   = new ObservationReads
+    val lookups = new TrackedLookups(new Store(reads), reads, Some(pool()))
+    val page    = Listing.of(models.Helios, models.CinemaMovie(models.Movie("Lalka"), models.Helios, None, Some("https://helios.pl/lalka"),
+      None, Nil, Nil, Nil), services.movies.SingleCountryNormalizer.titleNormalizer)
+    lookups.prefetch(queries, Nil, Nil)
+    lookups.prefetch(Nil, Seq(1, 2, 3), Nil)
+    lookups.prefetch(Nil, Nil, Seq(page))
+    val line = lookups.render
+    line should startWith ("reads: 24 prefetched in ")
+    line should include ("queries 20 in ")
+    line should include ("film records 3 in ")
+    line should include ("detail pages 1 in ")
+    line should include ("store batches ")
+  }
 }

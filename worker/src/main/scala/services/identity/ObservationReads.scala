@@ -80,9 +80,17 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   private val servedAsks     = new java.util.concurrent.atomic.AtomicLong()
   private val prefetching    = tools.Stopwatch.total()
   private val oneByOne       = tools.Stopwatch.total()
+  // Each read phase asks ONE kind (a slice's queries, then its films' records, then its detail
+  // pages), so a phase's asks and wall time are that kind's; the inner store's batched loads that
+  // open each phase are timed beside them.
+  private val asksOf    = TrackedLookups.Kinds.map(_ -> new java.util.concurrent.atomic.AtomicLong()).toMap
+  private val phaseOf   = TrackedLookups.Kinds.map(_ -> tools.Stopwatch.total()).toMap
+  private val batchesOf = tools.Stopwatch.total()
   def render: String =
     f"reads: ${prefetchedAsks.get} prefetched in ${prefetching.seconds}%.1fs (${servedAsks.get} served), " +
-      f"${oneByOne.count} one by one in ${oneByOne.seconds}%.1fs"
+      f"${oneByOne.count} one by one in ${oneByOne.seconds}%.1fs; " +
+      TrackedLookups.Kinds.map(kind => f"$kind ${asksOf(kind).get} in ${phaseOf(kind).seconds}%.1fs").mkString(", ") +
+      f", store batches ${batchesOf.count} in ${batchesOf.seconds}%.1fs"
 
   private def single[A](ask: => A): A = oneByOne(ask)
   private def served[A](held: A): A = { servedAsks.incrementAndGet(); held }
@@ -106,7 +114,8 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
     // The inner lookups' own prefetch first: a store that can read a slice's documents in a few
     // batches does, and the asks below are then answered from what it holds. Without it every ask
     // read each of its documents as its own round-trip — 21 s of a UK restore's 28 s.
-    prefetching(inner.prefetch(asked, records, pages))
+    val kind = if (asked.nonEmpty) TrackedLookups.Queries else if (records.nonEmpty) TrackedLookups.Records else TrackedLookups.Pages
+    prefetching(phaseOf(kind)(batchesOf(inner.prefetch(asked, records, pages))))
     val tasks: Seq[java.util.concurrent.Callable[Unit]] =
       asked.toSeq.map(query => (() => { queries.put(query, askQuery(query)); () }): java.util.concurrent.Callable[Unit]) ++
         records.toSeq.map(id => (() => { films.put(id, askFilm(id)); () }): java.util.concurrent.Callable[Unit]) ++
@@ -114,8 +123,17 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
     try if (tasks.nonEmpty) {
       import scala.jdk.CollectionConverters._
       // A task that failed is simply not served from the prefetch: its ask, later, asks again.
-      prefetching(threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get())))
+      prefetching(phaseOf(kind)(threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get()))))
       prefetchedAsks.addAndGet(tasks.size.toLong)
+      asksOf(kind).addAndGet(tasks.size.toLong)
     } finally inner.prefetchAnswered()
   }
+}
+
+object TrackedLookups {
+  /** The kinds of read a take-up's phases make, as its log line names them. */
+  val Queries = "queries"
+  val Records = "film records"
+  val Pages   = "detail pages"
+  val Kinds: Seq[String] = Seq(Queries, Records, Pages)
 }
