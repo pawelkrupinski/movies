@@ -214,6 +214,29 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.docs.get(TmdbKind.Film, Seq("1")) shouldBe empty
   }
 
+  /** A film document carries the two partial responses its record was parsed from beside the
+   *  record: ~650 of ~1,000 bytes that no answer reads. A take-up fetched and decoded them for every
+   *  film it named — UK's store batches took 12.4 s of a 21 s context. Answers read only what they use. */
+  "the model's lookups" should "read a film's answer fields, never its partial responses" in {
+    val w = new World
+    val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
+    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
+    val wholeFilmReads = new java.util.concurrent.atomic.AtomicInteger()
+    val docs = new TmdbDocuments {
+      def get(kind: TmdbKind, ids: Seq[String]) = { if (kind == TmdbKind.Film) wholeFilmReads.incrementAndGet(); w.docs.get(kind, ids) }
+      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
+      def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit) = w.docs.scan(kind)(page)
+      def delete(kind: TmdbKind, ids: Seq[String]) = w.docs.delete(kind, ids)
+      override def answers(kind: TmdbKind, ids: Seq[String]) = w.docs.answers(kind, ids)
+    }
+    val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, NoDetails, new ObservationReads)
+    lookups.prefetch(Nil, Seq(film), Nil)
+    lookups.film(film) shouldBe w.lookups.film(film)
+    lookups.film(film).toOption.flatten shouldBe defined
+    wholeFilmReads.get shouldBe 0
+    w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString).keySet should not contain allOf ("local", "english")
+  }
+
   "the backfill" should "move the raw TMDB answers the observation store holds into the normalized store, 404s included, once" in {
     import services.observations.{LookupAnswer, LookupQuery, ObservationStore}
     val w   = new World

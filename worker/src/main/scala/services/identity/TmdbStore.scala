@@ -12,19 +12,28 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** The kinds of document the normalized TMDB store keeps, each its own collection. */
-enum TmdbKind(val collection: String) {
-  /** A film: its record's two partial responses, the record parsed from them, and its hit fields. */
-  case Film   extends TmdbKind("tmdb_films")
+enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
+  /** A film: its record's two partial responses, the record parsed from them, and its hit fields. An
+   *  answer reads only the record or the hit: the partials (~650 of ~1,000 bytes on UK) are the write
+   *  path's, which re-parses the record when one changes. */
+  case Film   extends TmdbKind("tmdb_films", Some(Seq("record", "hit")))
   /** A person: the films they are credited as directing and as writing. */
-  case Person extends TmdbKind("tmdb_people")
+  case Person extends TmdbKind("tmdb_people", None)
   /** A question: a title search's or person search's ranked ids, a find's films, IMDb's suggestions. */
-  case Query  extends TmdbKind("tmdb_queries")
+  case Query  extends TmdbKind("tmdb_queries", None)
 }
 
 /** Where the normalized documents live: the storage seam, and nothing else. Every rule — what a
  *  response becomes, when a document changed, what a question reads — is [[TmdbStore]]'s. */
 trait TmdbDocuments {
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument]
+  /** These documents as an ANSWER reads them: only `kind`'s [[TmdbKind.answerFields]]. A store that
+   *  can leave the rest on the server does. */
+  def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = kind.answerFields.fold(get(kind, ids)) { fields =>
+    get(kind, ids).view.mapValues { d =>
+      val kept = new BsonDocument(); fields.foreach(f => Option(d.get(f)).foreach(v => kept.put(f, v))); kept
+    }.toMap
+  }
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
   /** Every document of `kind` as its id and when it was last fetched, a page at a time; whether the
    *  scan read them all. */
@@ -69,9 +78,15 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
   private val Batch   = 500
   private def coll(kind: TmdbKind): MongoCollection[BsonDocument] = db.getCollection[BsonDocument](kind.collection)
 
-  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = read(kind, ids, None)
+
+  override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = read(kind, ids, kind.answerFields)
+
+  private def read(kind: TmdbKind, ids: Seq[String], fields: Option[Seq[String]]): Map[String, BsonDocument] =
     TmdbDocuments.inBatches(ids.distinct.grouped(Batch).toSeq, Timeout) { batch =>
-      coll(kind).find(Filters.in("_id", batch*)).batchSize(tools.MongoReplies.Default).toFuture().map(_.map { d =>
+      val found = coll(kind).find(Filters.in("_id", batch*))
+      fields.fold(found)(f => found.projection(org.mongodb.scala.model.Projections.include(f*)))
+        .batchSize(tools.MongoReplies.Default).toFuture().map(_.map { d =>
         val id = d.getString("_id").getValue
         d.remove("_id")
         id -> d
@@ -198,6 +213,8 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   // ── reads ─────────────────────────────────────────────────────────────────────────
 
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.get(kind, ids)
+  /** What answers read of these documents ([[TmdbDocuments.answers]]). */
+  def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.answers(kind, ids)
 }
 
 object TmdbStore {

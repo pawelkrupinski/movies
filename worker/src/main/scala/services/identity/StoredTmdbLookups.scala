@@ -85,14 +85,14 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   private def load(kind: TmdbKind, ids: Seq[String]): Map[String, Option[BsonDocument]] = {
     val wanted = ids.distinct.filterNot(held(kind).containsKey)
-    val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument] else store.get(kind, wanted)
+    val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument] else store.answers(kind, wanted)
     wanted.foreach(id => held(kind).put(id, Held(got.get(id))))
     ids.map(id => id -> held(kind).get(id).document).toMap
   }
 
   private def document(kind: TmdbKind, id: String): Option[BsonDocument] = {
     reads.read(TmdbStore.keyOf(kind, id)) // tracked whatever it holds: its change re-asks the question
-    Option(held(kind).get(id)).getOrElse(Held(store.get(kind, Seq(id)).get(id))).document
+    Option(held(kind).get(id)).getOrElse(Held(store.answers(kind, Seq(id)).get(id))).document
   }
 
   private def heldDocument(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)
