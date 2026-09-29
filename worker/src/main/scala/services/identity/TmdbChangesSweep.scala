@@ -70,7 +70,7 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, client: Tmdb
   private def relevantToRecord(edit: TmdbClient.MovieEdit): Boolean = edit.key match {
     case UnreadableKey  => true
     case "translations" => edit.languages.isEmpty || edit.languages.exists(languages)
-    case "crew"         => edit.jobs.isEmpty || edit.jobs.contains("Director")
+    case "crew"         => edit.jobs.isEmpty || edit.jobs.exists(TmdbFilmRecord.DirectorJobs)
     case key            => RecordKeys(key)
   }
 
