@@ -2,15 +2,23 @@ package services.identity
 
 import services.movies.TitleNormalizer
 
+import scala.collection.mutable
+
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
 private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints,
                                          wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
 
-  def sanitized(title: String): String  = normalizer.sanitize(title)
-  def searchForm(title: String): String = normalizer.searchQuery(title)
+  // Each once per title, and each node's keys once per resolve: every pair of a family's nodes
+  // compares them (`titleLinked`, the constraint edges), and every round of `Families.grow` keys them.
+  private val sanitizedOf  = mutable.HashMap.empty[String, String]
+  private val searchFormOf = mutable.HashMap.empty[String, String]
+  private val keysOf       = mutable.HashMap.empty[String, Set[String]]
+  def sanitized(title: String): String  = sanitizedOf.getOrElseUpdate(title, normalizer.sanitize(title))
+  def searchForm(title: String): String = searchFormOf.getOrElseUpdate(title, normalizer.searchQuery(title))
 
-  def titleKeys(node: EvidenceNode): Set[String] = TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment)
+  def titleKeys(node: EvidenceNode): Set[String] =
+    keysOf.getOrElseUpdate(node.id, TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment))
 
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
     (IdentityMeasures.titleShapes(node.evidence.published).map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap

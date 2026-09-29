@@ -61,6 +61,10 @@ object IdentityMeasures {
         countries.nonEmpty || (originalTitle.exists(_.trim.nonEmpty) && !IdentityMeasures.repeatsItsTitle(this))
     /** The shapes as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
+    /** The directors, and those credited beside the year, parsed once per listing (`directorRelation`). */
+    private[identity] lazy val directorCredits: IdentityMeasures.Credits   = new IdentityMeasures.Credits(directors)
+    private[identity] lazy val creditsBesideYear: IdentityMeasures.Credits =
+      if (yearCredits.isEmpty) directorCredits else new IdentityMeasures.Credits(creditedBesideYear)
     /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
     private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
       originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
@@ -304,6 +308,8 @@ object IdentityMeasures {
     private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =
       (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.TitleForm(_))
     /** The film's titles as series and numbers (`numeralRelation`). */
+    /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
+    private[identity] lazy val directorCredits: Option[IdentityMeasures.Credits] = directors.map(new IdentityMeasures.Credits(_))
     /** The titles, trimmed and non-empty, as comparison forms once per record: the other side of
      *  every node's `originalTitleRelation` to this film. */
     private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
@@ -474,8 +480,11 @@ object IdentityMeasures {
    *  ([[latinized]]); nobody in common THERE is `different_script`, its own category, since a
    *  transliteration can miss a person a Latin spelling names (a Japanese reading of Kanji is not
    *  its pinyin). `incomparable` only when a side has no name left to compare in Latin letters. */
-  def directorRelation(a: Seq[String], b: Seq[String]): Measure = {
-    val (ca, cb) = (new Credits(a), new Credits(b))
+  def directorRelation(a: Seq[String], b: Seq[String]): Measure = creditRelation(new Credits(a), new Credits(b))
+
+  /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
+   *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
+  private def creditRelation(ca: Credits, cb: Credits): Measure = {
     if (ca.isEmpty) MissingListing
     else if (cb.isEmpty) MissingFilm
     else if (ca.isLatin == cb.isLatin) byName(ca, cb, "different")
@@ -903,7 +912,7 @@ object IdentityMeasures {
   private def backsFilm(l: Listing, f: Film): Boolean =
     namesFilm(l, f) && (
       l.statedYear.exists(y => f.year.contains(y)) ||
-        f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
+        f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person")))
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
    *  of a film found once: a wide release lists one title at thousands of venues over one candidate
@@ -1024,8 +1033,8 @@ object IdentityMeasures {
       "year.distance"  -> absDelta(l.year, f.year),
       "titleYear.delta" -> filmMinus(f.year, l.titleYear),
       "season.delta"   -> filmMinus(f.year, l.seasonYear),
-      "director"       -> f.directors.fold[Measure](if (l.directors.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
-                            directorRelation(l.directors, _)),
+      "director"       -> f.directorCredits.fold[Measure](if (l.directors.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
+                            creditRelation(l.directorCredits, _)),
       "runtime.delta"  -> absDelta(l.statedRuntime, f.runtime.filter(_ > 0)),
       "country"        -> countryRelation(l.countries, f.countries),
       "search.rank"    -> searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble)),
@@ -1048,7 +1057,7 @@ object IdentityMeasures {
    *  borrowed from a sibling's credit. */
   private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
     if (TitledRelations(title.value) && ownAgreement(m)._2("year") &&
-        f.directors.exists(directorRelation(l.creditedBesideYear, _) == Category("same_person")))
+        f.directorCredits.exists(creditRelation(l.creditsBesideYear, _) == Category("same_person")))
       m ++ PublishedYear.map(_ -> MissingListing)
     else m
 
