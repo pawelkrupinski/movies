@@ -38,6 +38,18 @@ object JvmProcessMetrics {
   /** Install the JVM + process collectors on `registry`. Registering the same
    *  collector names twice throws, so call this exactly once per registry (each
    *  app does it when its shared registry is built). */
-  def register(registry: PrometheusRegistry): Unit =
+  def register(registry: PrometheusRegistry): Unit = {
     JvmMetrics.builder().register(registry)
+    tools.HotSpotPerfData.own().foreach(registerArchivedClasses(registry, _))
+  }
+
+  /** How many loaded classes came from the image's AOT cache. `jvm_classes_currently_loaded` (the collector
+   *  above) minus this is what landed in metaspace instead — lambdas, which the cache cannot hold, plus every class the cache's
+   *  class list (`aot-classes.txt`) lacks. It rising from one release to the next is code the list
+   *  has not caught up with; scripts/aot-class-list.py regenerates it. */
+  private def registerArchivedClasses(registry: PrometheusRegistry, perf: tools.HotSpotPerfData): Unit =
+    io.prometheus.metrics.core.metrics.GaugeWithCallback.builder()
+      .name("jvm_classes_archived_loaded").help("Loaded classes that came from the AOT cache")
+      .callback(callback => perf.long("java.cls.sharedLoadedClasses").foreach(value => callback.call(value.toDouble)))
+      .register(registry)
 }
