@@ -1831,7 +1831,6 @@ cinemaScrapes:
   Kino U-jazdowski / Drugie życie / 2025
   Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
-  Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Drugie życie / —
   Kinoteka / Drugie życie / 2026
@@ -1970,7 +1969,6 @@ cinemaScrapes:
   Kino U-jazdowski / Drugie życie / 2025
   Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
-  Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Drugie życie / —
   Kinoteka / Drugie życie / 2026
@@ -2323,7 +2321,6 @@ cinemaScrapes:
   Kino Sokół / DZIEŃ OBJAWIENIA / —
   Kino Wawel / Dzień Objawienia / —
   Kino Wisła / Dzień objawienia / 2026
-  Kino Śnieżka / Dzień objawienia / —
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
@@ -2497,7 +2494,6 @@ cinemaScrapes:
   Kino Sokół / DZIEŃ OBJAWIENIA / —
   Kino Wawel / Dzień Objawienia / —
   Kino Wisła / Dzień objawienia / 2026
-  Kino Śnieżka / Dzień objawienia / —
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
@@ -2892,7 +2888,6 @@ cinemaScrapes:
   Kino U-jazdowski / Drugie życie / 2025
   Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
-  Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Drugie życie / —
   Kinoteka / Drugie życie / 2026
@@ -3306,7 +3301,6 @@ cinemaScrapes:
   Kino Wisła Brzeszcze / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino Zdrój / Mandalorian i Grogu / —
   Kino ŚDK / Gwiezdne wojny: mandalorian i grogu / —
-  Kino Śnieżka / Mandalorian i grogu / —
   KinoGram / Gwiezdne wojny: Mandalorian i Grogu / 2026
   Kinomax / Gwiezdne wojny: mandalorian i grogu / —
   Kinoteatr Rondo / Gwiezdne wojny: Mandalorian i Grogu / —
@@ -3556,7 +3550,6 @@ cinemaScrapes:
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Spektrum / K-popowe łowczynie demonów / —
   Kino Twierdza / K-popowe łowczynie demonów / —
-  Kino Śnieżka / K-popowe łowczynie demonów / —
   Kinoteatr Rondo / K-popowe łowczynie demonów / —
   Kinoteka / K-popowe łowczynie demonów / 2026
   Świt / K-popowe łowczynie demonów / —
@@ -3796,7 +3789,6 @@ cinemaScrapes:
   Kino U-jazdowski / Drugie życie / 2025
   Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
-  Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Drugie życie / —
   Kinoteka / Drugie życie / 2026
@@ -3927,7 +3919,6 @@ cinemaScrapes:
   Kino U-jazdowski / Drugie życie / 2025
   Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
-  Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Drugie życie / —
   Kinoteka / Drugie życie / 2026
@@ -6401,7 +6392,7 @@ showings:
 
 === Ostatnia sesja w Paryżu ===
 displayTitle:      Ostatnia sesja w Paryżu
-cinemaTitles:      OSTATNIA SESJA W PARYŻU | Ostatnia sesja w Paryżu | Ostatnia sesja w paryżu
+cinemaTitles:      OSTATNIA SESJA W PARYŻU | Ostatnia sesja w Paryżu
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja
@@ -6428,7 +6419,6 @@ cinemaScrapes:
   Kino Muranów / Ostatnia sesja w Paryżu / 2025
   Kino Przedwiośnie / Ostatnia sesja w Paryżu / 2025
   Kino na Szekspirowskim / Ostatnia sesja w Paryżu / —
-  Kino Śnieżka / Ostatnia sesja w paryżu / —
   Kinoteatr Rialto / Ostatnia sesja w Paryżu / —
 showings:
   2026-06-08  Kino Bułgarska 19             17:00 Sala Dzienniki Motocyklowe
@@ -8911,7 +8901,6 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / Straszny film / —
   Kino Twierdza / Straszny film / —
   Kino Zachęta / Straszny film / 2026
-  Kino Śnieżka / Straszny film / —
   Kinomax / Straszny film / —
   Koneckie Centrum Kultury / Straszny film / —
   Max Kino / Straszny film / —
@@ -9059,7 +9048,6 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / Straszny film / —
   Kino Twierdza / Straszny film / —
   Kino Zachęta / Straszny film / 2026
-  Kino Śnieżka / Straszny film / —
   Kinomax / Straszny film / —
   Koneckie Centrum Kultury / Straszny film / —
   Max Kino / Straszny film / —
@@ -9825,7 +9813,6 @@ cinemaScrapes:
   Kino Tur / Toy Story 5 / —
   Kino Twierdza / Toy story 5 / —
   Kino Wawel / Toy Story 5 / —
-  Kino Śnieżka / Toy story 5 / —
   Koneckie Centrum Kultury / Toy Story 5 / —
   Max Kino / Toy story 5 / —
   Muza / Toy Story 5 / —
@@ -9987,7 +9974,6 @@ cinemaScrapes:
   Kino Tur / Toy Story 5 / —
   Kino Twierdza / Toy story 5 / —
   Kino Wawel / Toy Story 5 / —
-  Kino Śnieżka / Toy story 5 / —
   Koneckie Centrum Kultury / Toy Story 5 / —
   Max Kino / Toy story 5 / —
   Muza / Toy Story 5 / —
@@ -10787,7 +10773,6 @@ cinemaScrapes:
   Kino Wisła / Zawodowcy / 2026
   Kino Zdrój / Zawodowcy / —
   Kino na Boku / Zawodowcy / —
-  Kino Śnieżka / Zawodowcy / —
   Kino Świt / Zawodowcy / —
   KinoGram / Zawodowcy / 2026
   Kinomax / Zawodowcy / —

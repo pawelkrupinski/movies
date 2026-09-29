@@ -34192,21 +34192,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/wydarzenie/willow-i-tajemniczy-las-kntj-2563\u0000Willow i tajemniczy las - KNTJ" ]
   }, {
-    "_id" : "f13d0c721ccd32f3|mielec|Kino Śnieżka",
-    "filmId" : "f13d0c721ccd32f3",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-12T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16917&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-13T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16918&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Willow i tajemniczy las\u0000" ]
-  }, {
     "_id" : "f13d0c721ccd32f3|nowy-sacz|Kino Sokół",
     "filmId" : "f13d0c721ccd32f3",
     "city" : "nowy-sacz",
@@ -39898,17 +39883,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Centrum\u0000https://www.bilety24.pl/kino/1685-rambo-pierwsza-krew-157620?id=938588\u0000Rambo: Pierwsza krew" ]
-  }, {
-    "_id" : "f1a1591e25948c6c|mielec|Kino Śnieżka",
-    "filmId" : "f1a1591e25948c6c",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-23T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16948&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Rambo. Pierwsza krew\u0000" ]
   }, {
     "_id" : "f1a1591e25948c6c|trojmiasto|Kino Żak",
     "filmId" : "f1a1591e25948c6c",
@@ -56061,93 +56035,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Promień\u0000https://kinotuchow.pl/movie/toy-story-5/\u0000Toy Story 5" ]
-  }, {
-    "_id" : "f43cfaf264dae97c|mielec|Kino Śnieżka",
-    "filmId" : "f43cfaf264dae97c",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16924&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-19T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16929&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16925&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16930&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16926&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16931&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16927&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16932&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16928&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16933&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-26T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16934&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-26T16:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16943&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16935&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T16:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16942&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16936&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T16:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16941&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-30T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16937&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-30T16:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16940&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16938&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T16:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16939&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Toy Story 5\u0000" ]
   }, {
     "_id" : "f43cfaf264dae97c|morag|Kino Narie",
     "filmId" : "f43cfaf264dae97c",
@@ -94606,21 +94493,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Promień\u0000https://kinotuchow.pl/movie/gwiezdne-wojny-mandalorian-i-grogu/\u0000Gwiezdne wojny: Mandalorian i Grogu" ]
   }, {
-    "_id" : "f68920d7572b4f7c|mielec|Kino Śnieżka",
-    "filmId" : "f68920d7572b4f7c",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T14:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16960&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    }, {
-      "dateTime" : "2026-06-10T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16905&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "NAP" ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Mandalorian i Grogu - dubbing\u0000" ]
-  }, {
     "_id" : "f68920d7572b4f7c|morag|Kino Narie",
     "filmId" : "f68920d7572b4f7c",
     "city" : "morag",
@@ -101317,25 +101189,6 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Cinema City Lublin Plaza\u0000https://www.cinema-city.pl/filmy/k-popowe-lowczynie-demonow/7704d2r\u0000K-popowe łowczynie demonów" ]
-  }, {
-    "_id" : "f6bb287b87a8d43d|mielec|Kino Śnieżka",
-    "filmId" : "f6bb287b87a8d43d",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16962&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-16T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16963&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-17T15:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16964&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000K-popowe łowczynie demonów\u0000" ]
   }, {
     "_id" : "f6bb287b87a8d43d|poznan|Cinema City Kinepolis",
     "filmId" : "f6bb287b87a8d43d",
@@ -112542,17 +112395,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kinoteatr Rialto\u0000https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=152883\u0000Ostatnia sesja w Paryżu" ]
   }, {
-    "_id" : "f84ec0e7cb7275f3|mielec|Kino Śnieżka",
-    "filmId" : "f84ec0e7cb7275f3",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-12T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16919&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Ostatnia sesja w Paryżu\u0000" ]
-  }, {
     "_id" : "f84ec0e7cb7275f3|plock|Kino Przedwiośnie",
     "filmId" : "f84ec0e7cb7275f3",
     "city" : "plock",
@@ -114904,29 +114746,6 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Cinema City Lublin Plaza\u0000https://www.cinema-city.pl/filmy/zawodowcy/8118s2r\u0000Zawodowcy" ]
-  }, {
-    "_id" : "f8c631e86c360e81|mielec|Kino Śnieżka",
-    "filmId" : "f8c631e86c360e81",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16920&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16921&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-16T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16922&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-17T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16923&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Zawodowcy\u0000" ]
   }, {
     "_id" : "f8c631e86c360e81|morag|Kino Narie",
     "filmId" : "f8c631e86c360e81",
@@ -129314,33 +129133,6 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Cinema City Lublin Plaza\u0000https://www.cinema-city.pl/filmy/dzien-objawienia/7913s2r\u0000Dzień objawienia" ]
-  }, {
-    "_id" : "f983bbf0f521d075|mielec|Kino Śnieżka",
-    "filmId" : "f983bbf0f521d075",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T18:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16949&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T18:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16950&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T18:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16951&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-30T18:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16952&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T18:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16953&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Dzień objawienia\u0000" ]
   }, {
     "_id" : "f983bbf0f521d075|nowy-sacz|Helios Nowy Sącz",
     "filmId" : "f983bbf0f521d075",
@@ -144392,37 +144184,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Lublin Plaza\u0000https://www.cinema-city.pl/filmy/straszny-film/8117s2r\u0000Straszny film" ]
   }, {
-    "_id" : "f9ee904a88e18fbe|mielec|Kino Śnieżka",
-    "filmId" : "f9ee904a88e18fbe",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T19:30:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16910&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "NAP" ]
-    }, {
-      "dateTime" : "2026-06-12T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16911&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    }, {
-      "dateTime" : "2026-06-13T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16912&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    }, {
-      "dateTime" : "2026-06-14T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16916&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    }, {
-      "dateTime" : "2026-06-16T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16914&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    }, {
-      "dateTime" : "2026-06-17T17:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16915&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ "DUB" ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Straszny film - dubbing\u0000" ]
-  }, {
     "_id" : "f9ee904a88e18fbe|morag|Kino Narie",
     "filmId" : "f9ee904a88e18fbe",
     "city" : "morag",
@@ -153107,29 +152868,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino CK Lublin\u0000https://ck-lublin.bilety24.pl/wydarzenie/?id=156809\u0000Drugie życie" ]
-  }, {
-    "_id" : "fa84ad79126cb516|mielec|Kino Śnieżka",
-    "filmId" : "fa84ad79126cb516",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16944&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16945&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16946&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T19:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16947&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Drugie życie\u0000" ]
   }, {
     "_id" : "fa84ad79126cb516|nowy-sacz|Kino Sokół",
     "filmId" : "fa84ad79126cb516",
@@ -167469,17 +167207,6 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Helios Bydgoszcz\u0000https://helios.pl/bydgoszcz/kino-helios/wydarzenie/lobuz-knt-2529\u0000Łobuz - KNT" ]
-  }, {
-    "_id" : "fb4ccee40f1d228c|mielec|Kino Śnieżka",
-    "filmId" : "fb4ccee40f1d228c",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-25T18:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16955&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Łobuz\u0000" ]
   }, {
     "_id" : "fb4ccee40f1d228c|radom|Helios Radom",
     "filmId" : "fb4ccee40f1d228c",
@@ -195956,17 +195683,6 @@
       "format" : [ "2D", "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Hel\u0000https://www.bilety24.pl/kino/1255-niesamowita-historia-mumbo-jumbo-2d-dubbing-157787?id=939561\u0000NIESAMOWITA HISTORIA MUMBO JUMBO" ]
-  }, {
-    "_id" : "feb88969c63ea2d3|mielec|Kino Śnieżka",
-    "filmId" : "feb88969c63ea2d3",
-    "city" : "mielec",
-    "cinema" : "Kino Śnieżka",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-21T10:00:00",
-      "bookingUrl" : "https://bilety.mokdebica.pl/MSI/Default.aspx?event_id=16954&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Śnieżka\u0000Niesamowita historia Mumbo Jumbo\u0000" ]
   }, {
     "_id" : "feb88969c63ea2d3|nowy-sacz|Kino Sokół",
     "filmId" : "feb88969c63ea2d3",

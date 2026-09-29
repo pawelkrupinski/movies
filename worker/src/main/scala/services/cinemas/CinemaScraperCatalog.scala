@@ -174,7 +174,6 @@ class CinemaScraperCatalog(
     KinoKozienickiDomKultury     -> MsiVenue("http://bilety.dkkozienice.pl"),
     KinoSwitZwolen               -> MsiVenue("https://bilety.switzwolen.pl"),
     KinoMCK                      -> MsiVenue("https://bilety.kinolezajsk.pl"),
-    KinoSniezka                  -> MsiVenue("https://bilety.mokdebica.pl"),
     KinoWarszawa                 -> MsiVenue("https://bilety-kino.przeworsk.um.gov.pl"),
     KinoCinemaLumiere            -> MsiVenue("https://bilety.kinoszczytno.pl"),
     KinoIgnacy                   -> MsiVenue("https://www.biletyignacy.pl"),
@@ -391,7 +390,7 @@ class CinemaScraperCatalog(
     new SystemBiletowyClient(http, VisualSoftPortal(systemBiletowyPortals(cinema)), cinema, titles = titles,
       filmGroups = systemBiletowyFilmGroups.get(cinema).toSet, institution = systemBiletowyInstitutions.get(cinema))
 
-  // Venues on their own `<venue>.bilety24.pl` subdomain (7) — as opposed to the
+  // Venues on their own `<venue>.bilety24.pl` subdomain (8) — as opposed to the
   // organiser listings on bilety24.pl itself that `bilety24` above builds.
   private val bilety24Subdomains: Map[Cinema, String] = Map(
     KinoLuna            -> "https://kinoluna.bilety24.pl",
@@ -401,6 +400,7 @@ class CinemaScraperCatalog(
     KinoPiast           -> "https://kino-piast.bilety24.pl",
     KinoLot             -> "https://kino-lot.bilety24.pl",
     KinoOskard          -> "https://ckis-konin.bilety24.pl",
+    KinoSniezka         -> "https://mokdebica.bilety24.pl",   // Dębica; left MSI 2026-09
   )
   private def bilety24Subdomain(cinema: Cinema): Bilety24Client =
     new Bilety24Client(http, bilety24Subdomains(cinema), cinema, titles = titles)
@@ -846,7 +846,7 @@ class CinemaScraperCatalog(
     "radom" -> Seq(helios(HeliosNuxt.Starachowice), msi(KinoCentrumSkarzyskoKamienna), bilety24("https://www.bilety24.pl/kino/organizator/szydlowieckie-centrum-kultury-zamek-1320", KinoGornik), msi(KinoKozienickiDomKultury), systemBiletowy(KinoKuznica), msi(KinoSwitZwolen)),
     "torun" -> Seq(biletyna(KinoMiejskieCentrumKultury), biletyna(KinoZdroj)),
     "kielce" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458", KinoCK), koneckieCentrumKultury),
-    "rzeszow" -> Seq(helios(HeliosNuxt.Krosno), new ArtKinoKrosnoClient(http, KinoArtKino, today), new KinoJednoscClient(http, KinoJednosc), msi(KinoMCK), msi(KinoSniezka), new KinoSokolBrzozowClient(http, KinoSokolBrzozow), msi(KinoWarszawa)),
+    "rzeszow" -> Seq(helios(HeliosNuxt.Krosno), new ArtKinoKrosnoClient(http, KinoArtKino, today), new KinoJednoscClient(http, KinoJednosc), msi(KinoMCK), bilety24Subdomain(KinoSniezka), new KinoSokolBrzozowClient(http, KinoSokolBrzozow), msi(KinoWarszawa)),
     "gliwice" -> Seq(new KinoScenaKulturaClient(http, KinoScenaKultura)),
     "olsztyn" -> Seq(msi(KinoCinemaLumiere), msi(KinoIgnacy), bilety24("https://www.bilety24.pl/kino/organizator/moraski-dom-kultury-1682", KinoNarie)),
     "bielsko-biala" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-janosik-1500", KinoJanosik), systemBiletowy(KinoPckulKino), biletyna(KinoSwitCzechowiceDziedzice), biletyna(KinoTeatrElektryczny), bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539", KinoWislaBrzeszcze), multikino("0033", MultikinoCzechowiceDziedzice)),

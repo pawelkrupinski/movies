@@ -90,6 +90,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
   }
 
+  // Kino Śnieżka (Dębica) moved its box office off MSI (bilety.mokdebica.pl now
+  // serves empty month pages, white since 2026-09-27) onto the venue's own
+  // bilety24 subdomain, which mokdebica.pl links as "Repertuar kina". Fixtures
+  // captured live 2026-09-29: the repertoire and its 25 event pages, 13 of them
+  // films; the concerts and plays carry no "Film:" buy buttons and stay out.
+  it should "route Kino Śnieżka through mokdebica.bilety24.pl, not its dead MSI instance" in {
+    val movies = catalog(direct = new FakeHttpFetch("kino-sniezka-debica")).all.find(_.cinema == KinoSniezka).value.fetch()
+    movies.map(_.cinema).toSet shouldBe Set(KinoSniezka)
+    movies.size shouldBe 13
+    movies.find(_.movie.title == "Lalka").value.showtimes.map(_.dateTime) should contain(
+      java.time.LocalDateTime.of(2026, 10, 2, 18, 45))
+  }
+
   // Both Skierniewice venues sell every ticket through biletyna, one place page
   // each: Kinoteatr Polonez (the cinema, two halls) and the CKiS concert hall
   // at ul. Reymonta 33, which screens the odd film between concerts. Filmweb
