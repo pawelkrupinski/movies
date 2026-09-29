@@ -283,6 +283,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleRelation(Listing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
   }
 
+  it should "not be a record's whole title when the rest of the listing's names no record's work" in {
+    // UK Everyman/Cineworld "Dracula (4K Restoration)": TMDB bills "Dracula" before many sequels, so
+    // it read as a banner and left the listing no work — the Hammer record only overlapped it.
+    val draculas = Seq(Film("Dracula", year = Some(1958)), Film("Dracula", year = Some(1931)), Film("Dracula: Prince of Darkness"),
+      Film("Dracula: A Love Tale"), Film("Dracula: Dead and Loving It"))
+    val q = IdentityMeasures.Qualifiers.learn(draculas)
+    q.of(Listing("Dracula (4K Restoration)")) shouldBe empty
+    IdentityMeasures.titleRelation(Listing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("segment")
+    // A work records bill it before stays one: "Dracula: Prince of Darkness" is not the 1958 film.
+    IdentityMeasures.titleRelation(Listing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
+  }
+
   it should "never be the piece a listing publishes as its original title" in {
     // UK Cineworld's "Cineworld 30: The Dark Knight" (x87), originally "The Dark Knight": TMDB bills
     // the work after two banners too, but the venue names it as the film.

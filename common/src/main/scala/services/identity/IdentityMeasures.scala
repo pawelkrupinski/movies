@@ -234,18 +234,25 @@ object IdentityMeasures {
    *  each piece, by its yearless key and whether it trails, how many distinct other pieces a record
    *  title bills it beside ([[Qualifiers.split]]). No edition, cut or banner word is known in
    *  advance. */
-  final case class Qualifiers(companions: Map[(String, Boolean), Int]) {
+  final case class Qualifiers(companions: Map[(String, Boolean), Int], works: Set[Seq[String]] = Set.empty) {
     private def count(piece: Seq[String], trails: Boolean): Int = companions.getOrElse((piece.mkString, trails), 0)
     /** The listing's qualifier pieces, by key: each piece its whole title adds another to along one
      *  edge, which records bill on the same side beside at least two works — one is a coincidence,
      *  as a house's is ([[Houses.learn]]) — and beside more than they bill the rest of the title on
      *  its side. A tie is no qualifier, and neither is a piece the listing publishes as its original
      *  title: the venue names it as the film ("Cineworld 30: The Dark Knight", originally "The Dark
-     *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). */
+     *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). Nor is a
+     *  LEADING piece some record is titled whole when the rest carries no record's whole title: a
+     *  work leads its sequels, so "Dracula (4K Restoration)" is Dracula however many TMDB bills after
+     *  "Dracula". A trailing piece stays a cut or an edition ("Dark City: Director's Cut"), whatever
+     *  record carries it alone. */
     def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, {
       val named = l.originalTitle.map(yearlessTokens(_).mkString)
+      def leavesNoWork(piece: Seq[String], rest: Seq[String], trails: Boolean) =
+        !trails && works(piece) && !works.exists(work => rest.containsSlice(work))
       (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split).collect {
-        case (piece, rest, trails) if count(piece, trails) >= 2 && count(piece, trails) > count(rest, !trails) && !named.contains(piece.mkString) =>
+        case (piece, rest, trails) if count(piece, trails) >= 2 && count(piece, trails) > count(rest, !trails) && !named.contains(piece.mkString) &&
+            !leavesNoWork(piece, rest, trails) =>
           piece.mkString
       }.toSet
     })
@@ -269,9 +276,11 @@ object IdentityMeasures {
 
     /** Learn from the candidate records one family's listings searched up, by their titles and
      *  original titles. */
-    def learn(records: Seq[Film]): Qualifiers =
-      Qualifiers(records.flatMap(f => Seq(f.title) ++ f.originalTitle).distinct.flatMap(split)
-        .map { case (p, r, trails) => ((p.mkString, trails), r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _))
+    def learn(records: Seq[Film]): Qualifiers = {
+      val titles = records.flatMap(f => Seq(f.title) ++ f.originalTitle).distinct
+      Qualifiers(titles.flatMap(split).map { case (p, r, trails) => ((p.mkString, trails), r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _),
+        titles.map(yearlessTokens).filter(_.nonEmpty).toSet)
+    }
   }
 
   /** Is `edition` a record of `work` under a qualifier: a later record one of whose own titles
