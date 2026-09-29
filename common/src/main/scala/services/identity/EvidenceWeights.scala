@@ -25,9 +25,15 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
    *  different film. */
   def factsProbability(measures: Map[String, Measure]): Double = {
-    // A measure that only AGREES (`IdentityMeasures.AgreesOnly`) never pushes toward a veto.
+    // A measure that only AGREES (`IdentityMeasures.AgreesOnly`) never pushes toward a veto; nor
+    // does a title carrying the other's whole (`IdentityMeasures.ContainingRelations`): DE's "…In
+    // Buenos Aires: Live" sits inside TMDB's "…: Live Viewing", which is no sign of another film.
+    val contains = measures.get("title").exists {
+      case IdentityMeasures.Category(relation) => IdentityMeasures.ContainingRelations(relation)
+      case _                                   => false
+    }
     val veto = calibration.contributions(ListingFilm, measures).collect {
-      case (name, weight) if !Priors(name) && !(IdentityMeasures.AgreesOnly(name) && weight < 0) => weight }.sum
+      case (name, weight) if !Priors(name) && !((IdentityMeasures.AgreesOnly(name) || (name == "title" && contains)) && weight < 0) => weight }.sum
     calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
   }
 

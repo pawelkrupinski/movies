@@ -62,6 +62,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237)))
   }
 
+  it should "take it though its runtime is a quarter hour off, the listing billing the work under a shorter subtitle" in {
+    // DE ×140 "BTS World Tour 'ARIRANG' In Buenos Aires: Live" (195 min): TMDB's German record of
+    // "…: Live Viewing" states 180. The title only measured a fragment of it, and that title's weight
+    // with the runtime gap vetoed the one record the title names, as if it were another film.
+    val films = Seq(F(1770237, "BTS World Tour 'Arirang'  in Buenos Aires: Live Viewing", 2026, "", 180, 5),
+      F(1701849, "BTS WORLD TOUR [ARIRANG] in Busan", 2026, "Ha Jung-jae", 180, 5))
+    val ls = Seq(Multikino, Helios).map(listing(_, "BTS World Tour 'ARIRANG' In Buenos Aires: Live", Some(2026), Some("Jungjae Ha"), Some(195)))
+    val r = shipped(ls, films)
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237)))
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")
