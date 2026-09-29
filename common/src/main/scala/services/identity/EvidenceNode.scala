@@ -6,6 +6,8 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   val weight: Int         = listings.size
   val venue: String       = listings.head.venue
   val venues: Set[String] = listings.map(_.venue).toSet
+  /** The title's words, once per node: `namesOnlyItsVenue` reads them against every candidate. */
+  lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
   def label: String       = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
     (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "") + s" ×$weight"
 }

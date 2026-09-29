@@ -51,7 +51,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   private def namesBeside(decorated: EvidenceNode, whole: String): Boolean = {
     val words = services.movies.TitleContainment.tokens(whole).toSet
     families.scopeOf(decorated).of(decorated).exists { scored =>
-      val pieces = IdentityMeasures.namingPieces(decorated.evidence.measured, scored.candidate.film)
+      val pieces = scoring.namingPieces(decorated, scored.candidate)
       !scored.denied && pieces.nonEmpty && pieces.forall(piece => (piece.toSet intersect words).isEmpty)
     }
   }

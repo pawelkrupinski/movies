@@ -57,7 +57,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id).film)))
+      id => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id))))
 
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
@@ -82,7 +82,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.exists(node => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id).film)))
+      id => cluster.exists(node => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id))))
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denied = true))
   }
 }
