@@ -128,7 +128,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       val sent = finds.asScala.toSeq
       sent should have size 2
       sent.foreach { cmd =>
-        withClue(s"an unbounded batch: $cmd ")(cmd.getNumber("batchSize").intValue() should (be > 0 and be <= services.movies.SlotKeyed.ReplyBatch))
+        withClue(s"an unbounded batch: $cmd ")(cmd.getNumber("batchSize").intValue() should (be > 0 and be <= tools.MongoReplies.Default))
       }
     } finally {
       Await.result(db.drop().toFuture(), 60.seconds)

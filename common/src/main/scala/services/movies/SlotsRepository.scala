@@ -348,7 +348,7 @@ class MongoSlotsRepository(
    *  live film left no trace at all. */
   def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
     coll.fold((Map.empty[String, SourceData], true)) { c =>
-      Try(Await.result(c.find(SlotKeyed.filmFilter(filmId)).toFuture(), 30.seconds)) match {
+      Try(Await.result(c.find(SlotKeyed.filmFilter(filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
         case scala.util.Success(rows) => (rows.map(d => d.slotKey -> d.slot).toMap, true)
         case scala.util.Failure(e) =>
           logger.warn(s"SlotsRepository.findForFilm($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage} " +
@@ -361,7 +361,7 @@ class MongoSlotsRepository(
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
     if (filmIds.isEmpty) (Map.empty, true)
     else coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
-      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(SlotKeyed.ReplyBatch).toFuture(), 60.seconds)) match {
+      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
         case scala.util.Success(rows) =>
           (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
         case scala.util.Failure(e) =>
@@ -386,7 +386,7 @@ class MongoSlotsRepository(
         keyOf          = _._id,
         fetchPage      = (afterId, limit) => {
           val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
         },
         onIncomplete   = exception =>
           logger.warn(s"SlotsRepository.findAll keyset scan failed after retries: " +

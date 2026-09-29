@@ -44,11 +44,11 @@ final class MongoObservationBackend(db: MongoDatabase, collection: String, ttlMi
 
   override def currents(keys: Seq[String]): Map[String, StoredObservation] =
     if (keys.isEmpty) Map.empty
-    else Await.result(coll.find(Filters.and(Filters.in("key", keys.distinct*), Filters.equal("current", true))).toFuture(), Timeout)
+    else Await.result(coll.find(Filters.and(Filters.in("key", keys.distinct*), Filters.equal("current", true))).batchSize(tools.MongoReplies.Observations).toFuture(), Timeout)
       .map(decode).groupBy(_.key).map { case (key, found) => key -> found.head }
 
   def history(key: String): Seq[StoredObservation] =
-    Await.result(coll.find(Filters.equal("key", key)).sort(Sorts.ascending("observedAt")).toFuture(), Timeout).map(decode)
+    Await.result(coll.find(Filters.equal("key", key)).sort(Sorts.ascending("observedAt")).batchSize(tools.MongoReplies.Observations).toFuture(), Timeout).map(decode)
 
   def allCurrent(): Seq[StoredObservation] = {
     val out = Seq.newBuilder[StoredObservation]
@@ -64,7 +64,7 @@ final class MongoObservationBackend(db: MongoDatabase, collection: String, ttlMi
       keyOf = _.key,
       fetchPage = (after, limit) => Await.result(
         coll.find(Filters.and((Filters.equal("current", true) +: (prefix ++ after.map(Filters.gt("key", _)).toSeq))*))
-          .sort(Sorts.ascending("key")).limit(limit).toFuture(), 60.seconds).map(decode),
+          .sort(Sorts.ascending("key")).limit(limit).batchSize(tools.MongoReplies.Observations).toFuture(), 60.seconds).map(decode),
       onIncomplete = e => failure = Some(e))(page)
     if (!complete) throw new IllegalStateException(s"$collection: incomplete read of current observations", failure.orNull)
   }

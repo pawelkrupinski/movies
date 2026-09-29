@@ -297,7 +297,7 @@ class MongoScreeningsRepository(
   // "defer" would have deferred forever against a Mongo-less stack.
   def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
     coll.fold((Map.empty[String, ListedShowtimes], true)) { c =>
-      Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds)) match {
+      Try(Await.result(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
         case Success(docs) => (docs.map(d => d.slotKey -> d.listed).toMap, true)
         case Failure(exception) =>
           logger.warn(s"ScreeningsRepository.findForFilm($filmId) failed: ${exception.getMessage}")
@@ -318,7 +318,7 @@ class MongoScreeningsRepository(
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
     if (filmIds.isEmpty) (Map.empty, true)
     else coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
-      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(SlotKeyed.ReplyBatch).toFuture(), 60.seconds)) match {
+      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
         case scala.util.Success(rows) =>
           (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, true)
         case scala.util.Failure(e) =>
@@ -339,7 +339,7 @@ class MongoScreeningsRepository(
         keyOf          = _._id,
         fetchPage      = (afterId, limit) => {
           val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
         },
         onIncomplete   = exception =>
           logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +

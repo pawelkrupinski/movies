@@ -51,7 +51,7 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
   private lazy val collection: MongoCollection[Document] = db.getCollection[Document](FamiliesCollection)
   private lazy val meta: MongoCollection[Document]       = db.getCollection[Document](MetaCollection)
 
-  def families(): Seq[StoredFamily] = Await.result(collection.find().toFuture(), Timeout).map(d => decode(d.toBsonDocument))
+  def families(): Seq[StoredFamily] = Await.result(collection.find().batchSize(tools.MongoReplies.Families).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
 
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)

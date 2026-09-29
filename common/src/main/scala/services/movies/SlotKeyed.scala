@@ -141,7 +141,7 @@ object SlotKeyed {
    *  answer the sweep's question differently. A failed read reports `false` and is logged
    *  through `warn` under the caller's label. */
   def distinctFilmIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Set[String], Boolean) =
-    Try(Await.result(c.aggregate[Document](Seq(Aggregates.group("$filmId"))).toFuture(), 60.seconds)) match {
+    Try(Await.result(c.aggregate[Document](Seq(Aggregates.group("$filmId"))).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
       case Success(groups) =>
         (groups.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet, true)
       case Failure(exception) =>
@@ -165,7 +165,7 @@ object SlotKeyed {
                                warn: String => Unit): (Set[String], Boolean) =
     ids.toSeq.sorted.grouped(1000).foldLeft((Set.empty[String], true)) { case ((found, complete), batch) =>
       if (!complete) (found, false)
-      else Try(Await.result(c.find[Document](Filters.in("_id", batch*)).projection(Projections.include("_id")).toFuture(), 30.seconds)) match {
+      else Try(Await.result(c.find[Document](Filters.in("_id", batch*)).projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
         case Success(docs) => (found ++ docs.flatMap(idOfDoc), true)
         case Failure(exception) =>
           warn(s"$label.existingRowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
@@ -173,12 +173,6 @@ object SlotKeyed {
           (found, false)
       }
     }
-
-  /** Rows per reply for a side collection's multi-row reads. A find read to completion with
-   *  `toFuture()` otherwise asks for batchSize = Int.MaxValue: every reply fills to Mongo's 16 MB
-   *  cap and the driver keeps a buffer that size pooled (32 MB of idle pooled buffers on worker-uk,
-   *  from 9-15 MB per-film replies). Rows are ~1 KB, so a reply stays near a megabyte. */
-  val ReplyBatch: Int = 1000
 
   /** The stamped listing key's field, on both side collections. */
   val ListingKeyField = "listingKey"
@@ -203,7 +197,7 @@ object SlotKeyed {
    *  read on the `listingKey` index, `_id`s only. */
   def rowIdsForListingKeyChecked[T](c: MongoCollection[T], listingKey: String, label: String,
                                     warn: String => Unit): (Set[String], Boolean) =
-    Try(Await.result(c.find[Document](Filters.eq(ListingKeyField, listingKey)).projection(Projections.include("_id")).toFuture(), 30.seconds)) match {
+    Try(Await.result(c.find[Document](Filters.eq(ListingKeyField, listingKey)).projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
       case Success(docs) => (docs.flatMap(idOfDoc).toSet, true)
       case Failure(exception) =>
         warn(s"$label.rowIdsForListingKey failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
@@ -244,7 +238,7 @@ object SlotKeyed {
       keyOf          = d => idOfDoc(d).getOrElse(throw new IllegalStateException(s"$label: a row whose _id is not a string")),
       fetchPage      = (afterId, limit) => Await.result(
         c.find[Document](afterId.fold(Filters.empty())(Filters.gt("_id", _))).projection(projection)
-          .sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds),
+          .sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds),
       onIncomplete   = exception =>
         warn(s"$label failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
           "reporting the read as incomplete.")
