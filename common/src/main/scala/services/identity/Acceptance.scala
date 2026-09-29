@@ -2,6 +2,7 @@ package services.identity
 
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
+import services.resolution.YearWindow
 
 /** Which of a listing's scored candidates — ranked best first, the denied ones among them — it
  *  TAKES, and at what confidence: [[alone]] for a node on its own evidence, [[pooled]] for a
@@ -161,7 +162,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
-    scored.number("year.distance").exists(_ > 1) || scored.number("runtime.delta").exists(_ >= 30)
+    scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || scored.number("runtime.delta").exists(_ >= 30)
 
   /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
    *  candidate, and no other candidate is one the title names — the rest only a director's
@@ -186,7 +187,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  also needs the published year, a word being many films' title. */
   def directorsWork(ranked: Seq[Scored]): Option[Accepted] = {
     def bareWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(words =>
-      words >= 2 || scored.number("year.distance").exists(_ <= 1))
+      words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
     eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored)) && !contradicted(scored)) match {
       case Seq(one) => Some(one -> one.probability)
@@ -213,7 +214,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  such records are no answer. */
   def datedTitle(ranked: Seq[Scored]): Option[Accepted] =
     eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
-      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= 1) && !contradicted(candidate) &&
+      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= YearWindow.PublishedAdjacency) && !contradicted(candidate) &&
       !candidate.category("director").contains("different")) match {
       case Seq(one) => Some(one -> one.probability)
       case _        => None

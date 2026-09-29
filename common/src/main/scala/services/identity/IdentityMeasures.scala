@@ -3,7 +3,7 @@ package services.identity
 import java.util.Locale
 
 import services.movies.{EmbeddedYear, TitleContainment}
-import services.resolution.SearchTitles
+import services.resolution.{SearchTitles, YearWindow}
 
 /**
  * The raw MEASUREMENTS the calibrated identity score reads: what one listing's own evidence says
@@ -705,7 +705,7 @@ object IdentityMeasures {
   private val WrittenYear = """(?<!\d)(?:18|19|20)\d{2}(?!\d)""".r
   private def yearAgrees(title: String, filmYear: Option[Int]): Boolean = {
     val written = WrittenYear.findAllIn(title).map(_.toInt).toSeq
-    written.isEmpty || filmYear.exists(y => written.exists(w => math.abs(w - y) <= 1))
+    written.isEmpty || filmYear.exists(y => written.exists(w => math.abs(w - y) <= YearWindow.PublishedAdjacency))
   }
 
   def originalTitleRelation(original: Option[String], otherTitles: Seq[String], filmYear: Option[Int] = None): Measure =
@@ -1002,8 +1002,8 @@ object IdentityMeasures {
     val agree = Set.newBuilder[String]; val deny = Set.newBuilder[String]
     // A published year agrees or denies; a year in the title only agrees — a bracket is as often
     // a re-release's year as the film's.
-    m.get("year.distance").foreach { case Number(d) => if (d <= 1) agree += "year" else deny += "year"; case _ => }
-    m.get("titleYear.delta").foreach { case Number(d) if math.abs(d) <= 1 => agree += "year"; case _ => }
+    m.get("year.distance").foreach { case Number(d) => if (d <= YearWindow.PublishedAdjacency) agree += "year" else deny += "year"; case _ => }
+    m.get("titleYear.delta").foreach { case Number(d) if math.abs(d) <= YearWindow.PublishedAdjacency => agree += "year"; case _ => }
     m.get("director").foreach { case Category(c) => if (c == "same_person") agree += "director" else if (c == "different") deny += "director"; case _ => }
     m.get("originalTitle").foreach { case Category(c) => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle"; case _ => }
     (agree.result(), deny.result())
