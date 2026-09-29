@@ -67,6 +67,22 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       }
     }
 
+    // NIO reads a socket into a heap buffer through a temporary direct one of the same size, and
+    // caches it per thread, unbounded: NMT's "Other" held 161 MB of them on worker-uk (~75 buffers of
+    // ~2 MB, the Mongo driver's replies) and fell out of the top categories under the cap (09-29).
+    it should "cap the temporary direct buffers NIO caches per thread" in {
+      launcher(tier) should contain ("-Djdk.nio.maxCachedBufferSize=262144")
+      javaOpts(tier).foreach { case (path, opts) =>
+        withClue(s"$path overrides the launcher's NIO buffer cap: ")("""-Djdk\.nio\.maxCachedBufferSize=""".r.findAllIn(opts).toSeq shouldBe empty)
+      }
+    }
+
+    // 57.9 MB of worker-pl's heap was duplicate String contents ("US", "2D", titles, JSON values);
+    // deduplicating their byte arrays took 11 MB off the live old generation over a fixture run.
+    it should "deduplicate strings the collector keeps" in {
+      launcher(tier) should contain ("-XX:+UseStringDeduplication")
+    }
+
     // The flag is diagnostic, and so are several parity flags: a launcher that names one before
     // -XX:+UnlockDiagnosticVMOptions does not start at all. Starting a JVM under exactly the baked
     // options, in their order, is the check a pod would otherwise make.

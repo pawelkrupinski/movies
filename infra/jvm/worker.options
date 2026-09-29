@@ -9,3 +9,10 @@
 # dirties every page, so the whole archive became private memory (worker image, PL options: 741 MB
 # anonymous RSS relocated, 638 MB in place). Diagnostic: jdk25-parity.options unlocks it first.
 -XX:ArchiveRelocationMode=0
+# Cap the temporary direct buffers NIO caches per thread: a socket read into a heap buffer goes
+# through a direct one of the same size, kept per thread and unbounded by default. NMT's "Other" held
+# 161 MB of them on worker-uk (~75 buffers of ~2 MB, the Mongo driver's replies) until this cap.
+-Djdk.nio.maxCachedBufferSize=262144
+# Share the byte arrays of equal Strings the collector keeps: 57.9 MB of worker-pl's heap was
+# duplicate contents ("US", "2D", titles, JSON values); 11 MB off the live old generation measured.
+-XX:+UseStringDeduplication
