@@ -88,17 +88,21 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   /** (cinema, sanitized slot title) → the keys holding that slot. The old
    *  `rowByCinemaSlot` / `knownByCinemaSlot` pair; the caller picks the canonical
    *  key off the (tiny) set, so the ranking rule stays in one place. */
-  private val keysByCinemaSlot = new SetIndex[(Cinema, String), CacheKey]
+  private val keysByCinemaSlot = new PairSetIndex[Cinema, String, CacheKey]
 
   /** cinema → its slots, with the row each belongs to. The old `heldSlotsOf` scan,
    *  and the prune's stale-slot sweep. */
-  private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[(CacheKey, Source), SourceData]]
+  private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[Source, mutable.Map[CacheKey, SourceData]]]
+  // Nested by source, not keyed by (row, source): a venue has one or two sources, so a slot costs
+  // one map node rather than a node and a Tuple2 (~3 MB of tuples on the US worker's live dump).
+  private def slotOf(cinema: Cinema, source: Source): mutable.Map[CacheKey, SourceData] =
+    slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).getOrElseUpdate(source, mutable.Map.empty)
 
   /** (row, cinema) → the sources on that row belonging to the cinema. A venue's slots on
    *  ONE row without walking the row's every slot: the landing's duplicate-slot drop asks
    *  it once per listing, and [[putSlot]] asks it to keep `keysByCinemaSlot` exact when a
    *  row holds the same (cinema, title) twice. */
-  private val sourcesByRowCinema = new SetIndex[(CacheKey, Cinema), Source]
+  private val sourcesByRowCinema = new PairSetIndex[CacheKey, Cinema, Source]
 
   /** sanitized alias → the concluded bare rows carrying it.
    *
@@ -140,13 +144,13 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
     record.cinemaShowings.foreach { case (cinema, sd) =>
       sd.title.foreach { t =>
-        keysByCinemaSlot.add((cinema, normalizer.sanitize(t)), key)
+        keysByCinemaSlot.add(cinema, normalizer.sanitize(t), key)
       }
     }
     record.data.foreach { case (source, sd) =>
       Source.cinemaOf(source).foreach { cinema =>
-        slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), sd)
-        sourcesByRowCinema.add((key, cinema), source)
+        slotOf(cinema, source).update(key, sd)
+        sourcesByRowCinema.add(key, cinema, source)
       }
     }
     if (isConcludedBareRow(key, record))
@@ -210,9 +214,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     val cinema = Source.cinemaOf(source).getOrElse(
       throw new IllegalArgumentException(s"putSlot is for cinema slots, not $source"))
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
-    slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), slot)
-    sourcesByRowCinema.add((key, cinema), source)
-    val siblings = sourcesByRowCinema.get((key, cinema))
+    slotOf(cinema, source).update(key, slot)
+    sourcesByRowCinema.add(key, cinema, source)
+    val siblings = sourcesByRowCinema.get(key, cinema)
     val before = prior.flatMap(_.title).map(normalizer.sanitize)
     val after  = slot.title.map(normalizer.sanitize)
     if (before != after) {
@@ -221,9 +225,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       before.filterNot(norm => siblings.exists(s => s != source &&
           record.data.get(s).exists(_.title.exists(t => normalizer.sanitize(t) == norm))))
         .foreach { norm =>
-          keysByCinemaSlot.remove((cinema, norm), key)
+          keysByCinemaSlot.remove(cinema, norm, key)
         }
-      after.foreach(norm => keysByCinemaSlot.add((cinema, norm), key))
+      after.foreach(norm => keysByCinemaSlot.add(cinema, norm, key))
     }
   }
 
@@ -232,7 +236,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  fall back to reading the record rather than trust a stale answer. */
   def sourcesAt(key: CacheKey, cinema: Cinema, record: MovieRecord): Option[Set[Source]] = synchronized {
     Option.when(rowsByNormalized.get(key.normalized).flatMap(_.get(key)).exists(_ eq record))(
-      sourcesByRowCinema.get((key, cinema)))
+      sourcesByRowCinema.get(key, cinema))
   }
 
   /** Drop everything `key` contributes. */
@@ -268,16 +272,16 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
   /** Does any row already hold this cinema's slot? (`knownByCinemaSlot`) */
   def holdsCinemaSlot(cinema: Cinema, normalized: String): Boolean =
-    synchronized(keysByCinemaSlot.holds((cinema, normalized)))
+    synchronized(keysByCinemaSlot.holds(cinema, normalized))
 
   /** The keys holding it, for the caller to rank. (`rowByCinemaSlot`) */
   def keysForCinemaSlot(cinema: Cinema, normalized: String): Set[CacheKey] =
-    synchronized(keysByCinemaSlot.get((cinema, normalized)))
+    synchronized(keysByCinemaSlot.get(cinema, normalized))
 
   /** This cinema's slots, with the row each sits on. (`heldSlotsOf`, and the prune) */
   def slotsOf(cinema: Cinema): Seq[(CacheKey, Source, SourceData)] =
     synchronized(slotsByCinema.get(cinema)
-      .map(_.iterator.map { case ((k, s), sd) => (k, s, sd) }.toVector)
+      .map(_.iterator.flatMap { case (s, rows) => rows.iterator.map { case (k, sd) => (k, s, sd) } }.toVector)
       .getOrElse(Vector.empty))
 
   /**
@@ -293,7 +297,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     CorpusIndex.Snapshot(
       rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.toMap }.toMap,
       keysByCinemaSlot = keysByCinemaSlot.toMap,
-      slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.toMap }.toMap,
+      slotsByCinema    = slotsByCinema.map { case (c, bySource) =>
+        c -> bySource.iterator.flatMap { case (s, rows) => rows.iterator.map { case (k, sd) => (k, s) -> sd } }.toMap }.toMap,
       sourcesByRowCinema = sourcesByRowCinema.toMap,
       keysByAlias      = keysByAlias.toMap,
       runsByKey        = runsByKey.toMap,
@@ -305,16 +310,19 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     prior.foreach { record =>
       record.cinemaShowings.foreach { case (cinema, sd) =>
         sd.title.foreach { t =>
-          keysByCinemaSlot.remove((cinema, normalizer.sanitize(t)), key)
+          keysByCinemaSlot.remove(cinema, normalizer.sanitize(t), key)
         }
       }
       record.data.foreach { case (source, _) =>
         Source.cinemaOf(source).foreach { cinema =>
-          slotsByCinema.get(cinema).foreach { slots =>
-            slots -= ((key, source))
-            if (slots.isEmpty) slotsByCinema -= cinema
+          slotsByCinema.get(cinema).foreach { bySource =>
+            bySource.get(source).foreach { rows =>
+              rows -= key
+              if (rows.isEmpty) bySource -= source
+            }
+            if (bySource.isEmpty) slotsByCinema -= cinema
           }
-          sourcesByRowCinema.removeAll((key, cinema))
+          sourcesByRowCinema.removeAll(key, cinema)
         }
       }
       if (isConcludedBareRow(key, record))

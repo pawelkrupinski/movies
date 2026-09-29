@@ -27,3 +27,31 @@ private[movies] final class SetIndex[K, V] {
 
   def toMap: Map[K, Set[V]] = sets.toMap
 }
+
+/**
+ * A [[SetIndex]] keyed on a PAIR, nested by the pair's first component instead of keyed by a
+ * tuple: a tuple per entry was its own object beside the map node (on the US worker's live dump,
+ * [[CorpusIndex]]'s two pair-keyed indexes held 209k entries with 6.7 MB of Tuple2 keys), while
+ * the first components — cinemas, rows — are few and each holds many seconds. The inner maps are
+ * immutable, a single small object while they hold one to four.
+ */
+private[movies] final class PairSetIndex[A, B, V] {
+  private val byFirst = mutable.HashMap.empty[A, Map[B, Set[V]]]
+
+  def add(a: A, b: B, value: V): Unit =
+    byFirst.updateWith(a)(inner => Some(inner.fold(Map(b -> Set(value)))(held => held.updated(b, held.get(b).fold(Set(value))(_ + value)))))
+
+  /** Drop `value` from `(a, b)`'s set, the pair with its last value, and `a` with its last pair. */
+  def remove(a: A, b: B, value: V): Unit =
+    byFirst.updateWith(a)(_.map { held =>
+      held.get(b).map(_ - value).fold(held)(rest => if (rest.isEmpty) held - b else held.updated(b, rest))
+    }.filter(_.nonEmpty))
+
+  def removeAll(a: A, b: B): Unit = byFirst.updateWith(a)(_.map(_ - b).filter(_.nonEmpty))
+
+  def get(a: A, b: B): Set[V] = byFirst.get(a).flatMap(_.get(b)).getOrElse(Set.empty)
+
+  def holds(a: A, b: B): Boolean = byFirst.get(a).exists(_.contains(b))
+
+  def toMap: Map[(A, B), Set[V]] = byFirst.iterator.flatMap { case (a, inner) => inner.iterator.map { case (b, values) => (a, b) -> values } }.toMap
+}

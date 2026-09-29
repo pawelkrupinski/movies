@@ -41,3 +41,28 @@ class SetIndexSpec extends AnyFlatSpec with Matchers {
     before shouldBe Set(1)
   }
 }
+
+class PairSetIndexSpec extends AnyFlatSpec with Matchers {
+
+  "a pair set index" should "answer each pair as a set index keyed on the tuple would" in {
+    val index = new PairSetIndex[String, Int, Char]
+    index.add("a", 1, 'x'); index.add("a", 1, 'y'); index.add("a", 2, 'z'); index.add("b", 1, 'x')
+    index.get("a", 1) shouldBe Set('x', 'y')
+    index.get("a", 3) shouldBe Set.empty
+    index.get("c", 1) shouldBe Set.empty
+    index.holds("a", 2) shouldBe true
+    index.toMap shouldBe Map(("a", 1) -> Set('x', 'y'), ("a", 2) -> Set('z'), ("b", 1) -> Set('x'))
+  }
+
+  it should "drop a pair with its last value, and the first component with its last pair" in {
+    val index = new PairSetIndex[String, Int, Char]
+    index.add("a", 1, 'x'); index.add("a", 2, 'y')
+    index.remove("a", 1, 'x')
+    index.holds("a", 1) shouldBe false
+    index.toMap shouldBe Map(("a", 2) -> Set('y'))
+    index.removeAll("a", 2)
+    index.toMap shouldBe Map.empty
+    index.remove("missing", 1, 'x'); index.removeAll("missing", 1)
+    index.toMap shouldBe Map.empty
+  }
+}
