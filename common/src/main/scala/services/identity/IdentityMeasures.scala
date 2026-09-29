@@ -814,8 +814,16 @@ object IdentityMeasures {
    *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
-  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l))
+  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l))
     .map(_.trim).filter(_.nonEmpty).distinct
+
+  private val BillJoin = """\s\+\s""".r
+  /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
+   *  each searched on its own: the database has no record of the bill, so without them the only
+   *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill
+   *  is neither of its works, which is why its family keys leave them out. */
+  private def billedWorks(l: Listing): Seq[String] =
+    (Seq(l.title) ++ l.rawTitle).map(BillJoin.split(_).toSeq.map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
    *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,

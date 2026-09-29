@@ -72,6 +72,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026")
   }
 
+  "a double bill" should "search each work on its own" in {
+    // PL Kinoteka's "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi": TMDB finds
+    // no record by the whole bill, so the one its first work names was never a candidate, and the
+    // series director's walk handed it another Basia film.
+    val bill = IdentityMeasures.searchQueries(Listing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi"))
+    bill should contain allOf ("Basia. Humor w paski mam", "Kocia Szajka. Tajemnica zniknięcia śledzi")
+    // Only a spaced "+" joins works: "Romeo+Juliet" is one title.
+    IdentityMeasures.searchQueries(Listing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
+  }
+
   "a title containing another" should "say which way: the listing decorates the film, or is a fragment of a longer title" in {
     IdentityMeasures.titleRelation(Listing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
     IdentityMeasures.titleRelation(Listing("It"), Film("It Ends with Us")) shouldBe Category("fragment")
