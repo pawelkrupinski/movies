@@ -121,4 +121,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val rsc = (1693712, Film("RSC Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
     taken(ranked(misanthrope, bare :+ rsc *)) shouldBe None
   }
+
+  "every own match" should "name the rule that took it" in {
+    // PL Kinoteka's "Basia. Humor w paski mam + Kocia Szajka…" was an own match at 38.2%, far under
+    // the calibrated cut, and nothing said which rule took it.
+    val manOfIron = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(153))
+    val wajda     = (225, Film("Man of Iron", year = Some(1981), runtime = Some(144), directors = Some(Seq("Andrzej Wajda"))), Some(7))
+    val favreau   = (1726, Film("Iron Man", year = Some(2008), runtime = Some(126), directors = Some(Seq("Jon Favreau")), popularity = Some(40.0)), Some(1))
+    acceptance.acceptedBy(ranked(manOfIron, favreau, wajda), 225) shouldBe Some("directors-title")
+    val troll = Seq((1180831, Film("Troll 2", year = Some(2025), popularity = Some(20.0)), Some(1)),
+      (736526, Film("Troll", year = Some(2022), popularity = Some(10.0)), Some(2)), (33061, Film("Troll", year = Some(1986)), Some(3)))
+    acceptance.acceptedBy(ranked(Listing("Troll (1986)"), troll *), 33061) shouldBe Some("dated-title")
+    acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 1693710) shouldBe Some("house-production")
+    // A film no rule takes names none.
+    acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 511684) shouldBe None
+  }
 }

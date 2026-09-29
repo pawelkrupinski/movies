@@ -16,22 +16,38 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filterNot(_.denied)
 
-  private def firstOf(ranked: Seq[Scored], rules: Seq[Seq[Scored] => Option[Accepted]]): Option[Accepted] =
-    rules.iterator.flatMap(_(ranked)).nextOption()
+  /** A rule, by the name an explanation gives it. */
+  private final case class Rule(name: String, accepts: Seq[Scored] => Option[Accepted])
+
+  /** The first of `rules` to accept, with its name. */
+  private def firstOf(ranked: Seq[Scored], rules: Seq[Rule]): Option[(Accepted, String)] =
+    rules.iterator.flatMap(rule => rule.accepts(ranked).map(_ -> rule.name)).nextOption()
+
+  private val aloneRules = Seq(Rule("sole-work", soleWork), Rule("favoured-calibrated", favouredCalibrated), Rule("exact-top-hit", topHit),
+    Rule("directors-work", directorsWork), Rule("directors-title", directorsTitle), Rule("dated-title", datedTitle),
+    Rule("house-production", houseProduction))
+
+  /** What [[alone]] takes, with the rule that took it. */
+  private def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
+      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
    *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
    *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
    *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
-  def alone(ranked: Seq[Scored]): Option[Accepted] =
-    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(soleWork, favouredCalibrated, topHit, directorsWork, directorsTitle, datedTitle, houseProduction)))
-      .map(editionNamed(ranked))
+  def alone(ranked: Seq[Scored]): Option[Accepted] = aloneNamed(ranked).map(_._1)
+
+  /** The rule [[alone]] took `film` by, for the decision's explanation — every own match names the
+   *  rule that took it, however far under the calibrated cut its probability stands. */
+  def acceptedBy(ranked: Seq[Scored], film: Int): Option[String] =
+    aloneNamed(ranked).collect { case ((scored, _), rule) if scored.candidate.tmdbId == film => rule }
 
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
    *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibrated]]).
    *  Each the edition of it the listing names, if any ([[editionNamed]]). */
   def pooled(ranked: Seq[Scored]): Option[Accepted] =
-    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(unrivalledCalibrated, topHit)))
+    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit))).map(_._1))
       .map(editionNamed(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale

@@ -34,7 +34,8 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       else ResolverDecision.Basis.BelowThreshold
     val ids   = cluster.map(_.id).toSet
     val own   = cluster.flatMap(node => bestOf.get(node.id).map { case (scored, confidence) =>
-      s"${node.label}: own match ${scored.candidate.tmdbId} at ${ResolverDecision.percent(confidence)}${acceptance.liftedBy(scope.of(node), scored, confidence)} " +
+      s"${node.label}: own match ${scored.candidate.tmdbId} at ${ResolverDecision.percent(confidence)}${acceptance.liftedBy(scope.of(node), scored, confidence)}" +
+        acceptance.acceptedBy(scope.of(node), scored.candidate.tmdbId).fold("")(rule => s" by $rule") + " " +
         s"(${calibration.explain(ListingFilm, scored.measures)})" })
     val joins = edges.filter(edge => edge.must && ids(edge.a) && ids(edge.b)).groupBy(_.reason).toSeq.sortBy(_._1)
       .map { case (reason, reasonEdges) => s"joined by ${reason} ×${reasonEdges.size}" }
