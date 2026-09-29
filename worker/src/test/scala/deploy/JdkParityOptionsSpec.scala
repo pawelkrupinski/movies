@@ -30,8 +30,7 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
     """JAVA_OPTS: >-\n\s+(.+)""".r.findFirstMatchIn(RepoFile.read(manifest))
       .getOrElse(fail(s"$manifest has no JAVA_OPTS"))
       .group(1).trim.split("\\s+").toSeq
-      .map(_.replaceAll("^(-XX:(?:HeapDumpPath|ErrorFile|SharedArchiveFile))=.*", "$1=" + tmp.resolve("x")))
-      .filterNot(_ == "-XX:+AutoCreateSharedArchive")
+      .map(_.replaceAll("^(-XX:(?:HeapDumpPath|ErrorFile))=.*", "$1=" + tmp.resolve("x")))
 
   private lazy val tmp = java.nio.file.Files.createTempDirectory("jdk-parity")
 
@@ -76,8 +75,8 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
   )
 
   private val tiers = Seq(
-    ("web",    "infra/kubernetes/web/base/all.yaml",             Seq("jdk25-parity.options", "jdk25-parity-g1.options"), Jdk25Common ++ Jdk25G1),
-    ("worker", "infra/kubernetes/worker/overlays/pl/patch.yaml", Seq("jdk25-parity.options"),                            Jdk25Common),
+    ("web",    "infra/kubernetes/web/base/all.yaml",             Seq("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"), Jdk25Common ++ Jdk25G1),
+    ("worker", "infra/kubernetes/worker/overlays/pl/patch.yaml", Seq("jdk25-parity.options", "worker.options"),          Jdk25Common),
   )
 
   tiers.foreach { case (tier, manifest, files, expected) =>

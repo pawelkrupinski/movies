@@ -71,10 +71,11 @@ lazy val heapDumpScript = Seq(
     ((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh",
 )
 
-// JDK 27 held to JDK 25's behaviour: the options in infra/jvm/ go into each dist's
-// conf/application.ini, which the start script reads ahead of the overlay's JAVA_OPTS. The files
-// say which difference each line undoes; JdkParityOptionsSpec holds them to 25's values.
-def jdk25Parity(files: String*) = Seq(
+// JVM options baked into each dist's conf/application.ini, which the start script reads ahead of
+// the overlay's JAVA_OPTS: JDK 27 held to JDK 25's behaviour (jdk25-parity*.options, which
+// JdkParityOptionsSpec holds to 25's values) and each tier's collector and JIT shape
+// (worker.options, web.options), which the image's AOT cache is trained under.
+def launcherOptions(files: String*) = Seq(
   Universal / javaOptions ++= files.flatMap { name =>
     IO.readLines((LocalRootProject / baseDirectory).value / "infra" / "jvm" / name)
       .map(_.trim)
@@ -271,7 +272,7 @@ lazy val worker = (project in file("worker"))
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
-  .settings(jdk25Parity("jdk25-parity.options"))
+  .settings(launcherOptions("jdk25-parity.options", "worker.options"))
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -347,12 +348,15 @@ lazy val web = (project in file("web"))
       scalatestPlay % Test
     ),
     // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).
+    // Resources stay in the jar, not in a `conf/` directory on the classpath: the image's AOT cache
+    // (tools.ClassArchiveTraining) refuses a classpath holding a non-empty directory.
+    PlayKeys.externalizeResources := false,
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
-  .settings(jdk25Parity("jdk25-parity.options", "jdk25-parity-g1.options"))
+  .settings(launcherOptions("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"))
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //

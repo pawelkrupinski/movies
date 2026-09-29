@@ -1,0 +1,4 @@
+# The web tier's collector, baked into the launcher for the same reason as worker.options: the
+# image's AOT cache is trained through this launcher and maps only under the collector it was
+# trained with. AotCacheOptionsSpec holds the overlays to it.
+-XX:+UseG1GC

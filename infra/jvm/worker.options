@@ -1,0 +1,7 @@
+# The worker's collector and JIT shape, baked into the launcher rather than left to each overlay's
+# JAVA_OPTS: the image's AOT cache (tools.ClassArchiveTraining) is trained through the same
+# launcher, and a cache trained under another collector or type-speculation setting does not map,
+# silently putting every class back into metaspace. AotCacheOptionsSpec holds the overlays to these.
+# SerialGC and no type speculation were carried from Fly as the fix for an OOM-restart loop under G1.
+-XX:+UseSerialGC
+-XX:-UseTypeSpeculation

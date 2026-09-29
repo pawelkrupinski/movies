@@ -80,6 +80,15 @@ COPY stage/ ./
 # the bit (tar artefact, direct `docker build`, etc.) won't be harmed
 # by re-applying 0755.
 RUN chmod +x bin/*
+# AOT CACHE: classes served from /app/classes.aot live in that mapped file, not in metaspace
+# (loading the worker's 31k classes: 157 MB metaspace + 37 MB class space without it, 0.6 MB with
+# it; worker-pl died of `OutOfMemoryError: Metaspace` at its 128m cap before it). The training
+# (tools.ClassArchiveTraining) runs through the app's own launcher so the classpath and the baked
+# options (conf/application.ini: collector, JIT shape, JDK-25 parity) are the ones it starts with --
+# a cache trained under others does not map. -Xmx512m keeps the training heap in the same
+# compressed-pointer range as every pod's. `test -s` fails the build rather than ship without it.
+RUN JAVA_OPTS="-Xmx512m -XX:AOTCacheOutput=/app/classes.aot" bin/$BIN -main tools.ClassArchiveTraining 2>&1 \
+      | grep -v "Preload Warning" ; test -s /app/classes.aot
 EXPOSE 9000
 # HEAP DUMPS: bounded, uniquely named, and on a volume that outlives the pod.
 #
@@ -118,6 +127,11 @@ EXPOSE 9000
 # only for a read-only root with nothing mounted at /data. Cap the file on boot so a crash-loop can't fill /data (keep the
 # last ~4 MB); web's emptyDir sizeLimit is derived from this cap (NodeMemoryBudgetSpec). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in each k3s overlay's JAVA_OPTS).
+#
+# AOT CACHE: -XX:AOTCache=/app/classes.aot (trained above) is appended unless JAVA_OPTS already
+# names a CDS archive, which the JVM refuses to start beside it ("cannot be used at the same time
+# with ... SharedArchiveFile") -- an overlay still carrying one runs without the cache, not in a
+# crash loop. AotCacheOptionsSpec keeps the overlays free of them.
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     bin/heap-dumps.sh prune /data/heapdumps || true; \
     if dump=$(bin/heap-dumps.sh dump-file /data/heapdumps); then export JAVA_OPTS="$JAVA_OPTS -XX:HeapDumpPath=$dump"; fi; \
@@ -126,6 +140,7 @@ CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     if [ -f "$stderr_log" ] && [ "$(wc -c < "$stderr_log")" -gt 16777216 ]; then \
       tail -c 4194304 "$stderr_log" > "$stderr_log.tmp" && mv "$stderr_log.tmp" "$stderr_log"; fi; \
     rm -rf /data/jfr 2>/dev/null; \
+    case " $JAVA_OPTS " in *SharedArchiveFile*|*-Xshare*) ;; *) export JAVA_OPTS="$JAVA_OPTS -XX:AOTCache=/app/classes.aot";; esac; \
     launch() { exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
