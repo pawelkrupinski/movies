@@ -12,28 +12,37 @@ import tools.HttpFetch
 object StoredLookupsEquivalence {
   final case class Result(questions: Int, films: Int, mismatches: Seq[String])
 
-  /** `fetch` whose recording MISSES — counted in `misses`, and answered by the replay with a 404
-   *  (the hard clusters') or an empty body (the full corpora's `GapLeaf`) — fail as what they are, a
-   *  request never recorded: a transient failure, which normalizes to nothing (a gap), where a real
-   *  404 or empty answer is an answer. The recorded side reads them as `Unknown` by the same count. */
-  private final class MissAsGap(fetch: HttpFetch, misses: () => Long) extends HttpFetch {
-    private def read[A](call: => A): A = {
+  /** `fetch` whose recording MISSES fail as what they are, a request never recorded: a transient
+   *  failure, which normalizes to nothing (a gap), where a real 404 or empty answer is an answer. A
+   *  miss is one counted in `misses` now (answered 404 by the hard clusters' replay, `{}` by the full
+   *  corpora's `GapLeaf`) or one the replay ever NAMED in `missed` — the full corpora's cache remembers
+   *  a leaf's `{}` and serves it again uncounted, so a request the resolve met as a gap comes back here
+   *  as an empty body. The recorded side read each of them as `Unknown`. */
+  private final class MissAsGap(fetch: HttpFetch, misses: () => Long, missed: () => Seq[String]) extends HttpFetch {
+    @volatile private var named = (-1L, Set.empty[String])
+    private def everMissed(method: String, url: String): Boolean = {
+      val now = misses()
+      if (named._1 != now) named = (now, missed().toSet)
+      named._2(s"$method $url")
+    }
+    private def read[A](method: String, url: String)(call: => A): A = {
+      if (everMissed(method, url)) throw new java.io.IOException("not recorded")
       val before  = misses()
       val outcome = scala.util.Try(call)
       if (misses() != before) throw new java.io.IOException("not recorded")
       outcome.get
     }
-    override def get(url: String): String                              = read(fetch.get(url))
-    override def get(url: String, headers: Map[String, String]): String = read(fetch.get(url, headers))
-    override def getBytes(url: String): Array[Byte]                   = read(fetch.getBytes(url))
-    override def post(url: String, body: String, contentType: String): String = read(fetch.post(url, body, contentType))
+    override def get(url: String): String                              = read("GET", url)(fetch.get(url))
+    override def get(url: String, headers: Map[String, String]): String = read("GET", url)(fetch.get(url, headers))
+    override def getBytes(url: String): Array[Byte]                   = read("BYTES", url)(fetch.getBytes(url))
+    override def post(url: String, body: String, contentType: String): String = read("POST", url)(fetch.post(url, body, contentType))
   }
 
-  def check(fetch: HttpFetch, misses: () => Long, language: java.util.Locale,
+  def check(fetch: HttpFetch, misses: () => Long, missed: () => Seq[String], language: java.util.Locale,
             asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]])): Result = {
     val (queries, films) = asked
     val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
-    val through = new NormalizingHttpFetch(new MissAsGap(fetch, misses), new TmdbNormalizer(store))
+    val through = new NormalizingHttpFetch(new MissAsGap(fetch, misses, missed), new TmdbNormalizer(store))
     val filling = new TmdbIdentityLookups(new clients.TmdbClient(through, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
       language = language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(through), Nil)
     queries.keys.toSeq.sorted.foreach(filling.candidates)
