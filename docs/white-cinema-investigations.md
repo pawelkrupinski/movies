@@ -4,9 +4,10 @@ Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
 *parser returned zero showtimes* (parsed-but-empty), as opposed to red/yellow
 (the fetch itself threw — 5xx/timeout/TLS/403). Each run targets cinemas whose
-**last 3 consecutive active scrape buckets are all white** and records, per
-venue, the root cause + action: `fixed` (SHA) / `unfixable: <reason>` /
-`intentionally-dormant` / `needs-human: <reason>` / `recovered`.
+**last 3 consecutive active scrape buckets are all white**, and — since
+2026-09-29 — those whose **last 3 are all red** (see "A fourth target"), and
+records, per venue, the root cause + action: `fixed` (SHA) / `unfixable: <reason>` /
+`intentionally-dormant` / `needs-human: <reason>` / `recovered` / `transient`.
 
 Read this before investigating so you don't re-diagnose a venue already settled,
 and so you can re-check whether a previously-broken venue has recovered.
@@ -147,6 +148,37 @@ is genuinely gone while Filmweb is complete is
 fallback run after run. Baseline 2026-09-26: 2 active (both Mikro screens,
 fixed the same day). See that entry's fallback table.
 
+### A fourth target: RED venues (last 3 active buckets all red)
+
+Added 2026-09-29. A red venue serves NOTHING unless a fallback covers it, which
+is worse than white. That run found Kino Na Biegunach (Jarosław) red for a week:
+its MSI host had stopped answering TCP, and the Filmweb fallback couldn't cover
+it (`filmwebFallback` doc `UNCOVERED`, `fallbackRef: null`). Earlier runs only
+counted red and called it "out of brief". Now every run lists and diagnoses
+them with the same verdicts as white, plus `transient`.
+
+- **List:** the sweep script's `<db>_red` arrays (last 3 non-empty buckets all
+  `R`). A venue flickering red/yellow is broken too; look at its `bars`.
+- **Group before probing:** group by `host` and by error class. The classes are
+  connect timeout/`CircuitOpenException`, `403`/Cloudflare, `404/410`, `5xx` and TLS.
+  One host with many venues is one cause, and a client-wide jump shows as a ratio
+  against the previous run.
+- **Duration:** use `redBuckets` plus the archive age (`arch`). One or two red
+  buckets that are green again is `transient`. Red for more than a day is an outage.
+- **Coverage:** check PL `cover` (`ACTIVE <id>` = Filmweb serving,
+  `UNCOVERED` = dark), DE `fallback: true` buckets (kinoprogramm.com), and
+  UK/US chain→Flicks. **An uncovered red venue is dark to users. Do it first.**
+- **Diagnose live:**
+  - Connect timeout: is the host down everywhere, or did the programme move?
+    Follow the venue's main site's "repertuar"/"kup bilet" links.
+  - 404/410: the site was rebuilt, the slug renamed, or the venue closed. For
+    DE/ES/US, check for closure and for a re-listing under a new aggregator id,
+    then follow the retire precedent (`data/scripts/retire_venues.py`, 09-26/27 entries).
+  - 403: an IP block; see the proxy memories.
+  - TLS: probe plain `http://` first.
+- **Log** a red table per country: venue, host, error class, red since,
+  covered?, verdict.
+
 ### A third target: `thin` buckets (screenings, but none in the next 72h)
 
 Added 2026-09-26 (@650ad3211). The partial-parse mask above now has a flag.
@@ -219,7 +251,10 @@ Saved as a scratch `sweep.js` and run with
 Per DB it emits the white list (`bars` = the retained status string, oldest
 first; `arch` = `<age>d/<films>` from `cinema_scrapes`; `g2w` = a
 green→white transition in-window; `seas` = the seasonal-name regex), plus
-red/thin counts and per-service `fallback: true` bucket counts.
+the red list (`red` = last 3 non-empty buckets all red; `redBuckets` = red
+buckets in-window; `errors` = the newest bucket's exception strings; `host` =
+the host named in them; `cover` = the PL `filmwebFallback` doc's state), the
+thin count and per-service `fallback: true` bucket counts.
 
 ```js
 const DBS=['kinowo','kinowo_uk','kinowo_de','kinowo_us','kinowo_es'];
@@ -231,10 +266,12 @@ for (const name of DBS){
   const rows=d.uptimeBuckets.aggregate([
     {$match:{service:{$not:/(\|enrichment$|^img:)/}}},
     {$sort:{bucket:1}},
-    {$group:{_id:'$service',b:{$push:{s:'$successes',f:'$failures',z:'$zeroes',fb:'$fallback',th:'$thin',t:'$bucket'}}}}
+    {$group:{_id:'$service',b:{$push:{s:'$successes',f:'$failures',z:'$zeroes',fb:'$fallback',th:'$thin',t:'$bucket',e:'$errors'}}}}
   ],{allowDiskUse:true}).toArray();
-  const arch={}; d.cinema_scrapes.find({},{scrapedAt:1,films:1}).forEach(a=>{arch[a._id]={at:a.scrapedAt,n:Array.isArray(a.films)?a.films.length:(a.films||0)}});
-  let white=[],red=0,thin=[],fb=[],trans=[];
+  const arch={}; d.cinema_scrapes.find({},{scrapedAt:1,films:1}).forEach(a=>{if(a.scrapedAt) arch[a._id]={at:a.scrapedAt,n:Array.isArray(a.films)?a.films.length:(a.films||0)}});
+  const cover={}; if(name==='kinowo') d.filmwebFallback.find({},{active:1,fallbackRef:1,history:{$slice:1}}).forEach(f=>{
+    cover[f._id]=f.active?'ACTIVE '+f.fallbackRef:(f.fallbackRef==null&&/UNCOVERED/.test((f.history||[])[0]||'')?'UNCOVERED':'none')});
+  let white=[],red=[],thin=[],fb=[];
   for(const r of rows){
     const st=r.b.map(x=>{const f=x.f||0,s=x.s||0,z=x.z||0; if(f+s+z===0) return null; return f>0?(s+z>0?'Y':'R'):s>0?'G':'Z'}).filter(x=>x);
     const act=r.b.filter(x=>(x.f||0)+(x.s||0)+(x.z||0)>0);
@@ -244,15 +281,20 @@ for (const name of DBS){
       const g2w = st.join('').match(/G+Z+$/)!=null;
       white.push({svc:r._id,bars:st.join(''),arch:a?age.toFixed(1)+'d/'+a.n:'none',g2w,seas:seasonal.test(r._id)});
     }
-    if(last.length&&last[last.length-1]==='R') red++;
+    if(last.length===3&&last.every(x=>x==='R')){
+      const a=arch[r._id]; const errs=(act[act.length-1].e||[]).map(e=>String(e).slice(0,160));
+      const host=(errs.join(' ').match(/(?:for|GET|POST|https?:\/\/)\s*([a-z0-9.-]+\.[a-z]{2,})/i)||[])[1]||'?';
+      red.push({svc:r._id,bars:st.join(''),redBuckets:st.filter(x=>x==='R').length,
+        arch:a?((Date.now()-a.at)/864e5).toFixed(1)+'d/'+a.n:'none',host,errors:[...new Set(errs)].slice(0,2),cover:cover[r._id]||'n/a'});
+    }
     if(last.length===3&&last.every(x=>x==='G')&&lastB.every(x=>x.th)) thin.push(r._id);
     const nfb=act.filter(x=>x.fb).length; if(nfb) fb.push(r._id+' ('+nfb+'/'+act.length+')');
   }
-  out[name]={newest:newest&&newest.bucket,services:rows.length,white:white.length,red,thin:thin.length,fb,
+  out[name]={newest:newest&&newest.bucket,services:rows.length,white:white.length,red:red.length,thin:thin.length,fb,
     g2w:white.filter(w=>w.g2w).length, nonSeasArch10:white.filter(w=>!w.seas&&w.arch!=='none'&&parseFloat(w.arch)<=10).length,
     seasonal:white.filter(w=>w.seas).length};
   if(name==='kinowo'){out.plWhite=white; out.plThin=thin;}
-  out[name+'_list']=white;
+  out[name+'_list']=white; out[name+'_red']=red;
 }
 print(JSON.stringify(out));
 ```
