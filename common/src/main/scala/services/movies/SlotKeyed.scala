@@ -174,6 +174,12 @@ object SlotKeyed {
       }
     }
 
+  /** Rows per reply for a side collection's multi-row reads. A find read to completion with
+   *  `toFuture()` otherwise asks for batchSize = Int.MaxValue: every reply fills to Mongo's 16 MB
+   *  cap and the driver keeps a buffer that size pooled (32 MB of idle pooled buffers on worker-uk,
+   *  from 9-15 MB per-film replies). Rows are ~1 KB, so a reply stays near a megabyte. */
+  val ReplyBatch: Int = 1000
+
   /** The stamped listing key's field, on both side collections. */
   val ListingKeyField = "listingKey"
 

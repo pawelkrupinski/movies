@@ -361,7 +361,7 @@ class MongoSlotsRepository(
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
     if (filmIds.isEmpty) (Map.empty, true)
     else coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
-      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).toFuture(), 60.seconds)) match {
+      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(SlotKeyed.ReplyBatch).toFuture(), 60.seconds)) match {
         case scala.util.Success(rows) =>
           (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
         case scala.util.Failure(e) =>

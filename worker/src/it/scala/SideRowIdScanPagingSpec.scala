@@ -95,4 +95,44 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       client.close()
     }
   }
+
+  // A find read to completion with `toFuture()` asks the server for batchSize = Int.MaxValue, so every
+  // reply fills to Mongo's 16 MB cap and the driver keeps a buffer that size pooled: worker-uk's
+  // per-film reads returned 9-15 MB replies several times an hour, and 32 MB of idle pooled
+  // buffers sat in its heap (live dump, 2026-09-29). Rows are ~1 KB, so a bounded batch keeps
+  // each reply near a megabyte.
+  "the side collections' per-film reads" should "ask for bounded batches, never the whole result in one reply" in {
+    val finds = new java.util.concurrent.ConcurrentLinkedQueue[org.bson.BsonDocument]()
+    val settings = MongoClientSettings.builder()
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .addCommandListener(new CommandListener {
+        override def commandStarted(event: CommandStartedEvent): Unit =
+          if (event.getCommandName == "find") finds.add(event.getCommand.clone())
+      })
+      .build()
+    val client = MongoClient(settings)
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-batches"))
+    try {
+      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
+      val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)
+      val when       = LocalDateTime.now().plusDays(2).withNano(0)
+      (1 to Films).foreach { n =>
+        screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None))
+        slots.upsertSlot(s"film$n|2026", s"Kino␟film $n", SourceData(title = Some(s"Film $n")))
+      }
+      val films = (1 to Films).map(n => s"film$n|2026").toSet
+
+      finds.clear()
+      screenings.findForFilmsChecked(films)._1.keySet shouldBe films
+      slots.findForFilmsChecked(films)._1.keySet shouldBe films
+      val sent = finds.asScala.toSeq
+      sent should have size 2
+      sent.foreach { cmd =>
+        withClue(s"an unbounded batch: $cmd ")(cmd.getNumber("batchSize").intValue() should (be > 0 and be <= services.movies.SlotKeyed.ReplyBatch))
+      }
+    } finally {
+      Await.result(db.drop().toFuture(), 60.seconds)
+      client.close()
+    }
+  }
 }
