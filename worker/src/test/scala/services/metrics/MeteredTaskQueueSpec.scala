@@ -6,6 +6,7 @@ import services.staging.StagingStep
 import services.tasks.{EnqueueResult, InMemoryTaskQueue, QueueSnapshot, TaskQueue, TaskType}
 
 import java.time.Instant
+import scala.concurrent.duration.FiniteDuration
 
 /** The decorator must meter the real enqueue outcome: a fresh task as `added`,
  *  a collapse onto an active dup as `deduped`. */
@@ -33,7 +34,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     val series        = new WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
     val metrics       = new WorkerTaskMetrics("pl", series)
     val failing = new InMemoryTaskQueue {
-      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
+      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
         EnqueueResult.Failed("mongo down")
     }
     val queue: TaskQueue = new MeteredTaskQueue(failing, metrics)

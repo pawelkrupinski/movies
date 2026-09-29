@@ -14,9 +14,9 @@ class CachingTaskQueueSpec extends AnyFlatSpec with Matchers {
   /** Counts delegate enqueue calls so a cache-served repeat is observable. */
   private class CountingQueue extends InMemoryTaskQueue {
     var enqueueCalls = 0
-    override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult = {
+    override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult = {
       enqueueCalls += 1
-      super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
+      super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
     }
   }
 
@@ -53,9 +53,9 @@ class CachingTaskQueueSpec extends AnyFlatSpec with Matchers {
   it should "NOT remember a key whose enqueue FAILED — the next enqueue must hit the delegate" in {
     val delegate = new CountingQueue {
       var failNext = true
-      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
+      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
         if (failNext) { failNext = false; enqueueCalls += 1; EnqueueResult.Failed("mongo down") }
-        else super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
+        else super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
     }
     val q = new CachingTaskQueue(delegate)
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Failed("mongo down")

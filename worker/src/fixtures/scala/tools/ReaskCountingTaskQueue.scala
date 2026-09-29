@@ -43,8 +43,8 @@ final class ReaskCountingTaskQueue(delegate: TaskQueue, freshness: => FreshnessS
   def reasked: Map[TaskType, Long] = reasks.asScala.view.mapValues(_.get).toMap
 
   override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String],
-                       submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult = {
-    val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
+                       submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult = {
+    val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
     val stamp  = if (result == EnqueueResult.Added) freshness.lastFetchedAt(dedupKey) else None
     if (stamp.isDefined && dueWindowFor(taskType).exists(!_.isDue(dedupKey, stamp, now()))) {
       reasks.computeIfAbsent(taskType, _ => new AtomicLong()).incrementAndGet()

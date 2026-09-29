@@ -24,7 +24,8 @@ class InMemoryTaskQueue extends TaskQueue {
     attempts:       Int,
     workerId:       Option[String],
     leaseExpiresAt: Option[Instant],
-    nextEligibleAt: Option[Instant] = None
+    nextEligibleAt: Option[Instant] = None,
+    enqueuedAt:     Option[Instant] = None
   )
 
   private val rows = scala.collection.mutable.LinkedHashMap.empty[String, Row]
@@ -36,7 +37,8 @@ class InMemoryTaskQueue extends TaskQueue {
     dedupKey:    String,
     payload:     Map[String, String],
     submittedAt: Instant,
-    notBefore:   Option[Instant]
+    notBefore:   Option[Instant],
+    claimAhead:  FiniteDuration
   ): EnqueueResult = {
     val result = lock.synchronized {
       // `complete` removes the row, so any row still present with this key is active.
@@ -44,7 +46,8 @@ class InMemoryTaskQueue extends TaskQueue {
       if (active) EnqueueResult.Duplicate
       else {
         val id = UUID.randomUUID().toString
-        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting, submittedAt, 0, None, None, notBefore))
+        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting,
+          submittedAt.minusMillis(claimAhead.toMillis), 0, None, None, notBefore, Some(submittedAt)))
         EnqueueResult.Added
       }
     }
@@ -126,7 +129,7 @@ class InMemoryTaskQueue extends TaskQueue {
       .sortBy(r => (TaskState.activeByPriority.indexOf(r.state), r.submittedAt))
       .take(activeLimit)
       .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
-        r.attempts, r.workerId, r.leaseExpiresAt, None, r.nextEligibleAt))
+        r.attempts, r.workerId, r.leaseExpiresAt, None, r.nextEligibleAt, r.enqueuedAt))
     QueueSnapshot(counts, active)
   }
 

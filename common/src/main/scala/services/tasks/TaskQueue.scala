@@ -1,6 +1,6 @@
 package services.tasks
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import java.time.Instant
 
 /** The kinds of deferred work the queue carries. Extensible — add a case and a
@@ -171,13 +171,21 @@ trait TaskQueue {
    *  `nextEligibleAt` gate the transient-failure backoff uses) — so a caller can
    *  enqueue a burst of tasks at staggered eligibility to spread claim pressure
    *  (see [[services.tasks.ChunkScrapePlanner]]) instead of making them all
-   *  claimable at once. `None` = immediately claimable, the default. */
+   *  claimable at once. `None` = immediately claimable, the default.
+   *
+   *  `claimAhead` places the task that far ahead in the claim order — [[claim]] takes
+   *  the oldest `submittedAt` first, so the queue orders it as if submitted `claimAhead`
+   *  earlier — while [[TaskSummary.enqueuedAt]] keeps the real `submittedAt`. Back-dating
+   *  `submittedAt` itself bought the same priority but made the task read as one that had
+   *  waited `claimAhead` on the pool: every first share card showed as a day-old head of
+   *  line (2026-09-28/29, PL/UK/DE). */
   def enqueue(
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String] = Map.empty,
     submittedAt: Instant             = Instant.now(),
-    notBefore:   Option[Instant]     = None
+    notBefore:   Option[Instant]     = None,
+    claimAhead:  FiniteDuration      = Duration.Zero
   ): EnqueueResult
 
   /** Merge `fields` into the payload of the WAITING task under `dedupKey` — for a caller
@@ -265,17 +273,23 @@ case class TaskSummary(
   leaseExpiresAt: Option[Instant],
   lastError:      Option[String],
   // The retry-backoff / staggered-enqueue gate: `claim` skips the task until then.
-  nextEligibleAt: Option[Instant] = None
+  nextEligibleAt: Option[Instant] = None,
+  // When the task was really enqueued — `submittedAt` is its place in the claim order,
+  // earlier by the enqueue's `claimAhead`.
+  enqueuedAt:     Option[Instant] = None
 ) {
   /** Claimable at `now` — waiting and past any `nextEligibleAt` gate. */
   def claimableAt(now: Instant): Boolean =
     state == TaskState.Waiting && !nextEligibleAt.exists(_.isAfter(now))
 
-  /** When the task last became claimable: the later of its submission and its
+  /** When the task last became claimable: the later of its enqueue and its
    *  eligibility gate. Head-of-line latency counts from here, not from
    *  `submittedAt`, or a task the queue is deliberately holding back in retry
-   *  backoff reads as one the pool cannot reach. */
-  def claimableSince: Instant = nextEligibleAt.filter(_.isAfter(submittedAt)).getOrElse(submittedAt)
+   *  backoff — or placing ahead in the claim order — reads as one the pool cannot reach. */
+  def claimableSince: Instant = {
+    val enqueued = enqueuedAt.getOrElse(submittedAt)
+    nextEligibleAt.filter(_.isAfter(enqueued)).getOrElse(enqueued)
+  }
 }
 
 /** A point-in-time view of the queue for the monitoring page. */

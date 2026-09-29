@@ -27,9 +27,10 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def task(t: TaskType) = Task("id", t, "dedup", Map.empty, attempts = 1)
 
-  private def summary(taskType: TaskType, state: String, submittedAt: Instant, nextEligibleAt: Option[Instant] = None) =
+  private def summary(taskType: TaskType, state: String, submittedAt: Instant, nextEligibleAt: Option[Instant] = None,
+                      enqueuedAt: Option[Instant] = None) =
     TaskSummary("id", taskType.name, "dedup", state, submittedAt, attempts = 1,
-      workerId = None, leaseExpiresAt = None, lastError = None, nextEligibleAt = nextEligibleAt)
+      workerId = None, leaseExpiresAt = None, lastError = None, nextEligibleAt = nextEligibleAt, enqueuedAt = enqueuedAt)
 
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
   private val noStaging      = Map.empty[StagingStep, Int]
@@ -231,6 +232,19 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
     out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ScrapeChunk"} 40""")
     out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ResolveTmdb"} 0""")
+  }
+
+  // 2026-09-28/29: PL, UK and DE each read a RenderShareCard head of line of exactly 24h for
+  // one scrape — a new film's first card, placed a day ahead of the backlog by a back-dated
+  // `submittedAt`, and claimed within seconds. Priority in the claim order is not waiting.
+  it should "age a task placed ahead in the claim order from when it was really enqueued" in {
+    val (_, series) = newPl()
+    val snapshot = QueueSnapshot(
+      counts = Map(TaskState.Waiting -> 1L),
+      active = Seq(summary(TaskType.RenderShareCard, TaskState.Waiting, now.minusSeconds(86400 + 5),
+        enqueuedAt = Some(now.minusSeconds(5)))))
+
+    scrapePl(series, snapshot) should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="RenderShareCard"} 5""")
   }
 
   // The head-of-line age leaves held-back tasks out on purpose, so a task parked far past

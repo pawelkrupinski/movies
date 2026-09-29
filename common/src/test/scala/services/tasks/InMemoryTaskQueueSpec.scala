@@ -55,6 +55,17 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.claim("w1", 1.minute, t0) shouldBe None // nothing left waiting
   }
 
+  // A first share card is placed a day ahead of the backlog. That must reorder the claim
+  // without making the task look a day old: the head-of-line gauge ages from `enqueuedAt`.
+  it should "claim a task enqueued with claimAhead first, yet report when it was really enqueued" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|backlog", submittedAt = t0)
+    q.enqueue(RenderShareCard, "share-card|first", submittedAt = t0.plusSeconds(600), claimAhead = 1.day)
+    val summary = q.monitor(10).active.find(_.dedupKey == "share-card|first").get
+    summary.claimableSince shouldBe t0.plusSeconds(600)
+    q.claim("w1", 1.minute, t0.plusSeconds(600)).get.dedupKey shouldBe "share-card|first"
+  }
+
   it should "not hand the same task to a second claim" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)

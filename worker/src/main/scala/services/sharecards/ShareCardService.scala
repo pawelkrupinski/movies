@@ -18,7 +18,7 @@ import scala.util.Try
  *
  * Every render rides the task queue (dedup key = film and inputs, so one render per card however
  * many replicas and triggers ask). A drawn input changing enqueues one; the first-publish gate
- * enqueues one AHEAD of the queue (an earlier `submittedAt` — the queue claims oldest first) plus
+ * enqueues one AHEAD of the queue (its enqueue's `claimAhead` — the queue claims oldest first) plus
  * the task that ends its hold; the backfill feeds the rest in bounded batches.
  *
  * A film's card is ONE file, overwritten by each render ([[ShareCardStore]]); what a document's
@@ -174,7 +174,7 @@ class ShareCardService(
     ask(next, askedAt)
     queue.enqueue(TaskType.RenderShareCard, s"share-card|${next.filmId}|${renderKey(next)}",
       next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), FirstKey -> first.toString, AskedAtKey -> askedAt.toEpochMilli.toString),
-      submittedAt = if (first) now.minusSeconds(FirstCardHeadStart.toSeconds) else now)
+      submittedAt = now, claimAhead = if (first) FirstCardHeadStart else Duration.Zero)
   }
 
   /** The render task's work: the film's card for `next`, written over its one card file unless it

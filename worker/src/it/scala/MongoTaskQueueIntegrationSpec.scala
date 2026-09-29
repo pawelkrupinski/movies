@@ -194,6 +194,16 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.monitor(5000).active.find(_.dedupKey == key).flatMap(_.nextEligibleAt) shouldBe Some(eligibleAt)
   }
 
+  // `claimAhead` writes two instants — the claim-order `submittedAt` and the real
+  // `enqueuedAt` — and only real Mongo proves the summary decodes the one the gauge ages from.
+  it should "carry a claimAhead task's real enqueue instant in the monitor snapshot" in {
+    val key = s"share-card|it-claim-ahead-${System.nanoTime()}"
+    queue.enqueue(TaskType.RenderShareCard, key, submittedAt = t0, claimAhead = 1.day) shouldBe EnqueueResult.Added
+    val summary = queue.monitor(5000).active.find(_.dedupKey == key).get
+    summary.submittedAt shouldBe t0.minus(java.time.Duration.ofDays(1))
+    summary.claimableSince shouldBe t0
+  }
+
   /** Every dedupKey the queue will hand out at `now` (drains the eligible set,
    *  leasing each — harmless, the spec's database is dropped in afterAll). */
   private def claimableKeysAt(now: Instant): Set[String] = {

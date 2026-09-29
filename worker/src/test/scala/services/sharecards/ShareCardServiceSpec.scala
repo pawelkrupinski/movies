@@ -194,6 +194,15 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     queued.map(_.taskType) should contain (TaskType.ReleaseShareCardHold)
   }
 
+  // Ahead of the backlog, but not a day old: a back-dated `submittedAt` bought the priority
+  // and made each new film's first card read as a 24h head of line (2026-09-28/29).
+  it should "leave the render's head-of-line age starting now" in {
+    val rig = new Rig
+    rig.service.requestFirstCard(film(), T0.plusSeconds(120))
+    val render = rig.queue.monitor(10).active.find(_.taskType == TaskType.RenderShareCard.name).get
+    render.claimableSince shouldBe rig.clock.instant()
+  }
+
   "Two replicas" should "render one card once, however many of them ask" in {
     val first  = new Rig
     val second = new Rig(store = first.store)

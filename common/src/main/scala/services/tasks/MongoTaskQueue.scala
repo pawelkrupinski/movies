@@ -23,7 +23,9 @@ import scala.util.Try
  *     payload: { ... },              // string→string sub-document
  *     state: "waiting"|"worked_on",  // `complete` deletes the document — no tombstone
  *     active: Bool,                  // always true now (drives the dedup index)
- *     submittedAt: ISODate, attempts: Int,
+ *     submittedAt: ISODate,          // claim order: enqueue time, earlier by `claimAhead`
+ *     enqueuedAt: ISODate,           // the real enqueue time (absent on pre-2026-09-29 rows)
+ *     attempts: Int,
  *     workerId: String?, leaseExpiresAt: ISODate? }
  * }}}
  *
@@ -81,7 +83,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     dedupKey:    String,
     payload:     Map[String, String],
     submittedAt: Instant,
-    notBefore:   Option[Instant]
+    notBefore:   Option[Instant],
+    claimAhead:  FiniteDuration
   ): EnqueueResult = coll match {
     case None => EnqueueResult.Duplicate
     case Some(c) =>
@@ -97,7 +100,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Updates.setOnInsert("payload", payloadDocument(payload)),
         Updates.setOnInsert("state", TaskState.Waiting),
         Updates.setOnInsert("active", true),
-        Updates.setOnInsert("submittedAt", new java.util.Date(submittedAt.toEpochMilli)),
+        Updates.setOnInsert("submittedAt", new java.util.Date(submittedAt.toEpochMilli - claimAhead.toMillis)),
+        Updates.setOnInsert("enqueuedAt", new java.util.Date(submittedAt.toEpochMilli)),
         Updates.setOnInsert("attempts", 0)
       ) ++ eligibility)*)
       Try {
@@ -325,7 +329,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     workerId       = Option(document.getString("workerId")),
     leaseExpiresAt = Option(document.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
     lastError      = Option(document.getString("lastError")),
-    nextEligibleAt = Option(document.getDate("nextEligibleAt")).map(d => Instant.ofEpochMilli(d.getTime))
+    nextEligibleAt = Option(document.getDate("nextEligibleAt")).map(d => Instant.ofEpochMilli(d.getTime)),
+    enqueuedAt     = Option(document.getDate("enqueuedAt")).map(d => Instant.ofEpochMilli(d.getTime))
   )
 
   private def payloadDocument(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {

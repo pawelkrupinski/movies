@@ -51,10 +51,10 @@ class CachingTaskQueue(
   def occupancy: services.metrics.CacheOccupancy =
     services.metrics.CacheOccupancy.of(active, weighted = false)
 
-  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
+  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
     if (active.getIfPresent(dedupKey) != null) EnqueueResult.Duplicate // known-active: skip the Mongo round-trip
     else {
-      delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore) match {
+      delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead) match {
         // Cache whether we ADDED it or found it already active in Mongo — either way a
         // re-enqueue before completion is a no-op we can now serve locally. A FAILED
         // write proved nothing about the key, so it is not remembered: caching it would

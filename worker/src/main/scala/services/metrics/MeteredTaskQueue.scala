@@ -21,8 +21,8 @@ import scala.concurrent.duration.FiniteDuration
 class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends TaskQueue {
   import WorkerTaskMetrics.EnqueueResult.{Added, Deduped, Failed}
 
-  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult = {
-    val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
+  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult = {
+    val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
     metrics.recordEnqueue(taskType, result match {
       case EnqueueResult.Added     => Added
       case EnqueueResult.Duplicate => Deduped
