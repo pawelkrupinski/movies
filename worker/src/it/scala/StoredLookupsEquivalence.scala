@@ -12,11 +12,25 @@ import tools.HttpFetch
 object StoredLookupsEquivalence {
   final case class Result(questions: Int, films: Int, mismatches: Seq[String])
 
-  def check(fetch: HttpFetch, language: java.util.Locale,
+  /** `fetch` whose recording MISSES — answered 404 by the replay and counted in `misses` — fail as
+   *  what they are, a request never recorded: a transient failure, which normalizes to nothing (a
+   *  gap), where a real 404 is an answer. The recorded side reads them as `Unknown` by the same count. */
+  private final class MissAsGap(fetch: HttpFetch, misses: () => Long) extends HttpFetch {
+    private def read[A](call: => A): A = {
+      val before = misses()
+      try call catch { case e: tools.HttpStatusException if e.code == 404 && misses() != before => throw new java.io.IOException("not recorded", e) }
+    }
+    override def get(url: String): String                              = read(fetch.get(url))
+    override def get(url: String, headers: Map[String, String]): String = read(fetch.get(url, headers))
+    override def getBytes(url: String): Array[Byte]                   = read(fetch.getBytes(url))
+    override def post(url: String, body: String, contentType: String): String = read(fetch.post(url, body, contentType))
+  }
+
+  def check(fetch: HttpFetch, misses: () => Long, language: java.util.Locale,
             asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]])): Result = {
     val (queries, films) = asked
     val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
-    val through = new NormalizingHttpFetch(fetch, new TmdbNormalizer(store))
+    val through = new NormalizingHttpFetch(new MissAsGap(fetch, misses), new TmdbNormalizer(store))
     val filling = new TmdbIdentityLookups(new clients.TmdbClient(through, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
       language = language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(through), Nil)
     queries.keys.toSeq.sorted.foreach(filling.candidates)

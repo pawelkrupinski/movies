@@ -195,7 +195,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       // The normalized TMDB store answers every question the resolve asked as the recorded responses did.
       {
         val counted = c.fetch.requests.get()
-        val equivalence = StoredLookupsEquivalence.check(c.fetch, c.country.language, lookups.asked)
+        val equivalence = StoredLookupsEquivalence.check(c.fetch, c.misses, c.country.language, lookups.asked)
         c.fetch.requests.set(counted)
         report.line(s"[${c.label}] stored lookups: ${equivalence.questions} questions and ${equivalence.films} film records answered " +
           s"from the normalized store; ${equivalence.mismatches.size} differ from the recorded answers" +
