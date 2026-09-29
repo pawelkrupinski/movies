@@ -22,7 +22,7 @@ object TmdbFilmRecord {
     else {
       val localized = main.find(d => (d \ "credits").isDefined).getOrElse(main.head)
       val crew = docs.flatMap(d => (d \ "crew").asOpt[Seq[JsValue]].orElse((d \ "credits" \ "crew").asOpt[Seq[JsValue]]).getOrElse(Nil))
-      val directors = crew.filter(c => (c \ "job").asOpt[String].contains("Director")).flatMap(c => (c \ "name").asOpt[String]).distinct
+      val directors = clients.TmdbJson.crewNames(crew, DirectorJobs)
       val hasCrew = docs.exists(d => (d \ "crew").isDefined || (d \ "credits" \ "crew").isDefined)
       val alternatives = main.flatMap(d => (d \ "alternative_titles" \ "titles").asOpt[Seq[JsValue]].getOrElse(Nil))
         .flatMap(t => (t \ "title").asOpt[String]) ++ main.flatMap(d => (d \ "title").asOpt[String])
@@ -33,7 +33,7 @@ object TmdbFilmRecord {
         title             = title,
         originalTitle     = (localized \ "original_title").asOpt[String],
         alternativeTitles = alternatives.distinct.filterNot(_ == title),
-        year              = yearOf((localized \ "release_date").asOpt[String]),
+        year              = clients.TmdbJson.releaseYear(localized),
         runtime           = main.flatMap(d => (d \ "runtime").asOpt[Int]).find(_ > 0),
         directors         = Option.when(hasCrew)(directors),
         countries         = Option.when(countries.nonEmpty)(countries),
@@ -42,6 +42,7 @@ object TmdbFilmRecord {
     }
   }
 
-  def yearOf(date: Option[String]): Option[Int] =
-    date.filter(_.length >= 4).flatMap(d => Try(d.take(4).toInt).toOption)
+  /** The crew jobs a film's record reads as its directors — and so the jobs the normalized store's
+   *  cut-down responses keep (`TmdbNormalizer.minimal`): the two must name the same crew. */
+  val DirectorJobs: Set[String] = clients.TmdbJson.Director
 }

@@ -31,8 +31,6 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
 
   private def answered[A](read: => A): Answer[A] = gaps.answered(read)
 
-  private def hit(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)
-
   override def hasDetail(listing: Listing): Boolean = listing.page.isDefined && enricherOf.contains(listing.cinema)
 
   override def detail(listing: Listing): Answer[Option[DetailFacts]] =
@@ -45,23 +43,23 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text)    =>
       // TMDB's OWN order: a film's rank in it is the `search.rank` measure, fitted on that order.
-      answered(tmdb.searchAsRanked(text).getOrElse(throw new IllegalStateException("no TMDB key")).map(hit))
+      answered(tmdb.searchAsRanked(text).getOrElse(throw new IllegalStateException("no TMDB key")).map(TmdbIdentityLookups.hitOf))
     case CandidateQuery.Director(name)    =>
       // Every person the name could mean, each with what they directed — or, with no directing
       // credit, wrote (a venue may print the writer): the walk the pipeline makes, without its pick.
       answered(tmdb.findPersonCandidates(TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
-        .flatMap { person =>
-          val directed = tmdb.personDirectorCredits(person)
-          if (directed.nonEmpty) directed else tmdb.personWriterCredits(person)
-        }.map(hit).distinctBy(_.tmdbId))
+        .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
-      answered(imdb.titledIds(title).flatMap(tmdb.findByImdbId).map(hit).distinctBy(_.tmdbId))
+      answered(imdb.titledIds(title).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
   }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
 }
 
 object TmdbIdentityLookups {
+  /** A TMDB film row as the model's candidate — from a live answer here, or a normalized one. */
+  def hitOf(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)
+
   /** `read` as an [[Answer]]: `Unknown` when it threw or met a gap in its source. */
   trait Gaps {
     def answered[A](read: => A): Answer[A]

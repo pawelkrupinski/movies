@@ -499,4 +499,13 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     }
     new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398) shouldBe empty
   }
+
+  /** Every TMDB film array reads its year one way. The `/find` and credits decoder took the year's
+   *  first four characters as an Int unguarded, so one malformed `release_date` threw out of the
+   *  whole response instead of leaving that film's year unknown, as every other parse here does. */
+  "parseFindMovieResults" should "leave a malformed release_date's year unknown rather than throw" in {
+    val body = """{"movie_results":[{"id":7,"title":"Draft","release_date":"20xx-01-01","popularity":1.0},
+                 |{"id":8,"title":"Dated","release_date":"2019-05-01","popularity":0.5}]}""".stripMargin
+    TmdbClient.parseFindMovieResults(body).map(r => r.id -> r.releaseYear) shouldBe Seq(7 -> None, 8 -> Some(2019))
+  }
 }

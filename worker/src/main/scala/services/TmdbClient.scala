@@ -238,7 +238,7 @@ class TmdbClient(
           .flatMap(t => (t \ "title").asOpt[String].filter(_.nonEmpty))
         TmdbClient.Details(
           englishTitle = (js \ "title").asOpt[String].filter(_.nonEmpty),
-          releaseYear  = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          releaseYear  = TmdbJson.releaseYear(js),
           usTitle      = usTitle
         )
       }
@@ -264,8 +264,7 @@ class TmdbClient(
    *  Grizzly Falls 1999 and the 2026 Helgestad document) the directors disagree. */
   def directorsFor(tmdbId: Int): Set[String] = authHeader.map { auth =>
     val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth))
-    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .filter(c => (c \ "job").asOpt[String].contains("Director"))
+    TmdbJson.crewWith((Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty), TmdbJson.Director)
       .flatMap { c =>
         // Include both the localised `name` and the native-script `original_name`
         // so that cinemas reporting a director in their native script (e.g. "张钢"
@@ -309,8 +308,7 @@ class TmdbClient(
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         val cast = (js \ "credits" \ "cast").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        val directors = crew
-          .filter(c => (c \ "job").asOpt[String].contains("Director"))
+        val directors = TmdbJson.crewWith(crew, TmdbJson.Director)
           .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
         // Writers too: a venue prints the writer as often as the director ("Drzewo
         // magii" is directed by Ben Gregor and written by Simon Farnaby), and the
@@ -346,7 +344,7 @@ class TmdbClient(
           writers       = writers,
           cast          = topCast,
           runtimeMinutes= (js \ "runtime").asOpt[Int].filter(_ > 0),
-          releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          releaseYear   = TmdbJson.releaseYear(js),
           countries     = countries,
           genres        = genres,
           // Prefer the best deployment-language portrait poster from `/images` over the
@@ -430,6 +428,13 @@ class TmdbClient(
   def personWriterCredits(personId: Int): Seq[TmdbClient.SearchResult] =
     personCredits(personId, "Writing")
 
+  /** The films a director walk searches for one person: their directing credits or — with none —
+   *  what they wrote, since a venue may print the writer. The one rule both resolvers walk by. */
+  def personFilmography(personId: Int): Seq[TmdbClient.SearchResult] = {
+    val directed = personDirectorCredits(personId)
+    if (directed.nonEmpty) directed else personWriterCredits(personId)
+  }
+
   private def personCredits(personId: Int, department: String): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
     TmdbClient.creditsIn(orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)), department)
   }.getOrElse(Seq.empty)
@@ -493,7 +498,7 @@ object TmdbClient {
           id            = id,
           title         = (js \ "title").asOpt[String].getOrElse(""),
           originalTitle = (js \ "original_title").asOpt[String],
-          releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          releaseYear   = TmdbJson.releaseYear(js),
           popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
         )
       }
@@ -512,7 +517,7 @@ object TmdbClient {
         id            = id,
         title         = (js \ "title").asOpt[String].getOrElse(""),
         originalTitle = (js \ "original_title").asOpt[String],
-        releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).map(_.take(4).toInt),
+        releaseYear   = TmdbJson.releaseYear(js),
         popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0),
         overview      = (js \ "overview").asOpt[String].filter(_.nonEmpty)
       )

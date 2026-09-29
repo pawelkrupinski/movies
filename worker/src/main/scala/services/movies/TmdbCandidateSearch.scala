@@ -464,10 +464,8 @@ class TmdbCandidateSearch(
    *  the walk found the film in. Lazy: a caller stopping at the first hit fetches
    *  no further person. */
   private def personFilmographies(director: String): Iterator[(Int, Seq[TmdbClient.SearchResult])] =
-    tmdb.findPersonCandidates(stripImdbDisambiguator(director.split(",").head.trim)).iterator.map { personId =>
-      val directed = tmdb.personDirectorCredits(personId)
-      personId -> (if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId))
-    }
+    tmdb.findPersonCandidates(stripImdbDisambiguator(director.split(",").head.trim)).iterator
+      .map(personId => personId -> tmdb.personFilmography(personId))
 
   /** Walk a cinema-reported director's TMDB filmography and pick the entry the
    *  cinema is actually showing. Needed when the title search lands on the wrong

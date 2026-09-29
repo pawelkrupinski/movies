@@ -41,7 +41,6 @@ object IdentityCalibrationData {
     try new String(in.readAllBytes(), StandardCharsets.UTF_8) finally in.close()
   }
 
-  private def yearOf(date: Option[String]): Option[Int] = TmdbFilmRecord.yearOf(date)
 
   // ── recorded TMDB answers ─────────────────────────────────────────────────────────────
 
@@ -100,7 +99,7 @@ object IdentityCalibrationData {
       fixture(RecordingHttpFetch.fixtureKey(url)).flatMap(b => Try(Json.parse(b)).toOption).map { js =>
         (js \ "results").asOpt[Seq[JsObject]].getOrElse(Nil).flatMap { r =>
           (r \ "id").asOpt[Int].map(id => Hit(id, (r \ "title").asOpt[String].getOrElse(""),
-            (r \ "original_title").asOpt[String], yearOf((r \ "release_date").asOpt[String]),
+            (r \ "original_title").asOpt[String], clients.TmdbJson.releaseYear(r),
             (r \ "popularity").asOpt[Double].getOrElse(0.0)))
         }
       }
