@@ -366,6 +366,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka"  -> "Sprawiedliwość owiec",
     "Zaproszenie - przepdremiera"                            -> "Zaproszenie",
     "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5",
+    // A lecture before the screening, after a dash or a pipe (Kino Rialto, 2026-09): the suffix
+    // made TMDB's search miss the film, and director + year landed on Munk's OTHER 1957 film.
+    "EROICA - przed filmem wykład prof. Marka Hendrykowskiego" -> "EROICA",
+    "Giulietta i duchy | przed filmem wykład prof. Marka hendrykowskiego" -> "Giulietta i duchy",
     // Twelfth-wave (2026-06-25) programme/series prefixes + a Silesian-dub suffix.
     // The 'Przegląd filmów <reż> - <film>' PREFIX (the existing rule only caught the
     // SUFFIX form 'Ida - przegląd filmów Pawła Pawlikowskiego').
