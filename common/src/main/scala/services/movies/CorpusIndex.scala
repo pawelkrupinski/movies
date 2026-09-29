@@ -88,7 +88,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   /** (cinema, sanitized slot title) → the keys holding that slot. The old
    *  `rowByCinemaSlot` / `knownByCinemaSlot` pair; the caller picks the canonical
    *  key off the (tiny) set, so the ranking rule stays in one place. */
-  private val keysByCinemaSlot = mutable.Map.empty[(Cinema, String), mutable.Set[CacheKey]]
+  private val keysByCinemaSlot = new SetIndex[(Cinema, String), CacheKey]
 
   /** cinema → its slots, with the row each belongs to. The old `heldSlotsOf` scan,
    *  and the prune's stale-slot sweep. */
@@ -98,7 +98,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  ONE row without walking the row's every slot: the landing's duplicate-slot drop asks
    *  it once per listing, and [[putSlot]] asks it to keep `keysByCinemaSlot` exact when a
    *  row holds the same (cinema, title) twice. */
-  private val sourcesByRowCinema = mutable.Map.empty[(CacheKey, Cinema), mutable.Set[Source]]
+  private val sourcesByRowCinema = new SetIndex[(CacheKey, Cinema), Source]
 
   /** sanitized alias → the concluded bare rows carrying it.
    *
@@ -108,18 +108,18 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  corpus for them. Keying by `CacheKey` gives the same "two rows offer it, dropping
    *  one must not un-know it" property the refcount was there for — set removal is
    *  idempotent per row — and answers the harder question too. */
-  private val keysByAlias = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val keysByAlias = new SetIndex[String, CacheKey]
   /** A RESOLVED row's title runs — the tokens of its TMDB aliases and its own key
    *  title — keyed by the run's first and last token, so a decorated listing is
    *  checked only against the bases that could edge-match it. The settle's
    *  containment edge indexes exactly this per pass; the divert gate asks it per
    *  listing. `tmdbIdByKey` beside it, for the ambiguity refusal. */
-  private val keysByEdgeToken = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val keysByEdgeToken = new SetIndex[String, CacheKey]
   /** RESOLVED rows by their search-title key (`FilmCanonicalizer.searchKey` of the row's
    *  own title) — the settle's search-title edge, answerable per listing. Resolved only:
    *  an unresolved same-search row is the sanitize group's business, and two unresolved
    *  strangers with one stripped title have nothing to prove they are one film. */
-  private val keysBySearch    = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val keysBySearch    = new SetIndex[String, CacheKey]
   private val searchByKey     = mutable.Map.empty[CacheKey, String]
   private val runsByKey       = mutable.Map.empty[CacheKey, Seq[Seq[String]]]
   private val tmdbIdByKey     = mutable.Map.empty[CacheKey, Int]
@@ -129,8 +129,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   private val keyById         = mutable.Map.empty[FilmId, CacheKey]
   /** Resolved rows by tmdbId and by imdbId — the write-time identity gate's two
    *  questions, answered without a scan of the whole resident map per write. */
-  private val keysByTmdbId    = mutable.Map.empty[Int, mutable.Set[CacheKey]]
-  private val keysByImdbId    = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val keysByTmdbId    = new SetIndex[Int, CacheKey]
+  private val keysByImdbId    = new SetIndex[String, CacheKey]
   private val imdbIdByKey     = mutable.Map.empty[CacheKey, String]
 
   /** Index `record` under `key`, replacing whatever that key contributed before. */
@@ -140,33 +140,33 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
     record.cinemaShowings.foreach { case (cinema, sd) =>
       sd.title.foreach { t =>
-        keysByCinemaSlot.getOrElseUpdate((cinema, normalizer.sanitize(t)), mutable.Set.empty) += key
+        keysByCinemaSlot.add((cinema, normalizer.sanitize(t)), key)
       }
     }
     record.data.foreach { case (source, sd) =>
       Source.cinemaOf(source).foreach { cinema =>
         slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), sd)
-        sourcesByRowCinema.getOrElseUpdate((key, cinema), mutable.Set.empty) += source
+        sourcesByRowCinema.add((key, cinema), source)
       }
     }
     if (isConcludedBareRow(key, record))
       record.tmdbTitleAliases.foreach { alias =>
-        keysByAlias.getOrElseUpdate(normalizer.sanitize(alias), mutable.Set.empty) += key
+        keysByAlias.add(normalizer.sanitize(alias), key)
       }
     record.imdbId.foreach { imdb =>
-      keysByImdbId.getOrElseUpdate(imdb, mutable.Set.empty) += key
+      keysByImdbId.add(imdb, key)
       imdbIdByKey.update(key, imdb)
     }
     record.tmdbId.foreach { id =>
-      keysByTmdbId.getOrElseUpdate(id, mutable.Set.empty) += key
+      keysByTmdbId.add(id, key)
       val search = FilmCanonicalizer.searchKey(key.cleanTitle, normalizer)
-      keysBySearch.getOrElseUpdate(search, mutable.Set.empty) += key
+      keysBySearch.add(search, key)
       searchByKey.update(key, search)
       val runs = (record.tmdbTitleAliases + key.cleanTitle).iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
       runsByKey.update(key, runs); tmdbIdByKey.update(key, id)
       runs.foreach { run =>
-        keysByEdgeToken.getOrElseUpdate(run.head, mutable.Set.empty) += key
-        keysByEdgeToken.getOrElseUpdate(run.last, mutable.Set.empty) += key
+        keysByEdgeToken.add(run.head, key)
+        keysByEdgeToken.add(run.last, key)
       }
     }
   }
@@ -179,7 +179,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   def keysDecoratedBy(whole: Seq[String], minBaseTokens: Int = 1): Set[CacheKey] = synchronized {
     if (whole.isEmpty) Set.empty
     else {
-      val candidates = keysByEdgeToken.getOrElse(whole.head, Set.empty) ++ keysByEdgeToken.getOrElse(whole.last, Set.empty)
+      val candidates = keysByEdgeToken.get(whole.head) ++ keysByEdgeToken.get(whole.last)
       val matched = candidates.iterator.filter(k => runsByKey.get(k).exists(_.exists(run =>
         run.lengthIs >= minBaseTokens && TitleContainment.decorates(run, whole)))).toSet
       if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
@@ -192,7 +192,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  cannot split, so it refuses the ambiguity). The caller still checks the cinema's
    *  own evidence. */
   def keysWithSearchKey(search: String): Set[CacheKey] = synchronized {
-    val matched = keysBySearch.get(search).map(_.toSet).getOrElse(Set.empty)
+    val matched = keysBySearch.get(search)
     if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
   }
 
@@ -211,8 +211,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       throw new IllegalArgumentException(s"putSlot is for cinema slots, not $source"))
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
     slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), slot)
-    val siblings = sourcesByRowCinema.getOrElseUpdate((key, cinema), mutable.Set.empty)
-    siblings += source
+    sourcesByRowCinema.add((key, cinema), source)
+    val siblings = sourcesByRowCinema.get((key, cinema))
     val before = prior.flatMap(_.title).map(normalizer.sanitize)
     val after  = slot.title.map(normalizer.sanitize)
     if (before != after) {
@@ -221,12 +221,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       before.filterNot(norm => siblings.exists(s => s != source &&
           record.data.get(s).exists(_.title.exists(t => normalizer.sanitize(t) == norm))))
         .foreach { norm =>
-          keysByCinemaSlot.get((cinema, norm)).foreach { keys =>
-            keys -= key
-            if (keys.isEmpty) keysByCinemaSlot -= ((cinema, norm))
-          }
+          keysByCinemaSlot.remove((cinema, norm), key)
         }
-      after.foreach(norm => keysByCinemaSlot.getOrElseUpdate((cinema, norm), mutable.Set.empty) += key)
+      after.foreach(norm => keysByCinemaSlot.add((cinema, norm), key))
     }
   }
 
@@ -235,15 +232,15 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  fall back to reading the record rather than trust a stale answer. */
   def sourcesAt(key: CacheKey, cinema: Cinema, record: MovieRecord): Option[Set[Source]] = synchronized {
     Option.when(rowsByNormalized.get(key.normalized).flatMap(_.get(key)).exists(_ eq record))(
-      sourcesByRowCinema.get((key, cinema)).map(_.toSet).getOrElse(Set.empty))
+      sourcesByRowCinema.get((key, cinema)))
   }
 
   /** Drop everything `key` contributes. */
   def remove(key: CacheKey): Unit = synchronized(forget(key))
 
   def idOf(key: CacheKey): Option[FilmId]  = synchronized(idByKey.get(key))
-  def keysWithTmdbId(id: Int): Set[CacheKey]      = synchronized(keysByTmdbId.get(id).map(_.toSet).getOrElse(Set.empty))
-  def keysWithImdbId(imdb: String): Set[CacheKey] = synchronized(keysByImdbId.get(imdb).map(_.toSet).getOrElse(Set.empty))
+  def keysWithTmdbId(id: Int): Set[CacheKey]      = synchronized(keysByTmdbId.get(id))
+  def keysWithImdbId(imdb: String): Set[CacheKey] = synchronized(keysByImdbId.get(imdb))
   def keyOf(id: FilmId): Option[CacheKey]  = synchronized(keyById.get(id))
   def holdsId(id: FilmId): Boolean         = synchronized(keyById.contains(id))
 
@@ -252,7 +249,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     synchronized(rowsByNormalized.get(normalized).exists(_.nonEmpty))
 
   /** Is this sanitized title an alias of a concluded bare row? (`knownAliases`) */
-  def holdsAlias(alias: String): Boolean = synchronized(keysByAlias.get(alias).exists(_.nonEmpty))
+  def holdsAlias(alias: String): Boolean = synchronized(keysByAlias.holds(alias))
 
   /** The concluded bare rows carrying this sanitized alias.
    *
@@ -260,7 +257,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  running `isBareFilmTitle` and a `sanitize` per alias per row — for every landed
    *  listing. */
   def keysForAlias(alias: String): Set[CacheKey] =
-    synchronized(keysByAlias.get(alias).map(_.toSet).getOrElse(Set.empty))
+    synchronized(keysByAlias.get(alias))
 
   /** Every row under this sanitized title, WITH its key. */
   def entriesFor(normalized: String): Seq[(CacheKey, MovieRecord)] =
@@ -271,11 +268,11 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
   /** Does any row already hold this cinema's slot? (`knownByCinemaSlot`) */
   def holdsCinemaSlot(cinema: Cinema, normalized: String): Boolean =
-    synchronized(keysByCinemaSlot.get((cinema, normalized)).exists(_.nonEmpty))
+    synchronized(keysByCinemaSlot.holds((cinema, normalized)))
 
   /** The keys holding it, for the caller to rank. (`rowByCinemaSlot`) */
   def keysForCinemaSlot(cinema: Cinema, normalized: String): Set[CacheKey] =
-    synchronized(keysByCinemaSlot.get((cinema, normalized)).map(_.toSet).getOrElse(Set.empty))
+    synchronized(keysByCinemaSlot.get((cinema, normalized)))
 
   /** This cinema's slots, with the row each sits on. (`heldSlotsOf`, and the prune) */
   def slotsOf(cinema: Cinema): Seq[(CacheKey, Source, SourceData)] =
@@ -295,12 +292,12 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   private[movies] def snapshot: CorpusIndex.Snapshot = synchronized {
     CorpusIndex.Snapshot(
       rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.toMap }.toMap,
-      keysByCinemaSlot = keysByCinemaSlot.map { case (slot, keys) => slot -> keys.toSet }.toMap,
+      keysByCinemaSlot = keysByCinemaSlot.toMap,
       slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.toMap }.toMap,
-      sourcesByRowCinema = sourcesByRowCinema.map { case (rc, sources) => rc -> sources.toSet }.toMap,
-      keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap,
+      sourcesByRowCinema = sourcesByRowCinema.toMap,
+      keysByAlias      = keysByAlias.toMap,
       runsByKey        = runsByKey.toMap,
-      keysBySearch     = keysBySearch.map { case (s, keys) => s -> keys.toSet }.toMap)
+      keysBySearch     = keysBySearch.toMap)
   }
 
   private def forget(key: CacheKey): Unit = {
@@ -308,11 +305,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     prior.foreach { record =>
       record.cinemaShowings.foreach { case (cinema, sd) =>
         sd.title.foreach { t =>
-          val slot = (cinema, normalizer.sanitize(t))
-          keysByCinemaSlot.get(slot).foreach { keys =>
-            keys -= key
-            if (keys.isEmpty) keysByCinemaSlot -= slot
-          }
+          keysByCinemaSlot.remove((cinema, normalizer.sanitize(t)), key)
         }
       }
       record.data.foreach { case (source, _) =>
@@ -321,33 +314,29 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
             slots -= ((key, source))
             if (slots.isEmpty) slotsByCinema -= cinema
           }
-          sourcesByRowCinema -= ((key, cinema))
+          sourcesByRowCinema.removeAll((key, cinema))
         }
       }
       if (isConcludedBareRow(key, record))
         record.tmdbTitleAliases.foreach { alias =>
-          val a = normalizer.sanitize(alias)
-          keysByAlias.get(a).foreach { keys =>
-            keys -= key
-            if (keys.isEmpty) keysByAlias -= a
-          }
+          keysByAlias.remove(normalizer.sanitize(alias), key)
         }
     }
     searchByKey.remove(key).foreach { search =>
-      keysBySearch.get(search).foreach { keys => keys -= key; if (keys.isEmpty) keysBySearch -= search }
+      keysBySearch.remove(search, key)
     }
     runsByKey.remove(key).foreach { runs =>
       runs.foreach { run =>
         Seq(run.head, run.last).foreach { t =>
-          keysByEdgeToken.get(t).foreach { keys => keys -= key; if (keys.isEmpty) keysByEdgeToken -= t }
+          keysByEdgeToken.remove(t, key)
         }
       }
     }
     tmdbIdByKey.remove(key).foreach { id =>
-      keysByTmdbId.get(id).foreach { keys => keys -= key; if (keys.isEmpty) keysByTmdbId -= id }
+      keysByTmdbId.remove(id, key)
     }
     imdbIdByKey.remove(key).foreach { imdb =>
-      keysByImdbId.get(imdb).foreach { keys => keys -= key; if (keys.isEmpty) keysByImdbId -= imdb }
+      keysByImdbId.remove(imdb, key)
     }
     // Only this key's own id: `put` on another key may already have claimed the id.
     idByKey.remove(key).foreach(id => if (keyById.get(id).contains(key)) keyById -= id)
