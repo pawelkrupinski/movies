@@ -261,6 +261,7 @@ class WorkerWiring(
         liveFetch   = enrichmentFetch,
         normalizer  = identityTmdbNormalizer,
         beforeRound = () => identityTmdbChanges.filter(_.behind).foreach(_.sweep()),
+        gapMemory   = identityTmdbDocuments.map(new services.identity.TmdbGapMemory(_, country.language.toLanguageTag, clock)),
         refreshes   = () => identityTmdbRefreshes.fold(Seq.empty[services.identity.CandidateQuery])(r =>
           identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(Seq.empty[services.identity.CandidateQuery])(s => r.due(s.questions))),
         enrichers   = detailEnrichers,

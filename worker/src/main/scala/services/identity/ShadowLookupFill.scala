@@ -137,7 +137,8 @@ final class ShadowLookupFill(
   sleep:       Long => Unit = Thread.sleep,
   normalizer:  Option[TmdbNormalizer] = None,
   beforeRound: () => Unit = () => (),
-  refreshes:   () => Seq[CandidateQuery] = () => Nil
+  refreshes:   () => Seq[CandidateQuery] = () => Nil,
+  gapMemory:   Option[TmdbGapMemory] = None
 ) extends Logging {
 
   private val running = new AtomicBoolean(false)
@@ -167,9 +168,16 @@ final class ShadowLookupFill(
     // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
     // before the model's gaps and refreshes are chosen.
     try beforeRound() catch { case NonFatal(e) => logger.warn(s"identity shadow fill: TMDB changes not swept, this round: $e") }
-    val asked = questions()
-    asked.queries.toSeq.sorted.foreach(lookups.candidates)
-    asked.films.toSeq.sorted.foreach(lookups.film)
+    val asked = gapMemory.fold(questions())(_.due(questions()))
+    // Asked and still unanswered — not deferred for want of budget — is remembered, and asked again
+    // a day later rather than every round (`TmdbGapMemory`).
+    def stillUnanswered[A](answer: => Answer[A]): Boolean = {
+      val deferred = budget.deferred.get
+      !answer.isKnown && budget.deferred.get == deferred
+    }
+    val unansweredQueries = asked.queries.toSeq.sorted.filter(q => stillUnanswered(lookups.candidates(q)))
+    val unansweredFilms   = asked.films.toSeq.sorted.filter(id => stillUnanswered(lookups.film(id)))
+    gapMemory.foreach(_.unanswered(unansweredQueries, unansweredFilms))
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — live only: an answer stored raw is exactly the old one.
     normalizer.foreach { n =>
