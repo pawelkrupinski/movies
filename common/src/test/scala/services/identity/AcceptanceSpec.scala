@@ -136,4 +136,35 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // A film no rule takes names none.
     acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 511684) shouldBe None
   }
+
+  "a listing whose title a record contains" should "not take a series sibling its title only overlaps, on facts that record leaves missing" in {
+    // ES "BTS World Tour 'ARIRANG' In Buenos Aires: Live" ×82 took the Busan concert: TMDB's
+    // Buenos Aires record states no runtime and credits no director, so the Busan record's matching
+    // credit and 195 minutes out-weighed a record that merely lacks them.
+    val listing     = Listing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), runtime = Some(195), directors = Seq("Jungjae Ha"))
+    val buenosAires = (1770237, Film("BTS World Tour 'Arirang'  in Buenos Aires: Live Viewing", year = Some(2026)), Some(1))
+    val busan       = (1701849, Film("BTS WORLD TOUR [ARIRANG] in Busan", year = Some(2026), runtime = Some(195), directors = Some(Seq("Ha Jung-jae"))), Some(2))
+    taken(ranked(listing, buenosAires, busan)) should not be Some(1701849)
+    // Nor pooled: the 82 listings are one node, which then took Busan by its pooled vote.
+    acceptance.pooled(ranked(listing, buenosAires, busan)).map(_._1.candidate.tmdbId) should not be Some(1701849)
+  }
+
+  it should "still take a record its title names by its original title" in {
+    // PL "Following" at Kino Amondo is Nolan's "Śledząc" (original title "Following"), not a
+    // same-titled record whose title merely contains it.
+    val listing = Listing("Following", directors = Seq("Christopher Nolan"))
+    val nolan   = (11660, Film("Śledząc", originalTitle = Some("Following"), year = Some(1999), runtime = Some(69), directors = Some(Seq("Christopher Nolan")), popularity = Some(8.0)), Some(1))
+    val other   = (900001, Film("Following", year = Some(2024)), Some(2))
+    taken(ranked(listing, nolan, other)) shouldBe Some(11660)
+  }
+
+  it should "still take the record naming it all over one a piece of its title names" in {
+    // UK "English National Ballet: The Sleeping Beauty" ×22 is ENB's production, not the record a
+    // segment of its title names.
+    val listing = Listing("English National Ballet: The Sleeping Beauty", year = Some(2026), runtime = Some(150), directors = Seq("Kenneth MacMillan"))
+    val enb     = (1500001, Film("English National Ballet presents The Sleeping Beauty", year = Some(2026), runtime = Some(150),
+      directors = Some(Seq("Kenneth MacMillan"))), Some(2))
+    val segment = (1500002, Film("The Sleeping Beauty"), Some(3))
+    taken(ranked(listing, enb, segment)) shouldBe Some(1500001)
+  }
 }

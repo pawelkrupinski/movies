@@ -58,10 +58,19 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   def fitsBetter(rival: Scored, top: Scored): Boolean =
     if (rival.titleNamesIt) own(rival) > own(top)
     else {
-      val unanswered = top.measures.collect { case (name, IdentityMeasures.MissingFilm) => name }.toSet
-      def answered(scored: Scored) = ownContributions(scored.measures.filterNot { case (name, _) => unanswered(name) })
+      def answered(scored: Scored) = ownContributions(scored.measures.filterNot { case (name, _) => unansweredBy(top)(name) })
       answered(rival) > answered(top)
     }
+
+  /** The measures `record`'s film leaves unanswered: a credit or a running time it does not state. */
+  private def unansweredBy(record: Scored): Set[String] =
+    record.measures.collect { case (name, IdentityMeasures.MissingFilm) => name }.toSet
+
+  /** `scored`'s published [[facts]] on the measures `record`'s film answers — what may tell a
+   *  record the title names less closely apart from `record`, without counting what `record` merely
+   *  lacks as evidence against it. */
+  def factsAnswered(scored: Scored, record: Scored): Double =
+    facts(scored.copy(measures = scored.measures.filterNot { case (name, _) => unansweredBy(record)(name) }))
 
   /** `best`'s probability with the database's ranking priors and the family's pooled count
    *  LENDING confidence but never withdrawing it — each one's negative weight capped at 0 — when

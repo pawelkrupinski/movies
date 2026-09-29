@@ -12,7 +12,7 @@ import services.identity.Scored.Accepted
 private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   val weights = new EvidenceWeights(calibration)
-  import weights.{favours, facts, fitsBetter, own, priorsLent, speaksAgainst}
+  import weights.{factsAnswered, favours, facts, fitsBetter, own, priorsLent, speaksAgainst}
 
   private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filterNot(_.denied)
 
@@ -99,7 +99,30 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** [[calibrated]], when the listing's own facts also favour it over the runner-up. */
   def favouredCalibrated(ranked: Seq[Scored]): Option[Accepted] = {
     val eligible = eligibleOf(ranked)
-    calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(favours(best, _)) }
+    calibrated(ranked).filter { case (best, _) =>
+      eligible.lift(1).forall(favours(best, _)) && !outnamed(best, eligible)
+    }
+  }
+
+  /** Is there an eligible record the listing's title sits inside ([[titledCloser]]) whose answered
+   *  facts `best`'s do not beat? Then `best`, which the title only overlaps, is not the listing's
+   *  film on that evidence — on its own or pooled. */
+  private def outnamed(best: Scored, eligible: Seq[Scored]): Boolean =
+    eligible.exists(closer => (closer ne best) && titledCloser(closer, best) && factsAnswered(best, closer) <= factsAnswered(closer, closer))
+
+  /** The title relations where the listing's WHOLE title sits inside the record's: not a segment
+   *  or a decoration, where only a piece of it names the record ("The Sleeping Beauty" in "English
+   *  National Ballet: The Sleeping Beauty"), which says nothing against a record naming it all. */
+  private val WholeTitleInside = Set("exact", "fragment")
+
+  /** Does the listing's whole title sit INSIDE `closer`'s record ([[WholeTitleInside]])
+   *  while it only overlaps `other`'s, which it does not name by an original or alternative title
+   *  either (PL "Following" names Nolan's "Śledząc" by its original title)? Then `other` is taken over it only when the facts `closer`'s
+   *  record answers favour `other` ([[EvidenceWeights.factsAnswered]]): ES "BTS World Tour 'ARIRANG'
+   *  In Buenos Aires: Live" ×82 took the Busan concert, whose credit and 195 minutes out-weighed a
+   *  Buenos Aires record that states neither. */
+  private def titledCloser(closer: Scored, other: Scored): Boolean = {
+    closer.category("title").exists(WholeTitleInside) && !other.category("title").exists(IdentityMeasures.ContainingRelations) && !other.titleNamesIt
   }
 
   /** [[calibrated]] — unless the title names another candidate by the very same pieces and the
@@ -113,7 +136,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  namesakes: only the facts may pick one of "Lalka (Dolly)"'s two. */
   def unrivalledCalibrated(ranked: Seq[Scored]): Option[Accepted] =
     calibrated(ranked).filter { case (best, _) =>
-      eligibleOf(ranked).forall(rival => (rival eq best) || {
+      !outnamed(best, eligibleOf(ranked)) && eligibleOf(ranked).forall(rival => (rival eq best) || {
         val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
         val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
         val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
