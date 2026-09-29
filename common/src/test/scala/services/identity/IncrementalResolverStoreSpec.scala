@@ -123,4 +123,26 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     store.families() should not be empty
     store.families().foreach(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family)) shouldBe family)
   }
+
+  // A restore decodes every stored family: its listing keys were read twice (the `listings` array and
+  // the `nodes` pairs) and each listing's node text on its own, so equal values were separate objects
+  // for the model's lifetime — worker-us held the node texts ("It Follows\0It Follows\0…") once per
+  // listing, and a second copy of every store-decoded listing key.
+  it should "read back sharing one instance of each listing key and each node text" in {
+    val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
+    val store  = new InMemoryIdentityModelStore
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).seed(corpus.listings)
+    val decoded = store.families().map(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family)).family)
+    decoded.exists(_.nodeKeys.size > 1) shouldBe true
+    decoded.foreach { family =>
+      val listed = family.listings.toSeq
+      family.nodeKeys.keys.foreach(key => withClue(s"$key: ")(listed.exists(_ eq key) shouldBe true))
+      family.nodeKeys.values.groupBy(identity).values.foreach(same => withClue("node texts: ")(same.forall(_ eq same.head) shouldBe true))
+    }
+  }
+
+  "a node's key as text" should "be its evidence's own key when no pin blocks it" in {
+    val evidenceKey = new String("It Follows\u0000It Follows\u0000\u0000")
+    (CandidateGeneration.nodeKeyText((evidenceKey, Set.empty)) eq evidenceKey) shouldBe true
+  }
 }

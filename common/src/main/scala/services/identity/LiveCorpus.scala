@@ -22,6 +22,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
                                          decorations: TitleDecorations,
                                          slices: LiveCorpus.Slices = LiveCorpus.Slices.Default) extends CorpusContext {
   private type NodeKey = (String, Set[String])
+  /** A node's listings, and the one key instance every one of them is filed under. */
+  private final class Members(val key: NodeKey) { val held = mutable.TreeMap.empty[Listing, Listing] }
 
   private final class Node(val node: EvidenceNode, val queries: Seq[CandidateQuery], val reached: Seq[Int]) {
     def id: String        = node.id
@@ -35,7 +37,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // per listing only the node it is one of; evidence per node — its head listing's, which is the node's
   private val listings = mutable.HashMap.empty[ListingKey, NodeKey]
   private val heads    = mutable.HashMap.empty[NodeKey, (ListingKey, Evidence)]
-  private val members  = mutable.HashMap.empty[NodeKey, mutable.TreeMap[Listing, Listing]]
+  private val members  = mutable.HashMap.empty[NodeKey, Members]
   private val nodes    = mutable.HashMap.empty[NodeKey, Node]
   // questions and films — never a question's whole answer, which the lookups keep: only the films it
   // named, and per film the best hit it gave (all `Candidate.of` reads: the most popular hit first)
@@ -114,9 +116,12 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       slice.foreach { listing =>
         listings.remove(listing.key).foreach(key => touched += leave(listing.key, key))
         val evidence = derive(listing)
-        val key      = CandidateGeneration.nodeKey(listing, evidence, pins)
+        val derived  = CandidateGeneration.nodeKey(listing, evidence, pins)
+        val group    = members.getOrElseUpdate(derived, new Members(derived))
+        // The node's own key instance, not this listing's equal copy: one per node, not per listing.
+        val key      = group.key
         listings(listing.key) = key
-        val held = members.getOrElseUpdate(key, mutable.TreeMap.empty)
+        val held = group.held
         held(listing) = listing
         if (held.head._2.key == listing.key) heads(key) = listing.key -> evidence
         touched += key
@@ -135,7 +140,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     refresh(Set.empty, changed.queries.filter(askers.contains), changed.films.filter(bestHits.contains))
 
   private def leave(listing: ListingKey, key: NodeKey): NodeKey = {
-    members.get(key).foreach { held =>
+    members.get(key).map(_.held).foreach { held =>
       held.find(_._2.key == listing).foreach { case (sorted, _) => held.remove(sorted) }
       if (held.isEmpty) { members.remove(key); heads.remove(key) }
     }
@@ -158,7 +163,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val bannersBefore = mutable.HashMap.empty[String, Boolean]
     def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bannerSegment(piece)))
     rebuilt.foreach(key => nodes.remove(key).foreach(old => { noteBefore(old.pieces); films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
-    val built = rebuilt.toSeq.flatMap(key => members.get(key).map { held =>
+    val built = rebuilt.toSeq.flatMap(key => members.get(key).map(_.held).map { held =>
       val listed  = held.values.toSeq
       val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
       heads(key)  = listed.head.key -> head

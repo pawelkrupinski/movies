@@ -105,5 +105,7 @@ private[identity] object CandidateGeneration {
   /** The films an answer names, best first. */
   def ranked(hits: Seq[Hit]): Seq[Int] = hits.map(_.tmdbId).distinct
   /** A node's key as text: its evidence's, and its pins'. */
-  def nodeKeyText(key: (String, Set[String])): String = (key._1 +: key._2.toSeq.sorted).mkString("\u0000")
+  def nodeKeyText(key: (String, Set[String])): String =
+    // No pin (the usual case): the evidence's own key, the one instance every listing of the node shares.
+    if (key._2.isEmpty) key._1 else (key._1 +: key._2.toSeq.sorted).mkString("\u0000")
 }

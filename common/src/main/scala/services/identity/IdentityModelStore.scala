@@ -101,14 +101,21 @@ object MongoIdentityModelStore {
 
   private[identity] def decode(d: BsonDocument): StoredFamily = {
     val reads = d.getDocument("reads")
+    // One instance of each listing key and each node text per family: the `nodes` pairs repeat the
+    // `listings` keys, and a node's text repeats for each of its listings — decoded as they stand,
+    // every restore kept a second key and a node text per listing for the model's lifetime.
+    val listings = ListingKeyBson.decodeAll(d.getArray("listings")).toSet
+    val keyOf    = listings.iterator.map(key => key -> key).toMap
+    val texts    = scala.collection.mutable.HashMap.empty[String, String]
     StoredFamily(d.getString("_id").getValue, IdentityResolver.RegionFamily(
-      ListingKeyBson.decodeAll(d.getArray("listings")).toSet,
+      listings,
       d.getArray("decisions").getValues.asScala.toSeq.map(v => ResolverDecisionBson.decode(v.asDocument)),
       readStrings(d, "blockKeys"), readQueries(d, "queries"), readInts(d, "films"),
       CorpusContext.Reads(readStrings(reads, "titles"), readStrings(reads, "groups"), readStrings(reads, "segments"),
         readStrings(reads, "banners"), readInts(reads, "films"), readQueries(reads, "queries")),
       d.getArray("nodes").getValues.asScala.toSeq.map(_.asDocument).map(n =>
-        ListingKeyBson.decode(n.getDocument("listing")) -> n.getString("node").getValue).toMap),
+        { val key = ListingKeyBson.decode(n.getDocument("listing")); keyOf.getOrElse(key, key) } ->
+          { val text = n.getString("node").getValue; texts.getOrElseUpdate(text, text) }).toMap),
       d.getInt64("digest").getValue)
   }
 }
