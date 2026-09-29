@@ -61,6 +61,9 @@ object IdentityMeasures {
         countries.nonEmpty || (originalTitle.exists(_.trim.nonEmpty) && !IdentityMeasures.repeatsItsTitle(this))
     /** The shapes as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
+    /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
+    private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
+      originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
   }
 
   /** A running time in brackets, marked as minutes by a prime or an apostrophe ("97’", "97'", "97′")
@@ -301,6 +304,10 @@ object IdentityMeasures {
     private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =
       (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.TitleForm(_))
     /** The film's titles as series and numbers (`numeralRelation`). */
+    /** The titles, trimmed and non-empty, as comparison forms once per record: the other side of
+     *  every node's `originalTitleRelation` to this film. */
+    private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
+      (Seq(title) ++ originalTitle ++ alternativeTitles).map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.TitleForm(_))
     private[identity] lazy val numberedTitles: Seq[IdentityMeasures.Numbered] =
       (Seq(title) ++ originalTitle ++ alternativeTitles).map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
   }
@@ -400,7 +407,8 @@ object IdentityMeasures {
     lazy val key: String            = IdentityMeasures.key(text)
     lazy val words: Seq[String]     = IdentityMeasures.words(text)
     lazy val wordSet: Set[String]   = words.toSet
-    lazy val yearless: String       = yearlessTokens(text).mkString
+    lazy val yearlessWords: Seq[String] = yearlessTokens(text)
+    lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
   }
 
@@ -692,20 +700,31 @@ object IdentityMeasures {
   }
 
   def originalTitleRelation(original: Option[String], otherTitles: Seq[String], filmYear: Option[Int] = None): Measure =
-    original.map(_.trim).filter(_.nonEmpty) match {
+    originalFormRelation(original.map(_.trim).filter(_.nonEmpty).map(OriginalForm(_)),
+      otherTitles.map(_.trim).filter(_.nonEmpty).map(TitleForm(_)), filmYear)
+
+  /** An original title's comparison forms: its own, and its shapes' keys. */
+  private[identity] final case class OriginalForm(text: String) {
+    val form: TitleForm = TitleForm(text)
+    lazy val shapeKeys: Seq[String] = shapes(Seq(text)).map(key)
+    lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
+  }
+
+  /** [[originalTitleRelation]] over forms normalised once: a node's original title meets every
+   *  film of its family's pool, and re-normalising both sides per pair was a sixth of a PL re-resolve. */
+  private def originalFormRelation(original: Option[OriginalForm], others: Seq[TitleForm], filmYear: Option[Int]): Measure =
+    original match {
       case None => MissingListing
       case Some(o) =>
-        val others = otherTitles.map(_.trim).filter(_.nonEmpty)
         if (others.isEmpty) MissingFilm
         // The same title once years and seasons are dropped: "The Metropolitan Opera: Così fan tutte
         // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
-        else if (others.map(key).contains(key(o)) || others.exists(t => oneTypoApart(words(o), words(t))) ||
-                 others.map(latinKey).contains(latinKey(o)) ||
-                 (yearAgrees(o, filmYear) && others.exists(t => yearlessTokens(t).nonEmpty && yearlessTokens(t) == yearlessTokens(o))))
+        else if (others.exists(_.key == o.form.key) || others.exists(t => oneTypoApart(o.form.words, t.words)) ||
+                 others.exists(_.latinKey == o.form.latinKey) ||
+                 (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty && t.yearlessWords == o.form.yearlessWords)))
           Category("match")
-        else containment(Seq(TitleForm(o)), shapes(Seq(o)).map(key), others.map(TitleForm(_))).getOrElse {
-          val ow = words(o).filter(_.length >= 4).toSet
-          if (others.exists(t => (words(t).filter(_.length >= 4).toSet intersect ow).nonEmpty)) Category("overlap")
+        else containment(Seq(o.form), o.shapeKeys, others).getOrElse {
+          if (others.exists(t => (t.words.filter(_.length >= 4).toSet intersect o.longWords).nonEmpty)) Category("overlap")
           else Category("disjoint")
         }
     }
@@ -1042,7 +1061,7 @@ object IdentityMeasures {
    *  what it measures: Everyman's "Dracula (4K Restoration)" is not The Mummy its cinematographer
    *  directed. */
   private def ownOriginalTitle(l: Listing, f: Film, title: Category): Measure =
-    originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles, f.year) match {
+    originalFormRelation(l.originalForm, f.trimmedForms, f.year) match {
       case m if NamingRelations(title.value) && repeatsItsTitle(l) && m != Category("match") => MissingListing
       case m                                                                                 => m
     }
