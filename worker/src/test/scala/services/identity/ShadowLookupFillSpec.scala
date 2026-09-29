@@ -43,10 +43,10 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   }
 
   private def fill(store: ObservationStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
-                   rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty) =
+                   rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty, normalized: Option[TmdbNormalizer] = None) =
     new ShadowLookupFill(() => modelGaps(store), store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
       IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _)
+      DaemonExecutors.directExecutor(), sleeps += _, normalized)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: ObservationStore): AnswersChanged = {
@@ -61,6 +61,20 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     val (lookups, gaps) = ObservedIdentityLookups.over(s, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("other"))), Nil)
     IdentityResolver.resolve(listings, lookups, normalizer)
     gaps.total
+  }
+
+  "a fill round beside a normalized store" should "file its answers there, as the model reads them, and none raw" in {
+    val observations = store()
+    val docs         = new InMemoryTmdbDocuments
+    val tmdb         = new TmdbStore(docs, Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
+    val round = fill(observations, new Service, normalized = Some(new TmdbNormalizer(tmdb))).round()
+    round.asked should be > 0
+    observations.currentLookups().filter(_.query.key.contains("themoviedb")) shouldBe empty
+    docs.size(TmdbKind.Query) should be > 0
+    val model = new IncrementalResolver(new StoredTmdbLookups(tmdb, "pl-PL", ObservedIdentityLookups.over(observations,
+      new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("other"))), Nil)._1, new ObservationReads), normalizer, IdentityCalibration.resolver)
+    model.seed(listings)
+    model.gaps.queries.collect { case q: CandidateQuery.Title => q } shouldBe empty
   }
 
   "a fill round" should "ask every unobserved question once, into the store, so the next shadow resolve has no gap" in {

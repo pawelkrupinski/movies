@@ -149,7 +149,9 @@ final class ShadowLookupFill(
     // Observed first (main's `ObservedFirstHttpFetch`, the cut-over projection's own), live for a
     // gap within the budget; details from the store only.
     val gaps    = new ObservationGaps
-    val observedFirst = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
+    // Live answers kept raw only where no normalized store takes them.
+    val live          = if (normalizer.isDefined) liveFetch else new ObservingHttpFetch(liveFetch, store)
+    val observedFirst = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(live, budget))
     // Every answer the round reads — observed or live — normalized into the model's TMDB store: a gap
     // the store lacks is filled whichever way it was answered.
     val fetch   = normalizer.fold[tools.HttpFetch](observedFirst)(new NormalizingHttpFetch(observedFirst, _))
