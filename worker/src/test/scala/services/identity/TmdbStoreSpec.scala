@@ -135,6 +135,35 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     service.drain() shouldBe None
   }
 
+  /** A take-up asks tens of thousands of questions. Each read one document at a time — its search,
+   *  then every film it names — as its own round-trip: 40.5k asks took 21 s of a UK restore's 28 s
+   *  in production, against a fraction of a second for the same documents read in batches. The
+   *  prefetch the model's lookups run must reach the store's own batched prefetch. */
+  "a prefetch through the model's lookups" should "read the store in a few batches, not a round-trip per document" in {
+    val w     = new World
+    val gets  = new java.util.concurrent.atomic.AtomicInteger()
+    val docs  = new TmdbDocuments {
+      def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); w.docs.get(kind, ids) }
+      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
+    }
+    val titles = (1 to 30).map(i => s"Film $i")
+    titles.zipWithIndex.foreach { case (text, i) =>
+      w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=${java.net.URLEncoder.encode(text, "UTF-8")}",
+        Success(s"""{"results":[{"id":${100 + i},"title":"$text","original_title":"$text","release_date":"2020-01-01","popularity":5.0},
+                   |{"id":${200 + i},"title":"$text","original_title":"$text","release_date":"1990-01-01","popularity":1.0}]}""".stripMargin))
+    }
+    val reads   = new ObservationReads
+    val store   = new TmdbStore(docs, w.clock)
+    val lookups = new TrackedLookups(new StoredTmdbLookups(store, language, NoDetails, reads), reads,
+      Some(java.util.concurrent.Executors.newFixedThreadPool(4)))
+    val queries = titles.map(CandidateQuery.Title(_))
+
+    lookups.prefetch(queries, Nil, Nil)
+    queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId).toSet)) shouldBe
+      titles.indices.map(i => Some(Set(100 + i, 200 + i)))
+    gets.get should be <= 4
+  }
+
   "the backfill" should "move the raw TMDB answers the observation store holds into the normalized store, 404s included, once" in {
     import services.observations.{LookupAnswer, LookupQuery, ObservationStore}
     val w   = new World

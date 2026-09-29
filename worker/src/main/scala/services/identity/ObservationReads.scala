@@ -107,6 +107,12 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
 
   override def prefetch(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[Listing]): Unit = pool.foreach { threads =>
     queries.clear(); films.clear(); details.clear()
+    // The inner lookups' own prefetch first: a store that can read a slice's documents in a few
+    // batches does, and the asks below are then answered from what it holds. Without it every ask
+    // read each of its documents as its own round-trip — 21 s of a UK restore's 28 s.
+    val started0 = System.nanoTime()
+    inner.prefetch(asked, records, pages)
+    prefetchNanos.addAndGet(System.nanoTime() - started0)
     val tasks: Seq[java.util.concurrent.Callable[Unit]] =
       asked.toSeq.map(query => (() => { queries.put(query, askQuery(query)); () }): java.util.concurrent.Callable[Unit]) ++
         records.toSeq.map(id => (() => { films.put(id, askFilm(id)); () }): java.util.concurrent.Callable[Unit]) ++
