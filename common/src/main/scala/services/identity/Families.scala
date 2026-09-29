@@ -34,9 +34,10 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
         scope.of(sibling).exists(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied))
     }
 
-  private val built = scala.collection.mutable.ArrayBuffer.empty[FamilyScope]
-  /** How many listings every scope of every round scored ([[Resolution.scorings]]). */
-  def scorings: Int = built.iterator.map(_.scorings).sum
+  /** How many listings every scope of every round scored ([[Resolution.scorings]]) — counted, not
+   *  read off the scopes, so a round's replaced scopes and their scores are not kept alive. */
+  private var listingsScored = 0
+  def scorings: Int = listingsScored
 
   private final case class Round(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int],
                                  scopes: Map[Int, FamilyScope], bestOf: Map[String, Accepted])
@@ -48,7 +49,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
                             scored: Map[Seq[String], FamilyScope] = Map.empty): Round = {
     val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) =>
       val sorted = members.sortBy(_.id)
-      family -> scored.getOrElse(sorted.map(_.id), { val scope = new FamilyScope(sorted, scoring); built += scope; scope })
+      family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, () => listingsScored += 1))
     }
     val bestOf = nodes.groupBy(node => familyOf(node.id)).toSeq.flatMap { case (family, members) =>
       val scope = scopes(family)

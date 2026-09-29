@@ -6,7 +6,8 @@ import scala.collection.mutable
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
-private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring) {
+private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
+                                          counted: () => Unit) {
   import scoring.{backing, calibration, evidenceDenies, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, ownSearch, ownWalk, sharedOf}
 
@@ -15,17 +16,13 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
    *  record titled only a listing's qualifier does not name it. The family's own pool, so a
    *  family resolves alone as it does among the others. */
-  /** How many listings (a node's own, or a cluster's pooled) this scope scored against its pool —
-   *  the resolve's dominant cost ([[Resolution.scorings]]). */
-  private[identity] var scorings: Int = 0
-
   val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
 
   /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
    *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByPins: Int => Boolean): Seq[Scored] = {
-    scorings += 1
+    counted()
     val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
