@@ -192,6 +192,17 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         withClue(s"${c.label}: the incremental model decides as the whole resolve") { same shouldBe true; sameAfter shouldBe true }
       }
 
+      // The normalized TMDB store answers every question the resolve asked as the recorded responses did.
+      {
+        val counted = c.fetch.requests.get()
+        val equivalence = StoredLookupsEquivalence.check(c.fetch, c.country.language, lookups.asked)
+        c.fetch.requests.set(counted)
+        report.line(s"[${c.label}] stored lookups: ${equivalence.questions} questions and ${equivalence.films} film records answered " +
+          s"from the normalized store; ${equivalence.mismatches.size} differ from the recorded answers" +
+          equivalence.mismatches.take(5).map("\n    " + _).mkString)
+        withClue(s"${c.label}: the normalized store answers as the recorded responses") { equivalence.mismatches shouldBe empty }
+      }
+
       // Why the resolver left listings unmatched: (a) nothing answerable, (b) below the cut, (c) vetoed.
       val unmatched = listings.flatMap(l => decisionOf.get(l.key)).filterNot(_.basis.matched)
         .groupMapReduce(_.basis.toString)(_ => 1)(_ + _)

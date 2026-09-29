@@ -52,16 +52,21 @@ final class MongoObservationBackend(db: MongoDatabase, collection: String, ttlMi
 
   def allCurrent(): Seq[StoredObservation] = {
     val out = Seq.newBuilder[StoredObservation]
+    eachCurrent(None)(out ++= _)
+    out.result()
+  }
+
+  override def eachCurrent(keyPrefix: Option[String])(page: Seq[StoredObservation] => Unit): Unit = {
     var failure: Option[Throwable] = None
+    val prefix = keyPrefix.map(p => Filters.regex("key", s"^${java.util.regex.Pattern.quote(p)}")).toSeq
     val complete = KeysetScan.scan[StoredObservation](
       label = s"$collection current scan", batchSize = 1000, maxAttempts = 3, initialBackoff = 1.second,
       keyOf = _.key,
       fetchPage = (after, limit) => Await.result(
-        coll.find(Filters.and((Filters.equal("current", true) +: after.map(Filters.gt("key", _)).toSeq)*))
+        coll.find(Filters.and((Filters.equal("current", true) +: (prefix ++ after.map(Filters.gt("key", _)).toSeq))*))
           .sort(Sorts.ascending("key")).limit(limit).toFuture(), 60.seconds).map(decode),
-      onIncomplete = e => failure = Some(e))(out ++= _)
+      onIncomplete = e => failure = Some(e))(page)
     if (!complete) throw new IllegalStateException(s"$collection: incomplete read of current observations", failure.orNull)
-    out.result()
   }
 
   def insert(o: StoredObservation): Unit =

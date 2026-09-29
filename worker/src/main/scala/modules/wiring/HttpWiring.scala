@@ -92,8 +92,11 @@ trait HttpWiring { self: WorkerWiring =>
   // is identity evidence (docs/design/identity-resolver.md §2, "Capture"). Wrapped OUTSIDE the
   // chain, so an observation is what the pipeline itself received — a replayed fixture, a
   // remembered verdict or the wire — and a harness that swaps `enrichmentFetch` is still observed.
-  lazy val identityLookupFetch: HttpFetch =
-    observationStore.fold(enrichmentFetch)(new services.observations.ObservingHttpFetch(enrichmentFetch, _))
+  lazy val identityLookupFetch: HttpFetch = {
+    val observed = observationStore.fold(enrichmentFetch)(new services.observations.ObservingHttpFetch(enrichmentFetch, _))
+    // …and normalized into the identity model's TMDB store (`TmdbStore`) as it arrives.
+    identityTmdbNormalizer.fold(observed)(new services.identity.NormalizingHttpFetch(observed, _))
+  }
 
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from the `enrich` phase (the TMDB client through `identityLookupFetch`), apart from

@@ -1,0 +1,214 @@
+package services.identity
+
+import org.mongodb.scala.bson.BsonArray
+import org.bson.{BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.{BulkWriteOptions, Filters, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import play.api.libs.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue}
+
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
+
+/** The kinds of document the normalized TMDB store keeps, each its own collection. */
+enum TmdbKind(val collection: String) {
+  /** A film: its record's two partial responses, the record parsed from them, and its hit fields. */
+  case Film   extends TmdbKind("tmdb_films")
+  /** A person: the films they are credited as directing and as writing. */
+  case Person extends TmdbKind("tmdb_people")
+  /** A question: a title search's or person search's ranked ids, a find's films, IMDb's suggestions. */
+  case Query  extends TmdbKind("tmdb_queries")
+}
+
+/** Where the normalized documents live: the storage seam, and nothing else. Every rule — what a
+ *  response becomes, when a document changed, what a question reads — is [[TmdbStore]]'s. */
+trait TmdbDocuments {
+  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument]
+  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
+}
+
+final class InMemoryTmdbDocuments extends TmdbDocuments {
+  private val byKind = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, BsonDocument]()).toMap
+  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+    ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> _.clone())).toMap
+  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => byKind(kind).put(id, d.clone()) }
+  def size(kind: TmdbKind): Int = byKind(kind).size
+}
+
+/** `tmdb_films` / `tmdb_people` / `tmdb_queries`: one document per entity, `_id` its key. */
+final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
+  private val Timeout = 30.seconds
+  private val Batch   = 500
+  private def coll(kind: TmdbKind): MongoCollection[BsonDocument] = db.getCollection[BsonDocument](kind.collection)
+
+  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+    ids.distinct.grouped(Batch).flatMap { batch =>
+      Await.result(coll(kind).find(Filters.in("_id", batch*)).toFuture(), Timeout).map { d =>
+        val id = d.getString("_id").getValue
+        d.remove("_id")
+        id -> d
+      }
+    }.toMap
+
+  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.grouped(Batch).foreach { batch =>
+    Await.result(coll(kind).bulkWrite(batch.map { case (id, d) =>
+      ReplaceOneModel(Filters.equal("_id", id), d.clone().append("_id", BsonString(id)), ReplaceOptions().upsert(true))
+    }, BulkWriteOptions().ordered(false)).toFuture(), Timeout)
+    ()
+  }
+}
+
+/**
+ * TMDB's and IMDb's answers to the identity model's questions, normalized: a film once by its id,
+ * a person once by theirs, and a question as the ids it named — native BSON holding only what the
+ * resolver reads (the record fields `TmdbFilmRecord` parses, each hit's title/original/year and
+ * popularity BUCKET). Written as responses arrive ([[TmdbNormalizer]], wherever the pipeline's or
+ * the fill's client fetches), so no raw body is kept and nothing is parsed twice.
+ *
+ * A document is rewritten, and its key announced to [[onChanged]], only when its VALUE changes: a
+ * re-fetch whose only news is TMDB's daily popularity or vote drift (54 of 60 sampled UK re-fetches)
+ * changes nothing the model reads, and wakes nothing.
+ */
+final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
+  import TmdbStore._
+
+  private val listeners = new java.util.concurrent.CopyOnWriteArrayList[String => Unit]()
+  /** Call `listener` with a document's key ([[keyOf]]) whenever its value changes. */
+  def onChanged(listener: String => Unit): Unit = { listeners.add(listener); () }
+
+  // ── writes: one document's new value, and whether it moved ─────────────────────────
+
+  private def update(kind: TmdbKind, id: String)(change: Option[BsonDocument] => BsonDocument): Unit =
+    updateAll(kind, Seq(id))((_, before) => change(before))
+
+  /** `change` each of `ids`' documents; write, and announce, only those whose value moved — in one
+   *  read and one write however many there are. */
+  private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = synchronized {
+    val before = docs.get(kind, ids.distinct)
+    val moved  = ids.distinct.flatMap { id =>
+      def withoutStamp = before.get(id).map { d => val c = d.clone(); c.remove(ChangedAt); c }
+      val after = change(id, withoutStamp)   // `change` may edit what it is given: compare with a fresh copy
+      Option.when(!withoutStamp.contains(after))(id -> after.append(ChangedAt, BsonInt64(clock.millis())))
+    }
+    if (moved.nonEmpty) {
+      docs.put(kind, moved)
+      moved.foreach { case (id, _) => listeners.forEach(_(keyOf(kind, id))) }
+    }
+  }
+
+  /** A title search's (or find's) films, in its order, each hit's fields kept on its film. */
+  private[identity] def question(id: String, films: Seq[Hit]): Unit = {
+    hitsSeen(films)
+    update(TmdbKind.Query, id)(_ => new BsonDocument("ids", ints(films.map(_.tmdbId))))
+  }
+
+  /** A person search's people, in the order the walk tries them. */
+  private[identity] def people(id: String, persons: Seq[Int]): Unit =
+    update(TmdbKind.Query, id)(_ => new BsonDocument("ids", ints(persons)))
+
+  /** IMDb's movie suggestions for a title, as `ImdbClient` reads them. */
+  private[identity] def suggestions(id: String, entries: Seq[services.enrichment.ImdbClient.Suggestion]): Unit =
+    update(TmdbKind.Query, id)(_ => new BsonDocument("suggestions", BsonArray.fromIterable(entries.map { s =>
+      val d = new BsonDocument("id", BsonString(s.id)).append("rank", BsonInt32(s.rank))
+      s.title.foreach(t => d.append("title", BsonString(t)))
+      s.year.foreach(y => d.append("year", BsonInt32(y)))
+      d
+    })))
+
+  /** A person's directing and writing credits. */
+  private[identity] def person(id: Int, directed: Seq[Hit], wrote: Seq[Hit]): Unit = {
+    hitsSeen(directed ++ wrote)
+    update(TmdbKind.Person, id.toString)(_ => new BsonDocument("directed", ints(directed.map(_.tmdbId))).append("wrote", ints(wrote.map(_.tmdbId))))
+  }
+
+  /** One of a film's two record responses — `Partial.Local` or `Partial.English` — as the minimal
+   *  document `TmdbFilmRecord` reads; the record is re-parsed once both are known. */
+  private[identity] def filmPartial(id: Int, partial: Partial, minimal: JsValue): Unit =
+    update(TmdbKind.Film, id.toString) { before =>
+      val d = before.getOrElse(new BsonDocument())
+      d.put(partial.field, bsonOf(minimal))
+      (Option(d.get(Partial.Local.field)), Option(d.get(Partial.English.field))) match {
+        case (Some(local), Some(english)) =>
+          val record = TmdbFilmRecord.parse(Seq(jsonOf(local), jsonOf(english))).map(_._1)
+          d.put("record", IdentityAnswerBson.film(record))
+          // A film with a record is read from it alone; a hit's fields only stand in until then.
+          if (record.isDefined) d.remove("hit")
+        case _ => d.remove("record")
+      }
+      d
+    }
+
+  private def hitsSeen(hits: Seq[Hit]): Unit = {
+    val byId = hits.map(hit => hit.tmdbId.toString -> hit).toMap
+    updateAll(TmdbKind.Film, hits.map(_.tmdbId.toString)) { (id, before) =>
+      val d = before.getOrElse(new BsonDocument())
+      if (Option(d.get("record")).exists(_.isDocument)) d else d.append("hit", hitDoc(byId(id)))
+    }
+  }
+
+  // ── reads ─────────────────────────────────────────────────────────────────────────
+
+  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.get(kind, ids)
+}
+
+object TmdbStore {
+  /** When a document's value last moved (epoch millis): the watermark a restart replays after. */
+  val ChangedAt = "changedAt"
+
+  /** A film's hit as the questions naming it read it: from its record once known, else the hit
+   *  fields a search or credit gave. `None` when neither is held (the film was never named). */
+  def filmHit(id: Int, film: BsonDocument): Option[Hit] =
+    Option(film.get("record")).filter(_.isDocument).flatMap(IdentityAnswerBson.filmOf)
+      .map(f => Hit(id, f.title, f.originalTitle, f.year, f.popularity.getOrElse(PopularityBucket.representative(PopularityBucket.of(0.0)))))
+      .orElse(Option(film.get("hit")).map(h => hitOf(id, h.asDocument)))
+
+  /** The key a document is announced and tracked under (`ObservationReads`). */
+  def keyOf(kind: TmdbKind, id: String): String = s"${kind.collection}:$id"
+
+  /** Which of a film's two record responses: the deployment language's `…?append_to_response=
+   *  credits,release_dates`, or en-US `…?append_to_response=alternative_titles`. */
+  enum Partial(val field: String) {
+    case Local   extends Partial("local")
+    case English extends Partial("english")
+  }
+
+  // Question ids, by the parameters that decide their answer.
+  def titleSearchId(language: String, query: String): String = s"movie|$language|$query"
+  def personSearchId(query: String): String                  = s"person|$query"
+  def findId(imdbId: String): String                         = s"find|$imdbId"
+  def suggestionsId(url: String): String                     = s"imdb|${url.stripPrefix(services.enrichment.ImdbClient.SuggestionBase)}"
+
+  private def ints(values: Seq[Int]): BsonArray = BsonArray.fromIterable(values.map(BsonInt32(_)))
+  def intsOf(value: BsonValue): Seq[Int] = value.asArray.getValues.asScala.toSeq.map(_.asInt32.getValue)
+
+  /** A hit's fields as the resolver reads them — popularity as its bucket. */
+  def hitDoc(hit: Hit): BsonDocument = {
+    val d = new BsonDocument("title", BsonString(hit.title)).append("popularity", BsonInt32(PopularityBucket.of(hit.popularity)))
+    hit.originalTitle.foreach(t => d.append("originalTitle", BsonString(t)))
+    hit.year.foreach(y => d.append("year", BsonInt32(y)))
+    d
+  }
+  def hitOf(id: Int, d: BsonDocument): Hit =
+    Hit(id, d.getString("title").getValue, Option(d.get("originalTitle")).map(_.asString.getValue),
+      Option(d.get("year")).map(_.asInt32.getValue), PopularityBucket.representative(d.getInt32("popularity").getValue))
+
+  /** Plain JSON as BSON and back: the minimal record partials, whose shape is TMDB's. */
+  def bsonOf(js: JsValue): BsonValue = js match {
+    case JsObject(fields) => val d = new BsonDocument(); fields.foreach { case (k, v) => d.append(k, bsonOf(v)) }; d
+    case JsArray(values)  => BsonArray.fromIterable(values.map(bsonOf))
+    case JsString(s)      => BsonString(s)
+    case JsNumber(n)      => if (n.isValidInt) BsonInt32(n.toInt) else if (n.isValidLong) BsonInt64(n.toLong) else BsonDouble(n.toDouble)
+    case b: JsBoolean     => BsonBoolean(b.value)
+    case JsNull           => BsonNull()
+  }
+  def jsonOf(value: BsonValue): JsValue =
+    if (value.isDocument) JsObject(value.asDocument.entrySet.asScala.toSeq.map(e => e.getKey -> jsonOf(e.getValue)))
+    else if (value.isArray) JsArray(value.asArray.getValues.asScala.toSeq.map(jsonOf))
+    else if (value.isString) JsString(value.asString.getValue)
+    else if (value.isInt32) JsNumber(value.asInt32.getValue)
+    else if (value.isInt64) JsNumber(value.asInt64.getValue)
+    else if (value.isDouble) JsNumber(BigDecimal(value.asDouble.getValue))
+    else if (value.isBoolean) JsBoolean(value.asBoolean.getValue)
+    else JsNull
+}

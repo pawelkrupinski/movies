@@ -128,6 +128,16 @@ class WorkerWiring(
   // one thread; its families persist in `identity_model_families`, so a restart takes them up and
   // re-resolves only what moved while it was down. Under the shadow switch, like the tick it replaces.
   lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
+
+  // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
+  // a person and a question each once, as native BSON holding only what the resolver reads. Filled
+  // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model; backfilled once
+  // from the raw answers `obs_lookups` holds. Where the model runs, in the country's database.
+  lazy val identityTmdbDocuments: Option[services.identity.TmdbDocuments] =
+    Option.when(configuration.identityShadow.value || identityCutover)(
+      mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_)))
+  lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
+  lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_))
   lazy val identityModel: Option[services.identity.IdentityModelService] = {
     import services.identity._
     // A cut-over country's model is its identity: the intake's accepted listings, answered observed
@@ -140,7 +150,16 @@ class WorkerWiring(
         observationStore))
       else identityObservations.filter(_ => configuration.identityShadow.value).map(store => (
         () => shadowListings(),
-        () => ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers, identityReads)._1,
+        () => {
+          val observed = ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers, identityReads)._1
+          // TMDB and IMDb from the normalized store once it is filled; venue detail pages from the observations.
+          (identityTmdbStore, identityTmdbNormalizer, identityTmdbDocuments) match {
+            case (Some(tmdb), Some(normalizer), Some(docs)) =>
+              new TmdbStoreBackfill(store, normalizer, docs, clock).ensure()
+              new StoredTmdbLookups(tmdb, country.language.toLanguageTag, observed, identityReads)
+            case _ => observed
+          }
+        },
         Some(store)))
     sources.map { case (listings, lookups, store) =>
       val pinStore = new MongoPinStore(mongoConnection.database)
@@ -162,6 +181,7 @@ class WorkerWiring(
         metrics    = workerMetrics.identityModel.forCountry(country.code),
         reading    = () => tracked.fold("")(_.render))
       store.foreach(_.onNewLookup(model.observed))
+      identityTmdbStore.foreach(_.onChanged(model.observed))
       model
     }
   }
@@ -230,6 +250,7 @@ class WorkerWiring(
         store       = store,
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
+        normalizer  = identityTmdbNormalizer,
         enrichers   = detailEnrichers,
         rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
         window      = identityShadowInterval,

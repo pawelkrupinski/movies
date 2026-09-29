@@ -44,6 +44,7 @@ final class CoalescedObservationBackend(inner: ObservationBackend, maxBatch: Int
   override def currents(keys: Seq[String]): Map[String, StoredObservation] = inner.currents(keys)
   def history(key: String): Seq[StoredObservation]                         = inner.history(key)
   def allCurrent(): Seq[StoredObservation]                                 = inner.allCurrent()
+  override def eachCurrent(keyPrefix: Option[String])(page: Seq[StoredObservation] => Unit): Unit = inner.eachCurrent(keyPrefix)(page)
   def insert(observation: StoredObservation): Unit                        = inner.insert(observation)
   def retire(key: String, expireAt: Instant): Unit                        = inner.retire(key, expireAt)
   def renew(key: String, lastSeenAt: Option[Instant], expireAt: Instant): Unit = inner.renew(key, lastSeenAt, expireAt)

@@ -132,7 +132,8 @@ final class ShadowLookupFill(
   window:      => settings.IdentityShadowInterval,
   metrics:     ShadowLookupMetrics,
   executor:    ExecutorService,
-  sleep:       Long => Unit = Thread.sleep
+  sleep:       Long => Unit = Thread.sleep,
+  normalizer:  Option[TmdbNormalizer] = None
 ) extends Logging {
 
   private val running = new AtomicBoolean(false)
@@ -148,7 +149,10 @@ final class ShadowLookupFill(
     // Observed first (main's `ObservedFirstHttpFetch`, the cut-over projection's own), live for a
     // gap within the budget; details from the store only.
     val gaps    = new ObservationGaps
-    val fetch   = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
+    val observedFirst = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(new ObservingHttpFetch(liveFetch, store), budget))
+    // Every answer the round reads — observed or live — normalized into the model's TMDB store: a gap
+    // the store lacks is filled whichever way it was answered.
+    val fetch   = normalizer.fold[tools.HttpFetch](observedFirst)(new NormalizingHttpFetch(observedFirst, _))
     val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch),
       enrichers.map(new ObservedDetailEnricher(_, store, gaps)), gaps)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never

@@ -181,6 +181,9 @@ object IdentityShadow {
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
     def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
+    /** Every candidate question and film record asked through it, with the answer it got. */
+    def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
+      (queries.asScala.toMap, films.asScala.toMap)
     def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isKnown), queries.values.asScala.count(!_.isKnown),
       films.values.asScala.count(!_.isKnown))
   }

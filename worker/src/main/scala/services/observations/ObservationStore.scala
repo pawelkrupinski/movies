@@ -112,6 +112,12 @@ final class ObservationStore(
   def currentListings(): Seq[ListingObservation] =
     listings.allCurrent().filter(live(clock.instant())).flatMap(toListing)
 
+  /** Each live lookup answer whose key starts with `keyPrefix`, a page at a time — never all at once. */
+  def eachCurrentLookup(keyPrefix: String)(page: Seq[LookupObservation] => Unit): Unit = {
+    val now = clock.instant()
+    lookups.eachCurrent(Some(keyPrefix))(stored => page(stored.filter(live(now)).map(toLookup)))
+  }
+
   /** Every live lookup answer. Not a read in the renewing sense: nothing consumes them here. */
   def currentLookups(): Seq[LookupObservation] =
     lookups.allCurrent().filter(live(clock.instant())).map(toLookup)

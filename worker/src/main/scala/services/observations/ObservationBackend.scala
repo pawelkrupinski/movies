@@ -42,6 +42,11 @@ trait ObservationBackend {
   /** Every current observation, expired or not. */
   def allCurrent(): Seq[StoredObservation]
 
+  /** The current observations whose key starts with `keyPrefix` (all, without one), a page at a
+   *  time: a scan that never holds more than a page — the identity store's backfill. */
+  def eachCurrent(keyPrefix: Option[String])(page: Seq[StoredObservation] => Unit): Unit =
+    allCurrent().filter(o => keyPrefix.forall(o.key.startsWith)).grouped(1000).foreach(page)
+
   /** Add `observation`, which is current. The caller has retired the previous one first. */
   def insert(observation: StoredObservation): Unit
 
