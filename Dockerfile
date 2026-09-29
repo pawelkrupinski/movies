@@ -87,7 +87,7 @@ RUN chmod +x bin/*
 # options (conf/application.ini: collector, JIT shape, JDK-25 parity) are the ones it starts with --
 # a cache trained under others does not map. -Xmx512m keeps the training heap in the same
 # compressed-pointer range as every pod's. `test -s` fails the build rather than ship without it.
-RUN JAVA_OPTS="-Xmx512m -XX:AOTCacheOutput=/app/classes.aot" bin/$BIN -main tools.ClassArchiveTraining 2>&1 \
+RUN JAVA_OPTS="-Xmx512m -XX:AOTCacheOutput=/app/classes.aot" bin/$BIN -main tools.ClassArchiveTraining /app/lib 2>&1 \
       | grep -v "Preload Warning" ; test -s /app/classes.aot
 EXPOSE 9000
 # HEAP DUMPS: bounded, uniquely named, and on a volume that outlives the pod.
