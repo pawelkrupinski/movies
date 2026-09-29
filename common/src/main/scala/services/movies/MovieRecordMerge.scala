@@ -42,6 +42,11 @@ import models.{MovieRecord, Showtime, Source, SourceData}
 object MovieRecordMerge {
 
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
+    unionFields(canonical, victim).copy(data = mergeData(canonical.data, victim.data))
+
+  /** [[union]] without the per-source slots: `canonical`'s `data` is left as it is. What
+   *  [[unionAll]] folds with, since it settles every row's slots at once afterwards. */
+  private def unionFields(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
     canonical.copy(
       // Enrichment-side single-source fields prefer the canonical, but fall back
       // to the victim when the canonical lacks them. The two rows are the SAME
@@ -65,7 +70,6 @@ object MovieRecordMerge {
       metacriticUrl     = canonical.metacriticUrl.orElse(victim.metacriticUrl),
       rottenTomatoesUrl = canonical.rottenTomatoesUrl.orElse(victim.rottenTomatoesUrl),
       searchTitle       = canonical.searchTitle.orElse(victim.searchTitle),
-      data              = mergeData(canonical.data, victim.data),
       retainedSynopses  = mergeRetainedSynopses(canonical.retainedSynopses, victim.retainedSynopses)
     )
 
@@ -92,7 +96,10 @@ object MovieRecordMerge {
   def unionAll(records: Seq[MovieRecord]): MovieRecord = {
     require(records.nonEmpty, "MovieRecordMerge.unionAll: no records")
     val canonical = records.find(_.tmdbId.isDefined).getOrElse(records.head)
-    val base      = records.filterNot(_ eq canonical).foldLeft(canonical)(union)
+    // The fields fold pairwise; the slots do not (below). Folding them with `union` merged every
+    // row's slots into a growing map at each step only to discard it: ~11% of the US pipeline's
+    // CPU in JFR, quadratic in a wide release's rows.
+    val base      = records.filterNot(_ eq canonical).foldLeft(canonical)(unionFields)
     // The per-source slots are settled across ALL rows at once, not pairwise. A
     // pairwise fold is commutative but not associative: `richer` settles a field on
     // the more-populated side, and a merged slot is richer than either input, so
