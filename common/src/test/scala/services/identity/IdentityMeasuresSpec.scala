@@ -95,6 +95,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a title containing another" should "say which way: the listing decorates the film, or is a fragment of a longer title" in {
     IdentityMeasures.titleRelation(Listing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
     IdentityMeasures.titleRelation(Listing("It"), Film("It Ends with Us")) shouldBe Category("fragment")
+    // …also behind a programme banner: UK "Horror Season 2026 Manhunter: The Final Cut" ×81 was only an
+    // overlap of "Manhunter" — the banner-free shape decorates it with an edition label — and was vetoed.
+    val season = TitleDecorations(Set(Seq("horror", "season", "2026")), Set.empty)
+    IdentityMeasures.titleRelation(Listing("Horror Season 2026 Manhunter: The Final Cut", decorations = season), Film("Manhunter")) shouldBe
+      Category("decorated")
+    // Its original title decorates the film on both sides: a director's possessive before, an edition after.
+    IdentityMeasures.originalTitleRelation(Some("Michael Mann's Manhunter: The Final Cut"), Seq("Manhunter")) shouldBe Category("decorated")
   }
 
   "own agreement" should "count a bracketed year that matches, and deny only on a published year" in {

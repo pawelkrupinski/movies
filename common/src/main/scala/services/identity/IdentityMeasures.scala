@@ -52,6 +52,10 @@ object IdentityMeasures {
     private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
+    /** The title with a learned programme decoration stripped ("Horror Season 2026 …"), as words:
+     *  what the venue's banner leaves of it. Empty when no learned decoration applies. */
+    private[identity] lazy val undecoratedWords: Seq[Seq[String]] =
+      (Seq(title) ++ rawTitle).flatMap(decorations.strip).map(IdentityMeasures.words).filter(_.nonEmpty).distinct
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
@@ -595,7 +599,7 @@ object IdentityMeasures {
     else if (originalForms.map(_.key).exists(own)) Category("original")
     else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
     else (if (fs.isEmpty) None
-          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords)).getOrElse(
+          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords, l.undecoratedWords)).getOrElse(
       if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
   }
 
@@ -607,14 +611,17 @@ object IdentityMeasures {
    *  season production), asked only when no shape matches. ONE definition for the title and the
    *  original-title relations. */
   private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false,
-                          shapeWords: Seq[Seq[String]] = Nil): Option[Category] = {
+                          shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]] = Nil): Option[Category] = {
     val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
     val ow = own.map(_.words).filter(_.nonEmpty)
     val fw = others.map(_.words).filter(_.nonEmpty)
     // A shape one venue typo from the film's title is a segment too ("Pradhama Drishtiya Kuttakkar
     // (Malayalam)" of "Pradhama Drishtya Kuttakkar", `oneTypoApart`).
     if (shapeKeys.exists(otherKeys) || shapeWords.exists(sw => fw.exists(oneTypoApart(sw, _))) || alsoSegment) Some(Category("segment"))
-    else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(b, a)))) Some(Category("decorated"))
+    // The title with its learned banner stripped decorates the film too: "Horror Season 2026 Manhunter:
+    // The Final Cut" leaves "Manhunter: The Final Cut", "Manhunter" and an edition label. Not any shape:
+    // "Fanciulla Encore (2027)" without its year does not decorate a film called "Encore".
+    else if ((ow ++ undecorated).exists(a => fw.exists(b => TitleContainment.isTokenRun(b, a)))) Some(Category("decorated"))
     else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(a, b)))) Some(Category("fragment"))
     else None
   }
@@ -715,6 +722,10 @@ object IdentityMeasures {
   private[identity] final case class OriginalForm(text: String) {
     val form: TitleForm = TitleForm(text)
     lazy val shapeKeys: Seq[String] = shapes(Seq(text)).map(key)
+    /** Its delimited segments as words, read for a decoration: "Michael Mann's Manhunter: The Final
+     *  Cut"'s "Michael Mann's Manhunter" ends in the film's title. */
+    lazy val segmentWords: Seq[Seq[String]] =
+      (shapes(Seq(text)) ++ text.split(":\\s").headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
     lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
   }
 
@@ -731,7 +742,7 @@ object IdentityMeasures {
                  others.exists(_.latinKey == o.form.latinKey) ||
                  (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty && t.yearlessWords == o.form.yearlessWords)))
           Category("match")
-        else containment(Seq(o.form), o.shapeKeys, others).getOrElse {
+        else containment(Seq(o.form), o.shapeKeys, others, undecorated = o.segmentWords).getOrElse {
           if (others.exists(t => (t.words.filter(_.length >= 4).toSet intersect o.longWords).nonEmpty)) Category("overlap")
           else Category("disjoint")
         }
