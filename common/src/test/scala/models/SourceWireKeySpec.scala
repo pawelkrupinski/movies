@@ -54,4 +54,10 @@ class SourceWireKeySpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  "A cinema slot" should "build its wire key when asked, not keep a copy per slot" in {
+    // Every resident slot carried its own ~130-byte key string: 13.9 MB of the US worker's heap.
+    classOf[CinemaShowing].getDeclaredFields.map(_.getName) should not contain "displayName"
+    CinemaShowing(Helios, "lalka").displayName shouldBe s"${Helios.displayName}${CinemaShowing.Separator}lalka"
+  }
 }

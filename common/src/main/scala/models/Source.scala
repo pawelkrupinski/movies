@@ -33,7 +33,10 @@ case object Filmweb extends Source { val displayName: String = "Filmweb" }
  *  A bare `Cinema` key remains valid (a venue with a single title, and most test
  *  fixtures) — accessors treat the two uniformly via [[Source.cinemaOf]]. */
 case class CinemaShowing(cinema: Cinema, titleKey: String) extends Source {
-  val displayName: String = s"${cinema.displayName}${CinemaShowing.Separator}$titleKey"
+  // Built when asked, not kept: it is only the wire key (a Mongo slot key, a screenings row key),
+  // read on a write, while every resident slot held its own ~130-byte copy — 13.9 MB of the US
+  // worker's live heap over 104k slots (heap dump 2026-09-29).
+  def displayName: String = s"${cinema.displayName}${CinemaShowing.Separator}$titleKey"
 }
 object CinemaShowing {
   // ␟ SYMBOL FOR UNIT SEPARATOR — a printable char that never appears in a real
