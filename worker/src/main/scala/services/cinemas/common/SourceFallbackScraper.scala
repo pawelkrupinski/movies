@@ -214,10 +214,10 @@ class SourceFallbackScraper(
     else math.max(base.failedRuns, 1)
 
   private def runPrimary(): PrimaryOutcome = {
-    val t0 = System.currentTimeMillis()
+    val t0 = tools.Stopwatch.start()
     try {
       val movies = primary.fetch()
-      val ms = System.currentTimeMillis() - t0
+      val ms = t0.millis
       if (showtimeCount(movies) > 0) PrimaryOutcome.Healthy(movies, ms) else PrimaryOutcome.Empty(movies, ms)
     } catch {
       case NonFatal(t) => PrimaryOutcome.Threw(t)
@@ -228,9 +228,9 @@ class SourceFallbackScraper(
    *  answers empty, as [[FallbackAnswer.Absent]]. */
   private def fetchFallback(): (scala.util.Try[Seq[CinemaMovie]], Long, FallbackAnswer) = fallback() match {
     case Some(fw) =>
-      val t0 = System.currentTimeMillis()
+      val t0 = tools.Stopwatch.start()
       val movies = scala.util.Try(fw.fetch())
-      (movies, System.currentTimeMillis() - t0, FallbackAnswer.of(movies))
+      (movies, t0.millis, FallbackAnswer.of(movies))
     case None => (scala.util.Success(Seq.empty), 0L, FallbackAnswer.Absent)
   }
 

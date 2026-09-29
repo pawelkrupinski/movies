@@ -78,17 +78,13 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   // time of each kind — what a take-up's log line reports.
   private val prefetchedAsks = new java.util.concurrent.atomic.AtomicLong()
   private val servedAsks     = new java.util.concurrent.atomic.AtomicLong()
-  private val singleAsks     = new java.util.concurrent.atomic.AtomicLong()
-  private val prefetchNanos  = new java.util.concurrent.atomic.AtomicLong()
-  private val singleNanos    = new java.util.concurrent.atomic.AtomicLong()
+  private val prefetching    = tools.Stopwatch.total()
+  private val oneByOne       = tools.Stopwatch.total()
   def render: String =
-    f"reads: ${prefetchedAsks.get} prefetched in ${prefetchNanos.get / 1e9}%.1fs (${servedAsks.get} served), " +
-      f"${singleAsks.get} one by one in ${singleNanos.get / 1e9}%.1fs"
+    f"reads: ${prefetchedAsks.get} prefetched in ${prefetching.seconds}%.1fs (${servedAsks.get} served), " +
+      f"${oneByOne.count} one by one in ${oneByOne.seconds}%.1fs"
 
-  private def single[A](ask: => A): A = {
-    val started = System.nanoTime()
-    try ask finally { singleAsks.incrementAndGet(); singleNanos.addAndGet(System.nanoTime() - started) }
-  }
+  private def single[A](ask: => A): A = oneByOne(ask)
   private def served[A](held: A): A = { servedAsks.incrementAndGet(); held }
   private def askQuery(query: CandidateQuery) = reads.asking(Question.Query(query))(inner.candidates(query))
   private def askFilm(id: Int)                = reads.asking(Question.Record(id))(inner.film(id))
@@ -110,19 +106,16 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
     // The inner lookups' own prefetch first: a store that can read a slice's documents in a few
     // batches does, and the asks below are then answered from what it holds. Without it every ask
     // read each of its documents as its own round-trip — 21 s of a UK restore's 28 s.
-    val started0 = System.nanoTime()
-    inner.prefetch(asked, records, pages)
-    prefetchNanos.addAndGet(System.nanoTime() - started0)
+    prefetching(inner.prefetch(asked, records, pages))
     val tasks: Seq[java.util.concurrent.Callable[Unit]] =
       asked.toSeq.map(query => (() => { queries.put(query, askQuery(query)); () }): java.util.concurrent.Callable[Unit]) ++
         records.toSeq.map(id => (() => { films.put(id, askFilm(id)); () }): java.util.concurrent.Callable[Unit]) ++
         pages.toSeq.map(listing => (() => { details.put(listing.key, askDetail(listing)); () }): java.util.concurrent.Callable[Unit])
     try if (tasks.nonEmpty) {
       import scala.jdk.CollectionConverters._
-      val started = System.nanoTime()
       // A task that failed is simply not served from the prefetch: its ask, later, asks again.
-      threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get()))
-      prefetchedAsks.addAndGet(tasks.size.toLong); prefetchNanos.addAndGet(System.nanoTime() - started)
+      prefetching(threads.invokeAll(tasks.asJava).asScala.foreach(future => scala.util.Try(future.get())))
+      prefetchedAsks.addAndGet(tasks.size.toLong)
     } finally inner.prefetchAnswered()
   }
 }

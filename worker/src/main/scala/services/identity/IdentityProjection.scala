@@ -77,7 +77,7 @@ final class IdentityProjection(
 
   /** One projection. Throws only what reading its inputs throws. */
   def tick(): ProjectionTick = synchronized {
-    val started  = System.nanoTime()
+    val started  = tools.Stopwatch.start()
     val corpus   = listings().flatMap { case (cinema, films) => films.map(cm => ProjectedListing(Listing.of(cinema, cm, normalizer), cm)) }
     val stored   = cache.snapshot()
     def refuse(reason: IdentityProjectionMetrics.Refusal, why: String, resolution: Option[Resolution] = None) = {
@@ -119,7 +119,7 @@ final class IdentityProjection(
     try { tick(); () }
     catch { case NonFatal(e) => logger.warn(s"identity projection failed; the stored films keep serving: $e") }
 
-  private def write(resolution: Resolution, draft: ProjectionDraft, stored: Seq[StoredMovieRecord], listings: Int, started: Long): ProjectionTick = {
+  private def write(resolution: Resolution, draft: ProjectionDraft, stored: Seq[StoredMovieRecord], listings: Int, started: tools.Stopwatch.Started): ProjectionTick = {
     val detailed = draft.copy(drafts = draft.drafts.map { d =>
       // The details builder owns the TMDB side; what the projection derived stays the projection's.
       d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
@@ -137,7 +137,7 @@ final class IdentityProjection(
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))
     }
-    val seconds = (System.nanoTime() - started) / 1e9
+    val seconds = started.seconds
     metrics.projected(plan.films.size, listings, plan.regroupings, plan.canary, seconds)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None)
     if (!tick.wroteNothing || declined > 0)

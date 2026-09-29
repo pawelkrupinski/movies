@@ -67,9 +67,9 @@ final class ShadowIdentityReaper(
         logger.info("identity shadow: the model is not taken up yet; nothing to diff")
         ShadowTick(None, 0, 0, 0, 0)
       case Some(input) =>
-        val diffing = System.nanoTime()
+        val diffing = tools.Stopwatch.start()
         val (clusters, families) = ShadowDiff.of(input.resolution, PipelineFilms.of(input.listings, pipelineFilms(), normalizer))
-        val diffSeconds = (System.nanoTime() - diffing) / 1e9
+        val diffSeconds = diffing.seconds
         val run = ShadowRun(at, clusters, families)
         runs.record(run, retention)
         metrics.crossings(0)
@@ -105,9 +105,9 @@ object ShadowIdentityReaper {
                 normalizer: TitleNormalizer, calibration: IdentityCalibration): () => Option[ShadowInput] = () => {
     val corpus         = listings()
     val (source, gaps) = lookups()
-    val started        = System.nanoTime()
+    val started        = tools.Stopwatch.start()
     val resolution     = IdentityResolver.resolve(corpus, source, normalizer, calibration, ListingConstraints.pinned(pins.all()))
-    Some(ShadowInput(resolution, corpus, gaps.total, gaps.byKind, (System.nanoTime() - started) / 1e9))
+    Some(ShadowInput(resolution, corpus, gaps.total, gaps.byKind, started.seconds))
   }
 
   /** The incremental model's current state — no resolve at all. */

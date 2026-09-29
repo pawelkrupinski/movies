@@ -92,7 +92,7 @@ class ScrapeCinemaHandler(
           outcome.skipped(key)
           return Done
         }
-        val t0     = System.currentTimeMillis()
+        val t0     = tools.Stopwatch.start()
         try {
           val touched = runner.run(scraper)
           val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, touched.map(_._1), clock)
@@ -101,7 +101,7 @@ class ScrapeCinemaHandler(
           Done
         } catch {
           case e: Exception =>
-            val elapsed = System.currentTimeMillis() - t0
+            val elapsed = t0.millis
             if (ScrapeErrors.isTransientHttpError(e))
               logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")
             else

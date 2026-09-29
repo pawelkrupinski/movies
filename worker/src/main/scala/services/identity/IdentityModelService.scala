@@ -100,12 +100,12 @@ final class IdentityModelService(
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val keys    = observations.asScala.toSeq.filter(observations.remove)
     Option.when(scraped.nonEmpty || keys.nonEmpty) {
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
       val seen    = scraped.flatMap(_._2)
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       engine.batch(seen, gone, reads.changedBy(keys))
-      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, (System.nanoTime() - started) / 1e9,
+      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
       metrics.batch(batch)
       batch
@@ -114,13 +114,13 @@ final class IdentityModelService(
 
   /** Take up the model the store kept, over the archive's listings; what queued meanwhile follows. */
   def takeUp(): Unit = {
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val engine  = newModel()
     engine.restore(archive())
     model = Some(engine)
     // The gauges from the moment the model is up, not from its first event.
     val sizes   = engine.sizes
-    metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, (System.nanoTime() - started) / 1e9, sizes))
+    metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, started.seconds, sizes))
     logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
       s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()}); ${sizes.render}")
   }

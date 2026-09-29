@@ -291,17 +291,16 @@ object IncrementalResolver {
 
   /** Seconds spent in each part of the model's work. */
   final class Timings {
-    private var contextNanos, resolveNanos, sliceNanos = 0L
+    private val contexts, resolving, slicing = tools.Stopwatch.total()
     // The slowest region resolves: (seconds, listings), the costliest few kept.
     private var slowest = List.empty[(Double, Int)]
-    private def timed[A](add: Long => Unit)(body: => A): A = { val start = System.nanoTime(); try body finally add(System.nanoTime() - start) }
-    def context[A](body: => A): A  = timed(contextNanos += _)(body)
-    def resolves[A](listings: Int)(body: => A): A = timed { nanos =>
-      resolveNanos += nanos
-      slowest = ((nanos / 1e9, listings) :: slowest).sortBy(-_._1).take(5)
-    }(body)
-    def slices[A](body: => A): A   = timed(sliceNanos += _)(body)
-    def render: String = f"context ${contextNanos / 1e9}%.1fs, resolves ${resolveNanos / 1e9}%.1fs, slices ${sliceNanos / 1e9}%.1fs; " +
+    def context[A](body: => A): A  = contexts(body)
+    def resolves[A](listings: Int)(body: => A): A = {
+      val started = tools.Stopwatch.start()
+      try resolving(body) finally slowest = ((started.seconds, listings) :: slowest).sortBy(-_._1).take(5)
+    }
+    def slices[A](body: => A): A   = slicing(body)
+    def render: String = f"context ${contexts.seconds}%.1fs, resolves ${resolving.seconds}%.1fs, slices ${slicing.seconds}%.1fs; " +
       s"slowest regions ${slowest.map { case (s, n) => f"$s%.1fs/$n" }.mkString(" ")}"
   }
 

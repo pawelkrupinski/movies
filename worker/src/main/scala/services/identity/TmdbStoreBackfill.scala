@@ -18,7 +18,7 @@ final class TmdbStoreBackfill(observations: ObservationStore, normalizer: TmdbNo
   import TmdbStoreBackfill._
 
   def ensure(): Unit = if (docs.get(TmdbKind.Query, Seq(Marker)).isEmpty) {
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     var count   = 0L
     Prefixes.foreach(prefix => observations.eachCurrentLookup(prefix) { page =>
       page.foreach { o =>
@@ -31,7 +31,7 @@ final class TmdbStoreBackfill(observations: ObservationStore, normalizer: TmdbNo
       }
     })
     docs.put(TmdbKind.Query, Seq(Marker -> new BsonDocument("at", BsonInt64(clock.millis())).append("answers", BsonInt64(count))))
-    logger.info(f"identity store: backfilled from $count%d observed answers in ${(System.nanoTime() - started) / 1e9}%.0fs")
+    logger.info(f"identity store: backfilled from $count%d observed answers in ${started.seconds}%.0fs")
   }
 }
 

@@ -151,7 +151,7 @@ abstract class CacheRefresher(
     changedNoun:   String = "score(s)"
   ): BulkRefreshResult = {
     val snapshot  = cache.entries
-    val startedAt = System.currentTimeMillis()
+    val startedAt = tools.Stopwatch.start()
     val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"$walkLabel: starting tick over ${snapshot.size} cached row(s) " +
                 s"($resolvable re-resolving their URL first).")
@@ -188,7 +188,7 @@ abstract class CacheRefresher(
       }
     }
 
-    val took = System.currentTimeMillis() - startedAt
+    val took = startedAt.millis
     val message = s"tick done in ${took}ms — ${changed.get} $changedNoun changed, " +
                   s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
     logger.info(s"$walkLabel: $message")

@@ -42,13 +42,13 @@ class AdaptiveTimeoutScraper(
 
   def fetch(): Seq[CinemaMovie] = {
     val budget = stats.deadlineFor(hostKey)
-    val t0     = System.currentTimeMillis()
+    val t0     = tools.Stopwatch.start()
     val task   = executor.submit(new Callable[Seq[CinemaMovie]] {
       override def call(): Seq[CinemaMovie] = delegate.fetch()
     })
     try {
       val result = task.get(budget.toMillis, TimeUnit.MILLISECONDS)
-      stats.record(hostKey, System.currentTimeMillis() - t0)
+      stats.record(hostKey, t0.millis)
       result
     } catch {
       case _: TimeoutException =>

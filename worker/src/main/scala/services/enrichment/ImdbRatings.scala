@@ -114,7 +114,7 @@ class ImdbRatings(
    *  re-checks those). */
   private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
-    val startedAt = System.currentTimeMillis()
+    val startedAt = tools.Stopwatch.start()
     val withImdb  = snapshot.collect { case (k, e) if e.imdbId.isDefined => (k, e, e.imdbId.get) }
     val skipped   = snapshot.size - withImdb.size
     logger.info(s"IMDb refresh: starting tick over ${withImdb.size} cached row(s) with imdbId" +
@@ -144,7 +144,7 @@ class ImdbRatings(
         changed.incrementAndGet()
       }
     }
-    val took = System.currentTimeMillis() - startedAt
+    val took = startedAt.millis
     val message = s"tick done in ${took}ms — ${changed.get} changed, ${failed.get} failed, ${withImdb.size - changed.get - failed.get} unchanged."
     logger.info(s"IMDb refresh: $message")
     BulkRefreshResult.counts(walked = withImdb.size, changed = changed.get, discovered = 0, failed = failed.get, message = message)

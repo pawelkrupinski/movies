@@ -49,7 +49,7 @@ class CinemaScrapeRunner(
 
   def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     val cinema: Cinema = scraper.cinema
-    val t0      = System.currentTimeMillis()
+    val t0      = tools.Stopwatch.start()
     // A throw is archived as a barren attempt and then rethrown untouched, so
     // callers keep deciding what a failure means while the archive still records
     // that the cinema was tried and failed.
@@ -68,7 +68,7 @@ class CinemaScrapeRunner(
     archive(scraper, movies, error = None)
     val touched = sink.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
     val events   = classify(cinema, touched)
-    val elapsed  = System.currentTimeMillis() - t0
+    val elapsed  = t0.millis
     val awaiting = touched.count(_._3) - events.size
     logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms (${events.size} ready, $awaiting awaiting detail)")
     events.foreach(bus.publish)

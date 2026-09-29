@@ -40,7 +40,7 @@ class UptimeRecordingScraper(
     catch { case NonFatal(_) => () }
 
   def fetch(): Seq[CinemaMovie] = {
-    val t0 = System.currentTimeMillis()
+    val t0 = tools.Stopwatch.start()
     val result =
       try delegate.fetch()
       catch {
@@ -49,7 +49,7 @@ class UptimeRecordingScraper(
           notifyOutcome(ScrapeOutcome.Failure)
           throw t
       }
-    val ms = System.currentTimeMillis() - t0
+    val ms = t0.millis
     if (result.iterator.map(_.showtimes.size).sum == 0) {
       monitor.recordEmpty(cinema.displayName, ms)
       notifyOutcome(ScrapeOutcome.Empty)
