@@ -2,6 +2,7 @@ package services.identity
 
 import services.movies.{ListingKey, TitleNormalizer}
 
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 /**
@@ -40,18 +41,18 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // named, and per film the best hit it gave (all `Candidate.of` reads: the most popular hit first)
   private val askers   = mutable.HashMap.empty[CandidateQuery, Set[NodeKey]]
   private val named    = mutable.HashMap.empty[CandidateQuery, Option[Seq[Int]]]
-  private val bestHits = mutable.HashMap.empty[Int, Map[CandidateQuery, Hit]]
-  private val records  = mutable.HashMap.empty[Int, Answer[Option[IdentityMeasures.Film]]]
-  private val base     = mutable.HashMap.empty[Int, Candidate]
-  private val reachers = mutable.HashMap.empty[Int, Set[NodeKey]]
+  private val bestHits = mutable.LongMap.empty[Map[CandidateQuery, Hit]]
+  private val records  = mutable.LongMap.empty[Answer[Option[IdentityMeasures.Film]]]
+  private val base     = mutable.LongMap.empty[Candidate]
+  private val reachers = mutable.LongMap.empty[Set[NodeKey]]
   // venue titles: the translated nodes under each title key, their origins, the films under each key
   private val translatedBy  = mutable.HashMap.empty[String, Set[NodeKey]]
   private val originsOfKey  = mutable.HashMap.empty[String, Set[String]]
   private val keysOfOrigin  = mutable.HashMap.empty[String, Set[String]]
   private val filmsByKey    = mutable.HashMap.empty[String, Set[Int]]
-  private val venueTitlesOf = mutable.HashMap.empty[Int, Map[String, Seq[String]]]
+  private val venueTitlesOf = mutable.LongMap.empty[Map[String, Seq[String]]]
   private val titledBy      = mutable.HashMap.empty[String, Set[Int]]
-  private val candidates    = mutable.HashMap.empty[Int, Candidate]
+  private val candidates    = mutable.LongMap.empty[Candidate]
   // houses, title groups, whole titles, reached-by-title
   private val billingsOf   = mutable.HashMap.empty[NodeKey, Seq[IdentityMeasures.Billing]]
   private val byBanner     = mutable.HashMap.empty[String, Map[NodeKey, Seq[IdentityMeasures.Billing]]]
@@ -99,7 +100,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def nodeCount: Int = nodes.size
   /** The questions a node asked whose answer is not known, and the named films whose record is not. */
   def gaps: AnswersChanged =
-    AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isKnown => id }.toSet)
+    AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isKnown => id.toInt }.toSet)
 
   /** How many records the context holds: every film some node's answers name, and no other. */
   def candidateCount: Int = candidates.size
@@ -171,8 +172,10 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val answer  = (query: CandidateQuery) => answers.getOrElseUpdate(query, lookups.candidates(query))
       lookups.prefetch(slice.flatMap(_._3).distinct, Nil, Nil)
       slice.foreach { case (key, node, queries) =>
-        val live = new Node(node, queries,
-          CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer)))
+        // Film ids kept unboxed (`ArraySeq.ofInt`): a TMDB id is above the JVM's small-integer cache,
+        // so a Seq[Int] of them held one Integer object per id for the node's lifetime.
+        val live = new Node(node, queries, ArraySeq.from(
+          CandidateGeneration.reached(CandidateGeneration.ownSearch(queries, answer), CandidateGeneration.ownWalk(queries, answer))))
         nodes(key) = live
         noteBefore(live.pieces)
         films ++= link(key, live, answer)
@@ -277,7 +280,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val films = live.queries.distinct.filterNot(askers.contains).flatMap { query =>
       val known  = answer(query).toOption
       val byFilm = known.getOrElse(Nil).groupBy(_.tmdbId)
-      named(query) = known.map(CandidateGeneration.ranked)
+      named(query) = known.map(hits => ArraySeq.from(CandidateGeneration.ranked(hits)))
       byFilm.map { case (id, hits) =>
         val best = hits.minBy(hit => (-hit.popularity, hit.title, hit.originalTitle.getOrElse(""), hit.year.getOrElse(0)))
         bestHits.updateWith(id)(held => Some(held.getOrElse(Map.empty) + (query -> best))); id }

@@ -50,7 +50,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private val readersOf     = mutable.HashMap.empty[String, Set[Int]]
   // Which families asked each question and read each record: what an answer event re-resolves.
   private val askersOf      = mutable.HashMap.empty[CandidateQuery, Set[Int]]
-  private val filmReadersOf = mutable.HashMap.empty[Int, Set[Int]]
+  private val filmReadersOf = mutable.LongMap.empty[Set[Int]]
   private val familyOfKey   = mutable.HashMap.empty[ListingKey, Int]
   private val familiesOfKey = mutable.HashMap.empty[String, Set[Int]]
   private var nextFamily    = 0
