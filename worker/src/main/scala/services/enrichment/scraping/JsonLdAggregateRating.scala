@@ -1,9 +1,7 @@
 package services.enrichment.scraping
 
-import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
 
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -60,9 +58,18 @@ object JsonLdAggregateRating {
       blocks.iterator.flatMap(js => (js \ "datePublished").asOpt[String]).flatMap(YearRegex.findFirstIn).map(_.toInt).nextOption()
   }
 
-  def of(html: String): JsonLd =
-    JsonLd(Jsoup.parse(html).select("script[type=application/ld+json]").asScala.toSeq
-      .flatMap(script => Try(Json.parse(script.data())).toOption))
+  def of(html: String): JsonLd = JsonLd(scripts(html).flatMap(raw => Try(Json.parse(raw)).toOption))
+
+  // A script's text is raw up to the first `</script>` (HTML's script-data state), so its blocks
+  // can be read without building the page's DOM — which was ~5% of the US pipeline's CPU (JFR) for
+  // pages whose only use is these few blocks. `JsonLdScanSpec` holds it to Jsoup's answer on every
+  // recorded Metacritic and Rotten Tomatoes page.
+  private val Script = """(?is)<script\b([^>]*)>(.*?)</script\s*>""".r
+  private val LdJson = """(?i)\btype\s*=\s*(["']?)application/ld\+json\1(?=[\s/>]|$)""".r
+
+  /** The raw text of every `<script type="application/ld+json">`, in page order. */
+  private[scraping] def scripts(html: String): Seq[String] =
+    Script.findAllMatchIn(html).collect { case m if LdJson.findFirstIn(m.group(1)).isDefined => m.group(2) }.toSeq
 
   def parseInt(html: String): Option[Int]      = of(html).rating
   def directorNames(html: String): Set[String] = of(html).directorNames
