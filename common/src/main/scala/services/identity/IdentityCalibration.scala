@@ -38,7 +38,7 @@ final case class IdentityCalibration(version: String,
   /** Each signal's contribution (its log-likelihood ratio) to the log-odds. */
   def contributions(scope: String, measures: Map[String, Measure]): Seq[(String, Double)] = {
     val m = model(scope)
-    m.signals.toSeq.sortBy(_._1).map { case (name, w) => name -> w.weight(measures.get(name)) }
+    m.bySignalName.map { case (name, w) => name -> w.weight(measures.get(name)) }
   }
 
   /** The naive-Bayes log-odds that the pair is one film: the prior plus every signal's weight. */
@@ -116,7 +116,11 @@ object IdentityCalibration {
   final case class Threshold(probability: Double, measured: Map[String, Double] = Map.empty, basis: String = "")
 
   final case class ScopeModel(prior: Double, signals: Map[String, SignalWeights], calibration: Calibration,
-                              thresholds: Map[String, Threshold] = Map.empty)
+                              thresholds: Map[String, Threshold] = Map.empty) {
+    /** The signals in name order, sorted once: every scoring sums its contributions in this order
+     *  (`logOdds`), and sorting them per call was ~2–5% of a re-resolve (JFR, 2026-09-29). */
+    lazy val bySignalName: Seq[(String, SignalWeights)] = signals.toSeq.sortBy(_._1)
+  }
 
   /** One condition of a learned cannot-link: the signal's category is one of `in`, or its number
    *  lies in [`atLeast`, `atMost`]. Same shape as `ListingConstraints.LearnedCondition`. */
