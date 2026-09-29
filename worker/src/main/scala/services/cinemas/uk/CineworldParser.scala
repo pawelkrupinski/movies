@@ -22,12 +22,6 @@ import scala.util.Try
  */
 object CineworldParser {
 
-  /** The BBFC certificates the `movies` endpoint's `certificate` field can
-   *  legitimately hold. Whitelisted rather than passed through verbatim, so a
-   *  future vendor value we don't recognise (a rating-pending placeholder, a
-   *  non-UK certificate on a rare import) drops instead of leaking onto a
-   *  card — the same discipline the old `attributeIds` whitelist kept. */
-  private val BbfcCertificates: Set[String] = Set("U", "PG", "12A", "12", "15", "18")
 
   /** One film's detail off a `movies?ids=<id>` response — a JSON ARRAY with at
    *  most one element (the platform silently omits an id it doesn't recognise
@@ -56,6 +50,6 @@ object CineworldParser {
       cast           = details.cast,
       director       = details.directors,
       runtimeMinutes = details.runtimeMinutes,
-      ageRating      = (m \ "certificate").asOpt[String].map(_.trim.toUpperCase).filter(BbfcCertificates.contains))
+      ageRating      = details.certificate.filter(GatsbyBoxOfficeParser.BbfcCertificates))
   }
 }

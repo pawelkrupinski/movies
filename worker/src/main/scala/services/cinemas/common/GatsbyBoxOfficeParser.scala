@@ -54,14 +54,15 @@ object GatsbyBoxOfficeParser {
     theaterId:     String,
     cinema:        Cinema,
     baseUrl:       String,
-    details:       Map[String, FilmDetails] = Map.empty
+    details:       Map[String, FilmDetails] = Map.empty,
+    ageRatings:    Set[String] = BbfcCertificates
   ): Seq[CinemaMovie] = {
     val catalogue = parseCatalogue(catalogueJson)
     scheduleOf(scheduleJson, theaterId).flatMap { case (movieId, byDate) =>
       val showtimes = parseShowtimes(byDate)
       catalogue.get(movieId)
         .filter(_ => showtimes.nonEmpty)
-        .map(film => toCinemaMovie(movieId, film, showtimes, cinema, baseUrl, details.get(movieId)))
+        .map(film => toCinemaMovie(movieId, film, showtimes, cinema, baseUrl, details.get(movieId), ageRatings))
     }.sortBy(_.movie.title)
   }
 
@@ -76,7 +77,15 @@ object GatsbyBoxOfficeParser {
    *  not select: the credits and running time the site renders client-side. `release` is the brand's
    *  RELEASE date — 2026-10-16 for Hammer's 1958 "Dracula (4K Restoration)" — never a production
    *  year, so it is not read. */
-  final case class FilmDetails(directors: Seq[String], runtimeMinutes: Option[Int], cast: Seq[String], synopsis: Option[String])
+  final case class FilmDetails(directors: Seq[String], runtimeMinutes: Option[Int], cast: Seq[String], synopsis: Option[String],
+                               certificate: Option[String] = None)
+
+  /** The certificates a UK brand's `certificate` field can legitimately hold (BBFC). Whitelisted,
+   *  not passed through, so a vendor value we don't recognise (a rating-pending placeholder, a
+   *  foreign certificate on an import) drops instead of reaching a card. */
+  val BbfcCertificates: Set[String] = Set("U", "PG", "12A", "12", "15", "18")
+  /** The same for the US brands on the platform (MPA ratings). */
+  val MpaCertificates: Set[String] = Set("G", "PG", "PG-13", "R", "NC-17")
 
   /** `movies?ids=…`: a JSON array of films keyed by the catalogue's id. Directors and co-directors are
    *  both credited as directors; `runtime` is in seconds. */
@@ -94,7 +103,8 @@ object GatsbyBoxOfficeParser {
       directors      = (names("direction") ++ names("coDirection")).distinct,
       runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
       cast           = names("casting"),
-      synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty))
+      synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      certificate    = (n \ "certificate").asOpt[String].map(_.trim.toUpperCase).filter(_.nonEmpty))
   }
 
   /** `data.allMovie.nodes[]` keyed by the same numeric id the schedule uses.
@@ -229,7 +239,8 @@ object GatsbyBoxOfficeParser {
     showtimes: Seq[Showtime],
     cinema:    Cinema,
     baseUrl:   String,
-    details:   Option[FilmDetails]
+    details:   Option[FilmDetails],
+    ageRatings: Set[String]
   ): CinemaMovie =
     CinemaMovie(
       movie = Movie(
@@ -245,6 +256,7 @@ object GatsbyBoxOfficeParser {
       synopsis    = details.flatMap(_.synopsis),
       cast        = details.fold(Seq.empty[String])(_.cast),
       director    = details.fold(Seq.empty[String])(_.directors),
+      ageRating   = details.flatMap(_.certificate).filter(ageRatings),
       showtimes   = showtimes,
       // The platform's own film id — stable across venues within a brand, so a
       // merge can recognise the same film at two Showcase venues.

@@ -1985,7 +1985,8 @@ class CinemaScraperCatalog(
     new AlamoDrafthouseClient(http, venue.slug, cinema, ZoneId.of(venue.zoneId), today = Some(today))
   private def webedia(baseUrl: String, venue: UsChainVenues.WebediaVenue, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
-      timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = today)
+      timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = today,
+      ageRatings = services.cinemas.common.GatsbyBoxOfficeParser.MpaCertificates)
 
   /** The chain-primary scraper for a US venue, or `None` when it stays on Flicks.
    *

@@ -68,7 +68,9 @@ class GatsbyBoxOfficeClient(
   // `theaterId` alone — the slug carries the venue name, and `/theaters/x06jr`
   // 404s — so the composition root supplies it or /uptime shows no source link.
   venuePath: Option[String] = None,
-  today:     LocalDate      = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone))
+  today:     LocalDate      = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone)),
+  // The rating system the brand's `certificate` field speaks: BBFC for the UK brands, MPA for the US.
+  ageRatings: Set[String]   = GatsbyBoxOfficeParser.BbfcCertificates
 ) extends CinemaScraper with play.api.Logging {
 
   import GatsbyBoxOfficeClient._
@@ -102,7 +104,8 @@ class GatsbyBoxOfficeClient(
   def fetch(): Seq[CinemaMovie] = {
     val catalogue = http.get(catalogueUrl(baseUrl))
     val schedule  = http.get(scheduleUrl(baseUrl, theaterId, timeZone, today, today.plusDays(MaxHorizonDays.toLong)))
-    GatsbyBoxOfficeParser.parse(schedule, catalogue, theaterId, cinema, baseUrl, details(GatsbyBoxOfficeParser.scheduledMovieIds(schedule, theaterId)))
+    GatsbyBoxOfficeParser.parse(schedule, catalogue, theaterId, cinema, baseUrl,
+      details(GatsbyBoxOfficeParser.scheduledMovieIds(schedule, theaterId)), ageRatings)
   }
 
   /** The scheduled films' credits and running times, [[DetailsBatch]] ids per request. Optional: a

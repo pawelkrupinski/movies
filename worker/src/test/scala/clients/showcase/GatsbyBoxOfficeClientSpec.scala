@@ -204,6 +204,27 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
     details("1000046138").directors shouldBe Seq("Oliver Mears")
   }
 
+  it should "carry the film's certificate, which the UK brands never published before" in {
+    val details = GatsbyBoxOfficeParser.parseDetails(
+      scala.io.Source.fromFile("test/resources/fixtures/everyman/film-details.json").mkString)
+    details("1000036867").certificate.value shouldBe "12A"     // Avengers Endgame: Encore
+    details("1000051270").certificate shouldBe None            // Dracula (4K Restoration): not yet rated
+  }
+
+  it should "rate a listing only in its brand's own system" in {
+    val schedule  = scala.io.Source.fromFile(showcaseFixture("schedule")).mkString
+    val catalogue = scala.io.Source.fromFile(showcaseFixture("page-data")).mkString
+    def rated(certificate: String, ratings: Set[String]) = {
+      val details = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Nil, None, Nil, None, Some(certificate)))
+      GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details, ratings)
+        .find(_.movie.title == "Jurassic Park").value.ageRating
+    }
+    rated("12A", GatsbyBoxOfficeParser.BbfcCertificates) shouldBe Some("12A")
+    rated("PG-13", GatsbyBoxOfficeParser.BbfcCertificates) shouldBe None   // an MPA rating on a UK card
+    rated("PG-13", GatsbyBoxOfficeParser.MpaCertificates) shouldBe Some("PG-13")
+    rated("TBC", GatsbyBoxOfficeParser.BbfcCertificates) shouldBe None      // a placeholder
+  }
+
   it should "fill the listing it belongs to, and leave the rest as the catalogue has them" in {
     val schedule  = scala.io.Source.fromFile(showcaseFixture("schedule")).mkString
     val catalogue = scala.io.Source.fromFile(showcaseFixture("page-data")).mkString
