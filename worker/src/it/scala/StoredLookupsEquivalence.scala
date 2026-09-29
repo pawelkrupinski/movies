@@ -12,13 +12,16 @@ import tools.HttpFetch
 object StoredLookupsEquivalence {
   final case class Result(questions: Int, films: Int, mismatches: Seq[String])
 
-  /** `fetch` whose recording MISSES — answered 404 by the replay and counted in `misses` — fail as
-   *  what they are, a request never recorded: a transient failure, which normalizes to nothing (a
-   *  gap), where a real 404 is an answer. The recorded side reads them as `Unknown` by the same count. */
+  /** `fetch` whose recording MISSES — counted in `misses`, and answered by the replay with a 404
+   *  (the hard clusters') or an empty body (the full corpora's `GapLeaf`) — fail as what they are, a
+   *  request never recorded: a transient failure, which normalizes to nothing (a gap), where a real
+   *  404 or empty answer is an answer. The recorded side reads them as `Unknown` by the same count. */
   private final class MissAsGap(fetch: HttpFetch, misses: () => Long) extends HttpFetch {
     private def read[A](call: => A): A = {
-      val before = misses()
-      try call catch { case e: tools.HttpStatusException if e.code == 404 && misses() != before => throw new java.io.IOException("not recorded", e) }
+      val before  = misses()
+      val outcome = scala.util.Try(call)
+      if (misses() != before) throw new java.io.IOException("not recorded")
+      outcome.get
     }
     override def get(url: String): String                              = read(fetch.get(url))
     override def get(url: String, headers: Map[String, String]): String = read(fetch.get(url, headers))
