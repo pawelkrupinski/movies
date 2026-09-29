@@ -41,6 +41,27 @@ final class StringPool {
   /** Intern every element of a list (cast, genres, …), preserving order. */
   def canonicalAll(xs: Seq[String]): Seq[String] = if (xs.isEmpty) xs else xs.map(canonical)
 
+  /** A slot with its low-cardinality text interned — how a slot read back from the store (boot
+   *  hydrate, the change stream, a rehydrate) joins the scrape path's instances. Without it nearly
+   *  every cached slot kept its own copies: worker-uk held 1.23M duplicate String objects (37 MB)
+   *  while this pool held 3,916 strings. Not the film-page URL — one per cinema slot, so it shares
+   *  nothing and would crowd the vocabulary out (US holds ~100k slots) — nor the showtimes and title
+   *  searches, per-screening values. */
+  def slot(sd: models.SourceData): models.SourceData = sd.copy(
+    title         = sd.title.map(canonical),
+    rawTitle      = sd.rawTitle.map(canonical),
+    originalTitle = sd.originalTitle.map(canonical),
+    englishTitle  = sd.englishTitle.map(canonical),
+    synopsis      = sd.synopsis.map(canonical),
+    cast          = canonicalAll(sd.cast),
+    director      = canonicalAll(sd.director),
+    countries     = canonicalAll(sd.countries),
+    genres        = canonicalAll(sd.genres),
+    posterUrl     = sd.posterUrl.map(canonical),
+    trailerUrl    = sd.trailerUrl.map(canonical),
+    language      = sd.language.map(canonical),
+    ageRating     = sd.ageRating.map(canonical))
+
   /** Distinct strings held right now. Caffeine's estimate, which is what a gauge
    *  wants — forcing `cleanUp()` for exactness would make a scrape do the pool's
    *  maintenance work. */

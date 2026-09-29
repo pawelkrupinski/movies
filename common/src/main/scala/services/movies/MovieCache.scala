@@ -577,11 +577,13 @@ class CaffeineMovieCache(
 
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
-  private def forCache(r: MovieRecord): MovieRecord =
-    if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
+  private def forCache(r: MovieRecord): MovieRecord = {
+    val stripped = if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
+    stripped.copy(data = stripped.data.view.mapValues(stringPool.slot).toMap)
+  }
   /** [[forCache]] of one slot. */
   private def forCacheSlot(sd: SourceData): SourceData =
-    if (repository.hasScreenings) ShowtimesDigest.stripSlot(sd) else sd
+    stringPool.slot(if (repository.hasScreenings) ShowtimesDigest.stripSlot(sd) else sd)
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {
     case Some(holder) =>

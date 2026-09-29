@@ -2363,4 +2363,25 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Zaproszenie", Some(2022))).getOrElse(fail("row missing"))
     row.cinemaShowings.collectFirst { case (KinoMuza, sd) => sd.title } shouldBe Some(Some("Zaproszenie | Kinoteka dla rodziców"))
   }
+
+  // A slot's text reaches the cache two ways: built from a scrape (`CinemaSlotBuilder` interns it
+  // through the pool) or read back from the store — boot hydrate, the change stream, a rehydrate —
+  // which never did. worker-uk held 1.23M duplicate String objects (37 MB) while its pool held
+  // 3,916 strings: nearly every slot in the cache had come from the store.
+  it should "share one String instance for equal slot text read back from the store" in {
+    def fresh(s: String) = new String(s.toCharArray)       // equal, never the same object
+    def slot(title: String) = SourceData(title = Some(fresh(title)), cast = Seq(fresh("Emma Thompson")),
+      countries = Seq(fresh("GB")), genres = Seq(fresh("Drama")), director = Seq(fresh("Ang Lee")))
+    val repo = new InMemoryMovieRepository(Seq(
+      ("Sense and Sensibility", Some(1995), MovieRecord(data = Map[Source, SourceData](Helios -> slot("Sense and Sensibility")))),
+      ("Rozważna i romantyczna", Some(1995), MovieRecord(data = Map[Source, SourceData](Helios -> slot("Rozważna i romantyczna"))))),
+      normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
+    val slots = cache.snapshot().flatMap(_.record.data.values)
+    slots should have size 2
+    val casts = slots.flatMap(_.cast)
+    withClue("cast names read back from the store: ")(casts.forall(_ eq casts.head) shouldBe true)
+    val genres = slots.flatMap(_.genres)
+    withClue("genres read back from the store: ")(genres.forall(_ eq genres.head) shouldBe true)
+  }
 }
