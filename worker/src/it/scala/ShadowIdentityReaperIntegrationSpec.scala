@@ -52,13 +52,21 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
   private val client = MongoClient(MongoClientSettings.builder()
     .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
     .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).build())
-  private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "shadow-reaper"))
+  // One database per corpus: the cases run concurrently and each writes one shadow run under the same
+  // fixed instant, so a shared pair of collections let one case drop another's run ("no run
+  // persisted") or read two runs as one (66 clusters for US's 31 = PL's 35 + US's 31).
+  private val databases = mutable.ListBuffer.empty[MongoDatabase]
+  private def databaseFor(c: Corpus): MongoDatabase = {
+    val db = client.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, s"shadow-reaper-${c.label}"))
+    databases.synchronized(databases += db)
+    db
+  }
   private val clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)
 
   override def afterAll(): Unit =
     try {
       storages.synchronized(storages.foreach(s => Try(s.close())))
-      Await.ready(database.drop().toFuture(), 60.seconds)
+      databases.synchronized(databases.foreach(db => Await.ready(db.drop().toFuture(), 60.seconds)))
     } finally { client.close(); super.afterAll() }
 
   /** The recorded chain, with a request it could not answer thrown as the failed read it is — the
@@ -93,13 +101,14 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
     def crossings(count: Int): Unit                                              = crossingCount = Some(count)
   }
 
-  private def sizeOf(collection: String): (Long, Long) = {
+  private def sizeOf(database: MongoDatabase, collection: String): (Long, Long) = {
     val stats = Await.result(database.runCommand(Document("collStats" -> collection)).toFuture(), 30.seconds)
     (stats.get("size").map(_.asNumber.longValue).getOrElse(0L), stats.get("storageSize").map(_.asNumber.longValue).getOrElse(0L))
   }
 
   corpora.foreach { c =>
     "the production shadow run" should s"decide exactly as the offline resolver, from observations alone and with no request, on ${c.label}" in {
+      val database = databaseFor(c)
       val w = wiring(mongoTarget, c, storages, fixtureRoot, configuration.env)
       bootPipeline(w)
       val listings = listingsOf(w, c.normalizer)
@@ -143,8 +152,8 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val (cpu, alloc) = ((threads.getThreadCpuTime(thread) - cpu0) / 1e9, threads.getThreadAllocatedBytes(thread) - mem0)
 
       val run = runs.latestRun().getOrElse(fail("no run persisted"))
-      val (decisionsSize, decisionsStorage) = sizeOf(ShadowRunStore.DecisionsCollection)
-      val (diffSize, diffStorage)           = sizeOf(ShadowRunStore.DiffCollection)
+      val (decisionsSize, decisionsStorage) = sizeOf(database, ShadowRunStore.DecisionsCollection)
+      val (diffSize, diffStorage)           = sizeOf(database, ShadowRunStore.DiffCollection)
       val lookupBytes = observations.currentLookups().map(o => o.query.key.length.toLong + (o.answer match {
         case services.observations.LookupAnswer.Body(t)  => t.length.toLong
         case b: services.observations.LookupAnswer.Bytes => b.base64.length.toLong
