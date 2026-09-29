@@ -30,4 +30,19 @@ class ClassArchiveTrainingSpec extends AnyFlatSpec with Matchers {
     loaded shouldBe ClassArchiveTraining.Loaded(classes = 1, failed = 1)
     tripped shouldBe false
   }
+
+  it should "read a class list's names, skipping its comments and blank lines" in {
+    ClassArchiveTraining.classList("# generated\n\na.B\n  a.B$C  \n# note\n") shouldBe Seq("a.B", "a.B$C")
+  }
+
+  /** A launcher whose classpath carries a class list trains on the classes production loads; one
+   *  without (the web) still trains on every class its jars carry. */
+  it should "train on the class list when the classpath carries one, and on every jar's classes otherwise" in {
+    val jar = Files.createTempFile("training", ".jar")
+    Using.resource(new JarOutputStream(Files.newOutputStream(jar))) { out =>
+      Seq("a/B.class", "a/C.class").foreach { name => out.putNextEntry(new JarEntry(name)); out.closeEntry() }
+    }
+    ClassArchiveTraining.trainingNames(Seq(jar), Some("x.Listed\n")) shouldBe Seq("x.Listed")
+    ClassArchiveTraining.trainingNames(Seq(jar), None) should contain theSameElementsAs Seq("a.B", "a.C")
+  }
 }
