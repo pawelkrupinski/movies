@@ -7,10 +7,12 @@ import services.identity.IdentityMeasures.Measure
  *  (`IdentityMeasures.namesSeasonProduction`). `houseProduction`: the film's record bills the
  *  listing's work under the listing's own house (`IdentityMeasures.billsUnderItsHouse`).
  *  `deniedByPin`: a pin, not the listing's evidence, is (part of) why it is `denied`. */
-private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denied: Boolean,
+private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[String],
                                           listing: IdentityMeasures.Listing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false) {
+  /** Is the film ruled out for this listing — `denial` says why. */
+  def denied: Boolean = denial.isDefined
   def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }
   def number(measure: String): Option[Double]   = measures.get(measure).collect { case IdentityMeasures.Number(value) => value }
   /** Does the listing's title NAME the film ([[IdentityMeasures.NamingRelations]])? */

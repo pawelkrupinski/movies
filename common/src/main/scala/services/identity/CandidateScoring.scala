@@ -24,11 +24,14 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
    *  probability below the certified cut, a season its title names that the film is not of, or
    *  its season's production of its work by ANOTHER house than its banner's (`houses`). */
-  def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
-    ListingConstraints.seasonsApart(listing.seasonYear, IdentityMeasures.filmSeason(film), film.year).isDefined ||
-      (IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film)) ||
-      ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).isDefined
-  }
+  def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
+    evidenceDenial(listing, film, measures).isDefined
+
+  /** [[evidenceDenies]], saying which of its reasons rules the film out. */
+  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
+    ListingConstraints.seasonsApart(listing.seasonYear, IdentityMeasures.filmSeason(film), film.year).map(_.toString)
+      .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))("another house's season production"))
+      .orElse(ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA

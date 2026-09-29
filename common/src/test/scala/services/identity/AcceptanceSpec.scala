@@ -17,7 +17,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val close = films.count { case (_, film, _) => rivalling(film) }
     films.map { case (tmdbId, film, rank) =>
       val measures = IdentityMeasures.listingFilm(listing, film, rank, close - (if (rivalling(film)) 1 else 0), 0, houses)
-      Scored(Candidate(tmdbId, film), calibration.probability(ListingFilm, measures), measures, denied = false, listing, rank,
+      Scored(Candidate(tmdbId, film), calibration.probability(ListingFilm, measures), measures, denial = None, listing, rank,
         houseProduction = IdentityMeasures.billsUnderItsHouse(listing, film, houses))
     }.sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
@@ -109,7 +109,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val film = Film("Terminator 2: Judgment Day", year = Some(1991), runtime = Some(137))
     def scored(tmdbId: Int, candidate: Film, rank: Int) = {
       val measures = IdentityMeasures.listingFilm(listing, candidate, Some(rank), 0, 0, learned.get)
-      Scored(Candidate(tmdbId, candidate), calibration.probability(ListingFilm, measures), measures, denied = false, listing, Some(rank),
+      Scored(Candidate(tmdbId, candidate), calibration.probability(ListingFilm, measures), measures, denial = None, listing, Some(rank),
         houseProduction = IdentityMeasures.billsUnderItsHouse(listing, candidate, learned.get))
     }
     val candidates = Seq(scored(280, film, 1), scored(473793, makingOf, 2)).sortBy(candidate => -candidate.probability)

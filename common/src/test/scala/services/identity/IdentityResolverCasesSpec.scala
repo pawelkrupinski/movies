@@ -1270,6 +1270,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     candidates.head.denied shouldBe false
     candidates.last.denied shouldBe true
     candidates.last.render should include ("DENIED")
+    // …and why: which of the listing's evidence rules it out.
+    candidates.last.denial shouldBe Some("Learned(listing-film probability below the cannot-link cut)")
+    candidates.last.render should include ("DENIED (Learned(listing-film probability below the cannot-link cut))")
   }
 
   "A programme's banner" should "not chain its films into one family, while a film's own title still joins its spellings" in {

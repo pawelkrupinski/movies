@@ -46,7 +46,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val vote  = cluster.flatMap(node => familyTaken.get(node.id).map(_._3)).headOption.orElse(
       cluster.flatMap(node => voted.get(node.id)).headOption.map { case (id, probability) => s"pooled evidence of ${cluster.size} node(s) → $id at ${ResolverDecision.percent(probability)}" })
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
-      s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)} (${calibration.explain(ListingFilm, scored.measures)})")
+      s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.fold("")(why => s", denied: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
       (own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++

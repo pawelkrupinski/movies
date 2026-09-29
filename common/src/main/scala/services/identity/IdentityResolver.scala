@@ -93,10 +93,11 @@ object IdentityResolver {
 
   /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
   final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
-                                  denied: Boolean, seasonProduction: Boolean, houseProduction: Boolean, explanation: String) {
+                                  denial: Option[String], seasonProduction: Boolean, houseProduction: Boolean, explanation: String) {
+    def denied: Boolean = denial.isDefined
     def render: String =
       f"$tmdbId%8d ${ResolverDecision.percent(probability)}%6s rank ${searchRank.fold("-")(_.toString)}%2s" +
-        s"${if (denied) " DENIED" else ""}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
+        s"${denial.fold("")(why => s" DENIED ($why)")}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
         s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
   }
 
@@ -154,7 +155,7 @@ object IdentityResolver {
       ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
         if (anchor eq node) Nil else path(anchor), decision,
         scopeOf(node).of(node).map(scored => CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year,
-          scored.probability, scored.rank, scored.denied, scored.seasonProduction, scored.houseProduction,
+          scored.probability, scored.rank, scored.denial, scored.seasonProduction, scored.houseProduction,
           calibration.explain(IdentityMeasures.ListingFilm, scored.measures))))
     }
   }
@@ -216,7 +217,7 @@ object IdentityResolver {
       NodeCandidates(node.label,
         scored.map { candidate =>
           CandidateScore(candidate.candidate.tmdbId, candidate.candidate.film.title, candidate.candidate.film.year, candidate.probability, candidate.rank,
-            candidate.denied, candidate.seasonProduction, candidate.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, candidate.measures))
+            candidate.denial, candidate.seasonProduction, candidate.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, candidate.measures))
         },
         banners.map(banner => s"banner '$banner' → ${houses.of.getOrElse(banner, "no house")}; contenders: " +
           houseRanking.getOrElse(banner, Nil).take(4).map(_.render).mkString(", ")))

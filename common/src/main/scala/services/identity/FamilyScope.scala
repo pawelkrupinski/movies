@@ -8,7 +8,7 @@ import scala.collection.mutable
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
                                           counted: () => Unit) {
-  import scoring.{backing, calibration, evidenceDenies, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
+  import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, ownSearch, ownWalk, sharedOf}
 
   val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
@@ -18,10 +18,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  family resolves alone as it does among the others. */
   val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
 
-  /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
-   *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
+  /** Every candidate `l` has an evidence path to, scored; a `denial` marks, with its reason, the ones
+   *  its node (`deniedByNode`: a pin, a venue's own name) or its own evidence rules out
+   *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByPins: Int => Boolean): Seq[Scored] = {
+            deniedByNode: Int => Option[String]): Seq[Scored] = {
     counted()
     val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
@@ -33,8 +34,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val measures = IdentityMeasures.listingFilm(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
         backing.corroborating(groups, candidate.film, venue), houses, qualifiers)
       val probability = calibration.probability(ListingFilm, measures)
-      Scored(candidate, probability, measures, deniedByPins(candidate.tmdbId) || evidenceDenies(listing, candidate.film, measures), listing, ranks.get(candidate.tmdbId),
-        namesItsSeasonProduction(listing, candidate.film), deniedByPins(candidate.tmdbId), IdentityMeasures.billsUnderItsHouse(listing, candidate.film, houses))
+      val byNode = deniedByNode(candidate.tmdbId)
+      Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
+        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, IdentityMeasures.billsUnderItsHouse(listing, candidate.film, houses))
     }
     // The listing's whole title (or its original or an alternative title) and its credited
     // director name ONE film together: another film of that director, which its title does not
@@ -48,8 +50,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // whose animators it credits).
     val instalment = candidates.exists(scored => !scored.denied && scored.category("numeral").contains("same"))
     candidates.map(scored =>
-      if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures)) scored.copy(denied = true)
-      else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment)) scored.copy(denied = true)
+      if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
+        scored.copy(denial = Some("its director's other film, which the title does not name"))
+      else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
+        scored.copy(denial = Some("another instalment than the one the title numbers"))
       else scored)
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
@@ -57,7 +61,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id))))
+      id => denialByNode(node, id)))
+
+  /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name. */
+  private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
+    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
+      .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
 
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
@@ -82,7 +91,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.exists(node => pins.deniedFilms(node.listings.head.key)(id) || namesOnlyItsVenue(node, candidateById(id))))
-      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denied = true))
+      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption())
+      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
   }
 }
