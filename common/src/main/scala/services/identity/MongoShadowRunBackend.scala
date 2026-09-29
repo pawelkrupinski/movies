@@ -53,10 +53,14 @@ final class MongoShadowRunBackend private (db: MongoDatabase, reconcile: MongoCo
     }
 
   private def insert(c: MongoCollection[Document], docs: Seq[Document]): Unit =
-    if (docs.nonEmpty) { Await.result(c.insertMany(docs).toFuture(), Timeout); () }
+    docs.grouped(MongoShadowRunBackend.InsertBatch).foreach(batch => Await.result(c.insertMany(batch).toFuture(), Timeout))
 }
 
 object MongoShadowRunBackend {
+
+  /** Documents per insert. A run went out as ONE insertMany — 2,233 decisions, a 6-8 MB message on
+   *  US every shadow tick — and the driver kept a buffer that size pooled for good. */
+  val InsertBatch = 200
 
   /** The worker's: it writes the runs and owns the indexes, the TTL one included. */
   def writer(db: MongoDatabase, ttlMismatches: TtlIndexMismatches): MongoShadowRunBackend =

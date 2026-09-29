@@ -46,6 +46,30 @@ class MongoShadowRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with 
     mismatches.names shouldBe empty
   }
 
+  // A run's decisions went out as ONE insertMany: 2,233 documents, a 6-8 MB message on US every
+  // shadow tick, which kept an 8 MB buffer in the driver's pool for good (live US dump, 09-29).
+  "the shadow run writer" should "send a run's documents in bounded inserts" in {
+    val inserts = new java.util.concurrent.ConcurrentLinkedQueue[Int]()
+    val watched = MongoClient(MongoClientSettings.builder()
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY)
+      .addCommandListener(new com.mongodb.event.CommandListener {
+        override def commandStarted(event: com.mongodb.event.CommandStartedEvent): Unit =
+          if (event.getCommandName == "insert") inserts.add(event.getCommand.getArray("documents", new org.bson.BsonArray()).size)
+      }).build())
+    try {
+      val db = watched.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "shadow-run-batches"))
+      val (cluster, family) = ShadowRunStoreBehaviour.sample
+      val run = ShadowRun(ShadowRunStoreBehaviour.T0, Seq.fill(1200)(cluster), Seq.fill(10)(family))
+      new ShadowRunStore(MongoShadowRunBackend.writer(db, mismatches), new MutableClock(ShadowRunStoreBehaviour.T0))
+        .record(run, ShadowRunStoreBehaviour.Retention)
+      import scala.jdk.CollectionConverters._
+      withClue(s"insert sizes ${inserts.asScala.toSeq}: ")(inserts.asScala.max should be <= MongoShadowRunBackend.InsertBatch)
+      inserts.asScala.sum shouldBe 1210
+      Await.ready(db.drop().toFuture(), 60.seconds)
+    } finally watched.close()
+  }
+
   override def afterAll(): Unit =
     try Await.ready(database.drop().toFuture(), 60.seconds) finally { client.close(); super.afterAll() }
 }
