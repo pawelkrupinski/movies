@@ -415,11 +415,24 @@ private[movies] final class ScrapeLanding(
      *  Ordered by `canonicalRank` so the answer can't depend on iteration order. */
     def venueSlotYear(norm: String): Option[Int] =
       corpusIndex.keysForCinemaSlot(cinema, norm).toSeq.sortBy(FilmCanonicalizer.canonicalRank).iterator
-        .flatMap(k => store.get(k).iterator.flatMap(_.cinemaShowings.collectFirst {
-          case (cin, slot) if cin == cinema && slot.title.exists(t => normalizer.sanitize(t) == norm) => slot
-        }))
+        .flatMap(k => store.get(k).iterator.flatMap(record => venueSlot(k, record, norm)))
         .flatMap(_.releaseYear)
         .nextOption()
+    // This venue's slot under `norm` on the row: read from the venue's own sources on it (the
+    // index knows them) rather than by listing every cinema slot of the row — a wide release has
+    // hundreds, and that listing was ~3% of the US pipeline's CPU (JFR). One match is the answer
+    // in any order; several, or a row the index can't vouch for, take the first in the row's own
+    // order, as the listing did.
+    def venueSlot(key: CacheKey, record: MovieRecord, norm: String): Option[models.SourceData] = {
+      def titled(slot: models.SourceData) = slot.title.exists(t => normalizer.sanitize(t) == norm)
+      def inRowOrder = record.cinemaShowings.collectFirst { case (cin, slot) if cin == cinema && titled(slot) => slot }
+      corpusIndex.sourcesAt(key, cinema, record)
+        .map(_.iterator.flatMap(record.data.get).filter(titled).take(2).toSeq) match {
+          case Some(Seq(only)) => Some(only)
+          case Some(Seq())     => None
+          case _               => inRowOrder
+        }
+    }
     /** Drop `slotKeys` from the row at `key`, retaining each dropped slot's
      *  synopsis (longest-seen, keyed by its source) so the displayed blurb stays
      *  sticky once that slot is gone — see `MovieRecord.retainedSynopses`. Under
