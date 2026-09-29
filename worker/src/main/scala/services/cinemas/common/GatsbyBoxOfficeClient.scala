@@ -6,6 +6,7 @@ import tools.HttpFetch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, ZoneId}
+import scala.util.control.NonFatal
 
 /**
  * Scraper for Webedia's Gatsby-hosted "box office" cinema platform — one
@@ -34,7 +35,7 @@ import java.time.{LocalDate, ZoneId}
  * — five zones, `America/Phoenix` and `America/Indiana/Indianapolis` among them —
  * arrive without touching this class at all.
  *
- * Two requests per venue per scrape:
+ * Three requests per venue per scrape (the third per 50 films):
  *
  *   1. `GET {base}/page-data/sq/d/3836549025.json`
  *      → `data.allMovie.nodes[]` — the chain-wide film catalogue keyed by the
@@ -47,6 +48,9 @@ import java.time.{LocalDate, ZoneId}
  *        `theaters` is a URL-encoded JSON object and each session carries
  *        `startsAt`, the dotted `tags[]`, `isExpired`, `screen.name` and the
  *        `data.ticketing[]` booking links.
+ *   3. `GET {base}/api/gatsby-source-boxofficeapi/movies?ids=…&ids=…`
+ *      → the scheduled films' credits and running times, which the catalogue's
+ *        static query leaves null and the film page loads client-side.
  *
  * Parsing is [[GatsbyBoxOfficeParser]]'s; this class is only transport +
  * the horizon decision.
@@ -65,7 +69,7 @@ class GatsbyBoxOfficeClient(
   // 404s — so the composition root supplies it or /uptime shows no source link.
   venuePath: Option[String] = None,
   today:     LocalDate      = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone))
-) extends CinemaScraper {
+) extends CinemaScraper with play.api.Logging {
 
   import GatsbyBoxOfficeClient._
 
@@ -89,7 +93,8 @@ class GatsbyBoxOfficeClient(
    *  no server-side cap (probed to a full year). Days with nothing on simply
    *  don't appear, so there is no per-day fan-out to plan, no index/nav fetch
    *  to discover which days exist, and no gap days wasted on empty requests —
-   *  the two calls in `fetch()` are the venue's whole scrape.
+   *  the catalogue, the schedule and one details call per 50 films are the
+   *  venue's whole scrape.
    *
    *  The catalogue call is the same URL for every venue of a brand, so an HTTP
    *  cache in front collapses it across the chain's venues.
@@ -97,8 +102,21 @@ class GatsbyBoxOfficeClient(
   def fetch(): Seq[CinemaMovie] = {
     val catalogue = http.get(catalogueUrl(baseUrl))
     val schedule  = http.get(scheduleUrl(baseUrl, theaterId, timeZone, today, today.plusDays(MaxHorizonDays.toLong)))
-    GatsbyBoxOfficeParser.parse(schedule, catalogue, theaterId, cinema, baseUrl)
+    GatsbyBoxOfficeParser.parse(schedule, catalogue, theaterId, cinema, baseUrl, details(GatsbyBoxOfficeParser.scheduledMovieIds(schedule, theaterId)))
   }
+
+  /** The scheduled films' credits and running times, [[DetailsBatch]] ids per request. Optional: a
+   *  batch that fails leaves its films without them — the schedule is the scrape, and a listing
+   *  without a credit is what every scrape published before this request existed. */
+  private def details(ids: Seq[String]): Map[String, GatsbyBoxOfficeParser.FilmDetails] =
+    ids.distinct.sorted.grouped(DetailsBatch).flatMap { batch =>
+      try GatsbyBoxOfficeParser.parseDetails(http.get(detailsUrl(baseUrl, batch)))
+      catch {
+        case NonFatal(e) =>
+          logger.warn(s"${cinema.displayName}: film details for ${batch.size} film(s) unavailable, listing them without credits: ${e.getMessage}")
+          Map.empty
+      }
+    }.toMap
 }
 
 object GatsbyBoxOfficeClient {
@@ -143,4 +161,11 @@ object GatsbyBoxOfficeClient {
     val theaters = URLEncoder.encode(s"""{"id":"$theaterId","timeZone":"$timeZone"}""", StandardCharsets.UTF_8)
     s"$baseUrl/api/gatsby-source-boxofficeapi/schedule?theaters=$theaters&from=${from}T00:00:00&to=${to}T00:00:00"
   }
+
+  /** How many films one details request asks about. */
+  val DetailsBatch = 50
+
+  /** The films' credits and running times, as the film page loads them: one repeated `ids` per film. */
+  def detailsUrl(baseUrl: String, ids: Seq[String]): String =
+    s"$baseUrl/api/gatsby-source-boxofficeapi/movies?${ids.map(id => s"ids=${URLEncoder.encode(id, StandardCharsets.UTF_8)}").mkString("&")}"
 }

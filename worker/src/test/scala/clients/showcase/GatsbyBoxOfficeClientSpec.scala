@@ -188,4 +188,44 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
       "https://relay.mvtx.us/ticketing/dbz?code_theater=X06JR&code=Gallery; Recliner; ReservedSeating"
     ) shouldBe "https://relay.mvtx.us/ticketing/dbz?code_theater=X06JR&code=Gallery"
   }
+
+  "the film details" should "carry each film's director, co-directors, running time, cast and synopsis" in {
+    // Everyman's `movies?ids=` for three films, recorded 2026-09-29: the credits and runtimes the
+    // catalogue leaves null. "Dracula (4K Restoration)" is Terence Fisher's 1958 Hammer film, which
+    // a bare title could not tell from Browning's 1931 "Dracula"; runtime arrives in seconds.
+    val details = GatsbyBoxOfficeParser.parseDetails(
+      scala.io.Source.fromFile("test/resources/fixtures/everyman/film-details.json").mkString)
+    val dracula = details("1000051270")
+    dracula.directors shouldBe Seq("Terence Fisher")
+    dracula.runtimeMinutes.value shouldBe 93
+    dracula.cast should contain ("Christopher Lee")
+    dracula.synopsis.value should startWith ("A landmark in Gothic horror")
+    details("1000046138").runtimeMinutes.value shouldBe 195   // RBO 2026/27 Tosca, not 2025/26's 210
+    details("1000046138").directors shouldBe Seq("Oliver Mears")
+  }
+
+  it should "fill the listing it belongs to, and leave the rest as the catalogue has them" in {
+    val schedule  = scala.io.Source.fromFile(showcaseFixture("schedule")).mkString
+    val catalogue = scala.io.Source.fromFile(showcaseFixture("page-data")).mkString
+    val details   = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Seq("Steven Spielberg"), Some(127), Seq("Sam Neill"), Some("Dinosaurs.")))
+    val parsed    = GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details)
+    val jurassic  = parsed.find(_.movie.title == "Jurassic Park").value
+    jurassic.director shouldBe Seq("Steven Spielberg")
+    jurassic.movie.runtimeMinutes.value shouldBe 127
+    parsed.filterNot(_.movie.title == "Jurassic Park").flatMap(_.director) shouldBe empty
+  }
+
+  it should "leave every film listed when the details request fails" in {
+    // The Bluewater replay records no details call: the scrape is the schedule, credits are extra.
+    films.size shouldBe 81
+    films.flatMap(_.director) shouldBe empty
+  }
+
+  private def showcaseFixture(kind: String): java.io.File = {
+    import scala.jdk.CollectionConverters.*
+    val base = java.nio.file.Paths.get("test/resources/fixtures/showcase/www.showcasecinemas.co.uk")
+    java.nio.file.Files.walk(base).iterator.asScala.map(_.toFile).filter(_.isFile)
+      .find(f => if (kind == "schedule") f.getName.startsWith("schedule") else f.getName == "3836549025.json")
+      .getOrElse(fail(s"no recorded $kind response under $base"))
+  }
 }

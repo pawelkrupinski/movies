@@ -29,9 +29,10 @@ object GatsbyBoxOfficeParser {
    *  schema also declares `runtime`, `release`, `synopsis`, `direction`,
    *  `casting` and `certificate`, but those are `null` for EVERY node on both
    *  UK brands (verified 2026-07-27: 113/113 Showcase and 137/137 Everyman) —
-   *  the site's static query simply doesn't populate them. Extracting them
-   *  would be extracting nulls, so this carries only what the payload has;
-   *  TMDB supplies runtime/synopsis/cast/director downstream anyway. */
+   *  the site's static query simply doesn't populate them. The film page loads
+   *  them client-side from `movies?ids=` instead, which [[parseDetails]] reads:
+   *  a venue's own credit and running time are what tell remade titles apart
+   *  ("Dracula (4K Restoration)" is Terence Fisher's 1958 film, 93 minutes). */
   case class CatalogueFilm(
     title:         String,
     originalTitle: Option[String],
@@ -52,19 +53,42 @@ object GatsbyBoxOfficeParser {
     catalogueJson: String,
     theaterId:     String,
     cinema:        Cinema,
-    baseUrl:       String
+    baseUrl:       String,
+    details:       Map[String, FilmDetails] = Map.empty
   ): Seq[CinemaMovie] = {
     val catalogue = parseCatalogue(catalogueJson)
-    val schedule  = (Try(Json.parse(scheduleJson)).getOrElse(JsNull) \ theaterId \ "schedule")
-      .asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty)
-
-    schedule.flatMap { case (movieId, byDate) =>
+    scheduleOf(scheduleJson, theaterId).flatMap { case (movieId, byDate) =>
       val showtimes = parseShowtimes(byDate)
       catalogue.get(movieId)
         .filter(_ => showtimes.nonEmpty)
-        .map(film => toCinemaMovie(movieId, film, showtimes, cinema, baseUrl))
+        .map(film => toCinemaMovie(movieId, film, showtimes, cinema, baseUrl, details.get(movieId)))
     }.sortBy(_.movie.title)
   }
+
+  private def scheduleOf(scheduleJson: String, theaterId: String): Seq[(String, JsValue)] =
+    (Try(Json.parse(scheduleJson)).getOrElse(JsNull) \ theaterId \ "schedule")
+      .asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty)
+
+  /** The film ids a venue's schedule lists: what the details request asks about. */
+  def scheduledMovieIds(scheduleJson: String, theaterId: String): Seq[String] = scheduleOf(scheduleJson, theaterId).map(_._1)
+
+  /** What the platform's `movies?ids=` endpoint knows of a film and its static catalogue query does
+   *  not select: the credits and running time the site renders client-side. `release` is the brand's
+   *  RELEASE date — 2026-10-16 for Hammer's 1958 "Dracula (4K Restoration)" — never a production
+   *  year, so it is not read. */
+  final case class FilmDetails(directors: Seq[String], runtimeMinutes: Option[Int], cast: Seq[String], synopsis: Option[String])
+
+  /** `movies?ids=…`: a JSON array of films keyed by the catalogue's id. Directors and co-directors are
+   *  both credited as directors; `runtime` is in seconds. */
+  def parseDetails(json: String): Map[String, FilmDetails] =
+    Try(Json.parse(json)).toOption.flatMap(_.asOpt[Seq[JsValue]]).getOrElse(Nil).flatMap { n =>
+      def names(field: String) = (n \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty)
+      (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty).map(id => id -> FilmDetails(
+        directors      = (names("direction") ++ names("coDirection")).distinct,
+        runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(seconds => math.round(seconds / 60.0).toInt),
+        cast           = names("casting"),
+        synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty)))
+    }.toMap
 
   /** `data.allMovie.nodes[]` keyed by the same numeric id the schedule uses.
    *  Pure + public so a spec can assert the catalogue independently of any
@@ -197,20 +221,23 @@ object GatsbyBoxOfficeParser {
     film:      CatalogueFilm,
     showtimes: Seq[Showtime],
     cinema:    Cinema,
-    baseUrl:   String
+    baseUrl:   String,
+    details:   Option[FilmDetails]
   ): CinemaMovie =
     CinemaMovie(
       movie = Movie(
-        title         = film.title,
-        genres        = film.genres,
-        originalTitle = film.originalTitle
+        title          = film.title,
+        runtimeMinutes = details.flatMap(_.runtimeMinutes),
+        genres         = film.genres,
+        originalTitle  = film.originalTitle
       ),
       cinema      = cinema,
       posterUrl   = film.posterUrl,
       filmUrl     = film.path.map(p => s"$baseUrl$p"),
-      synopsis    = None,   // never populated by the platform's static query
-      cast        = Seq.empty,
-      director    = Seq.empty,
+      // The static catalogue query populates none of these; the details request does.
+      synopsis    = details.flatMap(_.synopsis),
+      cast        = details.fold(Seq.empty[String])(_.cast),
+      director    = details.fold(Seq.empty[String])(_.directors),
       showtimes   = showtimes,
       // The platform's own film id — stable across venues within a brand, so a
       // merge can recognise the same film at two Showcase venues.

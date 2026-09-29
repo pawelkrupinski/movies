@@ -9613,6 +9613,8 @@ services.cinemas.common.GatsbyBoxOfficeParser$
 services.cinemas.common.GatsbyBoxOfficeParser$$anon$1
 services.cinemas.common.GatsbyBoxOfficeParser$CatalogueFilm
 services.cinemas.common.GatsbyBoxOfficeParser$CatalogueFilm$
+services.cinemas.common.GatsbyBoxOfficeParser$FilmDetails
+services.cinemas.common.GatsbyBoxOfficeParser$FilmDetails$
 services.cinemas.common.KinoprogrammClient
 services.cinemas.common.KinoprogrammClient$
 services.cinemas.common.KinoprogrammClient$Film
