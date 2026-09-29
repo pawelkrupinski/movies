@@ -108,7 +108,7 @@ class TmdbClient(
    *  ranks in it is identity evidence (`PinnedGateMeasures.titleSearch`), measured exactly as the
    *  calibration measured it on recorded answers. `None` without a key; a failed request throws. */
   def searchAsRanked(title: String): Option[Seq[TmdbClient.SearchResult]] = authHeader.map { auth =>
-    (Json.parse(httpGet(searchUrl(title, None), auth)) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
+    TmdbClient.rankedResults(httpGet(searchUrl(title, None), auth))
   }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
@@ -176,7 +176,7 @@ class TmdbClient(
    */
   def findByImdbId(imdbId: String): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
     val body = httpGet(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=$languageTag${apiKeyParameter("&")}", auth)
-    parseFindMovieResults(body).headOption
+    TmdbClient.parseFindMovieResults(body).headOption
   }
 
   /** TMDB's production-language original title for a known movie. Used as a
@@ -400,10 +400,8 @@ class TmdbClient(
    *  at one round-trip — an actor sharing a director's name is still skipped, just
    *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
   def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
-    val body = httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
-    val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-    val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
-    (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct.take(TmdbClient.MaxPersonCandidates)
+    TmdbClient.personCandidates(httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth))
+      .take(TmdbClient.MaxPersonCandidates)
   }.getOrElse(Seq.empty)
 
   /** A person's movies as a director — the films they're credited for in the
@@ -423,13 +421,42 @@ class TmdbClient(
     personCredits(personId, "Writing")
 
   private def personCredits(personId: Int, department: String): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
-    val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth))
+    TmdbClient.creditsIn(orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)), department)
+  }.getOrElse(Seq.empty)
+
+  private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
+    (Json.parse(body) \ "results").asOpt[JsArray].map(TmdbClient.decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
+
+  // /find/{external_id} returns matches under "movie_results" in the same row
+  // shape as /search/movie's "results". Both decoders share this body.
+
+}
+
+object TmdbClient {
+
+  // ── What each identity response is read as: ONE parser per response, shared by the client's
+  //    own calls and by the normalized identity store (`services.identity.TmdbStore`), so a
+  //    stored answer is by construction what the client would have made of the body. ──
+
+  /** A title search's results in TMDB's OWN order. */
+  def rankedResults(body: String): Seq[SearchResult] =
+    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
+
+  /** A person search's people, those TMDB knows for directing first, in its order otherwise. */
+  def personCandidates(body: String): Seq[Int] = {
+    val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
+    (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct
+  }
+
+  /** A person's films credited in `department` (crew), once each, in TMDB's order. */
+  def creditsIn(body: String, department: String): Seq[SearchResult] =
     (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .filter(c => (c \ "department").asOpt[String].contains(department))
       .flatMap { js =>
         for {
           id <- (js \ "id").asOpt[Int]
-        } yield TmdbClient.SearchResult(
+        } yield SearchResult(
           id            = id,
           title         = (js \ "title").asOpt[String].getOrElse(""),
           originalTitle = (js \ "original_title").asOpt[String],
@@ -438,22 +465,17 @@ class TmdbClient(
         )
       }
       .distinctBy(_.id)
-  }.getOrElse(Seq.empty)
 
-  private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
-    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
-
-  // /find/{external_id} returns matches under "movie_results" in the same row
-  // shape as /search/movie's "results". Both decoders share this body.
-  private[clients] def parseFindMovieResults(body: String): Seq[TmdbClient.SearchResult] =
+  /** A find-by-external-id's films, most popular first. */
+  def parseFindMovieResults(body: String): Seq[SearchResult] =
     (Json.parse(body) \ "movie_results").asOpt[JsArray]
       .map(decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
 
-  private def decodeMovieArray(array: JsArray): Seq[TmdbClient.SearchResult] =
+  private[clients] def decodeMovieArray(array: JsArray): Seq[SearchResult] =
     array.value.flatMap { js =>
       for {
         id <- (js \ "id").asOpt[Int]
-      } yield TmdbClient.SearchResult(
+      } yield SearchResult(
         id            = id,
         title         = (js \ "title").asOpt[String].getOrElse(""),
         originalTitle = (js \ "original_title").asOpt[String],
@@ -462,9 +484,6 @@ class TmdbClient(
         overview      = (js \ "overview").asOpt[String].filter(_.nonEmpty)
       )
     }.toSeq
-}
-
-object TmdbClient {
   /** How many same-name people the director walk will try before giving up. Two
    *  covers the observed failures (a credit-less duplicate or an alias ranked
    *  above the real person); the rest is headroom that still bounds the extra

@@ -199,7 +199,7 @@ object PinnedGateMeasures {
       "runtime.delta"  -> absDelta(l.runtime.filter(_ > 0), f.runtime.filter(_ > 0)),
       "country"        -> countryRelation(l.countries, f.countries),
       "search.rank"    -> searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble)),
-      "popularity.log2" -> f.popularity.fold[Measure](MissingFilm)(p => Number(math.floor(math.log(math.max(p, 1e-3)) / math.log(2)))),
+      "popularity.log2" -> f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble)),
       "rivals"         -> Number(rivals.toDouble),
       "venues.corroborating" -> Number(corroboratingVenues.toDouble)
     )

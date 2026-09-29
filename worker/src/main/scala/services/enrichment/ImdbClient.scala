@@ -276,7 +276,7 @@ object ImdbClient {
 
   /** Real film candidates: tt-id, qid "movie". Document order — IMDb returns the best query match
    *  first, popularity padding after. */
-  private def movieSuggestions(js: JsValue): Seq[Suggestion] =
+  private[services] def movieSuggestions(js: JsValue): Seq[Suggestion] =
     (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap { entry =>
         for {
@@ -295,7 +295,7 @@ object ImdbClient {
    *  therefore finds exactly one confident hit and it is the wrong film. Counting the
    *  article-stripped forms as matches too makes the ambiguity VISIBLE rather than letting it
    *  resolve silently. */
-  private def titleMatches(movies: Seq[Suggestion], title: String): Seq[Suggestion] = {
+  private[services] def titleMatches(movies: Seq[Suggestion], title: String): Seq[Suggestion] = {
     val normalizedTitle = TitleMatch.deburredFold(title)
     def withoutArticle(t: String) = LeadingArticle.replaceFirstIn(t, "")
     movies.filter(_.title.exists { candidate =>
@@ -306,7 +306,7 @@ object ImdbClient {
   /** One parsed suggestion-endpoint movie row: tt-id plus the fields the
    *  matcher ranks on (lowercased display title, release year, popularity
    *  rank). */
-  private case class Suggestion(id: String, title: Option[String], year: Option[Int], rank: Int)
+  private[services] final case class Suggestion(id: String, title: Option[String], year: Option[Int], rank: Int)
 
   /** Full IMDb record consumed by the IMDb enrichment stage: rating plus the
    *  content fields that fill `SourceData(Imdb)` (synopsis, director, cast,
