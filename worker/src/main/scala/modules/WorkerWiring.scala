@@ -144,6 +144,11 @@ class WorkerWiring(
     for { store <- identityTmdbStore; docs <- identityTmdbDocuments; normalizer <- identityTmdbNormalizer }
     yield new services.identity.TmdbChangesSweep(store, docs,
       tmdbClientOver(new services.identity.NormalizingHttpFetch(enrichmentFetch, normalizer)), country.language.toLanguageTag, clock)
+  /** Keeps the store to what the shadow model reads (`TmdbStoreSweep`), at most daily, before a
+   *  fill round. Not for a cut-over model: it reads observations, and its index names no store key. */
+  lazy val identityTmdbSweep: Option[services.identity.TmdbStoreSweep] =
+    identityTmdbDocuments.filter(_ => !identityCutover).map(docs => new services.identity.TmdbStoreSweep(docs,
+      () => identityModel.flatMap(_.reachable(WorkerWiring.IdentityModelPeek)), clock))
   /** The model's questions due to be asked again (`TmdbRefreshes`). */
   lazy val identityTmdbRefreshes: Option[services.identity.TmdbRefreshes] =
     identityTmdbStore.map(new services.identity.TmdbRefreshes(_, country.language.toLanguageTag, clock))
@@ -260,7 +265,10 @@ class WorkerWiring(
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
         normalizer  = identityTmdbNormalizer,
-        beforeRound = () => identityTmdbChanges.filter(_.behind).foreach(_.sweep()),
+        beforeRound = () => {
+          identityTmdbChanges.filter(_.behind).foreach(_.sweep())
+          identityTmdbSweep.filter(_.behind).foreach(_.sweep())
+        },
         gapMemory   = identityTmdbDocuments.map(new services.identity.TmdbGapMemory(_, country.language.toLanguageTag, clock)),
         refreshes   = () => identityTmdbRefreshes.fold(Seq.empty[services.identity.CandidateQuery])(r =>
           identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(Seq.empty[services.identity.CandidateQuery])(s => r.due(s.questions))),

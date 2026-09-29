@@ -36,6 +36,19 @@ trait TmdbDocumentsBehaviour extends AnyFlatSpec with Matchers {
     d.put(TmdbKind.Film, Seq("1018" -> film("Lalka (1968)")))
     d.get(TmdbKind.Film, Seq("1018"))("1018") shouldBe film("Lalka (1968)")
   }
+
+  it should "scan a kind's every id with when it was fetched, across pages, and delete by id" in {
+    val d = newDocuments()
+    val ids = (1 to TmdbDocuments.ScanPage + 5).map(i => f"$i%05d")
+    d.put(TmdbKind.Film, ids.map(id => id -> film(id).append(TmdbStore.FetchedAt, org.bson.BsonInt64(id.toLong))))
+    d.put(TmdbKind.Person, Seq("7" -> film("person")))                          // no stamp; another kind
+    val seen = Seq.newBuilder[(String, Option[Long])]
+    d.scan(TmdbKind.Film)(page => seen ++= page) shouldBe true
+    seen.result() shouldBe ids.map(id => id -> Some(id.toLong))
+    d.delete(TmdbKind.Film, ids.take(3))
+    d.get(TmdbKind.Film, ids.take(4)).keySet shouldBe Set(ids(3))
+    d.get(TmdbKind.Person, Seq("7")).keySet shouldBe Set("7")
+  }
 }
 
 /** A read of many batches waits on their round-trips side by side — at most `InFlight` at once —
