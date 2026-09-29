@@ -28,20 +28,20 @@ import scala.util.control.NonFatal
  * bodies live for minutes — timing those to completion would put a permanent
  * multi-minute tail in the histogram and make the p99 meaningless.
  *
- * @param nanoTime injected so the spec can drive a deterministic duration; the
- *                 default is the monotonic clock, which is the right one here —
- *                 wall-clock would let an NTP step produce a negative latency.
+ * @param stopwatch injected so the spec can drive a deterministic duration; the
+ *                  default is the monotonic clock, which is the right one here —
+ *                  wall-clock would let an NTP step produce a negative latency.
  */
 class HttpMetricsFilter(
   metrics:  WebHttpMetrics,
-  nanoTime: () => Long = () => System.nanoTime()
+  stopwatch: tools.Stopwatch = tools.Stopwatch.System
 )(using executionContext: ExecutionContext) extends EssentialFilter {
 
   override def apply(next: EssentialAction): EssentialAction = EssentialAction { request =>
     if (!WebHttpMetrics.isMeasured(request)) next(request)
     else {
-      val startedNanos = nanoTime()
-      def elapsedSeconds: Double = (nanoTime() - startedNanos).toDouble / 1e9
+      val started = stopwatch.start()
+      def elapsedSeconds: Double = started.seconds
 
       next(request)
         .map { result =>

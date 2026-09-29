@@ -32,7 +32,7 @@ object AdaptiveParallel {
   def map[A, B](items: Seq[A], workers: Int, backoff: FiniteDuration = 2.seconds, maxAttempts: Int = 4,
                 sleep: FiniteDuration => Unit = d => Thread.sleep(d.toMillis))
                (isThrottle: Throwable => Boolean)(f: A => B): (Seq[(A, Try[B])], Stats) = {
-    val started  = System.nanoTime()
+    val started  = Stopwatch.start()
     val queue    = new ConcurrentLinkedQueue[(Int, Int)]()   // (item index, attempts so far)
     items.indices.foreach(i => queue.add(i -> 0))
     val results  = new AtomicReferenceArray[Try[B]](items.size)
@@ -82,6 +82,6 @@ object AdaptiveParallel {
 
     val out = items.indices.map(i => items(i) -> Option(results.get(i)).getOrElse(
       Failure(new IllegalStateException("never processed"))))
-    (out, Stats(items.size, calls.get, (System.nanoTime() - started).nanos, math.max(1, workers), allowed.get))
+    (out, Stats(items.size, calls.get, started.elapsed, math.max(1, workers), allowed.get))
   }
 }

@@ -51,13 +51,13 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
    *  registered only once per registry, and counters never reset, so sharing one
    *  would make every assertion depend on test order.
    *
-   *  `nanoTime` is a fixed 250 ms step so the histogram lands in a known bucket
+   *  The stopwatch's clock is a fixed 250 ms step so the histogram lands in a known bucket
    *  and the duration assertions can't flake on a slow machine. */
   private class Harness(elapsedNanos: Long = 250_000_000L) {
     private val registry = new PrometheusRegistry()
     private val metrics  = new WebHttpMetrics(registry, country = "pl")
     private var ticks    = 0L
-    private val filter   = new HttpMetricsFilter(metrics, () => { ticks += elapsedNanos; ticks })
+    private val filter   = new HttpMetricsFilter(metrics, new tools.Stopwatch(() => { ticks += elapsedNanos; ticks }))
 
     def run(request: RequestHeader, upstream: Result = Results.Ok("ok")): Result = {
       val action = EssentialAction(_ => Accumulator.done(upstream))

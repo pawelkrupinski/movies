@@ -205,9 +205,8 @@ class TaskWorker(
       observer.onFinished(task, Outcome.NoHandler, 0L)
       PollResult.Returned
     case Some(h) =>
-      val startedAt = System.nanoTime()
-      val outcome   = Try(h.handle(task))
-      val millis    = (System.nanoTime() - startedAt) / 1000000L
+      val handled = tools.Stopwatch.timed(Try(h.handle(task)))
+      val (outcome, millis) = (handled.value, handled.millis)
       outcome match {
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
         case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)

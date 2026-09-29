@@ -86,8 +86,8 @@ class MonitoringHttpFetch(
     classify(url) match {
       case None => block
       case Some(service) =>
-        val t0 = System.nanoTime()
-        def ms = (System.nanoTime() - t0) / 1000000L
+        val started = Stopwatch.start()
+        def ms = started.millis
         try {
           val result = block
           monitor.recordSuccess(service, ms)
@@ -117,9 +117,9 @@ class MonitoringHttpFetch(
     classify(url) match {
       case None => delegate.getAsync(url)
       case Some(service) =>
-        val t0 = System.nanoTime()
+        val started = Stopwatch.start()
         delegate.getAsync(url).whenComplete { (_, exception) =>
-          val ms = (System.nanoTime() - t0) / 1000000L
+          val ms = started.millis
           if (exception == null) monitor.recordSuccess(service, ms)
           else {
             val cause = unwrap(exception)

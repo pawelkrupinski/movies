@@ -1443,14 +1443,14 @@ class CaffeineMovieCache(
     // copy gets overwritten if it changed), then evict only the keys
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
-    val tFindAllStart = System.nanoTime()
+    val findingAll    = tools.Stopwatch.start()
     // Marked BEFORE the read: a row this cache writes while `findAll` runs is newer than the
     // snapshot, and storing (or evicting) it from the snapshot would undo the write — see
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
     val marks         = repository.writeFence.markAll()
     val rows          = repository.findAll()
-    val tFindAllMs    = (System.nanoTime() - tFindAllStart) / 1000000
+    val tFindAllMs    = findingAll.millis
     // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
     // surface as "no rows". Treating that as "Mongo is genuinely empty,
@@ -1476,7 +1476,7 @@ class CaffeineMovieCache(
                   "Mongo connection disabled, query timed out, or repository genuinely empty. " +
                   "Pages will render with no films until the next successful tick.")
     }
-    val tPostFetch = System.nanoTime()
+    val populating = tools.Stopwatch.start()
     // Group by key BEFORE putting: a merge-key rule added after these documents were
     // written (a new GlobalStructural strip) makes two stored titles collide on
     // `CacheKey`, and a bare `put`-per-row is last-write-wins — it would silently
@@ -1551,7 +1551,7 @@ class CaffeineMovieCache(
     // NOT the load's — re-merging here, right after `fromStorage` re-derives every
     // key, was the per-deploy re-key flap. The newcomer path stays settled via the
     // staging fold; cross-title/cross-year splits are reconciled by the reaper.
-    val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000
+    val tPopulateMs = populating.millis
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()

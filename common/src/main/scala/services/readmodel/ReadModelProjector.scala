@@ -214,20 +214,20 @@ class ReadModelProjector(
     // histogram), thread CPU answers "how much CPU did it burn" (the credit-floor
     // attribution). They diverge under concurrency and under steal, so the one that may
     // be compared against process CPU is the CPU one — see `recordProject`.
-    val wallStart = System.nanoTime()
+    val wall      = tools.Stopwatch.start()
     val cpuStart  = cpuClock.nanos()
     val variants  = projectReusingMetadata(partition).map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
     dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     metrics.recordProject(
       trigger,
-      wallSeconds = (System.nanoTime() - wallStart) / 1e9,
+      wallSeconds = wall.seconds,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
     )
     // The WRITE half, timed separately from the computation above (`recordProject`) — see
     // `recordWriteBurst`. A wide release writes one document per (card, city, cinema)
     // through `writer.upsertMovie`/`diffScreenings`, sequentially; this is the phase that
     // scales with city count, not with resolve/synopsisByCity/ratings cost.
-    val writeStart = System.nanoTime()
+    val writing = tools.Stopwatch.start()
     var written = 0
     val now     = clock.millis()
     val publish = variants.flatMap { case (projected, screenings) =>
@@ -265,7 +265,7 @@ class ReadModelProjector(
     // is a real loss the heal must repair.
     val served = kept.flatMap(card => lastScreenings.get(card).fold(Set.empty[String])(_.keySet))
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
-    metrics.recordWriteBurst((System.nanoTime() - writeStart) / 1e9)
+    metrics.recordWriteBurst(writing.seconds)
     written
   }
 
@@ -755,11 +755,11 @@ class ReadModelProjector(
    *  cards-only), and a row that lost its readiness. */
   private def projectCards(partition: ReadModelProjection.Partition): Int = {
     if (!partition.stored.record.readyToProject) return 0
-    val wallStart = System.nanoTime()
+    val wall      = tools.Stopwatch.start()
     val cpuStart  = cpuClock.nanos()
     val cards     = projectReusingMetadata(partition).map(_._1)
     metrics.recordProject(ProjectTrigger.Derivation,
-      wallSeconds = (System.nanoTime() - wallStart) / 1e9, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
+      wallSeconds = wall.seconds, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
     var written = 0
     cards.filter(card => lastMovie.contains(card._id) && !held.contains(card._id)).foreach { projected =>
       val id     = projected._id

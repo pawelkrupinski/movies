@@ -60,14 +60,14 @@ object RetryWithBackoff extends Logging {
     var attempt                = 1
     var lastFailure: Throwable = null
     while (attempt <= maxAttempts) {
-      val t0 = System.nanoTime()
+      val started = Stopwatch.start()
       try {
         val result = block
-        onAttempt(AttemptOutcome.Success(attempt, (System.nanoTime() - t0) / 1000000L))
+        onAttempt(AttemptOutcome.Success(attempt, started.millis))
         return result
       } catch {
         case NonFatal(t) =>
-          val ms = (System.nanoTime() - t0) / 1000000L
+          val ms = started.millis
           lastFailure = t
           val isFinal = attempt >= maxAttempts || !retryOn(t)
           onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
