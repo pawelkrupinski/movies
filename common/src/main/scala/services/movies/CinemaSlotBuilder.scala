@@ -34,11 +34,11 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
     effectiveYear: Option[Int]
   ): SourceData =
     SourceData(
-      title          = Some(displayTitle),
+      title          = stringPool.canonicalSome(displayTitle),
       // Verbatim upstream title, kept so the merge key is re-derivable when the
       // per-cinema rules change. A rule-driven client carries the pre-strip
       // string in `movie.rawTitle`; others leave it None and `title` is raw.
-      rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
+      rawTitle       = stringPool.canonical(cm.movie.rawTitle.orElse(Some(cm.movie.title))),
       originalTitle  = cm.movie.originalTitle.orElse(priorSlot.flatMap(_.originalTitle)),
       // Collapse a blurb the cinema CMS pasted N× into one description field
       // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
@@ -48,7 +48,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // String instead of N byte-identical copies (see `stringPool`). Same applies to the
       // cast/director/country/genre fields below — only the FRESH branch needs interning;
       // the prior-slot carry-forward already holds interned instances.
-      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(stringPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
+      synopsis       = stringPool.canonical(cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats)).orElse(priorSlot.flatMap(_.synopsis)),
       // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
       // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
       // carries none of them. Carry the prior slot's values forward when the fresh
@@ -60,8 +60,8 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
                        else priorSlot.map(_.cast).getOrElse(Seq.empty),
       director       = if (cm.director.nonEmpty) displayNames(cm.director)
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
-      runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
-      releaseYear    = effectiveYear,
+      runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(_ > 0)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
+      releaseYear    = StringPool.small(effectiveYear),
       countries      = { val cs = stringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
       genres         = if (cm.movie.genres.nonEmpty) stringPool.canonicalAll(cm.movie.genres)
@@ -74,9 +74,9 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // deliberately NOT interned: it is per-screening, only 1.6x repeated
       // (182,719 -> 116,571 distinct), so pooling it would evict this whole
       // low-cardinality vocabulary for almost no saving.
-      posterUrl      = cm.posterUrl.map(stringPool.canonical).orElse(priorSlot.flatMap(_.posterUrl)),
-      filmUrl        = cm.filmUrl.map(stringPool.canonical),
-      trailerUrl     = cm.trailerUrl.map(stringPool.canonical).orElse(priorSlot.flatMap(_.trailerUrl)),
+      posterUrl      = stringPool.canonical(cm.posterUrl).orElse(priorSlot.flatMap(_.posterUrl)),
+      filmUrl        = stringPool.canonical(cm.filmUrl),
+      trailerUrl     = stringPool.canonical(cm.trailerUrl).orElse(priorSlot.flatMap(_.trailerUrl)),
       // Canonical order so a reorder-only re-scrape stores a byte-identical slot and
       // the write-through guard skips it. Past showings the fresh scrape drops are NOT
       // retained: under the index-only cache the resident `priorSlot` is stripped (Nil
@@ -88,7 +88,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes),
       // Carry the certificate forward on a listing-only re-scrape, like the detail
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
-      ageRating      = cm.ageRating.map(stringPool.canonical).orElse(priorSlot.flatMap(_.ageRating))
+      ageRating      = stringPool.canonical(cm.ageRating).orElse(priorSlot.flatMap(_.ageRating))
     )
 
   /** Cast/crew names as the display layer needs them, for the two casings a

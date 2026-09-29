@@ -83,4 +83,21 @@ class StringPoolSpec extends AnyFlatSpec with Matchers {
     pool.canonical(v)
     pool.hitRate should (be >= 0.0 and be <= 1.0)
   }
+
+  "Two slots of one film" should "share their optional fields' wrappers, not only the text inside" in {
+    // Every present Option field was its own Some — ~25 MB of them on the US worker's heap.
+    val pool = new StringPool
+    def slot = models.SourceData(title = Some(new String("Lalka")), posterUrl = Some(new String("https://p/lalka.jpg")),
+                                 ageRating = Some(new String("15")), runtimeMinutes = Some(142), releaseYear = Some(2026))
+    val (a, b) = (pool.slot(slot), pool.slot(slot))
+    a shouldBe b
+    assert(a.title eq b.title)
+    assert(a.posterUrl eq b.posterUrl)
+    assert(a.ageRating eq b.ageRating)
+    assert(a.runtimeMinutes eq b.runtimeMinutes)
+    assert(a.releaseYear eq b.releaseYear)
+    pool.canonical(Option.empty[String]) shouldBe None
+    StringPool.small(Some(-1)) shouldBe Some(-1)
+    StringPool.small(Some(100000)) shouldBe Some(100000)
+  }
 }

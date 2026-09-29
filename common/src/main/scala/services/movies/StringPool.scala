@@ -32,11 +32,20 @@ final class StringPool {
     // thrashing one; Caffeine keeps these on LongAdders, so the cost is a counter
     // bump per lookup against an allocation saved.
     .recordStats()
-    .build[String, String]()
+    .build[String, Some[String]]()
 
   /** The canonical instance for a string: the first equal value interned wins, so all
    *  byte-identical values across the corpus share one object. */
-  def canonical(s: String): String = pool.get(s, (k: String) => k)
+  def canonical(s: String): String = canonicalSome(s).value
+
+  /** The canonical `Some` of a string: a slot's optional text shares its WRAPPER as well as its
+   *  text. Every present Option field is its own `Some` otherwise — ~25 MB of them on the US
+   *  worker's live heap (dump 2026-09-29), though most wrap text other slots of the film share. */
+  def canonicalSome(s: String): Some[String] = pool.get(s, (k: String) => Some(k))
+  def canonical(o: Option[String]): Option[String] = o match {
+    case Some(s) => canonicalSome(s)
+    case None    => None
+  }
 
   /** Intern every element of a list (cast, genres, …), preserving order. */
   def canonicalAll(xs: Seq[String]): Seq[String] = if (xs.isEmpty) xs else xs.map(canonical)
@@ -48,19 +57,21 @@ final class StringPool {
    *  nothing and would crowd the vocabulary out (US holds ~100k slots) — nor the showtimes and title
    *  searches, per-screening values. */
   def slot(sd: models.SourceData): models.SourceData = sd.copy(
-    title         = sd.title.map(canonical),
-    rawTitle      = sd.rawTitle.map(canonical),
-    originalTitle = sd.originalTitle.map(canonical),
-    englishTitle  = sd.englishTitle.map(canonical),
-    synopsis      = sd.synopsis.map(canonical),
-    cast          = canonicalAll(sd.cast),
-    director      = canonicalAll(sd.director),
-    countries     = canonicalAll(sd.countries),
-    genres        = canonicalAll(sd.genres),
-    posterUrl     = sd.posterUrl.map(canonical),
-    trailerUrl    = sd.trailerUrl.map(canonical),
-    language      = sd.language.map(canonical),
-    ageRating     = sd.ageRating.map(canonical))
+    title          = canonical(sd.title),
+    rawTitle       = canonical(sd.rawTitle),
+    originalTitle  = canonical(sd.originalTitle),
+    englishTitle   = canonical(sd.englishTitle),
+    synopsis       = canonical(sd.synopsis),
+    cast           = canonicalAll(sd.cast),
+    director       = canonicalAll(sd.director),
+    countries      = canonicalAll(sd.countries),
+    genres         = canonicalAll(sd.genres),
+    posterUrl      = canonical(sd.posterUrl),
+    trailerUrl     = canonical(sd.trailerUrl),
+    language       = canonical(sd.language),
+    ageRating      = canonical(sd.ageRating),
+    runtimeMinutes = StringPool.small(sd.runtimeMinutes),
+    releaseYear    = StringPool.small(sd.releaseYear))
 
   /** Distinct strings held right now. Caffeine's estimate, which is what a gauge
    *  wants — forcing `cleanUp()` for exactness would make a scrape do the pool's
@@ -80,6 +91,14 @@ final class StringPool {
 }
 
 object StringPool {
+
+  /** One shared `Some` for each Int a runtime or a year takes, 0 to 2,999 — a constant table, not
+   *  a cache: `Some(97)` per slot boxed its Int too (the JDK caches Integers only up to 127). */
+  private val SmallSomes: IArray[Some[Int]] = IArray.tabulate(3000)(Some(_))
+  def small(o: Option[Int]): Option[Int] = o match {
+    case Some(i) if i >= 0 && i < SmallSomes.length => SmallSomes(i)
+    case other                                      => other
+  }
 
   /** The pool's ceiling, named so a deployment spec can assert it and
    *  `kinowo_worker_string_pool_max_entries` can publish it.
