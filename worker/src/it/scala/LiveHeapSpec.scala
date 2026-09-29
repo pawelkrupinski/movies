@@ -15,4 +15,18 @@ class LiveHeapSpec extends AnyFlatSpec with Matchers {
     kept.length shouldBe 4096
     (grown >> 20) should (be >= 63L and be <= 66L)
   }
+
+  "the live heap's classes" should "name what a structure keeps, largest first" in {
+    val before = LiveHeap.classes()
+    val kept   = Array.fill(20000)(LiveHeapSpec.Held(Array.fill(8)(0L)))   // ~2.1 MB of Held + its arrays
+    val grown  = LiveHeap.grown(before, LiveHeap.classes())
+    kept.length shouldBe 20000
+    val held = grown.find(_.name.endsWith("LiveHeapSpec$Held")).getOrElse(fail(s"Held not among ${grown.take(10)}"))
+    held.instances shouldBe 20000L +- 50L
+    grown.map(_.bytes) shouldBe grown.map(_.bytes).sortBy(bytes => -bytes)
+  }
+}
+
+object LiveHeapSpec {
+  final case class Held(values: Array[Long])
 }

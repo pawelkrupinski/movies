@@ -20,12 +20,37 @@ object LiveHeap {
   def bytes(): Long = { total(); total() }
 
   private def total(): Long = {
-    val histogram = ManagementFactory.getPlatformMBeanServer.invoke(
-      new ObjectName("com.sun.management:type=DiagnosticCommand"), "gcClassHistogram",
-      Array[AnyRef](Array.empty[String]), Array("[Ljava.lang.String;")).toString
-    Total.findFirstMatchIn(histogram).map(_.group(1).toLong)
-      .getOrElse(throw new IllegalStateException(s"no Total line in the class histogram:\n${histogram.takeRight(500)}"))
+    val read = histogram()
+    Total.findFirstMatchIn(read).map(_.group(1).toLong)
+      .getOrElse(throw new IllegalStateException(s"no Total line in the class histogram:\n${read.takeRight(500)}"))
   }
 
   def megabytes(): Long = bytes() >> 20
+
+  /** One class's live objects: how many, and their bytes. */
+  final case class Live(name: String, instances: Long, bytes: Long)
+
+  private val Row = """(?m)^\s*\d+:\s+(\d+)\s+(\d+)\s+(\S+)""".r
+
+  /** Every class's live objects, by name — a full collection first, read twice like [[bytes]]. */
+  def classes(): Map[String, Live] = { histogram(); parse(histogram()) }
+
+  /** The classes that grew between two readings, largest growth first: what a structure keeps. */
+  def grown(before: Map[String, Live], after: Map[String, Live]): Seq[Live] =
+    after.values.toSeq.map { now =>
+      val was = before.getOrElse(now.name, Live(now.name, 0, 0))
+      Live(now.name, now.instances - was.instances, now.bytes - was.bytes)
+    }.filter(_.bytes > 0).sortBy(live => (-live.bytes, live.name))
+
+  /** The top of [[grown]] as one report line: `MB name ×instances`. */
+  def render(grown: Seq[Live], top: Int = 8): String =
+    grown.take(top).map(live => f"${live.bytes / 1048576.0}%.1f MB ${live.name} ×${live.instances}").mkString("; ")
+
+  private def parse(histogram: String): Map[String, Live] =
+    Row.findAllMatchIn(histogram).map(m => m.group(3) -> Live(m.group(3), m.group(1).toLong, m.group(2).toLong)).toMap
+
+  private def histogram(): String =
+    ManagementFactory.getPlatformMBeanServer.invoke(
+      new ObjectName("com.sun.management:type=DiagnosticCommand"), "gcClassHistogram",
+      Array[AnyRef](Array.empty[String]), Array("[Ljava.lang.String;")).toString
 }

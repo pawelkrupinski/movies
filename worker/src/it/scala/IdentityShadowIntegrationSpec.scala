@@ -170,11 +170,13 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       {
         def signature(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet
         val byVenue = listings.groupBy(_.venue).toSeq.sortBy(_._1).map(_._2)
+        val classesBefore = LiveHeap.classes()
         val before  = LiveHeap.megabytes()
         val kept    = new InMemoryIdentityModelStore
         val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
         val (_, seedSeconds) = timed(model.seed(listings))
         val held    = LiveHeap.megabytes() - before
+        val keeps   = LiveHeap.grown(classesBefore, LiveHeap.classes())
         val seeded  = model.familiesResolved
         val same    = signature(model.decisions) == signature(resolution.decisions)
         def cost(body: => Unit): (Int, Double) = { val start = model.familiesResolved; val (_, seconds) = timed(body); (model.familiesResolved - start, seconds) }
@@ -189,6 +191,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
           f"$unchanged resolves in ${unchangedSeconds * 1000}%.0f ms; gone and back: $cycle resolves in ${cycleSeconds * 1000}%.0f ms; " +
           f"the next ten venues (${ten.size} listings) gone and back, one batch each: $tenCycle resolves in ${tenSeconds * 1000}%.0f ms; still equal: $sameAfter; " +
           s"time in ${model.timings.render}")
+        report.line(s"[${c.label}] model keeps: ${LiveHeap.render(keeps, top = 12)}")
         withClue(s"${c.label}: the incremental model decides as the whole resolve") { same shouldBe true; sameAfter shouldBe true }
 
         // A worker's restart: a new model takes up the families the store kept, over the same listings.
