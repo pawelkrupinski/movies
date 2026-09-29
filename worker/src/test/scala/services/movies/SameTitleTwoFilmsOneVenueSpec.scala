@@ -67,6 +67,68 @@ class SameTitleTwoFilmsOneVenueSpec extends AnyFlatSpec with Matchers {
     writes.get shouldBe 0
   }
 
+  // Landmark at The Glen, US recording 36584135207: a yearless "Street Fighter" credited to Kitao
+  // Sakurai (the 2026 film), listed once, while the corpus held both Sakurai's 2026 film and
+  // de Souza's 1994 one under the title. Listed once, the venue's credit was never consulted:
+  // the listing landed on whichever row was concluded — the 1994 film — served there, and moved
+  // between the two on an identical rescrape. A credit that names ONE of the same-titled films
+  // and not the other is decisive.
+  "a venue's undated listing of a title the corpus holds as two films" should
+    "land on the film its own credit names, and stay put on a rescrape" in {
+    val us    = TitleNormalizer.forCountry(Country.UnitedStates)
+    val glen  = Cinema.byDisplayName("Landmark at The Glen")
+    val at    = LocalDateTime.of(2026, 10, 15, 14, 15)
+    val repository = new InMemoryMovieRepository(normalizer = us)
+    val cache      = new CaffeineMovieCache(repository, normalizer = us,
+      clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-29T12:00:00Z"), java.time.ZoneOffset.UTC))
+    def film(tmdbId: Int, year: Int, runtime: Int, director: String) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Street Fighter"), releaseYear = Some(year), runtimeMinutes = Some(runtime), director = Seq(director))))
+    cache.put(CacheKey("Street Fighter", Some(1994), us), film(11667, 1994, 102, "Steven E. de Souza"))
+    // TMDB carries no runtime for the unreleased 2026 film — so the runtime step compared the 1994
+    // film alone, and it won by walkover, 102 minutes against the listing's 119.
+    cache.put(CacheKey("Street Fighter", Some(2026), us), MovieRecord(tmdbId = Some(1153576), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Street Fighter"), releaseYear = Some(2026), director = Seq("Kitao Sakurai")))))
+    val board = Seq(CinemaMovie(Movie("Street Fighter", runtimeMinutes = Some(119)), glen, None, None, None, Nil,
+      Seq("Kitao Sakurai"), Seq(Showtime(at, None))))
+    cache.recordCinemaScrape(glen, board)
+
+    def holders = repository.findAll().filter(_.record.cinemaSlots.exists { case (s, _) => Source.cinemaOf(s).contains(glen) })
+      .flatMap(_.record.tmdbId)
+    holders shouldBe Seq(1153576)
+
+    val settled = repository.findAll().sortBy(_.id.value)
+    val writes  = new java.util.concurrent.atomic.AtomicInteger
+    repository.watchChanges(_ => { writes.incrementAndGet(); () }, _ => { writes.incrementAndGet(); () })
+    cache.recordCinemaScrape(glen, board)
+    repository.findAll().sortBy(_.id.value) shouldBe settled
+    writes.get shouldBe 0
+  }
+
+  // UK hard clusters, recording 36584135207: Showcase Bristol's bare "It" beside Muschietti's 2017
+  // film and Cultplex's unresolved "It (1990)". Both rows are concluded — one resolved, one TMDB's
+  // no-match — and the landing took the lower-ranked key, the 1990 row, while the settle folds a
+  // fact-less yearless listing onto the ONE resolved film: the two moved it back and forth on
+  // every identical rescrape. The landing now gives the settle's answer.
+  "a bare listing beside a resolved film and an unresolved same-titled row" should
+    "land on the resolved film, as the settle would fold it" in {
+    val uk       = TitleNormalizer.forCountry(Country.UnitedKingdom)
+    val bristol  = Cinema.byDisplayName("Showcase Bristol Avonmeads")
+    val cultplex = Cinema.byDisplayName("Cultplex Manchester")
+    val at       = LocalDateTime.of(2026, 10, 2, 18, 0)
+    val repository = new InMemoryMovieRepository(normalizer = uk)
+    val cache      = new CaffeineMovieCache(repository, normalizer = uk,
+      clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-29T12:00:00Z"), java.time.ZoneOffset.UTC))
+    cache.put(CacheKey("It", Some(2017), uk), MovieRecord(tmdbId = Some(346364), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("It"), releaseYear = Some(2017), runtimeMinutes = Some(135), director = Seq("Andy Muschietti")))))
+    cache.put(CacheKey("It (1990)", Some(1990), uk), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), data = Map[Source, SourceData](
+      CinemaShowing.keyFor(cultplex, "It (1990)", uk) -> SourceData(title = Some("It (1990)"), rawTitle = Some("It (1990)"),
+        runtimeMinutes = Some(168), director = Seq("Tommy Lee Wallace")))))
+    cache.recordCinemaScrape(bristol, Seq(CinemaMovie(Movie("It"), bristol, None, None, None, Nil, Nil, Seq(Showtime(at, None)))))
+
+    repository.findAll().filter(_.record.cinemaSlots.exists { case (s, _) => Source.cinemaOf(s).contains(bristol) })
+      .flatMap(_.record.tmdbId) shouldBe Seq(346364)
+  }
+
   private def run(heal: Boolean) = {
     val repository = new InMemoryMovieRepository(normalizer = normalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer,

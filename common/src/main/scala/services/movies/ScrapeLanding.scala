@@ -598,7 +598,7 @@ private[movies] final class ScrapeLanding(
           // year)` a pure function of the reported variants. A scrape of an
           // already-concluded film lands straight on the resolved row; falls back
           // to the unique-match redirect for not-yet-concluded films.
-          val key = concludedKeyFor(primary, cm.movie.runtimeMinutes.filter(_ > 0), cinema, admits(cm, norm)).getOrElse {
+          val key = concludedKeyFor(primary, cm.movie.runtimeMinutes.filter(_ > 0), cm.director, cinema, admits(cm, norm)).getOrElse {
             redirectToExistingVariant(primary).filter(admits(cm, norm)) match {
               case Some(existingKey) =>
                 // A RESOLVED row's key is authoritative — TMDB's title + year,
@@ -892,6 +892,7 @@ private[movies] final class ScrapeLanding(
   private def concludedKeyFor(
     primary:        CacheKey,
     listingRuntime: Option[Int],
+    listingCredit:  Seq[String],
     cinema:         Cinema,
     admits:         CacheKey => Boolean
   ): Option[CacheKey] = {
@@ -946,10 +947,10 @@ private[movies] final class ScrapeLanding(
     // TMDB's release year ("Zawieście czerwone latarnie", 1989 vs 1991) used to land
     // as its own row for the settle to attach a tick later.
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
-      case None    => chooseConcluded(cands, listingRuntime, cinema, norm)
+      case None    => chooseConcluded(cands, listingRuntime, listingCredit, cinema, norm)
       case Some(y) =>
         (0 to YearWindow.ProductionToRelease).iterator.map(distance =>
-          chooseConcluded(cands.filter(_.year.exists(YearWindow.distance(_, y) == distance)), listingRuntime, cinema, norm))
+          chooseConcluded(cands.filter(_.year.exists(YearWindow.distance(_, y) == distance)), listingRuntime, listingCredit, cinema, norm))
           .collectFirst { case Some(k) => k }
     }
     // A BARE listing — no year, no minutes — that this venue already holds on a RESOLVED row
@@ -991,6 +992,9 @@ private[movies] final class ScrapeLanding(
    *
    *  So ask the listing instead, in order of how much the answer can be trusted:
    *
+   *   0. THE DIRECTOR IT CREDITS, when exactly one candidate film credits that person — a
+   *      credit that names one same-titled film and not the other is decisive (Landmark at
+   *      The Glen's "Street Fighter", Kitao Sakurai: the 2026 film, not de Souza's 1994 one).
    *   1. THE RUNTIME IT PUBLISHED, against each candidate film's own — see
    *      [[RuntimeCorroboration]]. The venues that print no year do print minutes.
    *   2. THE FILM MORE VENUES ARE SCREENING. Runtime cannot speak for a venue that
@@ -1021,6 +1025,7 @@ private[movies] final class ScrapeLanding(
   private def chooseConcluded(
     candidates:     Seq[CacheKey],
     listingRuntime: Option[Int],
+    listingCredit:  Seq[String],
     cinema:         Cinema,
     norm:           String
   ): Option[CacheKey] = {
@@ -1031,7 +1036,15 @@ private[movies] final class ScrapeLanding(
       rowAt(key).flatMap(_.cinemaShowings.collectFirst {
         case (cin, slot) if cin == cinema && slot.title.exists(t => normalizer.sanitize(t) == norm) => slot
       })
-    if (candidates.sizeIs <= 1 || films(candidates) <= 1) candidates.minByOption(FilmCanonicalizer.canonicalRank)
+    // One film at most among the candidates: a film under two keys, or ONE resolved film beside
+    // rows TMDB answered without a film. Those unresolved rows are other listings' own films — a
+    // bare listing that says nothing more goes to the resolved one, the home the settle's rule 4
+    // folds it into; ranked across all of them, Showcase Bristol's bare "It" took Cultplex's
+    // unresolved "It (1990)" row and the settle moved it back, on every rescrape.
+    if (candidates.sizeIs <= 1 || films(candidates) <= 1) {
+      val resolved = candidates.filter(rowAt(_).exists(_.tmdbId.isDefined))
+      (if (resolved.nonEmpty) resolved else candidates).minByOption(FilmCanonicalizer.canonicalRank)
+    }
     else {
       // The minutes THIS venue gives the film. A listing tick often carries none —
       // Multikino sends 0 and its detail page fills the runtime in a beat later — so
@@ -1053,11 +1066,18 @@ private[movies] final class ScrapeLanding(
       def ownRuntime(k: CacheKey): Option[Int] =
         rowAt(k).flatMap(r => r.data.get(models.Tmdb).flatMap(_.runtimeMinutes)
           .orElse(r.data.get(models.Imdb).flatMap(_.runtimeMinutes)))
+      // The film the listing's own credit names — before the minutes: a credit that names ONE of
+      // the same-titled films is decisive, and the runtime step compares only films carrying a
+      // runtime, which TMDB rarely has for an unreleased one. Landmark at The Glen's "Street
+      // Fighter" (Kitao Sakurai, 119 min) went to de Souza's 1994 film (102) by walkover while the
+      // 2026 film it names had no minutes (US convergence, recording 36584135207).
+      val byCredit = candidates.filter(k => rowAt(k).flatMap(_.data.get(models.Tmdb)).exists(film =>
+        film.director.exists(_.trim.nonEmpty) && MixedFilmDetector.creditSamePerson(listingCredit, film.director, normalizer)))
       val byRuntime = RuntimeCorroboration.strictNearest(published, candidates.map(k => k -> ownRuntime(k)))
       val byIncumbency = candidates.filter(venueSlot(_).isDefined)
       val byVenueCount = candidates.groupBy(k => rowAt(k).map(_.cinemaShowings.size).getOrElse(0))
         .maxByOption(_._1).map(_._2).getOrElse(Nil)
-      Seq(byRuntime.toSeq, byVenueCount, byIncumbency)
+      Seq(byCredit, byRuntime.toSeq, byVenueCount, byIncumbency)
         .find(narrowed => narrowed.nonEmpty && films(narrowed) == 1)
         .getOrElse(candidates)
         .minByOption(FilmCanonicalizer.canonicalRank)
