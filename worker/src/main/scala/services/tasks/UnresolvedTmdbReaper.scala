@@ -151,22 +151,26 @@ class UnresolvedTmdbReaper(
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
-      val unresolved = record.tmdbId.isEmpty && !record.detailPending
-      // Resolved, but the slot the resolution wrote is gone — the 2026-07/08 slot
-      // migration left 483 such rows. The id is right; only the slot is missing, so
-      // this is a refill by id, never a re-search (see `MovieService.refillTmdbSlot`).
-      val slotMissing = record.tmdbId.isDefined && !record.data.contains(Tmdb)
-      val staleLang  = staleLanguage(record)
-      val misresolved = confirmContradiction(record) ||
-                        CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable(record)
-      if ((unresolved || slotMissing || staleLang || misresolved) &&
-          dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
-        // A stale-language row is already resolved, so the plain retry (which
-        // only fires on `tmdbId.isEmpty`) would no-op — it needs the forced path.
-        if (unresolved) retry(key)
-        else if (slotMissing) { refill(key); refilled += 1 }
-        else { forceRetry(key); forced += 1 }
-        enqueued += 1
+      // Due first: a row's period boundary falls in about one tick of 288 (24h period, 5-min tick),
+      // and the misresolution check below builds the row's film evidence and may ask TMDB for its
+      // crew — computed for every row every tick, it was ~22% of the US pipeline's CPU (JFR).
+      if (dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
+        val unresolved = record.tmdbId.isEmpty && !record.detailPending
+        // Resolved, but the slot the resolution wrote is gone — the 2026-07/08 slot
+        // migration left 483 such rows. The id is right; only the slot is missing, so
+        // this is a refill by id, never a re-search (see `MovieService.refillTmdbSlot`).
+        val slotMissing = record.tmdbId.isDefined && !record.data.contains(Tmdb)
+        val staleLang  = staleLanguage(record)
+        def misresolved = confirmContradiction(record) ||
+                          CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable(record)
+        if (unresolved || slotMissing || staleLang || misresolved) {
+          // A stale-language row is already resolved, so the plain retry (which
+          // only fires on `tmdbId.isEmpty`) would no-op — it needs the forced path.
+          if (unresolved) retry(key)
+          else if (slotMissing) { refill(key); refilled += 1 }
+          else { forceRetry(key); forced += 1 }
+          enqueued += 1
+        }
       }
     }
     if (enqueued > 0)

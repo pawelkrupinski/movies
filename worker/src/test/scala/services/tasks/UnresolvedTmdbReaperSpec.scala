@@ -217,6 +217,20 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     forced shouldBe empty
   }
 
+  it should "check a resolved row's evidence only on the tick its period falls due, not on every tick" in {
+    // Built for every row every tick, the evidence check was ~22% of the US pipeline's CPU:
+    // a row falls due on about one tick in 288, and only then can its answer enqueue anything.
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Resolved")(r => r.copy(tmdbId = Some(1),
+      data = r.data + ((Tmdb: Source) -> SourceData(title = Some("Resolved"), language = Some(Country.default.language.toLanguageTag)))))
+    var checked = 0
+    val reaper = new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry,
+      confirmContradiction = _ => { checked += 1; false })
+    runOnePeriod(reaper).sum shouldBe 0
+    checked shouldBe 1
+    forced shouldBe empty
+  }
+
   it should "leave a row alone when the venues corroborate it" in {
     val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
     seedRow(cache, "Lalka") { r =>
