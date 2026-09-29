@@ -94,14 +94,13 @@ object IdentityMeasures {
     Option.when((end.length == 4 && end.toInt == start + 1) || (end.length == 2 && end.toInt == (start + 1) % 100))(start)
   }
   def seasonYear(titles: Seq[String]): Option[Int] =
-    titles.iterator.flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
+    // A season needs an ASCII digit (`\d` is ASCII-only in Java): titles without one skip the regex.
+    titles.iterator.filter(_.exists(c => c >= '0' && c <= '9')).flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
       case Seq(one) => Some(one)
       case _        => None
     }
   /** The season a film's own titles name ("The Metropolitan Opera 2026/27: Macbeth"). */
-  def filmSeason(f: Film): Option[Int] = seasonYear(filmTitles(f))
-
-  private def filmTitles(f: Film): Seq[String] = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
+  def filmSeason(f: Film): Option[Int] = f.season
 
   /** Does the film's own title name the listing's SEASON PRODUCTION: both name the same season,
    *  and they share a whole title segment outside it — the work. "Met Opera 2026-27: Samson et
@@ -115,7 +114,7 @@ object IdentityMeasures {
   /** The work a listing and a film's titles share outside the season (`namesSeasonProduction`). */
   private def seasonWork(l: Listing, f: Film): Option[String] = {
     def works(titles: Seq[String]) = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
-    (works(titleShapes(l)) intersect works(filmTitles(f).flatMap(SearchTitles.candidates(_, None)))).toSeq.sorted.headOption
+    (works(titleShapes(l)) intersect works(f.titles.flatMap(SearchTitles.candidates(_, None)))).toSeq.sorted.headOption
   }
 
   /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
@@ -304,24 +303,28 @@ object IdentityMeasures {
   final case class Film(title: String, originalTitle: Option[String] = None, alternativeTitles: Seq[String] = Nil,
                         year: Option[Int] = None, runtime: Option[Int] = None, directors: Option[Seq[String]] = None,
                         countries: Option[Seq[String]] = None, popularity: Option[Double] = None) {
+    /** Its title, original title and alternative titles, in that order: every derived form below reads these. */
+    private[identity] def titles: Seq[String] = Seq(title) ++ originalTitle ++ alternativeTitles
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
-      (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
+      titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] =
-      (Seq(title) ++ originalTitle ++ alternativeTitles).flatMap(SearchTitles.candidates(_, None)).map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
+      titles.flatMap(SearchTitles.candidates(_, None)).map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
     /** The title, original title and alternative titles, in that order, as comparison forms once
      *  per record (`titleRelation`). */
     private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =
-      (Seq(title) ++ originalTitle ++ alternativeTitles).map(IdentityMeasures.TitleForm(_))
+      titles.map(IdentityMeasures.TitleForm(_))
     /** The film's titles as series and numbers (`numeralRelation`). */
+    /** The season its titles name, once per record: every node scoring it asks (`evidenceDenies`). */
+    private[identity] lazy val season: Option[Int] = IdentityMeasures.seasonYear(titles)
     /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
     private[identity] lazy val directorCredits: Option[IdentityMeasures.Credits] = directors.map(new IdentityMeasures.Credits(_))
     /** The titles, trimmed and non-empty, as comparison forms once per record: the other side of
      *  every node's `originalTitleRelation` to this film. */
     private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
-      (Seq(title) ++ originalTitle ++ alternativeTitles).map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.TitleForm(_))
+      titles.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.TitleForm(_))
     private[identity] lazy val numberedTitles: Seq[IdentityMeasures.Numbered] =
-      (Seq(title) ++ originalTitle ++ alternativeTitles).map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
+      titles.map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
   }
 
   /** One measurement: a category, a number, or missing (with which side is missing). */
@@ -763,7 +766,10 @@ object IdentityMeasures {
    *  III: …", "Star Wars: Episode IV - …"; mid-piece "i" is a word, the Polish "and"). "Part 2",
    *  "2" and "II" are all 2. Seasons and bracketed years are dropped first. With the title's
    *  other words, in order: the series it names. */
-  private[identity] final case class Numbered(words: Seq[String], numbers: Set[Int])
+  private[identity] final case class Numbered(words: Seq[String], numbers: Set[Int]) {
+    /** The words run together, once: [[sameSeries]] compares it for every (shape, title) pair. */
+    lazy val joined: String = words.mkString
+  }
   private[identity] def numbered(title: String): Numbered = {
     val pieces = withoutYears(title).split("""[:|/()\[\]–—,.;!?]|\s-\s""").map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
     val arabic = (t: String) => t.lengthIs <= 3 && t.forall(c => c >= '0' && c <= '9')
@@ -777,7 +783,7 @@ object IdentityMeasures {
    *  Texas Chainsaw Massacre 2" and "The Texas Chain Saw Massacre", "Toy Story" and "Toy Story 3". */
   private def sameSeries(a: Numbered, b: Numbered): Boolean =
     a.words.nonEmpty && b.words.nonEmpty &&
-      (a.words.mkString == b.words.mkString || TitleContainment.isTokenRun(a.words, b.words) || TitleContainment.isTokenRun(b.words, a.words))
+      (a.joined == b.joined || TitleContainment.isTokenRun(a.words, b.words) || TitleContainment.isTokenRun(b.words, a.words))
 
   /** The NUMBERS the listing's title and the film's carry, where the two name one series
    *  ([[sameSeries]]): `same` when a reading of the listing (a title shape) and a title of the
