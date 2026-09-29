@@ -717,4 +717,60 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
 
     resolved.flatMap(_.tmdbId) shouldBe Some(332562)
   }
+
+  /** TMDB can file a film under its FULL title where cinemas print only the main one:
+   *  Andrzej Munk's "Eroica" is "Eroica: Symfonia bohaterska w dwóch częściach" (1958)
+   *  there, and a Poznań venue listed it as "EROICA" (1957). No credit title-matched,
+   *  so the year pinned Munk's one 1957 credit, "Człowiek na torze" — both run 80
+   *  minutes on TMDB, so the runtime corroborated the wrong film, and the PL
+   *  convergence split the listing across two films. The credit's main title, before
+   *  its subtitle, is the title the cinema is naming. Real TMDB titles, years, ids. */
+  it should "match a credit whose main title, before a subtitle, is the cinema's title" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":238433,"name":"Andrzej Munk","known_for_department":"Directing"}]}""",
+      "/person/238433/movie_credits" -> """{"crew":[
+        |{"id":117767,"title":"Eroica: Symfonia bohaterska w dwóch częściach","original_title":"Eroica: Symfonia bohaterska w dwóch częściach",
+        | "release_date":"1958-01-04","department":"Directing","job":"Director","popularity":2.0},
+        |{"id":132133,"title":"Człowiek na torze","original_title":"Człowiek na torze",
+        | "release_date":"1957-01-17","department":"Directing","job":"Director","popularity":2.0}
+        |]}""".stripMargin,
+      "/movie/117767/external_ids" -> """{"id":117767,"imdb_id":"tt0051591"}""",
+      "/movie/117767?"             -> """{"id":117767,"title":"Eroica: Symfonia bohaterska w dwóch częściach","original_title":"Eroica: Symfonia bohaterska w dwóch częściach","release_date":"1958-01-04","runtime":80}""",
+      "/movie/132133/external_ids" -> """{"id":132133,"imdb_id":"tt0050282"}""",
+      "/movie/132133?"             -> """{"id":132133,"title":"Człowiek na torze","original_title":"Człowiek na torze","release_date":"1957-01-17","runtime":80}"""
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("EROICA"), director = Seq("Andrzej Munk"),
+                           releaseYear = Some(1957), runtimeMinutes = Some(80))))
+    val resolved = service.resolveStagingRecord("EROICA", Some(1957), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(117767)
+  }
+
+  /** …and a subtitle that names another instalment keeps the two apart: the main title
+   *  is how the cinema names the film, not licence to fold a sequel onto it. */
+  it should "not take a sequel's main title for the film it follows" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":137427,"name":"Denis Villeneuve","known_for_department":"Directing"}]}""",
+      "/person/137427/movie_credits" -> """{"crew":[
+        |{"id":693134,"title":"Diuna: Część druga","original_title":"Dune: Part Two",
+        | "release_date":"2024-02-27","department":"Directing","job":"Director","popularity":90.0}
+        |]}""".stripMargin
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Diuna"), director = Seq("Denis Villeneuve"), releaseYear = Some(2023))))
+    val resolved = service.resolveStagingRecord("Diuna", Some(2023), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe None
+  }
 }

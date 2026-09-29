@@ -519,15 +519,21 @@ class TmdbCandidateSearch(
         // lowest-id tie-break handed the row the OLDER film every time
         // (`DirectorWalkResolvesSpec`). Operates on the RAW (pre-sanitize) title
         // pairs because the sequel check needs word boundaries sanitize discards.
-        def titleClose(f: TmdbClient.SearchResult, want: Seq[(String, String)] = wantedPairs): Boolean = {
-          val fPairs = f.titles.map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty)
-          fPairs.exists { case (fRaw, fSan) =>
-            want.exists { case (wRaw, wSan) =>
-              TitleMatch.close(wSan, fSan) &&
-                !SequelMarker.differentInstalments(TitleContainment.tokens(wRaw), TitleContainment.tokens(fRaw))
+        //
+        // A credit's MAIN title — before a ":" or spaced-dash subtitle — is compared
+        // too: TMDB can file a film under its full title where cinemas print the main
+        // one (Munk's "Eroica" is "Eroica: Symfonia bohaterska w dwóch częściach"
+        // there). The sequel guard still reads the credit's FULL title, so "Diuna"
+        // never takes "Diuna: Część druga" (`DirectorWalkResolvesSpec`).
+        def titleClose(f: TmdbClient.SearchResult, want: Seq[(String, String)] = wantedPairs): Boolean =
+          f.titles.exists { fRaw =>
+            (fRaw +: TmdbCandidateSearch.mainTitle(fRaw).toSeq).map(normalizer.sanitize).filter(_.nonEmpty).exists { fSan =>
+              want.exists { case (wRaw, wSan) =>
+                TitleMatch.close(wSan, fSan) &&
+                  !SequelMarker.differentInstalments(TitleContainment.tokens(wRaw), TitleContainment.tokens(fRaw))
+              }
             }
           }
-        }
         // Title match first (±1-year-tolerant); fall back to an exact-year match,
         // but ONLY when that year is unambiguous in the filmography. A director
         // with two same-year credits (Andrew Stanton: "In the Blink of an Eye"
@@ -717,4 +723,13 @@ object TmdbCandidateSearch {
    *  "(vi)", a malformed "(IIII)", or a word-like "(MIX)" is part of the credit. */
   val ImdbDisambiguatorSuffix: scala.util.matching.Regex =
     """\s+\((?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\)$""".r
+
+  /** Where a title's subtitle starts: a colon, or a dash with a space either side (a
+   *  hyphenated word is not a subtitle). */
+  private val SubtitleSeparator = """\s*:\s+|\s+[-–—]\s+""".r
+
+  /** The title before its subtitle — "Eroica" of "Eroica: Symfonia bohaterska w dwóch
+   *  częściach" — or None when it has none. */
+  def mainTitle(title: String): Option[String] =
+    SubtitleSeparator.findFirstMatchIn(title).map(_.before.toString.trim).filter(_.nonEmpty)
 }

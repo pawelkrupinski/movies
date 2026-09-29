@@ -6966,6 +6966,33 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f5c0a546aaaef326",
+    "title" : "Tintoretto - Wenecki buntownik",
+    "originalTitle" : "Tintoretto - Un ribelle a Venezia",
+    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/tintoretto.jpg?h=20828ec7&itok=DbxZ7fY1",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/xVAAe07J189H6kxUEkdjZ2Txst2.jpg", "https://m.media-amazon.com/images/M/MV5BYzYxMWYxYWItZjY2Mi00NTRmLWJiYmYtYzM4ZDQ5Nzk0YTBkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 90,
+    "releaseYear" : 2019,
+    "genres" : [ "Dokumentalny" ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Giuseppe Domingo Romano" ],
+    "cast" : [ "Helena Bonham Carter", "Stefano Accorsi", "Peter Greenaway", "Kate Bryan" ],
+    "synopsis" : "Dokument przedstawia historię i twórczość weneckiego malarza z okresu renesansu - Jacopo Tintoretto.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/YXt3tBxc2WE" ],
+    "ratings" : {
+      "imdb" : 7.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt9431134/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Tintoretto+-+Un+ribelle+a+Venezia/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/tintoretto_un_ribelle_a_venezia",
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Tintoretto+-+wenecki+buntownik-2019-834792"
+    },
+    "weightedRating" : 7.45,
+    "synopsisByCity" : {
+      "warszawa" : "Odkryjemy renesansową Wenecję, zachowaną na fascynujących obrazach Tintoretta, prekursora włoskiego baroku. Artysta swe dzieła tworzył szybko, często impastowo, w charakterystycznej kolorystyce z akcentami ciemnej czerwieni, fioletu, czerni. W filmie wystąpi również Peter Greenaway (\"The Pillow Book\", \"8 i pół kobiety\", \"Nightwatching\"), brytyjski reżyser i scenarzysta, artysta malarz, jeden z najbardziej cenionych i kontrowersyjnych twórców filmowych, w którego dziełach widać wyraźny wpływ malarstwa renesansu i baroku."
+    },
+    "shareCardPending" : false
+  }, {
     "_id" : "f5d22bbafd29e7d6",
     "title" : "Kino Muranów",
     "originalTitle" : "Le Muranów de Varsovie",
@@ -16808,29 +16835,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fbc31f33b406053b",
-    "title" : "Tintoretto - Wenecki buntownik",
-    "originalTitle" : "Tintoretto. A Rebel In Venice",
-    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/tintoretto.jpg?h=20828ec7&itok=DbxZ7fY1",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 90,
-    "releaseYear" : 2019,
-    "genres" : [ "Dokumentalny" ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Giuseppe Domingo Romano" ],
-    "cast" : [ ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/YXt3tBxc2WE" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Tintoretto+-+Wenecki+buntownik/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Tintoretto+-+Wenecki+buntownik",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Tintoretto+-+Wenecki+buntownik"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "Odkryjemy renesansową Wenecję, zachowaną na fascynujących obrazach Tintoretta, prekursora włoskiego baroku. Artysta swe dzieła tworzył szybko, często impastowo, w charakterystycznej kolorystyce z akcentami ciemnej czerwieni, fioletu, czerni. W filmie wystąpi również Peter Greenaway (\"The Pillow Book\", \"8 i pół kobiety\", \"Nightwatching\"), brytyjski reżyser i scenarzysta, artysta malarz, jeden z najbardziej cenionych i kontrowersyjnych twórców filmowych, w którego dziełach widać wyraźny wpływ malarstwa renesansu i baroku."
-    },
     "shareCardPending" : false
   }, {
     "_id" : "fbc3d769a0032ee6",
@@ -86961,6 +86965,18 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/spragnieni-milosci/\u0000Spragnieni miłości" ]
+  }, {
+    "_id" : "f5c0a546aaaef326|warszawa|Kino Muranów",
+    "filmId" : "f5c0a546aaaef326",
+    "city" : "warszawa",
+    "cinema" : "Kino Muranów",
+    "filmUrl" : "https://kinomuranow.pl/film/tintoretto-wenecki-buntownik",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T13:30:00",
+      "bookingUrl" : "https://kinomuranow.pl/tickets/26275/buy",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Muranów\u0000https://kinomuranow.pl/film/tintoretto-wenecki-buntownik\u0000Tintoretto - Wenecki buntownik" ]
   }, {
     "_id" : "f5d22bbafd29e7d6|warszawa|Kino Muranów",
     "filmId" : "f5d22bbafd29e7d6",
@@ -173927,18 +173943,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Kreska\u0000https://www.sfr.pl/wydarzenie/990/dkf-kogucik-moj-karpacki-dziadek\u0000DKF Kogucik: Mój karpacki dziadek" ]
-  }, {
-    "_id" : "fbc31f33b406053b|warszawa|Kino Muranów",
-    "filmId" : "fbc31f33b406053b",
-    "city" : "warszawa",
-    "cinema" : "Kino Muranów",
-    "filmUrl" : "https://kinomuranow.pl/film/tintoretto-wenecki-buntownik",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T13:30:00",
-      "bookingUrl" : "https://kinomuranow.pl/tickets/26275/buy",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Muranów\u0000https://kinomuranow.pl/film/tintoretto-wenecki-buntownik\u0000Tintoretto - Wenecki buntownik" ]
   }, {
     "_id" : "fbc3d769a0032ee6|slawno|Bajka",
     "filmId" : "fbc3d769a0032ee6",
