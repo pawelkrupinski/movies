@@ -1,0 +1,34 @@
+name: Drop a bot PR branch
+description: >-
+  Deletes a bot's fixed PR branch so the create-pull-request step after it
+  pushes a fresh branch off main instead of force-pushing over a stale one. A
+  branch that outlived its PR (merged by fast-forwarding main, which GitHub
+  never cleans up) would otherwise rewind weeks of main, and GitHub refuses
+  that push from an App without the `workflows` permission whenever those
+  weeks touched .github/workflows/. An open PR on the branch is closed and
+  reopened fresh -- its content is regenerated from scratch every run anyway.
+  See BotPullRequestBranchSpec.
+
+inputs:
+  branch:
+    description: The branch create-pull-request is about to push
+    required: true
+  token:
+    description: The token that pushes it (the Sync Bot App's)
+    required: true
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GH_TOKEN: ${{ inputs.token }}
+            GH_REPO: ${{ github.repository }}
+            BRANCH: ${{ inputs.branch }}
+        run: |
+            if gh api "repos/$GH_REPO/git/ref/heads/$BRANCH" --silent 2>/dev/null; then
+                gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"
+                echo "Dropped $BRANCH; the PR step recreates it off main."
+            else
+                echo "No $BRANCH yet; nothing to drop."
+            fi

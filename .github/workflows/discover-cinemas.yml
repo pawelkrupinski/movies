@@ -27,7 +27,7 @@ name: Discover UK cinemas
 # Like regenerate-og-cards.yml, the PR is opened via the
 # "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
 # so Branch CI runs on it — a PR opened with the default GITHUB_TOKEN never fires
-# `pull_request`. A fixed branch means reruns amend the open PR; a week with no
+# `pull_request`. A fixed branch means a rerun replaces the open PR; a week with no
 # new venues produces no diff and therefore no PR (the report still lands in the
 # run summary so retirement candidates stay visible).
 
@@ -130,7 +130,14 @@ jobs:
               if: steps.changed.outputs.wired == 'true'
               run: sbt "worker/compile"
 
-            # Open (or amend) the PR with the newly wired venues. `add-paths` scopes
+            # A fresh branch off main every run, never a force-push over a stale one --
+            # see .github/actions/drop-bot-branch.
+            - uses: ./.github/actions/drop-bot-branch
+              with:
+                  branch: chore/discover-cinemas
+                  token: ${{ steps.app-token.outputs.token }}
+
+            # Open (or replace) the PR with the newly wired venues. `add-paths` scopes
             # the commit to the two source files; the report is the body only (not
             # committed). No diff ⇒ no PR.
             - name: Open discovery PR

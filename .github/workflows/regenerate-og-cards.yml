@@ -224,8 +224,15 @@ jobs:
                   merge-multiple: true
                   path: web/src/main/assets/img
 
-            # Open (or update) a PR with the refreshed cards. A fixed branch means
-            # a later run amends the open PR instead of stacking duplicates; if a
+            # A fresh branch off main every run, never a force-push over a stale one --
+            # see .github/actions/drop-bot-branch.
+            - uses: ./.github/actions/drop-bot-branch
+              with:
+                  branch: chore/regenerate-og-cards
+                  token: ${{ steps.app-token.outputs.token }}
+
+            # Open (or replace) a PR with the refreshed cards. A fixed branch means
+            # a later run replaces the open PR instead of stacking duplicates; if a
             # run somehow produced no pixel diff, the action is a no-op (no PR).
             # `add-paths` scopes the commit to the cards so nothing else can ride
             # along.
