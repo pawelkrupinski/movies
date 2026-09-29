@@ -84,7 +84,7 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
     modIds(actual) shouldBe modIds(expected)
   }
 
-  it should "have observed every scraped listing, the identity lookups and the venue details the boot made" in {
+  it should "have observed every scraped listing and venue detail the boot made, and normalized its identity lookups" in {
     wiring
     val listings = store.currentListings()
     val scraped  = wiring.cinemaScrapers.flatMap(s => scala.util.Try(s.fetch()).toOption.toSeq.flatten.map(ListingKey.of(s.cinema, _)))
@@ -92,11 +92,15 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
       listings.map(_.key).toSet shouldBe scraped.toSet
     }
     val lookups = store.currentLookups()
-    // The resolver's lookups only: TMDB's, IMDb's title suggestions (an edition's own record, e.g.
-    // Caligula's Ultimate Cut) and the venues' details — no rating page.
+    // Venue details kept as observed; TMDB's and IMDb's answers never raw — normalized into the
+    // identity model's store as they arrive (`TmdbStore`), films, people and questions alike.
     val (details, external) = lookups.partition(_.query.key.startsWith("DETAIL "))
-    external.map(_.query.host).toSet shouldBe Set("api.themoviedb.org", "v3.sg.media-imdb.com")
+    external shouldBe empty
     details.size should be > 0
+    val tmdb = wiring.identityTmdbDocuments.collect { case d: services.identity.InMemoryTmdbDocuments => d }
+      .getOrElse(fail("the normalized store is not wired"))
+    tmdb.size(services.identity.TmdbKind.Film) should be > 0
+    tmdb.size(services.identity.TmdbKind.Query) should be > 0
   }
 
   it should "have resolved the corpus in shadow from the observations alone, without a request" in {
