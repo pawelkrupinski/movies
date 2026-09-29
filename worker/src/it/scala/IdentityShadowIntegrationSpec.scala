@@ -172,7 +172,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         def signature(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet
         val byVenue = listings.groupBy(_.venue).toSeq.sortBy(_._1).map(_._2)
         val before  = liveMb()
-        val model   = new IncrementalResolver(lookups, c.normalizer, calibration)
+        val kept    = new InMemoryIdentityModelStore
+        val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
         val (_, seedSeconds) = timed(model.seed(listings))
         val held    = liveMb() - before
         val seeded  = model.familiesResolved
@@ -190,6 +191,14 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
           f"the next ten venues (${ten.size} listings) gone and back, one batch each: $tenCycle resolves in ${tenSeconds * 1000}%.0f ms; still equal: $sameAfter; " +
           s"time in ${model.timings.render}")
         withClue(s"${c.label}: the incremental model decides as the whole resolve") { same shouldBe true; sameAfter shouldBe true }
+
+        // A worker's restart: a new model takes up the families the store kept, over the same listings.
+        val restored = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
+        val (_, restoreSeconds) = timed(restored.restore(listings))
+        val sameRestored = signature(restored.decisions) == signature(resolution.decisions)
+        report.line(f"[${c.label}] incremental restore: taken up in $restoreSeconds%.1fs (${restored.familiesResolved} family resolves, " +
+          f"${restored.familyCount} families); equals the whole resolve: $sameRestored; time in ${restored.timings.render}")
+        withClue(s"${c.label}: the restored model decides as the whole resolve") { sameRestored shouldBe true }
       }
 
       // The normalized TMDB store answers every question the resolve asked as the recorded responses did.
