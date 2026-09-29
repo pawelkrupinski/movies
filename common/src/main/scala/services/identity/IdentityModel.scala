@@ -31,11 +31,10 @@ final case class Listing(
 ) {
   def venue: String = key.venue
 
-  /** A TOTAL order over listings: the key first, then every published field, so two different
-   *  listings never tie and a set of listings has exactly one sorted presentation. */
-  lazy val sortKey: String =
-    Seq(venue, rawTitle, page.getOrElse(""), title, cleanTitle, year.fold("")(_.toString), directors.mkString(","),
-      runtime.fold("")(_.toString), originalTitle.getOrElse("")).mkString("\u0000")
+  /** A TOTAL order over listings, as text: the key first, then every published field, so two
+   *  different listings never tie and a set of listings has exactly one sorted presentation. Built on
+   *  demand, never kept: [[Listing.ordering]] compares the same fields without it. */
+  def sortKey: String = Listing.SortFields.map(_(this)).mkString("\u0000")
 }
 
 object Listing {
@@ -54,7 +53,18 @@ object Listing {
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted)
 
-  implicit val ordering: Ordering[Listing] = Ordering.by(_.sortKey)
+  /** [[Listing.sortKey]]'s fields, in its order. */
+  private val SortFields: IndexedSeq[Listing => String] = IndexedSeq(
+    _.venue, _.rawTitle, _.page.getOrElse(""), _.title, _.cleanTitle, _.year.fold("")(_.toString),
+    _.directors.mkString(","), _.runtime.fold("")(_.toString), _.originalTitle.getOrElse(""))
+
+  /** [[Listing.sortKey]]'s order, field by field — the same order, since the joining NUL sorts below
+   *  every character — without building the key: a field is formatted only when those before it tie. */
+  implicit val ordering: Ordering[Listing] = (a, b) => {
+    var i = 0; var c = 0
+    while (c == 0 && i < SortFields.size) { c = SortFields(i)(a).compareTo(SortFields(i)(b)); i += 1 }
+    c
+  }
 
   /** Every raw listing of `byCinema`, one per key (the smallest by the total order) —
    *  `ScrapeListing.prepare`'s per-title fold NOT applied, because the resolver reads the rows it
