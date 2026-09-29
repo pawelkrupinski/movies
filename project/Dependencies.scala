@@ -22,10 +22,11 @@ object Dependencies {
   // runtime the format plugin needs.
   private val twelveMonkeysVersion = "3.15.2"
   private val sentryVersion        = "8.58.0"
-  // Pinned to the version Play uses so logback.xml + the sentry-logback appender
-  // stay compatible across the web app (gets it via play-logback) and the
-  // plain-`def main` worker (declares it directly — see build.sbt).
-  private val logbackVersion       = "1.5.22"
+  // One logback for both apps, so logback.xml + the sentry-logback appender
+  // behave the same in each: the worker and the web app both declare it (see
+  // build.sbt), and eviction lifts the web app's play-logback copy to it. Keep
+  // it at or above Play's own (LogbackVersionParitySpec fails otherwise).
+  private val logbackVersion       = "1.5.38"
   private val scalatestPlayVersion = "7.0.2"
   // scalatest's ScalaCheck bridge (`ScalaCheckPropertyChecks`), for the
   // `*PropertySpec`s that state the identity core's invariants as properties

@@ -258,7 +258,7 @@ lazy val worker = (project in file("worker"))
       // play-logback; this plain `def main` worker does NOT, so without it
       // SLF4J finds no provider, falls back to a NOP logger, and silently drops
       // EVERY log line — WorkerMain lifecycle, scrape ticks, and Sentry error
-      // reporting all vanish. (Version pinned in Dependencies.scala to match Play.)
+      // reporting all vanish. (The web app declares the same version — see there.)
       logbackClassic,
       // The Prometheus client the task-pipeline metrics are built on (scraped by
       // Prometheus, scraped over the worker's NodePort) arrives via
@@ -345,6 +345,7 @@ lazy val web = (project in file("web"))
     libraryDependencies ++= Seq(
       jsoup,                 // also used directly in views/helpers
       sentryLogback,         // error reporting
+      logbackClassic,        // lifts play-logback's copy to the worker's version (LogbackVersionParitySpec)
       scalatestPlay % Test
     ),
     // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).

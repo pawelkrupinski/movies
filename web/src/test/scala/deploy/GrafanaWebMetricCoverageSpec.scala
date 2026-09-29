@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import services.metrics.{CacheOccupancy, LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
 
 import java.io.File
-import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -71,22 +70,8 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
         case f if f.getName.endsWith(".json") => Seq(f)
         case _                              => Nil
       }
-    // Found by walking UP from the working directory rather than assumed relative
-    // to it: sbt runs each module's tests from its own `baseDirectory`, so the
-    // worker's specs see the repo root and the web's see `web/`. Hard-coding
-    // either makes this spec pass vacuously in the other module.
-    val relative = "infra/nix/files/monitoring/grafana/dashboards"
-    val root = Iterator
-      .iterate(new File(".").getAbsoluteFile)(_.getParentFile)
-      .takeWhile(_ != null)
-      .map(dir => new File(dir, relative))
-      .find(_.isDirectory)
-      .getOrElse(fail(s"no $relative in any parent of ${new File(".").getAbsolutePath}"))
-    jsonUnder(root).sortBy(_.getPath).map { f =>
-      val src = Source.fromFile(f)(using Codec.UTF8)
-      try src.mkString
-      finally src.close()
-    }.mkString("\n")
+    val root = RepoFile.locate("infra/nix/files/monitoring/grafana/dashboards")
+    jsonUnder(root).sortBy(_.getPath).map(RepoFile.read).mkString("\n")
   }
 
   "every web metric family the registry exports" should "be drawn on a dashboard" in {
