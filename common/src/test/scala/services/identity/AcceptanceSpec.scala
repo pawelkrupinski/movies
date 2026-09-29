@@ -167,4 +167,16 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val segment = (1500002, Film("The Sleeping Beauty"), Some(3))
     taken(ranked(listing, enb, segment)) shouldBe Some(1500001)
   }
+
+  it should "not take a series sibling over the record one of its title's works names whole" in {
+    // PL Kinoteka "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi": the double
+    // bill names TMDB's "Basia. Humor w paski mam" whole, a record stating no director or runtime,
+    // and took "Basia. Radzę sobie!" on the series director and a 53-minute runtime alone.
+    val listing = Listing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", runtime = Some(53),
+      directors = Seq("Marcin Wasilewski", "Marek Lachowicz", "Piotr Szczepanowicz"))
+    val humor   = (1747514, Film("Basia. Humor w paski mam"), Some(1))
+    val radze   = (1370603, Film("Basia. Radzę sobie!", year = Some(2025), runtime = Some(53),
+      directors = Some(Seq("Marcin Wasilewski", "Łukasz Kacprowicz", "Ignas Meilūnas"))), None)
+    taken(ranked(listing, humor, radze)) should not be Some(1370603)
+  }
 }

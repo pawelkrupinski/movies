@@ -110,19 +110,19 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def outnamed(best: Scored, eligible: Seq[Scored]): Boolean =
     eligible.exists(closer => (closer ne best) && titledCloser(closer, best) && factsAnswered(best, closer) <= factsAnswered(closer, closer))
 
-  /** The title relations where the listing's WHOLE title sits inside the record's: not a segment
-   *  or a decoration, where only a piece of it names the record ("The Sleeping Beauty" in "English
-   *  National Ballet: The Sleeping Beauty"), which says nothing against a record naming it all. */
-  private val WholeTitleInside = Set("exact", "fragment")
-
-  /** Does the listing's whole title sit INSIDE `closer`'s record ([[WholeTitleInside]])
-   *  while it only overlaps `other`'s, which it does not name by an original or alternative title
-   *  either (PL "Following" names Nolan's "Śledząc" by its original title)? Then `other` is taken over it only when the facts `closer`'s
-   *  record answers favour `other` ([[EvidenceWeights.factsAnswered]]): ES "BTS World Tour 'ARIRANG'
-   *  In Buenos Aires: Live" ×82 took the Busan concert, whose credit and 195 minutes out-weighed a
-   *  Buenos Aires record that states neither. */
+  /** Does `closer`'s record hold the listing's title, or name a whole piece of it
+   *  ([[IdentityMeasures.ContainingRelations]]), while `other`'s only overlaps it, names it by no
+   *  original or alternative title (PL "Following" is Nolan's "Śledząc" by its original title), and
+   *  does not hold `closer`'s title itself ("English National Ballet presents The Sleeping Beauty"
+   *  holds "The Sleeping Beauty")? Then `other` is taken over it only when the facts `closer`'s record
+   *  answers favour `other` ([[EvidenceWeights.factsAnswered]]). ES "BTS World Tour 'ARIRANG' In
+   *  Buenos Aires: Live" ×82 took the Busan concert, and PL Kinoteka's double bill "Basia. Humor w
+   *  paski mam + Kocia Szajka…" took "Basia. Radzę sobie!", on a credit and a runtime the record their
+   *  title names merely does not state. */
   private def titledCloser(closer: Scored, other: Scored): Boolean = {
-    closer.category("title").exists(WholeTitleInside) && !other.category("title").exists(IdentityMeasures.ContainingRelations) && !other.titleNamesIt
+    def containing(scored: Scored) = scored.category("title").exists(IdentityMeasures.ContainingRelations)
+    def words(scored: Scored) = services.movies.TitleContainment.tokens(scored.candidate.film.title).toSet
+    containing(closer) && !containing(other) && !other.titleNamesIt && !(words(closer) subsetOf words(other))
   }
 
   /** [[calibrated]] — unless the title names another candidate by the very same pieces and the
