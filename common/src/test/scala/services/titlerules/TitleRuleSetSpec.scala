@@ -27,6 +27,16 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.perCinema("unknown", "Untouched Title") shouldBe "Untouched Title"
   }
 
+  it should "memoise only the titles of cinemas that have rules of their own" in {
+    // A venue without rules folds nothing; caching its titles held one entry per US listing (~8 MB).
+    val rs = TitleRuleSet(Seq(rule("a", PerCinema, "^Ladies Night - ", "", cinemaId = Some("cc"))))
+    rs.perCinema("unknown", "Untouched Title") shouldBe "Untouched Title"
+    rs.perCinema("other", "Another Title") shouldBe "Another Title"
+    rs.perCinemaCached shouldBe 0
+    rs.perCinema("cc", "Ladies Night - Wicked") shouldBe "Wicked"
+    rs.perCinemaCached shouldBe 1
+  }
+
   // Kino Wybrzeże appends its venue name to every listing, splitting a film off
   // its canonical row ("Dzień objawienia-kino wybrzeże" sanitises to a different
   // key than "Dzień objawienia"). The seeded `wybrzeze-venue-suffix` rule strips

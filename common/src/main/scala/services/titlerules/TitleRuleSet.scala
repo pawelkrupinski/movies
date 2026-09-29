@@ -121,7 +121,16 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  trim rule, since some legacy clients (Helios, Cinema City, …) deliberately
    *  did NOT trim and preserved trailing whitespace. */
   def perCinema(cinemaId: String, raw: String): String =
-    perCinemaCache.computeIfAbsent((cinemaId, raw), k => fold(perCinemaRules.getOrElse(k._1, Nil), k._2))
+    perCinemaRules.get(cinemaId) match {
+      // Most venues have no rules of their own, and folding none is the title itself: memoising
+      // that kept one (venue, title) → title entry per listing for the process's life — 104,711
+      // of them, ~8 MB, on the US worker's live heap (dump 2026-09-29).
+      case None        => raw
+      case Some(rules) => perCinemaCache.computeIfAbsent((cinemaId, raw), k => fold(rules, k._2))
+    }
+
+  /** How many per-cinema folds are memoised — only venues WITH rules of their own may add one. */
+  private[titlerules] def perCinemaCached: Int = perCinemaCache.size
 
   /** The programme-prefix banner at the start of `title`, including the trailing
    *  ": " delimiter, when one of the `tag = "programmePrefix"` rules matches at
