@@ -5,3 +5,7 @@
 # SerialGC and no type speculation were carried from Fly as the fix for an OOM-restart loop under G1.
 -XX:+UseSerialGC
 -XX:-UseTypeSpeculation
+# Map the AOT cache at its own base instead of a random one: relocating it patches every pointer and
+# dirties every page, so the whole archive became private memory (worker image, PL options: 741 MB
+# anonymous RSS relocated, 638 MB in place). Diagnostic: jdk25-parity.options unlocks it first.
+-XX:ArchiveRelocationMode=0

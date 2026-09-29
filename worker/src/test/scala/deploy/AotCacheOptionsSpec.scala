@@ -46,4 +46,35 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  /** The options each tier's launcher bakes into conf/application.ini, in its order — build.sbt's
+   *  `launcherOptions(...)` calls, which this mirrors. */
+  private val LauncherFiles = Map(
+    "worker" -> Seq("jdk25-parity.options", "worker.options"),
+    "web"    -> Seq("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"))
+  private def launcher(tier: String): Seq[String] = LauncherFiles(tier)
+    .flatMap(file => RepoFile.read(s"infra/jvm/$file").linesIterator.map(_.trim).filterNot(l => l.isEmpty || l.startsWith("#")))
+
+  /** A relocated archive costs its whole size in private memory: the JVM maps it at a random base
+   *  and patches every pointer, dirtying every page. Measured in the worker image under PL's options
+   *  over one fixture pipeline run: 741 MB anonymous RSS relocated against 638 MB mapped in place,
+   *  the difference moving to clean file-backed pages the kernel can reclaim. */
+  LauncherFiles.keys.toSeq.sorted.foreach { tier =>
+    s"the $tier launcher" should "map the AOT cache in place rather than relocate it" in {
+      launcher(tier) should contain ("-XX:ArchiveRelocationMode=0")
+      javaOpts(tier).foreach { case (path, opts) =>
+        withClue(s"$path overrides the launcher's archive relocation: ")("""-XX:ArchiveRelocationMode=\d""".r.findAllIn(opts).toSeq shouldBe empty)
+      }
+    }
+
+    // The flag is diagnostic, and so are several parity flags: a launcher that names one before
+    // -XX:+UnlockDiagnosticVMOptions does not start at all. Starting a JVM under exactly the baked
+    // options, in their order, is the check a pod would otherwise make.
+    it should "start a JVM under exactly the options it bakes, in order" in {
+      val java    = ProcessHandle.current().info().command().orElseThrow() // this JVM's own `java`
+      val process = new ProcessBuilder((java +: launcher(tier) :+ "-version")*).redirectErrorStream(true).start()
+      val output  = new String(process.getInputStream.readAllBytes())
+      withClue(s"infra/jvm options for $tier:\n$output")(process.waitFor() shouldBe 0)
+    }
+  }
 }
