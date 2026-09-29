@@ -82,6 +82,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
   }
 
+  "a title" should "name the same work with or without a possessive" in {
+    // UK Odeon's "Andre Rieu 2026 Christmas Concert: Let it Snow" ×76 was only an overlap of TMDB's
+    // "Andre Rieu's 2026 Christmas Concert Let It Snow", and vetoed it for want of other facts.
+    IdentityMeasures.titleRelation(Listing("Andre Rieu 2026 Christmas Concert: Let it Snow"),
+      Film("Andre Rieu's 2026 Christmas Concert Let It Snow")) shouldBe Category("exact")
+    // Only after an apostrophe, straight or curly; a word ending in "s" keeps it.
+    IdentityMeasures.withoutPossessives("Andre Rieu’s Let's Go Pops") shouldBe "Andre Rieu Let Go Pops"
+    IdentityMeasures.withoutPossessives("Schindlers List") shouldBe "Schindlers List"
+  }
+
   "a title containing another" should "say which way: the listing decorates the film, or is a fragment of a longer title" in {
     IdentityMeasures.titleRelation(Listing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
     IdentityMeasures.titleRelation(Listing("It"), Film("It Ends with Us")) shouldBe Category("fragment")

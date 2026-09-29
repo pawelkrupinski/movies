@@ -370,8 +370,14 @@ object IdentityMeasures {
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =
-    NonWord.matcher(tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)).replaceAll("")
+    NonWord.matcher(tools.TextNormalization.deburr(withoutPossessives(s)).toLowerCase(Locale.ROOT)).replaceAll("")
   private val NonWord = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
+
+  /** A possessive "'s" dropped: venues write "Andre Rieu 2026 Christmas Concert" for TMDB's "Andre
+   *  Rieu's …" (UK Odeon ×76 read it as a different title and vetoed the concert). Only after an
+   *  apostrophe, straight or curly: "Schindlers" stays another spelling. */
+  private[identity] def withoutPossessives(s: String): String = Possessive.matcher(s).replaceAll("")
+  private val Possessive = java.util.regex.Pattern.compile("(?<=\\p{L})['\u2019][sS]\\b")
 
   /** [[key]] of the title spelt in Latin letters: Cyrillic transliterated letter by letter, as
    *  Polish venues list Ukrainian films ("Potyag Chervona ruta" for "Потяг «Червона Рута»"). Only an
@@ -398,7 +404,7 @@ object IdentityMeasures {
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
   }
 
-  private def words(s: String): Seq[String] = TitleContainment.tokens(s)
+  private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
   private def credits(names: Iterable[String]): Seq[String] =
     names.iterator.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
