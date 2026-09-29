@@ -16,24 +16,29 @@ on:
     # Manual kick from the Actions tab for an upgrade pass now.
     workflow_dispatch:
 
-# Renovate pushes its update branches and opens PRs.
+# Renovate pushes its update branches and opens PRs as the "Kinowo Sync Bot"
+# GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY), so android.yml
+# CI fires on them -- a PR opened with the default GITHUB_TOKEN never does. The
+# App mints a fresh token per run; the personal access token this used before
+# expired silently on 2026-09-28 and every run 401'd from then on.
 permissions:
-    contents: write
-    pull-requests: write
+    contents: read
 
 jobs:
     renovate:
         runs-on: ubuntu-latest
         name: Renovate
         steps:
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
             - name: Self-hosted Renovate
               uses: renovatebot/github-action@v46.1.15
               with:
-                  # Prefer a PAT (or GitHub App token) in secrets.RENOVATE_TOKEN.
-                  # PRs opened by the default GITHUB_TOKEN do NOT trigger other
-                  # workflows, so a PAT is what lets android.yml CI run on
-                  # Renovate's branches. Falls back to GITHUB_TOKEN if unset.
-                  token: ${{ secrets.RENOVATE_TOKEN || github.token }}
+                  token: ${{ steps.app-token.outputs.token }}
               env:
                   # Single-repo, self-hosted: don't crawl the org, don't open an
                   # onboarding PR (the committed renovate.json is the config).
