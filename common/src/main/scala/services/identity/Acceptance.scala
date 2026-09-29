@@ -168,12 +168,20 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  candidate, and no other candidate is one the title names — the rest only a director's
    *  filmography reached. US venues' "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES" (×1,915 with São
    *  Paulo) is "…: Live Viewing", not the 2022 Seoul concert film its director also made; neither
-   *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two"). */
+   *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two").
+   *  The listing may bill that work under a shorter subtitle of its own, the whole title running along
+   *  the record's (DE ×140 and ES ×82 "…In Buenos Aires: Live"), when no other candidate bills the
+   *  work: a banner leading the title is no work ("The Metropolitan Opera: La Fanciulla del West
+   *  Encore" is not its 2018 staging). */
   def soleWork(ranked: Seq[Scored]): Option[Accepted] = {
     val eligible = eligibleOf(ranked)
-    eligible.filter(scored => scored.rank.contains(1) && IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2) && !contradicted(scored)) match {
-      case Seq(one) if !eligible.exists(other => (other ne one) && other.titleNamesIt) => Some(one -> one.probability)
-      case _                                                                 => None
+    def isWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
+    def sharesItsWork(scored: Scored) = IdentityMeasures.billsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
+    def billsWork(scored: Scored) = scored.category("title").contains("fragment") && sharesItsWork(scored)
+    eligible.filter(scored => scored.rank.contains(1) && (isWork(scored) || billsWork(scored)) && !contradicted(scored)) match {
+      case Seq(one) if !eligible.exists(other => (other ne one) && (other.titleNamesIt || (!isWork(one) && sharesItsWork(other)))) =>
+        Some(one -> one.probability)
+      case _ => None
     }
   }
 

@@ -149,6 +149,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.pooled(ranked(listing, buenosAires, busan)).map(_._1.candidate.tmdbId) should not be Some(1701849)
   }
 
+  it should "take the one record, TMDB's first, that bills the listing's work under another subtitle" in {
+    // DE ×140 and ES ×82 "BTS World Tour 'ARIRANG' In Buenos Aires: Live" are TMDB's "…: Live Viewing",
+    // its own search's first hit, which the title only measures as a fragment of ("Live" / "Live Viewing").
+    val listing     = Listing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), runtime = Some(195), directors = Seq("Jungjae Ha"))
+    val buenosAires = (1770237, Film("BTS World Tour 'Arirang'  in Buenos Aires: Live Viewing", year = Some(2026)), Some(1))
+    val busan       = (1701849, Film("BTS WORLD TOUR [ARIRANG] in Busan", year = Some(2026), runtime = Some(195), directors = Some(Seq("Ha Jung-jae"))), None)
+    acceptance.acceptedBy(ranked(listing, buenosAires, busan), 1770237) shouldBe Some("sole-work")
+    // Two records billing that work are no answer, whichever TMDB ranks first.
+    val encore = (1770238, Film("BTS World Tour 'Arirang' in Buenos Aires: Encore", year = Some(2026)), Some(2))
+    taken(ranked(listing, buenosAires, encore, busan)) shouldBe None
+  }
+
   it should "still take a record its title names by its original title" in {
     // PL "Following" at Kino Amondo is Nolan's "Śledząc" (original title "Following"), not a
     // same-titled record whose title merely contains it.

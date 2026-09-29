@@ -554,9 +554,19 @@ object IdentityMeasures {
    *  AIRES" of "…: Live Viewing")? The words of the work, or None. */
   def titleIsWorkOf(l: Listing, f: Film): Option[Int] = {
     val own = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
-    (Seq(f.title) ++ f.originalTitle).flatMap(t => """\s*[,:]\s+|\s+[-–—]\s+""".r.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim))
-      .find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
+    (Seq(f.title) ++ f.originalTitle).flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
   }
+
+  /** Do the listing and the film bill the same WORK, each under its own subtitle — the title before a
+   *  first comma, colon or dash ("BTS World Tour 'ARIRANG' In Buenos Aires: Live" and "…: Live
+   *  Viewing")? The words of the work, or None. */
+  def billsWorkOf(l: Listing, f: Film): Option[Int] = {
+    val own = (Seq(l.title) ++ l.rawTitle).flatMap(leadingWork).map(key).filter(_.nonEmpty).toSet
+    (Seq(f.title) ++ f.originalTitle).flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
+  }
+
+  private val WorkSubtitle = """\s*[,:]\s+|\s+[-–—]\s+""".r
+  private def leadingWork(t: String): Option[String] = WorkSubtitle.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim)
 
   /** Do the listing and the film bill the same work under different subtitles — a venue's translated
    *  subtitle ("Gabinet osobliwości" for "Cabinet des curiosités")? */
