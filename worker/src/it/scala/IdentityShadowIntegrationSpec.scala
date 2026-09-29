@@ -168,14 +168,13 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       // then the steady state — a venue re-scraped unchanged, a venue leaving and coming back, and
       // ten venues leaving and coming back in one batch.
       {
-        def liveMb(): Long = { System.gc(); val runtime = Runtime.getRuntime; (runtime.totalMemory - runtime.freeMemory) >> 20 }
         def signature(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet
         val byVenue = listings.groupBy(_.venue).toSeq.sortBy(_._1).map(_._2)
-        val before  = liveMb()
+        val before  = LiveHeap.megabytes()
         val kept    = new InMemoryIdentityModelStore
         val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
         val (_, seedSeconds) = timed(model.seed(listings))
-        val held    = liveMb() - before
+        val held    = LiveHeap.megabytes() - before
         val seeded  = model.familiesResolved
         val same    = signature(model.decisions) == signature(resolution.decisions)
         def cost(body: => Unit): (Int, Double) = { val start = model.familiesResolved; val (_, seconds) = timed(body); (model.familiesResolved - start, seconds) }
