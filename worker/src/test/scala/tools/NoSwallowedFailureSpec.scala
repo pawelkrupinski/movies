@@ -141,6 +141,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "filmwebFallbackIds",
       "else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())") ->
       "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
+    ("worker/src/main/scala/services/cinemas/pl/FilmwebCinemaIdResolver.scala", "resolveAll",
+      "Try(parseTowns(http.get(TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)") ->
+      "no town list leaves every fuzzy cinema Unmatched (reported, never a wrong id) while the pinned overrides — Kinoteka's fallback — still resolve",
     ("worker/src/main/scala/services/cinemas/pl/BokClient.scala", "fetch",
       "Try(http.get(url)).toOption.getOrElse(\"\")") ->
       "a later day's page: the first is fetched outside the Try, so a dead source fails the scrape (ScraperOutageSpec); one failed day is tolerated as ListingPages does",

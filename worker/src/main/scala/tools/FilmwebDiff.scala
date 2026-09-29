@@ -17,8 +17,8 @@ import scala.util.{Failure, Success, Try}
 /**
  * Diagnostic: compare OUR scrapers' screenings against Filmweb's, per cinema.
  *
- * Filmweb ids are resolved at RUNTIME via [[FilmwebCinemaIdResolver]] (fetch the
- * per-city showtimes listing, fuzzy-match each `Cinema.displayName` to a Filmweb
+ * Filmweb ids are resolved at RUNTIME via [[FilmwebCinemaIdResolver]] (fetch each
+ * venue's town's cinema listing, fuzzy-match each `Cinema.displayName` to a Filmweb
  * cinema → its id; a small override map wins first). So a cinema added to the
  * model/catalog auto-joins the diff with no hand-edited id table; a cinema with
  * no Filmweb listing is reported `NO_FILMWEB_ID`, not an error.
@@ -270,7 +270,7 @@ object FilmwebDiff {
       unresolved.foreach { r =>
         val why = r.source match {
           case OverrideSuppressed => "override: no usable Filmweb data"
-          case Unmatched          => "no fuzzy match in city listing"
+          case Unmatched          => "no fuzzy match in its town's listing"
           case _                  => ""
         }
         sb.append(s"    - ${r.cinema.displayName}  ($why)\n")

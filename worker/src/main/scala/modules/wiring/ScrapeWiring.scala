@@ -92,8 +92,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // ── Filmweb fallback ────────────────────────────────────────────────────────
   // Each non-chain venue whose own scraper throws or comes back empty is served
   // from Filmweb instead (SourceFallbackScraper), and the swap is recorded for
-  // the /uptime/fallback page. Each cinema's Filmweb id is resolved once (one GET
-  // per Filmweb-listed city), guarded so a network/resolver failure yields no
+  // the /uptime/fallback page. Each cinema's Filmweb id is resolved once at boot
+  // (one GET per town the roster names, ~300, ~13s at 5-way concurrency), guarded so a network/resolver failure yields no
   // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
   // no fallback available. Test wirings pin this empty so fixture replay never
   // resolves or fetches Filmweb live (see TestWiring). A country whose Filmweb path

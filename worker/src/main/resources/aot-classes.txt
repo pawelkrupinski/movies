@@ -9790,8 +9790,12 @@ services.cinemas.pl.FalenicaClient$Film
 services.cinemas.pl.FalenicaClient$Film$
 services.cinemas.pl.FilmwebCinemaIdResolver
 services.cinemas.pl.FilmwebCinemaIdResolver$
+services.cinemas.pl.FilmwebCinemaIdResolver$$anon$1
+services.cinemas.pl.FilmwebCinemaIdResolver$$anon$2
 services.cinemas.pl.FilmwebCinemaIdResolver$FilmwebCinema
 services.cinemas.pl.FilmwebCinemaIdResolver$FilmwebCinema$
+services.cinemas.pl.FilmwebCinemaIdResolver$FilmwebTown
+services.cinemas.pl.FilmwebCinemaIdResolver$FilmwebTown$
 services.cinemas.pl.FilmwebCinemaIdResolver$Fuzzy
 services.cinemas.pl.FilmwebCinemaIdResolver$Fuzzy$
 services.cinemas.pl.FilmwebCinemaIdResolver$Match

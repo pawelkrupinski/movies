@@ -1,59 +1,62 @@
 package services.cinemas.pl
 
-import models.{Cinema, City}
-import tools.HttpFetch
+import models.{Cinema, City, Country}
+import play.api.libs.json.{Json, Reads}
+import tools.{BoundedParallel, HttpFetch}
 
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Resolves each modelled [[Cinema]] to Filmweb's internal cinema id at RUNTIME,
- * so adding a cinema to the model/catalog auto-includes it in `FilmwebDiff` with
- * no hand-maintained id table.
+ * Resolves each modelled Polish [[Cinema]] to Filmweb's internal cinema id at
+ * RUNTIME, so adding a cinema to the model/catalog auto-includes it in
+ * `FilmwebDiff` and gives it a Filmweb fallback with no hand-maintained id table.
  *
- * Filmweb publishes one showtimes listing per city at `/showtimes/<CityName>`;
- * each cinema appears as a link `/showtimes/<City>/<Name>-<id>`, where `<id>` is
- * the SAME id the seances API (`/api/v1/cinema/<id>/seances`) takes (verified
- * 2026-06). We fetch one listing per city, parse every `(Name, id)` pair, and
- * fuzzy-match each of our `Cinema.displayName`s against the Filmweb names. A
- * small [[overrides]] map wins first, for the handful of cinemas whose names are
- * too divergent for the fuzzy matcher (or that Filmweb lists but serves empty).
+ * Filmweb's API names every town it covers (`/api/v1/cities`, `{id, name}`) and
+ * lists each town's cinemas (`/api/v1/city/<id>/cinemas`, `{id, name}`), where the
+ * cinema `id` is the SAME id the seances API (`/api/v1/cinema/<id>/seances`)
+ * takes. Each cinema is looked up in the listing of the town(s) it sits in
+ * ([[City.townsOf]]: the venue table's town, else the city's own), and its
+ * `displayName` fuzzy-matched against the names there. A small [[overrides]] map
+ * wins first, for the handful of cinemas whose names are too divergent for the
+ * fuzzy matcher (or that Filmweb lists but serves empty).
  *
  * Resolution per cinema: override (forced id, or explicit "no Filmweb data") →
- * else fuzzy match against the city listing → else UNMATCHED (`NO_FILMWEB_ID`).
+ * else fuzzy match against its towns' listings → else UNMATCHED (`NO_FILMWEB_ID`).
  * Unmatched cinemas are reported, not errors: a new cinema with no override and
  * no fuzzy hit surfaces here automatically, prompting nothing manual.
  *
  * Pure parsing + matching are public so the spec can exercise them offline; only
- * [[resolveAll]] touches the network (one GET per city).
+ * [[resolveAll]] touches the network (one GET for the towns, one per town).
  */
 class FilmwebCinemaIdResolver(http: HttpFetch) {
   import FilmwebCinemaIdResolver._
 
-  /** Resolve every modelled cinema (optionally scoped to a set of city slugs).
-   *  One HTTP GET per in-scope city; a city whose listing fails to fetch leaves
-   *  its cinemas UNMATCHED rather than failing the whole resolution. */
+  /** Resolve every modelled Polish cinema (optionally scoped to a set of city
+   *  slugs). A town list or town listing that fails to fetch leaves its cinemas
+   *  UNMATCHED rather than failing the whole resolution. */
   def resolveAll(cityFilter: Set[String] = Set.empty): Seq[Resolution] = {
-    val cities = City.all.filter(c => cityFilter.isEmpty || cityFilter(c.slug))
+    val cinemas = City.all
+      .filter(c => c.country == Country.Poland && (cityFilter.isEmpty || cityFilter(c.slug)))
+      .flatMap(city => city.cinemas.map(cinema => cinema -> city.townsOf(cinema)))
 
-    // Fetch + parse each in-scope city's Filmweb listing once, tolerantly.
-    val listingByCity: Map[String, Seq[FilmwebCinema]] = cities.flatMap { city =>
-      filmwebCityNames.getOrElse(city.slug, Nil).flatMap { cityName =>
-        Try(http.get(listingUrl(cityName))).toOption.toSeq.flatMap(parseCinemaListing)
-      } match {
-        case Nil      => None
-        case listings => Some(city.slug -> listings.distinctBy(_.id))
-      }
-    }.toMap
+    val townIds: Map[String, Seq[Int]] =
+      Try(parseTowns(http.get(TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)
+    def idsOf(towns: Seq[String]): Seq[Int] = towns.flatMap(townIds.getOrElse(_, Nil)).distinct
 
-    cities.flatMap(_.cinemas).map { cinema =>
-      val listing = City.forCinema(cinema).flatMap(c => listingByCity.get(c.slug)).getOrElse(Nil)
-      resolveOne(cinema, listing)
+    val listings = new ConcurrentHashMap[Int, Seq[FilmwebCinema]]()
+    BoundedParallel.foreach("filmweb-town-cinemas", cinemas.flatMap((_, towns) => idsOf(towns)).distinct, MaxConcurrent) { id =>
+      Try(parseCinemaListing(http.get(townCinemasUrl(id)))).foreach(listings.put(id, _))
+    }
+    val listingOf = listings.asScala
+
+    cinemas.map { (cinema, towns) =>
+      resolveOne(cinema, idsOf(towns).flatMap(listingOf.getOrElse(_, Nil)).distinctBy(_.id))
     }
   }
 
-  /** Override first, else fuzzy-match against this cinema's city listing. */
+  /** Override first, else fuzzy-match against this cinema's towns' listings. */
   def resolveOne(cinema: Cinema, listing: Seq[FilmwebCinema]): Resolution =
     overrides.get(cinema) match {
       case Some(Some(id)) => Resolution(cinema, Some(id), Override)
@@ -69,16 +72,13 @@ class FilmwebCinemaIdResolver(http: HttpFetch) {
 
 object FilmwebCinemaIdResolver {
 
-  /** Our city slug → the Filmweb city-listing name(s) under `/showtimes/<Name>`.
-   *  Trójmiasto spans two Filmweb cities (Gdańsk + Gdynia). Extendable: a new
-   *  modelled city just needs its Filmweb city name(s) here. */
-  val filmwebCityNames: Map[String, Seq[String]] = Map(
-    "poznan"     -> Seq("Poznań"),
-    "wroclaw"    -> Seq("Wrocław"),
-    "warszawa"   -> Seq("Warszawa"),
-    "krakow"     -> Seq("Kraków"),
-    "trojmiasto" -> Seq("Gdańsk", "Gdynia"),
-  )
+  val TownsUrl: String = "https://www.filmweb.pl/api/v1/cities"
+
+  def townCinemasUrl(townId: Int): String = s"https://www.filmweb.pl/api/v1/city/$townId/cinemas"
+
+  // One request per town the roster names (~300); Filmweb soft-blocks past ~5
+  // concurrent requests (see BoundedParallel).
+  private val MaxConcurrent = 5
 
   /**
    * Forced resolutions for cinemas the fuzzy matcher gets wrong or can't reach.
@@ -102,7 +102,7 @@ object FilmwebCinemaIdResolver {
    *     pin is about reliability, not name divergence: kinoteka.pl is down at the
    *     TCP layer (verified globally 2026-06-16), so the venue now depends on the
    *     Filmweb fallback every tick. Pinning the verified id removes that
-   *     dependence on a single boot-time `/showtimes/Warszawa` GET succeeding —
+   *     dependence on the boot-time town-listing GETs succeeding —
    *     a blip there would otherwise leave the venue with no fallback id and a
    *     red /uptime bar while its own site stays dead.
    */
@@ -128,27 +128,24 @@ object FilmwebCinemaIdResolver {
     def resolved: Boolean = filmwebId.isDefined
   }
 
-  /** One cinema as Filmweb lists it on a city showtimes page. */
+  /** One cinema as Filmweb lists it in a town's cinema listing. */
   final case class FilmwebCinema(name: String, id: Int)
+
+  /** One town as Filmweb names it. Names are not unique (two Skarżysko-Kamienna
+   *  entries), so a town name may map to several ids. */
+  final case class FilmwebTown(name: String, id: Int)
+
+  private given Reads[FilmwebCinema] = Json.reads[FilmwebCinema]
+  private given Reads[FilmwebTown]   = Json.reads[FilmwebTown]
+
+  /** Parse `/api/v1/city/<id>/cinemas` into `(name, id)` pairs. Pure: spec feeds fixtures. */
+  def parseCinemaListing(json: String): Seq[FilmwebCinema] = Json.parse(json).as[Seq[FilmwebCinema]]
+
+  /** Parse `/api/v1/cities` into `(name, id)` pairs. Pure: spec feeds fixtures. */
+  def parseTowns(json: String): Seq[FilmwebTown] = Json.parse(json).as[Seq[FilmwebTown]]
 
   /** One fuzzy match candidate + its similarity score (0..1). */
   final case class Match(name: String, id: Int, score: Double)
-
-  def listingUrl(cityName: String): String =
-    "https://www.filmweb.pl/showtimes/" + urlEncode(cityName)
-
-  private val LinkPat =
-    """href="/showtimes/[^"/]+/([^"]+)-(\d+)"""".r
-
-  /** Parse a `/showtimes/<City>` listing's HTML into `(name, id)` pairs. The
-   *  cinema name is taken from the URL slug (URL-decoded, `+`→space) — robust to
-   *  markup churn, and equal to the on-page header. Pure: spec feeds fixtures. */
-  def parseCinemaListing(html: String): Seq[FilmwebCinema] =
-    LinkPat.findAllMatchIn(html).flatMap { m =>
-      Try(m.group(2).toInt).toOption.map { id =>
-        FilmwebCinema(urlDecode(m.group(1)).trim, id)
-      }
-    }.toSeq.distinctBy(_.id)
 
   /** Best fuzzy match for `displayName` among `candidates`, or None if nothing
    *  clears the acceptance threshold. Scored by token-overlap coefficient (see
@@ -198,10 +195,4 @@ object FilmwebCinemaIdResolver {
     if (a.isEmpty || b.isEmpty) 0.0
     else a.intersect(b).size.toDouble / math.max(a.size, b.size).toDouble
   }
-
-  private def urlEncode(s: String): String =
-    java.net.URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20")
-
-  private def urlDecode(s: String): String =
-    Try(URLDecoder.decode(s.replace("+", "%20"), StandardCharsets.UTF_8)).getOrElse(s)
 }

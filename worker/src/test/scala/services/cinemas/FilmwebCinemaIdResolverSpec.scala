@@ -8,34 +8,40 @@ import tools.GetOnlyHttpFetch
 import services.cinemas.pl.FilmwebCinemaIdResolver
 import services.cinemas.pl.FilmwebCinemaIdResolver._
 
-import java.net.URI
 import java.nio.file.{Files, Paths}
 
-/** Exercises the runtime Filmweb-id resolution offline: parse a real (trimmed)
- *  `/showtimes/Poznań` listing, fuzzy-match our Poznań `Cinema.displayName`s
- *  against it, and confirm the override map wins first (incl. the suppressed
- *  Kino Apollo). No network — `resolveAll` is driven through a fixture-backed
- *  fetch stub. */
+/** Exercises the runtime Filmweb-id resolution offline: parse real town
+ *  listings (`/api/v1/city/<id>/cinemas`, captured 2026-09-29), fuzzy-match our
+ *  `Cinema.displayName`s against them, and confirm the override map wins first
+ *  (incl. the suppressed Kino Apollo). No network — `resolveAll` is driven
+ *  through a fixture-backed fetch stub serving the captured `/api/v1/cities`. */
 class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val poznanListingHtml: String = {
-    val p = Paths.get("worker/src/test/resources/fixtures/filmweb-showtimes-listing/poznan.html")
-    new String(Files.readAllBytes(p), "UTF-8")
-  }
-  private val poznanListing = parseCinemaListing(poznanListingHtml)
+  private def fixture(name: String): String =
+    new String(Files.readAllBytes(Paths.get(s"worker/src/test/resources/fixtures/filmweb-city-cinemas/$name")), "UTF-8")
 
-  private val krakowListing = parseCinemaListing(
-    new String(Files.readAllBytes(
-      Paths.get("worker/src/test/resources/fixtures/filmweb-showtimes-listing/krakow.html")), "UTF-8"))
+  // Filmweb town ids, from the captured cities.json.
+  private val KrakowId = 2
+  private val PoznanId = 6
+  private val JaroslawId = 147
 
-  "parseCinemaListing" should "extract (name, id) pairs from the showtimes links" in {
+  private val poznanListing = parseCinemaListing(fixture(s"city-$PoznanId.json"))
+  private val krakowListing = parseCinemaListing(fixture(s"city-$KrakowId.json"))
+
+  "parseCinemaListing" should "extract (name, id) pairs from a town's cinema listing" in {
     val byId = poznanListing.map(c => c.id -> c.name).toMap
     byId(75)   shouldBe "Muza"
     byId(78)   shouldBe "Rialto"
     byId(633)  shouldBe "Multikino Stary Browar"
-    byId(1618) shouldBe "Bułgarska 19" // URL-decoded, %C5%82 → ł
+    byId(1618) shouldBe "Bułgarska 19"
     byId(624)  shouldBe "Cinema City Kinepolis"
     byId.size  shouldBe 11
+  }
+
+  "parseTowns" should "map town names to Filmweb town ids" in {
+    val towns = parseTowns(fixture("cities.json"))
+    towns.find(_.name == "Jarosław").value.id shouldBe JaroslawId
+    towns.count(_.name == "Skarżysko-Kamienna") shouldBe 2 // names are not unique
   }
 
   "bestMatch" should "fuzzy-match our display names to the right Filmweb id" in {
@@ -82,7 +88,7 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
   it should "pin Kinoteka to 55 even when the city listing is unavailable" in {
     // kinoteka.pl is down at the TCP layer, so the venue lives on the Filmweb
     // fallback. The override must resolve its id WITHOUT a successful
-    // /showtimes/Warszawa fetch — an empty listing (the boot-time blip that
+    // town-listing fetch — an empty listing (the boot-time blip that
     // produced the red /uptime bar) must still yield id 55, not Unmatched.
     resolver.resolveOne(Kinoteka, Nil) shouldBe
       Resolution(Kinoteka, Some(55), Override)
@@ -102,6 +108,18 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
     r.resolved  shouldBe false
   }
 
+  it should "resolve a venue outside the five big cities through its own town's listing" in {
+    // Regression: the resolver only fetched the Poznań/Wrocław/Warszawa/Kraków/
+    // Trójmiasto listings, so a Jarosław venue never got a Filmweb id and its
+    // fallback could not engage. jaroslaw.kinonabiegunach.pl stopped answering on
+    // 2026-09-22 and the venue went dark for a week while Filmweb 2172 carried
+    // its whole programme.
+    val byCinema = stubResolver.resolveAll(Set("jaroslaw")).map(r => r.cinema -> r).toMap
+
+    byCinema(KinoNaBiegunach).filmwebId.value shouldBe 2172
+    byCinema(KinoIkar).filmwebId.value        shouldBe 1707
+  }
+
   "resolveAll" should "resolve Poznań cinemas end-to-end through a fixture-backed fetch" in {
     val byCinema = stubResolver.resolveAll(Set("poznan")).map(r => r.cinema -> r).toMap
 
@@ -115,12 +133,14 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
 
   private val resolver = new FilmwebCinemaIdResolver(NoNetworkFetch)
 
-  /** A fetch that returns the Poznań listing fixture for the Poznań URL and an
-   *  empty listing for any other city — enough to drive `resolveAll` offline. */
+  /** Serves the captured town list and each captured town listing; any other
+   *  town answers an empty listing — enough to drive `resolveAll` offline. */
   private val stubResolver = new FilmwebCinemaIdResolver(new GetOnlyHttpFetch {
-    override def get(url: String): String = {
-      val path = new URI(url).getPath
-      if (path.contains("Pozna")) poznanListingHtml else "<html></html>"
+    private val TownListing = """.*/api/v1/city/(\d+)/cinemas""".r
+    override def get(url: String): String = url match {
+      case FilmwebCinemaIdResolver.TownsUrl                              => fixture("cities.json")
+      case TownListing(id) if Set(KrakowId, PoznanId, JaroslawId)(id.toInt) => fixture(s"city-$id.json")
+      case _                                                             => "[]"
     }
   })
 
