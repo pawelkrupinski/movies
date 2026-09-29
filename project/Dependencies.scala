@@ -26,7 +26,7 @@ object Dependencies {
   // behave the same in each: the worker and the web app both declare it (see
   // build.sbt), and eviction lifts the web app's play-logback copy to it. Keep
   // it at or above Play's own (LogbackVersionParitySpec fails otherwise).
-  private val logbackVersion       = "1.5.38"
+  private val logbackVersion       = "1.6.4"
   private val scalatestPlayVersion = "7.0.2"
   // scalatest's ScalaCheck bridge (`ScalaCheckPropertyChecks`), for the
   // `*PropertySpec`s that state the identity core's invariants as properties
