@@ -77,9 +77,15 @@ private[identity] object TitleLinks {
     // tutte" in "RBO Cinema Season 2026-27: Così fan tutte") say nothing of what is beside it.
     val besideIt = pieces.exists { case (_, key) => key.nonEmpty && key != whole && !whole.contains(key) }
     val isWhole = pieces.collect { case (_, key) if (key != whole && wholeTitle(key)) || (key == whole && besideIt) => key }.toSet
+    // The search form is a work too, for the pieces that lie outside it: in "Gorzkie święta / napisy
+    // - Nasze Kino" the label sticks to the film's piece, so no piece is anyone's whole title, but the
+    // normaliser's form "Gorzkie święta" still says the venue's name beside it is no work.
+    val form = normalizer.sanitize(normalizer.searchQuery(node.evidence.cleanTitle))
+    def besideTheForm(key: String): Boolean = form.nonEmpty && form != whole && !key.contains(form) && !form.contains(key)
     def reasonToDrop(key: String): Option[String] =
       if (isWhole(key) || key == whole) None
       else isWhole.find(_ != key).map(work => s"banner beside the work '$work', which a listing carries whole")
+        .orElse(Option.when(besideTheForm(key))(s"banner beside the work '$form', its title's search form"))
         .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
     val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
     val blocked = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,

@@ -1315,6 +1315,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val premiere = listing(Helios, "Lalka | PREMIERA").copy(cleanTitle = "Lalka", title = "Lalka")
     TitleLinks.titleKeys(new EvidenceNode(Evidence.of(premiere, None, TitleDecorations.None), Seq(premiere)), normalizer,
       PinConstraints(Nil), _ => false, _ => false) should not contain ("t:" + normalizer.sanitize("PREMIERA"))
+    // ...and beside the title's SEARCH FORM, when a label sticks to the film's piece so that neither
+    // piece is anyone's whole title: Nasze Kino's "Gorzkie święta / napisy - Nasze Kino" kept its
+    // venue as the work, and the venue welded Obcy, Róża, Vincent and Almodóvar into one PL family.
+    val venueSuffixed = keys("Gorzkie święta / napisy - Nasze Kino", Set.empty)
+    venueSuffixed should not contain ("t:" + normalizer.sanitize("Nasze Kino"))
+    venueSuffixed should contain ("q:" + normalizer.searchQuery("Gorzkie święta / napisy - Nasze Kino"))
     // An event's banner beside its film is dropped, the film kept: the screening IS the film.
     val event = keys("Dzień Dziecka Księdza Jana Kaczkowskiego: Luna i rozgadana świnka",
       Set("Dzień Dziecka Księdza Jana Kaczkowskiego", "Luna i rozgadana świnka"))
