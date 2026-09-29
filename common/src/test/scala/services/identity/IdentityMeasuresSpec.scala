@@ -369,9 +369,20 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.directorRelation(Seq("Kira Muratova"), Seq("Кира Муратова")) shouldBe Category("same_person")
     // A transliteration convention apart (Yakov / Akov): the surname is shared.
     IdentityMeasures.directorRelation(Seq("Yakov Protazanov"), Seq("Яков Протазанов")) shouldBe Category("shared_name")
-    IdentityMeasures.directorRelation(Seq("Ljubomir Stefanov"), Seq("Љубомир Стефанов")) shouldBe Category("shared_name")
+    // A letter apart in a long word (Ljubomir / Lubomir) is one spelling of the same name.
+    IdentityMeasures.directorRelation(Seq("Ljubomir Stefanov"), Seq("Љубомир Стефанов")) shouldBe Category("same_person")
     IdentityMeasures.directorRelation(Seq("Ljubomir Stefanov", "Tamara Kotevska"), Seq("Љубомир Стефанов", "Тамара Котевска")) shouldBe
       Category("same_person")
+  }
+
+  "a director's name spelt a letter apart in each word" should "be the same person" in {
+    // UK Flicks' "Aaram" ×20 credits "Rajeesh Parmeswaran"; TMDB has "Rajesh Parameswaran". Read as
+    // different directors, the credit vetoed the very film.
+    IdentityMeasures.directorRelation(Seq("Rajeesh Parmeswaran"), Seq("Rajesh Parameswaran")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Parmeswaran Rajeesh"), Seq("Rajesh Parameswaran")) shouldBe Category("same_person")
+    // Short words are other names, not spellings; a word two letters off is another word.
+    IdentityMeasures.directorRelation(Seq("Jan Kowal"), Seq("Jon Kowal")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Rajeesh Parmeswaran"), Seq("Ramesh Parameswaran")) should not be Category("same_person")
   }
 
   it should "still tell different people apart, as a disagreement across scripts of its own" in {

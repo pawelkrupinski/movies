@@ -430,8 +430,15 @@ object IdentityMeasures {
     /** Some credit names the same person as some credit of `other`: the same words in any order
      *  ([[services.movies.PersonKey]]) or the same letters split otherwise ([[sameLetters]]). */
     def samePerson(other: Credits): Boolean =
-      (keys intersect other.keys).nonEmpty || words.exists(a => other.words.exists(sameLetters(a, _)))
+      (keys intersect other.keys).nonEmpty || words.exists(a => other.words.exists(b => sameLetters(a, b) || spelledAlike(a, b)))
   }
+
+  /** Two credits of as many words, in some order each word the same or a letter apart where both
+   *  spellings run to five letters: a transliteration's spelling ("Rajeesh Parmeswaran", TMDB's
+   *  "Rajesh Parameswaran"). Short words are other names ("Jan"/"Jon"), not spellings. */
+  private def spelledAlike(a: Seq[String], b: Seq[String]): Boolean =
+    a.sizeIs >= 2 && a.size == b.size && a.sizeIs <= MaxOrderedWords && a != b &&
+      b.permutations.exists(p => a.zip(p).forall { case (x, y) => x == y || (x.length >= 5 && y.length >= 5 && editDistanceOne(x, y)) })
 
   /** The most words a credit may have for [[sameLetters]] to try its orders (it enumerates them). */
   private val MaxOrderedWords = 5
