@@ -13,6 +13,7 @@ import scala.util.Try
  */
 object TmdbFilmRecord {
 
+
   /** The film and its IMDb id, or `None` when no answer carries a title. A body a recorder
    *  wrapped as `{"text": …}` is unwrapped. */
   def parse(answers: Seq[JsValue]): Option[(IdentityMeasures.Film, Option[String])] = {
@@ -43,6 +44,10 @@ object TmdbFilmRecord {
   }
 
   /** The crew jobs a film's record reads as its directors — and so the jobs the normalized store's
-   *  cut-down responses keep (`TmdbNormalizer.minimal`): the two must name the same crew. */
-  val DirectorJobs: Set[String] = clients.TmdbJson.Director
+   *  cut-down responses keep (`TmdbNormalizer.minimal`): the two must name the same crew. Co-directors
+   *  are directors to the venues that credit them ("Vincent. Legenda oceanu": Reza Memari directs,
+   *  Pavel Hrubos and Steven Majaury co-direct), so a listing naming only them is not another film. A filmed
+   *  stage production's stage director is who the venues credit ("Fallen Angels by Noël Coward": Scott
+   *  Ellis, while TMDB's Director is Annette Jolles, who directed the filming). */
+  val DirectorJobs: Set[String] = clients.TmdbJson.Director + "Co-Director" + "Stage Director"
 }
