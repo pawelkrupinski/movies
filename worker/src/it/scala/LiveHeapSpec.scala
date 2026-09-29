@@ -5,15 +5,17 @@ import org.scalatest.matchers.should.Matchers
 
 class LiveHeapSpec extends AnyFlatSpec with Matchers {
 
-  "the live heap" should "grow by what a structure keeps, and not by garbage it left behind" in {
-    val before  = LiveHeap.bytes()
-    // Small objects, as a model is made of: G1 lays out objects of a region's size apart, and a
-    // 1 MB array read about twice its size here while 16 KB arrays and one 64 MB array read true.
-    val kept    = Array.fill(4096)(new Array[Byte](16 << 10))     // 64 MB, still reachable
-    (1 to 4096).foreach(_ => new Array[Byte](16 << 10))           // 64 MB, garbage at once
-    val grown   = LiveHeap.bytes() - before
+  // Counted by classes only this spec allocates: `itAll` runs suites in parallel in one JVM, so a
+  // whole-heap delta moves with whatever the other suites allocate or free meanwhile (it failed
+  // there with the 63–66 MB window this read before, and passed alone).
+  "the live heap" should "count what a structure keeps, and none of the garbage it left behind" in {
+    val kept = Array.fill(4096)(LiveHeapSpec.Kept(new Array[Byte](1024)))
+    (1 to 4096).foreach(_ => LiveHeapSpec.Garbage(new Array[Byte](1024)))
+    val live = LiveHeap.classes()
     kept.length shouldBe 4096
-    (grown >> 20) should (be >= 63L and be <= 66L)
+    live.get(classOf[LiveHeapSpec.Kept].getName).map(_.instances) shouldBe Some(4096L)
+    live.get(classOf[LiveHeapSpec.Garbage].getName).map(_.instances).getOrElse(0L) shouldBe 0L
+    LiveHeap.bytes() should be >= 4096L * 1024
   }
 
   "the live heap's classes" should "name what a structure keeps, largest first" in {
@@ -29,4 +31,6 @@ class LiveHeapSpec extends AnyFlatSpec with Matchers {
 
 object LiveHeapSpec {
   final case class Held(values: Array[Long])
+  final case class Kept(payload: Array[Byte])
+  final case class Garbage(payload: Array[Byte])
 }
