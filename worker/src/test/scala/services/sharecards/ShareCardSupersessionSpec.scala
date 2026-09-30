@@ -66,18 +66,23 @@ class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scala
     val movie = film()
     val lock  = rig.store.lockFor(rig.store.cardPath(movie._id))
     Files.createDirectories(lock.getParent)
+    // The holder keeps the lock until its stdin closes — released the moment the test has
+    // seen the write wait, rather than after a fixed sleep.
     val holder = new ProcessBuilder("python3", "-c",
-      "import fcntl,sys,time; f=open(sys.argv[1],'a'); fcntl.lockf(f, fcntl.LOCK_EX); print('locked', flush=True); time.sleep(2)",
+      "import fcntl,sys; f=open(sys.argv[1],'a'); fcntl.lockf(f, fcntl.LOCK_EX); print('locked', flush=True); sys.stdin.read()",
       lock.toString).redirectErrorStream(true).start()
-    new java.io.BufferedReader(new java.io.InputStreamReader(holder.getInputStream)).readLine() shouldBe "locked"
+    try {
+      new java.io.BufferedReader(new java.io.InputStreamReader(holder.getInputStream)).readLine() shouldBe "locked"
 
-    val written = new java.util.concurrent.CountDownLatch(1)
-    val writer  = new Thread(() => { rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm), askedAt = Some(T0)); written.countDown() })
-    writer.start()
-    written.await(1, java.util.concurrent.TimeUnit.SECONDS) shouldBe false     // waiting on the other process
-    holder.waitFor()
-    written.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
-    rig.service.existing(rig.service.inputs(movie)) shouldBe defined
+      val written = new java.util.concurrent.CountDownLatch(1)
+      val writer  = new Thread(() => { rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm), askedAt = Some(T0)); written.countDown() })
+      writer.start()
+      written.await(1, java.util.concurrent.TimeUnit.SECONDS) shouldBe false     // waiting on the other process
+      holder.getOutputStream.close()
+      holder.waitFor()
+      written.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      rig.service.existing(rig.service.inputs(movie)) shouldBe defined
+    } finally holder.destroy()
   }
 
   "A superseded first card" should "not end the film's first-publish hold: the newer render will" in {

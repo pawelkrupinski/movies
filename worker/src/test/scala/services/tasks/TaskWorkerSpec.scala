@@ -320,7 +320,9 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     @volatile var wokeAt = 0L
     val parked = new Thread(() => { d.awaitSince(since, 60000L); wokeAt = System.nanoTime() })
     parked.start()
-    Thread.sleep(50) // let it park
+    eventually(timeout(Span(2, Seconds)), interval(Span(5, Millis))) {
+      parked.getState shouldBe Thread.State.TIMED_WAITING // parked on the doorbell
+    }
     val rungAt = System.nanoTime()
     d.ring()
     parked.join(2000)

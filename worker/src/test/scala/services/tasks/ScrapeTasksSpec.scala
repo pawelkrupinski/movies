@@ -15,6 +15,7 @@ import services.cinemas.pl.FilmwebShowtimesClient
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import tools.Eventually.eventually
 
 class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
@@ -620,8 +621,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.start()
     Thread.sleep(100)
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L // still within the delay
-    Thread.sleep(600)
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L // delay elapsed → first tick ran
+    eventually(queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L) // delay elapsed → first tick ran
     reaper.stop()
   }
 
@@ -683,8 +683,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // Before the fix: fail-open after the first 50ms → both stale cinemas enqueued.
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
     gate.success(()) // mirror reports ready → the legitimate cold-start scrape may now proceed
-    Thread.sleep(200)
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) should be > 0L
+    eventually(queue.countByState().getOrElse(TaskState.Waiting, 0L) should be > 0L)
     reaper.stop()
   }
 

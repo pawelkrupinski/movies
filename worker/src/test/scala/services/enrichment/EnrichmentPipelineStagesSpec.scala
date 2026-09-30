@@ -418,8 +418,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     noException should be thrownBy service.retryUnresolvedTmdb()
 
-    // Give the worker pool a beat — the resolved row is left untouched.
-    Thread.sleep(200)
+    // Let anything the retry dispatched finish — the resolved row is left untouched.
+    service.drain()
     cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).flatMap(_.tmdbId) shouldBe Some(931285)
   }
 
@@ -482,8 +482,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     bus.publish(MovieDetailsComplete("Mortal Kombat II", Some(2026)))
 
-    // Give the worker a beat — no TMDB call should land for the resolved row.
-    Thread.sleep(100)
+    // Let anything the event dispatched finish — no TMDB call should land for the resolved row.
+    service.drain()
     tmdbHttp.calls shouldBe empty
   }
 

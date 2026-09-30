@@ -113,7 +113,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Imaginary Film", None, "Imaginary Film"))
-    Thread.sleep(100)
+    resolver.drain() // the resolve ran to completion, and wrote nothing
     repository.upserts shouldBe empty
   }
 
@@ -138,7 +138,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
-    Thread.sleep(100)
+    resolver.drain() // the resolve ran to completion, and wrote nothing
     repository.upserts shouldBe empty
   }
 
@@ -313,7 +313,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Unknown Film", Some(2024), "Unknown Film"))
-    Thread.sleep(100)
+    resolver.drain() // the resolve ran to completion, and wrote nothing
     repository.upserts shouldBe empty
   }
 
