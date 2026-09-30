@@ -870,11 +870,13 @@ class ReadModelProjector(
         lastMovie.update(m._id, CardHash.of(m))
         if (m.shareCardPending) pendingCards += m._id
       }
-      reader.findAllScreenings().groupBy(_.filmId).foreach { case (fid, ss) =>
-        // The content is known, the slots it was built from are not: no input hash, so the
-        // first projection of each venue rebuilds it rather than trusting it.
-        lastScreenings.update(fid, ss.map(s => s._id -> WrittenScreening(s.##, input = None)).toMap)
-      }
+      // Page by page, keeping each row's id and hash only: read whole, US's screenings were
+      // ~400 MB live beside the identity take-up. The content is known, the slots it was
+      // built from are not: no input hash, so the first projection of each venue rebuilds it
+      // rather than trusting it. A read that falls short seeds nothing, as it always has.
+      val byFilm = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.Builder[(String, WrittenScreening), Map[String, WrittenScreening]]]
+      val complete = reader.foreachScreening(s => byFilm.getOrElseUpdate(s.filmId, Map.newBuilder) += s._id -> WrittenScreening(s.##, input = None))
+      if (complete) byFilm.foreach { case (fid, rows) => lastScreenings.update(fid, rows.result()) }
     }
 
   def start(): Unit = { prepare(); watch() }

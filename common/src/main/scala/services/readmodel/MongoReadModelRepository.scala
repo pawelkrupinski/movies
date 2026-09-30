@@ -91,12 +91,19 @@ class MongoReadModelRepository(
     pagedFindAllChecked(coll, label)._1
 
   /** [[pagedFindAll]] with whether the scan completed — empty and `false` when it did not. */
-  private def pagedFindAllChecked[A: ClassTag](coll: Option[MongoCollection[A]], label: String): (Seq[A], Boolean) =
+  private def pagedFindAllChecked[A: ClassTag](coll: Option[MongoCollection[A]], label: String): (Seq[A], Boolean) = {
+    val buf      = Vector.newBuilder[A]
+    val complete = pagedForeach(coll, label)(buf += _)
+    if (complete) (buf.result(), true) else (Seq.empty, false)
+  }
+
+  /** Every document of `coll`, decoded and handed to `f` one keyset page at a time — never the
+   *  whole collection at once — plus whether the scan reached the end. */
+  private def pagedForeach[A: ClassTag](coll: Option[MongoCollection[A]], label: String)(f: A => Unit): Boolean =
     coll match {
       case Some(c) =>
         val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
-        val buf   = Vector.newBuilder[A]
-        val complete = KeysetScan.scan[BsonDocument](
+        KeysetScan.scan[BsonDocument](
           label          = label,
           batchSize      = findAllBatchSize,
           maxAttempts    = findAllBatchAttempts,
@@ -107,10 +114,9 @@ class MongoReadModelRepository(
             Await.result(c.find[BsonDocument](filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
           },
           onIncomplete   = exception =>
-            logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
-        )(batch => buf ++= decodeTolerant(batch, codec, label, c.namespace.getCollectionName))
-        if (complete) (buf.result(), true) else (Seq.empty, false)
-      case None => (Seq.empty, true)
+            logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
+        )(batch => decodeTolerant(batch, codec, label, c.namespace.getCollectionName).foreach(f))
+      case None => true
     }
 
   /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
@@ -132,6 +138,8 @@ class MongoReadModelRepository(
   override def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) =
     pagedFindAllChecked(movies, "ReadModelRepository.findAllMovies")
   def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings")
+  override def foreachScreening(f: CityScreening => Unit): Boolean =
+    pagedForeach(screenings, "ReadModelRepository.foreachScreening")(f)
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
   // The prune needs only ids/filmIds to spot orphaned documents; projecting them

@@ -383,6 +383,26 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     restarted.stop()
   }
 
+  // Read whole, US's read-model screenings were ~400 MB live at boot beside the identity
+  // take-up (2026-09-30: full-GC storms, OOM kills), to keep an id and a hash per row. The seed
+  // reads them a page at a time and must still vouch for every row it saw.
+  it should "seed from the read model page by page, never reading every screening at once" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository() {
+      override def findAllScreenings(): Seq[CityScreening] = fail("the boot seed read every screening at once")
+      override def foreachScreening(f: CityScreening => Unit): Boolean = { super.findAllScreenings().foreach(f); true }
+      override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
+        (super.findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)), true)
+    }
+    val record = MovieRecord(tmdbId = Some(1), data = venues.take(3).map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
+    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(stored(record))
+    val restarted = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    restarted.prepare()
+    restarted.onMovieUpsert(stored(record))
+
+    rm.screeningUpserts should have size 3   // the seed vouched for all three: nothing rewritten
+  }
+
   /** The same reuse, COUNTED across film widths — so a regression to rebuilding every
    *  venue on every re-projection fails on the count, not on a timing CI cannot hold. What
    *  a wide release costs must be the venues that moved, whatever else it screens at: one

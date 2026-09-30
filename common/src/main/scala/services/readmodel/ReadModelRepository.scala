@@ -69,6 +69,13 @@ trait ReadModelReader {
   def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) = (findAllMovies(), true)
   def findAllScreenings(): Seq[CityScreening]
 
+  /** Every read-model screening, handed to `f` a page at a time instead of buffered whole,
+   *  plus whether the read was complete. For a caller that keeps a little of each row: the
+   *  projector's boot seed held all of US `web_screenings` at once (~400 MB, every showtime)
+   *  to keep an id and a hash per row, overlapping the identity take-up into full-GC storms.
+   *  The in-memory store has nothing to page, so the default walks [[findAllScreenings]]. */
+  def foreachScreening(f: CityScreening => Unit): Boolean = { findAllScreenings().foreach(f); true }
+
   /** Just the `_id`s of every read-model movie — the projector's reconcile prune
    *  needs only the id set to spot orphaned films, never the full `ResolvedMovie`
    *  payload. Default derives from [[findAllMovies]] (fine for the in-memory
