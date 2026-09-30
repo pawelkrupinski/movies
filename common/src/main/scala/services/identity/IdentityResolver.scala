@@ -293,7 +293,15 @@ object IdentityResolver {
         .map(_.map(nodeById))
     }
 
-    val acceptedAll: Map[String, Int] = families.bestOf.map { case (id, (scored, _)) => id -> scored.candidate.tmdbId } ++ families.pinnedFilm
+    val ownFilms: Map[String, Int] = families.bestOf.map { case (id, (scored, _)) => id -> scored.candidate.tmdbId }
+    // Nodes one chain lists under ONE catalogue id that accepted different films, each on its own
+    // evidence: neither acceptance stands, so the id's must-link unites them and the cluster votes on
+    // its pooled evidence. Showcase's "9 to 5 (2026)" credits Colin Higgins at two venues; its two
+    // bare venues, dated only by the re-release, had taken a two-minute 2026 short.
+    val contested: Set[String] =
+      nodes.flatMap(node => node.listings.flatMap(_.catalogueIds).distinct.map(_ -> node.id)).groupMap(_._1)(_._2).values
+        .flatMap(ids => if (ids.distinct.flatMap(ownFilms.get).distinct.sizeIs > 1) ids else Nil).toSet
+    val acceptedAll: Map[String, Int] = ownFilms.filterNot { case (id, _) => contested(id) } ++ families.pinnedFilm
     // Round A's edges over EVERY pair of nodes sharing a block key, then the family check: an
     // edge between two families means the scoping would silently drop it, so the resolve stops.
     val roundAEdges = edges.of(nodes, acceptedAll.get)

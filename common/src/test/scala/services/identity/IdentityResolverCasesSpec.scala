@@ -90,6 +90,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(credited, other), films).decisionOf(other.key).film shouldBe None
   }
 
+  it should "keep a re-release's bare listings on the film their credited siblings name, not a namesake of the re-release year" in {
+    // US Showcase "9 to 5 (2026)" (boxoffice 1000052877): two venues credit Colin Higgins, two publish
+    // only the title, whose "(2026)" dated them onto a two-minute 2026 short about a dachshund.
+    val films = Seq(F(19494, "Nine to Five", 1980, "Colin Higgins", 110, 12.0, alternatives = Seq("9 to 5")),
+      F(1683690, "9 to 5", 2026, "Castiel Collyer", 2, 0.2))
+    val showcase = Seq(CatalogueId("boxoffice", "1000052877"))
+    val credited = Seq(Multikino, Helios).map(v => listing(v, "9 to 5 (2026)", Some(2026), Some("Colin Higgins"), Some(110)).copy(catalogueIds = showcase))
+    val bare     = Seq(KinoApollo, Rialto).map(v => listing(v, "9 to 5 (2026)", Some(2026)).copy(catalogueIds = showcase))
+    val r = shipped(credited ++ bare, films)
+    withClue((credited ++ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      (credited ++ bare).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(19494))
+    }
+    r.violations shouldBe 0
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")

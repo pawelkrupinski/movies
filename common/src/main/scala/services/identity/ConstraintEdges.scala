@@ -68,7 +68,10 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       val (firstFilm, secondFilm) = (filmOf(first.id), filmOf(second.id))
       val sameFilm = firstFilm.isDefined && firstFilm == secondFilm
       def edge(must: Boolean, tier: Int, reason: String) = ResolverEdge(first.id, second.id, must, tier, reason)
-      val cannots = if (sameFilm) Nil else Seq(
+      // One chain's one catalogue id is one film: the facts each venue publishes of it (a bare
+      // re-release dated by its title, "9 to 5 (2026)") never keep its listings apart, as a pin's
+      // group is never kept apart. The cluster's pooled evidence then names the film.
+      val cannots = if (sameFilm || sharesCatalogueId(first, second)) Nil else Seq(
         Option.when(firstFilm.isDefined && secondFilm.isDefined)("different-films"),
         Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
         listingsApart(first, second)
