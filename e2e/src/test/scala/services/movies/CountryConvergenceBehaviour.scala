@@ -1688,7 +1688,10 @@ abstract class CountryConvergenceBehaviour(
         // retires its card. Without it the withdrawn films stay served as empty cards. Before
         // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
-        w.concludeEnrichment()
+        // The pipeline's TMDB reaper sweep: a cut-over worker never starts that reaper (its identity is
+        // the projection's), and a sweep here matched films the model had left unmatched — writing a
+        // tmdbId onto a film whose listings had not changed (run 36720826476).
+        if (!w.identityCutover) w.concludeEnrichment()
         w.readModelProjector.reconcile()
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
