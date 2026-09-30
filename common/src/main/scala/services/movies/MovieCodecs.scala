@@ -152,6 +152,171 @@ object StoredMovieDto {
   }
 }
 
+private[movies] final class BackwardCompatibleSourceDataCodec(
+    macroCodec: Codec[SourceData], showtimeCodec: Codec[Showtime], titleSearchCodec: Codec[TitleSearch]) extends Codec[SourceData] {
+  override def getEncoderClass: Class[SourceData] = classOf[SourceData]
+
+  // The cache-only fields (`showtimesDigest`, `showtimeStartMinutes`) are dropped on
+  // the way out (`SourceData.persisted`): `decode` never reads them back, and a
+  // cache-stripped record is written through here routinely. `showtimeStartMinutes` is an
+  // `IArray[Int]` with no BSON codec at all, so letting it through failed every such
+  // `upsert`/`replaceFilm`.
+  override def encode(w: BsonWriter, v: SourceData, c: EncoderContext): Unit =
+    macroCodec.encode(w, v.persisted, c)
+
+  // Streamed field by field off the reader — a slot is decoded ~100k times in a US worker's
+  // boot hydrate, and building each one's whole BsonDocument tree first, then reading it back,
+  // was the costliest part of the decode on the restart's critical path. Every legacy rule the
+  // tree-based reader applied holds (`MovieCodecsSpec` pins each legacy shape): a text field
+  // only when it is a string, a number only when it is an int32, a list from an array or from
+  // one comma-joined string, null and absent alike empty, every other field skipped.
+  override def decode(r: BsonReader, c: DecoderContext): SourceData = {
+    def str(): Option[String] = if (r.getCurrentBsonType == BsonType.STRING) Some(r.readString()) else { r.skipValue(); None }
+    def int(): Option[Int]    = if (r.getCurrentBsonType == BsonType.INT32) Some(r.readInt32()) else { r.skipValue(); None }
+    def strings(): Seq[String] = r.getCurrentBsonType match {
+      case BsonType.STRING =>
+        val joined = r.readString()
+        if (joined.isEmpty) Seq.empty else joined.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+      case BsonType.ARRAY =>
+        r.readStartArray()
+        val out = Seq.newBuilder[String]
+        while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
+        r.readEndArray()
+        out.result()
+      case _ => r.skipValue(); Seq.empty
+    }
+    def documents[A](codec: Codec[A]): Seq[A] = r.getCurrentBsonType match {
+      case BsonType.ARRAY =>
+        r.readStartArray()
+        val out = Seq.newBuilder[A]
+        while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += codec.decode(r, c)
+        r.readEndArray()
+        out.result()
+      case _ => r.skipValue(); Seq.empty
+    }
+    var title, rawTitle, originalTitle, englishTitle, synopsis, posterUrl, filmUrl, trailerUrl, language, ageRating =
+      Option.empty[String]
+    var runtimeMinutes, releaseYear = Option.empty[Int]
+    var cast, director, countries, genres = Seq.empty[String]
+    var showtimes     = Seq.empty[Showtime]
+    var titleSearches = Seq.empty[TitleSearch]
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      r.readName() match {
+        case "title"          => title = str()
+        case "rawTitle"       => rawTitle = str()
+        case "originalTitle"  => originalTitle = str()
+        case "englishTitle"   => englishTitle = str()
+        case "synopsis"       => synopsis = str()
+        case "cast"           => cast = strings()
+        case "director"       => director = strings()
+        case "runtimeMinutes" => runtimeMinutes = int()
+        case "releaseYear"    => releaseYear = int()
+        case "countries"      => countries = strings()
+        case "genres"         => genres = strings()
+        case "posterUrl"      => posterUrl = str()
+        case "filmUrl"        => filmUrl = str()
+        case "trailerUrl"     => trailerUrl = str()
+        // Absent on every row written before the stamp existed — `None` reads as pl-PL (the
+        // historical hardcoded enrichment language), which is what those rows actually hold.
+        case "language"       => language = str()
+        case "showtimes"      => showtimes = documents(showtimeCodec)
+        // Absent on every row written before the certificate field existed → None.
+        case "ageRating"      => ageRating = str()
+        // Absent on every slot written before the field existed → no search evidence.
+        case "titleSearches"  => titleSearches = documents(titleSearchCodec)
+        case _                => r.skipValue()
+      }
+    }
+    r.readEndDocument()
+    SourceData(
+      title = title, rawTitle = rawTitle, originalTitle = originalTitle, englishTitle = englishTitle,
+      synopsis = synopsis, cast = cast, director = director, runtimeMinutes = runtimeMinutes,
+      releaseYear = releaseYear, countries = countries, genres = genres, posterUrl = posterUrl,
+      filmUrl = filmUrl, trailerUrl = trailerUrl, language = language, showtimes = showtimes,
+      ageRating = ageRating, titleSearches = titleSearches)
+  }
+}
+
+/** Reads a showtime field by field off the reader. A US corpus pass, and a US boot's cache
+ *  hydrate, each decode ~1.7M of them, and the macro codec's per-document machinery — a map of
+ *  the fields read, the lookups and boxing to build one — was most of the census's CPU and a
+ *  large share of its allocation (JFR over the US mirror, 2026-09-30). Written by the macro codec;
+ *  read exactly as the macro reads (`ShowtimeDecodeSpec` pins every stored shape against it):
+ *  an absent or null optional field is `None`, a missing `room`/`format` takes its default, an
+ *  unknown field is skipped, a missing `dateTime` fails. */
+private[movies] final class StreamingShowtimeCodec(macroCodec: Codec[Showtime]) extends Codec[Showtime] {
+  override def getEncoderClass: Class[Showtime] = classOf[Showtime]
+  override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  override def decode(r: BsonReader, c: DecoderContext): Showtime = {
+    var dateTime: java.time.LocalDateTime = null
+    var bookingUrl, room = Option.empty[String]
+    var format           = List.empty[String]
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      r.readName() match {
+        case "dateTime"   => dateTime = JavaTimeCodecs.localDateTime.decode(r, c)
+        case "bookingUrl" => bookingUrl = BsonReads.optionalString(r)
+        case "room"       => room = BsonReads.optionalString(r)
+        case "format"     => format = BsonReads.strings(r)
+        case _            => r.skipValue()
+      }
+    }
+    r.readEndDocument()
+    if (dateTime == null) throw new org.bson.codecs.configuration.CodecConfigurationException("Showtime: no dateTime")
+    Showtime(dateTime, bookingUrl, room, format)
+  }
+}
+
+/** A `screenings` row read field by field — its showtimes through [[StreamingShowtimeCodec]].
+ *  ~108k rows a US pass. Written by the macro codec; read as it reads, as above. */
+private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScreeningsDto], showtimes: Codec[Showtime])
+    extends Codec[StoredScreeningsDto] {
+  override def getEncoderClass: Class[StoredScreeningsDto] = classOf[StoredScreeningsDto]
+  override def encode(w: BsonWriter, v: StoredScreeningsDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  override def decode(r: BsonReader, c: DecoderContext): StoredScreeningsDto = {
+    var id, filmId, slotKey: String = null
+    var updatedAt: Instant          = null
+    var listingKey                  = Option.empty[String]
+    val read                        = Vector.newBuilder[Showtime]
+    var sawShowtimes                = false
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      r.readName() match {
+        case "_id"        => id = r.readString()
+        case "filmId"     => filmId = r.readString()
+        case "slotKey"    => slotKey = r.readString()
+        case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
+        case "listingKey" => listingKey = BsonReads.optionalString(r)
+        case "showtimes"  =>
+          sawShowtimes = true
+          r.readStartArray()
+          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += showtimes.decode(r, c)
+          r.readEndArray()
+        case _            => r.skipValue()
+      }
+    }
+    r.readEndDocument()
+    if (id == null || filmId == null || slotKey == null || updatedAt == null || !sawShowtimes)
+      throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredScreeningsDto ${Option(id).getOrElse("?")}: a required field is missing")
+    StoredScreeningsDto(id, filmId, slotKey, read.result(), updatedAt, listingKey)
+  }
+}
+
+/** The BSON reads the hand-written decoders share. Stateless. */
+private[movies] object BsonReads {
+  def optionalString(r: BsonReader): Option[String] =
+    if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readString())
+
+  def strings(r: BsonReader): List[String] = {
+    val out = List.newBuilder[String]
+    r.readStartArray()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
+    r.readEndArray()
+    out.result()
+  }
+}
+
 /**
  * BSON codec wiring for the Mongo-backed repository. The macros handle `SourceData`,
  * `Showtime`, and `StoredMovieDto` directly; only `LocalDateTime` needs a
@@ -160,214 +325,28 @@ object StoredMovieDto {
  */
 object MovieCodecs extends PersistedCodecs {
 
-  /** `SourceData` is written through [[BackwardCompatibleSourceDataCodec]], which wraps
-   *  the macro codec derived here. */
+  /** `SourceData`, `Showtime` and `StoredScreeningsDto` are READ by the hand-written codecs above,
+   *  each writing through the macro codec derived here. */
   type OmittingNone = (SourceData, Showtime, TitleSearch)
   /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
   type WritingNone  = (StoredTmdbAttempt, StoredMovieDto, StoredScreeningsDto, StoredSlotDto)
 
-  /** The macro codecs of `OmittingNone` alone — what the backward-compatible
-   *  `SourceData` codec delegates to. */
-  private val omittingNoneRegistry: CodecRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
-    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
-    DEFAULT_CODEC_REGISTRY
-  )
-
-  private val macroSourceDataCodec: Codec[SourceData] = omittingNoneRegistry.get(classOf[SourceData])
-
-  /** Every macro codec, none shadowed — what the streaming decoders below encode through. */
-  private lazy val macroRegistry: CodecRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
-    fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
-    DEFAULT_CODEC_REGISTRY
-  )
-
-  private val showtimeCodec: Codec[Showtime] = omittingNoneRegistry.get(classOf[Showtime])
-
-  private val titleSearchCodec: Codec[TitleSearch] = omittingNoneRegistry.get(classOf[TitleSearch])
-
-  private class BackwardCompatibleSourceDataCodec extends Codec[SourceData] {
-    override def getEncoderClass: Class[SourceData] = classOf[SourceData]
-
-    // The cache-only fields (`showtimesDigest`, `showtimeStartMinutes`) are dropped on
-    // the way out (`SourceData.persisted`): `decode` never reads them back, and a
-    // cache-stripped record is written through here routinely. `showtimeStartMinutes` is an
-    // `IArray[Int]` with no BSON codec at all, so letting it through failed every such
-    // `upsert`/`replaceFilm`.
-    override def encode(w: BsonWriter, v: SourceData, c: EncoderContext): Unit =
-      macroSourceDataCodec.encode(w, v.persisted, c)
-
-    // Streamed field by field off the reader — a slot is decoded ~100k times in a US worker's
-    // boot hydrate, and building each one's whole BsonDocument tree first, then reading it back,
-    // was the costliest part of the decode on the restart's critical path. Every legacy rule the
-    // tree-based reader applied holds (`MovieCodecsSpec` pins each legacy shape): a text field
-    // only when it is a string, a number only when it is an int32, a list from an array or from
-    // one comma-joined string, null and absent alike empty, every other field skipped.
-    override def decode(r: BsonReader, c: DecoderContext): SourceData = {
-      def str(): Option[String] = if (r.getCurrentBsonType == BsonType.STRING) Some(r.readString()) else { r.skipValue(); None }
-      def int(): Option[Int]    = if (r.getCurrentBsonType == BsonType.INT32) Some(r.readInt32()) else { r.skipValue(); None }
-      def strings(): Seq[String] = r.getCurrentBsonType match {
-        case BsonType.STRING =>
-          val joined = r.readString()
-          if (joined.isEmpty) Seq.empty else joined.split(",").map(_.trim).filter(_.nonEmpty).toSeq
-        case BsonType.ARRAY =>
-          r.readStartArray()
-          val out = Seq.newBuilder[String]
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
-          r.readEndArray()
-          out.result()
-        case _ => r.skipValue(); Seq.empty
-      }
-      def documents[A](codec: Codec[A]): Seq[A] = r.getCurrentBsonType match {
-        case BsonType.ARRAY =>
-          r.readStartArray()
-          val out = Seq.newBuilder[A]
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += codec.decode(r, c)
-          r.readEndArray()
-          out.result()
-        case _ => r.skipValue(); Seq.empty
-      }
-      var title, rawTitle, originalTitle, englishTitle, synopsis, posterUrl, filmUrl, trailerUrl, language, ageRating =
-        Option.empty[String]
-      var runtimeMinutes, releaseYear = Option.empty[Int]
-      var cast, director, countries, genres = Seq.empty[String]
-      var showtimes     = Seq.empty[Showtime]
-      var titleSearches = Seq.empty[TitleSearch]
-      r.readStartDocument()
-      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-        r.readName() match {
-          case "title"          => title = str()
-          case "rawTitle"       => rawTitle = str()
-          case "originalTitle"  => originalTitle = str()
-          case "englishTitle"   => englishTitle = str()
-          case "synopsis"       => synopsis = str()
-          case "cast"           => cast = strings()
-          case "director"       => director = strings()
-          case "runtimeMinutes" => runtimeMinutes = int()
-          case "releaseYear"    => releaseYear = int()
-          case "countries"      => countries = strings()
-          case "genres"         => genres = strings()
-          case "posterUrl"      => posterUrl = str()
-          case "filmUrl"        => filmUrl = str()
-          case "trailerUrl"     => trailerUrl = str()
-          // Absent on every row written before the stamp existed — `None` reads as pl-PL (the
-          // historical hardcoded enrichment language), which is what those rows actually hold.
-          case "language"       => language = str()
-          case "showtimes"      => showtimes = documents(StreamingShowtimeCodec)
-          // Absent on every row written before the certificate field existed → None.
-          case "ageRating"      => ageRating = str()
-          // Absent on every slot written before the field existed → no search evidence.
-          case "titleSearches"  => titleSearches = documents(titleSearchCodec)
-          case _                => r.skipValue()
-        }
-      }
-      r.readEndDocument()
-      SourceData(
-        title = title, rawTitle = rawTitle, originalTitle = originalTitle, englishTitle = englishTitle,
-        synopsis = synopsis, cast = cast, director = director, runtimeMinutes = runtimeMinutes,
-        releaseYear = releaseYear, countries = countries, genres = genres, posterUrl = posterUrl,
-        filmUrl = filmUrl, trailerUrl = trailerUrl, language = language, showtimes = showtimes,
-        ageRating = ageRating, titleSearches = titleSearches)
-    }
+  val registry: CodecRegistry = {
+    // Every macro codec, none shadowed — what the hand-written codecs write through.
+    val macros = fromRegistries(
+      fromCodecs(JavaTimeCodecs.localDateTime),
+      fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
+      DEFAULT_CODEC_REGISTRY)
+    val showtimes = new StreamingShowtimeCodec(macros.get(classOf[Showtime]))
+    fromRegistries(
+      // FIRST, so they shadow the macro codecs of the same classes: a slot round-trips through the
+      // SAME backward-compatible codec whether it is read from `movies` or from its own
+      // `movie_slots` row, and every showtime through the one streaming decoder.
+      fromCodecs(JavaTimeCodecs.localDateTime,
+        new BackwardCompatibleSourceDataCodec(macros.get(classOf[SourceData]), showtimes, macros.get(classOf[TitleSearch])),
+        showtimes,
+        new StreamingScreeningsCodec(macros.get(classOf[StoredScreeningsDto]), showtimes)),
+      fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
+      DEFAULT_CODEC_REGISTRY)
   }
-
-  /** Reads a showtime field by field off the reader. A US corpus pass, and a US boot's cache
-   *  hydrate, each decode ~1.7M of them, and the macro codec's per-document machinery — a map of
-   *  the fields read, the lookups and boxing to build one — was most of the census's CPU and a
-   *  large share of its allocation (JFR over the US mirror, 2026-09-30). Written by the macro codec;
-   *  read exactly as the macro reads (`ShowtimeDecodeSpec` pins every stored shape against it):
-   *  an absent or null optional field is `None`, a missing `room`/`format` takes its default, an
-   *  unknown field is skipped, a missing `dateTime` fails. */
-  private object StreamingShowtimeCodec extends Codec[Showtime] {
-    override def getEncoderClass: Class[Showtime] = classOf[Showtime]
-    override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = showtimeCodec.encode(w, v, c)
-    override def decode(r: BsonReader, c: DecoderContext): Showtime = {
-      var dateTime: java.time.LocalDateTime = null
-      var bookingUrl, room = Option.empty[String]
-      var format           = List.empty[String]
-      r.readStartDocument()
-      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-        r.readName() match {
-          case "dateTime"   => dateTime = JavaTimeCodecs.localDateTime.decode(r, c)
-          case "bookingUrl" => bookingUrl = optionalString(r)
-          case "room"       => room = optionalString(r)
-          case "format"     => format = strings(r)
-          case _            => r.skipValue()
-        }
-      }
-      r.readEndDocument()
-      if (dateTime == null) throw new org.bson.codecs.configuration.CodecConfigurationException("Showtime: no dateTime")
-      Showtime(dateTime, bookingUrl, room, format)
-    }
-  }
-
-  /** A `screenings` row read field by field — its showtimes through [[StreamingShowtimeCodec]].
-   *  ~108k rows a US pass. Written by the macro codec; read as it reads, as above. */
-  private object StreamingScreeningsCodec extends Codec[StoredScreeningsDto] {
-    private val macroCodec: Codec[StoredScreeningsDto] = macroRegistry.get(classOf[StoredScreeningsDto])
-    override def getEncoderClass: Class[StoredScreeningsDto] = classOf[StoredScreeningsDto]
-    override def encode(w: BsonWriter, v: StoredScreeningsDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
-    override def decode(r: BsonReader, c: DecoderContext): StoredScreeningsDto = {
-      var id, filmId, slotKey: String = null
-      var updatedAt: Instant          = null
-      var listingKey                  = Option.empty[String]
-      val showtimes                   = Vector.newBuilder[Showtime]
-      var sawShowtimes                = false
-      r.readStartDocument()
-      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-        r.readName() match {
-          case "_id"        => id = r.readString()
-          case "filmId"     => filmId = r.readString()
-          case "slotKey"    => slotKey = r.readString()
-          case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
-          case "listingKey" => listingKey = optionalString(r)
-          case "showtimes"  =>
-            sawShowtimes = true
-            r.readStartArray()
-            while (r.readBsonType() != BsonType.END_OF_DOCUMENT) showtimes += StreamingShowtimeCodec.decode(r, c)
-            r.readEndArray()
-          case _            => r.skipValue()
-        }
-      }
-      r.readEndDocument()
-      if (id == null || filmId == null || slotKey == null || updatedAt == null || !sawShowtimes)
-        throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredScreeningsDto ${Option(id).getOrElse("?")}: a required field is missing")
-      StoredScreeningsDto(id, filmId, slotKey, showtimes.result(), updatedAt, listingKey)
-    }
-  }
-
-  private def optionalString(r: BsonReader): Option[String] =
-    if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readString())
-
-  private def strings(r: BsonReader): List[String] = {
-    val out = List.newBuilder[String]
-    r.readStartArray()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
-    r.readEndArray()
-    out.result()
-  }
-
-  private val streamingProvider: CodecProvider = new CodecProvider {
-    override def get[T](clazz: Class[T], registry: CodecRegistry): Codec[T] =
-      if (clazz == classOf[Showtime]) StreamingShowtimeCodec.asInstanceOf[Codec[T]]
-      else if (clazz == classOf[StoredScreeningsDto]) StreamingScreeningsCodec.asInstanceOf[Codec[T]]
-      else null
-  }
-
-  private val sourceDataProvider: CodecProvider = new CodecProvider {
-    override def get[T](clazz: Class[T], registry: CodecRegistry): Codec[T] =
-      if (clazz == classOf[SourceData]) new BackwardCompatibleSourceDataCodec().asInstanceOf[Codec[T]]
-      else null
-  }
-
-  val registry: CodecRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
-    // `sourceDataProvider` FIRST, so it shadows the macro `SourceData` codec: a slot
-    // round-trips through the SAME backward-compatible codec whether it is read from
-    // `movies` or from its own `movie_slots` row.
-    fromProviders((sourceDataProvider :: streamingProvider ::
-      PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
-    DEFAULT_CODEC_REGISTRY
-  )
 }
