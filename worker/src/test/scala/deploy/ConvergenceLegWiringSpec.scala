@@ -46,11 +46,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * harmless reshuffle and says "no countries found", which reads as a structural
    * break when nothing structural changed.
    */
-  private def matrixRows(yaml: String): Seq[Map[String, String]] =
-    """-\s*\{([^}]*)}""".r
-      .findAllMatchIn(RepoFile.block(yaml, "matrix"))
-      .map(row => """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
-      .toSeq
+  private def matrixRows(yaml: String): Seq[Map[String, String]] = RepoFile.matrixRows(yaml)
 
   private lazy val rows: Seq[Map[String, String]] = callers.flatMap(matrixRows)
 
@@ -60,8 +56,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   /** Every (job ceiling, suite step) budget pair the legs actually run on, labelled.
    *
    *  The numbers used to be literals inside the leg's two job blocks. They are per-COUNTRY
-   *  now — the United States has no enrichment tree yet, so its first legs fetch every
-   *  lookup live and need hours where a warm country needs a couple — which means the
+   *  now — the United States carries larger ceilings than the others — which means the
    *  pairs live in the caller's matrix, with the leg's `default:`s standing in for a
    *  caller that says nothing. Both sources are checked, because a gap that closes in
    *  either place cancels a leg just as dead. */

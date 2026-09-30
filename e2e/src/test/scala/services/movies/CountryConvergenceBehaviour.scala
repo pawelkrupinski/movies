@@ -611,7 +611,28 @@ abstract class CountryConvergenceBehaviour(
    *  fails `readyToProject` and is silently skipped by the projector — which is
    *  exactly how 32 of 80 films, 44 cinemas and 360 screenings went missing from
    *  the read model while the corpus itself was complete. */
-  private def bootSettled(w: ArchiveReplayWiring): Unit = {
+  private def bootSettled(w: ArchiveReplayWiring): Unit =
+    if (w.identityCutover) {
+      step("bootCutover")(w.bootCutover())
+      step("project")(w.readModelProjector.reconcile())
+      step("reloadReadModel")(w.webReadModel.reload())
+    } else bootPipeline(w)
+
+  /** A CUT-OVER leg (the leg run with `KINOWO_IDENTITY_CUTOVER` naming this country — the
+   *  `Identity model convergence` build) lands every scrape through the production runner into the
+   *  identity model's listing intake and decides its films by projection, so every claim below is
+   *  asked of the new model: there is no staging, settle or reaper pass to run. Each venue is
+   *  re-scraped in `rnd`'s order, and a venue whose scrape throws is recorded in `failures`. */
+  private def rescrapeCutover(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Unit = {
+    rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
+      try { w.cinemaScrapeRunner.run(scraper); () }
+      catch { case e: Exception => failures += s"${scraper.cinema.displayName}: $e"; () }
+    }
+    w.projectIdentity()
+    ()
+  }
+
+  private def bootPipeline(w: ArchiveReplayWiring): Unit = {
     step("bootCorpus")(w.bootCorpus())
     // ONE settle, deliberately. Settling twice here would let a corpus that needs
     // two passes to stop moving look identical to one that never moved, because
@@ -779,7 +800,11 @@ abstract class CountryConvergenceBehaviour(
    *  shuffled order, then drain and settle. Returns the set of `(cinema, title)`
    *  diversions the scrape phase pushed into staging — a KNOWN film landing back
    *  in `pending_movies` is the churn we care about. */
-  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
+  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] =
+    if (w.identityCutover) { rescrapeCutover(w, rnd, failures); Set.empty }
+    else pipelineTick(w, rnd, failures)
+
+  private def pipelineTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
     val before = w.stagingRepository.findAll()
       .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
@@ -1077,36 +1102,44 @@ abstract class CountryConvergenceBehaviour(
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
-    val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
-    // TIMED, like every other phase in this suite — and this was the ONLY one that said
-    // nothing at all. A US leg spent 75 minutes in here and was killed with the log
-    // holding three `MongoConnection connected` lines and then silence, so the failure
-    // could not distinguish a wedged replay from a slow one, or name the phase that was
-    // spending the budget. `bootCorpus` was given exactly this treatment for exactly
-    // this reason; the replays are the same shape and cost more.
-    PhaseTimer.timed(scope, "replayScrape") {
-      val scrapers = rnd.shuffle(w.cinemaScrapers.toList)
-      val started  = System.nanoTime()
-      var done     = 0
-      scrapers.foreach { scraper =>
-        Try(scraper.fetch()).toOption.foreach { films =>
-          val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
-          ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+    // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
+    // corpus has nothing that may legitimately fail to land, so a venue that throws fails the pass.
+    if (w.identityCutover) {
+      val failures = mutable.ListBuffer.empty[String]
+      PhaseTimer.timed(scope, "replayCutover")(rescrapeCutover(w, rnd, failures))
+      if (failures.nonEmpty) fail(s"$scope: ${failures.size} venue(s) failed to land: ${failures.take(5).mkString("; ")}")
+    } else {
+      val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
+      // TIMED, like every other phase in this suite — and this was the ONLY one that said
+      // nothing at all. A US leg spent 75 minutes in here and was killed with the log
+      // holding three `MongoConnection connected` lines and then silence, so the failure
+      // could not distinguish a wedged replay from a slow one, or name the phase that was
+      // spending the budget. `bootCorpus` was given exactly this treatment for exactly
+      // this reason; the replays are the same shape and cost more.
+      PhaseTimer.timed(scope, "replayScrape") {
+        val scrapers = rnd.shuffle(w.cinemaScrapers.toList)
+        val started  = System.nanoTime()
+        var done     = 0
+        scrapers.foreach { scraper =>
+          Try(scraper.fetch()).toOption.foreach { films =>
+            val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
+            ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+          }
+          done += 1
+          if (PhaseTimer.shouldReport(done, scrapers.size))
+            PhaseTimer.progress(scope, "scraped", done, scrapers.size, started)
         }
-        done += 1
-        if (PhaseTimer.shouldReport(done, scrapers.size))
-          PhaseTimer.progress(scope, "scraped", done, scrapers.size, started)
       }
+      // Publish in a shuffled order too: production publishes inline as each cinema
+      // lands, so the enrichment stage sees an arbitrary cross-film order.
+      PhaseTimer.timed(scope, "replayPublish")(rnd.shuffle(ready.toList).foreach(w.eventBus.publish))
+      PhaseTimer.timed(scope, "replayDrainServices")(w.drainServices())
+      PhaseTimer.timed(scope, "replayDrainStaging")(w.drainStaging())
+      PhaseTimer.timed(scope, "replaySettle")(w.movieService.settle())
+      PhaseTimer.timed(scope, "replayDrainStagingSecondPass")(w.drainStaging())
+      PhaseTimer.timed(scope, "replaySettleSecondPass")(w.movieService.settle())
+      PhaseTimer.timed(scope, "replayConcludeEnrichment")(w.concludeEnrichment())
     }
-    // Publish in a shuffled order too: production publishes inline as each cinema
-    // lands, so the enrichment stage sees an arbitrary cross-film order.
-    PhaseTimer.timed(scope, "replayPublish")(rnd.shuffle(ready.toList).foreach(w.eventBus.publish))
-    PhaseTimer.timed(scope, "replayDrainServices")(w.drainServices())
-    PhaseTimer.timed(scope, "replayDrainStaging")(w.drainStaging())
-    PhaseTimer.timed(scope, "replaySettle")(w.movieService.settle())
-    PhaseTimer.timed(scope, "replayDrainStagingSecondPass")(w.drainStaging())
-    PhaseTimer.timed(scope, "replaySettleSecondPass")(w.movieService.settle())
-    PhaseTimer.timed(scope, "replayConcludeEnrichment")(w.concludeEnrichment())
     PhaseTimer.timed(scope, "replayProject")(w.readModelProjector.reconcile())
     // Reload AND materialise inside the comparison's lock: this is the step that
     // allocates the corpus, so it is the step that has to be one-at-a-time.

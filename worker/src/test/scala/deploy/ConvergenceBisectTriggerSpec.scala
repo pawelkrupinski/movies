@@ -21,12 +21,14 @@ import org.scalatest.matchers.should.Matchers
 class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
   private val Bisect = RepoFile.read(".github/workflows/convergence-bisect.yml")
 
-  /** The workflows that run a HERMETIC convergence leg — the only kind that requests a bisect —
-   *  found by what they call, not listed. A recording leg (`mode: record`) has nothing to bisect. */
+  /** The workflows that run a HERMETIC pipeline convergence leg — the only kind that requests a
+   *  bisect — found by what they call, not listed. A recording leg (`mode: record`) has nothing to
+   *  bisect, and a new-model leg (`identity-model: true`) measures a model, not a regression. */
   private val convergenceWorkflows =
     RepoFile.workflows().map(_.getPath).filter { p =>
       val yml = RepoFile.read(p)
-      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty
+      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty &&
+        """identity-model:\s+true""".r.findFirstIn(yml).isEmpty
     }
 
   private def nameOf(yml: String) =

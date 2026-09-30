@@ -167,6 +167,17 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # THE NEW MODEL. `true` runs the leg with `KINOWO_IDENTITY_CUTOVER` naming its country:
+            # scrapes land in the identity model's listing intake and films are decided by its
+            # projection instead of the staging/settle/reaper pipeline (CountryConvergenceBehaviour's
+            # `rescrapeCutover`), so every claim the leg makes is asked of the new model. Only the
+            # dispatch-only `Identity model convergence` build sets it, and its red leg is a finding
+            # about the model, never a pipeline regression to bisect.
+            identity-model:
+                description: Decide the leg's films by the identity model (KINOWO_IDENTITY_CUTOVER) rather than the pipeline.
+                required: false
+                type: boolean
+                default: false
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -273,6 +284,7 @@ jobs:
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
+                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
 
             # The gate REPLAYS the tree and — until now — extended it only in the
             # runner's filesystem, which is discarded with the runner. Every recorded
@@ -291,7 +303,7 @@ jobs:
 
             # A red HERMETIC sample on main asks `convergence-bisect.yml` which commit did it.
             - uses: ./.github/actions/convergence-bisect-request
-              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'
+              if: failure() && inputs.mode == 'hermetic' && !inputs.identity-model && github.ref == 'refs/heads/main'
               with:
                   country:        ${{ inputs.country }}
                   code:           ${{ inputs.code }}
@@ -453,6 +465,7 @@ jobs:
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
+                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
                   # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the
@@ -533,7 +546,7 @@ jobs:
             # A red HERMETIC full leg on main asks `convergence-bisect.yml` which commit did it
             # — with the sample, which the bisect first checks reproduces the failure.
             - uses: ./.github/actions/convergence-bisect-request
-              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'
+              if: failure() && inputs.mode == 'hermetic' && !inputs.identity-model && github.ref == 'refs/heads/main'
               with:
                   country:        ${{ inputs.country }}
                   code:           ${{ inputs.code }}

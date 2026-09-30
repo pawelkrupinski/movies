@@ -95,11 +95,11 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
   }
 
-  "the auto-bisect" should "be requested only by a red hermetic leg on main, from both jobs" in {
+  "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, from both jobs" in {
     Seq("sample", "convergence").foreach { job =>
       withClue(s"$job: ") {
         RepoFile.block(leg, job) should include("uses: ./.github/actions/convergence-bisect-request\n" +
-          "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'")
+          "              if: failure() && inputs.mode == 'hermetic' && !inputs.identity-model && github.ref == 'refs/heads/main'")
       }
     }
   }

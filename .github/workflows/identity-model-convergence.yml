@@ -1,0 +1,88 @@
+#
+# Country convergence, asked of the NEW model.
+#
+# The same legs `country-convergence.yml` runs — the same sample gate, full run and order-independence
+# replay, on the same recorded pair — with `identity-model: true`: the leg sets
+# `KINOWO_IDENTITY_CUTOVER` to its country, so scrapes land in the identity model's listing intake
+# and films are decided by its projection rather than by the staging/settle/reaper pipeline
+# (CountryConvergenceBehaviour's `rescrapeCutover`). Every claim the suite makes — a fixpoint under
+# identical re-scrapes, the same films whatever order the corpus arrives in, every archived cinema,
+# showtime and film emitted, coverage within 5% of production — is then a claim about the model a
+# country would be cut over to (docs/design/identity-cutover-runbook.md).
+#
+# TRIGGER-ONLY: dispatched by hand (Actions → Identity model convergence → Run workflow), never by Main
+# and never on a schedule. It is a measurement of a model no country serves yet, so a red leg is a
+# finding about that model: it requests no bisect (the leg gates the request on `identity-model`), files
+# no issue, and publishes nothing — the legs are hermetic. Its verdict statuses are named after this
+# workflow, so they never read as the pipeline suite's.
+#
+# Its own lane, beside `Country convergence`'s: a manual run must not queue behind — or hold back —
+# the suite Main dispatches. A newer dispatch replaces the one in flight; only the latest question
+# about the model is worth an answer. (IdentityModelConvergenceWiringSpec)
+#
+name: Identity model convergence
+
+on:
+    workflow_dispatch:
+
+concurrency:
+    group: identity-model-convergence
+    cancel-in-progress: true
+
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
+jobs:
+    # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
+    # rather than hours into a leg. (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Secrets present
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+
+    # `country-convergence.yml`'s rows exactly — IdentityModelConvergenceWiringSpec holds the two
+    # matrices equal, so a country added there is measured here too, on the same budgets and heap.
+    leg:
+        needs: preflight
+        name: ${{ matrix.country }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
+        uses: ./.github/workflows/country-convergence-leg.yml
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        with:
+            country:        ${{ matrix.country }}
+            code:           ${{ matrix.code }}
+            sample-command: ${{ matrix.sample }}
+            command:        ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
+            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            order-command:                 ${{ matrix.order }}
+            order-job-timeout-minutes:     ${{ matrix.orderJob || 135 }}
+            order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
+            heap:                          ${{ matrix.heap }}
+            identity-model:                true
+        # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
+        secrets: inherit

@@ -67,6 +67,14 @@ object RepoFile {
    * assert on one job's `needs:`, `if:`, `permissions:` or steps without reading a
    * neighbour's.
    */
+  /** A workflow's `matrix:` rows written as flow maps (`- { country: poland, code: pl, … }`),
+   *  each as its fields; a value is a bare word (quoted or expression values are not read). */
+  def matrixRows(yaml: String): Seq[Map[String, String]] =
+    """-\s*\{([^}]*)}""".r
+      .findAllMatchIn(block(yaml, "matrix"))
+      .map(row => """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
+      .toSeq
+
   def jobs(yml: String): Map[String, String] = {
     val jobsBlock = block(yml, "jobs")
     val Header    = """^(\s+)([A-Za-z][\w-]*):\s*$""".r
