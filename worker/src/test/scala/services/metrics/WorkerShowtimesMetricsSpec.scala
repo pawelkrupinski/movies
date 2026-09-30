@@ -3,7 +3,7 @@ package services.metrics
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Source, SourceData}
+import models.Helios
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.CorpusMetricsFixtures._
@@ -18,22 +18,11 @@ import services.metrics.CorpusMetricsFixtures._
  */
 class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
 
-  // Poznań: 3 upcoming slots (today+tomorrow=2, today=1), one past slot dropped.
-  // Wrocław: 1 upcoming slot (tomorrow).
-  private val corpus = Seq(
-    row("Today And Tomorrow", ready(Helios,         1, today, tomorrow)),
-    row("Today Only",         ready(KinoApollo,     2, today)),
-    row("Past Only",          ready(Rialto,         3, past)),
-    row("Wroclaw Tomorrow",   ready(HeliosMagnolia, 4, tomorrow)),
-  )
-
   private def gauge(text: String, city: String): Option[Double] =
-    text.linesIterator
-      .find(l => l.startsWith(s"${WorkerShowtimesMetrics.Name}{") && l.contains(s"""city="$city""""))
-      .map(_.trim.split("\\s+").last.toDouble)
+    PrometheusExposition.sample(text, WorkerShowtimesMetrics.Name, s"""city="$city",country="pl"""")
 
   "countAll" should "sum upcoming showtimes per city, dropping past slots" in {
-    val counts = WorkerShowtimesMetrics.countAll(corpus, models.City.all, clock, titleNormalizer)
+    val counts = WorkerShowtimesMetrics.countAll(upcomingCorpus, models.City.all, clock, titleNormalizer)
 
     // Poznań: (today+tomorrow) 2 + (today) 1 = 3; the past-only slot drops out.
     counts.getOrElse("poznan", 0)  shouldBe 3
@@ -48,9 +37,7 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
-    val pending = MovieRecord(data = Map[Source, SourceData](Helios -> slot(tomorrow))) // no tmdbId, no tmdbNoMatch
-    pending.readyToProject shouldBe false
-    val counts = WorkerShowtimesMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock, titleNormalizer)
+    val counts = WorkerShowtimesMetrics.countAll(Seq(pendingInPoznan), models.City.all, clock, titleNormalizer)
     counts.getOrElse("poznan", 0) shouldBe 0
   }
 
@@ -58,7 +45,7 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val metrics  = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
 
-    new WorkerCorpusScan(repositoryOf(corpus*), Seq(metrics)).sample()
+    new WorkerCorpusScan(repositoryOf(upcomingCorpus*), Seq(metrics)).sample()
     val text = PrometheusExposition.render(registry)
 
     gauge(text, "poznan")  shouldBe Some(3.0)

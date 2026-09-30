@@ -3,7 +3,6 @@ package services.metrics
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.CorpusMetricsFixtures._
@@ -20,22 +19,11 @@ import services.metrics.WorkerSourceFilmsMetrics.Scope
  */
 class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
 
-  // Same corpus as WebMovieMetricsSpec, with tmdbId set so the rows are ready.
-  private val corpus = Seq(
-    row("Today And Tomorrow", ready(Helios,         1, today, tomorrow)),
-    row("Today Only",         ready(KinoApollo,     2, today)),
-    row("Past Only",          ready(Rialto,         3, past)),
-    row("Wroclaw Tomorrow",   ready(HeliosMagnolia, 4, tomorrow)),
-  )
-
   private def gauge(text: String, city: String, scope: String): Option[Double] =
-    text.linesIterator
-      .find(l => l.startsWith(s"${WorkerSourceFilmsMetrics.Name}{") &&
-                 l.contains(s"""city="$city"""") && l.contains(s"""scope="$scope""""))
-      .map(_.trim.split("\\s+").last.toDouble)
+    PrometheusExposition.sample(text, WorkerSourceFilmsMetrics.Name, s"""city="$city",country="pl",scope="$scope"""")
 
   "countAll" should "count distinct ready films per city, by scope" in {
-    val counts = WorkerSourceFilmsMetrics.countAll(corpus, models.City.all, clock, titleNormalizer)
+    val counts = WorkerSourceFilmsMetrics.countAll(upcomingCorpus, models.City.all, clock, titleNormalizer)
 
     // Poznań: 2 films with a future showing (past-only drops out); 1 shows tomorrow.
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 2
@@ -46,11 +34,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
-    // A scraped-but-unresolved row plays tomorrow in Poznań, but the projector
-    // holds it back, so the source gauge must not count it either.
-    val pending = MovieRecord(data = Map[Source, SourceData](Helios -> slot(tomorrow))) // no tmdbId, no tmdbNoMatch
-    pending.readyToProject shouldBe false
-    val counts = WorkerSourceFilmsMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock, titleNormalizer)
+    val counts = WorkerSourceFilmsMetrics.countAll(Seq(pendingInPoznan), models.City.all, clock, titleNormalizer)
 
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 0
     counts.getOrElse(("poznan", Scope.Tomorrow), 0) shouldBe 0
@@ -60,7 +44,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val metrics  = new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
 
-    new WorkerCorpusScan(repositoryOf(corpus*), Seq(metrics)).sample()
+    new WorkerCorpusScan(repositoryOf(upcomingCorpus*), Seq(metrics)).sample()
     val text = PrometheusExposition.render(registry)
 
     gauge(text, "poznan", Scope.All)      shouldBe Some(2.0)

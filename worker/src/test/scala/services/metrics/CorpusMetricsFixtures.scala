@@ -2,7 +2,7 @@ package services.metrics
 
 import services.movies.SingleCountryNormalizer
 
-import models.{MovieRecord, Showtime, Source, SourceData}
+import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData}
 import services.movies.{InMemoryMovieRepository, MovieRepository, StoredMovieRecord}
 
 import java.time.{Clock, LocalDateTime, ZoneId}
@@ -35,6 +35,25 @@ object CorpusMetricsFixtures {
 
   def row(title: String, record: MovieRecord): StoredMovieRecord =
     StoredMovieRecord.synthesised(title, Some(2026), record, services.movies.SingleCountryNormalizer.titleNormalizer)
+
+  /** The upcoming-screenings corpus the films and showtimes gauges both count (mirroring
+   *  `WebMovieMetricsSpec`, with tmdbId set so every row is ready). Poznań: two films
+   *  with an upcoming slot — 3 slots, 1 film tomorrow — plus a past-only film that drops
+   *  out; Wrocław: one film, one slot, tomorrow. */
+  val upcomingCorpus: Seq[StoredMovieRecord] = Seq(
+    row("Today And Tomorrow", ready(Helios,         1, today, tomorrow)),
+    row("Today Only",         ready(KinoApollo,     2, today)),
+    row("Past Only",          ready(Rialto,         3, past)),
+    row("Wroclaw Tomorrow",   ready(HeliosMagnolia, 4, tomorrow)),
+  )
+
+  /** Scraped but unresolved — no tmdbId, no tmdbNoMatch — and playing tomorrow in
+   *  Poznań: the projector holds it back, so no source gauge may count it. */
+  val pendingInPoznan: StoredMovieRecord = {
+    val pending = MovieRecord(data = Map[Source, SourceData](Helios -> slot(tomorrow)))
+    require(!pending.readyToProject, "the pending row must fail the projector's gate")
+    row("Pending", pending)
+  }
 
   /** A read-only repository over these rows — the in-memory store production's cache
    *  tests already use, so the specs exercise the real `foreachRecord` contract. */
