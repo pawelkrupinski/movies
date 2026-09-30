@@ -685,6 +685,12 @@ class MongoMovieRepository(
     // row's absence must not act on a partial view, so one failed side read fails the scan
     // exactly as a failed `movies` batch does.
     var sideReadsComplete = true
+    // Where a scan's time goes, logged once per scan (the boot hydrate, the rare backstop): the
+    // restart's critical path runs through here, and a guess at its bottleneck already
+    // shipped once without moving it.
+    val wall = tools.Stopwatch.start()
+    val (slotReads, screeningReads, stitching) = (tools.Stopwatch.total(), tools.Stopwatch.total(), tools.Stopwatch.total())
+    var films = 0
     val moviesComplete = scanByKeyset(filter) { batch =>
       val ids = batch.map(_._id).toSet
       // `withShowtimes = false` skips this read entirely rather than discarding its result:
@@ -692,11 +698,11 @@ class MongoMovieRepository(
       // The two side reads are independent (each is `filmId $in` the page's ids), so they run at
       // once: in sequence they were most of a US boot's 16–21 s cache hydrate, one round-trip
       // after the other for every page.
-      val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(slots.map(_.findForFilmsChecked(ids))
-        .getOrElse((Map.empty[String, Map[String, SourceData]], true))))(using scala.concurrent.ExecutionContext.global)
+      val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(slotReads(slots.map(_.findForFilmsChecked(ids))
+        .getOrElse((Map.empty[String, Map[String, SourceData]], true)))))(using scala.concurrent.ExecutionContext.global)
       val (pageScr, scrOk) = if (!withShowtimes) (Map.empty[String, Map[String, Seq[Showtime]]], true)
-        else screenings.map(_.findForFilmsChecked(ids))
-          .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true))
+        else screeningReads(screenings.map(_.findForFilmsChecked(ids))
+          .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true)))
       val (pageSlots, slotsOk) = Await.result(slotsRead, Duration.Inf)
       if (!scrOk || !slotsOk) {
         sideReadsComplete = false
@@ -704,9 +710,16 @@ class MongoMovieRepository(
           s"${ids.size} film(s) (screenings ok=$scrOk, slots ok=$slotsOk) — treating the scan as " +
           "incomplete so a reconcile cannot prune films whose cinemas it could not see.")
       }
-      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
-        pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty))))
+      films += batch.size
+      onBatch(stitching(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
+        pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty)))))
     }
+    // A whole-corpus scan (the hydrate, the 5-min corpus census) at info; a catch-up's
+    // updated-since slice, which runs on every read-model sweep, only at debug.
+    val report: String => Unit = if (filter.toBsonDocument.isEmpty) logger.info(_) else logger.debug(_)
+    report(s"MovieRepository.scanStitched: $films film(s) in ${wall.millis}ms — slot reads " +
+      s"${slotReads.elapsed.toMillis}ms, screening reads ${screeningReads.elapsed.toMillis}ms (alongside), " +
+      s"stitch ${stitching.elapsed.toMillis}ms over ${stitching.count} page(s).")
     moviesComplete && sideReadsComplete
   }
 
