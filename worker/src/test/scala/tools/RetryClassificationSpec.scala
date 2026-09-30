@@ -1,5 +1,6 @@
 package tools
 
+import clients.tools.{ConstantHttpFetch, FailingHttpFetch, RequestLogHttpFetch}
 import com.mongodb.MongoWriteException
 import modules.wiring.EgressWiring
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +12,6 @@ import services.tasks.TaskWorker
 import tools.contracts.RetryClassificationTable
 import tools.contracts.RetryClassificationTable.{Row, Verdict}
 
-import java.util.concurrent.atomic.AtomicInteger
 import scala.util.{Failure, Try}
 
 /**
@@ -96,19 +96,12 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
    *  this way every time: a provider failure must never end the chain nor stop the next
    *  route answering, however often it repeats. */
   private def fallsThroughProxyLeg(failure: Throwable): Boolean = {
-    val fallbackCalls = new AtomicInteger
-    val fallback = new HttpFetch {
-      def get(url: String): String = { fallbackCalls.incrementAndGet(); "ok" }
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val fallback = new RequestLogHttpFetch(new ConstantHttpFetch("ok"))
     val chain   = EgressWiring.proxyPrimary(IndexedSeq(throwing(failure)), fallback)
     val answers = (1 to 10).map(_ => Try(chain.get(Url)).toOption)
-    answers.forall(_.contains("ok")) && fallbackCalls.get == 10 &&
+    answers.forall(_.contains("ok")) && fallback.calls.size == 10 &&
       !failure.isInstanceOf[HttpStatusException] && !EnrichmentRead.isAbsent(failure)
   }
 
-  private def throwing(failure: Throwable): HttpFetch = new HttpFetch {
-    def get(url: String): String                                      = throw failure
-    def post(url: String, body: String, contentType: String): String = throw failure
-  }
+  private def throwing(failure: Throwable): HttpFetch = new FailingHttpFetch((_, _) => failure)
 }

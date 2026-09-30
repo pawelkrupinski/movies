@@ -3,7 +3,8 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.{GetOnlyHttpFetch, HttpFetch, HttpStatusException, RealHttpFetch}
+import clients.tools.FailingHttpFetch
+import tools.{HttpStatusException, RealHttpFetch, RoutingHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -217,11 +218,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
-    val c = new ImdbClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String =
-        if (url.contains("v3.sg.media-imdb.com/suggestion/")) fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+    val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> fixture)))
     c.findId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
   }
 
@@ -230,9 +227,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // id"; it now propagates so the caller can retry rather than book a healthy
   // refresh over a dead source. See tools.EnrichmentRead.
   it should "propagate a network / HTTP failure rather than reporting 'no id'" in {
-    val c = new ImdbClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("HTTP 503")
-    })
+    val c = new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("HTTP 503")))
     a[RuntimeException] should be thrownBy c.findId("anything", None)
   }
 
@@ -290,22 +285,21 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   private val AkaSuggestionBody =
     """{"d":[{"id":"tt9999999","l":"IMDb Title","q":"feature","qid":"movie","rank":1}]}"""
 
+  private val GraphQlHost = "caching.graphql.imdb.com"
+
+  /** Suggests the AKA film; its details POST names `imdbDirector` as the director. */
+  private def akaFilmDirectedBy(imdbDirector: String) = new ImdbClient(http = new RoutingHttpFetch(Seq(
+    ImdbClient.SuggestionBase -> AkaSuggestionBody,
+    GraphQlHost               -> detailsBody(imdbDirector))))
+
   it should "use director to identify a film listed under a different title on IMDb" in {
-    val c = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = AkaSuggestionBody
-      override def post(url: String, body: String, contentType: String): String = detailsBody("Jakub Pączek")
-    })
-    val found = c.findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
+    val found = akaFilmDirectedBy("Jakub Pączek").findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
     found shouldBe Some("tt9999999")
   }
 
   it should "deburr director names on both sides when disambiguating" in {
-    val c = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = AkaSuggestionBody
-      // IMDb stores director name without diacritics; our record has Polish diacritics
-      override def post(url: String, body: String, contentType: String): String = detailsBody("Jakub Paczek")
-    })
-    val found = c.findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
+    // IMDb stores director name without diacritics; our record has Polish diacritics
+    val found = akaFilmDirectedBy("Jakub Paczek").findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
     found shouldBe Some("tt9999999")
   }
 
@@ -313,31 +307,22 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     // TMDB writes "Enyedi Ildikó"; IMDb "Ildikó Enyedi". A UK feed spells
     // "Paul Verhoven" where IMDb has "Paul Verhoeven". A substring test on the
     // folded strings saw a different person both times and refused the film.
-    def resolving(imdbDirector: String, ours: String) = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = AkaSuggestionBody
-      override def post(url: String, body: String, contentType: String): String = detailsBody(imdbDirector)
-    }).findId("Nasz Film", Some(2026), Set(ours))
+    def resolving(imdbDirector: String, ours: String) =
+      akaFilmDirectedBy(imdbDirector).findId("Nasz Film", Some(2026), Set(ours))
     resolving("Ildikó Enyedi", "Enyedi Ildikó")  shouldBe Some("tt9999999")
     resolving("Paul Verhoeven", "Paul Verhoven") shouldBe Some("tt9999999")
   }
 
   it should "return None when no candidate's director matches" in {
-    val c = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = AkaSuggestionBody
-      override def post(url: String, body: String, contentType: String): String = detailsBody("Anna Kowalska")
-    })
-    val found = c.findId("Nasz Film", Some(2026), Set("Jan Nowak"))
+    val found = akaFilmDirectedBy("Anna Kowalska").findId("Nasz Film", Some(2026), Set("Jan Nowak"))
     found shouldBe None
   }
 
   it should "skip director disambiguation when directors set is empty (no details POSTs)" in {
     // parseSuggestions returns None (no title match, no year-corroborated #1 hit),
     // directors empty → return None without calling details
-    val c = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = AkaSuggestionBody
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("details should not be called without directors")
-    })
+    // GET-only: a details POST throws.
+    val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq(ImdbClient.SuggestionBase -> AkaSuggestionBody)))
     c.findId("Nasz Film", Some(2026)) shouldBe None
   }
 
@@ -348,10 +333,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // A 403/429/5xx/timeout must now reach the caller; only a real "not found" is
   // still an answer. See tools.EnrichmentRead.
 
-  private def failingWith(exception: Throwable) = new ImdbClient(http = new HttpFetch {
-    def get(url: String): String = throw exception
-    override def post(url: String, body: String, contentType: String): String = throw exception
-  })
+  private def failingWith(exception: Throwable) = new ImdbClient(http = new FailingHttpFetch((_, _) => exception))
 
   private def statusError(code: Int) = new HttpStatusException(code, "POST", "https://caching.graphql.imdb.com/", None)
 
@@ -371,11 +353,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still report None when the title exists but carries no rating" in {
-    val c = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = ""
-      override def post(url: String, body: String, contentType: String): String =
-        """{"data":{"title":{"ratingsSummary":null}}}"""
-    })
+    val c = new ImdbClient(http = new RoutingHttpFetch(Seq(GraphQlHost -> """{"data":{"title":{"ratingsSummary":null}}}""")))
     c.lookup("tt0816692") shouldBe None
   }
 

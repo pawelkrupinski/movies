@@ -2,7 +2,7 @@ package clients.rialto
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.HttpFetch
+import clients.tools.UrlFragmentHttpFetch
 import services.cinemas.pl.RialtoClient
 
 import java.time.LocalDateTime
@@ -46,17 +46,12 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
     block("OJCZYZNA - pokaz przedpremierowy", "157192")
   ).mkString(s"\n$Sep\n")
 
-  private val http = new HttpFetch {
-    def get(url: String): String =
-      if (url.contains("/repertuar")) repertoire
-      else """id=(\d+)""".r.findFirstMatchIn(url).map(_.group(1)) match {
-        case Some("157099") => eventPage(seniora)
-        case Some("157098") => eventPage(regular)
-        case Some("157192") => eventPage(preview)
-        case other          => throw new IllegalArgumentException(s"unexpected url $url ($other)")
-      }
-    def post(url: String, body: String, contentType: String): String = ???
-  }
+  private val http = UrlFragmentHttpFetch(
+    "/repertuar" -> repertoire,
+    "id=157099"  -> eventPage(seniora),
+    "id=157098"  -> eventPage(regular),
+    "id=157192"  -> eventPage(preview)
+  )
 
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = new RialtoClient(http).fetch()

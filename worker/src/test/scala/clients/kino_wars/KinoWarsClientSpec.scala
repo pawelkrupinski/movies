@@ -1,15 +1,14 @@
 package clients.kino_wars
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, RequestLogHttpFetch}
 import models.KinoWars
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.KinoWarsClient
-import tools.{HttpFetch, HttpStatusException}
+import tools.HttpStatusException
 
 import java.time.LocalDateTime
-import scala.collection.mutable
 
 /** Replays the 2026-09-27 capture of Kino Wars' own repertoire
  *  (`kino.wysokiemazowieckie.pl/repertuar` + its `?start=15` second page) — one
@@ -19,18 +18,13 @@ import scala.collection.mutable
  *  RecordingHttpFetch over RealHttpFetch). */
 class KinoWarsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val requested = mutable.Buffer.empty[String]
-  private val http = new HttpFetch {
-    private val fixtures = new FakeHttpFetch("kino-wars")
-    def get(url: String): String = { requested += url; fixtures.get(url) }
-    def post(url: String, body: String, contentType: String): String = fixtures.post(url, body, contentType)
-  }
+  private val http = new RequestLogHttpFetch(new FakeHttpFetch("kino-wars"))
   private val movies = new KinoWarsClient(http).fetch()
 
   private def film(title: String) = movies.find(_.movie.title == title).value
 
   "KinoWarsClient" should "read every page of the paginated repertoire" in {
-    requested shouldBe Seq(KinoWarsClient.RepertoireUrl, s"${KinoWarsClient.RepertoireUrl}?start=15")
+    http.gets shouldBe Seq(KinoWarsClient.RepertoireUrl, s"${KinoWarsClient.RepertoireUrl}?start=15")
     movies.map(_.cinema).toSet shouldBe Set(KinoWars)
     movies.size shouldBe 12
     movies.flatMap(_.showtimes).size shouldBe 60

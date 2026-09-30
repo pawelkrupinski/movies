@@ -1,6 +1,7 @@
 package tools
 
 import ch.qos.logback.classic.Level
+import clients.tools.{ConstantHttpFetch, FailingHttpFetch}
 import ch.qos.logback.classic.spi.ILoggingEvent
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -37,15 +38,10 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     (result.get, events)
   }
 
-  private def failing(message: String): HttpFetch = new HttpFetch {
-    override def get(url: String): String = throw new java.io.FileNotFoundException(message)
-    override def post(url: String, body: String, contentType: String): String = throw new java.io.FileNotFoundException(message)
-  }
+  private def failing(message: String): HttpFetch =
+    new FailingHttpFetch((_, _) => new java.io.FileNotFoundException(message))
 
-  private val answering: HttpFetch = new HttpFetch {
-    override def get(url: String): String = "answer"
-    override def post(url: String, body: String, contentType: String): String = "answer"
-  }
+  private val answering: HttpFetch = new ConstantHttpFetch("answer")
 
   "a fallback chain" should "not warn when a later backend answers" in {
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering))

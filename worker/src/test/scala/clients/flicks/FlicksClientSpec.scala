@@ -2,7 +2,7 @@ package clients.flicks
 
 import models.{BarnCinemaDartingtonArtCentre, OdeonNorwich}
 import org.scalatest.OptionValues
-import clients.tools.{FakeHttpFetch, FixtureFile}
+import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.{FlicksClient, FlicksMarket}
@@ -108,7 +108,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "planChunks" should "discover the venue's advertised days far beyond the fixed 7-day grid" in {
     val client = new FlicksClient(
-      new ScriptedByUrl(url =>
+      new ScriptedByUrlHttpFetch(url =>
         if (url == NorwichProgrammeUrl) programmePage
         else throw new java.io.IOException("planChunks must not fetch per-day fragments")),
       "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(LocalDate.of(2026, 7, 19)))
@@ -128,7 +128,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val today  = LocalDate.of(2026, 5, 1)
     val capStr = today.plusDays(FlicksClient.MaxHorizonDays.toLong).toString
     val client = new FlicksClient(
-      new ScriptedByUrl(_ => programmePage),
+      new ScriptedByUrlHttpFetch(_ => programmePage),
       "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(today))
 
     val days = client.planChunks()
@@ -141,7 +141,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "THROW (failing the scrape) when the programme page can't be fetched" in {
     // No fixed-grid fallback: an index-page failure fails the whole scrape, so
     // recordCinemaScrape keeps last-known data rather than narrowing to a guess.
-    val pageDown = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 500"))
+    val pageDown = new ScriptedByUrlHttpFetch(_ => throw new java.io.IOException("HTTP 500"))
     a[java.io.IOException] should be thrownBy
       new FlicksClient(pageDown, "odeon-cinema-norwich", OdeonNorwich, Uk,
         today = Some(LocalDate.of(2026, 7, 11))).planChunks()
@@ -150,7 +150,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "THROW when the programme page carries no timetable block at all" in {
     // No timetable container => not the page we think we're parsing (markup drift,
     // an error page, a redirect). That IS a failure: throwing keeps last-known data.
-    val noTimetable = new ScriptedByUrl(_ => "<html><body>no timetable here</body></html>")
+    val noTimetable = new ScriptedByUrlHttpFetch(_ => "<html><body>no timetable here</body></html>")
     an[IllegalStateException] should be thrownBy
       new FlicksClient(noTimetable, "odeon-cinema-norwich", OdeonNorwich, Uk,
         today = Some(LocalDate.of(2026, 7, 11))).planChunks()
@@ -172,7 +172,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // Empty is safe: MovieCache.recordCinemaScrape bails on an empty result, so the
   // venue keeps its last-known listing either way.
   it should "return empty (not throw) when the timetable block is present but holds no day tabs" in {
-    val emptyVenue = new ScriptedByUrl(_ => emptyProgrammePage)
+    val emptyVenue = new ScriptedByUrlHttpFetch(_ => emptyProgrammePage)
     new FlicksClient(emptyVenue, "woolton-picture-house", OdeonNorwich, Uk,
       today = Some(LocalDate.of(2026, 7, 27))).planChunks() shouldBe empty
   }
@@ -184,7 +184,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // the FakeHttpFetch corpus.
   private val fake = new FakeHttpFetch("flicks")
 
-  private def programmeListing(days: String*) = new ScriptedByUrl(url =>
+  private def programmeListing(days: String*) = new ScriptedByUrlHttpFetch(url =>
     if (url == NorwichProgrammeUrl)
       days.map(d => s"""<div class="timetable__day" data-date="$d"></div>""").mkString("\n")
     else fake.get(url))
@@ -262,9 +262,5 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     movies.find(_.movie.title == "The Odyssey").value.showtimes.map(_.dateTime) shouldBe
       Seq(LocalDateTime.of(2026, 7, 28, 16, 0), LocalDateTime.of(2026, 7, 28, 19, 30))
     movies.find(_.movie.title == "Minions & Monsters").value.showtimes should have size 1
-  }
-
-  private class ScriptedByUrl(respond: String => String) extends tools.GetOnlyHttpFetch {
-    def get(url: String): String = respond(url)
   }
 }

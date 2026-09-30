@@ -1,13 +1,13 @@
 package clients.cinema_city
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import org.scalatest.OptionValues._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, Showtime}
 import services.cinemas.common.{DetailFetchOutcome, FilmDetail}
 import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper}
-import tools.{HttpFetch, HttpStatusException}
+import tools.HttpStatusException
 
 import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -234,10 +234,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // stamped fresh — so DetailReaper re-enqueues the film every tick, forever.
   // That is what held the live "Cinema City Enrichment" row at ~90% failures.
 
-  private def failingClient(status: Int) = new CinemaCityClient(new HttpFetch {
-    override def get(url: String): String = throw new HttpStatusException(status, "GET", url, None)
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }, titles = titleNormalizer)
+  private def failingClient(status: Int) = new CinemaCityClient(new FailingHttpFetch(status), titles = titleNormalizer)
 
   "a withdrawn detail page" should "surface its 404 rather than collapsing to None" in {
     val client = failingClient(404)

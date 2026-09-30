@@ -2,36 +2,26 @@ package clients.tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{FallbackHttpFetch, HttpFetch}
+import tools.{FallbackHttpFetch, HttpFetch, RoutingHttpFetch}
 
 import scala.collection.mutable
 
 class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
 
-  // In-memory backends parameterised by what they do on get/post —
-  // either return a stub body or throw a named exception. Lets each
-  // test arrange the failure shape it cares about without mocking
-  // HTTP at all.
-  private def ok(body: String): HttpFetch = new HttpFetch {
-    override def get(url: String): String = body
-    override def post(url: String, body: String, contentType: String): String = this.get(url)
-  }
+  // Backends that either answer a stub body or throw a named exception, so each
+  // test arranges the failure shape it cares about without mocking HTTP at all.
+  private def ok(body: String): HttpFetch = new ConstantHttpFetch(body)
   // `boom` not `fail` — `Assertions.fail` is inherited by every ScalaTest
   // suite, so a `private def fail` here would clash with the override.
-  private def boom(message: String): HttpFetch = new HttpFetch {
-    override def get(url: String): String = throw new RuntimeException(message)
-    override def post(url: String, body: String, contentType: String): String = this.get(url)
-  }
+  private def boom(message: String): HttpFetch = new FailingHttpFetch((_, _) => new RuntimeException(message))
 
   "FallbackHttpFetch" should "return the first backend's body when it succeeds" in {
-    val visited = mutable.ListBuffer.empty[String]
-    val tracking = new HttpFetch {
-      override def get(url: String): String = { visited += "primary"; "primary-body" }
-      override def post(url: String, body: String, contentType: String): String = this.get(url)
-    }
-    val chain = new FallbackHttpFetch(Seq("primary" -> tracking, "secondary" -> ok("secondary-body")))
+    val primary   = new RequestLogHttpFetch(ok("primary-body"))
+    val secondary = new RequestLogHttpFetch(ok("secondary-body"))
+    val chain = new FallbackHttpFetch(Seq("primary" -> primary, "secondary" -> secondary))
     chain.get("https://example") shouldBe "primary-body"
-    visited shouldBe Seq("primary")  // secondary never consulted
+    primary.gets shouldBe Seq("https://example")
+    secondary.calls shouldBe empty  // secondary never consulted
   }
 
   it should "roll over to the next backend when the first throws" in {
@@ -61,19 +51,10 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "exercise the same fallback for post as for get" in {
-    val visited = mutable.ListBuffer.empty[String]
-    val chain = new FallbackHttpFetch(Seq(
-      "primary"   -> boom("503"),
-      "secondary" -> new HttpFetch {
-        override def get(url: String): String = "get-body"
-        override def post(url: String, body: String, contentType: String): String = {
-          visited += s"$url|$body|$contentType"
-          "post-body"
-        }
-      }
-    ))
+    val secondary = new RoutingHttpFetch(Seq("https://x" -> "post-body"))
+    val chain = new FallbackHttpFetch(Seq("primary" -> boom("503"), "secondary" -> secondary))
     chain.post("https://x", "payload", "text/plain") shouldBe "post-body"
-    visited shouldBe Seq("https://x|payload|text/plain")
+    secondary.postBodies shouldBe Seq(("https://x", "payload", "text/plain"))
   }
 
   it should "refuse to construct with an empty backend list — wiring bug, not runtime fallback" in {

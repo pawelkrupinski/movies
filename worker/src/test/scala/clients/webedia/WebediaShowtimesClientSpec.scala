@@ -2,7 +2,7 @@ package clients.webedia
 
 import models.GermanCinema
 import org.scalatest.OptionValues
-import clients.tools.{FakeHttpFetch, FixtureFile}
+import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
@@ -134,7 +134,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   "planChunks" should "discover the venue's populated days beyond the fixed 7-day grid" in {
     val client = new WebediaShowtimesClient(
-      new ScriptedByUrl(url =>
+      new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/kinoprogramm/kino/")) venuePage
         else throw new java.io.IOException("planChunks must not fetch per-day pages")),
       WebediaMarket.Germany, "A0263", venue,
@@ -158,7 +158,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     // today set early enough that the page's last dates sit past the OLD 34-day cap.
     val today  = LocalDate.of(2026, 7, 10)
     val client = new WebediaShowtimesClient(
-      new ScriptedByUrl(_ => venuePage),
+      new ScriptedByUrlHttpFetch(_ => venuePage),
       WebediaMarket.Germany, "A0263", venue,
       today = Some(today))
 
@@ -175,7 +175,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val absurd  = today.plusYears(50).toString
     val page    = s"""<section data-showtimes-dates="[&quot;2026-07-11&quot;,&quot;$absurd&quot;]"></section>"""
     val client  = new WebediaShowtimesClient(
-      new ScriptedByUrl(_ => page), WebediaMarket.Germany, "A0263", venue, today = Some(today))
+      new ScriptedByUrlHttpFetch(_ => page), WebediaMarket.Germany, "A0263", venue, today = Some(today))
 
     val days = client.planChunks()
     days should contain("2026-07-11")
@@ -183,14 +183,14 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "fail the scrape (no grid fallback) when the venue page can't be fetched" in {
-    val pageDown = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 500"))
+    val pageDown = new ScriptedByUrlHttpFetch(_ => throw new java.io.IOException("HTTP 500"))
     a[java.io.IOException] should be thrownBy clientOver(pageDown).planChunks()
   }
 
   it should "fail the scrape when the venue page carries no data-showtimes-dates attribute" in {
     // A 200 that lost the attribute (Filmstarts markup change / block page) is a
     // discovery failure — throw rather than silently scrape zero days.
-    val noAttr = new ScriptedByUrl(_ => "<html><body>unexpected page</body></html>")
+    val noAttr = new ScriptedByUrlHttpFetch(_ => "<html><body>unexpected page</body></html>")
     an[IllegalStateException] should be thrownBy clientOver(noAttr).planChunks()
   }
 
@@ -200,7 +200,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   "fetch" should "assemble films for the venue via the showtimes endpoint" in {
     val cinemaxxWuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
     val client = new WebediaShowtimesClient(
-      new ScriptedByUrl(url =>
+      new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/kinoprogramm/kino/")) OneDayVenuePage
         else if (url.contains("d-2026-07-11")) fixture
         else throw new java.io.IOException(s"unexpected fetch: $url")),
@@ -223,10 +223,6 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   // fetch-failed is a fact about us — only the latter is an error.
   private val venue = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
 
-  private class ScriptedByUrl(respond: String => String) extends tools.GetOnlyHttpFetch {
-    def get(url: String): String = respond(url)
-  }
-
   /** A venue page advertising a single populated day — the per-day fixture then
    *  supplies that day's screenings. */
   private val OneDayVenuePage = """<section data-showtimes-dates="[&quot;2026-07-11&quot;]"></section>"""
@@ -235,13 +231,13 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     new WebediaShowtimesClient(http, WebediaMarket.Germany, "A0263", venue, today = Some(LocalDate.of(2026, 7, 11)))
 
   it should "FAIL when the whole scrape can't reach the host, rather than report zero films" in {
-    val allFailing = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 429"))
+    val allFailing = new ScriptedByUrlHttpFetch(_ => throw new java.io.IOException("HTTP 429"))
     a[java.io.IOException] should be thrownBy clientOver(allFailing).fetch()
   }
 
   it should "report an empty venue when the page lists no showtime days" in {
     // data-showtimes-dates="[]" is a legitimately empty venue, not a failure.
-    clientOver(new ScriptedByUrl(_ => """<section data-showtimes-dates="[]"></section>""")).fetch() shouldBe empty
+    clientOver(new ScriptedByUrlHttpFetch(_ => """<section data-showtimes-dates="[]"></section>""")).fetch() shouldBe empty
   }
 
   // ── chunked: one ScrapeChunk task per day, reduced into the venue listing ──
@@ -260,7 +256,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "throw a fetch failure so only that day's chunk task reschedules" in {
-    val failing = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 429"))
+    val failing = new ScriptedByUrlHttpFetch(_ => throw new java.io.IOException("HTTP 429"))
     a[java.io.IOException] should be thrownBy clientOver(failing).fetchChunk("2026-07-11")
   }
 
@@ -287,7 +283,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "throw from the in-process fetch when any day fails (the task path retries per-day instead)" in {
     // Venue page names two days; the second day's fetch fails.
-    val partial = new ScriptedByUrl(url =>
+    val partial = new ScriptedByUrlHttpFetch(url =>
       if (url.contains("/kinoprogramm/kino/")) """<section data-showtimes-dates="[&quot;2026-07-11&quot;,&quot;2026-07-12&quot;]"></section>"""
       else if (url.contains("d-2026-07-11")) fixture
       else throw new java.io.IOException("HTTP 429"))

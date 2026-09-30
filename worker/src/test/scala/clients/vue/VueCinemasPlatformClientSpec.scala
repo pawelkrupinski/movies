@@ -1,6 +1,6 @@
 package clients.vue
 
-import clients.tools.{FakeHttpFetch, FixtureFile}
+import clients.tools.{FakeHttpFetch, FixtureFile, RequestLogHttpFetch}
 import models.VueCinemasIslington
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -140,24 +140,24 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     new VueCinemasPlatformClient(http, MyVue, IslingtonCinemaId, VueCinemasIslington)
 
   "fetch" should "return the venue's films when the session cookie is already warm" in {
-    val warm   = new CountingFetch(new FakeHttpFetch("vue"), failFirstGet = false)
+    val warm   = new RequestLogHttpFetch(new FakeHttpFetch("vue"))
     val movies = client(warm).fetch()
 
     movies.map(_.movie.title) should contain("The Odyssey")
     movies.size shouldBe 37
-    warm.gets shouldBe 1
-    warm.posts shouldBe 0   // no pointless token POST when the jar already has the cookie
+    warm.gets.size shouldBe 1
+    warm.posts shouldBe empty   // no pointless token POST when the jar already has the cookie
   }
 
   it should "mint a token via POST and retry once when the films call is rejected" in {
     // Cold connection: the films GET 401s until POST /auth/token sets the cookie.
-    val cold   = new CountingFetch(new FakeHttpFetch("vue"), failFirstGet = true)
+    val cold   = new RequestLogHttpFetch(new RejectsFirstGet(new FakeHttpFetch("vue")))
     val movies = client(cold).fetch()
 
     movies.size shouldBe 37
-    cold.posts       shouldBe 1                       // once per fetch(), never per film
-    cold.postedUrls  shouldBe Seq("https://www.myvue.com/api/microservice/auth/token")
-    cold.gets        shouldBe 2                       // rejected attempt + the retry
+    // One POST per fetch(), never per film.
+    cold.posts     shouldBe Seq("https://www.myvue.com/api/microservice/auth/token")
+    cold.gets.size shouldBe 2                         // rejected attempt + the retry
   }
 
   it should "declare its scrape host and count as a chain" in {
@@ -167,23 +167,15 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     scraper.cinema      shouldBe VueCinemasIslington
   }
 
-  /** Counts calls and optionally rejects the first GET the way the live API does
-   *  without a `microservicesToken` cookie (HTTP 401 → the fetch throws). */
-  private class CountingFetch(delegate: HttpFetch, failFirstGet: Boolean) extends HttpFetch {
-    var gets  = 0
-    var posts = 0
-    var postedUrls: Seq[String] = Seq.empty
+  /** Rejects the first GET the way the live API does without a `microservicesToken`
+   *  cookie (HTTP 401 → the fetch throws), then answers from `delegate`. */
+  private class RejectsFirstGet(delegate: HttpFetch) extends HttpFetch {
+    private val rejected = new java.util.concurrent.atomic.AtomicBoolean(false)
 
-    def get(url: String): String = {
-      gets += 1
-      if (failFirstGet && gets == 1) throw new java.io.IOException(s"HTTP 401 for $url")
-      delegate.get(url)
-    }
+    def get(url: String): String =
+      if (rejected.compareAndSet(false, true)) throw new java.io.IOException(s"HTTP 401 for $url")
+      else delegate.get(url)
 
-    def post(url: String, body: String, contentType: String): String = {
-      posts += 1
-      postedUrls = postedUrls :+ url
-      delegate.post(url, body, contentType)
-    }
+    def post(url: String, body: String, contentType: String): String = delegate.post(url, body, contentType)
   }
 }

@@ -1,6 +1,6 @@
 package clients
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -67,10 +67,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
    *  message, so a test can prove WHICH seam a scraper egressed through by catching
    *  it (Vue POSTs its token, so POST must be tagged too). */
-  private def probe(tag: String): HttpFetch = new HttpFetch {
-    def get(url: String): String = throw new RuntimeException(s"SEAM:$tag GET $url")
-    def post(url: String, body: String, contentType: String): String = throw new RuntimeException(s"SEAM:$tag POST $url")
-  }
+  private def probe(tag: String): HttpFetch =
+    new FailingHttpFetch((method, url) => new RuntimeException(s"SEAM:$tag $method $url"))
 
   /** The `SEAM:` tag reachable anywhere in a throwable's cause chain. */
   private def seamChain(t: Throwable): String =

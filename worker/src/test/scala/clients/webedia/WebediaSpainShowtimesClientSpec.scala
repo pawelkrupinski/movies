@@ -1,6 +1,6 @@
 package clients.webedia
 
-import clients.tools.{FakeHttpFetch, FixtureFile}
+import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import models.SpanishCinema
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -265,12 +265,12 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   "sourceUrl" should "point at the Spanish venue-page path" in {
-    clientOver(new ScriptedByUrl(_ => venuePage)).sourceUrl.value shouldBe
+    clientOver(new ScriptedByUrlHttpFetch(_ => venuePage)).sourceUrl.value shouldBe
       "https://www.sensacine.com/cines/cine/E0291/"
   }
 
   "planChunks" should "read the venue page's advertised days" in {
-    val days = clientOver(new ScriptedByUrl(url =>
+    val days = clientOver(new ScriptedByUrlHttpFetch(url =>
       if (url.contains("/cines/cine/")) venuePage
       else throw new java.io.IOException("planChunks must not fetch per-day pages"))).planChunks()
 
@@ -292,10 +292,6 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     films.map(_.cinema).toSet shouldBe Set(venue)
     all(films.map(_.externalIds.keySet)) should contain("webedia")
     all(films.flatMap(_.showtimes).map(_.dateTime.toLocalDate)) should be(LocalDate.of(2026, 9, 2))
-  }
-
-  private class ScriptedByUrl(respond: String => String) extends tools.GetOnlyHttpFetch {
-    def get(url: String): String = respond(url)
   }
 
   private def clientOver(http: tools.HttpFetch) =
