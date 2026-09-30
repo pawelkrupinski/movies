@@ -91,13 +91,13 @@ object WorkerShowtimesMetrics {
     private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
     def accept(row: CorpusRow): Unit =
-      row.screenings(normalizer).foreach(_.foreach { screenings =>
-        // Each CityScreening is (film, city, cinema); sum its upcoming slots into
-        // the owning city. A slot belongs to exactly one city, so the per-city
+      row.venues(normalizer).foreach(_.foreach { venues =>
+        // Each venue is one (film, city, cinema) row; sum its upcoming showtimes into
+        // the owning city. A venue belongs to exactly one city, so the per-city
         // series sum to the general total without double-counting.
-        screenings.groupBy(_.city).foreach { case (citySlug, scs) =>
+        venues.groupBy(_.citySlug).foreach { case (citySlug, inCity) =>
           nowIn.get(citySlug).foreach { now =>
-            val upcoming = scs.iterator.flatMap(_.showtimes).count(_.isUpcoming(now))
+            val upcoming = inCity.iterator.flatMap(_.showtimes).count(_.isUpcoming(now))
             if (upcoming > 0) acc(citySlug) += upcoming
           }
         }

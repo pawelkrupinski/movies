@@ -157,24 +157,25 @@ trait CorpusRowSampler {
   def publish(scanComplete: Boolean): Unit
 }
 
-/** One corpus row as the scan hands it to every collector: the stored row, and the screenings the
- *  read model would project from it — built at most ONCE per row however many collectors ask, and
- *  only if one does. Two do (films served, upcoming showtimes), and each used to project every row
- *  itself: on the US worker a pass was 29% of the worker's CPU and 9 GB of allocation (2026-09-30),
- *  the projection its costliest step. `None` for a row not ready to project, or one that fails to —
- *  the rows the projector itself skips. */
+/** One corpus row as the scan hands it to every collector: the stored row, and its venues as the
+ *  read model partitions them — each card's venues, their city and showtimes, the row itself not
+ *  built — derived at most ONCE per row however many collectors ask, and only if one does. Two do
+ *  (films served, upcoming showtimes), and each used to project every row itself: on the US worker
+ *  a pass was 29% of the worker's CPU and 9 GB of allocation (2026-09-30). The counts need a venue's
+ *  city and showtime SET only, so the row's ordering, listing keys and link are never built.
+ *  `None` for a row not ready to project, or one that fails to — the rows the projector skips. */
 final class CorpusRow(val stored: StoredMovieRecord) {
-  private var projected: Option[(services.movies.TitleNormalizer, Option[Seq[Seq[models.CityScreening]]])] = None
+  private var partitioned: Option[(services.movies.TitleNormalizer, Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]])] = None
 
-  /** The row's screenings as `normalizer` folds its titles. Shared only with a collector asking
-   *  through the SAME normalizer — the wiring hands every collector of a country its one. */
-  def screenings(normalizer: services.movies.TitleNormalizer): Option[Seq[Seq[models.CityScreening]]] =
-    projected match {
+  /** The row's cards, each as its venues, as `normalizer` folds its titles. Shared only with a
+   *  collector asking through the SAME normalizer — the wiring hands every collector of a country its one. */
+  def venues(normalizer: services.movies.TitleNormalizer): Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]] =
+    partitioned match {
       case Some((by, cards)) if by eq normalizer => cards
       case _ =>
         val cards = Option.when(stored.record.readyToProject)(
-          scala.util.Try(services.readmodel.ReadModelProjection.screeningsAll(stored, normalizer)).toOption).flatten
-        projected = Some((normalizer, cards))
+          scala.util.Try(services.readmodel.ReadModelProjection.partition(stored, normalizer).venuesAll).toOption).flatten
+        partitioned = Some((normalizer, cards))
         cards
     }
 }

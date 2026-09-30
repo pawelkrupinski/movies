@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{City, CityScreening}
+import models.City
 import services.movies.StoredMovieRecord
 
 import java.time.{Clock, LocalDateTime}
@@ -99,12 +99,12 @@ object WorkerSourceFilmsMetrics {
       val now = LocalDateTime.now(clock.withZone(c.zoneId)); c.slug -> (now, now.toLocalDate.plusDays(1)) }.toMap
     private val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
 
-    // Only the SCREENINGS half is needed to count qualifying cards per city — `screeningsAll`
-    // skips the `resolve`/synopsis/ratings materialisation `projectAll` does — and the row's
-    // projection is shared with the showtimes census ([[CorpusRow]]).
+    // Only the venues' showtimes are needed to count qualifying cards per city — `venuesAll`
+    // skips the `resolve`/synopsis/ratings materialisation `projectAll` does, and the rows too —
+    // and the row's partition is shared with the showtimes census ([[CorpusRow]]).
     def accept(row: CorpusRow): Unit =
-      row.screenings(normalizer).foreach(_.foreach { screenings =>
-        qualifyingKeys(screenings, clocks).foreach(key => acc(key) += 1)
+      row.venues(normalizer).foreach(_.foreach { venues =>
+        qualifyingKeys(venues, clocks).foreach(key => acc(key) += 1)
       })
 
     def counts: Map[(String, String), Int] = acc.toMap
@@ -122,14 +122,14 @@ object WorkerSourceFilmsMetrics {
    *  city it has any upcoming showtime in, `tomorrow` for each city it shows in on
    *  that city's local tomorrow. The two scopes are independent — a card can hit
    *  both — and a city the card never plays in contributes nothing. */
-  private def qualifyingKeys(screenings: Seq[CityScreening],
+  private def qualifyingKeys(venues:     Seq[services.readmodel.ReadModelProjection.VenueScreening],
                              clocks:     Map[String, (LocalDateTime, java.time.LocalDate)]): Set[(String, String)] =
     // `.toSeq` before flatMap: a Map#flatMap returning (citySlug, scope) pairs would
     // rebuild a Map keyed by citySlug, collapsing a city's `all` and `tomorrow` keys
     // into one (last wins). A Seq keeps both.
-    screenings.groupBy(_.city).toSeq.flatMap { case (citySlug, scs) =>
+    venues.groupBy(_.citySlug).toSeq.flatMap { case (citySlug, inCity) =>
       clocks.get(citySlug).toSeq.flatMap { case (now, tomorrow) =>
-        val showtimes = scs.iterator.flatMap(_.showtimes).toSeq
+        val showtimes = inCity.iterator.flatMap(_.showtimes).toSeq
         Seq(
           Option.when(showtimes.exists(_.isUpcoming(now)))(citySlug -> Scope.All),
           Option.when(showtimes.exists(_.dateTime.toLocalDate == tomorrow))(citySlug -> Scope.Tomorrow)

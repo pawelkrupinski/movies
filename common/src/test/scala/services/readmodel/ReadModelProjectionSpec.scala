@@ -81,6 +81,22 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       ReadModelProjection.screeningsAll(renamedStored, titleNormalizer).flatten.map(r => (r._id, r.showtimes))
   }
 
+  // The corpus census counts a venue's showtimes off its partitioned view, never building the row,
+  // so the view must be the row's own city and showtime SET — order apart — or the census and the
+  // read model it is compared against would count different things.
+  it should "count, off its venue view, the city and showtime set its row lists" in {
+    val reversed = StoredMovieRecord.fromStorage(
+      "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
+    Seq(renamedStored, reversed, stored).foreach { row =>
+      ReadModelProjection.partition(row, titleNormalizer).venuesAll.flatten.foreach { venue =>
+        val built = venue.screening
+        venue.citySlug shouldBe built.city
+        venue.showtimes.toSet shouldBe built.showtimes.toSet
+        venue.showtimes should have size built.showtimes.size
+      }
+    }
+  }
+
   // The identity migration's dual write into the read model (§16): the row names every listing
   // its showtimes come from — here two, since the venue's two slots are unioned into one row —
   // by the same key the slots' side rows are stamped with, whatever order the record holds them in.

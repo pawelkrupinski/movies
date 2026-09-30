@@ -175,6 +175,13 @@ object ReadModelProjection {
     private lazy val listingKeys: Seq[String] =
       slots.flatMap(ListingKey.ofVenueSlot(cinema, _)).map(ListingKey.serialised).distinct.sorted
 
+    /** The city this venue's row is filed under. */
+    def citySlug: String = city.slug
+
+    /** The venue's showtimes across its slots, each once — the SET its row lists, before the
+     *  row's canonical ordering. What a census counts, without building the row. */
+    def showtimes: Seq[Showtime] = slots.flatMap(_.showtimes).distinct
+
     /** Showtimes are sorted into a canonical order so the row is a pure function of the
      *  showtime SET, not of upstream scrape order. */
     def screening: CityScreening = CityScreening(
@@ -185,8 +192,7 @@ object ReadModelProjection {
       // The first slot that names one, in the slots' own order, so a rename that drops
       // the link does not blank an address the other slot still carries.
       filmUrl   = slots.iterator.flatMap(_.filmUrl).nextOption(),
-      showtimes = slots.flatMap(_.showtimes).distinct
-        .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(","))),
+      showtimes = showtimes.sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(","))),
       listingKeys = listingKeys
     )
   }

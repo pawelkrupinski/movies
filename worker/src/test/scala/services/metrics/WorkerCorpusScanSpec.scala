@@ -195,7 +195,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val normalizer = SingleCountryNormalizer.titleNormalizer   // one per country, as the wiring hands every collector
     final class Reading extends CorpusMetricsCollector {
       def startSample(): CorpusRowSampler = new CorpusRowSampler {
-        def accept(row: CorpusRow): Unit         = row.screenings(normalizer).foreach(seen += _)
+        def accept(row: CorpusRow): Unit         = row.venues(normalizer).foreach(seen += _)
         def publish(scanComplete: Boolean): Unit = ()
       }
     }
