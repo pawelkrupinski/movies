@@ -4,7 +4,6 @@ import models.MovieRecord
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators.genRows
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `FilmCanonicalizer` partitions a row SET: whatever order the rows arrive in,
@@ -14,6 +13,10 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class FilmCanonicalizerPropertySpec extends IdentityPropertySpec {
 
   private type Row = (CacheKey, MovieRecord)
+
+  /** One normalizer for the suite: `SingleCountryNormalizer.titleNormalizer` builds a new one per
+   *  reference, which was a rule-set compile (and cold memo caches) per call of every property. */
+  private val titleNormalizer = SingleCountryNormalizer.titleNormalizer
 
   private def asPartition(clusters: Seq[Seq[Row]]): Set[Set[CacheKey]] =
     clusters.map(_.map(_._1).toSet).toSet

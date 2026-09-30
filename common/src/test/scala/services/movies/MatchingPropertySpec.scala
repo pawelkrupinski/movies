@@ -4,7 +4,6 @@ import models._
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators.{genFilmEvidence, genCandidate}
-import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.{FilmEvidence, Verdict}
 
 /**
@@ -22,6 +21,9 @@ class MatchingPropertySpec extends IdentityPropertySpec {
   import CanonicalizerRows._
 
   private def tokens(t: String) = TitleContainment.tokens(t)
+
+  /** One normalizer for the suite, not a rule-set compile per property case. */
+  private val titleNormalizer = SingleCountryNormalizer.titleNormalizer
 
   // ── Instalments ────────────────────────────────────────────────────────────
 

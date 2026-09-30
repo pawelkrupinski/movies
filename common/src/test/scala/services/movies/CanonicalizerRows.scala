@@ -1,7 +1,6 @@
 package services.movies
 
 import models._
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Corpus rows in the shapes `FilmCanonicalizer` decides over — a resolved row, an
@@ -15,6 +14,10 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object CanonicalizerRows {
 
   type Row = (CacheKey, MovieRecord)
+
+  /** Held, not rebuilt per key: `SingleCountryNormalizer.titleNormalizer` compiles a rule set
+   *  per reference, and the matching properties key hundreds of rows. Safe across threads. */
+  private val titleNormalizer: TitleNormalizer = SingleCountryNormalizer.titleNormalizer
 
   def cacheKey(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)
 

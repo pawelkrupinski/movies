@@ -2,8 +2,7 @@ package services
 
 import models._
 import org.scalacheck.Gen
-import services.movies.{CacheKey, MovieRecordMerge}
-import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.movies.{CacheKey, MovieRecordMerge, SingleCountryNormalizer, TitleNormalizer}
 import services.resolution.{Candidate, FilmEvidence}
 
 import java.time.LocalDateTime
@@ -25,6 +24,12 @@ import java.util.Locale
  * a cleanup rather than a merge decision, and the scrapers never store one.
  */
 object IdentityGenerators {
+
+  /** The one normalizer every generated key is keyed under. Held, not rebuilt per generated key:
+   *  building one costs a rule-set compile and starts its memo caches cold, and a property draws
+   *  hundreds of keys. Shared by the property specs that draw from here; a normalizer is safe
+   *  across threads, and its caches hold what the same rules compute whichever spec fills them. */
+  private val titleNormalizer: TitleNormalizer = SingleCountryNormalizer.titleNormalizer
 
   val cinemas: Seq[Cinema] = Seq(Multikino, Helios, KinoApollo, KinoMuza)
 
