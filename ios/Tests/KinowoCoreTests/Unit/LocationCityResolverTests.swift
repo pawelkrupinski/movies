@@ -59,6 +59,16 @@ final class LocationCityResolverTests: XCTestCase {
         )
     }
 
+    /// Poll until the resolver has reached the state `condition` names — it
+    /// issues its CoreLocation commands only once it is awaiting the outcome.
+    private func waitUntil(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
+        let deadline = Date().addingTimeInterval(5)
+        while !condition() {
+            guard Date() < deadline else { return XCTFail("resolver never reached the awaited state", file: file, line: line) }
+            try? await Task.sleep(nanoseconds: 2_000_000)
+        }
+    }
+
     private let cities = [
         City(slug: "poznan", name: "Poznań", lat: 52.4064, lon: 16.9252, country: "pl"),
         City(slug: "warszawa", name: "Warszawa", lat: 52.2297, lon: 21.0122, country: "pl"),
@@ -72,20 +82,20 @@ final class LocationCityResolverTests: XCTestCase {
     /// meant to skip.
     func testSlowPermissionGrantStillResolvesTheDetectedCity() async {
         let requester = RecordingLocationRequester(status: .notDetermined)
-        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.2)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.1)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
+        await waitUntil { requester.authorizationRequests == 1 }
 
         // The user takes longer than the fix deadline to answer the dialog.
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        try? await Task.sleep(nanoseconds: 250_000_000)
         XCTAssertEqual(requester.authorizationRequests, 1)
         XCTAssertEqual(requester.locationRequests, 0, "no fix is asked for until the user has answered")
 
         requester.authorizationStatus = granted
         resolver.authorizationChanged(to: granted)
         // The held fix is read off the main thread first (none here), then the fix is asked for.
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 }
         XCTAssertEqual(requester.locationRequests, 1, "the grant is what asks for the fix")
         resolver.deliverFix(lat: 52.4064, lon: 16.9252)
 
@@ -97,7 +107,7 @@ final class LocationCityResolverTests: XCTestCase {
     /// authorized, asked, nothing came back.
     func testAuthorizedButNoFixTimesOutToUnavailable() async {
         let requester = RecordingLocationRequester(status: granted)
-        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.2)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.05)
 
         let outcome = await resolver.resolve(in: "pl", cities: cities)
 
@@ -111,7 +121,7 @@ final class LocationCityResolverTests: XCTestCase {
     /// — must not leave the gate spinning forever.
     func testUnansweredPermissionDialogGivesUpAfterTheAuthorizationDeadline() async {
         let requester = RecordingLocationRequester(status: .notDetermined)
-        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 0.2, fixTimeout: 30)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 0.05, fixTimeout: 30)
 
         let outcome = await resolver.resolve(in: "pl", cities: cities)
 
@@ -137,8 +147,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.authorizationRequests == 1 } // the dialog is up
         resolver.authorizationChanged(to: .denied)
 
         let result = await outcome
@@ -152,8 +161,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         resolver.deliverFix(lat: 0, lon: 0)
 
         let result = await outcome
@@ -170,8 +178,7 @@ final class LocationCityResolverTests: XCTestCase {
         let crossCountryCities = cities + [berlin]
 
         async let outcome = resolver.resolveAnyCountry(cities: crossCountryCities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         resolver.deliverFix(lat: 52.5200, lon: 13.4050)
 
         let result = await outcome
@@ -186,8 +193,7 @@ final class LocationCityResolverTests: XCTestCase {
         let berlin = City(slug: "berlin", name: "Berlin", lat: 52.5200, lon: 13.4050, country: "de")
 
         async let outcome = resolver.resolveAnyCountry(cities: cities + [berlin])
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         resolver.deliverFix(lat: 0, lon: 0)
 
         let result = await outcome
@@ -221,8 +227,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         XCTAssertEqual(requester.locationRequests, 1)
         resolver.deliverFix(lat: 52.4064, lon: 16.9252)
 
@@ -237,7 +242,7 @@ final class LocationCityResolverTests: XCTestCase {
             status: granted,
             location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 3600)
         )
-        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.2)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.05)
 
         let outcome = await resolver.resolve(in: "pl", cities: cities)
 
@@ -252,8 +257,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         XCTAssertEqual(requester.locationRequests, 1)
 
         resolver.fixFailed(transient: true)
@@ -270,8 +274,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let outcome = resolver.resolve(in: "pl", cities: cities)
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         resolver.fixFailed(transient: false)
 
         let result = await outcome
@@ -286,8 +289,7 @@ final class LocationCityResolverTests: XCTestCase {
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
 
         async let coordinate = resolver.resolveIfAuthorized()
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil { requester.locationRequests == 1 } // the resolver is now awaiting the fix
         resolver.deliverFix(lat: 52.2297, lon: 21.0122)
 
         let result = await coordinate
@@ -316,7 +318,7 @@ final class LocationCityResolverTests: XCTestCase {
             status: granted,
             location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 3600)
         )
-        let outcome = await LocationCityResolver(requester: stale, authorizationTimeout: 30, fixTimeout: 0.2)
+        let outcome = await LocationCityResolver(requester: stale, authorizationTimeout: 30, fixTimeout: 0.05)
             .resolve(in: "pl", cities: cities)
         XCTAssertEqual(outcome, .city(cities[1]), "Warszawa, from the stale fix")
         XCTAssertEqual(stale.mainThreadLocationReads, 0, "the stale fallback was read on the main thread")
@@ -337,7 +339,7 @@ final class LocationCityResolverTests: XCTestCase {
     /// not the gate's `Outcome` one.
     func testResolveIfAuthorizedTimesOutToNil() async {
         let requester = RecordingLocationRequester(status: granted)
-        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.2)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.05)
 
         let coordinate = await resolver.resolveIfAuthorized()
 
