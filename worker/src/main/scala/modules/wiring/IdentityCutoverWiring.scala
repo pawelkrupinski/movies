@@ -63,7 +63,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool),
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityCutover.forCountry(country.code),
-      clock       = clock)
+      clock       = clock,
+      wrote       = () => venueDetailSlots.refresh())
   }
 
   /** `handlers` as this country runs them: unchanged, or — cut over — with the old identity

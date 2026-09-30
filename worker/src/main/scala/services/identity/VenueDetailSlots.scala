@@ -15,9 +15,10 @@ import services.tasks.{EnrichDetailsTasks, StagingTaskKeys}
  * the model waits for it: a page not asked yet is a gap (`None`), re-asked when the enrichment
  * announces it (`VenueDetailRead` → [[keyOf]]).
  *
- * A slot answers only once its page was ASKED — stamped by the enrichment itself: a film row's detail
- * read marker (`EnrichDetailsTasks.readMarker`, set when the page merged) or its dedup stamp alone
- * (the page was gone: asked, no detail), a staged row's `StagingTaskKeys.detailKey`. Until then the
+ * A slot answers only once its page was ASKED — stamped by the enrichment itself, on the page
+ * (`EnrichDetailsTasks.pageRead` / `pageGone`, so the answer moves with the listing when rows
+ * regroup), or — for what was enriched before pages had stamps — on the film row it was on (its read
+ * marker, its dedup stamp alone for a gone page) or a staged row's `StagingTaskKeys.detailKey`. Until then the
  * slot holds only the listing's own values, which are no answer about the page.
  *
  * The slot answers with the listing's values merged with the page's (listing values win, the page
@@ -25,7 +26,7 @@ import services.tasks.{EnrichDetailsTasks, StagingTaskKeys}
  * Indexed by (enricher group, page) over every row, rebuilt when the cache or an announced page moved.
  */
 final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository, freshness: FreshnessStore,
-                             enrichers: Seq[DetailEnricher]) {
+                             enrichers: Seq[DetailEnricher], changed: String => Unit = _ => ()) {
   import VenueDetailSlots._
 
   private val enricherOf = enrichers.map(e => e.cinema -> e).toMap
@@ -33,15 +34,18 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
   /** What the enrichment said about `page` for `enricher`'s group: `None` while it has not asked;
    *  `Some(None)` when it asked and the page had nothing (gone); `Some(Some(facts))` otherwise. */
   def answer(enricher: DetailEnricher, page: String): Option[Option[FilmDetail]] =
-    index.getOrElse((enricher.detailGroup, page), Nil).iterator.map(_.answer(freshness)).collectFirst { case Some(a) => a }
-      .orElse(index.getOrElse((enricher.detailGroup, page), Nil).iterator.map(_.gone(freshness)).collectFirst { case true => None })
+    answerOf(index.getOrElse((enricher.detailGroup, page), Nil))
 
-  /** The page moved (the enrichment announced it): rebuild on the next ask. */
-  def changed(): Unit = { dirty = true }
+  /** Rebuild now, and report (`changed`, the page's [[keyOf]]) every page whose answer differs from the
+   *  last build's — fetched, found gone, or put on a row the slots read by a projection: the model
+   *  re-asks exactly those. The enrichment's announcements, each projection's writes and each shadow
+   *  tick call it. The first build is the baseline and reports nothing. */
+  def refresh(): Unit = synchronized { dirty = true; index; () }
 
   @volatile private var dirty                     = true
   @volatile private var builtAt: Option[java.time.Instant] = None
   @volatile private var built: Map[(String, String), Seq[Entry]] = Map.empty
+  private var answered: Option[Map[(String, String), Option[Option[FilmDetail]]]] = None
 
   private def index: Map[(String, String), Seq[Entry]] = synchronized {
     val version = cache.lastModified
@@ -49,21 +53,35 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
       dirty   = false
       builtAt = Some(version)
       built   = build()
+      val now = built.view.mapValues(answerOf).toMap
+      answered.foreach(before => (before.keySet ++ now.keySet).filter(k => before.get(k).flatten != now.get(k).flatten)
+        .foreach { case (group, page) => changed(keyOf(group, page)) })
+      answered = Some(now)
     }
     built
   }
 
+  private def answerOf(entries: Seq[Entry]): Option[Option[FilmDetail]] =
+    entries.iterator.map(_.answer(freshness)).collectFirst { case Some(a) => a }
+      .orElse(entries.iterator.map(_.gone(freshness)).collectFirst { case true => None })
+
   private def build(): Map[(String, String), Seq[Entry]] = {
+    // The page's own stamps first; the film row's are what enrichment wrote before pages had their
+    // own, and name the page only while it is still on the row that was enriched.
     val films = cache.entries.flatMap { case (key, record) =>
       entriesOf(record).map { case (e, page, slot) =>
         val asked = EnrichDetailsTasks.dedupKey(e.detailGroup, key)
-        (e.detailGroup, page) -> Entry(slot, read = Some(EnrichDetailsTasks.readMarker(asked)), gone = Some(asked))
+        (e.detailGroup, page) -> Entry(slot,
+          read = Seq(EnrichDetailsTasks.pageRead(e.detailGroup, page), EnrichDetailsTasks.readMarker(asked)),
+          gone = Seq(EnrichDetailsTasks.pageGone(e.detailGroup, page), asked))
       }
     }
     val staged = staging.findAll().flatMap { row =>
       entriesOf(row.record).map { case (e, page, slot) =>
-        (e.detailGroup, page) -> Entry(slot, read = Some(StagingTaskKeys.detailKey(staging.normalizer.sanitize(row.title), e.cinema.displayName)),
-          gone = None)
+        (e.detailGroup, page) -> Entry(slot,
+          read = Seq(EnrichDetailsTasks.pageRead(e.detailGroup, page),
+            StagingTaskKeys.detailKey(staging.normalizer.sanitize(row.title), e.cinema.displayName)),
+          gone = Seq(EnrichDetailsTasks.pageGone(e.detailGroup, page)))
       }
     }
     (films ++ staged).groupMap(_._1)(_._2)
@@ -99,9 +117,9 @@ object VenueDetailSlots {
   def keyOf(detailGroup: String, page: String): String = LookupQuery.venueDetail(detailGroup, page).key
 
   /** One slot a page merged into, and the stamps saying whether (and how) the page was asked. */
-  private final case class Entry(slot: SourceData, read: Option[String], gone: Option[String]) {
+  private final case class Entry(slot: SourceData, read: Seq[String], gone: Seq[String]) {
     def answer(freshness: FreshnessStore): Option[Option[FilmDetail]] =
-      read.filter(freshness.lastFetchedAt(_).isDefined).map(_ => Some(factsOf(slot)))
+      Option.when(read.exists(freshness.lastFetchedAt(_).isDefined))(Some(factsOf(slot)))
     def gone(freshness: FreshnessStore): Boolean = gone.exists(freshness.lastFetchedAt(_).isDefined)
   }
 

@@ -66,5 +66,7 @@ trait DetailWiring { self: WorkerWiring =>
     configuration.detailTickInterval(DetailTickInterval(DetailReaper.DefaultTickInterval))
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    runStore = scheduledRunStore, clock = clock)
+    runStore = scheduledRunStore, clock = clock,
+    // A cut-over model reads every listing's page; the pipeline one per venue and film.
+    pages = if (identityCutover) services.tasks.DetailPages.PerPage else services.tasks.DetailPages.PerVenue)
 }

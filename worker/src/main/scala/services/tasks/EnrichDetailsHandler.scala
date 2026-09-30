@@ -37,6 +37,15 @@ object EnrichDetailsTasks {
    *  fetch is a RE-read, and therefore authoritative over the listing. */
   def readMarker(dedupKey: String): String = s"$dedupKey|read"
 
+  /** The PAGE's own stamps: `page` of `group` was read (merged into its slot), or found gone. Keyed by
+   *  the page, never by the film row it was on — a listing's slot moves with it when the identity
+   *  model regroups rows, and whether its page was asked must move with it too
+   *  (`services.identity.VenueDetailSlots`). */
+  def pageRead(group: String, page: String): String = readMarker(pageDedupKey(group, page))
+  /** The dedup (and due) key of a detail task asked per PAGE (`DetailPages.PerPage`). */
+  def pageDedupKey(group: String, page: String): String = s"detail-page|$group|$page"
+  def pageGone(group: String, page: String): String = s"detail-page|$group|$page|gone"
+
   /** Enqueue a detail task for `(enricher's group, film)` unless it's already
    *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's
    *  unique index is the real cross-server guarantee that a `(group, film)`
@@ -60,8 +69,12 @@ object EnrichDetailsTasks {
    *  once) across the period instead of dumping it in one tick. Returns true iff
    *  newly enqueued. */
   def enqueueIfDue(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
-                   enricher: DetailEnricher, key: CacheKey, ref: String, now: Instant): Boolean = {
-    val dk = dedupKey(enricher.detailGroup, key)
+                   enricher: DetailEnricher, key: CacheKey, ref: String, now: Instant): Boolean =
+    enqueueIfDueAs(queue, freshness, dueWindow, enricher, key, ref, dedupKey(enricher.detailGroup, key), now)
+
+  /** [[enqueueIfDue]] under the dedup key `dk` the task is due, deduplicated and stamped by. */
+  def enqueueIfDueAs(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
+                     enricher: DetailEnricher, key: CacheKey, ref: String, dk: String, now: Instant): Boolean = {
     dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now) &&
       queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
   }
@@ -150,6 +163,7 @@ class EnrichDetailsHandler(
             // permanently. `reapStuckPending` can now let it through.
             uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
+            freshness.markFresh(EnrichDetailsTasks.pageGone(enricher.detailGroup, ref), FreshnessKind.DetailEnrich, clock.instant())
             bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
             Done
           case DetailFetchOutcome.Fetched(detail) =>
@@ -229,7 +243,10 @@ class EnrichDetailsHandler(
                                   })),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
-            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
+            if (merged) {
+              freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
+              freshness.markFresh(EnrichDetailsTasks.pageRead(enricher.detailGroup, ref), FreshnessKind.DetailEnrich, clock.instant())
+            }
             // After the stamps, so a reader of the slots sees the answer this announces.
             bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
             uptime.recordSuccess(service)

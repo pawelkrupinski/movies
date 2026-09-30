@@ -5,7 +5,7 @@ import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import tools.DaemonExecutors
-import models.MovieRecord
+import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import services.movies.{CacheKey, MovieCache}
@@ -75,7 +75,10 @@ class DetailReaper(
   // unaffected; the wiring sets a finite cap. BY-NAME: read live each tick.
   maxEnqueuePerTick: => DetailMaxEnqueuePerTick = DetailMaxEnqueuePerTick(Int.MaxValue),
   runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:     Clock = Clock.systemUTC()
+  clock:     Clock = Clock.systemUTC(),
+  // Which of a row's pages it asks for, under which key (`DetailPages`): one per venue and film for
+  // the pipeline, every page a venue slot names for a cut-over country's identity model.
+  pages:     DetailPages = DetailPages.PerVenue
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("detail-reaper")
@@ -146,16 +149,10 @@ class DetailReaper(
       // Drive off the row's OWN venues, not the whole enricher list — see
       // `enrichersByCinema`. `cinemaData` is computed once here and reused, because
       // it sorts + rebuilds a Map on every call.
-      val cinemaData = record.cinemaData
-      val venues = cinemaData.keysIterator
-      while (venues.hasNext && enqueued < cap) {
-        val es = enrichersByCinema.getOrElse(venues.next(), Nil).iterator
-        while (es.hasNext && enqueued < cap) {
-          val e = es.next()
-          e.nativeDetailRefIn(cinemaData).foreach { ref =>
-            if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
-          }
-        }
+      val asks = pages.of(key, record, enrichersByCinema).iterator
+      while (asks.hasNext && enqueued < cap) {
+        val (e, ref, dk) = asks.next()
+        if (EnrichDetailsTasks.enqueueIfDueAs(queue, freshness, dueWindow, e, key, ref, dk, now)) enqueued += 1
       }
     }
     if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued due detail(s).")
@@ -220,3 +217,36 @@ object DetailReaper {
    *  corpus scan, so the finer cadence costs little. */
   val DefaultTickInterval: FiniteDuration = 1.minute
 }
+
+/** Which detail pages of a film row the [[DetailReaper]] asks for, each with the key it is due,
+ *  deduplicated and stamped under. */
+trait DetailPages {
+  def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)]
+}
+
+object DetailPages {
+
+  /** The pipeline's: one page per venue and film — the page its venue slots, merged, name — keyed by
+   *  the film row. `cinemaData` is computed once per row: it sorts and rebuilds a Map per call. */
+  object PerVenue extends DetailPages {
+    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)] = {
+      val cinemaData = record.cinemaData
+      cinemaData.keys.toSeq.flatMap(c => enrichersByCinema.getOrElse(c, Nil)).flatMap(e =>
+        e.nativeDetailRefIn(cinemaData).map(ref => (e, ref, EnrichDetailsTasks.dedupKey(e.detailGroup, key))))
+    }
+  }
+
+  /** A cut-over country's: every page any venue slot of the row names, keyed by the PAGE — so which
+   *  pages the identity model gets does not depend on how its films were gathered over time. */
+  object PerPage extends DetailPages {
+    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)] =
+      record.data.toSeq.flatMap { case (source, slot) =>
+        for {
+          cinema <- Source.cinemaOf(source).toSeq
+          e      <- enrichersByCinema.getOrElse(cinema, Nil)
+          ref    <- DetailEnricher.nativeRefOf(slot).toSeq
+        } yield (e, ref, EnrichDetailsTasks.pageDedupKey(e.detailGroup, ref))
+      }.distinctBy(_._3)
+  }
+}
+

@@ -278,10 +278,14 @@ trait TestWiring extends WorkerWiring {
     projectIdentity()
   }
 
-  /** One identity projection of a cut-over country, then the enrichment chain it kicked (IMDb-id
-   *  recovery, ratings) worked to quiescence, as the TaskWorker would. */
+  /** One identity projection of a cut-over country, then the enrichment it kicked (venue detail pages,
+   *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
   def projectIdentity(): services.identity.ProjectionTick = {
     val tick = identityProjection.getOrElse(throw new IllegalStateException(s"${country.code} is not cut over")).tick()
+    // The venue pages of the films it wrote, enriched as a cut-over worker's detail reaper does: the
+    // model reads them from the slots and re-asks each page the enrichment announces, so the next
+    // projection decides with them.
+    enrichDetailsUntilQuiet()
     drainServices()
     enrichRatingsSync()
     tick
@@ -493,8 +497,12 @@ trait TestWiring extends WorkerWiring {
    *  page + merge into the slot). Called right after the bare scrape and BEFORE
    *  TMDB resolution, so a detail-page director/originalTitle/year is on the row
    *  when the TMDB stage runs (the pre-deferral inline path had it in fetch()). */
-  def enrichDetailsSync(): Unit = {
-    detailReaper.tick()
+  def enrichDetailsSync(): Unit = { enrichDetailsOnce(); () }
+
+  /** One detail pass — the reaper's tick (capped at its `maxEnqueuePerTick`) and the tasks it
+   *  enqueued worked — answering how many it enqueued. */
+  private def enrichDetailsOnce(): Int = {
+    val enqueued = detailReaper.tick()
     val workerId = "detail-sync"
     Iterator.continually(taskQueue.claim(workerId, 5.minutes))
       .takeWhile(_.isDefined).flatten
@@ -508,6 +516,22 @@ trait TestWiring extends WorkerWiring {
     val ready = detailEventBuffer.toList
     detailEventBuffer.clear()
     ready.foreach(eventBus.publish)
+    enqueued
+  }
+
+  /** Detail passes until they stop making progress — what production's reaper reaches over its
+   *  ticks, as each is capped. A page whose fetch FAILED is left unstamped and due again (production
+   *  retries it every tick), so the passes settle on those, not on zero: the last pass is the one
+   *  that enqueued no fewer than the one before it. Bounded like the rating phase. */
+  def enrichDetailsUntilQuiet(): Unit = {
+    var previous = Int.MaxValue
+    UntilQuiet(s"[${country.code}] the detail phase", UntilQuiet.MaxRatingRounds) { _ =>
+      val enqueued = enrichDetailsOnce()
+      val progress = if (enqueued < previous) enqueued else 0
+      previous = enqueued
+      progress
+    }
+    ()
   }
 
   def quiesce(drainables: Drainable*): Unit =

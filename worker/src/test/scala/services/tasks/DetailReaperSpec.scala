@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.cinemas.FakeDetailEnricher
 import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, RecordingEventBus}
@@ -133,6 +133,24 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     reaper(cacheWith(Some("http://ref")), queue, fresh).tick() shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  /** A cut-over worker's reaper asks every page a venue slot names, keyed by the page: a film row the
+   *  identity model gathered two of a venue's listings on — each with its own page — needs both, and
+   *  which one a per-venue reaper asked depended on arrival order (Identity model convergence P1). The
+   *  pipeline keeps one page per venue and film. */
+  it should "ask one page per venue and film by default, and every page a venue slot names per page" in {
+    def cacheWithTwoPages = {
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+      cache.put(cache.keyOf("Dune", None), MovieRecord(data = Map(
+        CinemaShowing(KinoApollo, "dune")         -> SourceData(title = Some("Dune"), filmUrl = Some("http://ref/dune")),
+        CinemaShowing(KinoApollo, "dunesingalong") -> SourceData(title = Some("Dune sing-along"), filmUrl = Some("http://ref/dune-sing-along")))))
+      cache
+    }
+    val (perVenue, perPage) = (new InMemoryTaskQueue, new InMemoryTaskQueue)
+    new DetailReaper(Seq(enricher), cacheWithTwoPages, perVenue, new InMemoryFreshnessStore, new InProcessEventBus(), clock = specClock).tick() shouldBe 1
+    new DetailReaper(Seq(enricher), cacheWithTwoPages, perPage, new InMemoryFreshnessStore, new InProcessEventBus(), clock = specClock,
+      pages = DetailPages.PerPage).tick() shouldBe 2
   }
 
   // The regression that took EVERY cinema's detail enrichment down for 16h on

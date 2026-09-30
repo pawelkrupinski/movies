@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens,
   StoredMovieRecord, TitleNormalizer}
 import services.resolution.TmdbAttempt
@@ -124,7 +124,11 @@ object IdentityProjectionPlan {
         tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
         detailPending = false,
         searchTitle   = base.searchTitle.orElse(Some(normalizer.apiQuery(normalizer.recase(anchor)))),
-        data          = base.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++ venueSlots)
+        // A chain's network detail slot is venue source data no listing is published at: kept from the
+        // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
+        data          = base.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++
+                          previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) }) ++
+                          venueSlots)
       FilmDraft(counter, previous.map(_.id), members.toSeq.sorted, record, anchor)
     }
 

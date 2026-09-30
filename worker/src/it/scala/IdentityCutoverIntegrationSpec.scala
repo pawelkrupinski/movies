@@ -91,7 +91,16 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       w.projectIdentity()
     }
     publish(w, scrapers)
-    Pass(w, w.projectIdentity())
+    Pass(w, settled(w))
+  }
+
+  /** Projections until one writes nothing — the rest production's projection interval reaches as the
+   *  venue pages a projection's enrichment fetched are taken in by the next — and that projection. */
+  private def settled(w: ArchiveReplayWiring): ProjectionTick = {
+    var tick = w.projectIdentity()
+    var n    = 1
+    while (!tick.wroteNothing && n < 5) { tick = w.projectIdentity(); n += 1 }
+    tick
   }
 
   private lazy val passes: Map[Country, Seq[Pass]] = countries.map { c =>

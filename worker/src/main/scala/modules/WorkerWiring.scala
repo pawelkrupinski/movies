@@ -181,7 +181,8 @@ class WorkerWiring(
 
   /** The venue detail pages the pipeline's enrichment asked, as the identity model reads them. */
   lazy val venueDetailSlots: services.identity.VenueDetailSlots =
-    new services.identity.VenueDetailSlots(movieCache, stagingRepository, freshnessStore, detailEnrichers)
+    new services.identity.VenueDetailSlots(movieCache, stagingRepository, freshnessStore, detailEnrichers,
+      changed = key => identityModel.foreach(_.observed(key)))
 
   /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
    *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
@@ -214,6 +215,9 @@ class WorkerWiring(
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
   def identityShadowTick(): Unit = shadowIdentityReaper.foreach { reaper =>
+    // The pipeline moves slots between its rows on its own schedule; a page that became answerable
+    // that way is the model's to re-ask before the tick reads it.
+    venueDetailSlots.refresh()
     reaper.tickQuietly()
     shadowLookupFill.foreach(_.start())
   }
@@ -381,11 +385,9 @@ class WorkerWiring(
   // A detail landing re-resolves the film's TMDB match — the old identity path's, so not in a
   // cut-over country, whose identity is the projection's.
   if (!identityCutover) eventBus.subscribe(movieService.onMovieDetailsComplete)
-  // A venue page the enrichment asked: the slots it merged into are the model's answer now.
-  eventBus.subscribe { case services.events.VenueDetailRead(group, page) =>
-    venueDetailSlots.changed()
-    identityModel.foreach(_.observed(services.identity.VenueDetailSlots.keyOf(group, page)))
-  }
+  // A venue page the enrichment asked: the slots it merged into are the model's answer now, and the
+  // refresh tells the model of every page whose answer that changed.
+  eventBus.subscribe { case services.events.VenueDetailRead(_, _) => venueDetailSlots.refresh() }
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))

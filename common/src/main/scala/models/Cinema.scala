@@ -1842,7 +1842,7 @@ object GermanRoster {
    *  "Cineworld" against the `CineworldChain` detail source — and both silently rebound a
    *  Polish/UK venue's showtimes to a German one. `SourceWireKeySpec` fails on any third. */
   private def claimedElsewhere: Set[String] =
-    (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
+    (Cinema.polishAndUk.flatMap(_._2) ++ Cinema.Networks).map(_.displayName).toSet
 
   private val built: Seq[(GermanRegion, String, Seq[(GermanCinema, String, Option[String])])] =
     GermanRosterData.regions.map { case (slug, name, bundesland, lat, lon, cities, cinemas) =>
@@ -1942,7 +1942,7 @@ object UsRoster {
    *  collision, and it is the qualified name that ends up on the wire. */
   private def claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
-      Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
+      Cinema.Networks).map(_.displayName).toSet
 
   /** Metros whose Flicks label is the anchor CITY where the place is really the
    *  whole region around it. The renamed label carries the URL with it — the
@@ -2184,7 +2184,7 @@ object SpanishRoster {
   private def claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       UsRoster.byCity.flatMap(_._2) ++
-      Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
+      Cinema.Networks).map(_.displayName).toSet
 
   private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
     SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, towns, cinemas) =>
@@ -2215,6 +2215,11 @@ object SpanishRoster {
 }
 
 object Cinema {
+  /** The chains' NETWORK pseudo-cinemas: a chain's venues publish their listings under their own
+   *  cinema, and its detail enricher lands every film page on this one shared slot (`detailTarget`).
+   *  No listing is ever published at one. */
+  val Networks: Seq[Cinema] = Seq(CinemaCityChain, CineworldChain, RegalChain)
+
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
    *  list and existing rows keep their resolved precedence. */

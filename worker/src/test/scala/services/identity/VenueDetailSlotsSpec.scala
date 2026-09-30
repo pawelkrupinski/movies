@@ -38,7 +38,8 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val freshness = new InMemoryFreshnessStore
     val bus       = new RecordingEventBus
-    val slots     = new VenueDetailSlots(cache, staging, freshness, enricher +: others)
+    val reported  = scala.collection.mutable.ArrayBuffer.empty[String]
+    val slots     = new VenueDetailSlots(cache, staging, freshness, enricher +: others, reported += _)
     val handler   = new EnrichDetailsHandler(Map(Group -> enricher), cache, freshness, new UptimeMonitor(), bus,
       new DueWindow(6.hours), clock = clock)
 
@@ -50,7 +51,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       val key = cache.keyOf("Dune", None)
       handler.handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
         EnrichDetailsTasks.payload(enricher, key, Page), attempts = 1))
-      slots.changed()
+      slots.refresh()
     }
   }
 
@@ -82,7 +83,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     val world    = new World(enricher)
     val slot     = SourceData(title = Some("Arco"), filmUrl = Some("http://arco"), director = Seq("Ugo Bienvenu"), releaseYear = Some(2025))
     world.staging.upsert(KinoApollo, "Arco", None, MovieRecord(data = Map(KinoApollo -> slot)))
-    world.slots.changed()
+    world.slots.refresh()
     world.slots.answer(enricher, "http://arco") shouldBe None
     world.freshness.markFresh(StagingTaskKeys.detailKey(titleNormalizer.sanitize("Arco"), KinoApollo.displayName),
       FreshnessKind.DetailEnrich, clock.instant())
@@ -91,6 +92,34 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
 
   /** A chain lands every page of a row on one shared slot: it is a page's answer only when the row
    *  names that chain no other page. */
+  it should "stay answered when its listing's slot moves to another film row — the answer is the page's" in {
+    val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
+    val world    = new World(enricher)
+    world.enrich()
+    val merged = world.cache.get(world.cache.keyOf("Dune", None)).get
+    world.cache.put(world.cache.keyOf("Dune: Part One", Some(2021)), merged)
+    world.cache.invalidate(world.cache.keyOf("Dune", None))
+    world.slots.refresh()
+    world.slots.answer(enricher, Page).flatten.map(_.director) shouldBe Some(Seq("Denis Villeneuve"))
+  }
+
+  /** The model is told of every change to a page's answer, not only of a fetch: a page asked while it
+   *  sat on another film row becomes answerable when a projection puts its slot on a row the slots
+   *  read, and nothing announces that (Identity model convergence P1: Caravaggio stayed unmatched). */
+  it should "report a page whose answer changed at the next refresh, whatever changed it" in {
+    val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
+    val world    = new World(enricher)
+    world.freshness.markFresh(EnrichDetailsTasks.pageRead(Group, "http://arco"), FreshnessKind.DetailEnrich, clock.instant())
+    world.slots.refresh()
+    world.reported shouldBe empty                                          // the first build is the baseline
+    world.slots.answer(enricher, "http://arco") shouldBe None               // stamped, but on no row the slots read
+    world.cache.put(world.cache.keyOf("Arco", None), MovieRecord(data = Map(KinoApollo -> SourceData(filmUrl = Some("http://arco"),
+      director = Seq("Ugo Bienvenu")))))
+    world.slots.refresh()
+    world.reported.toSeq shouldBe Seq(VenueDetailSlots.keyOf(Group, "http://arco"))
+    world.slots.answer(enricher, "http://arco").flatten.map(_.director) shouldBe Some(Seq("Ugo Bienvenu"))
+  }
+
   "A chain's shared detail slot" should "answer the one page the row names for the chain" in {
     val chain = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", target = Some(CinemaCityChain))
     val world = new World(chain, new FakeDetailEnricher(CinemaCityKinepolis, "cinema-city", target = Some(CinemaCityChain)))
@@ -101,7 +130,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       CinemaCityChain       -> SourceData(director = Seq("Maciej Kawalski")))))
     world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
       FreshnessKind.DetailEnrich, clock.instant())
-    world.slots.changed()
+    world.slots.refresh()
     world.slots.answer(chain, "http://cc/lalka").flatten.map(_.director) shouldBe Some(Seq("Maciej Kawalski"))
   }
 
@@ -115,7 +144,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       CinemaCityChain       -> SourceData(director = Seq("Rod Blackhurst")))))
     world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
       FreshnessKind.DetailEnrich, clock.instant())
-    world.slots.changed()
+    world.slots.refresh()
     world.slots.answer(chain, "http://cc/lalka") shouldBe None
     world.slots.answer(chain, "http://cc/ladies-night-lalka") shouldBe None
   }

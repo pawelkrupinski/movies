@@ -115,6 +115,21 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     d.drafts.head.needsDetails shouldBe Some(1)
   }
 
+  /** A chain's venue pages land on its network slot (`CinemaCityChain`), which no listing is
+   *  published at: venue source data, not the matched film's, so it stays whatever the match. Dropped,
+   *  a cut-over country lost every Cinema City page's detail at its next projection (Identity model
+   *  convergence, run 36756016590: 1,163 of Poland's readable pages unanswered). */
+  it should "keep its chain network's detail slot, whether the resolver keeps its film or names another" in {
+    val network = models.CinemaCityChain -> SourceData(synopsis = Some("Wokulski."), director = Seq("Maciej Kawalski"))
+    Seq(Some(1), Some(2)).foreach { film =>
+      val stored = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), data = Map(slotOf(lalka.head), network)),
+        FilmId("lalka|2026"), Some("lalka|2026"))
+      val d = IdentityProjectionPlan.draft(lalka, resolution(decision(film, lalka*)), Seq(stored), FilmIdCounters.empty,
+        normalizer, slots, tokens, at)
+      withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(models.CinemaCityChain) shouldBe Some(network._2))
+    }
+  }
+
   "Two stored films the resolver joins" should "keep the OLDER id, retire the other and count one merge" in {
     val older = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1),
       data = Map(slotOf(lalka.head))),

@@ -122,7 +122,10 @@ class StagingSteps(
       if (ready) {
         freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich, clock.instant())
         stagingRepository.findByCinemaAndAnchor(cinema, anchor).flatMap(row => e.nativeDetailRef(row.record)).distinct
-          .foreach(page => detailRead(services.events.VenueDetailRead(e.detailGroup, page)))
+          .foreach { page =>
+            freshness.markFresh(services.tasks.EnrichDetailsTasks.pageRead(e.detailGroup, page), FreshnessKind.DetailEnrich, clock.instant())
+            detailRead(services.events.VenueDetailRead(e.detailGroup, page))
+          }
       }
       ready
   }
