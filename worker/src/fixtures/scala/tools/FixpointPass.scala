@@ -131,8 +131,14 @@ object FixpointPass {
     w.readModelProjector.reconcile()
   }
 
-  /** One production tick over whatever the wiring's scrapers report. */
-  def run(w: TestWiring): Unit = {
+  /** One production tick over whatever the wiring's scrapers report — on a CUT-OVER country
+   *  (`KINOWO_IDENTITY_CUTOVER`) the runner's landing in the identity intake and one projection
+   *  ([[TestWiring.cutoverTick]]), there being no staging, settle or reaper to run. */
+  def run(w: TestWiring): Unit =
+    if (w.identityCutover) { w.cutoverTick(); w.readModelProjector.pruneOrphans() }
+    else runPipeline(w)
+
+  private def runPipeline(w: TestWiring): Unit = {
     w.runOneScrapeTick()
     w.drainServices()
     w.drainStaging()

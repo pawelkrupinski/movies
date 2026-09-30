@@ -653,6 +653,14 @@ abstract class CountryConvergenceBehaviour(
     ()
   }
 
+  /** One settle of whichever model decides this country's films: the pipeline's periodic pair
+   *  (`settle()` then `canonicalizeBySanitize()`), or — on a cut-over leg — one identity
+   *  projection over what the intake holds. A fixpoint claim re-applies THIS, so it asks the
+   *  deciding model whether it is at rest, never the other one whether it agrees. */
+  private def settleOnce(w: ArchiveReplayWiring): Unit =
+    if (w.identityCutover) { w.projectIdentity(); () }
+    else { w.movieService.settle(); w.movieCache.canonicalizeBySanitize(); () }
+
   private def bootPipeline(w: ArchiveReplayWiring): Unit = {
     step("bootCorpus")(w.bootCorpus())
     // ONE settle, deliberately. Settling twice here would let a corpus that needs
@@ -887,8 +895,7 @@ abstract class CountryConvergenceBehaviour(
         id => { emissions.incrementAndGet(); written.add(s"delete id=$id"); () })
 
       val splitsBefore = w.movieService.mixedFilmSplits
-      w.movieService.settle()
-      w.movieCache.canonicalizeBySanitize()
+      settleOnce(w)
 
       // The settle also SPLITS a row found to hold two different films, and over a
       // real country's corpus it must find none. A handful of genuine title
@@ -1648,12 +1655,16 @@ abstract class CountryConvergenceBehaviour(
             else services.cinemas.common.PreScrapedCinemaScraper.replaying(c, if (blank.contains(c)) Nil else reported.getOrElse(c, Nil))
           Try(w.cinemaScrapeRunner.run(scraper))
         }
-        w.enrichDetailsSync()
-        w.drainServices()
-        w.drainStaging()
-        w.movieService.settle()
-        w.movieCache.canonicalizeBySanitize()
-        w.drainStaging()
+        // A cut-over country decides the day's films by projecting what its intake now holds;
+        // the pipeline drains staging around its settle.
+        if (w.identityCutover) settleOnce(w)
+        else {
+          w.enrichDetailsSync()
+          w.drainServices()
+          w.drainStaging()
+          settleOnce(w)
+          w.drainStaging()
+        }
         // A DAY has passed, so the daily cleanup has run: a film whose last venue dropped it
         // holds no slot, and it is this sweep — not the tick — that deletes the row and so
         // retires its card. Without it the withdrawn films stay served as empty cards. Before

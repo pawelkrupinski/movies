@@ -267,7 +267,11 @@ trait TestWiring extends WorkerWiring {
   /** A CUT-OVER country's boot (docs/design/identity-resolver.md §8, phase 5; the wiring must run with
    *  `KINOWO_IDENTITY_CUTOVER` naming its country): every venue scraped into the listing intake
    *  through the production runner, then one identity projection and the enrichment it announces. */
-  def bootCutover(): services.identity.ProjectionTick = {
+  def bootCutover(): services.identity.ProjectionTick = cutoverTick()
+
+  /** One production tick of a CUT-OVER country — the boot is its first: every venue scraped into the
+   *  listing intake through the production runner, then one identity projection and its enrichment. */
+  def cutoverTick(): services.identity.ProjectionTick = {
     cinemaScrapers.foreach { scraper =>
       try { cinemaScrapeRunner.run(scraper); () }
       catch { case e: Exception => scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); () }
