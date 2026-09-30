@@ -689,11 +689,15 @@ class MongoMovieRepository(
       val ids = batch.map(_._id).toSet
       // `withShowtimes = false` skips this read entirely rather than discarding its result:
       // the caller has said it never looks at a showtime, and this is the expensive half.
+      // The two side reads are independent (each is `filmId $in` the page's ids), so they run at
+      // once: in sequence they were most of a US boot's 16–21 s cache hydrate, one round-trip
+      // after the other for every page.
+      val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(slots.map(_.findForFilmsChecked(ids))
+        .getOrElse((Map.empty[String, Map[String, SourceData]], true))))(using scala.concurrent.ExecutionContext.global)
       val (pageScr, scrOk) = if (!withShowtimes) (Map.empty[String, Map[String, Seq[Showtime]]], true)
         else screenings.map(_.findForFilmsChecked(ids))
           .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true))
-      val (pageSlots, slotsOk) = slots.map(_.findForFilmsChecked(ids))
-        .getOrElse((Map.empty[String, Map[String, SourceData]], true))
+      val (pageSlots, slotsOk) = Await.result(slotsRead, Duration.Inf)
       if (!scrOk || !slotsOk) {
         sideReadsComplete = false
         logger.warn(s"MovieRepository.scanStitched: a side-collection read failed for a page of " +
