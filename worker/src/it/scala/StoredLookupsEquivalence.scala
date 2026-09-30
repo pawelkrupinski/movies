@@ -8,6 +8,9 @@ import tools.HttpFetch
  * answered again from documents the normalizer parsed as those same responses were fetched through
  * it, and must be the answer the recorded responses gave — popularity reduced to its bucket, and a
  * hit's own title/year only where its film holds no record (the resolver reads the record over it).
+ * The store holds ONE popularity per film, the last response's; responses recorded at different
+ * times carry different ones, so a hit's stored bucket matches when any recorded answer gave that
+ * film that bucket.
  */
 object StoredLookupsEquivalence {
   final case class Result(questions: Int, films: Int, mismatches: Seq[String], stored: IdentityLookups)
@@ -52,10 +55,14 @@ object StoredLookupsEquivalence {
     stored.prefetch(queries.keys, films.keys, Nil)
     val recorded = films.collect { case (id, Answer.Known(Some(_))) => id }.toSet
     def bucketed(p: Double) = PopularityBucket.representative(PopularityBucket.of(p))
-    def hitView(h: Hit) = if (recorded(h.tmdbId)) (h.tmdbId, None) else (h.tmdbId, Some((h.title, h.originalTitle, h.year, bucketed(h.popularity))))
+    val bucketsSeen = queries.values.toSeq.collect { case Answer.Known(hits) => hits }.flatten
+      .groupMap(_.tmdbId)(h => PopularityBucket.of(h.popularity)).view.mapValues(_.toSet).toMap
+    def sameHit(want: Hit, got: Hit) = want.tmdbId == got.tmdbId && (recorded(want.tmdbId) ||
+      (want.title, want.originalTitle, want.year) == (got.title, got.originalTitle, got.year) &&
+        bucketsSeen.getOrElse(want.tmdbId, Set.empty)(PopularityBucket.of(got.popularity)))
     val queryMismatches = queries.toSeq.sortBy(_._1).flatMap { case (q, expected) =>
       (expected, stored.candidates(q)) match {
-        case (Answer.Known(a), Answer.Known(b)) if a.map(hitView) == b.map(hitView) => None
+        case (Answer.Known(a), Answer.Known(b)) if a.size == b.size && a.lazyZip(b).forall(sameHit) => None
         case (Answer.Unknown, Answer.Unknown)                                       => None
         case (a, b) => Some(s"${q.sortKey}: recorded ${render(a)} vs stored ${render(b)}")
       }
@@ -68,7 +75,7 @@ object StoredLookupsEquivalence {
   }
 
   private def render(a: Answer[Seq[Hit]]): String = a match {
-    case Answer.Known(hits) => hits.take(4).map(h => s"${h.tmdbId}:${h.title}:${h.year.getOrElse("")}").mkString("[", ", ", if (hits.size > 4) ", …]" else "]")
+    case Answer.Known(hits) => hits.take(4).map(h => s"${h.tmdbId}:${h.title}:${h.year.getOrElse("")}:p${PopularityBucket.of(h.popularity)}").mkString("[", ", ", if (hits.size > 4) ", …]" else "]")
     case Answer.Unknown     => "Unknown"
   }
 }
