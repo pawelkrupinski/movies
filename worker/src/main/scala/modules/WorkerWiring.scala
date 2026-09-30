@@ -185,7 +185,8 @@ class WorkerWiring(
           tracked = Some(lookupsNow)
           new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
             store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
+            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
+            regionPool = Some(identityRegionPool))
         },
         reads      = identityReads,
         archive    = listings,
@@ -206,6 +207,13 @@ class WorkerWiring(
   protected lazy val identityPrefetchPool: java.util.concurrent.ExecutorService =
     java.util.concurrent.Executors.newFixedThreadPool(WorkerWiring.IdentityPrefetchThreads,
       Thread.ofVirtual().name(s"identity-prefetch-${country.code}-", 0).factory())
+
+  /** The threads a take-up's regions resolve on, side by side: CPU-bound, so few — a restart resolved
+   *  US's 2,166 families in 187 s on the model's one thread while the worker used 0.67 cores. Their
+   *  results merge on the model's thread, so the decisions are the sequential ones. Daemon threads. */
+  protected lazy val identityRegionPool: java.util.concurrent.ExecutorService =
+    java.util.concurrent.Executors.newFixedThreadPool(WorkerWiring.IdentityRegionThreads,
+      Thread.ofPlatform().daemon(true).name(s"identity-region-${country.code}-", 0).factory())
 
   /** One daemon thread for the model: it is not thread-safe, and every event is drained on it. */
   protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
@@ -571,6 +579,8 @@ object WorkerWiring {
   /** Questions the model's prefetch keeps in flight: 64 fill a coalesced read's batch about eight
    *  times as full as the eight platform threads that each held a connection. */
   val IdentityPrefetchThreads = 64
+  /** Regions resolved side by side in a take-up (`identityRegionPool`). */
+  val IdentityRegionThreads = 3
 
   /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
    *  most seconds a tick) and the fill's per-round allowance were measured against. */
