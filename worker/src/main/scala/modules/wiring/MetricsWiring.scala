@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, DuplicateVenueCensus, RatingRunCensus, RetiredVenueCensus, UnstampedListingCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, UnstampedListingCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -52,14 +52,18 @@ trait MetricsWiring { self: WorkerWiring =>
     new WorkerSlotFanoutMetrics(workerMetrics.widestSlotsGauge, country.code)
   // Same-city venue pairs whose upcoming programmes are (nearly) identical — one screen listed
   // twice under two names, which the name-based roster audit cannot see. Rides the same pass.
-  lazy val duplicateVenueCensus: DuplicateVenueCensus =
-    new DuplicateVenueCensus(workerMetrics.duplicateVenuePairsGauge, country)
+  // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
+  // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.
+  // Only over the venues read through an upstream known to copy feeds; None where there are none.
+  lazy val copiedFeedDetector: Option[services.cinemas.roster.CopiedFeedDetector] =
+    Some(services.cinemas.roster.CopiedFeedDetector.watchedVenues(countryScrapers)).filter(_.nonEmpty)
+      .map(new services.cinemas.roster.CopiedFeedDetector(workerMetrics.copiedFeedPairsGauge, country, _))
   // ONE 5-minute corpus scan feeding every census above. The first three each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan =
     new WorkerCorpusScan(movieRepository,
-      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics, duplicateVenueCensus),
+      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics),
       metrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).

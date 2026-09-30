@@ -508,6 +508,8 @@ class WorkerWiring(
     // (The process-level jvmVitals sampler is started once by WorkerMain via the
     // shared WorkerMetrics bundle, not per-country here.)
     boot.step("corpus scan")(corpusScan.start())
+    // Find the copied feeds that predate this boot, from each venue's latest archived scrape.
+    boot.step("copied feed seed")(copiedFeedDetector.foreach(_.start(scrapeArchive, services.cinemas.roster.CopiedFeedDetector.SeedDelay)))
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
     boot.step("rating run census")(ratingRunCensus.start())
     // Census the roster's worst-case scrape staleness (off-band, in-memory scan).

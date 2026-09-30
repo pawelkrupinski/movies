@@ -108,7 +108,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val (contentOldestAgeGauge, neverContentGauge) = CinemaContentCensus.gauges(registry)
   val contentStaleVenuesGauge: Gauge = CinemaContentCensus.staleVenuesGauge(registry)
   val (retiredVenueRowsGauge, retiredVenueFutureGauge) = RetiredVenueCensus.gauges(registry)
-  val duplicateVenuePairsGauge: Gauge = DuplicateVenueCensus.gauge(registry)
+  val copiedFeedPairsGauge: Gauge = services.cinemas.roster.CopiedFeedDetector.gauge(registry)
   // The identity migration's listing-key readiness: unstamped side rows, and the shadow read's
   // agreement between a read by listing and today's read by slot key (docs/design/identity-resolver.md §16).
   val unstampedListingRowsGauge: Gauge = UnstampedListingCensus.gauge(registry)

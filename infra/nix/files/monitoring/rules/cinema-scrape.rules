@@ -115,7 +115,7 @@ groups:
       # all. Without this rule the staleness alerting would be silent on exactly the venue that has
       # been dark longest.
       #
-      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in DuplicateVenueListing below:
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as DuplicateVenueListing below does:
       # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
       # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
       # week to 2026-09-23) the bare gauge could not hold a day.
@@ -189,7 +189,7 @@ groups:
       # unservable as a retired one), UK 20 under Odeon Cinema Basingstoke, DE 1 under "Studio";
       # ES and US none. The cleanup landed today, so these should step down within two days.
       #
-      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in DuplicateVenueListing below:
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as DuplicateVenueListing below does:
       # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
       # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
       # week to 2026-09-23) the bare gauge could not hold fifty hours.
@@ -215,54 +215,42 @@ groups:
             in the list means rows were written into the wrong database.
 
       # -----------------------------------------------------------------------------------------
-      # ONE SCREEN, TWO NAMES -- OR ONE VENUE'S FEED UNDER ANOTHER'S.
+      # ONE VENUE'S FEED UNDER ANOTHER'S NAME.
       #
-      # `kinowo_worker_duplicate_venue_pairs` counts roster venue pairs whose upcoming (film,
-      # start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-minute corpus
-      # scan; venues under 5 upcoming showtimes skipped; pairs on `DistinctVenuePairs` cleared),
-      # in two scopes. scope="same_city": two venues of one city at 90%+ of the larger programme
-      # -- the same screen under two names, which the name-based roster audit cannot see.
-      # scope="cross_city": two venues sharing no city, 20+ showtimes each, at 95%+ -- an
-      # aggregator feeding one venue's programme under another's name far away (Flicks gave the
-      # Syracuse IN Pickwick the Park Ridge IL one's, 216 of 216). The cross-city bar is higher
-      # because a chain's template schedule (Odeon) runs near 90% between towns.
+      # `kinowo_worker_copied_feed_pairs` counts roster venue pairs where one venue's latest scrape
+      # lists the other's own BOOKING SESSIONS (CopiedFeedDetector, checked as each scrape lands).
+      # A booking link names one venue's one session, so two venues listing the same sessions list
+      # one feed: an aggregator mis-filing it (Flicks gave the Syracuse IN Pickwick the Park Ridge
+      # IL one's, 216 of 216, booked through Park Ridge's Veezi sessions), or one upstream page wired
+      # to two venues (one bilety24 organiser page read for Koło and Konin). Only venues read through
+      # a client KNOWN to have done this are watched (CopiedFeedDetector.KnownToCopy: Flicks, the
+      # bilety24 organiser client), so a country with none publishes no series at all. It replaced
+      # a programme census that compared every venue's showtimes every 5 minutes (2026-09-30).
       #
-      # TWENTY-FOUR HOURS: programmes move with every scrape, and a pair that matches for a day
-      # is not a coincidence of one evening's schedule.
+      # SIX HOURS. A session match is not a coincidence the way a matching programme can be, but a
+      # scrape that caught an upstream mid-fix should not page; a real copy holds until the venue
+      # is next scraped (hours, 14 on the US), so it clears the hold with room.
       #
-      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART. Each pod change leaves the series
-      # absent for ~3 minutes (staleness marker, then boot), and one absent evaluation drops a
-      # pending alert, so the bare gauge only reached `for: 24h` after a day with no deploy --
-      # with ~16 worker restarts on 2026-09-23 and one day-long uptime in the week before it,
-      # effectively never. Ten minutes covers the gap and keeps a cleared pair clearing within
-      # two corpus scans.
-      #
-      # Measured against prod on 2026-09-23 it would have fired in five countries; every pair is
-      # now either fixed at its source (Koło's Kino nad Wartą repeating Konin's; the Syracuse
-      # Pickwick; Braniewo's Baszta repeating Środa's, fixed that morning) or on
-      # `DistinctVenuePairs` with its ticketing evidence (chain-mates in both scopes). Since
-      # 2026-09-26 the census itself clears a pair whose shared showtimes book through each
-      # venue's own session links; all three true duplicates above carried the SAME session links
-      # (one bilety24 organiser page, one Veezi site), so they would still count.
+      # `last_over_time(...[30m])` BRIDGES A WORKER RESTART, and it is 30 rather than the usual 10
+      # because the series stays ABSENT for the first ten minutes of a boot: it is published only
+      # once the seed has re-read every venue's archived scrape (CopiedFeedDetector.SeedDelay), so
+      # a restart never reads as "no copies" and drops a pending alert.
       - alert: DuplicateVenueListing
-        expr: max by (country, scope) (last_over_time(kinowo_worker_duplicate_venue_pairs[10m])) > 0
-        for: 24h
+        expr: max by (country) (last_over_time(kinowo_worker_copied_feed_pairs[30m])) > 0
+        for: 6h
         labels:
           severity: warning
         annotations:
-          summary: "{{ $value }} {{ $labels.scope }} venue pair(s) in {{ $labels.country }} have shared their programme for a day"
+          summary: "{{ $value }} venue pair(s) in {{ $labels.country }} list one venue's booking sessions under another's name"
           description: >-
-            Two roster venues in "{{ $labels.country }}" have listed (nearly) the same upcoming films
-            at the same start times for 24 hours. same_city (90%+, one city): one screen listed
-            twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
-            no city in common): one venue's feed listed under another's name. The worker's WARN
-            line "duplicate-venue census ({{ $labels.country }}, {{ $labels.scope }})" names the
-            pairs. A pair whose shared showtimes book through each venue's own links is cleared before
-            it is counted, so what is left books the same sessions or has no links on one side. Check
-            its sources in CinemaScraperCatalog: one upstream programme behind two names is a wiring bug
-            to fix (or a venue with no feed of its own to drop); two real venues programmed alike with
-            no links to tell them apart go on `services.cinemas.roster.DistinctVenuePairs` with the
-            reason, which clears them here and in the offline roster audit alike.
+            In "{{ $labels.country }}", a roster venue's latest scrape books its showtimes through
+            ANOTHER venue's own sessions: one venue's feed filed under a second venue's name (an
+            aggregator's mix-up), or one upstream page wired to two venues. The site then lists that
+            programme at a cinema not showing it. The worker's WARN line "copied feed ({{ $labels.country }})"
+            names the pair and how many listings it shares. Check both venues' sources in
+            CinemaScraperCatalog: a venue wired to the other's upstream is a wiring bug to fix, one with
+            no feed of its own is to drop; two venues genuinely selling each other's sessions go on
+            `services.cinemas.roster.DistinctVenuePairs` with the reason.
 
       # -----------------------------------------------------------------------------------------
       # A COUNTRY'S SCRAPES ARE FAILING, NOT COMING BACK EMPTY.

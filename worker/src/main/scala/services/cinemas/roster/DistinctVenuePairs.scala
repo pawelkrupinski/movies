@@ -7,17 +7,18 @@ import models.{BakerStreetCinemaAbergavenny, Cinema, ColiseumCinemaBrecon, Flora
 import play.api.Logging
 
 /**
- * Pairs of roster venues that LOOK like one screen listed twice — by name (the offline roster
- * audit, `CinemaRosterAuditSpec`) or by programme (`services.metrics.DuplicateVenueCensus`) —
- * and are genuinely two. One list for both checks, so a pair cleared by one is cleared by the
- * other and the reason is written down once.
+ * Pairs of roster venues that LOOK like one venue listed twice — by name (the offline roster
+ * audit, `CinemaRosterAuditSpec`) or by the booking sessions one's scrape lists
+ * ([[CopiedFeedDetector]]) — and are genuinely two. One list for both checks, so a pair cleared by
+ * one is cleared by the other and the reason is written down once.
  *
- * The programme matches below were each checked against prod (2026-09-23): the two venues are
+ * The programme matches below were found by the programme census that preceded the detector
+ * (2026-09-23..30) and each checked against prod: the two venues are
  * in different towns (in the second block, different CITIES — the census's cross-city scope),
  * and their showtimes book through two different per-venue ticketing ids, so the upstream
  * holds two listings that a small chain (or an operator running two screens) happens to
- * programme alike. Since 2026-09-26 the census clears such a pair itself when the booking links
- * differ, so a new entry is needed only when a venue carries none. Generated-roster venues
+ * programme alike. The session detector never flags such a pair — their sessions differ — so a new
+ * entry is needed only for two venues that genuinely sell each other's sessions. Generated-roster venues
  * (Germany, Spain, the US) have no case object, so they are named by the display name they are
  * stored under — and a name a roster regeneration dropped is logged and skipped, never a failed
  * load.
@@ -78,8 +79,8 @@ object DistinctVenuePairs extends Logging {
   )
 
   /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the
-   *  venue. Their pairs are left out rather than failing the worker's load; the census may
-   *  then count that pair again, and `DuplicateVenueCensusSpec` fails until the entry is fixed. */
+   *  venue. Their pairs are left out rather than failing the worker's load; the detector may
+   *  then flag that pair again, and `CopiedFeedDetectorSpec` fails until the entry is fixed. */
   private val resolved: (Set[Set[Cinema]], Seq[String]) = resolve(byName, Cinema.byDisplayName.get)
   val unresolved: Seq[String] = resolved._2
   if (unresolved.nonEmpty)

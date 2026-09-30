@@ -291,88 +291,41 @@ tests:
                 in the list means rows were written into the wrong database.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # DUPLICATE VENUES: A DAY OF OVERLAP FIRES, AN EVENING OF IT DOES NOT, PER SCOPE. PL holds one
-  # same-city pair for 25 hours; US one cross-city pair for 25 hours (its same-city count stays
-  # zero, so only the cross_city series fires); UK holds two for 6 hours and then diverges.
-  # PL's cross-city pair is held for 25 hours THROUGH a worker restart every ~5 hours: each
-  # restart leaves the series absent for ~3 minutes (the old pod's staleness marker, then the new
-  # pod's boot), which is what the fleet does ~16 times a day on a deploy day -- and a `for:`
-  # that one absent evaluation resets could only fire after a day with no deploy at all (one
-  # day-long uptime in the week to 2026-09-23).
+  # COPIED FEED: A PAIR HELD SIX HOURS FIRES, THROUGH A RESTART; ONE THAT CLEARS AND A HEALTHY ZERO DO
+  # NOT. US holds one pair for 7 hours THROUGH a worker restart at 3h: the series goes absent for
+  # 13 minutes (the pod's ~3-minute gap, then the seed's ten before it publishes again), which a
+  # `[10m]` bridge would drop the pending alert on. UK holds one pair for 3 hours and then clears;
+  # PL publishes zero throughout.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="pl",scope="same_city",job="kinowo-worker"}'
-        values: '1x1560'
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="us",scope="cross_city",job="kinowo-worker"}'
-        values: '1x1560'
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="pl",scope="cross_city",job="kinowo-worker"}'
-        values: '1x300 stale _x2 1x300 stale _x2 1x300 stale _x2 1x300 stale _x2 1x300 stale _x2 1x40'
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="us",scope="same_city",job="kinowo-worker"}'
-        values: '0x1560'
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="uk",scope="same_city",job="kinowo-worker"}'
-        values: '2x360 0x1200'
+      - series: 'kinowo_worker_copied_feed_pairs{country="us",job="kinowo-worker"}'
+        values: '1x180 stale _x12 1x240'
+      - series: 'kinowo_worker_copied_feed_pairs{country="uk",job="kinowo-worker"}'
+        values: '1x180 0x250'
+      - series: 'kinowo_worker_copied_feed_pairs{country="pl",job="kinowo-worker"}'
+        values: '0x430'
     alert_rule_test:
-      - eval_time: 23h
+      - eval_time: 5h
         alertname: DuplicateVenueListing
         exp_alerts: []
-      - eval_time: 25h
+      - eval_time: 7h
         alertname: DuplicateVenueListing
         exp_alerts:
           - exp_labels:
-              country: pl
-              scope: same_city
-              severity: warning
-            exp_annotations:
-              summary: "1 same_city venue pair(s) in pl have shared their programme for a day"
-              description: >-
-                Two roster venues in "pl" have listed (nearly) the same upcoming films
-                at the same start times for 24 hours. same_city (90%+, one city): one screen listed
-                twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
-                no city in common): one venue's feed listed under another's name. The worker's WARN
-                line "duplicate-venue census (pl, same_city)" names the
-                pairs. A pair whose shared showtimes book through each venue's own links is cleared before
-                it is counted, so what is left books the same sessions or has no links on one side. Check
-                its sources in CinemaScraperCatalog: one upstream programme behind two names is a wiring bug
-                to fix (or a venue with no feed of its own to drop); two real venues programmed alike with
-                no links to tell them apart go on `services.cinemas.roster.DistinctVenuePairs` with the
-                reason, which clears them here and in the offline roster audit alike.
-          - exp_labels:
-              country: pl
-              scope: cross_city
-              severity: warning
-            exp_annotations:
-              summary: "1 cross_city venue pair(s) in pl have shared their programme for a day"
-              description: >-
-                Two roster venues in "pl" have listed (nearly) the same upcoming films
-                at the same start times for 24 hours. same_city (90%+, one city): one screen listed
-                twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
-                no city in common): one venue's feed listed under another's name. The worker's WARN
-                line "duplicate-venue census (pl, cross_city)" names the
-                pairs. A pair whose shared showtimes book through each venue's own links is cleared before
-                it is counted, so what is left books the same sessions or has no links on one side. Check
-                its sources in CinemaScraperCatalog: one upstream programme behind two names is a wiring bug
-                to fix (or a venue with no feed of its own to drop); two real venues programmed alike with
-                no links to tell them apart go on `services.cinemas.roster.DistinctVenuePairs` with the
-                reason, which clears them here and in the offline roster audit alike.
-          - exp_labels:
               country: us
-              scope: cross_city
               severity: warning
             exp_annotations:
-              summary: "1 cross_city venue pair(s) in us have shared their programme for a day"
+              summary: "1 venue pair(s) in us list one venue's booking sessions under another's name"
               description: >-
-                Two roster venues in "us" have listed (nearly) the same upcoming films
-                at the same start times for 24 hours. same_city (90%+, one city): one screen listed
-                twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
-                no city in common): one venue's feed listed under another's name. The worker's WARN
-                line "duplicate-venue census (us, cross_city)" names the
-                pairs. A pair whose shared showtimes book through each venue's own links is cleared before
-                it is counted, so what is left books the same sessions or has no links on one side. Check
-                its sources in CinemaScraperCatalog: one upstream programme behind two names is a wiring bug
-                to fix (or a venue with no feed of its own to drop); two real venues programmed alike with
-                no links to tell them apart go on `services.cinemas.roster.DistinctVenuePairs` with the
-                reason, which clears them here and in the offline roster audit alike.
+                In "us", a roster venue's latest scrape books its showtimes through
+                ANOTHER venue's own sessions: one venue's feed filed under a second venue's name (an
+                aggregator's mix-up), or one upstream page wired to two venues. The site then lists that
+                programme at a cinema not showing it. The worker's WARN line "copied feed (us)"
+                names the pair and how many listings it shares. Check both venues' sources in
+                CinemaScraperCatalog: a venue wired to the other's upstream is a wiring bug to fix, one with
+                no feed of its own is to drop; two venues genuinely selling each other's sessions go on
+                `services.cinemas.roster.DistinctVenuePairs` with the reason.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # FAILURE SHARE: A SUSTAINED SPIKE FIRES; EMPTY LISTINGS, NON-CINEMA SERVICES AND A THIN WINDOW

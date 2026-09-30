@@ -1601,8 +1601,8 @@
     },
     {
       "id": 31,
-      "title": "Venue pairs sharing their programme, by country and scope",
-      "description": "`kinowo_worker_duplicate_venue_pairs`: pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-min corpus scan), by scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme — one screen listed twice under two names, or two venues wired to one upstream listing, which the name-based offline roster audit cannot see. scope=cross_city: two venues sharing no city, 20+ showtimes each, at 95%+ — one venue's feed listed under another's name (Flicks once gave Syracuse IN's Pickwick the Park Ridge IL one's). Venues under 5 upcoming showtimes are skipped. A pair whose shared showtimes book through each venue's own links (chain-mates: Cineworld, Phoenix Theatres, Caribbean Cinemas run one grid estate-wide) is two venues and is not counted; the same session on another host, or a venue with no links, still counts. Pairs on `services.cinemas.roster.DistinctVenuePairs` are cleared. ZERO IS HEALTHY.\n\nThe worker's WARN line \"duplicate-venue census (<country>, <scope>)\" names the pairs whenever the set changes. Two real venues programmed alike with no booking links to tell them apart go on DistinctVenuePairs with the reason. Alerted by DuplicateVenueListing (above zero for 24h).",
+      "title": "Venue pairs listing one venue's booking sessions under another's name, by country",
+      "description": "`kinowo_worker_copied_feed_pairs`: pairs of roster venues where one venue's latest scrape lists the OTHER's own booking sessions — one venue's feed filed under a second venue's name (Flicks gave the Syracuse IN Pickwick the Park Ridge IL one's), or one upstream page wired to two venues (one bilety24 organiser page for Koło and Konin). CopiedFeedDetector checks each scrape as it lands, only for venues read through a client known to have done this (Flicks, the bilety24 organiser client) — a country with none has no series. Absent for the first ten minutes of a boot, until the seed has re-read the scrape archive. Zero is healthy; the worker's WARN line \"copied feed (<country>)\" names the pair. Alerted by DuplicateVenueListing (6h). Replaced the 5-minute programme census on 2026-09-30.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1645,8 +1645,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country, scope) (kinowo_worker_duplicate_venue_pairs{country=~\"$country\"})",
-          "legendFormat": "{{country}} {{scope}}"
+          "expr": "max by (country) (kinowo_worker_copied_feed_pairs{country=~\"$country\"})",
+          "legendFormat": "{{country}}"
         }
       ]
     },

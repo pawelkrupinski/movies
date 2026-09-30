@@ -47,7 +47,7 @@ object CinemaClientMarkers {
    *  (`BiletynaClient` for Końskie's two halls), not the combinator; for
    *  everything else it's the client itself (`FilmwebShowtimesClient`,
    *  `RialtoClient`, …). */
-  private def clientOf(scraper: CinemaScraper): String = scraper match {
+  def clientOf(scraper: CinemaScraper): String = scraper match {
     case venue: MultiListingScraper => clientOf(venue.listings.head)
     case single                     => single.getClass.getSimpleName
   }

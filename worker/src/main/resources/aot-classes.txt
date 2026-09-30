@@ -10294,6 +10294,10 @@ services.cinemas.roster.ChainDirectory$
 services.cinemas.roster.ChainDirectory$CinemaCity$
 services.cinemas.roster.ChainDirectory$Helios$
 services.cinemas.roster.ChainDirectory$Multikino$
+services.cinemas.roster.CopiedFeedArchive
+services.cinemas.roster.CopiedFeedDetector
+services.cinemas.roster.CopiedFeedDetector$
+services.cinemas.roster.CopiedFeedDetector$$anon$1
 services.cinemas.roster.DistinctVenuePairs
 services.cinemas.roster.DistinctVenuePairs$
 services.cinemas.roster.PublishedVenue
@@ -10840,9 +10844,6 @@ services.metrics.CorpusScanMetrics
 services.metrics.CorpusScanMetrics$
 services.metrics.CorpusScanMetrics$$anon$3
 services.metrics.CorpusScanMetrics$$anon$4
-services.metrics.DuplicateVenueCensus
-services.metrics.DuplicateVenueCensus$
-services.metrics.DuplicateVenueCensus$$anon$1
 services.metrics.EnvGatedFeature
 services.metrics.EnvGatedFeature$
 services.metrics.EnvGatedFeatureMetrics
