@@ -23,6 +23,14 @@ object RatingPageIdentity {
   def directorsOf(row: MovieRecord, tmdbDirectors: Int => Set[String]): Set[String] =
     row.tmdbId.map(tmdbDirectors).filter(_.nonEmpty).getOrElse(slotDirectors(row))
 
+  /** Does a page crediting `pageDirectors` POSITIVELY agree with the row's film — its TMDB crew or the
+   *  cinemas' credit? Then a year decades apart is a retrospective's screening year ("Przekleństwa
+   *  niewinności" 2026 is Coppola's 1999 film), not another film's, as Filmweb's own pick reads it. */
+  def directorsAgree(row: MovieRecord, pageDirectors: Set[String], tmdbDirectors: Int => Set[String]): Boolean = {
+    val ours = directorsOf(row, tmdbDirectors) ++ TmdbLessRatingLinks.directorsOf(row)
+    ours.nonEmpty && pageDirectors.nonEmpty && MetacriticClient.directorsCompatible(ours, pageDirectors)
+  }
+
   /** Does a page crediting `pageDirectors` positively deny the row's film? */
   def directorDenies(row: MovieRecord, pageDirectors: Set[String], tmdbDirectors: Int => Set[String]): Boolean = {
     val slot = slotDirectors(row)

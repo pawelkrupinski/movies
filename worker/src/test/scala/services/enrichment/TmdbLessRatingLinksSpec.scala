@@ -53,6 +53,21 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     TmdbLessRatingLinks.corroborated(tabu, tabuRow, Some(1988), Set.empty) shouldBe false
   }
 
+  "a stored Rotten Tomatoes page" should "stay when its director agrees, though a retrospective's screening dates the row decades later" in {
+    // "Letnie przesilenie: Pokaz przedpremierowy Przekleństw niewinności" (2026) is Coppola's 1999
+    // "The Virgin Suicides": linked on the director, then dropped on the year every refresh, then re-linked.
+    val url  = "https://www.rottentomatoes.com/m/virgin_suicides"
+    val page =
+      """<html><head><script type="application/ld+json">{"@type":"Movie","name":"The Virgin Suicides","dateCreated":"1999-05-19",
+        |"director":[{"@type":"Person","name":"Sofia Coppola"}]}</script></head>
+        |<body><rt-text slot="criticsScore">77%</rt-text><script>{"releaseYear":"1999"}</script></body></html>""".stripMargin
+    val (cache, key, row) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
+    cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
+    val rt = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(u: String): String = if (u == url) page else UpstreamNotFound(u) })
+    new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rt).refreshOneSync(key)
+    cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
+  }
+
   "Metacritic" should "link a TMDB-less film to a page crediting its director, and not to a namesake's" in {
     def page(director: String, year: Int) =
       s"""<html><head><script type="application/ld+json">{"@type":"Movie","name":"Naked","datePublished":"$year-01-01",

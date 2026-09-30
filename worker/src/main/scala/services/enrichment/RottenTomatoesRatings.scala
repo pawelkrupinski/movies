@@ -105,7 +105,8 @@ class RottenTomatoesRatings(
   private def tomatometerIfThisFilm(key: CacheKey, url: String): Option[Option[Int]] = {
     val fetched = rt.pageFor(url)
     val deniedBy = fetched.flatMap { page =>
-      if (!MetacriticClient.yearsCompatible(key.year, page.year)) Some(s"names ${page.year.getOrElse("?")}")
+      if (!MetacriticClient.yearsCompatible(key.year, page.year) &&
+          !cache.get(key).exists(RatingPageIdentity.directorsAgree(_, page.directors, tmdb.directorsFor))) Some(s"names ${page.year.getOrElse("?")}")
       // An UNDATED page is no evidence on year, and RT leaves many undated — so the
       // year guard waved through /m/sacrifice (Umberto Lenzi's 1972 "Sacrifice!") for
       // Romain Gavras's 2026 "Sacrifice" ("Bogaci i martwi"). Its credit is not silent.

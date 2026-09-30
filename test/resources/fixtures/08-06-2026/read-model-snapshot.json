@@ -690,6 +690,7 @@
   }, {
     "_id" : "f06cb47a75c5790f",
     "title" : "Wśród nocnej ciszy + dyskusja | Kino (nie)jawne: queerowe kody PRL-u",
+    "originalTitle" : "Wśród nocnej ciszy",
     "posterUrl" : "https://medstore.kinoteka.pl/w(2).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 116,
@@ -698,13 +699,15 @@
     "countries" : [ "Polska" ],
     "directors" : [ "Tadeusz Chmielewski" ],
     "cast" : [ ],
+    "synopsis" : "W portowym mieście komisarz Herman próbuje schwytać seryjnego zabójcę dzieci.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u"
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/W%C5%9Br%C3%B3d+nocnej+ciszy-1978-11845"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6,
     "synopsisByCity" : {
       "warszawa" : "Tadeusz Chmielewski, autor takich komedii jak chociażby „Nie lubię poniedziałku” czy „Jak rozpętałem drugą wojnę światową”, w „Wśród nocnej ciszy” prezentuje swoją mroczną stronę. Na Pomorzu grasuje seryjny morderca młodych chłopców. Komisarz prowadzący śledztwo musi radzić sobie także w domu z trudną relacją z 15-letnim synem.\n\nPo seansie dyskusja z widownią na temat tropu „bury your gays”. Czy film to jego klasyczna egzekucja czy wręcz przeciwnie, twórcza trawestacja?"
     },
@@ -1210,7 +1213,7 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Dymkowski.+Najwa%C5%BCniejszy+mecz/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dymkowski.+Najwa%C5%BCniejszy+mecz",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Dymkowski.+Najwa%C5%BCniejszy+mecz"
+      "filmwebUrl" : "https://www.filmweb.pl/film/Dymkowski.+Najwa%C5%BCniejszy+mecz-2026-10124370"
     },
     "weightedRating" : 0,
     "synopsisByCity" : {
@@ -2246,7 +2249,7 @@
     "_id" : "f21a091d3619480b",
     "title" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2276,7 +2279,7 @@
     "title" : "Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2300,11 +2303,37 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f21a091d3619480b~czlowiekzmarmuru1977wajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin",
+    "title" : "Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin”",
+    "originalTitle" : "Człowiek z marmuru",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 153,
+    "releaseYear" : 1977,
+    "genres" : [ "Dramat" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Andrzej Wajda" ],
+    "cast" : [ "Krystyna Janda", "Jerzy Radziwiłowicz", "Tadeusz Łomnicki", "Jacek Łomnicki", "Michał Tarkowski", "Krystyna Zachwatowicz" ],
+    "synopsis" : "Rok 1976. Agnieszka, dyplomantka szkoły filmowej, realizuje film o przodowniku pracy z lat 50-tych. Rozpoczyna prywatne śledztwo, mające ustalić przyczyny sukcesu i nagłego upadku.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
+    "ratings" : {
+      "imdb" : 7.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt0075902/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+z+marmuru/?category=2",
+      "rottenTomatoes" : 75,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/czlowiek_z_marmuru",
+      "filmweb" : 7.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123"
+    },
+    "weightedRating" : 7.6000000000000005,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f21a091d3619480b~czlowiekzmarmurumanofmarble",
     "title" : "Człowiek z marmuru (Man of Marble)",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2330,7 +2359,7 @@
     "title" : "Człowiek Z Marmuru | Wajda: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2358,7 +2387,7 @@
     "title" : "Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2384,7 +2413,7 @@
     "title" : "WAJDA: re-wizje: \"Człowiek z marmuru\"",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2579,17 +2608,20 @@
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 78,
     "releaseYear" : 1968,
-    "genres" : [ "Dokument/Muzyczny" ],
+    "genres" : [ "Dokumentalny", "Muzyczny" ],
     "countries" : [ "USA" ],
-    "directors" : [ ],
+    "directors" : [ "D.A. Pennebaker" ],
     "cast" : [ ],
+    "synopsis" : "W czerwcowy weekend 1967 roku odbył się festiwal muzyczny, który uchwycił ducha epoki oraz zapoczątkował nową erę rock'n'rolla.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Klasyka+w+kinie+Atlantic%3A+Monterey+Pop/?category=2",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/monterey-pop",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klasyka+w+kinie+Atlantic%3A+Monterey+Pop",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klasyka+w+kinie+Atlantic%3A+Monterey+Pop"
+      "filmweb" : 7.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Monterey+Pop-1968-140039"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.800000000000001,
     "synopsisByCity" : {
       "warszawa" : "W letni, czerwcowy weekend w 1967 roku, zaczęła się legenda Janis Joplin i Jimiego Hendrixa. Wystarczyły trzy gorące dni na stadionie w Monterey, by dzięki 27 artystom powstała kontrkultura i zrodził się kalifornijski sen. Zanim doszło do powstania Woodstocku, sto tysięcy osób podczas Monterey International Pop Festival, napędzanych psychodelicznymi dźwiękami, zawiązało komunę hipisowską. Trwało “lato miłości”. Scott McKenzie w swojej piosence sugerował obowiązujący dress code: „Be sure to wear some flowers in your hair.” Ludzie porzucali formalne, krępujące ubrania, by na boso, ale w dzwonach, splątani etnicznymi koralikami, z kwiatami we włosach, gromadzić się wśród oparów dymu, nie wiedząc jeszcze, co się wydarzy."
     },
@@ -3872,28 +3904,6 @@
     },
     "shareCardPending" : false
   }, {
-    "_id" : "f31360e7630dd180",
-    "title" : "Kobiecy świat: Zaproszenie",
-    "posterUrl" : "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 107,
-    "releaseYear" : 2026,
-    "genres" : [ "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kobiecy+%C5%9Bwiat%3A+Zaproszenie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kobiecy+%C5%9Bwiat%3A+Zaproszenie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kobiecy+%C5%9Bwiat%3A+Zaproszenie"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "Zapraszamy na cykl filmowy dedykowany kobietom!\n\nRaz w miesiącu organizujemy spotkanie filmowe dedykowane specjalnie dla naszych widzek.\nZapewniamy miłą atmosferę w damskim towarzystwie (chociaż Panowie też są oczywiście mile widziani!).\nWspólnie oglądamy najbardziej rozchwytywane tytuły z naszego repertuaru, klasyki kina i ciekawe nowości warte zobaczenia.\nPrzed seansem można poczęstować się powitalną lampką wina, otrzymać wyjątkowe prezenty oraz wsiąść udział w losowaniu nagród!\n\nJoe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "f323862b49fe0f8c",
     "title" : "Van gogh. Pola zbóż i zachmurzone niebiosa",
     "fallbackPosterUrls" : [ ],
@@ -4674,21 +4684,24 @@
   }, {
     "_id" : "f3d363e2b3e73feb",
     "title" : "WSP: Czytając Lolitę w Teheranie",
+    "originalTitle" : "Reading Lolita in Tehran",
     "posterUrl" : "https://www.novekino.pl/multimedia/czytajac_lolite_w_teheranie/plakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 107,
     "releaseYear" : 2024,
     "genres" : [ "Dramat" ],
     "countries" : [ "Włochy", "Izrael" ],
-    "directors" : [ ],
+    "directors" : [ "Eran Riklis" ],
     "cast" : [ "Golshifteh Farahani", "Zar Amir Ebrahimi", "Mina Kavani", "Reza Diako", "Arash Marandi", "Catayoune Ahmadi" ],
+    "synopsis" : "Nauczycielka wraz z siedmioma uczennicami w tajemnicy czyta zakazane zachodnie książki w rewolucyjnym Iranie.",
     "trailerUrls" : [ "https://www.youtube.com/embed/Cvg0Zi7DPhc" ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/WSP%3A+Czytaj%C4%85c+Lolit%C4%99+w+Teheranie/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WSP%3A+Czytaj%C4%85c+Lolit%C4%99+w+Teheranie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WSP%3A+Czytaj%C4%85c+Lolit%C4%99+w+Teheranie"
+      "filmweb" : 6.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Czytaj%C4%85c+Lolit%C4%99+w+Teheranie-2024-10062776"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.2,
     "synopsisByCity" : {
       "warszawa" : "Po rewolucji islamskiej w Iranie, która miała miejsce w 1979 roku, ulice Teheranu patrolowane są przez obrońców moralności, a fundamentaliści przejmują kontrolę nad uniwersytetami. Kobiety muszą nosić hidżab, ich swobody są ograniczane, a lektura zachodniej literatury staje się aktem buntu.\n\nTaki stan rzeczy sprawia, że Azar Nafisi (Golshifteh Farahani), ambitna wykładowczyni literatury, rezygnuje z pracy na Uniwersytecie Teherańskim. Kobieta potajemnie zaczyna zapraszać do swojego domu grupę najbardziej zaangażowanych studentek. Razem czytają zakazane klasyki literatury zachodniej – „Lolitę” Vladimira Nabokova, „Wielkiego Gatsby’ego” F. Scotta Fitzgeralda, powieści Henry’ego Jamesa czy Jane Austen. Początkowo nieśmiałe młode kobiety stopniowo otwierają się – dzielą marzeniami, lękami, historiami miłosnymi oraz upokorzeniami związanymi z życiem w totalitarnym reżimie."
     },
@@ -4941,20 +4954,23 @@
   }, {
     "_id" : "f42d832ff289dead",
     "title" : "Żywot briana",
+    "originalTitle" : "Life of Brian",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 94,
     "releaseYear" : 1979,
-    "genres" : [ ],
+    "genres" : [ "Komedia" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Terry Jones" ],
     "cast" : [ ],
+    "synopsis" : "Brian, rówieśnik Chrystusa, przychodzi na świat w Betlejem i zostaje omyłkowo uznany za Mesjasza.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/%C5%BBywot+briana/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C5%BBywot+briana",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=%C5%BBywot+briana"
+      "filmweb" : 7.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%BBywot+Briana-1979-1099"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.9,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -5100,39 +5116,23 @@
   }, {
     "_id" : "f44185c33505e5ce",
     "title" : "Poza prawem // jim jarmusch",
+    "originalTitle" : "Down by Law",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 107,
     "releaseYear" : 1986,
-    "genres" : [ ],
+    "genres" : [ "Dramat", "Komedia kryminalna" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Jim Jarmusch" ],
     "cast" : [ ],
+    "synopsis" : "Trzej nieudacznicy trafiają do jednej więziennej celi. Jeden z nich obmyśla plan ucieczki.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Poza+prawem+%2F%2F+jim+jarmusch/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poza+prawem+%2F%2F+jim+jarmusch",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poza+prawem+%2F%2F+jim+jarmusch"
+      "filmweb" : 7.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Poza+prawem-1986-5176"
     },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f4507708bc67e182",
-    "title" : "Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin”",
-    "posterUrl" : "/app/assets/movie/tXvfqGiMVdLpPSCKl2wnArLOcehE.jpg",
-    "fallbackPosterUrls" : [ ],
-    "releaseYear" : 1976,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+z+marmuru+%281977%29+%7C+%E2%80%9EWAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin%E2%80%9D/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cz%C5%82owiek+z+marmuru+%281977%29+%7C+%E2%80%9EWAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin%E2%80%9D",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cz%C5%82owiek+z+marmuru+%281977%29+%7C+%E2%80%9EWAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin%E2%80%9D"
-    },
-    "weightedRating" : 0,
+    "weightedRating" : 7.7,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -6061,11 +6061,12 @@
   }, {
     "_id" : "f51ee49a967f78a2",
     "title" : "Cinema Italia Oggi: Jeden szkolny rok",
+    "originalTitle" : "Un anno di scuola",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1753219495691.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 103,
     "releaseYear" : 2025,
-    "genres" : [ ],
+    "genres" : [ "Dramat" ],
     "countries" : [ "Włochy", "Francja" ],
     "directors" : [ "Laura Samani" ],
     "cast" : [ ],
@@ -6073,9 +6074,10 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Jeden+szkolny+rok/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Jeden+szkolny+rok",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Jeden+szkolny+rok"
+      "filmweb" : 6.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.9,
     "synopsisByCity" : {
       "poznan" : "Wrzesień 2007, Triest. Fred, osiemnastoletnia Szwedka o ognistym i odważnym temperamencie, przyjeżdża do miasta, by..."
     },
@@ -6732,6 +6734,32 @@
   }, {
     "_id" : "f589518075015513",
     "title" : "Mystery Train",
+    "posterUrl" : "https://www.kinokultura.pl/foto,19312,7cdddc5d137657d228f766f72e663dd6,jpg.html",
+    "fallbackPosterUrls" : [ "https://kinoamondo.pl/wp-content/uploads/2021/11/Mystery-train-scaled.jpeg", "https://image.tmdb.org/t/p/w500/v71UH2G1NHvllGUZsewnOrhcS2A.jpg", "https://m.media-amazon.com/images/M/MV5BZmUxNTQzYTItZjkwNi00NWVhLTk5MzEtNjhmN2U4MDYyNmY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 110,
+    "releaseYear" : 1989,
+    "genres" : [ "Komedia" ],
+    "countries" : [ "Japonia", "USA" ],
+    "directors" : [ "Jim Jarmusch" ],
+    "cast" : [ "工藤夕貴", "永瀬正敏", "Screamin' Jay Hawkins", "Cinqué Lee", "Nicoletta Braschi" ],
+    "synopsis" : "W Memphis, w stanie Tennessee, w ciągu jednej nocy, hotel Arcade, prowadzony przez ekscentrycznego nocnego recepcjonistę i nieuważnego boy'a, odwiedza młoda japońska para podróżująca w poszukiwaniu korzeni rocka; włoska kobieta w żałobie, która natyka się na uciekającą szarlatankę; oraz komiczne trio przypadkowych złodziei szukających miejsca do ukrycia.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt0097940/",
+      "metascore" : 80,
+      "metacriticUrl" : "https://www.metacritic.com/movie/mystery-train",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Mystery+Train",
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Mystery+Train-1989-7949"
+    },
+    "weightedRating" : 7.7,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f589518075015513~mysterytrainjimjarmusch",
+    "title" : "Mystery train // jim jarmusch",
+    "originalTitle" : "Mystery Train",
     "posterUrl" : "https://www.kinokultura.pl/foto,19312,7cdddc5d137657d228f766f72e663dd6,jpg.html",
     "fallbackPosterUrls" : [ "https://kinoamondo.pl/wp-content/uploads/2021/11/Mystery-train-scaled.jpeg", "https://image.tmdb.org/t/p/w500/v71UH2G1NHvllGUZsewnOrhcS2A.jpg", "https://m.media-amazon.com/images/M/MV5BZmUxNTQzYTItZjkwNi00NWVhLTk5MzEtNjhmN2U4MDYyNmY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 110,
@@ -8123,13 +8151,17 @@
     "countries" : [ "USA" ],
     "directors" : [ "Sofia Coppola" ],
     "cast" : [ "Kirsten Dunst", "Josh Hartnett", "James Woods oraz Kat" ],
+    "synopsis" : "Pięć atrakcyjnych, młodych sióstr przyciąga uwagę chłopców z sąsiedztwa. Gdy jedna z nich popełnia samobójstwo, fascynacja pogłębia się.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Letnie+przesilenie%3A+Pokaz+przedpremierowy+Przekle%C5%84stw+Niewinno%C5%9Bci/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Letnie+przesilenie%3A+Pokaz+przedpremierowy+Przekle%C5%84stw+Niewinno%C5%9Bci",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Letnie+przesilenie%3A+Pokaz+przedpremierowy+Przekle%C5%84stw+Niewinno%C5%9Bci"
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-virgin-suicides",
+      "rottenTomatoes" : 80,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/virgin_suicides",
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.666666666666667,
     "synopsisByCity" : {
       "warszawa" : "Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI\n\nPamiętasz lato, które zmieniło twoje życie?\n\nWersja odrestaurowana 4K\n\nLegendarny debiut reżyserski Sofii Coppoli, który otworzył drzwi do świata dziewczyńskich sekretów, powraca do polskich kin w wersji odrestaurowanej 4K! Przekleństwa niewinności są adaptacją kultowej, kilkukrotnie wydawanej w Polsce powieści Jeffreya Eugenidesa. Historia pięciu sióstr Lisbon opowiada o pierwszych razach i wkraczaniu w dorosłość, przed którą nie da się (czy aby na pewno?) uciec.\nZjawiskowo nakręcone przez Eda Lachmana, z eteryczną oprawą muzyczną w wykonaniu duetu Air, Przekleństwa niewinności to zmysłowa opowieść o dorastaniu w latach 70. Ćwierć wieku później ta skąpana w nasyconych, słonecznych kolorach dekada pozostaje przede wszystkim wspomnieniem i fantazją – zapisaną w porzuconych pamiętnikach, wyciętych drzewach i dźwiękach gramofonowych płyt. Nastoletnie siostry Lisbon wspomina bezimienny narrator, zakochany przed laty nie tyle w jednej z dziewcząt, ile w nastroju tajemniczości, jaki wokół siebie roztaczały.\nPrzekleństwa niewinności mają wielopokoleniową obsadę, złożoną z aktorów o charakterystycznej aurze: James Woods (Wideodrom), Kathleen Turner (Żar ciała) oraz przede wszystkim młodziutcy Kirsten Dunst (Wywiad z wampirem, Maria Antonina) i Josh Hartnett (Pearl Harbor, Sin City). Zwiewny, marzycielski styl filmu został zainspirowany Piknikiem pod Wiszącą Skałą, dzięki czemu debiut Coppoli wygląda niczym przeniesienie tajemniczej historii Petera Weira w realia amerykańskich przedmieść.\n\nNa Przekleństwach niewinności wychowały się pokolenia dziewczyn i kobiet, którym bliska jest uchwycona w filmie wrażliwość. Produkcyjne wsparcie American Zoetrope, firmy Francisa Forda Coppoli, i swoboda wyobraźni Sofii zaowocowały jednym z przełomowych debiutów współczesnego kina – intymną, choć niepozbawioną niepokoju, pachnącą ciepłym latem historią, w której można się zanurzyć i rozsmakować."
     },
@@ -9533,18 +9565,22 @@
   }, {
     "_id" : "f76a09f98caa935e",
     "title" : "Święty piotr i inne papieskie bazyliki rzymu",
+    "originalTitle" : "San Pietro e le Basiliche Papali di Roma",
     "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
+    "releaseYear" : 2016,
+    "genres" : [ "Dokumentalny" ],
     "countries" : [ ],
     "directors" : [ "Luca Viotto" ],
     "cast" : [ ],
+    "synopsis" : "Papieskie Bazyliki Rzymu ukazane jak nigdy dotąd. Filmowa podróż zarejestrowana z wcześniej niedostępnych punktów widzenia, przy użyciu najnowszej technologii 3D i 4K.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/%C5%9Awi%C4%99ty+piotr+i+inne+papieskie+bazyliki+rzymu/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C5%9Awi%C4%99ty+piotr+i+inne+papieskie+bazyliki+rzymu",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=%C5%9Awi%C4%99ty+piotr+i+inne+papieskie+bazyliki+rzymu"
+      "filmweb" : 7.5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%9Awi%C4%99ty+Piotr+i+inne+papieskie+bazyliki+Rzymu-2016-771457"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.5,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -11266,43 +11302,25 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "f876a941749880fc",
-    "title" : "WSP: Zaproszenie - przedpremiera",
-    "posterUrl" : "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 107,
-    "releaseYear" : 2026,
-    "genres" : [ "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WSP%3A+Zaproszenie+-+przedpremiera/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WSP%3A+Zaproszenie+-+przedpremiera",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WSP%3A+Zaproszenie+-+przedpremiera"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "f877921c035e009a",
     "title" : "DKF Immersja: Following (1998) - seans z prelekcją i dyskusją",
+    "originalTitle" : "Following",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/6tf3e.png",
     "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
+    "releaseYear" : 1998,
+    "genres" : [ "Kryminał", "Thriller" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Christopher Nolan" ],
     "cast" : [ ],
+    "synopsis" : "Niespełniony pisarz śledzi przypadkowych ludzi spotkanych na ulicy. Wkrótce wpada w kłopoty.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/DKF+Immersja%3A+Following+%281998%29+-+seans+z+prelekcj%C4%85+i+dyskusj%C4%85/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=DKF+Immersja%3A+Following+%281998%29+-+seans+z+prelekcj%C4%85+i+dyskusj%C4%85",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=DKF+Immersja%3A+Following+%281998%29+-+seans+z+prelekcj%C4%85+i+dyskusj%C4%85"
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%9Aledz%C4%85c-1998-93473"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.4,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -11870,8 +11888,10 @@
   }, {
     "_id" : "f90244faffa7dc99",
     "title" : "Wenecja. Awangarda bez granic",
+    "originalTitle" : "Venezia. Infinita avanguardia",
     "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
+    "releaseYear" : 2021,
+    "genres" : [ "Dokumentalny" ],
     "countries" : [ ],
     "directors" : [ "Michele Mally" ],
     "cast" : [ ],
@@ -11879,9 +11899,10 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Wenecja.+Awangarda+bez+granic/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Wenecja.+Awangarda+bez+granic",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Wenecja.+Awangarda+bez+granic"
+      "filmweb" : 6.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Wenecja.+Awangarda+bez+granic-2021-10028035"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.7,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -13923,20 +13944,23 @@
   }, {
     "_id" : "fa1bf3d2e0caf24b",
     "title" : "Flow",
+    "originalTitle" : "Straume",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 84,
     "releaseYear" : 2024,
-    "genres" : [ "pełnometrażowy film animowany" ],
+    "genres" : [ "Animacja", "Przygodowy", "Fantasy" ],
     "countries" : [ "Francja", "Łotwa", "Belgia" ],
     "directors" : [ "Gintz Zilbalodis" ],
     "cast" : [ ],
+    "synopsis" : "Przyzwyczajony do samotności kot, w wyniku wielkiej, tajemniczej powodzi, znajduje schronienie w dryfującej łódce. Wraz z innymi zwierzętami na pokładzie musi stawić czoła nowej rzeczywistości.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Flow/?category=2",
+      "metascore" : 87,
+      "metacriticUrl" : "https://www.metacritic.com/movie/flow",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Flow",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Flow"
+      "filmwebUrl" : "https://www.filmweb.pl/film/Flow-2024-10052360"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 8.7,
     "synopsisByCity" : {
       "szczecin" : "Kot przyzwyczajony jest do spędzania dni we własnym towarzystwie. Wydreptuje swoje kocie ścieżki i śpi w ulubionych miejscach w domu, który, choć pełny śladów ludzkiej obecności, zdaje się należeć już tylko do niego… Jednak do czasu. Gdy tajemnicza powódź pochłania znany kotu świat, jedynym schronieniem przed wielką falą staje się stara, drewniana łódź. Szansę na przetrwanie znajdują w niej również inni – kapibara, ptak, lemur i pies – wśród których kocia natura i niezależność są wystawiane na próbę. Dryfując przez mistyczne, zalane wodą krajobrazy, zwierzęta wspólnie mierzą się z grozą żywiołu i coraz to większymi wyzwaniami. Niebezpieczna żegluga powoli zamienia się w symboliczną podróż, w której każdy przechodzi przemianę charakteru i odkrywa w sobie nowe rodzaje wrażliwości. Kibicując tej nietuzinkowej grupie towarzyszy w ich przygodzie, sami stajemy się częścią załogi. „Flow” jest opowieścią o międzygatunkowej przyjaźni i solidarności, której każdy kadr składa się na porywającą, wizualną odyseję. To ciepła, poruszająca historia zarówno dla starszej, jak i młodszej widowni. Film w reżyserii łotewskiego wizjonera animacji Gintsa Zilbalodisa, po światowej premierze na Festiwalu w Cannes (Konkurs „Un Certain Regard”), wrócił aż z czterema laurami z Międzynarodowego Festiwalu Filmów Animowanych w Annecy, w tym Nagrodą Jury, Nagrodą Publiczności oraz Nagrodą za Najlepszą muzykę oryginalną. „Flow” jest określany jako mocny kandydat do oscarowej nominacji w kategorii Najlepszy pełnometrażowy film animowany w przyszłym roku i jest też oficjalnym kandydatem Łotwy w kategorii Najlepszy Film Nieanglojęzyczny."
     },
@@ -14152,20 +14176,23 @@
   }, {
     "_id" : "fa5c5dc0905c6cda",
     "title" : "Kawa i papierosy // jim jarmusch",
+    "originalTitle" : "Coffee and Cigarettes",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 98,
     "releaseYear" : 2003,
-    "genres" : [ ],
+    "genres" : [ "Komedia", "Dramat", "Muzyczny" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Jim Jarmusch" ],
     "cast" : [ ],
+    "synopsis" : "Jedenaście krótkich epizodów przedstawiających rozmowy przy kawie i papierosach. ",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Kawa+i+papierosy+%2F%2F+jim+jarmusch/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kawa+i+papierosy+%2F%2F+jim+jarmusch",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kawa+i+papierosy+%2F%2F+jim+jarmusch"
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Kawa+i+papierosy-2003-110812"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -15380,20 +15407,25 @@
   }, {
     "_id" : "fac319f9e96d9eb6",
     "title" : "Left-Handed Girl",
+    "originalTitle" : "左撇子女孩",
     "posterUrl" : "https://sdk.waw.pl/images/wydarzenia/02-2026/Left_OW.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/19v1ixdwQx3QXi82gsvoZ3BLypm.jpg" ],
     "runtimeMinutes" : 108,
-    "genres" : [ ],
-    "countries" : [ ],
+    "releaseYear" : 2025,
+    "genres" : [ "Dramat" ],
+    "countries" : [ "Francja", "USA", "Wielka Brytania", "Tajwan" ],
     "directors" : [ " Shih-Ching Tsou" ],
-    "cast" : [ ],
+    "cast" : [ "馬士媛", "蔡淑臻", "葉子綺", "黃鐙輝", "陳慕義" ],
+    "synopsis" : "Samotna matka i jej dwie córki wracają do Tajpej po kilku latach mieszkania na wsi, aby otworzyć stoisko na tętniącym życiem nocnym targu. Każda z nich na swój sposób będzie musiała dostosować się do nowego otoczenia, aby związać koniec z końcem i utrzymać jedność rodziny. Trzy pokolenia rodzinnych sekretów zaczynają się rozwiązywać, gdy najmłodsza córka, która jest leworęczna, dostaje od swojego tradycyjnego dziadka polecenie, aby nigdy nie używała swojej „diabelskiej ręki”.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Left-Handed+Girl/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Left-Handed+Girl",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Left-Handed+Girl"
+      "imdbUrl" : "https://www.imdb.com/title/tt27722618/",
+      "metacriticUrl" : "https://www.metacritic.com/search/%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9",
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Left-Handed+Girl.+To+by%C5%82a+r%C4%99ka%E2%80%A6+diab%C5%82a%21-2025-10078990"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.3,
     "synopsisByCity" : {
       "warszawa" : "Hit tegorocznego festiwalu Nowe Horyzonty, oficjalny kandydat Tajwanu do Oscara i nowy tytuł ze znakiem jakości Seana Bakera.\n\nPulsujące nocnym życiem Tajpej. Trzy kobiety przeprowadzają się do stolicy Tajwanu, aby otworzyć nowy rozdział w życiu: niemająca szczęścia do miłości ani pieniędzy Shu-Fen oraz jej córki – nastoletnia i zadziorna I-Ann oraz diabelnie urocza, kilkuletnia I-Jing. Podczas gdy samotna mama rozkręca na nocnym targu własny stragan z kluskami, I-Ann zamiast studiować dorabia jako dealerka betelu – lokalnego odpowiednika naszych snusów, a I-Jing na własną rękę (dosłownie i w przenośni…) eksploruje zakamarki kuszącego neonami marketu.\n\nW mieście wielkich szans i nie mniejszych rozczarowań tajwańsko-amerykańska reżyserka bierze pod lupę kobiece więzi rodzinne, w których nie brakuje pęknięć, ale też czułości. W efekcie powstał tryskający energią komediodramat o tym, że rodziny się nie wybiera, ale gdybyśmy mogli, to zaprosilibyśmy do niej… surykatkę. I o co chodzi z tą lewą ręką?\n\nReżyserką i współautorką scenariusza jest Shih-Ching Tsou, dla której to wprawdzie pierwszy tytuł jako samodzielnej reżyserki, ale Tsou zadebiutowała już ponad 20 lat temu – i to u boku samego Seana Bakera, z którym od lat przyjaźni się w życiu i na planie zdjęciowym. Wspólnie wyreżyserowali drugi pełny metraż Bakera – „Take Out”, a Tsou była także producentką jego innych filmów: „Starlet” („Gwiazdeczka”), „Tangerine” („Mandarynki”), „The Florida Project” i „Red Rocket”. Sean Baker jest również współautorem scenariusza do „Left-Handed Girl” oraz producentem wiodącym filmu. Jego charakterystyczne spojrzenie na rzeczywistość i sposób opowiadania historii są w tym projekcie wyraźnie obecne – Baker odpowiada tu także w całości za montaż!\n\nFilm jest oficjalnym tajwańskim kandydatem do Oscara, a jego światowa premiera odbyła się na Festiwalu w Cannes i dziś z powodzeniem kontynuuje festiwalową trasę zdobywając nagrody. Krytycy chwalą świadomą, dopracowaną reżyserię, dynamikę dialogów, sposób przedstawienia relacji rodzinnych i świata z perspektywy dziecka – w słodko-gorzki, a momentami tragikomiczny sposób – porównując pod tym kątem „Left-Handed Girl” do „The Florida Project”."
     },
@@ -15965,17 +15997,20 @@
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 100,
     "releaseYear" : 2025,
-    "genres" : [ "Dramat", "Psychologiczny" ],
+    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Tadeusz Konwicki" ],
     "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
+    "synopsis" : "W miasteczku pojawia się tajemniczy mężczyzna, który przedstawia mieszkańcom różne wersje swojego życia.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Salto/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Salto",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Salto"
+      "rottenTomatoes" : 76,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.699999999999999,
     "synopsisByCity" : {
       "warszawa" : "Do małego miasteczka przybywa mężczyzna o podwójnym nazwisku Kowalski-Malinowski (Z. Cybulski). Podaje się za niegdysiejszego mieszkańca, a teraz ucieka przed wyrokiem swojego oddziału partyzantów, mimo upływu kilkunastu lat od wojny. Zatrzymuje się w domu, który podobno kiedyś do niego należał, co obecny Gospodarz (Z. Holoubek) przyjmuje ze spokojem. Makówki w rękach Gospodarza symbolizują sen, który zapewne śnią wszystkie postaci – uosobienia postaw ważnych dla tej mitycznej wspólnoty, nie mogącej wyzwolić się z widma wojny. Kowalski-Malinowski zdolny jest zahipnotyzować mieszkańców, wprowadzić ich w trans przeżywania jego mitomańskiej opowieści o bohaterstwie, konieczności ucieczki, ukrytych skarbach przeszłości. Po rocznicowej uroczystości, która stanowi kulminację wszystkich spotkań bohaterów, mieszkańcy buntują się przeciw przybyszowi i decydują przegnać z miasteczka. Film Tadeusza Konwickiego wpisuje się w dorobek Szkoły Polskiej przez polemikę z narodową mitologią, której ucieleśnieniem jest w filmie postać Kowalskiego-Malinowskiego granego przez Zbyszka Cybulskiego, ikonicznego Maćka z „Popiołu i diamentu”. Nawiązuje przy tym do neoromantycznego chocholego tańca i figur z „Wesela” Stanisława Wyspiańskiego przez postaci Poety, Pijaka, Wdowy, Gospodarza. Koresponduje przez kompozycję i problematykę z ówczesną powieścią Konwickiego „Sennik współczesny”. Motyw osobliwego tańca powraca na urodzinowym przyjęciu bohatera filmu „Jak daleko stąd, jak blisko”."
     },
@@ -17067,13 +17102,15 @@
     "countries" : [ "Polska" ],
     "directors" : [ "Piotr Łazarkiewicz" ],
     "cast" : [ "Marek Probosz", "Elżbieta Czyżewska", "Henryk Bista", "J" ],
+    "synopsis" : "Syn kierowniczki kina \"Jutrzenka\" próbuje nie dopuścić do jego zamknięcia.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Kocham+kino/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kocham+kino",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kocham+kino"
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Kocham+kino-1987-6799"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.1,
     "synopsisByCity" : {
       "warszawa" : "List miłosny do kin studyjnych i urzekająca, nieoczywista historia. Zapraszamy na pokaz filmu „Kocham kino” w reżyserii Piotra Łazarkiewicza w ramach cyklu Polska Klasyka Wieczorową Porą.\n\nMaria, kierowniczka kina „Jutrzenka” w Lubieniu na ziemiach zachodnich, próbuje zapobiec spadkowi frekwencji, wykupując codziennie po 10 biletów na seans. W jednym z odcinków Polskiej Kroniki Filmowej wśród młodych żołnierzy rozpoznaje swojego syna, porzuconego niegdyś dla kariery filmowej. Udaje jej się go odnaleźć, sprowadzić do siebie, a nawet zarazić pasją dla kina i misją ocalenia „Jutrzenki”. Niestety, bezskutecznie.\n\nUpadek kin w małych miejscowościach rozpoczął się u schyłku realnego socjalizmu, najpierw w wyniku deficytowej gospodarki polskiej kinematografii okresu stanu wojennego, potem odpływu widzów na fali popularności wypożyczalni wideo i zagranicznych filmów. Kina w małych miejscowościach jako nierentowne i zapomniane przez widzów sukcesywnie znikały z kinowej mapy Polski. Mimo przytłaczającej nostalgii i poczucia nieuchronnej porażki bohaterów, twórcy zostawiają odrobinę nadziei w epilogu. Dostrzegają ją w kolejnym pokoleniu miłośników małych kin i ambitnego repertuaru. Macierzyński melodramat, który dzięki kinofilii bohaterów jest zarazem hołdem dla minionej epoki kina.\n\n„Kocham kino” to fabularny debiut Piotra Łazarkiewicza z Elżbietą Czyżewską w roli głównej, gwiazdą kina Polski Ludowej, wówczas od dwudziestu lat na emigracji. W historię Marii i jej syna (Marek Probosz) autor wplótł pastisz czarno-białego melodramatu z lat 60, fikcyjnego filmu sprzed dwóch dekad, zatytułowanego \"Ręce pianisty\", który powstał w Lubieniu z udziałem mieszkańców. Autor filmu wystąpił w roli charyzmatycznego reżysera w kożuchu, co można odczytać jako dowcipną aluzję do Andrzeja Wajdy. Z kolei Maria miałaby być laureatką popularnego w PRL konkursu dla amatorek „Piękne dziewczyny na ekrany”."
     },
@@ -18188,7 +18225,7 @@
     "title" : "Zaproszenie",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -18217,11 +18254,69 @@
     "ageRating" : "15",
     "shareCardPending" : false
   }, {
+    "_id" : "fcbadf4943332426~kobiecyswiatzaproszenie",
+    "title" : "Kobiecy świat: Zaproszenie",
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Olivia Wilde" ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    },
+    "weightedRating" : 7.425,
+    "synopsisByCity" : {
+      "warszawa" : "Zapraszamy na cykl filmowy dedykowany kobietom!\n\nRaz w miesiącu organizujemy spotkanie filmowe dedykowane specjalnie dla naszych widzek.\nZapewniamy miłą atmosferę w damskim towarzystwie (chociaż Panowie też są oczywiście mile widziani!).\nWspólnie oglądamy najbardziej rozchwytywane tytuły z naszego repertuaru, klasyki kina i ciekawe nowości warte zobaczenia.\nPrzed seansem można poczęstować się powitalną lampką wina, otrzymać wyjątkowe prezenty oraz wsiąść udział w losowaniu nagród!\n\nJoe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fcbadf4943332426~wspzaproszenieprzedpremiera",
+    "title" : "WSP: Zaproszenie - przedpremiera",
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Olivia Wilde" ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    },
+    "weightedRating" : 7.425,
+    "synopsisByCity" : {
+      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
+    },
+    "shareCardPending" : false
+  }, {
     "_id" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow",
     "title" : "Zaproszenie | Kinoteka dla rodziców",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -18250,7 +18345,7 @@
     "title" : "Zaproszenie | Zobacz przedpremierowo",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie/plakat.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://medstore.cinemaone.pl/ZAPROSZENIEPayoffPosterdata.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -19248,20 +19343,23 @@
   }, {
     "_id" : "fd9e99170a2d5828",
     "title" : "Zmiennokształtni",
+    "originalTitle" : "Woodwalkers",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 99,
     "releaseYear" : 2024,
-    "genres" : [ ],
+    "genres" : [ "Przygodowy", "Fantasy" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Damian John Harper" ],
     "cast" : [ ],
+    "synopsis" : "Carag potrafi zmieniać się w pumę. W tajnej szkole uczy się kontrolować swoje moce. Z nowymi przyjaciółmi odkrywa świat zmiennokształtnych, ale wkrótce musi stawić czoła niebezpieczeństwu, by ocalić swoich bliskich.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Zmiennokszta%C5%82tni/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zmiennokszta%C5%82tni",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zmiennokszta%C5%82tni"
+      "filmweb" : 5.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zmiennokszta%C5%82tni-2024-10056794"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 5.3,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -19429,21 +19527,24 @@
   }, {
     "_id" : "fdc65b80e324d520",
     "title" : "Zygfryd + dyskusja | Kino (nie)jawne: queerowe kody PRL-u",
+    "originalTitle" : "Zygfryd",
     "posterUrl" : "https://medstore.kinoteka.pl/z.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 91,
     "releaseYear" : 2026,
-    "genres" : [ "Dramat" ],
+    "genres" : [ "Obyczajowy", "Psychologiczny" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Andrzej Domalik" ],
     "cast" : [ ],
+    "synopsis" : "Małe miasteczko odwiedza cyrk. Profesor Drawicz przejawia zainteresowanie młodym akrobatą.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u"
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zygfryd-1986-12049"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.4,
     "synopsisByCity" : {
       "warszawa" : "Figura mentora, który uczy, ale też uwodzi czy po prostu ma romantyczną bądź seksualną relację z młodzieńcem, obecna jest już w antyku. Andrzej Domalik bierze ją na warsztat adaptując opowiadanie o tym samym tytule Jarosława Iwaszkiewicza. W tej wersji koneser sztuki (grany przez samego Stanisława Holoubka) fascynuje się młodym cyrkowcem-akrobatą.\n\nPo seansie dyskusja z widownią – czy „Zygfryd” rzeczywiście zasługuje na miano pierwszego gejowskiego polskiego filmu? Jakie emocje budzi we współczesnej widowni?"
     },
@@ -19786,15 +19887,16 @@
     "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/plakatpodrecznikdlasuperbohaterow.jpg", "https://biletyna.pl/file/get/id/414158" ],
     "runtimeMinutes" : 91,
     "releaseYear" : 2026,
-    "genres" : [ "Animowany", "Familijny" ],
+    "genres" : [ "Animacja", "Familijny" ],
     "countries" : [ "Norwegia", "Szwecja" ],
     "directors" : [ "Patrik Forsberg", "Anoo Bhagavan" ],
     "cast" : [ ],
+    "synopsis" : "Nowa w Rosenhill Lisa odkrywa podręcznik supermocy, zostaje superbohaterką i musi połączyć siły z dawnymi prześladowcami, by powstrzymać gangstera Wolfganga i ocalić miasto.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Podr%C4%99cznik+dla+superbohater%C3%B3w/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Podr%C4%99cznik+dla+superbohater%C3%B3w",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Podr%C4%99cznik+dla+superbohater%C3%B3w"
+      "filmwebUrl" : "https://www.filmweb.pl/film/Podr%C4%99cznik+dla+superbohater%C3%B3w-2025-10106805"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -19947,17 +20049,19 @@
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 115,
     "releaseYear" : 2026,
-    "genres" : [ "Psychologiczny", "Thriller" ],
+    "genres" : [ "Thriller", "Psychologiczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "Adrian Lyne" ],
     "cast" : [ ],
+    "synopsis" : "Weterana wojennego z Wietnamu dręczą niepokojące koszmary nocne i narasta w nim poczucie bycia szpiegowanym.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Kultowe+klasyki%3A+Drabina+Jakubowa/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kultowe+klasyki%3A+Drabina+Jakubowa",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kultowe+klasyki%3A+Drabina+Jakubowa"
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Drabina+Jakubowa-1990-5188"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6,
     "synopsisByCity" : {
       "warszawa" : "Tim Robbins w jednym z najbardziej kultowych horrorów psychologicznych lat 90\nPo powrocie z wojny w Wietnamie Jacob Singer próbuje wrócić do normalnego życia w Nowym Jorku, ale rzeczywistość zaczyna wymykać mu się spod kontroli. Nękany przez niepokojące wizje, dziwne spotkania i coraz silniejsze poczucie paranoi, Jacob desperacko próbuje odkryć, co jest prawdą, a co jedynie wytworem jego umysłu. „Drabina Jakubowa” to psychologiczny horror i thriller, który wciąga widza w koszmar bez wyjścia.\n\nFilm hipnotyzuje duszną, oniryczną atmosferą i poczuciem ciągłego zagrożenia. To mroczne kino balansujące między horrorem, dramatem wojennym i psychologicznym labiryntem, pełne obrazów, które zostają w głowie na długo po seansie. Brudny Nowy Jork, halucynacyjny montaż i niepokojąca muzyka tworzą doświadczenie bardziej przypominające zły sen.\n\n„Drabina Jakubowa” uchodzi za film kultowy i jeden z najważniejszych psychologicznych horrorów lat 90. Reżyser Adrian Lyne („Fatalne zauroczenie”) stworzył dzieło, które wywarło ogromny wpływ na estetykę późniejszych horrorów, w tym serii „Silent Hill”. W głównej roli fenomenalny Tim Robbins, a za scenariusz odpowiada Bruce Joel Rubin - autor oscarowego „Uwierz w ducha”. Film do dziś fascynuje również swoją symboliką - pełną religijnych odniesień, pytań o winę, śmierć i naturę rzeczywistości - dzięki czemu pozostaje jednym z tych tytułów, które można interpretować i odkrywać na nowo przy każdym kolejnym seansie.\n\nPRELEKCJA\nPrzed filmem krótką prelekcję wygłosi Monika Stolat - dyrektorka artystyczna i producentka Splat!FilmFest, Kultowych Klasyków, festiwalu strasznie dziwnych filmów WTF FEST oraz cyklu Najlepsze z Najgorszych.\nO CYKLU KULTOWE KLASYKI OD SPLAT!FILMFEST\nCałoroczny cykl festiwalu nowego kina gatunkowego, horrorów, fantastyki i bezkompromisowego kina arthousowego Splat!FilmFest – International Fantastic Film Festival. W repertuarze Kultowych Klasyków znajdują się filmy o szczególnym znaczeniu, mocne, wyraziste i ponadczasowe, które mimo upływu lat, zmieniających się gustów i trendów nie straciły na przesłaniu i sile rażenia. Kuratorka cyklu: Monika Stolat. Więcej: splatfilmfest.com"
     },
@@ -21148,25 +21252,6 @@
     "synopsisByCity" : {
       "warszawa" : "\"Nihilizm, free jazz i bunt w filmie mistrza japońskiego undergroundu Kôji Wakamatsu.\n\nPo brutalnym gwałcie młoda dziewczyna spotyka na dachu budynku wycofanego chłopaka, który obserwował całe wydarzenie i sam nosi w sobie doświadczenie przemocy. Oboje spędzają razem kolejne godziny, dzieląc się traumami, lękami i myślami o śmierci. Ich relacja szybko zamienia się w dziwną mieszankę czułości, nihilizmu i autodestrukcji.\n\nKôji Wakamatsu bierze elementy pinku eiga, kina exploitation i młodzieżowego buntu, ale zamiast zwykłej prowokacji tworzy coś dużo bardziej hipnotycznego i melancholijnego. „Go, Go Second Time Virgin” jest jednocześnie brutalne, poetyckie i zaskakująco delikatne w swoim totalnym nihilizmie.\n\nMinimalistyczne zdjęcia, free jazzowa muzyka i atmosfera emocjonalnego zagubienia sprawiają, że film wygląda momentami jak bardzo smutny sen o młodości i przemocy.\n\nKôji Wakamatsu był jednym z najbardziej radykalnych i politycznych twórców japońskiego kina undergroundowego. Jego filmy regularnie balansowały między erotyką, przemocą i politycznym buntem, ale pod warstwą skandalu zawsze kryło się coś dużo bardziej gorzkiego i osobistego. „Go, Go Second Time Virgin” do dziś pozostaje jednym z najważniejszych filmów jego radykalnego okresu z końca lat 60.\"\n\n\"18+\nTRIGGER WARNING: film zawiera sceny przemocy seksualnej\n\""
     },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fee8670dcee948a4",
-    "title" : "Mystery train // jim jarmusch",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 110,
-    "releaseYear" : 1989,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Mystery+train+%2F%2F+jim+jarmusch/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Mystery+train+%2F%2F+jim+jarmusch",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Mystery+train+%2F%2F+jim+jarmusch"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "fee9781cbed0308e",
@@ -40683,6 +40768,17 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/\u0000Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)" ]
   }, {
+    "_id" : "f21a091d3619480b~czlowiekzmarmuru1977wajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|zabrze|Kino Roma",
+    "filmId" : "f21a091d3619480b~czlowiekzmarmuru1977wajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin",
+    "city" : "zabrze",
+    "cinema" : "Kino Roma",
+    "filmUrl" : "https://www.kinoroma.zabrze.pl/repertuar/czlowiek-z-marmuru-1977-wajda-re-wizje.-przeglad-filmow-andrzeja-wajdy-w-100.-rocznice-urodzin",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-16T18:00:00",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Roma\u0000https://www.kinoroma.zabrze.pl/repertuar/czlowiek-z-marmuru-1977-wajda-re-wizje.-przeglad-filmow-andrzeja-wajdy-w-100.-rocznice-urodzin\u0000Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin”" ]
+  }, {
     "_id" : "f21a091d3619480b~czlowiekzmarmurumanofmarble|czestochowa|OKF Iluzja",
     "filmId" : "f21a091d3619480b~czlowiekzmarmurumanofmarble",
     "city" : "czestochowa",
@@ -44161,18 +44257,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/wtf-fest-deerskin/\u0000WTF Fest | Deerskin" ]
-  }, {
-    "_id" : "f31360e7630dd180|warszawa|Kino Wisła",
-    "filmId" : "f31360e7630dd180",
-    "city" : "warszawa",
-    "cinema" : "Kino Wisła",
-    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19805",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-24T18:00:00",
-      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=113006&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
-      "format" : [ "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19805\u0000Kobiecy świat: Zaproszenie" ]
   }, {
     "_id" : "f323862b49fe0f8c|szczecin|Kino Zamek",
     "filmId" : "f323862b49fe0f8c",
@@ -64913,17 +64997,6 @@
     } ],
     "listingKeys" : [ "P\u0000Kino za Rogiem\u0000Poza prawem // JIM JARMUSCH\u00001986" ]
   }, {
-    "_id" : "f4507708bc67e182|zabrze|Kino Roma",
-    "filmId" : "f4507708bc67e182",
-    "city" : "zabrze",
-    "cinema" : "Kino Roma",
-    "filmUrl" : "https://www.kinoroma.zabrze.pl/repertuar/czlowiek-z-marmuru-1977-wajda-re-wizje.-przeglad-filmow-andrzeja-wajdy-w-100.-rocznice-urodzin",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-16T18:00:00",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Roma\u0000https://www.kinoroma.zabrze.pl/repertuar/czlowiek-z-marmuru-1977-wajda-re-wizje.-przeglad-filmow-andrzeja-wajdy-w-100.-rocznice-urodzin\u0000Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin”" ]
-  }, {
     "_id" : "f45732466bbe818e|dabrowa-tarnowska|Kino Sokół Dąbrowa Tarnowska",
     "filmId" : "f45732466bbe818e",
     "city" : "dabrowa-tarnowska",
@@ -69525,6 +69598,17 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino Kultura\u0000Mystery Train\u0000" ]
+  }, {
+    "_id" : "f589518075015513~mysterytrainjimjarmusch|plock|Kino za Rogiem",
+    "filmId" : "f589518075015513~mysterytrainjimjarmusch",
+    "city" : "plock",
+    "cinema" : "Kino za Rogiem",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-17T18:00:00",
+      "bookingUrl" : "https://bilety.pokis.pl/MSI/Default.aspx?event_id=2530&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino za Rogiem\u0000Mystery Train // JIM JARMUSCH\u00001989" ]
   }, {
     "_id" : "f5985733cd1d1c45|poznan|Kino Muza",
     "filmId" : "f5985733cd1d1c45",
@@ -112599,18 +112683,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KinoPort\u0000https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/\u0000Człowiek do wszystkiego" ]
-  }, {
-    "_id" : "f876a941749880fc|warszawa|Kino Wisła",
-    "filmId" : "f876a941749880fc",
-    "city" : "warszawa",
-    "cinema" : "Kino Wisła",
-    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19777",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-30T12:00:00",
-      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112784&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19777\u0000WSP: Zaproszenie - przedpremiera" ]
   }, {
     "_id" : "f877921c035e009a|lodz|Kino NCKF EC1",
     "filmId" : "f877921c035e009a",
@@ -181937,6 +182009,30 @@
     } ],
     "listingKeys" : [ "N\u0000Dolnośląskie Centrum Filmowe\u0000https://dcf.bilety24.pl/wydarzenie/?id=157558\u0000Zaproszenie" ]
   }, {
+    "_id" : "fcbadf4943332426~kobiecyswiatzaproszenie|warszawa|Kino Wisła",
+    "filmId" : "fcbadf4943332426~kobiecyswiatzaproszenie",
+    "city" : "warszawa",
+    "cinema" : "Kino Wisła",
+    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19805",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-24T18:00:00",
+      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=113006&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
+      "format" : [ "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19805\u0000Kobiecy świat: Zaproszenie" ]
+  }, {
+    "_id" : "fcbadf4943332426~wspzaproszenieprzedpremiera|warszawa|Kino Wisła",
+    "filmId" : "fcbadf4943332426~wspzaproszenieprzedpremiera",
+    "city" : "warszawa",
+    "cinema" : "Kino Wisła",
+    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19777",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-30T12:00:00",
+      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112784&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19777\u0000WSP: Zaproszenie - przedpremiera" ]
+  }, {
     "_id" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow|warszawa|Kinoteka",
     "filmId" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow",
     "city" : "warszawa",
@@ -196059,17 +196155,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/wtf-fest-go-go-second-time-virgin/\u0000WTF Fest | Go, go second time virgin" ]
-  }, {
-    "_id" : "fee8670dcee948a4|plock|Kino za Rogiem",
-    "filmId" : "fee8670dcee948a4",
-    "city" : "plock",
-    "cinema" : "Kino za Rogiem",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T18:00:00",
-      "bookingUrl" : "https://bilety.pokis.pl/MSI/Default.aspx?event_id=2530&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino za Rogiem\u0000Mystery Train // JIM JARMUSCH\u00001989" ]
   }, {
     "_id" : "fee9781cbed0308e|poznan|Kino Malta Charlie Monroe",
     "filmId" : "fee9781cbed0308e",

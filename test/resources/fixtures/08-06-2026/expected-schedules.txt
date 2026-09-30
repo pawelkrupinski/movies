@@ -927,10 +927,10 @@ originalTitle:     —
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.9
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14628-cinema-italia-oggi-jeden-szkolny-rok/
 cinemaScrapes:
@@ -1299,7 +1299,7 @@ showings:
 
 === Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
 displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1340,6 +1340,7 @@ cinemaScrapes:
   Kino Oskard / WAJDA: re- wizje: CZŁOWIEK Z MARMURU / —
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
+  Kino Roma / Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” / 1976
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
   Kino Zamek / Człowiek z marmuru / —
@@ -1352,7 +1353,7 @@ showings:
 
 === Człowiek z marmuru ===
 displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1393,6 +1394,7 @@ cinemaScrapes:
   Kino Oskard / WAJDA: re- wizje: CZŁOWIEK Z MARMURU / —
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
+  Kino Roma / Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” / 1976
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
   Kino Zamek / Człowiek z marmuru / —
@@ -10532,7 +10534,7 @@ showings:
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie
-cinemaTitles:      ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
+cinemaTitles:      Kobiecy świat: Zaproszenie | WSP: Zaproszenie - przedpremiera | ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
 runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
@@ -10559,6 +10561,7 @@ cinemaScrapes:
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
   Kino Pionier 1907 / ZAPROSZENIE / 2026
+  Kino Wisła / Kobiecy świat: Zaproszenie / 2026
   Kinoteka / Zaproszenie | Zobacz przedpremierowo / —
 showings:
   2026-06-27  Kino Pałacowe                 18:00 Sala 1 - Kinowa
