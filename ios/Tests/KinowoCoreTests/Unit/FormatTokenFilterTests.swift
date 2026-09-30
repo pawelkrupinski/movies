@@ -102,19 +102,15 @@ final class FormatTokenFilterTests: XCTestCase {
 
     // MARK: – filter
 
-    func testFilterRemovesCommonTokens() {
-        XCTAssertEqual(FormatTokenFilter.filter("IMAX 3D NAP", removing: ["NAP"]), "IMAX 3D")
-    }
-
-    func testFilterRemovesAllTokensLeavingEmpty() {
-        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: ["2D", "NAP"]), "")
-    }
-
-    func testFilterWithEmptyCommonSetReturnsOriginal() {
-        XCTAssertEqual(FormatTokenFilter.filter("IMAX 3D", removing: []), "IMAX 3D")
-    }
-
-    func testFilterOnEmptyFormatReturnsEmpty() {
-        XCTAssertEqual(FormatTokenFilter.filter("", removing: ["2D"]), "")
+    func testFilter() {
+        let cases: [(format: String, removing: Set<String>, expected: String, why: String)] = [
+            ("IMAX 3D NAP", ["NAP"], "IMAX 3D", "common tokens are removed"),
+            ("2D NAP", ["2D", "NAP"], "", "removing every token leaves empty"),
+            ("IMAX 3D", [], "IMAX 3D", "an empty common set returns the original"),
+            ("", ["2D"], "", "an empty format stays empty"),
+        ]
+        for c in cases {
+            XCTAssertEqual(FormatTokenFilter.filter(c.format, removing: c.removing), c.expected, c.why)
+        }
     }
 }
