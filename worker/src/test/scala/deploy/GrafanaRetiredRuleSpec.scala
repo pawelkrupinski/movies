@@ -30,7 +30,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class GrafanaRetiredRuleSpec extends AnyFlatSpec with Matchers {
 
-  private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
+  private val AlertRules = AlertRule.File
   private lazy val lines = RepoFile.read(AlertRules).linesIterator.toVector
 
   /** Every `# RETIRED RULE <uid>` tombstone, in file order. */

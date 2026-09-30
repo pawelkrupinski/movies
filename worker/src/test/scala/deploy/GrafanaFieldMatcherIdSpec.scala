@@ -45,16 +45,8 @@ class GrafanaFieldMatcherIdSpec extends AnyFlatSpec with Matchers {
   /** `"matcher": { "id": "byName", ... }` — the id right after a `matcher` key. */
   private val MatcherId = """"matcher"\s*:\s*\{\s*"id"\s*:\s*"([^"]+)"""".r
 
-  private def dashboards(): Seq[java.io.File] =
-    Option(new java.io.File("infra/nix/files/monitoring/grafana/dashboards/apps").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(_.getName.endsWith(".json"))
-      .sortBy(_.getName)
-      .toSeq
-
   "every provisioned dashboard" should "use field-matcher ids Grafana can resolve" in {
-    val files = dashboards()
-    files.size should be > 1 // otherwise the sweep is vacuous
+    val files = RepoFile.dashboards()
 
     val unknown = files.flatMap { file =>
       MatcherId
@@ -77,7 +69,7 @@ class GrafanaFieldMatcherIdSpec extends AnyFlatSpec with Matchers {
   it should "actually carry matchers for this guard to check" in {
     // If overrides ever vanish from every dashboard the check above passes
     // vacuously; keep it honest.
-    val ids = dashboards().flatMap(f => MatcherId.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)).toSeq)
+    val ids = RepoFile.dashboards().flatMap(f => MatcherId.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)).toSeq)
     ids should not be empty
   }
 }

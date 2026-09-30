@@ -57,13 +57,7 @@ class CinemaScrapeStalenessAlertSpec extends AnyFlatSpec with Matchers {
    *  directory rather than listed, so a country onboarded tomorrow is covered by
    *  this spec the day it lands — an unwatched roster is the whole failure mode,
    *  and a new country is the likeliest way to acquire one. */
-  private lazy val deployedCountries: Seq[String] =
-    Option(new java.io.File(OverlayDir).listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(_.isDirectory)
-      .map(_.getName)
-      .sorted
-      .toSeq
+  private lazy val deployedCountries: Seq[String] = RepoFile.workerOverlayCountries()
 
   /** The per-country age thresholds the rule file actually spells, in seconds. */
   private lazy val thresholds: Map[String, Long] =

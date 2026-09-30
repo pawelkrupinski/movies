@@ -18,8 +18,27 @@ object RepoFile {
   /** Whether a repo-root file exists — for a rule that a retired file stays retired. */
   def exists(path: String): Boolean = new java.io.File(path).exists()
 
-  def read(path: String): String = {
-    if (path.startsWith(s"$GitOpsRoot/") && !new java.io.File(path).exists())
+  /** Every repo-relative file read so far, by path. The repository does not change under a
+   *  test run — no spec writes into it; the ones that write, write under a temp directory —
+   *  and a dozen specs each re-read `main.yml` and `ci.yml`. Absolute paths (a spec's own temp
+   *  files) are read fresh every time. */
+  private val cache = new java.util.concurrent.ConcurrentHashMap[String, String]()
+
+  def read(path: String): String =
+    if (new java.io.File(path).isAbsolute) readFresh(path)
+    else cache.computeIfAbsent(path, readFresh)
+
+  private def readFresh(path: String): String = {
+    if (!new java.io.File(path).exists()) failMissing(path)
+    val src = Source.fromFile(path)(using Codec.UTF8)
+    try src.mkString
+    finally src.close()
+  }
+
+  /** A path a spec expected and did not find. Under the GitOps root that is almost always a
+   *  checkout without `fetch-gitops`, so say that; anywhere else, say which path. */
+  private def failMissing(path: String): Nothing =
+    if (path.startsWith(s"$GitOpsRoot/") || path == GitOpsRoot)
       throw new AssertionError(
         s"""$path is missing because the GitOps manifests are no longer in this repository.
            |
@@ -30,9 +49,16 @@ object RepoFile {
            |
            |    ./infra/bin/fetch-gitops
            |""".stripMargin)
-    val src = Source.fromFile(path)(using Codec.UTF8)
-    try src.mkString
-    finally src.close()
+    else throw new java.io.FileNotFoundException(s"$path does not exist (the specs run with the repo root as CWD)")
+
+  /** The entries of `dir` that `keep` accepts, sorted by name — and never an empty answer.
+   *  Every caller sweeps a rule over the listing, so a missing or emptied directory would
+   *  make that rule pass vacuously; it fails here instead, naming the directory. */
+  def listed(dir: String)(keep: java.io.File => Boolean): Seq[java.io.File] = {
+    val entries = Option(new java.io.File(dir).listFiles()).getOrElse(failMissing(dir))
+    val kept    = entries.filter(keep).sortBy(_.getName).toSeq
+    if (kept.isEmpty) throw new AssertionError(s"$dir has no entry this spec sweeps — its rule would pass vacuously")
+    kept
   }
 
   /**
@@ -160,25 +186,29 @@ object RepoFile {
    *  Enumerated rather than listed in each spec, so a workflow added tomorrow is
    *  covered by the rule the day it lands. */
   def workflows(): Seq[java.io.File] =
-    Option(new java.io.File(".github/workflows").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(f => f.getName.endsWith(".yml") || f.getName.endsWith(".yaml"))
-      .sortBy(_.getName)
-      .toSeq
+    listed(".github/workflows")(f => f.getName.endsWith(".yml") || f.getName.endsWith(".yaml"))
 
   /** Every composite action's `action.yml` under `.github/actions/`, sorted by path —
    *  the other half of what CI runs, enumerated for the same reason as [[workflows]]. */
   def compositeActions(): Seq[String] =
-    Option(new java.io.File(".github/actions").listFiles()).toSeq.flatten
+    listed(".github/actions")(_.isDirectory)
       .map(dir => s".github/actions/${dir.getName}/action.yml")
       .filter(path => new java.io.File(path).isFile && read(path).contains("using: composite"))
-      .sorted
+
+  /** Every file CI runs: the [[workflows]], then the [[compositeActions]] they call. */
+  def ciFiles(): Seq[String] = workflows().map(_.getPath) ++ compositeActions()
 
   /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
   def flyTomls(): Seq[java.io.File] =
-    Option(new java.io.File(".").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(f => f.getName.startsWith("fly") && f.getName.endsWith(".toml"))
-      .sortBy(_.getName)
-      .toSeq
+    listed(".")(f => f.getName.startsWith("fly") && f.getName.endsWith(".toml"))
+
+  /** Every dashboard monitoring-1's Grafana provisions from the apps folder, sorted by name. */
+  def dashboards(): Seq[java.io.File] =
+    listed("infra/nix/files/monitoring/grafana/dashboards/apps")(_.getName.endsWith(".json"))
+
+  /** Every country that deploys a worker — one k3s overlay directory each, sorted. Read
+   *  from the overlays rather than listed, so a country onboarded tomorrow is covered by
+   *  every per-country rule the day it lands. */
+  def workerOverlayCountries(): Seq[String] =
+    listed(s"$GitOpsRoot/worker/overlays")(_.isDirectory).map(_.getName)
 }

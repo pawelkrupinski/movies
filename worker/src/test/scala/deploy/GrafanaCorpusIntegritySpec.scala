@@ -42,7 +42,7 @@ import services.metrics.{CorpusScanMetrics, PrometheusExposition, WorkerCorpusMe
 class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
   private val ApplicationHealth = "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json"
-  private val AlertRules  = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
+  private val AlertRules  = AlertRule.File
 
   private lazy val dashboard  = RepoFile.read(ApplicationHealth)
   private lazy val alertRules = RepoFile.read(AlertRules)

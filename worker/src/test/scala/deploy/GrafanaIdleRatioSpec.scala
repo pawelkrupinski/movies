@@ -36,16 +36,8 @@ class GrafanaIdleRatioSpec extends AnyFlatSpec with Matchers {
   /** `/ clamp_min(` — a clamp used as a DIVISOR, in any spacing. */
   private val ClampedDivisor = """/\s*clamp_min\(""".r
 
-  private def dashboards(): Seq[java.io.File] =
-    Option(new java.io.File("infra/nix/files/monitoring/grafana/dashboards/apps").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(_.getName.endsWith(".json"))
-      .sortBy(_.getName)
-      .toSeq
-
   "every provisioned dashboard" should "gap an idle ratio rather than clamp its denominator to a fake zero" in {
-    val files = dashboards()
-    files.size should be > 1 // otherwise the sweep is vacuous
+    val files = RepoFile.dashboards()
 
     val offenders = files.flatMap { file =>
       val text = RepoFile.read(file.getPath)

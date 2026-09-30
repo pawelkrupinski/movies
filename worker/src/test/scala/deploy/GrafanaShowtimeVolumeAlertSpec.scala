@@ -64,7 +64,7 @@ import services.metrics.WorkerShowtimesMetrics
  */
 class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
 
-  private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
+  private val AlertRules = AlertRule.File
 
 
   private lazy val alertRules = RepoFile.read(AlertRules)

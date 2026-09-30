@@ -61,14 +61,10 @@ class ReleaseLanePublishSpec extends AnyFlatSpec with Matchers {
   "every workflow and composite action" should "write GitHub releases only through the retrying gh-release.sh" in {
     val direct = """gh release (create|edit|upload|delete)""".r
     val offenders = for {
-      dir  <- Seq(".github/workflows", ".github/actions")
-      file <- Option(new java.io.File(dir).listFiles).toSeq.flatten.flatMap { f =>
-                if (f.isDirectory) Option(f.listFiles).toSeq.flatten else Seq(f)
-              }
-      if file.getName.endsWith(".yml") || file.getName.endsWith(".yaml")
-      line <- RepoFile.read(file.getPath).linesIterator
+      path <- RepoFile.ciFiles()
+      line <- RepoFile.read(path).linesIterator
       if !line.trim.startsWith("#") && direct.findFirstIn(line).isDefined
-    } yield s"${file.getPath}: ${line.trim}"
+    } yield s"$path: ${line.trim}"
     withClue("a bare `gh release` write turns one of GitHub's transient 403s into a red run: ") {
       offenders shouldBe empty
     }

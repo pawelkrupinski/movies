@@ -292,14 +292,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // `Freshness.scrapeTtlFrom`'s 60min would put an 8.5h sweep on an hourly
     // window. (The three oldest countries used to say it in a `fly.worker*.toml`
     // instead; those apps and configs are gone.)
-    val overlays = Option(new java.io.File("infra/kubernetes/worker/overlays").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(_.isDirectory)
-      .map(_.getName)
-      .sorted
-
-    overlays should not be empty
-    overlays.foreach { cc =>
+    RepoFile.workerOverlayCountries().foreach { cc =>
       withClue(s"infra/kubernetes/worker/overlays/$cc is missing KINOWO_SCRAPE_FRESHNESS_MINUTES: ") {
         cadenceOf(workerOverlay(cc)) should not be empty
       }

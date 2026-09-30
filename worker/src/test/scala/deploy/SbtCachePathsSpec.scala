@@ -26,8 +26,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
 
-  private lazy val workflows: Seq[String] =
-    RepoFile.workflows().map(_.getPath) ++ RepoFile.compositeActions()
+  private lazy val workflows: Seq[String] = RepoFile.ciFiles()
 
   /** The `path:` block of every cache step that is caching sbt output. */
   private lazy val sbtCachePaths: Seq[(String, Vector[String])] =

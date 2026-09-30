@@ -35,13 +35,7 @@ class ChangeStreamSilenceAlertSpec extends AnyFlatSpec with Matchers {
 
   private lazy val rules = RepoFile.read(Rules)
 
-  private lazy val deployedCountries: Seq[String] =
-    Option(new java.io.File(OverlayDir).listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(_.isDirectory)
-      .map(_.getName)
-      .sorted
-      .toSeq
+  private lazy val deployedCountries: Seq[String] = RepoFile.workerOverlayCountries()
 
   private lazy val thresholds: Map[String, Long] = RepoFile.perCountryThresholds(rules, Metric)
 

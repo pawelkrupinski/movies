@@ -29,7 +29,7 @@ class JdkVersionParitySpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail("build.sbt no longer sets -java-output-version"))
 
   private lazy val ciJavaVersions: Seq[(String, Int)] =
-    (RepoFile.workflows().map(_.getPath) ++ RepoFile.compositeActions()).flatMap { path =>
+    RepoFile.ciFiles().flatMap { path =>
       """java-version:\s*'?(\d+)'?""".r.findAllMatchIn(RepoFile.read(path)).map(m => path -> m.group(1).toInt)
     }
 
