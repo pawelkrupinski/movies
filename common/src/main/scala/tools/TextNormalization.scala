@@ -23,6 +23,8 @@ import scala.jdk.CollectionConverters._
 object TextNormalization {
 
   private val CombiningMarks   = Pattern.compile("\\p{M}")
+  /** A run of anything but letters and digits: the separator every title tokenizer splits on. */
+  val NonLetterOrDigit: Pattern = Pattern.compile("[^\\p{L}\\p{N}]+")
   private val Whitespace       = Pattern.compile("\\s+")
   private val UrlToken         = Pattern.compile("(?i)(?:https?://|www\\.)\\S+")
   private val HorizontalGaps   = Pattern.compile("[ \\t\\x0B\\f\\r]+")

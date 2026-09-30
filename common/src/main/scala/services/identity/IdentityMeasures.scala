@@ -403,8 +403,7 @@ object IdentityMeasures {
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =
-    NonWord.matcher(tools.TextNormalization.deburr(withoutPossessives(s)).toLowerCase(Locale.ROOT)).replaceAll("")
-  private val NonWord = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
+    tools.TextNormalization.NonLetterOrDigit.matcher(tools.TextNormalization.deburr(withoutPossessives(s)).toLowerCase(Locale.ROOT)).replaceAll("")
 
   /** A possessive "'s" dropped: venues write "Andre Rieu 2026 Christmas Concert" for TMDB's "Andre
    *  Rieu's …" (UK Odeon ×76 read it as a different title and vetoed the concert). Only after an
@@ -749,7 +748,7 @@ object IdentityMeasures {
     /** Its delimited segments as words, read for a decoration: "Michael Mann's Manhunter: The Final
      *  Cut"'s "Michael Mann's Manhunter" ends in the film's title. */
     lazy val segmentWords: Seq[Seq[String]] =
-      (shapes(Seq(text)) ++ text.split(":\\s").headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
+      (shapes(Seq(text)) ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
     lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
   }
 
@@ -791,8 +790,10 @@ object IdentityMeasures {
     /** The words run together, once: [[sameSeries]] compares it for every (shape, title) pair. */
     lazy val joined: String = words.mkString
   }
+  private val ColonBreak         = java.util.regex.Pattern.compile(":\\s")
+  private val NumberedPieceBreak = java.util.regex.Pattern.compile("""[:|/()\[\]–—,.;!?]|\s-\s""")
   private[identity] def numbered(title: String): Numbered = {
-    val pieces = withoutYears(title).split("""[:|/()\[\]–—,.;!?]|\s-\s""").map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
+    val pieces = NumberedPieceBreak.split(withoutYears(title)).map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
     val arabic = (t: String) => t.lengthIs <= 3 && t.forall(c => c >= '0' && c <= '9')
     val numbers = pieces.flatMap(p => p.filter(arabic).map(_.toInt) ++ romanValue(p.last)).toSet
     val words = pieces.flatMap(p => p.zipWithIndex.filterNot { case (t, i) => arabic(t) || (i == p.size - 1 && romanValue(t).isDefined) }.map(_._1))

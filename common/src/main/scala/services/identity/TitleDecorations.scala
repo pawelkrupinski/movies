@@ -152,8 +152,10 @@ object TitleDecorations {
     Option.when(ws.size == spans.size && ws.map(_._1) == TitleContainment.tokens(title))(ws)
   }
   private val WordRun = """[\p{L}\p{N}\p{M}]+""".r
+  private val LeadingSeparators  = java.util.regex.Pattern.compile("""^[\s\-–—:|/)\]},;.]+""")
+  private val TrailingSeparators = java.util.regex.Pattern.compile("""[\s\-–—:|/(\[{,;]+$""")
 
   /** A cut spelling without the separators and brackets the cut left at its edges. */
   private def trimmed(s: String): String =
-    s.replaceAll("""^[\s\-–—:|/)\]},;.]+""", "").replaceAll("""[\s\-–—:|/(\[{,;]+$""", "").trim
+    TrailingSeparators.matcher(LeadingSeparators.matcher(s).replaceAll("")).replaceAll("").trim
 }
