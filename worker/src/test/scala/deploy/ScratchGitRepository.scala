@@ -1,7 +1,8 @@
 package deploy
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, StandardCopyOption}
 import scala.sys.process.*
+import scala.util.Using
 
 /**
  * A throwaway git repository for the specs that run the convergence CI scripts for real —
@@ -11,14 +12,15 @@ import scala.sys.process.*
  * Commits are made with fixed author and committer dates, so a repository built twice has
  * the same history, and nothing here reads the wall clock.
  */
-final class ScratchGitRepository {
-  val root: Path = Files.createTempDirectory("scratch-git")
-  private var tick = 0
+final class ScratchGitRepository private (val root: Path, private var tick: Int) {
 
-  git("init", "-q", "-b", "main")
-  git("config", "user.email", "spec@example.test")
-  git("config", "user.name", "Spec")
-  git("config", "commit.gpgsign", "false")
+  def this() = {
+    this(Files.createTempDirectory("scratch-git"), 0)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "spec@example.test")
+    git("config", "user.name", "Spec")
+    git("config", "commit.gpgsign", "false")
+  }
 
   def git(args: String*): String =
     Process(Seq("git") ++ args, root.toFile).!!.trim
@@ -36,6 +38,22 @@ final class ScratchGitRepository {
     Process(Seq("git", "commit", "-q", "-m", subject), root.toFile,
       "GIT_AUTHOR_DATE" -> date, "GIT_COMMITTER_DATE" -> date).!!
     git("rev-parse", "HEAD")
+  }
+
+  /** An independent copy of this repository — same commits, same SHAs, same next commit
+   *  date — made by copying files rather than replaying commits. For a spec that runs the
+   *  same history many times and lets each run mutate its own (bisect state, new commits):
+   *  building it once and copying is a fraction of the ~30 `git` spawns a rebuild costs. */
+  def copy(): ScratchGitRepository = {
+    val target = Files.createTempDirectory("scratch-git")
+    Using.resource(Files.walk(root)) { paths =>
+      paths.forEach { source =>
+        val dest = target.resolve(root.relativize(source))
+        if (Files.isDirectory(source)) Files.createDirectories(dest)
+        else Files.copy(source, dest, StandardCopyOption.COPY_ATTRIBUTES)
+      }
+    }
+    new ScratchGitRepository(target, tick)
   }
 
   /** An executable script in the repository's sibling scratch space (never committed). */

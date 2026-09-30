@@ -29,15 +29,11 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
    *  pipeline commits numbered in `untestable` (exit 125, bisect's "skip"). `redEverywhere`
    *  is a recording that fails the sample whatever the code, the base included. */
   private final class History(badAt: Int, untestable: Set[Int] = Set.empty, redEverywhere: Boolean = false) {
-    val repo = new ScratchGitRepository
-    val good: String = repo.commit("base", "worker/src/main/State.scala" -> "ok\n")
-    private val pipeline = (1 to 6).map { n =>
-      if (n == 3) repo.commit("ios: tweak", "ios/App.swift" -> "// app only\n")
-      if (n == 5) repo.commit("docs: note", "docs/note.md" -> "words\n")
-      repo.commit(s"pipeline change $n",
-        "worker/src/main/State.scala" -> (if (n >= badAt) "bad\n" else "ok\n"),
-        s"worker/src/main/Change$n.scala" -> s"// $n\n")
-    }
+    private val template = Mainline.withBugAt(badAt)
+    /** This history's own copy: the bisect checks commits out and some cases commit on top. */
+    val repo: ScratchGitRepository = template.repo.copy()
+    val good: String = template.good
+    private val pipeline = template.pipeline
     val bad: String      = pipeline.last
     lazy val firstBad: String = pipeline(badAt - 1)
 
@@ -61,6 +57,29 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
          |""".stripMargin)
     def tested: Seq[String] = Files.readString(steps).linesIterator.toSeq
     def stepCount: Int = tested.size
+  }
+
+  /** The main line for one `badAt`, built once per suite and only ever copied — never
+   *  checked out or committed to — so no case sees another's bisect state. */
+  private final case class Mainline(repo: ScratchGitRepository, good: String, pipeline: Seq[String])
+
+  private object Mainline {
+    private val built = scala.collection.mutable.Map.empty[Int, Mainline]
+
+    def withBugAt(badAt: Int): Mainline = synchronized(built.getOrElseUpdate(badAt, build(badAt)))
+
+    private def build(badAt: Int): Mainline = {
+      val repo = new ScratchGitRepository
+      val good = repo.commit("base", "worker/src/main/State.scala" -> "ok\n")
+      val pipeline = (1 to 6).map { n =>
+        if (n == 3) repo.commit("ios: tweak", "ios/App.swift" -> "// app only\n")
+        if (n == 5) repo.commit("docs: note", "docs/note.md" -> "words\n")
+        repo.commit(s"pipeline change $n",
+          "worker/src/main/State.scala" -> (if (n >= badAt) "bad\n" else "ok\n"),
+          s"worker/src/main/Change$n.scala" -> s"// $n\n")
+      }
+      Mainline(repo, good, pipeline)
+    }
   }
 
   private def bisect(history: History, good: String, bad: String, env: (String, String)*): (Int, String, Option[String]) = {
