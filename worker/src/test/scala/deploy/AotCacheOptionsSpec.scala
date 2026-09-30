@@ -83,6 +83,13 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       launcher(tier) should contain ("-XX:+UseStringDeduplication")
     }
 
+    // The identity model boxes its family ids in five maps and sets; kept below the live family
+    // count (IncrementalResolver recycles them), they are all the cached Integers of a raised cache
+    // instead of a fresh box each (~10 MB on worker-us). The worker's own flag, not web's.
+    if (tier == "worker") it should "cache the boxes of the identity model's family ids" in {
+      launcher(tier) should contain ("-XX:AutoBoxCacheMax=16384")
+    }
+
     // The flag is diagnostic, and so are several parity flags: a launcher that names one before
     // -XX:+UnlockDiagnosticVMOptions does not start at all. Starting a JVM under exactly the baked
     // options, in their order, is the check a pod would otherwise make.

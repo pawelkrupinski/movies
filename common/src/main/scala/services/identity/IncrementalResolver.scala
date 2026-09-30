@@ -56,6 +56,12 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private val askersOf      = mutable.HashMap.empty[CandidateQuery, Set[Int]]
   private val filmReadersOf = mutable.LongMap.empty[Set[Int]]
   private val familiesOfKey = mutable.HashMap.empty[String, Set[Int]]
+  // Family ids number the LIVE families: a freed id is taken again, smallest first, so ids stay
+  // below the family count and inside the worker's raised small-integer cache
+  // (`-XX:AutoBoxCacheMax`, infra/jvm/worker.options) — boxed in five maps and sets, a counter that
+  // only grew made each box a fresh Integer (~10 MB on worker-us). Smallest-first keeps the ids a
+  // pure function of the event sequence.
+  private val freedIds      = mutable.BitSet.empty
   private var nextFamily    = 0
   private var reResolved    = 0
   private val clock         = new IncrementalResolver.Timings
@@ -232,6 +238,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private def familyOf(key: ListingKey): Option[Int] = byKey.get(key).collect { case k if k.family >= 0 => k.family }
 
   private def forget(id: Int): Unit = families.remove(id).foreach { family =>
+    freedIds += id
     family.resolved.listings.foreach(key => byKey.get(key).filter(_.family == id).foreach { keyed =>
       keyed.family = -1
       if (keyed.listing == null) byKey.remove(key)
@@ -243,7 +250,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   }
 
   private def remember(resolved: RegionFamily, digest: Long): Unit = {
-    val id = nextFamily; nextFamily += 1
+    val id = freedIds.headOption.fold { val fresh = nextFamily; nextFamily += 1; fresh } { free => freedIds -= free; free }
     families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => byKey.getOrElseUpdate(key, new IncrementalResolver.Keyed).family = id)
     resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))

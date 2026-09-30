@@ -16,3 +16,7 @@
 # Share the byte arrays of equal Strings the collector keeps: 57.9 MB of worker-pl's heap was
 # duplicate contents ("US", "2D", titles, JSON values); 11 MB off the live old generation measured.
 -XX:+UseStringDeduplication
+# Cache the boxes of small Integers up to 16,384, not 127: the identity model keeps its family ids —
+# recycled, so below the live family count (~2,200 on US) — in five maps and sets, and every one was
+# a fresh Integer (~10 MB on worker-us). The cache itself is ~320 KB.
+-XX:AutoBoxCacheMax=16384

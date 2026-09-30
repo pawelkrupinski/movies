@@ -37,3 +37,6 @@
 # Guarded by the TestJvmSpecs, like headless above.
 -Duser.language=en
 -Duser.country=US
+# The worker's small-Integer cache (infra/jvm/worker.options): the identity measure and specs run in
+# this JVM, so they box the model's family ids the way production does.
+-XX:AutoBoxCacheMax=16384
