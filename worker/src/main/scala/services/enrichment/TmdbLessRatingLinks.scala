@@ -20,7 +20,20 @@ object TmdbLessRatingLinks {
   /** Is `row`, which TMDB could not match, queued for a rating site: TMDB was asked and found
    *  nothing, and the cinemas publish a director or a year (a field's, or one the title dates, "Lawa (1989)")? */
   def eligible(row: MovieRecord): Boolean =
-    row.tmdbNoMatch && (directorsOf(row).nonEmpty || row.evidence.years.nonEmpty || EmbeddedYear.ofAll(row.evidence.titles).isDefined)
+    row.tmdbNoMatch && !row.evidence.titles.exists(notAFilm) &&
+      (directorsOf(row).nonEmpty || row.evidence.years.nonEmpty || EmbeddedYear.ofAll(row.evidence.titles).isDefined)
+
+  /** A title that is no single film, whatever its facts: a live event (`NonMovieEventClassifier`), a
+   *  festival pass, a fan event, a double bill, a marathon or a secret screening. A rating site has no
+   *  page for it — "12. SPLAT! FilmFest | karnet" and "Avengers: Doomsday RealD 3D Fan Event" were
+   *  searched on Metacritic and RT for nothing. */
+  def notAFilm(title: String): Boolean =
+    services.cinemas.pl.NonMovieEventClassifier.isLiveEvent(title) || NotAFilm.findFirstIn(title).isDefined
+
+  /** A spaced "+" joins a second FILM unless what follows it is an add-on to one film: "Wśród nocnej
+   *  ciszy + dyskusja", "… + spotkanie z reżyserem", "… + Q&A". */
+  private val NotAFilm =
+    """(?iu)\b(?:karnet\w*|festival pass|film pass|fan (?:event|screening)|double bill|triple (?:bill|feature)|marat(?:h)?on\w*|secret screening|seans\s+niespodzian\w*)\b|\s\+\s(?!(?:dyskusj|spotkani|prelekcj|rozmow|wykład|debat|panel|warsztat|konkurs|quiz|q\s*&\s*a|intro|discussion|talk|meet))""".r
 
   /** Can a page be checked against what the cinemas publish of this TMDB-less row: a director, or a year? */
   def checkable(key: CacheKey, row: MovieRecord): Boolean = directorsOf(row).nonEmpty || yearOf(key, row).isDefined

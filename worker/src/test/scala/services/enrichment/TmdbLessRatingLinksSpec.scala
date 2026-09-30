@@ -35,6 +35,19 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     RatingSources.all.filter(_.eligible(row)).map(_.taskType.toString) should contain allOf ("RtRating", "McRating", "FilmwebRating")
   }
 
+  it should "not be linked when it is no single film: a pass, a fan event, a double bill, a live event" in {
+    // Convergence 2026-09-30: "12. SPLAT! FilmFest | karnet" and "Avengers: Doomsday RealD 3D Fan Event"
+    // were searched on Metacritic and RT — live requests for nothing, in production too.
+    Seq("12. SPLAT! FilmFest | karnet", "Avengers: Doomsday RealD 3D Fan Event", "Blumfest Presents Other Mommy Fan Event Screening",
+      "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL", "Basia. Humor w paski mam + Kocia Szajka", "Koncert Jacka Wójcickiego")
+      .foreach(title => withClue(title)(TmdbLessRatingLinks.eligible(unmatched(title, Some(2026), Seq("Someone"))._3) shouldBe false))
+    // A film whose title merely contains such a word stays eligible, and so does one film plus a
+    // discussion or a meeting: Warsaw's "Wśród nocnej ciszy + dyskusja" is Chmielewski's 1978 film.
+    TmdbLessRatingLinks.eligible(unmatched("Passengers", Some(2016), Seq("Morten Tyldum"))._3) shouldBe true
+    Seq("Wśród nocnej ciszy + dyskusja | Kino (nie)jawne: queerowe kody PRL-u", "Zygfryd + spotkanie z reżyserem", "Pan's Labyrinth + Q&A")
+      .foreach(title => withClue(title)(TmdbLessRatingLinks.eligible(unmatched(title, Some(1978), Seq("Tadeusz Chmielewski"))._3) shouldBe true))
+  }
+
   it should "be searched under its stripped titles" in {
     val (_, key, row) = unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))
     TmdbLessRatingLinks.titlesOf(key, row, titleNormalizer) should contain ("NADZY")
