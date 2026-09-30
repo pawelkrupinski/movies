@@ -19,21 +19,23 @@ class KinoKijowClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-kijow")
   private val client = new KinoKijowClient(http, KinoKijow, LocalDate.of(2026, 6, 7), titles = titleNormalizer)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoKijowClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with KinoKijow" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(KinoKijow)
+    fetched.map(_.cinema).toSet shouldBe Set(KinoKijow)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Niesamowite przygody skarpetek 3 on 2026-06-07 at 10:30" in {
-    val movies   = client.fetch()
+    val movies   = fetched
     val skarpety = movies.find(_.movie.title.contains("skarpetek")).value
     skarpety.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 10, 30))
     skarpety.showtimes.flatMap(_.bookingUrl).head should include("/MSI/Default.aspx?event_id=")
@@ -42,7 +44,7 @@ class KinoKijowClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // The portal bakes "2D DUBBING" / "2D NAPISY" into the h2 title. Strip it off
   // the title and surface it as a per-showtime format badge instead.
   it should "strip the trailing '2D DUBBING' tag into the showtime format badge" in {
-    val movies   = client.fetch()
+    val movies   = fetched
     val straszny = movies.find(_.movie.title == "Straszny film").value
     straszny.movie.title shouldBe "Straszny film" // not "Straszny film 2D DUBBING"
     straszny.showtimes.flatMap(_.format).toSet should contain allOf ("2D", "DUB")

@@ -78,32 +78,34 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
   private val testCinema = KinoCharlie  // stand-in; real integration uses KinematografLodz
   private val today      = LocalDate.of(2026, 6, 7)
   private val client     = new KinematografLodzClient(http, testCinema, today, titles = titleNormalizer)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinematografLodzClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with the cinema passed in" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(testCinema)
+    fetched.map(_.cinema).toSet shouldBe Set(testCinema)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Znaki Pana Śliwki on 2026-06-07 at 14:00" in {
-    val movies = client.fetch()
+    val movies = fetched
     val znaki  = movies.find(_.movie.title == "Znaki Pana Śliwki").value
     znaki.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 14, 0))
   }
 
   it should "strip the 'reż.' director suffix from the title" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.movie.title).exists(_.contains("reż.")) shouldBe false
   }
 
   it should "strip the trailing '(YYYY)' release-year suffix from the title" in {
-    val titles = client.fetch().map(_.movie.title)
+    val titles = fetched.map(_.movie.title)
     // Director + year stripped down to the bare title.
     titles should contain("Znaki Pana Śliwki")
     // Programme prefix kept, only the year stripped.
@@ -113,20 +115,20 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "drop past screenings (01-01-2026 is before today)" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.exists(_.movie.title.contains("Stary Film")) shouldBe false
   }
 
   // ── Year + director extracted off the raw title before the strip ───────────
 
   it should "surface the production year and director(s) on the film" in {
-    val znaki = client.fetch().find(_.movie.title == "Znaki Pana Śliwki").value
+    val znaki = fetched.find(_.movie.title == "Znaki Pana Śliwki").value
     znaki.movie.releaseYear shouldBe Some(2025)
     znaki.director          shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
   }
 
   it should "set the year but no director for a title with no 'reż.' suffix" in {
-    val rozmowa = client.fetch().find(_.movie.title == "Klasyk w kinie: Rozmowa").value
+    val rozmowa = fetched.find(_.movie.title == "Klasyk w kinie: Rozmowa").value
     rozmowa.movie.releaseYear shouldBe Some(1973)
     rozmowa.director          shouldBe empty
   }

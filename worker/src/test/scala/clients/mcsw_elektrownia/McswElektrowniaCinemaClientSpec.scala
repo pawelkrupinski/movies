@@ -20,31 +20,33 @@ class McswElektrowniaCinemaClientSpec extends AnyFlatSpec with Matchers with Opt
 
   private val http   = new FakeHttpFetch("mcsw-elektrownia")
   private val client = new McswElektrowniaCinemaClient(http, McswElektrowniaCinema, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "McswElektrowniaCinemaClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with McswElektrowniaCinema" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(McswElektrowniaCinema)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: DRZEWO MAGII on 2026-06-07 at 14:15" in {
     // On the 07-06-2026 fixture page, DRZEWO MAGII screens at 14:15.
-    val movies    = client.fetch()
+    val movies    = fetched
     val drzewo    = movies.find(_.movie.title == "DRZEWO MAGII").value
     drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 14, 15))
   }
 
   it should "include booking URLs on showtimes" in {
-    val movies = client.fetch()
+    val movies = fetched
     // Every showtime has a booking URL pointing to the MSI Default.aspx page.
     all(movies.flatMap(_.showtimes).map(_.bookingUrl)) should not be empty
     movies.flatMap(_.showtimes).flatMap(_.bookingUrl).foreach { url =>
@@ -54,7 +56,7 @@ class McswElektrowniaCinemaClientSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "strip metadata from MSI composite titles" in {
-    val movies = client.fetch()
+    val movies = fetched
     // The raw title is 'DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N…'
     // The client must return just 'DRZEWO MAGII'.
     movies.map(_.movie.title) should contain("DRZEWO MAGII")

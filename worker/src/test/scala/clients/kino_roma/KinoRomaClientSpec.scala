@@ -22,24 +22,26 @@ class KinoRomaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-roma")
   private val client = new KinoRomaClient(http, KinoRoma, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoRomaClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with KinoRoma" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoRoma)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Tom i Jerry: Przygoda w muzeum on 2026-06-07 at 15:00" in {
-    val movies = client.fetch()
+    val movies = fetched
     val film   = movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 15, 0))
   }
@@ -47,7 +49,7 @@ class KinoRomaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "read the production year from the card's div.year cell" in {
     // The card's `div.year` is 2025, distinct from the 2026 screening date the
     // DD.MM inference produces — so this is the production year, not a re-parse.
-    val movies = client.fetch()
+    val movies = fetched
     movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
       .movie.releaseYear shouldBe Some(2025)
   }

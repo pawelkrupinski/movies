@@ -83,21 +83,23 @@ class NckfClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val testCinema = KinoBajka  // stand-in; real integration uses Nckf
   private val today      = LocalDate.of(2026, 6, 7)
   private val client     = new NckfClient(http, testCinema, today)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "NckfClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with the cinema passed in" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(testCinema)
+    fetched.map(_.cinema).toSet shouldBe Set(testCinema)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Akademia Kina Polskiego: Ostatni etap on 2026-06-09 at 17:00" in {
-    val movies = client.fetch()
+    val movies = fetched
     val film   = movies
       .find(_.movie.title == "Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)")
       .value
@@ -105,7 +107,7 @@ class NckfClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "drop the past slot (2026-06-02) and keep only future ones" in {
-    val movies   = client.fetch()
+    val movies   = fetched
     val akademia = movies
       .find(_.movie.title.startsWith("Akademia Kina Polskiego"))
       .value
@@ -114,7 +116,7 @@ class NckfClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "attach room and booking URL to each showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     val akademia = movies.find(_.movie.title.startsWith("Akademia Kina Polskiego")).value
     val slot = akademia.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 9, 17, 0)).value
     slot.room.value shouldBe "Odeon"

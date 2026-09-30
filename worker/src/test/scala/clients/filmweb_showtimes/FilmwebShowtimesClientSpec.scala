@@ -26,9 +26,11 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   private val captureDate = LocalDate.of(2026, 6, 7)
   private val http        = new FakeHttpFetch("filmweb-showtimes")
   private val client      = new FilmwebShowtimesClient(http, 633, Multikino, daysAhead = 0, today = captureDate)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "FilmwebShowtimesClient" should "assemble films from the seances + title/info JSON API" in {
-    val movies = client.fetch()
+    val movies = fetched
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(Multikino)
@@ -42,7 +44,7 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "carry booking links from orderLinks and format tokens from the version flag" in {
-    val movies    = client.fetch()
+    val movies    = fetched
     val showtimes = movies.flatMap(_.showtimes)
 
     showtimes.flatMap(_.bookingUrl)
@@ -51,7 +53,7 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "pin a concrete (title, dateTime) from the capture" in {
-    val movies = client.fetch()
+    val movies = fetched
 
     // Filmweb id 582 → "Kosmiczny mecz" (Space Jam), screened 13:00, dubbed (DUB),
     // with a Multikino booking deep-link.
@@ -68,12 +70,12 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     // posterPath "/05/82/582/6932869_1.$.jpg". The `ppo` bucket every poster was built on
     // answers 403 AccessDenied for all of them (checked 2026-09-24); `fpo` serves them, and size
     // 3 is 500×720 where size 2 is a 140×200 thumbnail.
-    client.fetch().find(_.movie.title == "Kosmiczny mecz").value.posterUrl shouldBe
+    fetched.find(_.movie.title == "Kosmiczny mecz").value.posterUrl shouldBe
       Some("https://fwcdn.pl/fpo/05/82/582/6932869_1.3.jpg")
   }
 
   it should "carry Filmweb's originalTitle as a TMDB hint, but only when it differs from the title" in {
-    val movies = client.fetch()
+    val movies = fetched
 
     // Filmweb id 582 → Polish title "Kosmiczny mecz" but originalTitle "Space Jam":
     // the international title is a strong TMDB-resolution hint for non-Polish films.

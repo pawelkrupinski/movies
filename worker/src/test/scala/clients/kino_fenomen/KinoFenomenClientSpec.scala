@@ -17,31 +17,33 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   private val http   = new FakeHttpFetch("kino-fenomen")
   private val client = new KinoFenomenClient(http, KinoFenomen)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoFenomenClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with KinoFenomen" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoFenomen)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Ojczyzna on 2026-07-05 at 16:00" in {
     // Fixture: 05.07.2026 16:00 — event id 681094, artist id 62176
-    val movies   = client.fetch()
+    val movies   = fetched
     val ojczyzna = movies.find(_.movie.title == "Ojczyzna").value
     ojczyzna.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 7, 5, 16, 0))
   }
 
   it should "attach a booking URL to each showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.flatMap(_.showtimes).flatMap(_.bookingUrl).foreach { u =>
       u should startWith("https://iframe639.biletyna.pl/event/view/id/")
     }
@@ -49,7 +51,7 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   it should "strip the format tag from titles" in {
     // Raw: "Gwiazdy (2D/oryginalny)" — artist id 5885
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.movie.title) should contain("Gwiazdy")
     movies.map(_.movie.title).foreach(_ should not include "2D/")
   }
@@ -80,7 +82,7 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     // The listing no longer carries "| reżyseria: … | Country YYYY" metadata, so a
     // film's year now comes only from a (YYYY) paren in the title, and the director
     // is filled from the detail page later — never the listing.
-    val movies  = client.fetch()
+    val movies  = fetched
     val general = movies.find(_.movie.title.contains("Generał")).value
     general.movie.releaseYear shouldBe Some(1926)
     general.director          shouldBe empty

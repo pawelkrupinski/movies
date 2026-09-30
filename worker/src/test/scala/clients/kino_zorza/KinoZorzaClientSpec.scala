@@ -17,25 +17,27 @@ class KinoZorzaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-zorza")
   private val client = new KinoZorzaClient(http, KinoZorza, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoZorzaClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with KinoZorza" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoZorza)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Ojczyzna on 2026-06-07 at 12:30" in {
     // On the 07.06 fixture, Ojczyzna screens at 12:30 and 16:15.
-    val movies = client.fetch()
+    val movies = fetched
     val ojczyzna = movies.find(_.movie.title == "Ojczyzna").value
     ojczyzna.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 12, 30))
   }

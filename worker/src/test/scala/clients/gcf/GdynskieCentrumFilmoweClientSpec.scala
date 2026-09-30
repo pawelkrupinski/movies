@@ -28,24 +28,26 @@ class GdynskieCentrumFilmoweClientSpec extends AnyFlatSpec with Matchers with Op
 
   private val http   = new FakeHttpFetch("gcf")
   private val client = new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "GdynskieCentrumFilmoweClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with GdynskieCentrumFilmowe" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(GdynskieCentrumFilmowe)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Diabeł ubiera się u Prady 2 on 2026-06-07 at 20:15" in {
-    val movies = client.fetch()
+    val movies = fetched
     val diabel = movies.find(_.movie.title == "Diabeł ubiera się u Prady 2").value
     diabel.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 20, 15))
   }
@@ -68,7 +70,7 @@ class GdynskieCentrumFilmoweClientSpec extends AnyFlatSpec with Matchers with Op
   }
 
   it should "include booking URLs pointing to bilet.gcf.org.pl" in {
-    val movies = client.fetch()
+    val movies = fetched
     val bookings = movies.flatMap(_.showtimes).flatMap(_.bookingUrl)
     bookings.head should startWith("https://bilet.gcf.org.pl/MSI/")
   }

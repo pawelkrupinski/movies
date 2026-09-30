@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 class KinoOrzelClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("bydgoszcz")
-  private def movies = new KinoOrzelClient(http, KinoOrzel).fetch()
+  private lazy val movies = new KinoOrzelClient(http, KinoOrzel).fetch()
 
   "KinoOrzelClient" should "parse every distinct film off the organiser listing" in {
     movies.map(_.movie.title) should have size 14

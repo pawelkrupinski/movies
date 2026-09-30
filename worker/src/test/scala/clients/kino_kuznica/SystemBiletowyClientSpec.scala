@@ -10,6 +10,7 @@ import play.api.libs.json.JsString
 import services.cinemas.pl.{EventCategory, Institution, SystemBiletowyClient, VisualSoftPortal}
 
 import java.time.LocalDateTime
+import scala.collection.concurrent.TrieMap
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays every VisualSoft instance's `service.php/repertoire/list.json` feed,
@@ -29,6 +30,14 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
                      institution: Option[Institution] = None) =
     new SystemBiletowyClient(http, VisualSoftPortal(base), cinema, titles = titleNormalizer, filmGroups = filmGroups,
       institution = institution)
+
+  // Every case only reads what a fetch returns, so each instance's recorded feed is
+  // replayed once per suite rather than once per case.
+  private val fetched = TrieMap.empty[(String, Cinema, Set[EventCategory], Option[Institution]), Seq[CinemaMovie]]
+
+  private def moviesOf(base: String, cinema: Cinema, filmGroups: Set[EventCategory] = Set.empty,
+                       institution: Option[Institution] = None): Seq[CinemaMovie] =
+    fetched.getOrElseUpdate((base, cinema, filmGroups, institution), client(base, cinema, filmGroups, institution).fetch())
 
   // (instance, cinema, title fragment, screening, exact booking link)
   private val venues = Table(
@@ -65,7 +74,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   forAll(venues) { (base, cinema, title, when, booking) =>
     it should s"read a real screening off the feed — ${cinema.displayName}" in {
-      val movies = client(base, cinema).fetch()
+      val movies = moviesOf(base, cinema)
       movies.map(_.cinema).toSet shouldBe Set(cinema)
       // Every row carrying the title: a programme suffix ("… Tani Poniedziałek")
       // keeps a film's screening on a row of its own.
@@ -76,28 +85,28 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   "SystemBiletowyClient" should "merge a film's dubbed and subtitled screenings into one row carrying each format" in {
     // "OBCY (2D, NAPISY PL)" and its dubbed twin fold onto one "Obcy".
-    val obcy = client("https://bdk.systembiletowy.pl", KinoBieszczadzkiDK).fetch()
+    val obcy = moviesOf("https://bdk.systembiletowy.pl", KinoBieszczadzkiDK)
       .filter(_.movie.title.toLowerCase.startsWith("obcy"))
     obcy.map(_.movie.title) shouldBe Seq("Obcy")
     obcy.head.showtimes.map(_.format).toSet should contain(List("2D", "NAP"))
   }
 
   it should "peel Kino Orzeł's '-Film 2D dubbing' boilerplate into the format" in {
-    val film = client("https://udk.systembiletowy.pl", KinoOrzelUstrzyki).fetch()
+    val film = moviesOf("https://udk.systembiletowy.pl", KinoOrzelUstrzyki)
       .find(_.movie.title.toLowerCase.startsWith("podręcznik")).value
     film.movie.title shouldBe "Podręcznik dla suprbohaterów"
     film.showtimes.head.format should contain allOf ("2D", "DUB")
   }
 
   it should "carry the poster the advanced feed names" in {
-    client("https://bilety.kino.bochnia.pl", KinoRegis).fetch().flatMap(_.posterUrl).head should
+    moviesOf("https://bilety.kino.bochnia.pl", KinoRegis).flatMap(_.posterUrl).head should
       startWith("https://bilety.kino.bochnia.pl/uploads/")
   }
 
   // ── Scopes: instances selling more than one venue's events ─────────────────
 
   it should "keep only BCKino's film events, peeling their 'BCKino – ' prefix" in {
-    val movies = client("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set(EventCategory("BCKino"))).fetch()
+    val movies = moviesOf("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set(EventCategory("BCKino")))
     movies.map(_.movie.title) should contain("Koniec imprezy")
     all(movies.map(_.movie.title.toLowerCase)) should not include "bckino"
     // The instance's 47 other events — "BECEK CZYTA" readings, workshops — stay out.
@@ -105,7 +114,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "keep only Kino Frajda's Imprezy SDK events, dropping Chorzów's own" in {
-    val movies = client("https://bilety.chck.pl", KinoFrajda, filmGroups = Set(EventCategory("Imprezy SDK"))).fetch()
+    val movies = moviesOf("https://bilety.chck.pl", KinoFrajda, filmGroups = Set(EventCategory("Imprezy SDK")))
     movies.map(_.movie.title.toLowerCase).exists(_.contains("zagadka klary muu")) shouldBe true
     // "KOSZMAREK" screens at both: 10-20 as "Imprezy ChCK", 10-24 as "Imprezy SDK".
     val koszmarek = movies.find(_.movie.title.toLowerCase.contains("koszmarek")).value.showtimes.map(_.dateTime)
@@ -114,7 +123,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "scope Oświęcim's instance to Nasze Kino, dropping the culture centre's concerts and plays" in {
-    val movies = client("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some(Institution("Nasze Kino"))).fetch()
+    val movies = moviesOf("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some(Institution("Nasze Kino")))
     movies.map(_.movie.title.toLowerCase).exists(_.contains("mistyczka")) shouldBe true
     // A comedy play and a concert sold by the centre on the same instance; the
     // old HTML scrape let "Ale kino, czyli muzyka filmowa…" through as a film.
@@ -123,8 +132,8 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "split the one Mikro instance between its two screens" in {
-    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
-    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some(Institution("Mikro Bronowice"))).fetch()
+    val mikro     = moviesOf("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro")))
+    val bronowice = moviesOf("https://bilety.kinomikro.pl", MikroBronowice, institution = Some(Institution("Mikro Bronowice")))
     mikro.map(_.cinema).toSet shouldBe Set(KinoMikro)
     bronowice.map(_.cinema).toSet shouldBe Set(MikroBronowice)
     mikro.find(_.movie.title == "Orlando").value.showtimes.map(_.dateTime) should
@@ -143,12 +152,12 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   it should "keep a screening's wall-clock time across the CEST→CET switch" in {
     // "2026-10-29T21:00:00+01:00" on the Mikro feed.
-    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
+    moviesOf("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro")))
       .flatMap(_.showtimes).map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 29, 21, 0))
   }
 
   it should "parse the director out of the event description, stopping at the next label" in {
-    val mikro = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
+    val mikro = moviesOf("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro")))
     // `Reżyseria: François Ozon  Występują: Benjamin Voisin, …`
     mikro.find(_.movie.title == "Obcy").value.director shouldBe Seq("François Ozon")
     // `Reżyseria: Louis Malle  Muzyka: Miles Davis  Scenariusz: …`
@@ -179,12 +188,12 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   // Casing is repaired only where the source shouts: a mixed-case title is the
   // venue's own spelling and stays as given.
   it should "down-case a shouted title but keep a mixed-case one as given" in {
-    client("https://bilety.kino.bochnia.pl", KinoRegis).fetch().map(_.movie.title) should contain("Marsupilami")
-    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch().map(_.movie.title) should
+    moviesOf("https://bilety.kino.bochnia.pl", KinoRegis).map(_.movie.title) should contain("Marsupilami")
+    moviesOf("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).map(_.movie.title) should
       contain("Birthday Party")
     // A short initialism doesn't make a title shout: "DKF Pełna Sala: Diabły"
     // keeps its casing (a blanket re-case gave "Dkf pełna sala: diabły").
-    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
+    moviesOf("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro")))
       .map(_.movie.title).exists(_.contains("Dkf")) shouldBe false
   }
 
@@ -192,8 +201,10 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   // `director`, `oryginal_title`, `year`, `country`, `duration` — which TMDB
   // resolution needs once a venue leaves Filmweb. Captured live 2026-09-27.
   private val switched = new FakeHttpFetch("filmweb-only-switch")
+  private val switchedFetched = TrieMap.empty[(String, Cinema), Seq[CinemaMovie]]
   private def film(base: String, cinema: Cinema, titleFragment: String) =
-    new SystemBiletowyClient(switched, VisualSoftPortal(base), cinema, titles = titleNormalizer).fetch()
+    switchedFetched.getOrElseUpdate((base, cinema),
+      new SystemBiletowyClient(switched, VisualSoftPortal(base), cinema, titles = titleNormalizer).fetch())
       .find(_.movie.title.toLowerCase.contains(titleFragment)).value
 
   it should "carry the feed's director, original title, year, country and runtime onto the film" in {

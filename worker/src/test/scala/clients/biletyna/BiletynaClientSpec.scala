@@ -101,11 +101,16 @@ class BiletynaClientSpec
 
   // A bare film title with no `reżyseria:` marker is left untouched — no
   // false-positive splitting on a pipe that isn't a metadata separator.
+  // Three cases below read Kino Kameralne's recorded page + feed; replay it once.
+  private lazy val kameralne =
+    new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"),
+      KinoKameralne).fetch()
+
   it should "read each film's running time off its screenings' JSON-LD duration, ignoring the 1h30 default" in {
     // Every ScreeningEvent carries an ISO-8601 `duration`. Half are exactly PT1H30M — the ticketing
     // default ("Hot Spot" runs 130 minutes) — the rest the film's own length: "OBCY" is Ozon's
     // L'Étranger at 120, "Krajobraz po bitwie" Wajda's at 101.
-    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"), KinoKameralne).fetch()
+    val movies = kameralne
     def runtime(title: String) = movies.find(_.movie.title == title).flatMap(_.movie.runtimeMinutes)
     runtime("OBCY") shouldBe Some(120)
     runtime("Krajobraz po bitwie") shouldBe Some(101)
@@ -113,8 +118,7 @@ class BiletynaClientSpec
   }
 
   it should "leave a plain title (no reżyseria marker) untouched — Kino Kameralne" in {
-    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"), KinoKameralne
-    ).fetch()
+    val movies = kameralne
     val film = movies.find(_.movie.title == "Lalka (2026)").value
     film.movie.rawTitle shouldBe None
     film.director shouldBe empty
@@ -224,8 +228,7 @@ class BiletynaClientSpec
   }
 
   it should "page the feed until a page comes back short — Kino Kameralne's 132 events over two" in {
-    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"),
-      KinoKameralne).fetch()
+    val movies = kameralne
     movies.flatMap(_.showtimes).map(_.dateTime).max should be > LocalDateTime.of(2026, 11, 1, 0, 0)
   }
 

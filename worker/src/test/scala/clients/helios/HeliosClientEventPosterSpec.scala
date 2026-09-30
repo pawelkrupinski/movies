@@ -14,15 +14,17 @@ class HeliosClientEventPosterSpec extends AnyFlatSpec with Matchers {
 
   private val fakeHttp = new FakeHttpFetch("helios/event-radomiak")
   private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "HeliosClient.fetch" should "expose the Radomiak event with showtimes" in {
-    val event = client.fetch().find(_.movie.title.contains("Radomiak"))
+    val event = fetched.find(_.movie.title.contains("Radomiak"))
     event                       shouldBe defined
     event.get.showtimes         should not be empty
   }
 
   it should "extract the event's own posterPhoto for the Radomiak broadcast" in {
-    val event = client.fetch().find(_.movie.title.contains("Radomiak"))
+    val event = fetched.find(_.movie.title.contains("Radomiak"))
     event.flatMap(_.posterUrl) shouldBe Some(
       "https://img.helios.pl/pliki/wydarzenie/pko-bp-ekstraklasa-radomiak-radom-lech-poznan/pko-bp-ekstraklasa-radomiak-radom-lech-poznan-plakat-59779.jpg"
     )

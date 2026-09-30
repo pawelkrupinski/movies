@@ -18,31 +18,33 @@ class OkfIluzjaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("okf-iluzja")
   private val client = new OkfIluzjaClient(http, OkfIluzja, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "OkfIluzjaClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with OkfIluzja" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(OkfIluzja)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Erupcja on 2026-06-07 at 15:30" in {
     // On the 07.06 fixture, Erupcja screens at 15:30 and also on subsequent days.
-    val movies  = client.fetch()
+    val movies  = fetched
     val erupcja = movies.find(_.movie.title == "Erupcja").value
     erupcja.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 15, 30))
   }
 
   it should "aggregate the same film across multiple days into one CinemaMovie" in {
-    val movies  = client.fetch()
+    val movies  = fetched
     // Erupcja appears on multiple days in the weekly fixture; it should collapse
     // into a single CinemaMovie entry with all its showtimes.
     val erupcja = movies.filter(_.movie.title == "Erupcja")
@@ -51,7 +53,7 @@ class OkfIluzjaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "strip inner programme-label spans from h3 titles" in {
-    val movies = client.fetch()
+    val movies = fetched
     // 'Podziemny krąg' has a POWRÓT NA EKRAN <span> inside its h3;
     // the title must be just the film name, no span text.
     val podziemny = movies.find(_.movie.title == "Podziemny krąg")
@@ -59,7 +61,7 @@ class OkfIluzjaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "have no booking URLs (site has only a generic ticket page)" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.flatMap(_.showtimes).flatMap(_.bookingUrl) shouldBe empty
   }
 }

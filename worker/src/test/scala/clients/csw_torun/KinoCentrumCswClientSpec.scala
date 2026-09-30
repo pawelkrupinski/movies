@@ -22,31 +22,33 @@ class KinoCentrumCswClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   private val http   = new FakeHttpFetch("csw-torun")
   private val client = new KinoCentrumCswClient(http, KinoCentrumCsw)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoCentrumCswClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with KinoCentrumCsw" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoCentrumCsw)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Obcy on 2026-09-22 at 15:30" in {
-    val movies = client.fetch()
+    val movies = fetched
     val obcy = movies.find(_.movie.title == "Obcy").value
     obcy.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 22, 15, 30))
     obcy.filmUrl.value shouldBe "https://csw.torun.pl/kino/obcy/"
   }
 
   it should "merge a film's screenings across different days into one entry" in {
-    val movies = client.fetch()
+    val movies = fetched
     val obcy = movies.find(_.movie.title == "Obcy").value
     obcy.showtimes.map(_.dateTime) should contain allOf (
       LocalDateTime.of(2026, 9, 22, 15, 30),

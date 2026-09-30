@@ -11,6 +11,7 @@ import services.cinemas.pl.MsiClient
 import services.cinemas.common.ScrapeHorizon
 
 import java.time.{LocalDate, LocalDateTime}
+import scala.collection.concurrent.TrieMap
 
 /** One spec for every cinema on the shared MSI ticketing platform. Each row
  *  replays that venue's recorded `<base>/MSI/mvc/pl?sort=Name&date=2026-06`
@@ -155,11 +156,14 @@ class MsiClientSpec
     counting.requests shouldBe ScrapeHorizon.MaxEmptyMonths
   }
 
+  // Both format cases read the same recorded Cinema1 month pages.
+  private lazy val cinema1 =
+    new MsiClient(new FakeHttpFetch("cinema1"), "https://bilety.cinemaone.pl",
+      Cinema1Gdansk, today = LocalDate.of(2026, 6, 7)).fetch()
+
   it should "strip MSI format suffixes and sentence-case titles" in {
     // Raw title in the cinema1 fixture: "BACKROOMS. BEZ WYJŚCIA (2D NAPISY)"
-    val movies =
-      new MsiClient(new FakeHttpFetch("cinema1"), "https://bilety.cinemaone.pl",
-        Cinema1Gdansk, today = LocalDate.of(2026, 6, 7)).fetch()
+    val movies = cinema1
     val found = movies.find(_.movie.title.startsWith("Backrooms")).value
     found.movie.title should not include "(2D"
     found.movie.title should not include "(3D"
@@ -168,9 +172,7 @@ class MsiClientSpec
   it should "lift the MSI title's buried format/version into Showtime.format" in {
     // Raw cinema1 title "BACKROOMS. BEZ WYJŚCIA (2D NAPISY)" — the cleaned title
     // collapses the variants, while the version is recovered as format tokens.
-    val movies =
-      new MsiClient(new FakeHttpFetch("cinema1"), "https://bilety.cinemaone.pl",
-        Cinema1Gdansk, today = LocalDate.of(2026, 6, 7)).fetch()
+    val movies = cinema1
     val backrooms = movies.find(_.movie.title.startsWith("Backrooms")).value
     backrooms.movie.title should not include "NAPISY"
     all(backrooms.showtimes.map(_.format)) shouldBe List("2D", "NAP")
@@ -229,9 +231,11 @@ class MsiClientSpec
   // `titlePrefix` splits that one feed into a per-cinema scraper: each instance
   // keeps only its own prefixed titles and strips the prefix. today=2026-06-08
   // mirrors prod — the June page is empty, the July page carries the screenings.
+  private val mokFetched = TrieMap.empty[(Cinema, String), Seq[CinemaMovie]]
   private def mokKedzierzyn(cinema: Cinema, prefix: String) =
-    new MsiClient(new FakeHttpFetch("kino-mok-kedzierzyn"), "https://bilety.mok.com.pl",
-      cinema, today = LocalDate.of(2026, 6, 8), titlePrefix = Some(prefix)).fetch()
+    mokFetched.getOrElseUpdate((cinema, prefix),
+      new MsiClient(new FakeHttpFetch("kino-mok-kedzierzyn"), "https://bilety.mok.com.pl",
+        cinema, today = LocalDate.of(2026, 6, 8), titlePrefix = Some(prefix)).fetch())
 
   it should "split the shared MOK portal into Chemik's own feed via titlePrefix" in {
     val movies = mokKedzierzyn(KinoChemik, "Chemik")

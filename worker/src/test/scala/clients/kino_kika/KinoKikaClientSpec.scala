@@ -17,21 +17,23 @@ class KinoKikaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-kika")
   private val client = new KinoKikaClient(http, KinoKika)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoKikaClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with KinoKika" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(KinoKika)
+    fetched.map(_.cinema).toSet shouldBe Set(KinoKika)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Drzewo Magii on 2026-06-07 at 12:00" in {
-    val movies = client.fetch()
+    val movies = fetched
     val drzewo = movies.find(_.movie.title.toLowerCase.contains("drzewo magii")).value
     drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 12, 0))
     drzewo.showtimes.flatMap(_.bookingUrl).head should include("bilety.kinokika.pl")

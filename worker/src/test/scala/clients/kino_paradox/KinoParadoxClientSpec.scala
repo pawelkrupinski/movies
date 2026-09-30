@@ -17,9 +17,11 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   private val http   = new FakeHttpFetch("kino-paradox")
   private val client = new KinoParadoxClient(http, KinoParadox)
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoParadoxClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "fetch per-film detail (synopsis, director, genre, runtime, country, poster, language) from the /naekranie page" in {
@@ -44,15 +46,15 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "tag every film with KinoParadox" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(KinoParadox)
+    fetched.map(_.cinema).toSet shouldBe Set(KinoParadox)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Zawieście czerwone latarnie on 2026-06-07 at 18:00" in {
-    val movies = client.fetch()
+    val movies = fetched
     val zawies = movies.find(_.movie.title == "Zawieście czerwone latarnie").value
     zawies.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 18, 0))
     zawies.showtimes.flatMap(_.bookingUrl).head should include("bilety.kinoparadox.pl")
@@ -60,7 +62,7 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   // `div.item-director` is "reż. <dirs> / <countries> / <year> / <runtime>’".
   it should "parse the director and production year from item-director" in {
-    val zawies = client.fetch().find(_.movie.title == "Zawieście czerwone latarnie").value
+    val zawies = fetched.find(_.movie.title == "Zawieście czerwone latarnie").value
     zawies.director shouldBe Seq("Yimou Zhang")
     zawies.movie.releaseYear shouldBe Some(1991)
   }
@@ -68,18 +70,18 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   // The same slash line carries countries + runtime after the director/year —
   // "reż. Yimou Zhang / Chiny, Hong Kong / 1991 / 125’".
   it should "parse the production countries and runtime from item-director" in {
-    val zawies = client.fetch().find(_.movie.title == "Zawieście czerwone latarnie").value
+    val zawies = fetched.find(_.movie.title == "Zawieście czerwone latarnie").value
     zawies.movie.countries shouldBe Seq("Chiny", "Hong Kong")
     zawies.movie.runtimeMinutes shouldBe Some(125)
   }
 
   it should "parse multiple directors and skip the country / runtime slashes" in {
-    val bum = client.fetch().find(_.movie.title == "Bum!").value
+    val bum = fetched.find(_.movie.title == "Bum!").value
     bum.director shouldBe Seq("Marta Selecka", "Andra Doršs")
     bum.movie.releaseYear shouldBe Some(2024)
   }
 
   it should "never read a country name as a director" in {
-    client.fetch().flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
+    fetched.flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
   }
 }

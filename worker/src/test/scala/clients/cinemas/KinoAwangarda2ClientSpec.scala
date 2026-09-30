@@ -25,19 +25,21 @@ class KinoAwangarda2ClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   private val http   = new FakeHttpFetch("kino-awangarda2")
   private val client = new KinoAwangarda2Client(http, LocalDate.of(2026, 6, 21))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoAwangarda2Client" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with KinoAwangarda2 and a non-empty title" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoAwangarda2)
     all(movies.map(_.movie.title)) should not be empty
   }
 
   it should "give every film at least one showtime, all within the page's week" in {
-    val movies    = client.fetch()
+    val movies    = fetched
     all(movies.map(_.showtimes)) should not be empty
     val dates = movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate)
     dates.min should be >= LocalDate.of(2026, 6, 19)
@@ -45,7 +47,7 @@ class KinoAwangarda2ClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "anchor a year-less DD.MM header to an absolute date + time" in {
-    val movies = client.fetch()
+    val movies = fetched
     val film   = movies.find(_.movie.title == "Drugie życie").value
     // "Piątek 19.06." header → screening "godz. 17.45".
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 19, 17, 45))
@@ -53,7 +55,7 @@ class KinoAwangarda2ClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "recover the quoted film from a retrospective 'Series : \"Film\"' line" in {
-    val movies = client.fetch()
+    val movies = fetched
     // `Federico Fellini : Ciao a tutti "Wałkonie"` → title is the quoted film.
     val film = movies.find(_.movie.title == "Wałkonie").value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 25, 19, 45))

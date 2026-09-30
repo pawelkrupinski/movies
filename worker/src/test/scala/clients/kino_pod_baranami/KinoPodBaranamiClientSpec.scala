@@ -18,21 +18,23 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   private val http   = new FakeHttpFetch("kino-pod-baranami")
   private val client = new KinoPodBaranamiClient(http, KinoPodBaranami, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoPodBaranamiClient" should "return a non-empty film list" in {
-    client.fetch() should not be empty
+    fetched should not be empty
   }
 
   it should "tag every film with KinoPodBaranami" in {
-    client.fetch().map(_.cinema).toSet shouldBe Set(KinoPodBaranami)
+    fetched.map(_.cinema).toSet shouldBe Set(KinoPodBaranami)
   }
 
   it should "give every film at least one showtime" in {
-    all(client.fetch().map(_.showtimes)) should not be empty
+    all(fetched.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Diabeł ubiera się u Prady 2 on 2026-06-07 at 10:30" in {
-    val movies = client.fetch()
+    val movies = fetched
     val diabel = movies.find(_.movie.title.contains("Diabe")).value
     // Full Polish title with all diacritics intact — proves the ISO-8859-2
     // bytes survive the decode. The fixture used to be a lossy UTF-8 capture
@@ -46,7 +48,7 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // The cinema exposes the original title in the link's `title=` attribute
     // ("The Devil Wears Prada 2", "Fight Club"); we keep it so a same-Polish-title
     // film disambiguates to the right TMDB entry deterministically.
-    val movies = client.fetch()
+    val movies = fetched
     movies.find(_.movie.title.contains("Diabe")).value.movie.originalTitle.value shouldBe "The Devil Wears Prada 2"
     movies.find(_.movie.title.contains("Podziemny")).value.movie.originalTitle.value shouldBe "Fight Club"
   }
@@ -56,7 +58,7 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // dyskusją"), not part of the film title. Left in, "Dzień objawienia (SMAK)"
     // sanitizes to a different merge key (`_id` = sanitize(title)|year) and forks
     // off as a separate one-cinema record. It must not survive into the title.
-    val titles = client.fetch().map(_.movie.title)
+    val titles = fetched.map(_.movie.title)
     all(titles) should not include "SMAK"
     titles should contain("Dzień objawienia")
   }
@@ -64,7 +66,7 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
   it should "leave originalTitle empty when the original equals the displayed title" in {
     // A film whose `title=` attribute just repeats the visible title carries no
     // distinct original — don't store a redundant one.
-    client.fetch().find(_.movie.title.equalsIgnoreCase("Hamnet"))
+    fetched.find(_.movie.title.equalsIgnoreCase("Hamnet"))
       .foreach(_.movie.originalTitle shouldBe None)
   }
 

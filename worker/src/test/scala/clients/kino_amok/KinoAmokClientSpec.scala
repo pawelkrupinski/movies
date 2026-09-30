@@ -22,24 +22,26 @@ class KinoAmokClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-amok")
   private val client = new KinoAmokClient(http, KinoAmok, LocalDate.of(2026, 6, 7))
+  // Every case only reads the parsed result, so the fixture is replayed once per suite.
+  private lazy val fetched = client.fetch()
 
   "KinoAmokClient" should "return a non-empty film list" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies should not be empty
   }
 
   it should "tag every film with KinoAmok" in {
-    val movies = client.fetch()
+    val movies = fetched
     movies.map(_.cinema).toSet shouldBe Set(KinoAmok)
   }
 
   it should "give every film at least one showtime" in {
-    val movies = client.fetch()
+    val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
   }
 
   it should "pin a concrete screening: Diabeł ubiera się u Prady 2 on 2026-06-07 at 15:30 in Duża sala" in {
-    val movies = client.fetch()
+    val movies = fetched
     val diabel = movies.find(_.movie.title == "Diabeł ubiera się u Prady 2").value
     val slot   = diabel.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 7, 15, 30)).value
     slot.room shouldBe Some("Duża sala")
