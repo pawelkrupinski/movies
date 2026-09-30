@@ -3,11 +3,10 @@ package pl.kinowo.net
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import pl.kinowo.contracts.MockWebServerRule
 
 /**
  * Pins the city-slug prefix [KinowoApi] builds into the request path. The
@@ -17,22 +16,10 @@ import org.junit.Test
  */
 class KinowoApiPathTest {
 
-    private lateinit var server: MockWebServer
-    private lateinit var api: KinowoApi
-
-    @Before
-    fun setUp() {
-        server = MockWebServer()
-        server.start()
-        api = KinowoApi(baseUrl = baseUrl(), client = OkHttpClient())
-    }
-
-    private fun baseUrl() = server.url("").toString().trimEnd('/')
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
+    private val api by lazy { KinowoApi(baseUrl = mock.baseUrl, client = OkHttpClient()) }
 
     @Test
     fun repertoirePathCarriesTheCitySlug() = runBlocking {
@@ -59,7 +46,7 @@ class KinowoApiPathTest {
             }
             .build()
         server.enqueue(MockResponse().setBody("[]"))
-        KinowoApi(baseUrl = baseUrl(), client = given).fetchRepertoire(citySlug = "poznan", ifModifiedSince = null)
+        KinowoApi(baseUrl = mock.baseUrl, client = given).fetchRepertoire(citySlug = "poznan", ifModifiedSince = null)
         assertEquals("yes", server.takeRequest().getHeader("X-Given-Client"))
     }
 }

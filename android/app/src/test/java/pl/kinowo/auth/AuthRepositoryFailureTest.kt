@@ -4,16 +4,15 @@ import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import kotlin.coroutines.cancellation.CancellationException
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.net.PersistentCookieJar
 
 /**
@@ -27,18 +26,9 @@ import pl.kinowo.net.PersistentCookieJar
 @Config(sdk = [34])
 class AuthRepositoryFailureTest {
 
-    private lateinit var server: MockWebServer
-
-    @Before
-    fun setUp() {
-        server = MockWebServer()
-        server.start()
-    }
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
 
     private fun repository(baseUrl: String, client: OkHttpClient = OkHttpClient()) = AuthRepository(
         client,
@@ -59,7 +49,7 @@ class AuthRepositoryFailureTest {
     @Test
     fun exchangeCodeSurvivesAMalformedBody() = runBlocking {
         server.enqueue(MockResponse().setBody("<html>proxy error</html>"))
-        val auth = repository(server.url("").toString().trimEnd('/'))
+        val auth = repository(mock.baseUrl)
 
         auth.exchangeCode("one-shot")
 

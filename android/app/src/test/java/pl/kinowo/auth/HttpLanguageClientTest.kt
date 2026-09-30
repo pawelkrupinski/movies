@@ -2,10 +2,9 @@ package pl.kinowo.auth
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
 
 /** [HttpLanguageClient.push] tells a pick the server refuses for good (a
@@ -14,20 +13,10 @@ import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
  *  `HttpLanguageClientTests`. */
 class HttpLanguageClientTest {
 
-    private lateinit var server: MockWebServer
-    private lateinit var client: HttpLanguageClient
-
-    @Before
-    fun setUp() {
-        server = MockWebServer()
-        server.start()
-        client = HttpLanguageClient(baseUrl = server.url("").toString().trimEnd('/'), client = OkHttpClient())
-    }
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
+    private val client by lazy { HttpLanguageClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
 
     /** Only a 400 (a language this server does not know) is refused for good; a
      *  403 in particular is as likely a Cloudflare challenge in front of the app.

@@ -2,10 +2,9 @@ package pl.kinowo.auth
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
 
 /** [HttpHiddenFilmsClient]'s writes tell an edit the server refuses for good
@@ -13,20 +12,10 @@ import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
  *  one and keep the other queued. Mirrors iOS `HttpHiddenFilmsClientTests`. */
 class HttpHiddenFilmsClientTest {
 
-    private lateinit var server: MockWebServer
-    private lateinit var client: HttpHiddenFilmsClient
-
-    @Before
-    fun setUp() {
-        server = MockWebServer()
-        server.start()
-        client = HttpHiddenFilmsClient(baseUrl = server.url("").toString().trimEnd('/'), client = OkHttpClient())
-    }
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
+    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
 
     /** Only 400 (over-long title, unknown country) and 413 (full bucket) are
      *  refused for good; a 403 in particular is as likely a Cloudflare challenge

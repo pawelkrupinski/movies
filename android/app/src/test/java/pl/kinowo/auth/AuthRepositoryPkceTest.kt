@@ -8,16 +8,15 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.net.PersistentCookieJar
 
 /**
@@ -30,15 +29,14 @@ import pl.kinowo.net.PersistentCookieJar
 @Config(sdk = [34])
 class AuthRepositoryPkceTest {
 
-    private lateinit var server: MockWebServer
-
-    @Before fun setUp() { server = MockWebServer().also { it.start() } }
-    @After fun tearDown() { server.shutdown() }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
 
     private fun repository() = AuthRepository(
         OkHttpClient(),
         PersistentCookieJar(ApplicationProvider.getApplicationContext()),
-        server.url("").toString().trimEnd('/'),
+        mock.baseUrl,
         SharedPrefsPendingVerifierStore(ApplicationProvider.getApplicationContext()),
     )
 

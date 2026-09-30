@@ -3,12 +3,11 @@ package pl.kinowo.auth
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import pl.kinowo.contracts.MockWebServerRule
 
 /**
  * Pins the URL/header shape [HttpHiddenFilmsClient] builds, against a real
@@ -21,20 +20,10 @@ import org.junit.Test
  */
 class HiddenFilmsClientPathTest {
 
-    private lateinit var server: MockWebServer
-    private lateinit var client: HttpHiddenFilmsClient
-
-    @Before
-    fun setUp() {
-        server = MockWebServer()
-        server.start()
-        client = HttpHiddenFilmsClient(baseUrl = server.url("").toString().trimEnd('/'), client = OkHttpClient())
-    }
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
+    @get:Rule
+    val mock = MockWebServerRule()
+    private val server get() = mock.server
+    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
 
     @Test
     fun fetchPathCarriesTheCountry() = runBlocking {
