@@ -156,14 +156,6 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     drainServices()
   }
 
-  /** In production every row's TMDB enrichment eventually concludes — the
-   *  boot/daily retry sweep resolves it or records a definitive no-match — and
-   *  only a concluded row is published by the projector. A one-shot fixture run
-   *  can't wait for that and has no TMDB fixture for every film, so mark any row
-   *  still un-concluded as a no-match here: the same end state the sweep reaches,
-   *  so the read model reflects the settled corpus, not a transient
-   *  mid-enrichment snapshot. These films were already `tmdbId`-less in the
-   *  fixtures, so only their visibility changes, not their rendered data. */
   /** Settle the cache to its deterministic steady state. The production scrape
    *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
    *  cinema lands, so a film's TMDB/ratings can resolve against a partially-merged row; in
