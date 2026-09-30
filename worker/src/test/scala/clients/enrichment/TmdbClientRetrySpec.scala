@@ -25,7 +25,9 @@ class TmdbClientRetrySpec extends AnyFlatSpec with Matchers {
   }
   private def status(code: Int) =
     new HttpStatusException(code, "GET", "https://api.themoviedb.org/3/movie/1/external_ids", None)
-  private def client(http: HttpFetch) = new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-key")))
+  // The backoff itself is RetryWithBackoff's to test; here a retry costs no wall-clock time.
+  private def client(http: HttpFetch) =
+    new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ())
 
   "TmdbClient" should "retry a transient TMDB 500 and succeed on the next attempt" in {
     val http = new FakeHttp(n => if (n == 1) throw status(500) else ExternalIds)
