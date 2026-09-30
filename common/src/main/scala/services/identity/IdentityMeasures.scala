@@ -410,7 +410,7 @@ object IdentityMeasures {
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =
-    tools.TextNormalization.NonLetterOrDigit.matcher(tools.TextNormalization.deburr(withoutPossessives(s)).toLowerCase(Locale.ROOT)).replaceAll("")
+    tools.TextNormalization.lettersAndDigitsOnly(tools.TextNormalization.deburr(withoutPossessives(s)).toLowerCase(Locale.ROOT))
 
   /** A possessive "'s" dropped: venues write "Andre Rieu 2026 Christmas Concert" for TMDB's "Andre
    *  Rieu's …" (UK Odeon ×76 read it as a different title and vetoed the concert). Only after an

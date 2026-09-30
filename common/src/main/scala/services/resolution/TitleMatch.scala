@@ -169,7 +169,7 @@ object TitleMatch {
 
   /** The words in `s` long enough to identify a film, transliterated and folded. */
   def distinctiveTokens(s: String, sanitize: String => String): Set[String] =
-    tools.TextNormalization.NonLetterOrDigit.split(latinise(s)).iterator
+    tools.TextNormalization.lettersAndDigitsRuns(latinise(s)).iterator
       .map(sanitize).filter(_.length >= DistinctiveToken).toSet
 
   /** Do these two sides of a title comparison share a distinctive word?

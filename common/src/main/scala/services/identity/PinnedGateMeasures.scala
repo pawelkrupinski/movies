@@ -30,7 +30,7 @@ object PinnedGateMeasures {
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =
-    tools.TextNormalization.NonLetterOrDigit.matcher(tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)).replaceAll("")
+    tools.TextNormalization.lettersAndDigitsOnly(tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT))
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
 

@@ -23,13 +23,48 @@ import scala.jdk.CollectionConverters._
 object TextNormalization {
 
   private val CombiningMarks   = Pattern.compile("\\p{M}")
-  /** A run of anything but letters and digits: the separator every title tokenizer splits on. */
-  val NonLetterOrDigit: Pattern = Pattern.compile("[^\\p{L}\\p{N}]+")
   private val Whitespace       = Pattern.compile("\\s+")
   private val UrlToken         = Pattern.compile("(?i)(?:https?://|www\\.)\\S+")
   private val HorizontalGaps   = Pattern.compile("[ \\t\\x0B\\f\\r]+")
   private val SpacedNewline    = Pattern.compile(" ?\\n ?")
   private val BlankLineRuns    = Pattern.compile("\\n{3,}")
+
+  /** A letter or a number, as `\p{L}` and `\p{N}` read a code point: the five letter categories
+   *  and the three number ones. */
+  private def letterOrNumber(codePoint: Int): Boolean = (Character.getType(codePoint): @scala.annotation.switch) match {
+    case Character.UPPERCASE_LETTER | Character.LOWERCASE_LETTER | Character.TITLECASE_LETTER | Character.MODIFIER_LETTER |
+         Character.OTHER_LETTER | Character.DECIMAL_DIGIT_NUMBER | Character.LETTER_NUMBER | Character.OTHER_NUMBER => true
+    case _ => false
+  }
+
+  /** `s`'s runs of letters and digits, in order — every title tokenizer's words. A scan, not
+   *  `[^\p{L}\p{N}]+`: the identity model splits every title of every record it reads, and the
+   *  regex was a third of its CPU. */
+  def lettersAndDigitsRuns(s: String): Seq[String] = {
+    val runs  = Seq.newBuilder[String]
+    var start = -1
+    var i     = 0
+    while (i < s.length) {
+      val codePoint = s.codePointAt(i)
+      if (letterOrNumber(codePoint)) { if (start < 0) start = i }
+      else if (start >= 0) { runs += s.substring(start, i); start = -1 }
+      i += Character.charCount(codePoint)
+    }
+    if (start >= 0) runs += s.substring(start)
+    runs.result()
+  }
+
+  /** `s` with everything but its letters and digits dropped. */
+  def lettersAndDigitsOnly(s: String): String = {
+    val kept = new java.lang.StringBuilder(s.length)
+    var i    = 0
+    while (i < s.length) {
+      val codePoint = s.codePointAt(i)
+      if (letterOrNumber(codePoint)) kept.appendCodePoint(codePoint)
+      i += Character.charCount(codePoint)
+    }
+    if (kept.length == s.length) s else kept.toString
+  }
 
   /**
    * NFD-decompose `s`, drop combining marks, then fold Polish `ł`/`Ł` → `l`

@@ -181,6 +181,34 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
                                       jvmArgs = Seq("-Duser.language=tr", "-Duser.country=TR"))
     (exit, output.trim) shouldBe ((0, "tr: Filmowe spotkania"))
   }
+  // The regex the letters-and-digits scan replaced, kept as its oracle: Java's \p{L} is the five
+  // letter categories and \p{N} the three number ones, read per code point.
+  private val NonLetterOrDigitRegex = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
+  private val awkward = Seq("", " ", "--", "Top Gun: Maverick", "  leading and trailing  ", "Spider-Man 2 (2004)",
+    "Pan Tadeusz, czyli ostatni zajazd na Litwie", "Ваяна 2", "千と千尋の神隠し", "E=mc²", "Ⅻ Rocky Ⅳ", "İstanbul",
+    "Cafe\u0301 Society", "𝔘𝔫𝔦𝔠𝔬𝔡𝔢 𝟙𝟚𝟛", "a\ud83c\udfacb", "tab\tnew\nline", "½ price", "L'Été", "\ud800 lone surrogate")
+  private val random = new scala.util.Random(20260930)
+  private val sweep = Seq.fill(2000)(new String(Array.fill(random.nextInt(12))(random.nextInt(0x2FFFF) match {
+    case cp if cp >= 0xD800 && cp <= 0xDFFF => 'x'.toInt
+    case cp                                 => cp
+  }).flatMap(Character.toChars)))
+
+  "lettersAndDigitsRuns" should "split exactly where the letters-and-digits regex did, dropping empty runs" in {
+    (awkward ++ sweep).foreach { s =>
+      withClue(s.codePoints.toArray.map(Integer.toHexString).mkString(" ")) {
+        TextNormalization.lettersAndDigitsRuns(s) shouldBe NonLetterOrDigitRegex.split(s).filter(_.nonEmpty).toSeq
+      }
+    }
+  }
+
+  "lettersAndDigitsOnly" should "keep exactly what the letters-and-digits regex kept" in {
+    (awkward ++ sweep).foreach { s =>
+      withClue(s.codePoints.toArray.map(Integer.toHexString).mkString(" ")) {
+        TextNormalization.lettersAndDigitsOnly(s) shouldBe NonLetterOrDigitRegex.matcher(s).replaceAll("")
+      }
+    }
+  }
+
 }
 
 /** `sentenceCase` of its argument, prefixed with the JVM's default language -- proof the child
@@ -188,4 +216,5 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 object TurkishSentenceCase {
   def main(args: Array[String]): Unit =
     println(s"${java.util.Locale.getDefault.getLanguage}: ${TextNormalization.sentenceCase(args.head)}")
+
 }
