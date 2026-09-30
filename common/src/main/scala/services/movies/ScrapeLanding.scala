@@ -582,8 +582,7 @@ private[movies] final class ScrapeLanding(
           // folder own that). Excluded from `resolved`, so no movies-side
           // prune/publish fires for it.
           val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinemaSlotKey(cinema, displayTitle)))
-          val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
-          val slot          = cinemaSlots.build(cm, displayTitle, priorSlot, effectiveYear)
+          val slot          = cinemaSlots.build(cm, displayTitle, priorSlot)
           // COLLECTED, not written here: the venue's diverts go out together below, in
           // two round trips rather than three per listing. Nothing later in this loop
           // reads staging back — `priorStagingRows` was captured before it, and the
@@ -659,12 +658,11 @@ private[movies] final class ScrapeLanding(
           val existingOpt   = store.get(key)
           val existing      = existingOpt.getOrElse(MovieRecord())
           val priorSlot     = existing.data.get(cinemaSlotKey(cinema, displayTitle))
-          val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
-          val slot          = cinemaSlots.build(cm, displayTitle, priorSlot, effectiveYear)
+          val slot          = cinemaSlots.build(cm, displayTitle, priorSlot)
           // `isNew` controls whether to publish `MovieDetailsComplete`. Dedup
           // against the prior slot for this cinema so the same `(title, year)`
           // reported tick after tick doesn't churn downstream listeners.
-          val isNew = !priorSlot.exists(s => s.title.contains(displayTitle) && s.releaseYear == effectiveYear)
+          val isNew = !priorSlot.exists(s => s.title.contains(displayTitle) && s.releaseYear == slot.releaseYear)
           // Existing rows go through `putIfPresent` (a `$set`-diff that preserves
           // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
           // identity gate live).

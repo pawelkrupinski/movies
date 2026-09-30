@@ -22,16 +22,16 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
    *      (cast/director/runtime/originalTitle/countries/genres) as None/empty on
    *      the listing tick — keep whatever the detail refresher already wrote
    *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment;
-   *    - year fallback (`effectiveYear`): keep the prior year when a tick drops it
-   *      (Helios' REST year flakes), treating a dropped year as loss not a change;
+   *    - year fallback: keep the prior slot's year when the listing carries none — a tick that
+   *      drops it (Helios' REST year flakes), or a venue page's year the detail enrichment wrote
+   *      — treating a missing year as loss, not a change;
    *    - cast/director cased for display (`displayNames`: ALL CAPS down for
    *      Cinema City, all-lowercase up for Flicks), runtime-zero squashed to
    *      None, and country names canonicalised. */
   def build(
     cm:            CinemaMovie,
     displayTitle:  String,
-    priorSlot:     Option[SourceData],
-    effectiveYear: Option[Int]
+    priorSlot:     Option[SourceData]
   ): SourceData =
     SourceData(
       title          = stringPool.canonicalSome(displayTitle),
@@ -61,7 +61,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       director       = if (cm.director.nonEmpty) displayNames(cm.director)
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(_ > 0)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
-      releaseYear    = StringPool.small(effectiveYear),
+      releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))),
       countries      = { val cs = stringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
       genres         = if (cm.movie.genres.nonEmpty) stringPool.canonicalAll(cm.movie.genres)

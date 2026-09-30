@@ -192,7 +192,7 @@ object IdentityProjectionPlan {
             else MovieRecordMerge.slotRepresentative(group).copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
           val prior = previousOf.get(ListingKey.of(cinema, representative)).flatMap(ref => storedById.get(ref.id))
             .flatMap(_.record.data.get(source))
-          (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior, representative.movie.releaseYear)
+          (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior)
         }
     }
     val anchor = rows.map(r => r.listing.cleanTitle).groupMapReduce(identity)(_ => 1)(_ + _).toSeq

@@ -130,6 +130,21 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** A venue page's year, written onto the slot by the detail enrichment, is the listing's: a
+   *  projection that rebuilds the slot from a yearless listing keeps it, as the landing does. Dropped,
+   *  the model read the page again without it and un-decided its own match (Identity model
+   *  convergence, run 36782873474: Nowe Horyzonty's 'Bunkier' went 2021, then no match, then 2021). */
+  it should "keep the year its venue page gave a yearless listing's slot, whatever film the resolver names" in {
+    val bunkier  = row(KinoMuza, "Bunkier", page = Some("https://kinomuza.pl/film/bunkier"))
+    val enriched = slotOf(bunkier) match { case (source, slot) => source -> slot.copy(releaseYear = Some(2021), director = Seq("Jenny Perlin")) }
+    Seq(None, Some(889389)).foreach { film =>
+      val stored = StoredMovieRecord("Bunkier", None, MovieRecord(data = Map(enriched)), FilmId("bunkier"), Some("bunkier"))
+      val d = IdentityProjectionPlan.draft(Seq(bunkier), resolution(decision(film, bunkier)), Seq(stored), FilmIdCounters.empty,
+        normalizer, slots, tokens, at)
+      withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(enriched._1).flatMap(_.releaseYear) shouldBe Some(2021))
+    }
+  }
+
   "Two stored films the resolver joins" should "keep the OLDER id, retire the other and count one merge" in {
     val older = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1),
       data = Map(slotOf(lalka.head))),
