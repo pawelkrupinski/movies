@@ -50,15 +50,13 @@ trait MetricsWiring { self: WorkerWiring =>
   // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.
   lazy val slotFanoutMetrics: WorkerSlotFanoutMetrics =
     new WorkerSlotFanoutMetrics(workerMetrics.widestSlotsGauge, country.code)
-  // Same-city venue pairs whose upcoming programmes are (nearly) identical — one screen listed
-  // twice under two names, which the name-based roster audit cannot see. Rides the same pass.
   // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
   // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.
   // Only over the venues read through an upstream known to copy feeds; None where there are none.
   lazy val copiedFeedDetector: Option[services.cinemas.roster.CopiedFeedDetector] =
     Some(services.cinemas.roster.CopiedFeedDetector.watchedVenues(countryScrapers)).filter(_.nonEmpty)
       .map(new services.cinemas.roster.CopiedFeedDetector(workerMetrics.copiedFeedPairsGauge, country, _))
-  // ONE 5-minute corpus scan feeding every census above. The first three each used to run
+  // ONE 15-minute corpus scan feeding every census above. The first three each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan =
