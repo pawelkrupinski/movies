@@ -116,4 +116,19 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
     check(listings = Seq(listing(Helios, "Diuna", Nine), listing(Helios, "Lalka", Nine)),
       served = Seq(screening("f1", Helios, Seven, Nine), screening("f2", Helios, Seven, Nine)), from = Nine) shouldBe empty
   }
+
+  /** Found by `Identity model convergence` (runs 36722750256, UK and US): the resolver kept a lone
+   *  "IT (2017)" apart from "It (2017)", and the projection stored the two under `it|2017` and
+   *  `it~<counter>|2017` — the same title and year, as `IdentityProjectionPlan.finish` means. The cache
+   *  keys a row by its STORED key, so the check must too. */
+  "duplicatedKeys" should "read each row's stored key, as the cache does, not one derived from its title and year" in {
+    def row(id: String, storedKey: String) =
+      StoredMovieRecord("It", Some(2017), MovieRecord(), FilmId(id), storedKey = Some(storedKey))
+    ServedCorpusInvariants.duplicatedKeys(Seq(row("f1", "it|2017"), row("f2", "it~7|2017")), titleNormalizer) shouldBe empty
+  }
+
+  it should "report two documents answering to one stored key" in {
+    def row(id: String) = StoredMovieRecord("It", Some(2017), MovieRecord(), FilmId(id), storedKey = Some("it|2017"))
+    ServedCorpusInvariants.duplicatedKeys(Seq(row("f1"), row("f2")), titleNormalizer) shouldBe Seq("it|2017 <- f1, f2")
+  }
 }
