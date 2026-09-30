@@ -96,7 +96,10 @@ class RatingHandler(
   dueWindow:             DueWindow,
   cadence:               RatingCadenceStore,
   refresh:               (String, Option[Int]) => Option[String],
-  clock:                 Clock = Clock.systemUTC(),
+  // The WIRING's clock, never a default: the enqueuer judges a film due on the wiring's clock, so a
+  // handler judging (and stamping) freshness on another re-asked every film each round once the two
+  // drifted — Identity model convergence, run 36717160191.
+  clock:                 Clock,
   metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp,
   // Where each attempt's outcome is recorded for the /debug per-film expand
   // section. Defaults to NoOp so scripts/tests opt in rather than out.

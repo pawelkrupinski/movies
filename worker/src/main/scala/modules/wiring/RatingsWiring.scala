@@ -91,11 +91,11 @@ trait RatingsWiring { self: WorkerWiring =>
   // TaskType is otherwise never enqueued — the EnrichmentReaper is the sole
   // enqueue path and there's no Filmweb source to move a value).
   lazy val ratingHandlers: Seq[TaskHandler] = Seq(
-    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         metrics = taskMetrics, attempts = enrichmentAttemptStore),
-    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics, attempts = enrichmentAttemptStore),
-    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    metrics = taskMetrics, attempts = enrichmentAttemptStore)
+    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         clock = clock, metrics = taskMetrics, attempts = enrichmentAttemptStore),
+    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, clock = clock, metrics = taskMetrics, attempts = enrichmentAttemptStore),
+    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    clock = clock, metrics = taskMetrics, attempts = enrichmentAttemptStore)
   ) ++ Option.when(filmwebEnabled)(
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics, attempts = enrichmentAttemptStore))
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      clock = clock, metrics = taskMetrics, attempts = enrichmentAttemptStore))
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
   // handful across all four at the 1min cadence), so this only bites a cold/long-down

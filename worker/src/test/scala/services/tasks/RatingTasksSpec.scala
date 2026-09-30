@@ -89,7 +89,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   it should "record a changed attempt under the task's dedup key" in {
     val attempts = new InMemoryEnrichmentAttemptStore
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore, dueWindow,
-                      cadence, (_, _) => Some("8.3"), attempts = attempts)
+                      cadence, (_, _) => Some("8.3"), earlier, attempts = attempts)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     attempts.all().toMap.get("imdb|tmdb:7").map(_.outcome) shouldBe Some(AttemptOutcome.Changed("8.3"))
   }
@@ -97,7 +97,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   it should "record an unchanged attempt distinctly from a failed one" in {
     val attempts = new InMemoryEnrichmentAttemptStore
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore, dueWindow,
-                      cadence, (_, _) => None, attempts = attempts)
+                      cadence, (_, _) => None, earlier, attempts = attempts)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     attempts.all().toMap.get("imdb|tmdb:7").map(_.outcome) shouldBe Some(AttemptOutcome.Unchanged)
   }
@@ -107,7 +107,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     val handler  = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore,
                                      dueWindow, cadence,
                                      (_, _) => throw new RuntimeException("HTTP 503 from imdb.com"),
-                                     attempts = attempts)
+                                     earlier, attempts = attempts)
 
     // Recording must not swallow: the queue's retry/backoff still sees the failure.
     a[RuntimeException] should be thrownBy handler.handle(ratingTask("imdb|tmdb:7", "X", None))
@@ -177,7 +177,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     val fresh = new InMemoryFreshnessStore
     fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, Instant.parse("2026-06-21T10:00:00Z"))
     val (metrics, seen) = recordingMetrics()
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => Some("7.5"), metrics = metrics)
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => Some("7.5"), earlier, metrics = metrics)
 
     h.handle(ratingTask("imdb|kumotry|2026", "Kumotry", Some(2026))) shouldBe HandlerOutcome.Done
     seen shouldBe empty

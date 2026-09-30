@@ -84,4 +84,21 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     }
     CutoverProperties.films(again, withIds = true) shouldBe CutoverProperties.films(settled, withIds = true)
   }
+
+  /** Found by `Identity model convergence` (run 36717160191): a day after a cut-over boot, every
+   *  country re-asked every film's ratings round after round, each task `Skipped` as fresh. The
+   *  enqueuer judged due on the wiring's clock; the rating handlers judged — and stamped — on the
+   *  wall clock they defaulted to. Each stamp must be the wiring's own time. */
+  "A cut-over Poland's rating refreshes" should "be stamped on the wiring's clock, the one the enqueuer reads" in {
+    val (w, _) = booted
+    val stamps = for {
+      film   <- w.movieRepository.findAll()
+      tmdbId <- film.record.tmdbId.toSeq
+      kind   <- Seq(services.freshness.FreshnessKind.ImdbRating, services.freshness.FreshnessKind.RtRating,
+                    services.freshness.FreshnessKind.McRating)
+      at     <- w.freshnessStore.lastFetchedAt(services.attempts.RatingKeys.tmdbKey(kind, tmdbId)).toSeq
+    } yield at
+    stamps should not be empty
+    stamps.distinct shouldBe Seq(w.clock.instant())
+  }
 }
