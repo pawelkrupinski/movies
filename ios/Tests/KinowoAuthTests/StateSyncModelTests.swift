@@ -110,9 +110,10 @@ final class StateSyncModelTests: XCTestCase {
     /// against a device still mid-flight.
     func testARunThatNeverGoesQuietIsAViolation() async {
         // A response that never comes and that no `.stall` accounts for: the device is
-        // busy for good. Within the ordinary turn limit, not a limit below the 20 idle
-        // turns quiescing needs, which would call even an idle run never quiet.
-        let violation = await SyncModel.violation(of: [.login], hangResponses: true)
+        // busy for good. A turn limit well above the 20 idle turns quiescing needs (a
+        // limit below them would call even an idle run never quiet), but far below the
+        // ordinary 100 000, which a run that never settles would burn through in full.
+        let violation = await SyncModel.violation(of: [.login], hangResponses: true, quiesceTurnLimit: 1_000)
         XCTAssertTrue(violation?.contains("never went quiet") == true, "got \(violation ?? "nil")")
     }
 
@@ -227,8 +228,9 @@ enum SyncModel {
     /// Run `events` and then settle; the first invariant broken, or nil.
     /// `hangResponses` makes every fake response wait forever, unaccounted for — a
     /// device that never goes quiet, for the test that such a run is a violation.
-    static func violation(of events: [SyncEvent], hangResponses: Bool = false) async -> String? {
-        let run = Run(quiesceTurnLimit: 100_000, hangResponses: hangResponses)
+    static func violation(of events: [SyncEvent], hangResponses: Bool = false,
+                          quiesceTurnLimit: Int = 100_000) async -> String? {
+        let run = Run(quiesceTurnLimit: quiesceTurnLimit, hangResponses: hangResponses)
         defer { run.tearDown() }
         return await run.play(events)
     }
