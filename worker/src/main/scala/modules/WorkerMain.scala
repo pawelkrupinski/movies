@@ -127,6 +127,7 @@ object WorkerMain extends Logging {
     logger.info(s"Worker metrics up on :$port/metrics")
 
     addHeapDumpEndpoint(health, heapDumpDir)
+    addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir))
 
     // Now that the heartbeat + watchdog are running, let /health report real
     // liveness: it goes 503 (and the watchdog restarts the process) only once a
@@ -244,6 +245,38 @@ object WorkerMain extends Logging {
       try os.write(body) finally os.close()
     })
     ()
+  }
+
+  /** `/profile?seconds=N`: record a Java Flight Recorder profile of the worker for N seconds
+   *  (default 600, 60..1800) into the heap-dump directory, written when it ends. Same exposure and
+   *  POST-only rule as `/heapdump`; a recording costs a percent or two of CPU while it runs.
+   *
+   *    curl -X POST 'localhost:9000/profile?seconds=600'
+   */
+  private[modules] def addProfileEndpoint(server: HttpServer, recorder: FlightRecorder): Unit = {
+    server.createContext("/profile", exchange => {
+      val seconds = Option(exchange.getRequestURI.getQuery).toSeq.flatMap(_.split('&'))
+        .collectFirst { case q if q.startsWith("seconds=") => q.stripPrefix("seconds=").toIntOption }.flatten
+      val (status, text) =
+        if (exchange.getRequestMethod != "POST") (405, "POST to start a profile")
+        else seconds.getOrElse(ProfileSeconds.default) match {
+          case s if s < ProfileSeconds.min || s > ProfileSeconds.max =>
+            (400, s"seconds must be ${ProfileSeconds.min}..${ProfileSeconds.max}")
+          case s => recorder.record(scala.concurrent.duration.Duration(s.toLong, "seconds")).fold(
+            refused => (409, refused), file => (202, s"recording $s s to $file"))
+        }
+      val body = text.getBytes("UTF-8")
+      exchange.sendResponseHeaders(status, body.length.toLong)
+      val os = exchange.getResponseBody
+      try os.write(body) finally os.close()
+    })
+    ()
+  }
+
+  private[modules] object ProfileSeconds {
+    val default = 600
+    val min     = 60
+    val max     = 1800
   }
 
   private val MetricsActiveLimit = 1000
