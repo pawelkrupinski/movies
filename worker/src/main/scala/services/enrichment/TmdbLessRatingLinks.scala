@@ -23,12 +23,12 @@ object TmdbLessRatingLinks {
     row.tmdbNoMatch && !row.evidence.titles.exists(notAFilm) &&
       (directorsOf(row).nonEmpty || row.evidence.years.nonEmpty || EmbeddedYear.ofAll(row.evidence.titles).isDefined)
 
-  /** A title that is no single film, whatever its facts: a live event (`NonMovieEventClassifier`), a
-   *  festival pass, a fan event, a double bill, a marathon or a secret screening. A rating site has no
-   *  page for it — "12. SPLAT! FilmFest | karnet" and "Avengers: Doomsday RealD 3D Fan Event" were
-   *  searched on Metacritic and RT for nothing. */
-  def notAFilm(title: String): Boolean =
-    services.cinemas.pl.NonMovieEventClassifier.isLiveEvent(title) || NotAFilm.findFirstIn(title).isDefined
+  /** A title that is no single film, whatever its facts: a festival pass, a fan event, a double bill, a
+   *  marathon or a secret screening. A rating site has no page for it — "12. SPLAT! FilmFest | karnet"
+   *  and "Avengers: Doomsday RealD 3D Fan Event" were searched on Metacritic and RT for nothing. Not
+   *  `NonMovieEventClassifier`: a venue-scoped listing filter, whose words ("balet", "na żywo", "koncert")
+   *  a FILM's title carries too ("Neneh: Gwiazda baletu", a silent film shown with live music). */
+  def notAFilm(title: String): Boolean = NotAFilm.findFirstIn(title).isDefined
 
   /** A spaced "+" joins a second FILM unless what follows it is an add-on to one film: "Wśród nocnej
    *  ciszy + dyskusja", "… + spotkanie z reżyserem", "… + Q&A". */
