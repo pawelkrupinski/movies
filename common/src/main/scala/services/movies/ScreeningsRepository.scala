@@ -316,16 +316,10 @@ class MongoScreeningsRepository(
    *  treats that as "incomplete" and won't let a reconcile prune on stripped rows. */
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
-    if (filmIds.isEmpty) (Map.empty, true)
-    else coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
-      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
-        case scala.util.Success(rows) =>
-          (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, true)
-        case scala.util.Failure(e) =>
-          logger.warn(s"ScreeningsRepository.findForFilms(${filmIds.size} film(s)) failed: " +
-            s"${e.getClass.getSimpleName}: ${e.getMessage} — reporting the read as incomplete.")
-          (Map.empty, false)
-      }
+    coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
+      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
+        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
+      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, complete)
     }
 
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll match {

@@ -5,7 +5,7 @@ import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 
 import java.time.Instant
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -171,6 +171,29 @@ object SlotKeyed {
           warn(s"$label.existingRowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
             "reporting the read as incomplete.")
           (found, false)
+      }
+    }
+
+  /** How many films one side-collection read asks for. A 200-film page of US screenings was
+   *  one `$in` read of ~1.4 s — 16.7 s of the boot hydrate's 20.4 s — decoded on one driver
+   *  thread; in pieces this size the reads run side by side. */
+  val FilmsPerRead = 50
+
+  /** Every row of the films in `filmIds`, read [[FilmsPerRead]] films a query with every query
+   *  in flight at once, plus whether EVERY read succeeded — one failed piece fails the whole
+   *  answer, as the single read it replaces did, so a caller never prunes on a partial one. */
+  def rowsForFilmsChecked[T](filmIds: Set[String], label: String, warn: String => Unit)
+                            (find: Seq[String] => Future[Seq[T]]): (Seq[T], Boolean) =
+    if (filmIds.isEmpty) (Seq.empty, true)
+    else {
+      given ExecutionContext = ExecutionContext.parasitic
+      val reads = filmIds.toSeq.grouped(FilmsPerRead).map(find).toSeq
+      Try(Await.result(Future.sequence(reads), 60.seconds)) match {
+        case Success(pieces) => (pieces.flatten, true)
+        case Failure(exception) =>
+          warn(s"$label.findForFilms(${filmIds.size} film(s)) failed: ${exception.getClass.getSimpleName}: " +
+            s"${exception.getMessage} — reporting the read as incomplete.")
+          (Seq.empty, false)
       }
     }
 

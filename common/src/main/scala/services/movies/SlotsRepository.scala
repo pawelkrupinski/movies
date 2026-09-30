@@ -359,16 +359,10 @@ class MongoSlotsRepository(
 
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
-    if (filmIds.isEmpty) (Map.empty, true)
-    else coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
-      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
-        case scala.util.Success(rows) =>
-          (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
-        case scala.util.Failure(e) =>
-          logger.warn(s"SlotsRepository.findForFilms(${filmIds.size} film(s)) failed: " +
-            s"${e.getClass.getSimpleName}: ${e.getMessage} — reporting the read as incomplete.")
-          (Map.empty, false)
-      }
+    coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
+      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "SlotsRepository", logger.warn(_))(ids =>
+        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
+      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, complete)
     }
 
   /** Every film's slots, keyset-paged by `_id` — see [[MongoScreeningsRepository.findAll]]
