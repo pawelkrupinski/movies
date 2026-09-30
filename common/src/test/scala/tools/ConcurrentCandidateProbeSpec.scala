@@ -42,10 +42,13 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
   // is merely slower to answer — mirrors MetacriticClientSpec's "Odyssey"
   // regression, where the wrong-film bare slug would 200 just as readily as
   // the right year-suffixed one.
+  // "Slower" by construction, not by a fixed sleep: the correct candidate answers only once
+  // the wrong one already has.
   it should "let priority order decide the winner, never response speed" in {
+    val wrongAnswered = new java.util.concurrent.CountDownLatch(1)
     val winner = ConcurrentCandidateProbe.firstMatch("t", Seq("slow-correct", "fast-wrong")) {
-      case "slow-correct" => Thread.sleep(150); Some("correct")
-      case "fast-wrong"   => Some("wrong")
+      case "slow-correct" => wrongAnswered.await(10, java.util.concurrent.TimeUnit.SECONDS); Some("correct")
+      case "fast-wrong"   => wrongAnswered.countDown(); Some("wrong")
       case other          => fail(s"unexpected candidate $other")
     }
     winner shouldBe Some("correct")
