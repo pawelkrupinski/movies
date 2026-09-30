@@ -41,7 +41,10 @@ class StagingSteps(
   screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry(),
   // Times how long a film's resolve has been failing (see `StagingSteps.TransientResolveCeiling`)
   // and stamps the attempt that concludes it. The fixture harness fixes it.
-  clock:             java.time.Clock = java.time.Clock.systemUTC()
+  clock:             java.time.Clock = java.time.Clock.systemUTC(),
+  // Announces a staged row's page once its ask is stamped (`VenueDetailRead`): the identity model
+  // reads a newcomer's venue detail from this row, and waits for the announcement to re-ask it.
+  detailRead:        services.events.VenueDetailRead => Unit = _ => ()
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
@@ -116,7 +119,11 @@ class StagingSteps(
       if (!fetched && giveUp)
         logger.warn(s"Staging: giving up on ${cinema.displayName} detail for '$anchor' after repeated failures — degrading to listing-only")
       val ready = fetched || giveUp
-      if (ready) freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich, clock.instant())
+      if (ready) {
+        freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich, clock.instant())
+        stagingRepository.findByCinemaAndAnchor(cinema, anchor).flatMap(row => e.nativeDetailRef(row.record)).distinct
+          .foreach(page => detailRead(services.events.VenueDetailRead(e.detailGroup, page)))
+      }
       ready
   }
 

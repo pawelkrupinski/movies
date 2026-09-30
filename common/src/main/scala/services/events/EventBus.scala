@@ -45,6 +45,13 @@ sealed trait DomainEvent
  *
  *  Both optional fields default to None so cinemas without the field — and the
  *  unit specs that publish this directly — stay unchanged. */
+/** A venue detail page was asked — fetched and merged into its slots, or found gone — for the
+ *  enricher group `detailGroup` (one page serves every venue of a chain) and `page`, the ref the
+ *  enrichment fetched (`DetailEnricher.nativeDetailRef`). Published AFTER the ask is stamped, so a
+ *  reader of the stored slots (`services.identity.VenueDetailSlots`) sees the answer it announces:
+ *  the identity model re-asks the listings that read that page. */
+case class VenueDetailRead(detailGroup: String, page: String) extends DomainEvent
+
 case class MovieDetailsComplete(
   title:         String,
   year:          Option[Int],

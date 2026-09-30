@@ -150,6 +150,7 @@ class EnrichDetailsHandler(
             // permanently. `reapStuckPending` can now let it through.
             uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
+            bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
             Done
           case DetailFetchOutcome.Fetched(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
@@ -229,6 +230,8 @@ class EnrichDetailsHandler(
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
+            // After the stamps, so a reader of the slots sees the answer this announces.
+            bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))
