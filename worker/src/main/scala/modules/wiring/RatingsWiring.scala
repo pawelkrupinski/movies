@@ -35,17 +35,16 @@ trait RatingsWiring { self: WorkerWiring =>
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it
-  // recovers a row's MISSING `imdbId` (by title+year search) and
-  // `rottenTomatoesUrl` (OMDb tomatoURL) — never a rating value. The canonical
-  // ImdbRatings / RottenTomatoesRatings then fetch the scores FROM those ids/links
-  // on their next EnrichmentReaper tick, keeping one canonical writer per value.
+  // recovers a row's MISSING `imdbId` (by title+year search) — never a rating
+  // value, never a rating site's link (RottenTomatoesRatings owns
+  // `rottenTomatoesUrl`). ImdbRatings then fetches the score FROM the id on its
+  // next EnrichmentReaper tick, keeping one canonical writer per value.
   //
   // Kept OFF the always-on queue: a dedicated TaskType/FreshnessKind would ripple
   // through ~41 exhaustive matches + the queue/metrics codecs, and OMDb is a
-  // cheap one-shot gap-filler, not a recurring per-row refresh. Drive a full
-  // backfill with the `scripts.OmdbBackfillRun` runMain (calls `refreshAllNow()`
-  // here); re-runnable/schedulable, `orElse` write-back never overrides.
-  // No cadence recorder: recording OMDb's id/url writes under another source's
+  // cheap gap-filler, not a recurring per-row refresh; the daily sweep below
+  // drives it, and its `orElse` write-back never overrides.
+  // No cadence recorder: recording OMDb's id writes under another source's
   // key would corrupt that source's change history; the default no-op is correct.
   lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
   lazy val omdbBackfill: Option[OmdbBackfill] =

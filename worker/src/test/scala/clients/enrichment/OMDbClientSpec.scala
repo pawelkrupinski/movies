@@ -106,29 +106,4 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     }
     omdb.findImdbId(Seq("Mawka", "Mavka"), Some(2026), Set.empty) shouldBe Some("tt11808706")
   }
-
-  // ── rottenTomatoesUrl (by imdb id) ───────────────────────────────────────────
-
-  "rottenTomatoesUrl" should "extract OMDb's tomatoURL" in {
-    val omdb = client(_ => """{"tomatoURL":"https://www.rottentomatoes.com/m/freak_show","Response":"True"}""")
-    omdb.rottenTomatoesUrl("tt5089534") shouldBe Some("https://www.rottentomatoes.com/m/freak_show")
-  }
-
-  it should "return None when tomatoURL is N/A" in {
-    client(_ => """{"tomatoURL":"N/A","Response":"True"}""").rottenTomatoesUrl("tt0000001") shouldBe None
-  }
-
-  it should "hit the documented endpoint with the id, tomatoes flag and key" in {
-    val fetch = new FnFetch(_ => """{"tomatoURL":"https://www.rottentomatoes.com/m/x","Response":"True"}""")
-    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("abc123"))).rottenTomatoesUrl("tt5089534")
-    fetch.urls.head shouldBe "https://www.omdbapi.com/?i=tt5089534&tomatoes=true&apikey=abc123"
-  }
-
-  it should "return None and make NO HTTP call when the key is unset" in {
-    client(_ => throw new RuntimeException("no HTTP when key unset"), key = None).rottenTomatoesUrl("tt5089534") shouldBe None
-  }
-
-  it should "swallow a network/HTTP failure and return None" in {
-    client(_ => throw new RuntimeException("HTTP 503")).rottenTomatoesUrl("tt5089534") shouldBe None
-  }
 }

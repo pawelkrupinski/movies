@@ -9,20 +9,18 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 /**
- * OMDb IDENTIFIER backfill: recovers a missing `imdbId` (by title+year search)
- * and a missing `rottenTomatoesUrl` (OMDb's `tomatoURL`, keyed by imdb id). It
- * writes only those two IDENTIFIERS — never a rating value. The canonical
- * refreshers then fetch the scores FROM them on their next tick:
- * [[ImdbRatings]] fills `imdbRating` once an `imdbId` is present, and
- * [[RottenTomatoesRatings]] fills `rottenTomatoes` from a stored
- * `rottenTomatoesUrl` (skipping its own URL discovery). So each rating keeps
- * exactly one canonical writer; OMDb only unblocks them.
+ * OMDb IMDb-id backfill: recovers a missing `imdbId` by title+year search. It
+ * writes only that IDENTIFIER — never a rating value, and never a rating site's
+ * link: [[RottenTomatoesRatings]] alone finds, verifies and writes
+ * `rottenTomatoesUrl`, as [[MetascoreRatings]] does `metacriticUrl`. A second
+ * writer of those links raced them and bypassed their page checks. [[ImdbRatings]]
+ * then fills `imdbRating` from the recovered id on its next tick.
  *
  * FALLBACK SEMANTICS:
- *   - Acts only on a row MISSING `imdbId` or `rottenTomatoesUrl` (nothing to
- *     gain otherwise — skip the HTTP call).
+ *   - Acts only on a row MISSING `imdbId` (nothing to gain otherwise — skip the
+ *     HTTP call).
  *   - Writes via `orElse` against the live cached row, so a canonical writer
- *     that filled the id/url in between keeps its value — OMDb never overrides.
+ *     that filled the id in between keeps its value — OMDb never overrides.
  *   - The imdb-id search is title-match guarded (see [[OMDbClient]]) so a fuzzy
  *     OMDb hit can't bind an unrelated film.
  *
@@ -51,38 +49,21 @@ class OmdbBackfill(
 
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
-      val wantImdbId = e.imdbId.isEmpty
-      val wantRtUrl  = e.rottenTomatoesUrl.isEmpty
-      if (!wantImdbId && !wantRtUrl) None        // already fully identified
+      if (e.imdbId.isDefined) None               // already identified
       else if (inBackoff(key)) None              // recently probed + missed → still backing off (no HTTP)
       else {
-        // 1. Recover a missing IMDb id by title+year search. Original
-        //    (production/English) title first — OMDb is an English DB; the
-        //    cinema display title is the fallback spelling.
+        // Original (production/English) title first — OMDb is an English DB; the
+        // cinema display title is the fallback spelling.
         val foundImdbId =
-          if (wantImdbId)
-            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet)
-          else None
-        // 2. Recover a missing RT url via the imdb id we have (or just found).
-        val effectiveId = e.imdbId.orElse(foundImdbId)
-        val foundRtUrl  = if (wantRtUrl) effectiveId.flatMap(omdb.rottenTomatoesUrl) else None
-        // Back off when this probe didn't recover everything still wanted — the
-        // next sweep skips the film until the (doubling) window elapses.
-        val recoveredAll = (!wantImdbId || foundImdbId.isDefined) && (!wantRtUrl || foundRtUrl.isDefined)
-        if (!recoveredAll) recordMiss(key)
-        if (foundImdbId.isEmpty && foundRtUrl.isEmpty) None
-        else {
-          // `orElse` against the LIVE row: a canonical writer that won the race
-          // keeps its value — OMDb only fills a still-empty identifier. The
-          // rating numbers are then fetched FROM these by ImdbRatings /
-          // RottenTomatoesRatings on their next tick; OMDb writes no score.
-          cache.putIfPresent(key, cur => cur.copy(
-            imdbId            = cur.imdbId.orElse(foundImdbId),
-            rottenTomatoesUrl = cur.rottenTomatoesUrl.orElse(foundRtUrl)
-          ))
-          val badge = (foundImdbId.map("imdbId " + _).toSeq ++ foundRtUrl.map(_ => "RT-link").toSeq).mkString(", ")
-          logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle, normalizer)}' (${key.year.getOrElse("?")}) recovered $badge")
-          Some(badge)
+          omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet)
+        foundImdbId match {
+          // A miss backs off: the next sweep skips the film until the (doubling) window elapses.
+          case None => recordMiss(key); None
+          case Some(imdbId) =>
+            // `orElse` against the LIVE row: a canonical writer that won the race keeps its id.
+            cache.putIfPresent(key, cur => cur.copy(imdbId = cur.imdbId.orElse(foundImdbId)))
+            logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle, normalizer)}' (${key.year.getOrElse("?")}) recovered imdbId $imdbId")
+            Some(s"imdbId $imdbId")
         }
       }
     }

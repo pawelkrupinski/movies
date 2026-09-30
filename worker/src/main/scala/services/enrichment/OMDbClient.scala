@@ -10,11 +10,11 @@ import java.nio.charset.StandardCharsets
 import scala.util.Try
 
 /**
- * Feature-gated OMDb (omdbapi.com) client that recovers IDENTIFIERS, not rating
- * values: an IMDb id (resolved with the same rigor as TMDB resolution) and the
- * canonical Rotten Tomatoes URL. The canonical refreshers ([[ImdbRatings]] /
- * [[RottenTomatoesRatings]]) then fetch the actual scores FROM those, so OMDb
- * never writes a rating value — one canonical writer per value.
+ * Feature-gated OMDb (omdbapi.com) client that recovers an IDENTIFIER, not a
+ * rating value: an IMDb id, resolved with the same rigor as TMDB resolution.
+ * [[ImdbRatings]] then fetches the score FROM it, so OMDb never writes a rating
+ * value — one canonical writer per value. Rating-site links are their rating
+ * tasks' own ([[RottenTomatoesRatings]], [[MetascoreRatings]]).
  *
  * IMDb-id resolution ([[findImdbId]]) mirrors `TmdbClient` / `ImdbIdResolver`:
  *   - `type=movie` (never a series), year-scoped when a year is known;
@@ -75,18 +75,6 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
   /** Full record for an imdb id (director credits + title + year). */
   private def detail(imdbId: String, key: String): Option[Candidate] =
     candidateFrom(Try(Json.parse(http.get(idUrl(imdbId, key)))).getOrElse(JsNull))
-
-  /** Recover the canonical Rotten Tomatoes URL for an imdb id — OMDb's
-   *  `tomatoURL`, present only when OMDb holds RT data for the film. */
-  def rottenTomatoesUrl(imdbId: String): Option[String] =
-    apiKey.map(_.value).flatMap { key =>
-      if (imdbId.trim.isEmpty) None
-      else {
-        val js = Try(Json.parse(http.get(idUrl(imdbId.trim, key)))).getOrElse(JsNull)
-        (js \ "tomatoURL").asOpt[String].map(_.trim)
-          .filter(u => u.nonEmpty && u != "N/A" && u.startsWith("http"))
-      }
-    }
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a
    *  year off by >1 with no exact title) AND a positive signal corroborates it:
