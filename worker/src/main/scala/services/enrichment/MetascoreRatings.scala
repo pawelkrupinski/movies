@@ -58,7 +58,8 @@ class MetascoreRatings(
   // the slug-probe fetch already parsed off the page), or None if MC didn't
   // index the film.
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
-    e.tmdbId.flatMap { tmdbId =>
+    if (e.tmdbId.isEmpty) resolveWithoutTmdb(key, e)
+    else e.tmdbId.flatMap { tmdbId =>
       val titles = RatingSiteTitles.derive(key, e, tmdb.details(tmdbId), cache.normalizer)
       // The link cache stores the URL only (the score is read fresh each
       // refresh). We thread the Metascore the resolving probe already parsed
@@ -92,6 +93,21 @@ class MetascoreRatings(
         cache.putIfPresent(key, _.copy(metacriticUrl = Some(u)))
         MetacriticClient.Resolved(u, freshScore)
       }
+    }
+
+  // A film TMDB has no record of: searched under its stripped cinema titles and taken only when
+  // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
+  private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
+    Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
+      val directors = TmdbLessRatingLinks.directorsOf(e)
+      metacritic.resolveAcross(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), directors)
+        .flatMap(resolved => metacritic.pageFor(resolved.url).filter(page =>
+          TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)).map(page => MetacriticClient.Resolved(resolved.url, page.metascore)))
+        .map { resolved =>
+          logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered without TMDB ${resolved.url}")
+          cache.putIfPresent(key, _.copy(metacriticUrl = Some(resolved.url)))
+          resolved
+        }
     }
 
   // Settle a freshly-discovered row's score: use the Metascore the slug probe

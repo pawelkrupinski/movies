@@ -1,6 +1,7 @@
 package services.tasks
 
 import models.{Country, MovieRecord}
+import services.enrichment.TmdbLessRatingLinks
 import services.freshness.FreshnessKind
 
 /**
@@ -51,9 +52,9 @@ object RatingSources {
   // resolve through), so the event/opera/NT-Live long tail isn't enqueued.
   val all: Seq[RatingSource] = Seq(
     RatingSource(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined),
-    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined, _.filmwebEnabled),
-    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      _.tmdbId.isDefined),
-    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      _.tmdbId.isDefined)
+    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined || TmdbLessRatingLinks.eligible(r), _.filmwebEnabled),
+    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r)),
+    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r))
   )
 
   /** The rating sources that apply in `country` — the global ones plus the

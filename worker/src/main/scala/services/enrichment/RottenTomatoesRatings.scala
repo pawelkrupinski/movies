@@ -49,7 +49,8 @@ class RottenTomatoesRatings(
     }
 
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
-    e.tmdbId.flatMap { tmdbId =>
+    if (e.tmdbId.isEmpty) resolveWithoutTmdb(key, e)
+    else e.tmdbId.flatMap { tmdbId =>
       val titles = RatingSiteTitles.derive(key, e, tmdb.details(tmdbId), cache.normalizer)
       // Cache the whole slug-probe chain keyed by the primary identity, so a
       // cache hit skips the RT HTTP probes entirely.
@@ -66,6 +67,19 @@ class RottenTomatoesRatings(
         cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
       }
       resolved
+    }
+
+  // A film TMDB has no record of: searched under its stripped cinema titles and taken only when
+  // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
+  private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[String] =
+    Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
+      rt.urlForAny(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), TmdbLessRatingLinks.directorsOf(e))
+        .filter(url => rt.pageFor(url).exists(page => TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)))
+        .map { url =>
+          logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered without TMDB $url")
+          cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
+          url
+        }
     }
 
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =

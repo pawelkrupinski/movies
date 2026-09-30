@@ -283,14 +283,14 @@ class MetacriticClient(http: HttpFetch) {
    *  what tells a refresh that a STORED url is another film's (`RatingPageIdentity`). */
   def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
     EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).map(JsonLdAggregateRating.of).map(page =>
-      MetacriticClient.Page(page.rating, page.directorNames))
+      MetacriticClient.Page(page.rating, page.directorNames, page.datePublishedYear))
 }
 
 object MetacriticClient {
   private val Site = "https://www.metacritic.com"
 
-  /** A fetched movie page: its Metascore and the directors it credits. */
-  final case class Page(metascore: Option[Int], directors: Set[String])
+  /** A fetched movie page: its Metascore, the directors it credits and the year it dates the film. */
+  final case class Page(metascore: Option[Int], directors: Set[String], year: Option[Int] = None)
 
   /** The form of an MC movie URL we actually GET.
    *

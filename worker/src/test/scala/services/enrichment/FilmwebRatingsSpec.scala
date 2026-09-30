@@ -277,7 +277,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // display fields when no other source has them.
     val repository = new InMemoryMovieRepository(Seq(
       ("Ostatni konsjerż", None, MovieRecord(
-        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż"), releaseYear = Some(2025)))
       ))
     ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
@@ -309,7 +309,8 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       ("Ostatni konsjerż", None, MovieRecord(
         tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
-        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
+        // The cinema dates it: a TMDB-less row is linked only to a page that agrees (`TmdbLessRatingLinks`).
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż"), releaseYear = Some(2025)))
       ))
     ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, retrigger = (_, _, kinds) => { captured += kinds; () }, normalizer = titleNormalizer)

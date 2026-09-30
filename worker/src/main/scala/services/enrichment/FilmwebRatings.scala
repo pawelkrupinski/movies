@@ -212,7 +212,21 @@ class FilmwebRatings(
   // Pure re-resolve — never writes. Shared by `resolveAndPersistUrl` (production
   // URL-discovery path) and `auditOneSync` (one-off backfill that compares
   // the freshly-resolved URL against what's already stored).
-  private def resolveUrl(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
+  private def resolveUrl(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] =
+    if (e.tmdbId.isEmpty && e.filmwebUrl.isEmpty) resolveWithoutTmdb(key, e) else resolveWithTmdbHints(key, e)
+
+  // A film TMDB has no record of: each stripped cinema title searched in turn, and a page taken only
+  // when it positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
+  private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] =
+    Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
+      val directors = TmdbLessRatingLinks.directorsOf(e)
+      TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer).iterator
+        .flatMap(title => filmweb.lookup(title, TmdbLessRatingLinks.yearOf(key, e), None, directors, None))
+        .find(info => TmdbLessRatingLinks.corroborated(key, e, info.year, info.directors.toSet))
+        .map(info => info.copy(rating = info.rating.map(RatingDisplay.oneDecimal)))
+    }
+
+  private def resolveWithTmdbHints(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
     // Strip accessibility-programme decoration before hitting Filmweb —
     // "Kino bez barier: Freak Show (AD)" queries upstream as just
     // "Freak Show". Cache key keeps the full form so this row stays
