@@ -73,6 +73,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237)))
   }
 
+  "Listings carrying one chain's catalogue id" should "be one film, whatever each venue calls it" in {
+    // US Showcase lists ONE "It" (boxoffice 144685) at every venue, a bare listing beside its credited
+    // siblings; a chain's id is global to it (0 ids reused for another film across the five recorded
+    // corpora). Here one venue bills the film under a title no search reaches.
+    val films = Seq(F(1417, "Pan's Labyrinth", 2006, "Guillermo del Toro", 119), F(399055, "The Shape of Water", 2017, "Guillermo del Toro", 123))
+    val showcase = Seq(CatalogueId("boxoffice", "1000045847"))
+    val credited = listing(Multikino, "Pan's Labyrinth", director = Some("Guillermo del Toro"), runtime = Some(119)).copy(catalogueIds = showcase)
+    val spanish  = listing(Helios, "El laberinto del fauno").copy(catalogueIds = showcase)
+    val r = shipped(Seq(credited, spanish), films)
+    withClue(Seq(credited, spanish).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(spanish.key).film shouldBe Some(1417)
+    }
+    // Another id is another film of that chain: the title alone reaches nothing.
+    val other = spanish.copy(catalogueIds = Seq(CatalogueId("boxoffice", "1000045848")))
+    shipped(Seq(credited, other), films).decisionOf(other.key).film shouldBe None
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")

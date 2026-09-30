@@ -56,6 +56,11 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     }
   }
 
+  private def sharesCatalogueId(first: EvidenceNode, second: EvidenceNode): Boolean = {
+    val ids = first.listings.flatMap(_.catalogueIds).toSet
+    ids.nonEmpty && second.listings.exists(_.catalogueIds.exists(ids))
+  }
+
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
     pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
@@ -72,6 +77,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
       val musts = Seq(
         Option.when(sameFilm)((1, "same-film")),
+        // One chain lists them under one catalogue id: its one film, whatever each venue calls it.
+        Option.when(sharesCatalogueId(first, second))((2, "same-catalogue-id")),
         Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, "same-title")),
         // Unless the form is only what the two titles share BESIDE the films they name: a
         // festival's spellings of its films all search as the festival's suffix.

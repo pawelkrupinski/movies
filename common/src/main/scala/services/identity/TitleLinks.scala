@@ -106,7 +106,8 @@ private[identity] object TitleLinks {
       else if (isWhole(key.drop(2))) "a piece of its title that a listing carries whole"
       else "a piece of its title beside no work (kept as the work)"
     val pinned = pins.blockKeys(node.listings.head.key).toSeq.sorted.map(_ -> "a curation pin")
-    Keyed(blocked.toSeq.sorted.map(key => key -> why(key)) ++ pinned,
+    val catalogued = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key -> "its chain's catalogue id")
+    Keyed(blocked.toSeq.sorted.map(key => key -> why(key)) ++ pinned ++ catalogued,
       droppedPieces.flatMap { case (segment, key) => reasonToDrop(key).map(reason => s"'$segment'" -> reason) }.distinctBy(_._1))
   }
 }

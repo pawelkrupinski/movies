@@ -27,7 +27,8 @@ final case class Listing(
   runtime:       Option[Int],
   page:          Option[String],
   originalTitle: Option[String],
-  countries:     Seq[String] = Nil
+  countries:     Seq[String] = Nil,
+  catalogueIds:  Seq[CatalogueId] = Nil
 ) {
   def venue: String = key.venue
 
@@ -35,6 +36,23 @@ final case class Listing(
    *  different listings never tie and a set of listings has exactly one sorted presentation. Built on
    *  demand, never kept: [[Listing.ordering]] compares the same fields without it. */
   def sortKey: String = Listing.SortFields.map(_(this)).mkString("\u0000")
+}
+
+/** A film's id in a cinema chain's own catalogue (`CinemaMovie.externalIds`: Gatsby's "boxoffice",
+ *  Flicks', Cinema City's "cc", Multikino's "mk"…): the chain lists one film under one id at every
+ *  venue, a bare listing beside its credited siblings. Measured on recording 36633286921 across the
+ *  five corpora: no source reuses an id for another film, and ids are global to their source. */
+final case class CatalogueId(source: String, id: String) {
+  /** Its family block key and must-link identity. */
+  def key: String = s"c:$source:$id"
+}
+
+object CatalogueId {
+  given Ordering[CatalogueId] = Ordering.by(c => (c.source, c.id))
+
+  /** `cm`'s catalogue ids, blank ones dropped. */
+  def of(cm: CinemaMovie): Seq[CatalogueId] =
+    cm.externalIds.toSeq.collect { case (source, id) if source.trim.nonEmpty && id.trim.nonEmpty => CatalogueId(source.trim, id.trim) }.sorted
 }
 
 object Listing {
@@ -51,12 +69,13 @@ object Listing {
     runtime       = cm.movie.runtimeMinutes.filter(_ > 0),
     page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
-    countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted)
+    countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
+    catalogueIds  = CatalogueId.of(cm))
 
   /** [[Listing.sortKey]]'s fields, in its order. */
   private val SortFields: IndexedSeq[Listing => String] = IndexedSeq(
     _.venue, _.rawTitle, _.page.getOrElse(""), _.title, _.cleanTitle, _.year.fold("")(_.toString),
-    _.directors.mkString(","), _.runtime.fold("")(_.toString), _.originalTitle.getOrElse(""))
+    _.directors.mkString(","), _.runtime.fold("")(_.toString), _.originalTitle.getOrElse(""), _.catalogueIds.map(_.key).mkString(","))
 
   /** [[Listing.sortKey]]'s order, field by field — the same order, since the joining NUL sorts below
    *  every character — without building the key: a field is formatted only when those before it tie. */
