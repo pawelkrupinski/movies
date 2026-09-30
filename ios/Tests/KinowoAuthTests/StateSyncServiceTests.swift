@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 import Combine
 @testable import KinowoAuth
 
@@ -13,8 +14,7 @@ final class StateSyncServiceTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        defaults = UserDefaults(suiteName: "StateSyncServiceTests")!
-        defaults.removePersistentDomain(forName: "StateSyncServiceTests")
+        defaults = .scratch(suiteName: "StateSyncServiceTests")
         prefs = UserPreferences(store: defaults)
         client = FakeHiddenFilmsClient()
         languageClient = FakeLanguageClient()
@@ -22,7 +22,7 @@ final class StateSyncServiceTests: XCTestCase {
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: "StateSyncServiceTests")
+        defaults.discardScratch(suiteName: "StateSyncServiceTests")
         super.tearDown()
     }
 

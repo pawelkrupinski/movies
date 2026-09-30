@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoAuth
 
 /// Pins the 4-step language-resolution algorithm (explicit pick → device
@@ -13,12 +14,11 @@ final class LanguageSelectionTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        defaults = UserDefaults(suiteName: Self.suite)!
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults = .scratch(suiteName: Self.suite)
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults.discardScratch(suiteName: Self.suite)
         super.tearDown()
     }
 

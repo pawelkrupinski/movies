@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoAuth
 
 /// Pins the static country registry AND the persisted selection round-trip.
@@ -14,12 +15,11 @@ final class CountryTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        defaults = UserDefaults(suiteName: Self.suite)!
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults = .scratch(suiteName: Self.suite)
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults.discardScratch(suiteName: Self.suite)
         super.tearDown()
     }
 

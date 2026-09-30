@@ -15,12 +15,11 @@ final class CountrySwitchTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        defaults = UserDefaults(suiteName: "CountrySwitchTests")!
-        defaults.removePersistentDomain(forName: "CountrySwitchTests")
+        defaults = .scratch(suiteName: "CountrySwitchTests")
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: "CountrySwitchTests")
+        defaults.discardScratch(suiteName: "CountrySwitchTests")
         URLProtocolStub.handler = nil
         super.tearDown()
     }

@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 import Combine
 @testable import KinowoAuth
 
@@ -268,7 +269,7 @@ enum SyncModel {
         init(quiesceTurnLimit: Int, hangResponses: Bool) {
             self.quiesceTurnLimit = quiesceTurnLimit
             hang = hangResponses ? AsyncGate() : nil
-            defaults = UserDefaults(suiteName: suite)!
+            defaults = .scratch(suiteName: suite)
             prefs = UserPreferences(store: defaults)
             prefs.setCountry(Country.all.first { $0.code == SyncModel.countries[0] }!)
             session(signedIn: false)
@@ -295,7 +296,7 @@ enum SyncModel {
 
         func tearDown() {
             if let hang { Task { await hang.open() } }
-            defaults.removePersistentDomain(forName: suite)
+            defaults.discardScratch(suiteName: suite)
         }
 
         private var country: String { prefs.selectedCountry.code }

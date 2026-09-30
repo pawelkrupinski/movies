@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoAuth
 
 final class UserPreferencesCityTests: XCTestCase {
@@ -9,12 +10,11 @@ final class UserPreferencesCityTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        defaults = UserDefaults(suiteName: Self.suite)!
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults = .scratch(suiteName: Self.suite)
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: Self.suite)
+        defaults.discardScratch(suiteName: Self.suite)
         super.tearDown()
     }
 
