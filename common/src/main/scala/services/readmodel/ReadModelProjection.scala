@@ -92,8 +92,7 @@ object ReadModelProjection {
    *  `ResolvedMovie.synopsisFor` falls back for the rest. */
   private def synopsisByCity(r: MovieRecord): Map[String, String] = {
     val fallback = r.synopsisNonCinema
-    r.cities.flatMap { city =>
-      val scoped = r.synopsisForCity(city)
+    r.synopsesForCities(r.cities).flatMap { case (city, scoped) =>
       if (scoped != fallback) scoped.map(city.slug -> _) else None
     }.toMap
   }

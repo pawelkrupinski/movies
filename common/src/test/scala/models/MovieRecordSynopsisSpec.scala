@@ -207,6 +207,25 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")              // no CC venue here → chain excluded
   }
 
+  // The read model asks for every city a film plays in at once (a US wide release: hundreds), so
+  // the batch builds one candidate pool and shares a pick between cities with the same candidates.
+  // It must pick, city by city, exactly what `synopsisForCity` picks.
+  it should "pick for a batch of cities exactly what it picks city by city" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaCityChain       -> SourceData(synopsis = Some("Opis z sieci Cinema City.")),
+        CinemaCityPoznanPlaza -> SourceData(),
+        Helios                -> SourceData(synopsis = Some("Poznański krótki opis.")),
+        HeliosMagnolia        -> SourceData(synopsis = Some("Wrocławski znacznie dłuższy i pełniejszy opis filmu.")),
+        Tmdb                  -> SourceData(synopsis = Some("Krótki TMDB."))
+      ),
+      retainedSynopses = Map[Source, String](Imdb -> "Retained IMDb blurb, longer than TMDB's.")
+    )
+    val cities = City.all.filter(_.country == Country.Poland)
+    cities.size should be > 3
+    record.synopsesForCities(cities) shouldBe cities.map(city => city -> record.synopsisForCity(city))
+  }
+
   // ── The same scoping, over PER-TITLE slot keys ──────────────────────────────
   // Every slot prod writes today is a `CinemaShowing(cinema, titleKey)`, not a
   // bare `Cinema` (see `Source.dropSupersededCinemaSlots` — the bare key is the

@@ -516,10 +516,30 @@ case class MovieRecord(
    *  deterministic across machines (raw order drifted the whole-corpus snapshot
    *  between a dev box and CI). */
   private def synopsisCandidatesFor(keep: Source => Boolean): Seq[(Source, String)] =
+    synopsisPool.filter { case (source, _) => keep(source) }
+
+  /** Every source's synopsis, in priority order (a slot's own before its retained one) — what
+   *  each candidate list filters. Filtering the few sources that carry one, rather than every key
+   *  of a row with thousands of venue slots, is the same list in the same order: which sources
+   *  pass depends on the source alone. */
+  private def synopsisPool: Seq[(Source, String)] =
     (data.keySet ++ retainedSynopses.keySet).toSeq
-      .filter(keep)
       .sortBy(s => Source.priorityOf(s))
       .flatMap(s => (data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator).map(s -> _))
+
+  /** [[synopsisForCity]] for each of `cities`, from ONE candidate pool — and one pick for every
+   *  city left with the same candidates and language (most: only TMDB's). The read model asks it for
+   *  every city a film plays in, and a US wide release plays in hundreds, each of which rebuilt the
+   *  pool from thousands of venue slots: 5% of a busy US worker's CPU (JFR, 2026-09-30). */
+  def synopsesForCities(cities: Seq[City]): Seq[(City, Option[String])] = {
+    val pool   = synopsisPool
+    val picked = scala.collection.mutable.HashMap.empty[(Seq[(Source, String)], String), Option[String]]
+    cities.map { city =>
+      val language   = city.country.language.getLanguage
+      val candidates = pool.filter { case (source, _) => synopsisAppliesToCity(city)(source) }
+      city -> picked.getOrElseUpdate((candidates, language), bestSynopsis(candidates, expectedLanguage = Some(language)))
+    }
+  }
 
   /** Longest non-empty cast list across all sources (ties broken by source
    *  priority — see `synopsis`), spelled the way TMDB spells the names it
