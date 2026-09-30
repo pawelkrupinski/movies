@@ -168,4 +168,23 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     PrometheusExposition.sample(PrometheusExposition.render(registry),
       WorkerCorpusScan.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
   }
+
+  // Which collector a US pass's time goes to was invisible (2026-09-30: ~12 s of a 25–31 s
+  // pass unaccounted for past the read), so a pass reports each collector's share.
+  it should "report each collector's share of a pass, its publish included" in {
+    var now = 0L
+    val stopwatch = new tools.Stopwatch(() => now)
+    final class Costing(perRow: Long, onPublish: Long) extends CorpusMetricsCollector {
+      def startSample(): CorpusRowSampler = new CorpusRowSampler {
+        def accept(row: StoredMovieRecord): Unit    = now += perRow
+        def publish(scanComplete: Boolean): Unit   = now += onPublish
+      }
+    }
+    val pass = new WorkerCorpusScan(repositoryOf(rows*), Seq(new Costing(1_000_000, 0), new Costing(10_000_000, 5_000_000)),
+      stopwatch = stopwatch).sample()
+
+    pass.byCollector.map(_._2.toMillis) shouldBe Seq(2L, 25L)   // two rows each, then the publish
+    pass.byCollector.map(_._1).distinct shouldBe Seq("Costing")
+    pass.summary should startWith("worker-corpus-scan: pass took 27ms — Costing 25ms, Costing 2ms")
+  }
 }

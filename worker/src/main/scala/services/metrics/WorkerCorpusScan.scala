@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.Logging
 import services.movies.{MovieRepository, StoredMovieRecord}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, Stopwatch}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -35,7 +35,8 @@ class WorkerCorpusScan(
   sampleInterval: FiniteDuration = WorkerCorpusScan.DefaultSampleInterval,
   // Counts the passes that could not read the whole corpus. Noop for tests that only
   // care about the gauges; the worker injects the Prometheus-backed sink.
-  metrics:        CorpusScanMetrics = CorpusScanMetrics.noop
+  metrics:        CorpusScanMetrics = CorpusScanMetrics.noop,
+  stopwatch:      Stopwatch         = Stopwatch.System
 ) extends Logging {
 
   private val scheduler = DaemonExecutors.scheduler("worker-corpus-scan")
@@ -47,15 +48,19 @@ class WorkerCorpusScan(
    *  An incomplete pass publishes NOTHING and is counted + logged instead. The gauges
    *  keep their last complete values, which is the honest reading: this pass learned
    *  nothing about the corpus. */
-  def sample(): Unit = {
-    val samplers = collectors.map(_.startSample())
-    val complete = repository.foreachRecord(row => samplers.foreach(_.accept(row)))
+  def sample(): WorkerCorpusScan.Pass = {
+    val samplers = collectors.map(c => (WorkerCorpusScan.nameOf(c), c.startSample(), stopwatch.total()))
+    val pass     = stopwatch.start()
+    val complete = repository.foreachRecord(row => samplers.foreach { case (_, sampler, time) => time(sampler.accept(row)) })
     if (!complete) {
       metrics.recordIncompleteSample()
       logger.warn("worker-corpus-scan: corpus scan incomplete — census gauges keep their previous values " +
         "rather than publishing a partial count as if the corpus had shrunk.")
     }
-    samplers.foreach(_.publish(complete))
+    samplers.foreach { case (_, sampler, time) => time(sampler.publish(complete)) }
+    val result = WorkerCorpusScan.Pass(pass.elapsed, samplers.map { case (name, _, time) => name -> time.elapsed })
+    logger.info(result.summary)
+    result
   }
 
   // The first scan on the scan's own thread, after the boot's heavy stretch — never on the boot
@@ -71,6 +76,20 @@ class WorkerCorpusScan(
 }
 
 object WorkerCorpusScan {
+  /** One pass's time, and each collector's share of it (its `accept`s and its `publish`).
+   *  The rest is the stitched read itself — on US 12–14 s of a 25–31 s pass (2026-09-30),
+   *  with most of what remained unaccounted for until this split it by collector. */
+  final case class Pass(total: FiniteDuration, byCollector: Seq[(String, FiniteDuration)]) {
+    def summary: String = {
+      val collectors = byCollector.sortBy { case (_, time) => -time.toNanos }
+        .map { case (name, time) => s"$name ${time.toMillis}ms" }.mkString(", ")
+      s"worker-corpus-scan: pass took ${total.toMillis}ms — $collectors; the rest is the stitched read."
+    }
+  }
+
+  private def nameOf(collector: CorpusMetricsCollector): String =
+    Option(collector.getClass.getSimpleName).filter(_.nonEmpty).getOrElse(collector.getClass.getName).stripSuffix("$")
+
   /** Once every 5 minutes — the corpus changes on the order of a scrape cadence, far
    *  slower than the seconds-apart Fly `/metrics` scrape, so a more frequent re-scan
    *  would be wasted reads. */
