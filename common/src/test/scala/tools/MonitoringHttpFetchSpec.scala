@@ -9,18 +9,12 @@ import java.net.ConnectException
 
 class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
-  private class StubHttpFetch extends HttpFetch {
-    var nextError: Option[Exception] = None
-    def get(url: String): String = nextError.map(throw _).getOrElse("ok")
-    def post(url: String, body: String, contentType: String): String = get(url)
-  }
-
   // Cinema-host suppression is INJECTED now (the worker derives it from
   // CinemaScraperCatalog.scrapeHosts), not hardcoded. Tests that exercise
   // suppression pass the set explicitly; the rest use the empty default.
   private def fixture(cinemaHosts: Set[String] = Set.empty) = {
     val monitor = new UptimeMonitor()
-    val delegate = new StubHttpFetch
+    val delegate = new RecordingHttpFetch(_ => "ok")
     val fetch = new MonitoringHttpFetch(delegate, monitor, cinemaHosts)
     (fetch, delegate, monitor)
   }
@@ -71,7 +65,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "force the by-name cinemaHosts thunk only once across many calls" in {
     var evaluations = 0
     val monitor = new UptimeMonitor()
-    val fetch = new MonitoringHttpFetch(new StubHttpFetch, monitor, {
+    val fetch = new MonitoringHttpFetch(new RecordingHttpFetch(_ => "ok"), monitor, {
       evaluations += 1; Set("kinomuranow.pl")
     })
     fetch.classify("https://kinomuranow.pl/a")
@@ -125,7 +119,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "record failure with error message on connection error" in {
     val (fetch, delegate, monitor) = fixture()
-    delegate.nextError = Some(new IOException("Connection refused"))
+    delegate.respond = _ => throw new IOException("Connection refused")
     intercept[IOException] { fetch.get("https://api.themoviedb.org/3/search") }
     val bucket = monitor.history("TMDB").head
     bucket.failures shouldBe 1
@@ -134,7 +128,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "record success on HTTP 404 (service reachable)" in {
     val (fetch, delegate, monitor) = fixture()
-    delegate.nextError = Some(new RuntimeException("HTTP 404 for GET https://api.themoviedb.org/x"))
+    delegate.respond = _ => throw new RuntimeException("HTTP 404 for GET https://api.themoviedb.org/x")
     intercept[RuntimeException] { fetch.get("https://api.themoviedb.org/x") }
     monitor.history("TMDB").head.successes shouldBe 1
     monitor.history("TMDB").head.failures shouldBe 0
@@ -143,7 +137,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "record failure with error message on HTTP 503" in {
     val (fetch, delegate, monitor) = fixture()
-    delegate.nextError = Some(new RuntimeException("HTTP 503 for GET https://www.filmweb.pl/x"))
+    delegate.respond = _ => throw new RuntimeException("HTTP 503 for GET https://www.filmweb.pl/x")
     intercept[RuntimeException] { fetch.get("https://www.filmweb.pl/x") }
     val bucket = monitor.history("Filmweb").head
     bucket.failures shouldBe 1
@@ -155,7 +149,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   // MonitoringHttpFetch sees the throw before FilmwebClient's Try swallows it.
   it should "record a FAILURE on an HTTP 403 soft-block (so it shows on /uptime)" in {
     val (fetch, delegate, monitor) = fixture()
-    delegate.nextError = Some(new HttpStatusException(403, "GET", "https://www.filmweb.pl/x", None))
+    delegate.respond = _ => throw new HttpStatusException(403, "GET", "https://www.filmweb.pl/x", None)
     intercept[HttpStatusException] { fetch.get("https://www.filmweb.pl/x") }
     val bucket = monitor.history("Filmweb").head
     bucket.failures shouldBe 1
@@ -191,7 +185,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "record getBytes outcomes on the monitor like get does" in {
     val (fetch, delegate, monitor) = fixture()
-    delegate.nextError = Some(new IOException("Connection refused"))
+    delegate.respond = _ => throw new IOException("Connection refused")
     intercept[IOException] { fetch.getBytes("https://api.themoviedb.org/3/x") }
     monitor.history("TMDB").head.failures shouldBe 1
   }

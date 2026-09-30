@@ -9,11 +9,8 @@ import scala.concurrent.duration._
 
 class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
 
-  /** Counts underlying calls; each URL maps to a thunk so a response can flip. */
-  private class CountingFetch(responses: Map[String, () => String]) extends GetOnlyHttpFetch {
-    var calls = 0
-    override def get(url: String): String = { calls += 1; responses(url)() }
-  }
+  /** Each URL maps to a thunk so a response can flip. */
+  private def countingFetch(responses: Map[String, () => String]) = new RecordingHttpFetch(url => responses(url)())
 
   private class FakeTicker extends Ticker {
     @volatile var nanos = 0L
@@ -21,7 +18,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   "CachingDetailFetch" should "fetch once and serve the cached body on repeat within the TTL" in {
-    val under = new CountingFetch(Map("u" -> (() => "BODY")))
+    val under = countingFetch(Map("u" -> (() => "BODY")))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     c.get("u") shouldBe "BODY"
     c.get("u") shouldBe "BODY"
@@ -30,7 +27,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "re-fetch once the TTL has elapsed" in {
     val tick = new FakeTicker
-    val under = new CountingFetch(Map("u" -> (() => "BODY")))
+    val under = countingFetch(Map("u" -> (() => "BODY")))
     val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick)
     c.get("u")
     tick.nanos = 2.hours.toNanos
@@ -40,7 +37,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT cache a failed fetch, so a transient blip isn't pinned for the TTL" in {
     var fail = true
-    val under = new CountingFetch(Map("u" -> (() => if (fail) throw new RuntimeException("boom") else "OK")))
+    val under = countingFetch(Map("u" -> (() => if (fail) throw new RuntimeException("boom") else "OK")))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     a[RuntimeException] should be thrownBy c.get("u")
     fail = false
@@ -49,7 +46,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "cache each URL independently" in {
-    val under = new CountingFetch(Map("a" -> (() => "A"), "b" -> (() => "B")))
+    val under = countingFetch(Map("a" -> (() => "A"), "b" -> (() => "B")))
     val c = new CachingDetailFetch(under)
     c.get("a"); c.get("b"); c.get("a"); c.get("b")
     under.calls shouldBe 2
@@ -61,7 +58,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
    *  forever, and the film it belongs to never gets the year/director its TMDB
    *  resolution is gated on. Same {404, 410} rule `HttpStatusException.isDurable` draws. */
   it should "remember a 404, so a permanently-missing detail page is fetched once" in {
-    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
+    val under = countingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     a [HttpStatusException] should be thrownBy c.get("gone")
     a [HttpStatusException] should be thrownBy c.get("gone")
@@ -70,7 +67,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remember a 410 the same way" in {
-    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(410, "GET", "gone", None))))
+    val under = countingFetch(Map("gone" -> (() => throw new HttpStatusException(410, "GET", "gone", None))))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     a [HttpStatusException] should be thrownBy c.get("gone")
     a [HttpStatusException] should be thrownBy c.get("gone")
@@ -78,14 +75,14 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-raise a remembered 404 with its status intact, not a bare failure" in {
-    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
+    val under = countingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     a [HttpStatusException] should be thrownBy c.get("gone")
     the [HttpStatusException] thrownBy c.get("gone") should have (Symbol("code") (404))
   }
 
   it should "still retry a 500, which says nothing permanent about the URL" in {
-    val under = new CountingFetch(Map("flaky" -> (() => throw new HttpStatusException(500, "GET", "flaky", None))))
+    val under = countingFetch(Map("flaky" -> (() => throw new HttpStatusException(500, "GET", "flaky", None))))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
     a [HttpStatusException] should be thrownBy c.get("flaky")
     a [HttpStatusException] should be thrownBy c.get("flaky")
@@ -121,7 +118,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
    *  rather than grow. */
   it should "evict by total body size, so a few large pages cannot fill the heap" in {
     val big   = "x" * (400 * 1024)
-    val under = new CountingFetch(Map("a" -> (() => big), "b" -> (() => big), "c" -> (() => big)))
+    val under = countingFetch(Map("a" -> (() => big), "b" -> (() => big), "c" -> (() => big)))
     val c = new CachingDetailFetch(under, ttl = 1.hour, maxBytes = 1024 * 1024,
                                    maintenance = (r: Runnable) => r.run())
     c.get("a"); c.get("b"); c.get("c")
@@ -153,7 +150,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   it should "let a remembered 404 expire with the TTL, so a restored page comes back" in {
     val tick  = new FakeTicker
     var fail  = true
-    val under = new CountingFetch(Map("u" -> (() => if (fail) throw new HttpStatusException(404, "GET", "u", None) else "BACK")))
+    val under = countingFetch(Map("u" -> (() => if (fail) throw new HttpStatusException(404, "GET", "u", None) else "BACK")))
     val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick)
     a [HttpStatusException] should be thrownBy c.get("u")
     fail = false

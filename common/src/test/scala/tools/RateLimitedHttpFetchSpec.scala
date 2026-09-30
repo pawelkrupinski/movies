@@ -16,11 +16,6 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private val FlicksUk = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
   private val FlicksUs = "https://www.flicks.us/cinema/sessions/x/2026-07-31/"
 
-  private class CountingFetch extends GetOnlyHttpFetch {
-    var calls = 0
-    def get(url: String): String = { calls += 1; "body" }
-  }
-
   /** A clock the test advances by hand, so pacing is asserted on the recorded
    *  sleeps rather than on wall-clock timing (which would make this flaky). */
   private class TestClock {
@@ -30,7 +25,7 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   private def fixture(interval: Option[FiniteDuration] = Some(250.millis)) = {
-    val delegate = new CountingFetch
+    val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new TestClock
     val paced    = new RateLimitedHttpFetch(
@@ -47,7 +42,7 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   /** Like [[fixture]] but paced by the REAL HostPolicies table, so the Flicks
    *  rows decide the intervals rather than a stub — the wiring under test. */
   private def flicksFixture() = {
-    val delegate = new CountingFetch
+    val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new TestClock
     val paced    = new RateLimitedHttpFetch(
