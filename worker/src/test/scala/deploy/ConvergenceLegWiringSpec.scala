@@ -31,16 +31,10 @@ import org.scalatest.matchers.should.Matchers
  */
 class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val caller   = RepoFile.read(".github/workflows/country-convergence.yml")
-  /** The United States runs the same leg from a BUILD OF ITS OWN — not for the lane
-   *  any more (both workflows queue rather than cancel, see
-   *  [[ConvergenceConcurrencyConfigSpec]]), but because `needs:` joins JOBS, not matrix
-   *  legs, and a shared `needs: sample` would make every country wait for every other
-   *  country's sample (see `country-convergence.yml`'s header). Everything below is
-   *  about the leg wiring, which is identical either side of that split, so every rule
-   *  here reads both callers rather than the shared one. A rule that looked only at
-   *  `country-convergence.yml` would go quiet about the country it matters most for. */
-  private lazy val usCaller = RepoFile.read(".github/workflows/us-convergence.yml")
-  private lazy val callers  = Seq(caller, usCaller)
+  /** Every verdict caller of the leg. The United States ran from a build of its own
+   *  (`us-convergence.yml`) until its legs went hermetic; since 2026-09-30 it is a row of
+   *  the shared caller, so every rule below reads that one file. */
+  private lazy val callers  = Seq(caller)
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
   private lazy val build    = RepoFile.read("build.sbt")
 
@@ -148,11 +142,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     callers.foreach(_ should include("uses: ./.github/workflows/country-convergence-leg.yml"))
   }
 
-  /** The split itself, from both ends — a US row left behind in the shared caller would
-   *  run the country TWICE per push, once in a lane that cancels it four hours in. */
-  it should "run the United States from its own build, and only from there" in {
-    matrixRows(caller).map(_("code")) should not contain "us"
-    matrixRows(usCaller).map(_("code")) shouldBe Seq("us")
+  /** Once, from the shared caller: the US ran from a build of its own until its legs went
+   *  hermetic, and a second US row or a revived second caller would run the country twice
+   *  per push, each holding 10g and three runners. */
+  it should "run the United States once, from the shared caller" in {
+    matrixRows(caller).map(_("code")).count(_ == "us") shouldBe 1
+    RepoFile.exists(".github/workflows/us-convergence.yml") shouldBe false
   }
 
   /** The recorder's CREDENTIAL, pinned for the same reason as its matrix.

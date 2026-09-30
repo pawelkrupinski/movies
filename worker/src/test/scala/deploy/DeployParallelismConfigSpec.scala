@@ -40,16 +40,13 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * And the United States, which is a workflow of its own — one dispatch is not two.
-   *
-   * It was split out because its leg must not be superseded mid-run (five hours of live
-   * enrichment, thrown away and re-fetched cold by whatever cancelled it); the shared
-   * suite still yields to the next push. Two lanes need two `gh workflow run`s, and the
-   * failure mode of forgetting the second one is silent — the US simply stops being
-   * asked whether it converges, exactly as it was before it had a leg at all.
+   * And ONLY that one: the United States ran from a workflow of its own, dispatched beside
+   * it, until its legs went hermetic; it is a row of the shared suite since 2026-09-30. A
+   * dispatch naming the retired build would fail the job on a workflow that is not there.
    */
-  it should "dispatch the US convergence build alongside it" in {
-    job("kick-convergence") should include(""""Country convergence" "US convergence"""")
+  it should "dispatch the one convergence build, which runs every country" in {
+    job("kick-convergence") should include(""""$GITHUB_REF_NAME" "Country convergence"""")
+    job("kick-convergence") should not include "US convergence"
   }
 
   /**

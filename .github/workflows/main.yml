@@ -93,9 +93,7 @@ jobs:
     # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
     # false`. Cancelling a run that lane no longer intends to throw away would
     # destroy real progress rather than merely accelerate a supersede that was
-    # coming anyway, which is the whole reason `us-convergence.yml` was ever
-    # split out from this suite. See that file's header, and
-    # `country-convergence.yml`'s `concurrency:` block.
+    # coming anyway. See `country-convergence.yml`'s `concurrency:` block.
     #
     # This job used to occupy the account's 20th concurrent slot at t=0. That
     # slot now goes to `preflight` below, for the few seconds it takes to check
@@ -281,7 +279,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
-              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "US convergence"
+              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"
 
     # The flaky-test ledger. Every test job in ci.yml that FAILED reran its failed tests three
     # times and uploaded the ones that passed any rerun as `flaky-*` (scripts/ci/flake_verdict.py);

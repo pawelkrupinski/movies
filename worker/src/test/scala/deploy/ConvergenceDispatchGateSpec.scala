@@ -41,7 +41,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
          |                   echo "$$3" >> "$dispatched" ;;
          |esac
          |""".stripMargin)
-    val status = Process(Seq("bash", Script.toString, head, "main", "Country convergence", "US convergence"),
+    val status = Process(Seq("bash", Script.toString, head, "main", "Country convergence", "Other convergence"),
       repo.root.toFile, "PATH" -> s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}").!(ProcessLogger(_ => ()))
     (status, Files.readString(dispatched).linesIterator.toSeq)
   }
@@ -63,7 +63,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     val (repo, base) = repoWithBase()
     val head = repo.commit("pipeline", "worker/src/main/Pipeline.scala" -> "v2\n")
 
-    kick(repo, head, lastRun = base) shouldBe Seq("Country convergence", "US convergence")
+    kick(repo, head, lastRun = base) shouldBe Seq("Country convergence", "Other convergence")
   }
 
   // e2e depends on web: the legs project and read their schedules through the web's own
@@ -152,8 +152,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
           else if (Files.isRegularFile(action)) Set(action.toString)
           else Set.empty
         }
-    val roots = Set(".github/workflows/country-convergence.yml", ".github/workflows/us-convergence.yml",
-      ".github/workflows/country-convergence-leg.yml")
+    val roots = Set(".github/workflows/country-convergence.yml", ".github/workflows/country-convergence-leg.yml")
     val run = Iterator.iterate((roots, roots)) { case (seen, frontier) =>
       val next = (frontier -- afterTheVerdict).flatMap(referencedBy) -- seen
       (seen ++ next, next)
@@ -193,14 +192,14 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     val (repo, base) = repoWithBase()
     val head = repo.commit("pipeline", "worker/src/main/Pipeline.scala" -> "v2\n")
 
-    kickWithStatus(repo, head, lastRun = base, refuse = "Country convergence") shouldBe (1, Seq("US convergence"))
+    kickWithStatus(repo, head, lastRun = base, refuse = "Country convergence") shouldBe (1, Seq("Other convergence"))
   }
 
   it should "dispatch when it cannot tell what changed, rather than read a failed diff as nothing" in {
     val (repo, base) = repoWithBase()
 
     kickWithStatus(repo, "0123456789abcdef0123456789abcdef01234567", lastRun = base) shouldBe
-      (0, Seq("Country convergence", "US convergence"))
+      (0, Seq("Country convergence", "Other convergence"))
   }
 
   "Main" should "dispatch the convergence suites through the gate, not unconditionally" in {

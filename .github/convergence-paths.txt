@@ -22,7 +22,6 @@ project/**
 test/resources/fixtures/corpus/**
 .github/convergence-paths.txt
 .github/workflows/country-convergence.yml
-.github/workflows/us-convergence.yml
 .github/workflows/country-convergence-leg.yml
 .github/actions/convergence-setup/**
 .github/actions/setup-jdk/**

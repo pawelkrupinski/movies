@@ -33,7 +33,7 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
     yml.linesIterator.collectFirst { case s"name: $n" => n.trim }.getOrElse(fail("no name"))
 
   "the convergence workflows" should "be found" in {
-    convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Country convergence", "US convergence")
+    convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Country convergence")
   }
 
   they should "each dispatch the bisect when a leg on main failed" in {
@@ -71,7 +71,7 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
       ("""gh workflow run ([\w.-]+\.ya?ml)""".r.findAllMatchIn(all).map(m => nameOf(byFile(m.group(1)))) ++
         """kick-convergence\.sh "\$GITHUB_SHA" "\$GITHUB_REF_NAME" (.*)""".r.findAllMatchIn(all)
           .flatMap(m => "\"([^\"]+)\"".r.findAllMatchIn(m.group(1)).map(_.group(1)))).toSet
-    dispatched should contain allOf ("Country convergence", "US convergence")
+    dispatched should contain ("Country convergence")
     byFile.foreach { case (file, yml) =>
       if (yml.contains("workflow_run:"))
         withClue(s"$file: ")(dispatched.filter(yml.contains) shouldBe empty)

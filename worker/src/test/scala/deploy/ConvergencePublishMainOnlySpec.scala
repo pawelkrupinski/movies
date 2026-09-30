@@ -25,8 +25,7 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
   "the convergence workflows" should "write the shared release nowhere except through that gated action" in {
     val writers = Seq(
       ".github/workflows/country-convergence-leg.yml",
-      ".github/workflows/country-convergence.yml",
-      ".github/workflows/us-convergence.yml")
+      ".github/workflows/country-convergence.yml")
       .filter(path => RepoFile.read(path).linesIterator
         .filterNot(_.trim.startsWith("#"))
         .exists(l => l.contains("gh release upload") || l.contains("gh release create") ||

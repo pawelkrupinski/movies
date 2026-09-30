@@ -15,6 +15,9 @@ object RepoFile {
   /** Where the GitOps manifests are checked out — see `infra/bin/fetch-gitops`. */
   private val GitOpsRoot = "infra/kubernetes"
 
+  /** Whether a repo-root file exists — for a rule that a retired file stays retired. */
+  def exists(path: String): Boolean = new java.io.File(path).exists()
+
   def read(path: String): String = {
     if (path.startsWith(s"$GitOpsRoot/") && !new java.io.File(path).exists())
       throw new AssertionError(

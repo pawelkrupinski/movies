@@ -19,9 +19,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
   private lazy val setup    = RepoFile.read(".github/actions/convergence-setup/action.yml")
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
-  private lazy val verdictCallers = Seq(
-    RepoFile.read(".github/workflows/country-convergence.yml"),
-    RepoFile.read(".github/workflows/us-convergence.yml"))
+  private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/country-convergence.yml"))
 
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")

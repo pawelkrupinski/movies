@@ -8,9 +8,8 @@
 #
 # One leg per country, in parallel and independent of each other. The sample gate
 # and the full run for a country both live in `country-convergence-leg.yml`, called
-# once per country from the matrix below (the United States calls the same file from
-# `us-convergence.yml`, for the lane, not for the leg) — that file explains why the pair has to be
-# its own workflow rather than two matrix jobs here (`needs:` joins JOBS, not matrix
+# once per country from the matrix below, the United States included — that file explains why
+# the pair has to be its own workflow rather than two matrix jobs here (`needs:` joins JOBS, not matrix
 # legs, so one shared `needs: sample` made every country wait for every other
 # country's sample).
 #
@@ -46,8 +45,7 @@ on:
 concurrency:
     # ONE lane for the whole workflow — a constant, with nothing per-run in it — so
     # GitHub collapses every run into it regardless of branch or event. Expression
-    # keys were tried and rejected for exactly the reason `us-convergence.yml`
-    # documents for its own group:
+    # keys were tried and rejected:
     #
     #   - `${{ github.sha }}`-`${{ github.event_name }}` (the original) gave every
     #     deploy, nightly and manual run a lane of its own — nothing ever cancelled
@@ -59,11 +57,13 @@ concurrency:
     #     2026-08-01 a `convergence-imdb-ladder` dispatch and a main deploy dispatch
     #     ran side by side for an hour — six heavyweight legs at once.
     group: country-convergence
-    # NOT `true` any more (Paweł, 2026-09-08) — this workflow now takes the SAME
-    # lane `us-convergence.yml` always has: finish what is running, hold at most
-    # one newer run pending behind it, and drop every push in between. Read that
-    # file's header for the mechanics (what `cancel-in-progress: false` on a
-    # constant group actually buys) and why the United States needed it first.
+    # NOT `true` any more (Paweł, 2026-09-08): finish what is running, hold at most
+    # one newer run pending behind it, and drop every push in between. The group is
+    # still a constant, so this is one lane, not one lane per commit — GitHub's rule
+    # for a group that does not cancel in progress is that the run in flight is left
+    # alone, at most ONE run may be pending behind it, and a newly queued run cancels
+    # whatever was pending before it. A day of pushes into a running leg produces
+    # exactly two runs: the one finishing, and the newest commit's.
     #
     # These four legs used to be CHEAP to throw away — 12 to 73 warm minutes,
     # against a fixture tree that stays warm either way — and cancel-in-progress
@@ -120,27 +120,33 @@ jobs:
             matrix:
                 include:
                     # `job`/`suite` and `sampleJob`/`sampleSuite` are this country's
-                    # timeout budgets, in minutes. These four carry the numbers the leg
-                    # has always defaulted to; they are the warm countries, and what makes
-                    # them warm is an enrichment tree their own legs keep refreshed. Spain
-                    # joins them on the same budget: 595 venues is between the UK's paced set
-                    # and Germany's roster, both of which fit it comfortably.
-                    #
-                    # The United States is NOT here. It runs the same leg from
-                    # `us-convergence.yml`, on a budget several times this one and a lane
-                    # that does not cancel in progress — a cold country's leg records the
-                    # tree that makes the next one fast, so superseding it at hour four
-                    # leaves the next run just as cold. That whole argument, and why it
-                    # does NOT apply to a 12-minute Poland leg, is in that file's header.
+                    # timeout budgets, in minutes. The first four carry the numbers the leg
+                    # has always defaulted to. Spain joins them on the same budget: 595 venues
+                    # is between the UK's paced set and Germany's roster, both of which fit it.
                     #
                     # `heap` is the sbt JVM's `-Xmx`, and 4g is what these four have
                     # always run on — it is what `.jvmopts` names and what a 16 GB runner
                     # would default to. Stated rather than inherited, so the number a leg
-                    # runs on is a decision somebody made. The US needs more; see there.
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    # runs on is a decision somebody made.
+                    #
+                    # `order`/`orderJob`/`orderSuite`: the whole-corpus order-independence
+                    # replay as a second ROW of the leg's `convergence` job, beside the full
+                    # run, off the same sample gate. Empty `order` (the four above) folds the
+                    # replay into the standard run and renders no row.
+                    #
+                    # The United States ran from a workflow of its own (`us-convergence.yml`)
+                    # while its legs were cold: every rating fetched live, 5.5 hours on a
+                    # 330-minute budget, a lane a push could not afford to supersede. Its
+                    # legs are hermetic now (the pinned pair `Record scrape fixtures`
+                    # records), ~20 minutes like the others, so it takes this lane (2026-09-30).
+                    # It keeps what it still needs: 10g, since a leg holds the whole corpus
+                    # resident (the 2026-09-01/-05 runs died at 8g on a 114-116k-document read
+                    # model), the split-out replay row, and its larger budgets as ceilings.
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -156,6 +162,10 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            order-command:                 ${{ matrix.order }}
+            # A row without an order replay has no budget for one: the leg's own defaults.
+            order-job-timeout-minutes:     ${{ matrix.orderJob || 135 }}
+            order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
             heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit

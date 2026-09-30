@@ -14,9 +14,9 @@ import org.scalatest.matchers.should.Matchers
  * cheap enough to throw away (12-73 warm minutes) that one authoritative answer
  * per push beat several competing ones. That stopped being true once cancelling
  * meant destroying real progress on a suite frequent pushes could otherwise starve
- * indefinitely — the same failure `us-convergence.yml` was split out to avoid for
- * the United States, whose leg has no warm tree to fall back on. Both workflows
- * now take the trade the US always took, so this spec asserts one shape twice.
+ * indefinitely — the failure the United States, then cold, hit first (it ran from a
+ * workflow of its own until its legs went hermetic; it is a row of this one since
+ * 2026-09-30).
  *
  * The group MUST stay a constant, with nothing per-run in it — GitHub collapses
  * runs only when the group string is EQUAL, and every expression added to it
@@ -35,9 +35,9 @@ import org.scalatest.matchers.should.Matchers
 class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
   private def concurrencyOf(path: String) = RepoFile.block(RepoFile.read(path), "concurrency")
 
-  private val Files = Seq(".github/workflows/country-convergence.yml", ".github/workflows/us-convergence.yml")
+  private val Files = Seq(".github/workflows/country-convergence.yml")
 
-  "both convergence workflows" should "queue behind the run in flight rather than cancel it" in {
+  "the convergence workflow" should "queue behind the run in flight rather than cancel it" in {
     Files.foreach { path =>
       withClue(s"$path: ")(concurrencyOf(path) should include("cancel-in-progress: false"))
     }
@@ -70,7 +70,7 @@ class ConvergenceBisectConcurrencySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be started only for a red leg on main, so only a newer red run can supersede it" in {
-    Seq(".github/workflows/country-convergence.yml", ".github/workflows/us-convergence.yml").foreach { path =>
+    Seq(".github/workflows/country-convergence.yml").foreach { path =>
       withClue(s"$path: ")(RepoFile.jobs(RepoFile.read(path))("request-bisect") should include(
         "if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}"))
     }

@@ -30,7 +30,6 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
   private val Guarded = Map(
     ".github/workflows/android.yml" -> true,
     ".github/workflows/main.yml"    -> false,
-    ".github/workflows/us-convergence.yml"         -> false,
     ".github/workflows/country-convergence.yml"    -> false,
     ".github/workflows/convergence-bisect.yml"     -> false,
     ".github/workflows/record-scrape-fixtures.yml" -> false

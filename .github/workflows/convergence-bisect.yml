@@ -45,7 +45,6 @@ on:
                 type: choice
                 options:
                     - Country convergence
-                    - US convergence
             run-id:
                 description: The red run's id — the one that left the `bisect-request-*` artifacts.
                 required: true
