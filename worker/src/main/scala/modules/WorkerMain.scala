@@ -69,28 +69,34 @@ object WorkerMain extends Logging {
       health.stop(0)
       sys.exit(1)
     }
-    val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(process)
-    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process))
+    // The process's own boot steps, timed like each country's (`BootSteps`): the first seconds
+    // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
+    val processBoot = new BootSteps("process")
+    val sharedBudget: ExecutionBudget = processBoot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
+    val sharedClient: Option[MongoClient] = processBoot.step("mongo client")(
+      MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process)))
     // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
     // of metric objects (each tagged with a `country` label), shared by every
     // country's wiring. This is what fixes the earlier "primary country's registry
     // only, others headless" gap — every country writes its own `country="…"` slice
     // and ALL of them surface on the single /metrics endpoint below.
-    val workerMetrics = new services.metrics.WorkerMetrics(
-      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize))
+    val workerMetrics = processBoot.step("metrics bundle")(new services.metrics.WorkerMetrics(
+      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize)))
     // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
     // memory cgroup with every country's renders.
-    val posterShrinkGate = services.sharecards.VipsPosterShrinker.newGate()
+    val posterShrinkGate = processBoot.step("poster shrink gate")(services.sharecards.VipsPosterShrinker.newGate())
     logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
 
     val wirings =
       try {
-        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate, env))
+        val ws = processBoot.step("build wirings")(
+          countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate, env)))
         // Open (and so claim — `MongoConnection.forCountry`) every country's database
         // before any wiring starts, so a mismatch refuses the whole boot up front.
-        ws.foreach(_.mongoConnection)
-        ws.foreach(_.start())
-        workerMetrics.start() // process-level JVM/native samplers, once
+        processBoot.step("claim databases")(ws.foreach(_.mongoConnection))
+        processBoot.step("start countries")(ws.foreach(_.start()))
+        processBoot.step("jvm samplers")(workerMetrics.start()) // process-level JVM/native samplers, once
+        logger.info(processBoot.summary)
         // Process-wide secrets, so reported once rather than per country: gauge + WARN for
         // any integration a missing one has quietly switched off.
         val integrations = modules.wiring.WorkerIntegrations.features(process)

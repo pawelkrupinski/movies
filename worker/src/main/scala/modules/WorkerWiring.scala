@@ -415,86 +415,92 @@ class WorkerWiring(
   eventBus.subscribe(shareCardFollowUp.onTaskFinished)
 
   def start(): Unit = {
+    val boot = new BootSteps(country.code)
     // Force Mongo at boot so connection errors surface in the boot timeline.
-    mongoConnection.database
+    boot.step("mongo")(mongoConnection.database)
     // Install the override source first so boot-time knob reads already see flips.
-    envConfigService.start()
-    // Boot ordering, tuned to not drain the shared-CPU credit balance on a cold
-    // JVM: the cache hydrate (synchronous findAll — the first scrape tick needs a
-    // populated cache for sibling/redirect checks) and the projector's state seed
-    // run at boot, but the heavy jobs are deferred off the boot window — the first
-    // scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the projector's orphan
-    // prune (KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS).
-    movieCache.start()
+    boot.step("env config")(envConfigService.start())
+    // The identity model's take-up (the longest part of a boot: 117–259 s on US) reads only the
+    // scrape archive, the TMDB/observation stores, the pins and its own families — nothing the cache
+    // hydrate or the projector produce — and `start` only schedules it on the model's own thread, so
+    // it begins now rather than after the TaskWorker.
+    boot.step("identity model")(identityModel.foreach(_.start()))
+    // The read-model projector's boot reads (its state seed and missing-card heal: 28–57 s of a US
+    // boot) read the read model and the `movies` store, never the cache, so they start NOW, beside
+    // the cache hydrate, instead of after it with everything else waiting behind them. Its change-
+    // stream watch still starts only once the cache has, as it always did.
+    val cacheStarted = new java.util.concurrent.CountDownLatch(1)
+    boot.inBackground("read-model projector") {
+      readModelProjector.prepare()
+      cacheStarted.await()
+      readModelProjector.watch()
+    }
+    // The cache hydrate (synchronous findAll — the first scrape tick needs a populated cache for
+    // sibling/redirect checks). The heavy jobs stay deferred off the boot window: the first
+    // scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the projector's orphan prune
+    // (KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS).
+    try boot.step("movie cache hydrate")(movieCache.start()) finally cacheStarted.countDown()
     // Publish this country's cache occupancy. Here rather than at construction
     // because it forces the lazy catalog, and a wiring that is built but never
     // started (tests, diagnostics) should not pay for a scraper graph.
-    registerCacheMetrics()
-    // Start the read-model projector after the cache so its state seed reads a
-    // hydrated `movies` collection; it watches the change stream (with a persisted
-    // resume token) independently of the cache's own watch.
-    readModelProjector.start()
+    boot.step("cache metrics")(registerCacheMetrics())
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
-    unscreenedCleanup.start()
-    strandedSideRowsCleanup.start()
+    boot.step("unscreened cleanup")(unscreenedCleanup.start())
+    boot.step("stranded side rows")(strandedSideRowsCleanup.start())
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go
     // untagged until it next flips). Same rationale as above — the catalog is
     // worker-only, so the tags ride the UptimeMonitor tag channel.
-    clientMarkers.foreach { case (cinema, marker) =>
+    boot.step("client markers")(clientMarkers.foreach { case (cinema, marker) =>
       val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
-    }
-    // Poll the real CPU-credit balance so the reapers back off before the box
-    // starves (the authoritative throttle signal; absent its token, the external
-    // gate alone drives backoff).
-    // Arm the last-resort restart backstop for a throttle spiral the backoff can't break.
+    })
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
-    taskWorker.start(); workerHeartbeat.start()
+    boot.step("task worker")({ taskWorker.start(); workerHeartbeat.start() })
     // Arm AFTER the heartbeat (so the first pulse is already stamped) — restart a
     // wedged-but-alive JVM the throttle watchdog can't see.
-    livenessWatchdog.start()
-    enrichmentReaper.start()
+    boot.step("liveness watchdog")(livenessWatchdog.start())
+    boot.step("enrichment reaper")(enrichmentReaper.start())
     // A cut-over country's identity is the projection's (`IdentityCutoverWiring`): the old path's
     // reapers — the TMDB retry / concluding and the deferred detail that feeds the TMDB resolve —
     // are not started, and neither is staging's below.
-    if (!identityCutover) { unresolvedTmdbReaper.start(); detailReaper.start() }
-    settleReaper.start()
-    identityModel.foreach(_.start())
-    identityShadowSchedule.foreach(_.start())
-    closureSchedule.start()
-    omdbBackfillReaper.foreach(_.start())
-    shareCardReapers.foreach(_.start())
-    startFacebookRescrapes()
-    auditReapers.foreach(_.start())
-    scrapePhasePlanner.start()
-    scrapeReaper.start()
+    if (!identityCutover) boot.step("tmdb + detail reapers")({ unresolvedTmdbReaper.start(); detailReaper.start() })
+    boot.step("settle reaper")(settleReaper.start())
+    boot.step("identity shadow")(identityShadowSchedule.foreach(_.start()))
+    boot.step("closure schedule")(closureSchedule.start())
+    boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
+    boot.step("share cards")(shareCardReapers.foreach(_.start()))
+    boot.step("facebook rescrapes")(startFacebookRescrapes())
+    boot.step("audit reapers")(auditReapers.foreach(_.start()))
+    boot.step("scrape phase planner")(scrapePhasePlanner.start())
+    boot.step("scrape reaper")(scrapeReaper.start())
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
-    chunkScrapeReaper.start()
+    boot.step("chunk scrape reaper")(chunkScrapeReaper.start())
     // Incubate pending_movies through the queue: newcomers and every step run off
     // events (subscribed above); this periodic tick only backstops stalled chains.
     // The TaskWorker (above) drains the steps.
-    if (!identityCutover) { stagingReaper.start(); stagingStuckAlerter.foreach(_.start()) }
+    if (!identityCutover) boot.step("staging reaper")({ stagingReaper.start(); stagingStuckAlerter.foreach(_.start()) })
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
-    reportAlerters()
+    boot.step("alerters")(reportAlerters())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan):
     // corpus coverage, per-city would-serve films (to overlay against the web's
     // read-model gauge) and per-city upcoming-showtime volume, all off ONE scan.
     // (The process-level jvmVitals sampler is started once by WorkerMain via the
     // shared WorkerMetrics bundle, not per-country here.)
-    corpusScan.start()
+    boot.step("corpus scan")(corpusScan.start())
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
-    ratingRunCensus.start()
+    boot.step("rating run census")(ratingRunCensus.start())
     // Census the roster's worst-case scrape staleness (off-band, in-memory scan).
-    cinemaScrapeCensus.start()
-    cinemaContentCensus.start()
-    retiredVenueCensus.start()
-    unstampedListingCensus.start()
-    listingKeyShadowRead.foreach(_.start())
+    boot.step("scrape census")(cinemaScrapeCensus.start())
+    boot.step("content census")(cinemaContentCensus.start())
+    boot.step("retired venue census")(retiredVenueCensus.start())
+    boot.step("unstamped listing census")(unstampedListingCensus.start())
+    boot.step("listing key shadow read")(listingKeyShadowRead.foreach(_.start()))
+    logger.info(boot.summary)
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only

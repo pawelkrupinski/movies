@@ -877,9 +877,19 @@ class ReadModelProjector(
       }
     }
 
-  def start(): Unit = if (enabled) {
+  def start(): Unit = { prepare(); watch() }
+
+  /** The boot's reads — the state seed and the missing-card heal — which read the read model and
+   *  the `movies` store directly, never the in-memory cache, so a worker runs them from the first
+   *  moment of its boot, beside the cache hydrate (28–57 s of a US boot, run before anything else
+   *  started until 2026-09-30). */
+  def prepare(): Unit = if (enabled) {
     seedFromReadModel()
     healMissingCards()
+  }
+
+  /** The live half: the change-stream watch and the paced sweeps. After [[prepare]]. */
+  def watch(): Unit = if (enabled) {
     // The change-stream watch covers live changes from now on (and, via the persisted
     // resume token, replays every upsert missed while the worker was down); the seeded
     // state above means incremental writes are no-ops for already-correct documents. Only
