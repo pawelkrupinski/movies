@@ -37,4 +37,26 @@ class ContainmentDeniedByVenueSpec extends AnyFlatSpec with Matchers {
     clusters.map(_.map(_._1.cleanTitle).toSet).toSet shouldBe
       Set(Set("Faust - Eine deutsche Volkssage"), Set("Zärtlich kreist die Faust"))
   }
+  // PL, 2026-09-30: Cinema City's "Lalka (ale to horror)" — Rod Blackhurst's "Dolly", 2025 and
+  // 82 minutes — when TMDB resolves nothing for it, contains Kawalski's "Lalka" (2026, 162 min)
+  // whole. A year apart is ordinary; a director the film does not credit AND a runtime 80
+  // minutes off is the landing's `listingDeniesFilm`, and the settle must agree with it.
+  private val pl         = TitleNormalizer.forCountry(Country.Poland)
+  private val plaza      = Cinema.byDisplayName("Cinema City Poznań Plaza")
+  private val multikino  = Cinema.byDisplayName("Multikino Stary Browar")
+  private val kawalski = CacheKey("Lalka", Some(2026), pl) -> MovieRecord(tmdbId = Some(1321666),
+    data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Lalka"), releaseYear = Some(2026), runtimeMinutes = Some(162), director = Seq("Maciej Kawalski")),
+      CinemaShowing.keyFor(multikino, "Lalka", pl) ->
+        SourceData(title = Some("Lalka"), releaseYear = Some(2026), runtimeMinutes = Some(162), director = Seq("Maciej Kawalski"))))
+  private val horror = CacheKey("Lalka (ale to horror)", Some(2025), pl) -> MovieRecord(
+    tmdbAttempt = Some(services.resolution.TmdbAttempt("searched", java.time.Instant.EPOCH)),
+    data = Map[Source, SourceData](CinemaShowing.keyFor(plaza, "Lalka (ale to horror)", pl) ->
+      SourceData(title = Some("Lalka (ale to horror)"), releaseYear = Some(2025), runtimeMinutes = Some(82),
+        director = Seq("Rod Blackhurst"))))
+
+  it should "not adopt a row whose own runtime and director deny the film, a year apart" in {
+    val clusters = FilmCanonicalizer.groupByFilm(Seq(kawalski, horror), pl).flatMap(FilmCanonicalizer.clusterByFilm(_, pl))
+    clusters.map(_.map(_._1.cleanTitle).toSet).toSet shouldBe Set(Set("Lalka"), Set("Lalka (ale to horror)"))
+  }
 }

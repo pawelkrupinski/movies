@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import play.api.Logging
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
-import services.resolution.{Candidate, Contradiction, ResolutionCache, ResolutionKeys, SearchTitles, TitleMatch, TmdbBasis, Verdict}
+import services.resolution.{Candidate, Contradiction, ResolutionCache, ResolutionKeys, SearchTitles, TitleMatch, TmdbBasis, Verdict, YearWindow}
 
 /**
  * The SEARCH half of TMDB resolution: which candidate film, if any, a row's
@@ -660,7 +660,20 @@ class TmdbCandidateSearch(
               f.releaseYear.exists(fy => math.abs(fy - y) <= 1)).minBy(_.id))
           case _         => None         // 0 or >1 at the exact year, or no title corroboration → don't guess
         })
-        byTitle.orElse(byYear).map { film =>
+        // With NO credit at the exact year, the cinema's year may be the production year
+        // TMDB's release sits one past: Cinema City's "Lalka (ale to horror)" is Rod
+        // Blackhurst's "Dolly", 2025 and 82 minutes against TMDB's 2026 and 83, beside
+        // another 2026 Blackhurst credit and two 2024 ones. A title shares nothing across
+        // that translation, so only the facts may pick — the one credit in the window
+        // they agree with, never the title token a franchise shares.
+        val byAdjacentYear = year.filter(y => !credits.exists(_.releaseYear.contains(y))).flatMap { y =>
+          credits.filter(_.releaseYear.exists(cy => math.abs(cy - y) <= YearWindow.PublishedAdjacency))
+            .filter(f => !isDifferentInstalment(f) && !titleNamesAnotherCredit(f) && corroboratedByFacts(f)) match {
+            case Seq(only) => Some(only)
+            case _         => None
+          }
+        }
+        byTitle.orElse(byYear).orElse(byAdjacentYear).map { film =>
           logger.info(s"Director-walk: '$director' (person $personId) year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }

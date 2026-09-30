@@ -310,7 +310,6 @@ object MixedFilmDetector {
    *  when both sides spell one in Latin script: TMDB credits "王家衛" where a Polish cinema
    *  prints "Wong Kar Wai", and nothing here can tell those are one man. */
   def deniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer): Boolean = {
-    def latin(names: Seq[String]) = names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
     val slotYear = slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title))
     slotYear.isDefined && latin(slot.director) && latin(film.director) &&
       services.resolution.YearWindow.contradicts(slotYear, film.releaseYear, services.resolution.YearWindow.SlotYearImplausibility) &&
@@ -325,14 +324,20 @@ object MixedFilmDetector {
    *  it needs an original title and most listings publish none. Silent when the listing names
    *  no director: a title-only listing is exactly what decoration landing is for. Refusing
    *  costs little when wrong — the listing incubates, resolves on its own, and a shared tmdbId
-   *  folds it onto the film anyway. */
+   *  folds it onto the film anyway. Directors compare only in Latin script, as in [[deniesFilm]]:
+   *  Helios's "Mandalorets' i Grogu - UA" credits "Джон Фавро", who is Jon Favreau. */
   def listingDeniesFilm(record: MovieRecord, runtime: Option[Int], year: Option[Int], director: Seq[String],
                         normalizer: TitleNormalizer): Boolean =
     record.data.get(models.Tmdb).exists { film =>
-      director.nonEmpty && film.director.nonEmpty && !creditSamePerson(director, film.director, normalizer) &&
+      latin(director) && latin(film.director) && !creditSamePerson(director, film.director, normalizer) &&
         ((runtime.exists(_ > 0) && film.runtimeMinutes.exists(_ > 0) && !runtimesAgree(runtime.toSeq, film.runtimeMinutes.toSeq)) ||
           YearWindow.contradicts(year, film.releaseYear, YearWindow.SlotYearImplausibility))
     }
+
+  /** Does one of `names` spell in Latin script? Only then can it be compared with another name:
+   *  TMDB credits "王家衛" where a Polish cinema prints "Wong Kar Wai". */
+  private def latin(names: Seq[String]): Boolean =
+    names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
 
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
    *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */

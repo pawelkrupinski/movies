@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{KinoMuza, MovieRecord, Source, SourceData}
+import models.{CinemaCityPoznanPlaza, KinoMuza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.RoutingHttpFetch
@@ -67,5 +67,46 @@ class DirectorWalkYearDriftSpec extends AnyFlatSpec with Matchers {
     service.reEnrichSync(Title, Year)
 
     cache.get(cache.keyOf(Title, Year)).flatMap(_.tmdbId) shouldBe Some(Correct)
+  }
+  // Cinema City's "Lalka (ale to horror)" credits Rod Blackhurst, 2025 and 82 minutes: his
+  // horror "Dolly", which TMDB dates 2026 and times at 83. The title shares nothing with it, and
+  // no Blackhurst credit sits at 2025 — two sit at 2026 and two at 2024 — so only the runtime
+  // picks the one a year off. Unresolved, the settle folded it onto Kawalski's "Lalka".
+  private val Dolly      = 1309083
+  private val Blackhurst = 1043983
+  private def dollyTmdb(): TmdbClient = new TmdbClient(
+    http = RoutingHttpFetch.getOnly(Seq(
+      "/search/movie" -> """{"results":[
+        |{"id":1321666,"title":"Lalka","original_title":"Lalka","release_date":"2026-09-25","popularity":3.0}
+        |]}""".stripMargin,
+      "/search/person" -> s"""{"results":[{"id":$Blackhurst,"name":"Rod Blackhurst","known_for_department":"Directing"}]}""",
+      s"/person/$Blackhurst/movie_credits" -> s"""{"crew":[
+        |{"id":1025596,"title":"Blood for Dust","release_date":"2024-04-19","department":"Directing","job":"Director"},
+        |{"id":1362471,"title":"The Tennessee 11","release_date":"2024-09-21","department":"Directing","job":"Director"},
+        |{"id":$Dolly,"title":"Dolly","release_date":"2026-03-06","department":"Directing","job":"Director"},
+        |{"id":1743661,"title":"Horror Anthology Volume 2","release_date":"2026-08-01","department":"Directing","job":"Director"}
+        |]}""".stripMargin,
+      s"/movie/$Dolly/external_ids" -> s"""{"id":$Dolly,"imdb_id":""}""",
+      s"/movie/$Dolly?"   -> s"""{"id":$Dolly,"title":"Dolly","original_title":"Dolly","release_date":"2026-03-06","runtime":83}""",
+      "/movie/1025596?"   -> """{"id":1025596,"title":"Blood for Dust","release_date":"2024-04-19","runtime":97}""",
+      "/movie/1362471?"   -> """{"id":1362471,"title":"The Tennessee 11","release_date":"2024-09-21","runtime":64}""",
+      "/movie/1743661?"   -> """{"id":1743661,"title":"Horror Anthology Volume 2","release_date":"2026-08-01","runtime":95}"""
+    )),
+    apiKey = Some(settings.TmdbApiKey("stub"))
+  )
+
+  "a credit a year off the cinema's, whose title shares nothing with the listing's" should
+    "resolve when it is the one credit in the window the cinema's runtime agrees with" in {
+    val title = "Lalka (ale to horror)"
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some(title), director = Seq("Rod Blackhurst"), releaseYear = Some(2025),
+        runtimeMinutes = Some(82))))
+    val repository = new InMemoryMovieRepository(Seq((title, Some(2025), seed)), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val service = new MovieService(cache, new services.events.InProcessEventBus(), dollyTmdb())
+
+    service.reEnrichSync(title, Some(2025))
+
+    cache.get(cache.keyOf(title, Some(2025))).flatMap(_.tmdbId) shouldBe Some(Dolly)
   }
 }

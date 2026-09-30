@@ -3174,7 +3174,7 @@ showings:
 
 === Gwiezdne wojny: Mandalorian i Grogu ===
 displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
-cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorets' i Grogu - UA | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
 runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA

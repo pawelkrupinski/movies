@@ -96,10 +96,16 @@ object ListingConstraints {
   /** May the containment fold adopt `row` onto the film the `onto` rows are? Refused when a row
    *  of `onto` and `row` publish different films, or one of `row`'s venues denies the film
    *  `onto` resolved to — Kulturfabrik Meda's "Zärtlich kreist die Faust" (1990) is not
-   *  Murnau's "Faust" (1926), whose English title it ends with. */
+   *  Murnau's "Faust" (1926), whose English title it ends with. Or when one of `row`'s venues
+   *  publishes what [[landingRefused]] refuses a listing for — the fold must not adopt what the
+   *  landing kept apart: Cinema City's "Lalka (ale to horror)" (Rod Blackhurst, 82 min) is not
+   *  Kawalski's 162-minute "Lalka", whose title it contains. */
   def foldRefused(row: MovieRecord, onto: Seq[MovieRecord], normalizer: TitleNormalizer): Option[CannotLink] =
     onto.iterator.flatMap(cinemasDescribeDifferentFilms(_, row, normalizer)).nextOption()
       .orElse(rowDeniesFilms(row, onto.flatMap(_.data.get(Tmdb)), normalizer))
+      .orElse(Option.when(onto.exists(film => row.cinemaData.values.exists(slot =>
+        MixedFilmDetector.listingDeniesFilm(film, slot.runtimeMinutes, slot.releaseYear, slot.director, normalizer))))(
+        CannotLink.ListingDeniesFilm))
 
   /** Does the listing's own original title make it a second film on `row`? The landing's
    *  "every same-titled row is a different film" divert reads this rule alone. */

@@ -779,6 +779,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "take the gloss's horror when the listing credits nobody but its facts are the horror's" in {
+    // PL, Cinema City's "Lalka (ale to horror)" ("Lalka (but it's the horror)"): 2025, 82 minutes,
+    // no director. Only its year and runtime tell Blackhurst's 83-minute "Dolly" from Kawalski's
+    // 162-minute "Lalka" credited everywhere else.
+    val films    = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162, 3), F(1309083, "Dolly", 2026, "Rod Blackhurst", 83, 10,
+      alternatives = Seq("Lalka")), F(81315, "Lalka", 1968, "Wojciech Has", 152, 2.5))
+    val credited = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"), Some(162)))
+    val horror   = Seq(CinemaCityPoznanPlaza, CinemaCityKinepolis, CinemaCityWroclavia).map(listing(_, "Lalka (ale to horror)", Some(2025), None, Some(82)))
+    val r = shipped(credited ++ horror, films)
+    withClue((credited ++ horror).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      credited.foreach(l => r.decisionOf(l.key).film shouldBe Some(1321666))
+      horror.foreach(l => r.decisionOf(l.key).film shouldBe Some(1309083))
+    }
+  }
+
   it should "take neither for a programme whose two films' titles share words but not their place in it" in {
     // UK, Odeon's "The Gruffalo + The Gruffalo's Child" (×39): 53 minutes, both films' directors
     // credited. Its title starts with one film's title and ends with the other's; the two share

@@ -36,6 +36,17 @@ class ListingConstraintsSpec extends AnyFlatSpec with Matchers {
     ListingConstraints.foldRefused(row, Seq(kimRow.copy(data = Map[Source, SourceData](Tmdb -> wong))), normalizer) shouldBe None
   }
 
+  "a director in another script" should "never deny a film, on the landing or the fold" in {
+    // Helios's "Mandalorets' i Grogu - UA" credits "Джон Фавро" — Jon Favreau, whom nothing here
+    // can read as one man — beside a runtime a cinema rounded otherwise.
+    val favreau   = MovieRecord(tmdbId = Some(1022789), data = Map[Source, SourceData](Tmdb ->
+      SourceData(title = Some("The Mandalorian & Grogu"), releaseYear = Some(2026), director = Seq("Jon Favreau"), runtimeMinutes = Some(132))))
+    val ukrainian = SourceData(title = Some("Mandalorets' i Grogu - UA"), releaseYear = Some(2025), director = Seq("Джон Фавро"),
+      runtimeMinutes = Some(140))
+    ListingConstraints.landingRefused(ListingEvidence(None, Some(140), Some(2025), Seq("Джон Фавро")), favreau, normalizer) shouldBe None
+    ListingConstraints.foldRefused(MovieRecord(data = Map[Source, SourceData](HeliosMagnolia -> ukrainian)), Seq(favreau), normalizer) shouldBe None
+  }
+
   "a listing matched by its title's shape" should "be refused on its own crew and runtime" in {
     val itEnds = MovieRecord(tmdbId = Some(1422011), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("It Ends"), releaseYear = Some(2026), runtimeMinutes = Some(89), director = Seq("Alexander Ullom"))))

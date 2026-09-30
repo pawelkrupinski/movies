@@ -7834,7 +7834,7 @@
     "title" : "Gwiezdne wojny: Mandalorian i Grogu",
     "originalTitle" : "The Mandalorian and Grogu",
     "posterUrl" : "https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/plak1at_MANDALORIAN_I_GROGU_v4_-_plakat_net_1.jpg_x_standa.jpg", "https://img.helios.pl/pliki/film/mandalorets-i-grogu-ua/mandalorets-i-grogu-ua-plakat-519.jpg", "https://media.user.com/uploads/j0sawm-kinogram/8243736-3-1_usgs7Ba.jpg", "https://medstore.kinoteka.pl/MANDALORIANIGROGUv2plakatnetM.jpg", "https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-302.jpg", "https://www.novekino.pl/multimedia/mandalorian_and_grogu/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/mandaloriangrogu-online.jpg", "https://fwcdn.pl/fpo/61/50/10046150/8243736.3.jpg", "https://biletyna.pl/file/get/id/357960", "https://biletyna.pl/file/get/id/365872", "https://image.tmdb.org/t/p/w500/ftHUyDqg1LGQhcvj4mWKuXnXpZO.jpg", "https://m.media-amazon.com/images/M/MV5BYjRkYzAzNjktZmRhMy00NjRiLWE0OTMtYmRmMTE5NDkzY2NlXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/plak1at_MANDALORIAN_I_GROGU_v4_-_plakat_net_1.jpg_x_standa.jpg", "https://movies.helios.pl/images/mandaloretsigroguPlakat.jpg", "https://img.helios.pl/pliki/film/mandalorets-i-grogu-ua/mandalorets-i-grogu-ua-plakat-519.jpg", "https://media.user.com/uploads/j0sawm-kinogram/8243736-3-1_usgs7Ba.jpg", "https://medstore.kinoteka.pl/MANDALORIANIGROGUv2plakatnetM.jpg", "https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-302.jpg", "https://www.novekino.pl/multimedia/mandalorian_and_grogu/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/mandaloriangrogu-online.jpg", "https://fwcdn.pl/fpo/61/50/10046150/8243736.3.jpg", "https://biletyna.pl/file/get/id/357960", "https://biletyna.pl/file/get/id/365872", "https://image.tmdb.org/t/p/w500/ftHUyDqg1LGQhcvj4mWKuXnXpZO.jpg", "https://m.media-amazon.com/images/M/MV5BYjRkYzAzNjktZmRhMy00NjRiLWE0OTMtYmRmMTE5NDkzY2NlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 132,
     "releaseYear" : 2026,
     "genres" : [ "Akcja", "Przygodowy", "Sci-Fi" ],
@@ -7842,7 +7842,7 @@
     "directors" : [ "Jon Favreau" ],
     "cast" : [ "Pedro Pascal", "Sigourney Weaver", "Jeremy Allen White", "Steve Blum", "Jonny Coyne", "Matthew Willig" ],
     "synopsis" : "Złowieszcze Imperium upadło, a imperialni watażkowie rozpierzchli się po Galaktyce. Kiełkująca Nowa Republika pragnie ochronić wszystko, o co walczyła Rebelia. Werbuje więc legendarnego łowcę nagród, Mandalorianina Din Djarina i jego młodego podopiecznego Grogu.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/CKjLl57-N8A", "https://www.youtube.com/embed/SZ6aYjjqFk8", "https://www.youtube.com/embed/baFl9SViIys" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/m6iv-beSrfI", "https://www.youtube.com/embed/CKjLl57-N8A", "https://www.youtube.com/embed/SZ6aYjjqFk8", "https://www.youtube.com/embed/baFl9SViIys" ],
     "ratings" : {
       "imdb" : 7,
       "imdbUrl" : "https://www.imdb.com/title/tt30825738/",
@@ -7904,11 +7904,11 @@
     "ageRating" : "13",
     "shareCardPending" : false
   }, {
-    "_id" : "f68920d7572b4f7c~мандалорецьіґроґу",
-    "title" : "Мандалорець і Ґроґу",
+    "_id" : "f68920d7572b4f7c~mandaloretsigroguua",
+    "title" : "Mandalorets' i Grogu - UA",
     "originalTitle" : "The Mandalorian and Grogu",
     "posterUrl" : "https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/plak1at_MANDALORIAN_I_GROGU_v4_-_plakat_net_1.jpg_x_standa.jpg", "https://img.helios.pl/pliki/film/mandalorets-i-grogu-ua/mandalorets-i-grogu-ua-plakat-519.jpg", "https://media.user.com/uploads/j0sawm-kinogram/8243736-3-1_usgs7Ba.jpg", "https://medstore.kinoteka.pl/MANDALORIANIGROGUv2plakatnetM.jpg", "https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-302.jpg", "https://www.novekino.pl/multimedia/mandalorian_and_grogu/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/mandaloriangrogu-online.jpg", "https://fwcdn.pl/fpo/61/50/10046150/8243736.3.jpg", "https://biletyna.pl/file/get/id/357960", "https://biletyna.pl/file/get/id/365872", "https://image.tmdb.org/t/p/w500/ftHUyDqg1LGQhcvj4mWKuXnXpZO.jpg", "https://m.media-amazon.com/images/M/MV5BYjRkYzAzNjktZmRhMy00NjRiLWE0OTMtYmRmMTE5NDkzY2NlXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/plak1at_MANDALORIAN_I_GROGU_v4_-_plakat_net_1.jpg_x_standa.jpg", "https://movies.helios.pl/images/mandaloretsigroguPlakat.jpg", "https://img.helios.pl/pliki/film/mandalorets-i-grogu-ua/mandalorets-i-grogu-ua-plakat-519.jpg", "https://media.user.com/uploads/j0sawm-kinogram/8243736-3-1_usgs7Ba.jpg", "https://medstore.kinoteka.pl/MANDALORIANIGROGUv2plakatnetM.jpg", "https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-302.jpg", "https://www.novekino.pl/multimedia/mandalorian_and_grogu/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/mandaloriangrogu-online.jpg", "https://fwcdn.pl/fpo/61/50/10046150/8243736.3.jpg", "https://biletyna.pl/file/get/id/357960", "https://biletyna.pl/file/get/id/365872", "https://image.tmdb.org/t/p/w500/ftHUyDqg1LGQhcvj4mWKuXnXpZO.jpg", "https://m.media-amazon.com/images/M/MV5BYjRkYzAzNjktZmRhMy00NjRiLWE0OTMtYmRmMTE5NDkzY2NlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 132,
     "releaseYear" : 2026,
     "genres" : [ "Akcja", "Przygodowy", "Sci-Fi" ],
@@ -7916,7 +7916,36 @@
     "directors" : [ "Jon Favreau" ],
     "cast" : [ "Pedro Pascal", "Sigourney Weaver", "Jeremy Allen White", "Steve Blum", "Jonny Coyne", "Matthew Willig" ],
     "synopsis" : "Złowieszcze Imperium upadło, a imperialni watażkowie rozpierzchli się po Galaktyce. Kiełkująca Nowa Republika pragnie ochronić wszystko, o co walczyła Rebelia. Werbuje więc legendarnego łowcę nagród, Mandalorianina Din Djarina i jego młodego podopiecznego Grogu.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/CKjLl57-N8A", "https://www.youtube.com/embed/SZ6aYjjqFk8", "https://www.youtube.com/embed/baFl9SViIys" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/m6iv-beSrfI", "https://www.youtube.com/embed/CKjLl57-N8A", "https://www.youtube.com/embed/SZ6aYjjqFk8", "https://www.youtube.com/embed/baFl9SViIys" ],
+    "ratings" : {
+      "imdb" : 7,
+      "imdbUrl" : "https://www.imdb.com/title/tt30825738/",
+      "metacriticUrl" : "https://www.metacritic.com/search/The+Mandalorian+and+Grogu/?category=2",
+      "rottenTomatoes" : 62,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_mandalorian_and_grogu",
+      "filmweb" : 6.5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150"
+    },
+    "weightedRating" : 6.566666666666666,
+    "synopsisByCity" : {
+      "warszawa" : "Жорстока Імперія пала, проте її воєначальники все ще розкидані по галактиці. Молода Нова Республіка намагається захистити все те, за що боролося Повстання, тому звертається по допомогу до легендарного мандалорського мисливця за головами Діна Джаріна (Педро Паскаль) та його юного учня Ґроґу. Разом вони вирушають у свою найризикованішу місію, що приведе їх до нових союзників, небезпечних ворогів і випробувань, що змінять їхні долі."
+    },
+    "ageRating" : "13",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f68920d7572b4f7c~мандалорецьіґроґу",
+    "title" : "Мандалорець і Ґроґу",
+    "originalTitle" : "The Mandalorian and Grogu",
+    "posterUrl" : "https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg",
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/plak1at_MANDALORIAN_I_GROGU_v4_-_plakat_net_1.jpg_x_standa.jpg", "https://movies.helios.pl/images/mandaloretsigroguPlakat.jpg", "https://img.helios.pl/pliki/film/mandalorets-i-grogu-ua/mandalorets-i-grogu-ua-plakat-519.jpg", "https://media.user.com/uploads/j0sawm-kinogram/8243736-3-1_usgs7Ba.jpg", "https://medstore.kinoteka.pl/MANDALORIANIGROGUv2plakatnetM.jpg", "https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-302.jpg", "https://www.novekino.pl/multimedia/mandalorian_and_grogu/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/mandaloriangrogu-online.jpg", "https://fwcdn.pl/fpo/61/50/10046150/8243736.3.jpg", "https://biletyna.pl/file/get/id/357960", "https://biletyna.pl/file/get/id/365872", "https://image.tmdb.org/t/p/w500/ftHUyDqg1LGQhcvj4mWKuXnXpZO.jpg", "https://m.media-amazon.com/images/M/MV5BYjRkYzAzNjktZmRhMy00NjRiLWE0OTMtYmRmMTE5NDkzY2NlXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 132,
+    "releaseYear" : 2026,
+    "genres" : [ "Akcja", "Przygodowy", "Sci-Fi" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Jon Favreau" ],
+    "cast" : [ "Pedro Pascal", "Sigourney Weaver", "Jeremy Allen White", "Steve Blum", "Jonny Coyne", "Matthew Willig" ],
+    "synopsis" : "Złowieszcze Imperium upadło, a imperialni watażkowie rozpierzchli się po Galaktyce. Kiełkująca Nowa Republika pragnie ochronić wszystko, o co walczyła Rebelia. Werbuje więc legendarnego łowcę nagród, Mandalorianina Din Djarina i jego młodego podopiecznego Grogu.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/m6iv-beSrfI", "https://www.youtube.com/embed/CKjLl57-N8A", "https://www.youtube.com/embed/SZ6aYjjqFk8", "https://www.youtube.com/embed/baFl9SViIys" ],
     "ratings" : {
       "imdb" : 7,
       "imdbUrl" : "https://www.imdb.com/title/tt30825738/",
@@ -8785,30 +8814,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f6e2b51c68866e19",
-    "title" : "Mandalorets' i Grogu - UA",
-    "originalTitle" : "The Mandalorian & Grogu",
-    "posterUrl" : "https://movies.helios.pl/images/mandaloretsigroguPlakat.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 132,
-    "releaseYear" : 2025,
-    "genres" : [ "Fantasy", "Przygodowy", "Akcja" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Джон Фавро" ],
-    "cast" : [ "Сіґурні Вівер", "Педро Паскаль" ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/m6iv-beSrfI" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Mandalorets%27+i+Grogu+-+UA/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Mandalorets%27+i+Grogu+-+UA",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Mandalorets%27+i+Grogu+-+UA"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "Жорстока Імперія пала, проте її воєначальники все ще розкидані по галактиці. Молода Нова Республіка намагається захистити все те, за що боролося Повстання, тому звертається по допомогу до легендарного мандалорського мисливця за головами Діна Джаріна (Педро Паскаль) та його юного учня Ґроґу. Разом вони вирушають у свою найризикованішу місію, що приведе їх до нових союзників, небезпечних ворогів і випробувань, що змінять їхні долі."
-    },
-    "ageRating" : "13",
     "shareCardPending" : false
   }, {
     "_id" : "f6e31df1e7981066",
@@ -99869,6 +99874,33 @@
     } ],
     "listingKeys" : [ "P\u0000Kino ODEON\u0000GWIEZDNE WOJNY : MANDALORIAN I GROGU 2D DUB\u0000" ]
   }, {
+    "_id" : "f68920d7572b4f7c~mandaloretsigroguua|warszawa|Helios Blue City",
+    "filmId" : "f68920d7572b4f7c~mandaloretsigroguua",
+    "city" : "warszawa",
+    "cinema" : "Helios Blue City",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-08T14:30:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/aaa497ce-2be4-4463-8e61-fe264a73e584?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
+      "room" : "SALA 4",
+      "format" : [ "2D", "DUB" ]
+    }, {
+      "dateTime" : "2026-06-09T20:30:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/e53f73d7-c98a-46c9-860f-eb61d6206179?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
+      "room" : "SALA 4",
+      "format" : [ "2D", "DUB" ]
+    }, {
+      "dateTime" : "2026-06-10T18:45:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/6c67c07f-78b4-4a77-b301-25a948e2a081?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
+      "room" : "SALA 2",
+      "format" : [ "2D", "DUB" ]
+    }, {
+      "dateTime" : "2026-06-11T16:50:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/a3db94d1-ab83-475f-9c74-946a3901f57e?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
+      "room" : "SALA 6 - Dream",
+      "format" : [ "2D", "DUB" ]
+    } ],
+    "listingKeys" : [ "P\u0000Helios Blue City\u0000Mandalorets' i Grogu - UA\u00002025\u0000Джон Фавро" ]
+  }, {
     "_id" : "f68920d7572b4f7c~мандалорецьіґроґу|warszawa|Helios Blue City",
     "filmId" : "f68920d7572b4f7c~мандалорецьіґроґу",
     "city" : "warszawa",
@@ -106720,33 +106752,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino za Rogiem Cafe\u0000https://kzrcafe.pl/film/doroslosc-2/\u0000Dorosłość" ]
-  }, {
-    "_id" : "f6e2b51c68866e19|warszawa|Helios Blue City",
-    "filmId" : "f6e2b51c68866e19",
-    "city" : "warszawa",
-    "cinema" : "Helios Blue City",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T14:30:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/aaa497ce-2be4-4463-8e61-fe264a73e584?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
-      "room" : "SALA 4",
-      "format" : [ "2D", "DUB" ]
-    }, {
-      "dateTime" : "2026-06-09T20:30:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/e53f73d7-c98a-46c9-860f-eb61d6206179?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
-      "room" : "SALA 4",
-      "format" : [ "2D", "DUB" ]
-    }, {
-      "dateTime" : "2026-06-10T18:45:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/6c67c07f-78b4-4a77-b301-25a948e2a081?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
-      "room" : "SALA 2",
-      "format" : [ "2D", "DUB" ]
-    }, {
-      "dateTime" : "2026-06-11T16:50:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/a3db94d1-ab83-475f-9c74-946a3901f57e?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
-      "room" : "SALA 6 - Dream",
-      "format" : [ "2D", "DUB" ]
-    } ],
-    "listingKeys" : [ "P\u0000Helios Blue City\u0000Mandalorets' i Grogu - UA\u00002025\u0000Джон Фавро" ]
   }, {
     "_id" : "f6e31df1e7981066|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "f6e31df1e7981066",
