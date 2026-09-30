@@ -219,6 +219,31 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
+  // A venue re-scraping the listing unchanged in the same drain as its page's answer: the listing is
+  // in `seen` (and dropped there, unchanged) and in the answered details (and dropped there, seen), so
+  // it was re-read by neither — Identity model convergence's arrival-order check, where Kino Pod
+  // Baranami's 'Caravaggio' kept Jarman's 1986 film in one order and the 2025 documentary in the other.
+  it should "move its listing though its venue re-published it unchanged in the same batch" in {
+    import FilmTable.{F, listing}
+    import models.{Helios, Multikino}
+    val films   = Seq(F(1, "Lalka", 1968, "Wojciech Has", 159), F(2, "Lalka", 2025, "Maciej Kawalski", 112))
+    val table   = new FilmTable(films, normalizer)
+    var credits = Map.empty[ListingKey, Seq[String]]
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = true
+      def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(credits.get(l.key).map(ds => DetailFacts(None, ds, None, None)))
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+    }
+    val bare  = listing(Helios, "Lalka")
+    val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
+    val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.listingsSeen(Seq(bare, dated))
+    credits = Map(bare.key -> Seq("Maciej Kawalski"))
+    model.batch(Seq(bare), Nil, AnswersChanged(Set.empty, Set.empty, Set(bare.key)))
+    model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
+  }
+
   "a season production another venue's search reaches later" should "re-learn the banner's house and move the broadcasts it names" in {
     // Kino 1410's Met broadcasts arrive first and learn Royal Ballet & Opera; the venue whose search
     // reaches the Met's record arrives after, and must move them as the whole resolve does.

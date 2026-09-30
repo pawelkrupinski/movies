@@ -80,10 +80,11 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   def batch(seen: Seq[Listing], gone: Seq[ListingKey], answered: AnswersChanged): Unit = {
     val left    = gone.filter(isHeld)
     left.foreach(release)
-    // A listing whose detail page was answered anew is seen again: its evidence may have moved.
+    // A listing whose detail page was answered anew is seen again: its evidence may have moved —
+    // also when its venue re-published it unchanged in the same batch, which alone would not.
     val redetailed = answered.details.filterNot(left.contains).flatMap(heldListing)
-    val arrived = seen.filterNot(listing => heldListing(listing.key).contains(listing)) ++
-      redetailed.filterNot(listing => seen.exists(_.key == listing.key))
+    val fresh      = seen.filterNot(listing => heldListing(listing.key).contains(listing))
+    val arrived    = fresh ++ redetailed.filterNot(listing => fresh.exists(_.key == listing.key))
     arrived.foreach(hold)
     val moved   = clock.context(corpus.gone(left) ++ corpus.seen(arrived) ++ corpus.answered(answered))
     val asked   = answered.queries.flatMap(askersOf.getOrElse(_, Set.empty)) ++ answered.films.flatMap(filmReadersOf.getOrElse(_, Set.empty))
