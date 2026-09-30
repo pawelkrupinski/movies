@@ -204,6 +204,26 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
   private def listingsApart(a: Listing, b: Listing, sameVenue: Boolean) =
     services.movies.ListingConstraints.learnedListingListing(model, IdentityMeasures.listingListing(a, b, sameVenue, sharedChainId = None))
 
+  private def filmDenied(l: Listing, f: Film, corroborating: Int) = {
+    val measures = IdentityMeasures.listingFilm(l, f, searchRank = None, rivals = 0, corroboratingVenues = corroborating)
+    services.movies.ListingConstraints.learnedListingFilm(model, measures, new EvidenceWeights(model).factsProbability(measures))
+  }
+
+  "a learned listing-film cannot-link" should "not deny a film on its probability when the facts the listing compares agree with it" in {
+    // PL, Kino Łuków's "Vincent. Legenda oceanu" at 88 minutes: TMDB's "The Last Whale Singer" (91)
+    // carries no Polish title, so the title reads as an overlap (−3.95) and, beside the runtime's
+    // +0.82, the listing's own facts score below the cut — the title's doing, not the runtime's. The denial kept apart the 117 listings pooled on the film
+    // and the 60 bare spellings of the same title joined to both.
+    val whale = Film("The Last Whale Singer", Some("The Last Whale Singer"), Seq("Vincent et la prophétie des mers"),
+      year = Some(2026), runtime = Some(91), directors = Some(Seq("Reza Memari")))
+    filmDenied(Listing("Vincent. Legenda oceanu", runtime = Some(88)), whale, corroborating = 36) shouldBe None
+  }
+
+  it should "still deny it when a compared fact weighs against the film" in {
+    val whale = Film("The Last Whale Singer", runtime = Some(91), year = Some(2026), directors = Some(Seq("Reza Memari")))
+    filmDenied(Listing("Vincent. Legenda oceanu", runtime = Some(9), directors = Seq("Pavel Hrubas")), whale, corroborating = 0) shouldBe defined
+  }
+
   "a learned listing-listing cannot-link" should "never keep apart two listings that compare no fact both published" in {
     // PL: a bare or bannered spelling beside its credited decorated siblings — the title relation
     // (and where they are) is all the pair measures, and that is a score, never a veto.

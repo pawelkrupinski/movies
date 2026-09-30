@@ -161,11 +161,20 @@ object ListingConstraints {
    *  programme banner, an anniversary or format suffix, a local-language title of a foreign
    *  film — is scored by how its title relates to the film's, and that relation alone never
    *  vetoes: a decorated or translated spelling is otherwise denied the very film its plain,
-   *  credited siblings matched, and the denial outranks the title must-link that would join them. */
+   *  credited siblings matched, and the denial outranks the title must-link that would join them.
+   *  Nor does the probability cut when the facts it does compare agree, together, with the film: its
+   *  low score is then the title's (PL Kino Łuków's "Vincent. Legenda oceanu" at 88 minutes against
+   *  "The Last Whale Singer" at 91, TMDB carrying no Polish title). A learned rule still vetoes. */
   def learnedListingFilm(calibration: services.identity.IdentityCalibration,
                          measures: Map[String, services.identity.IdentityMeasures.Measure],
-                         probability: Double): Option[CannotLink] =
-    learnedOnFacts(calibration, services.identity.IdentityMeasures.ListingFilm, measures, probability)
+                         probability: Double): Option[CannotLink] = {
+    import services.identity.IdentityMeasures.{ListingFilm, comparedFacts, comparesAFact}
+    // The cut on a probability the compared facts do not pull down is the title's verdict alone.
+    lazy val factsAgree = calibration.contributions(ListingFilm, comparedFacts(ListingFilm, measures)).map(_._2).sum >= 0
+    if (!comparesAFact(ListingFilm, measures)) None
+    else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name))
+      .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut")))
+  }
 
   /** [[learned]] for two LISTINGS (the "listing-listing" scope): the pair is kept apart only by
    *  the facts both published. Two listings that publish nothing comparable — "Tony" beside "Kino
