@@ -72,19 +72,16 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // with it, never kept on the ~30k resident records (1.6M strings on the UK corpus when they were).
   def candidate(id: Int): Option[Candidate] = candidates.get(id).map(fresh)
   // Read many times per resolve, changed per event: each view is built once after it changes.
-  // The views are read by the regions a take-up resolves side by side (`IncrementalResolver`'s pool):
-  // built once per change, under concurrent readers.
-  @volatile private var housesView: Option[IdentityMeasures.Houses] = None
-  private val groupView   = new java.util.concurrent.ConcurrentHashMap[String, Seq[(String, IdentityMeasures.Listing)]]()
-  private val reachedView = new java.util.concurrent.ConcurrentHashMap[String, Seq[(String, Set[Int])]]()
-  def houses: IdentityMeasures.Houses = housesView.getOrElse(synchronized(housesView.getOrElse {
-    val built = IdentityMeasures.Houses(houseOf.toMap); housesView = Some(built); built }))
+  private var housesView: Option[IdentityMeasures.Houses] = None
+  private val groupView   = mutable.HashMap.empty[String, Seq[(String, IdentityMeasures.Listing)]]
+  private val reachedView = mutable.HashMap.empty[String, Seq[(String, Set[Int])]]
+  def houses: IdentityMeasures.Houses = housesView.getOrElse { val built = IdentityMeasures.Houses(houseOf.toMap); housesView = Some(built); built }
   def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = rankingOf.toMap
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
-    groupView.computeIfAbsent(key, key => groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq))
+    groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
   def segmentSpread(sanitised: String): Int = spreads.get(sanitised).fold(0)(_.size)
-  def reachedBy(key: String): Seq[(String, Set[Int])] = reachedView.computeIfAbsent(key, key => reachedByKey.get(key).fold(Seq.empty)(_.toSeq))
+  def reachedBy(key: String): Seq[(String, Set[Int])] = reachedView.getOrElseUpdate(key, reachedByKey.get(key).fold(Seq.empty)(_.toSeq))
   def ranked(query: CandidateQuery): Option[Seq[Int]] = named.get(query).flatten
   override def evidenceOf(listing: Listing): Option[Evidence] =
     listings.get(listing.key).flatMap(heads.get).collect { case (head, evidence) if head == listing.key => evidence }
@@ -254,7 +251,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       IdentityMeasures.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
     }
     if (banners.nonEmpty) housesView = None
-    titleKeys.foreach { key => groupView.remove(key); reachedView.remove(key) }
+    groupView --= titleKeys
+    reachedView --= titleKeys
     segments ++= bannersBefore.collect { case (piece, before) if bannerSegment(piece) != before => piece }
     CorpusContext.Changed(titleKeys.toSet, segments.toSet, banners.toSet, moved.toSet)
   }

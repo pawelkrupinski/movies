@@ -23,12 +23,11 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
 
   /** The first event after which the model differs from a resolve of what it holds. */
   private def divergence(seed: Long, mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
-                         regionBatch: Int = IncrementalResolver.RegionBatch,
-                         regionPool: Option[java.util.concurrent.ExecutorService] = None): Option[String] = {
+                         regionBatch: Int = IncrementalResolver.RegionBatch): Option[String] = {
     val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
     val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
     val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None,
-      regionBatch = regionBatch, mutation = mutation, regionPool = regionPool)
+      regionBatch = regionBatch, mutation = mutation)
     val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
     random.events.zipWithIndex.flatMap { case (event, step) =>
       event match {
@@ -47,14 +46,6 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
 
   it should "equal it too when every update resolves in batches of a few listings" in {
     Seeds.flatMap(divergence(_, regionBatch = 3)) shouldBe empty
-  }
-
-  // A take-up's regions resolve side by side on a pool; their results are merged in batch order on
-  // the model's thread, so the decisions are the sequential ones (US: 187 s of resolves on one thread).
-  it should "equal it too when a round's regions resolve in parallel" in {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(4)
-    try Seeds.flatMap(divergence(_, regionBatch = 3, regionPool = Some(pool))) shouldBe empty
-    finally pool.shutdownNow()
   }
 
   it should "be caught by the sequence when it never pulls in a family it now shares a key with (the teeth)" in {

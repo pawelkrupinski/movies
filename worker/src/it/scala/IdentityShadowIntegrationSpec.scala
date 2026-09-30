@@ -173,9 +173,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val classesBefore = LiveHeap.classes()
         val before  = LiveHeap.megabytes()
         val kept    = new InMemoryIdentityModelStore
-        // The worker's region pool (`WorkerWiring.identityRegionPool`): the measure times what prod runs.
-        val regions = java.util.concurrent.Executors.newFixedThreadPool(modules.WorkerWiring.IdentityRegionThreads)
-        val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept, regionPool = Some(regions))
+        val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
         val (_, seedSeconds) = timed(model.seed(listings))
         val held    = LiveHeap.megabytes() - before
         val keeps   = LiveHeap.grown(classesBefore, LiveHeap.classes())
@@ -197,12 +195,11 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         withClue(s"${c.label}: the incremental model decides as the whole resolve") { same shouldBe true; sameAfter shouldBe true }
 
         // A worker's restart: a new model takes up the families the store kept, over the same listings.
-        val restored = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept, regionPool = Some(regions))
+        val restored = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
         val (_, restoreSeconds) = timed(restored.restore(listings))
         val sameRestored = signature(restored.decisions) == signature(resolution.decisions)
         report.line(f"[${c.label}] incremental restore: taken up in $restoreSeconds%.1fs (${restored.familiesResolved} family resolves, " +
           f"${restored.familyCount} families); equals the whole resolve: $sameRestored; time in ${restored.timings.render}")
-        regions.shutdown()
         withClue(s"${c.label}: the restored model decides as the whole resolve") { sameRestored shouldBe true }
       }
 
