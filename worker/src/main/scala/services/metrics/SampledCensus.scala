@@ -8,10 +8,15 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 /**
- * The sample-on-a-timer scaffolding every census in this package shares: take one
- * reading now so the series exists from boot rather than from the first tick, then
+ * The sample-on-a-timer scaffolding every census in this package shares: take the first
+ * reading shortly after boot ([[firstSampleDelay]]) rather than a whole interval later, then
  * keep taking one every [[sampleInterval]], and never let a failed reading kill the
  * schedule.
+ *
+ * The first reading runs on the census's own thread, never the caller's: taken at `start`
+ * on the boot thread, the censuses held a US worker's boot for ~40 s (the listing-key shadow
+ * read alone 116 s) for gauges nothing reads in the boot's first minutes, while competing for
+ * CPU with the cache hydrate and the identity model's take-up.
  *
  * That last part is the reason this is shared rather than retyped. A census
  * measures the thing nothing else can see — a cinema that stopped being scraped, a
@@ -29,9 +34,8 @@ trait SampledCensus extends Logging {
    *  scrape staleness shifts by the minute, a cinema going barren by the day. */
   protected def sampleInterval: FiniteDuration
 
-  /** Take one reading and publish it. Called on the caller's thread once at
-   *  [[start]], then on this census's own scheduler. Implementations keep it
-   *  cheap and side-effect-free beyond writing gauges. */
+  /** Take one reading and publish it, on this census's own scheduler. Implementations keep
+   *  it cheap and side-effect-free beyond writing gauges. */
   def sample(): Unit
 
   private lazy val scheduler = DaemonExecutors.scheduler(censusName)
@@ -41,12 +45,19 @@ trait SampledCensus extends Logging {
     ()
   }
 
+  /** When the first reading runs: after the boot's own work, never later than one interval. */
+  protected def firstSampleDelay: FiniteDuration = SampledCensus.FirstSampleDelay.min(sampleInterval)
+
   def start(): Unit = {
-    sampleQuietly("initial sample")
     scheduler.scheduleAtFixedRate(() => sampleQuietly("sample tick"),
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
+      firstSampleDelay.toMillis, sampleInterval.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
 
   def stop(): Unit = scheduler.shutdown()
+}
+
+object SampledCensus {
+  /** Past a restart's heavy stretch (cache hydrate, the projector's seed, the identity take-up). */
+  val FirstSampleDelay: FiniteDuration = scala.concurrent.duration.Duration(2, "minutes")
 }

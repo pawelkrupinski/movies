@@ -58,11 +58,12 @@ class WorkerCorpusScan(
     samplers.foreach(_.publish(complete))
   }
 
+  // The first scan on the scan's own thread, after the boot's heavy stretch — never on the boot
+  // thread, where it held a US boot for 43 s (see `SampledCensus`).
   def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"worker-corpus-scan initial sample failed: ${e.getMessage}") }
     scheduler.scheduleAtFixedRate(
       () => Try(sample()).recover { case e => logger.warn(s"worker-corpus-scan sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
+      SampledCensus.FirstSampleDelay.min(sampleInterval).toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
     ()
   }
 
