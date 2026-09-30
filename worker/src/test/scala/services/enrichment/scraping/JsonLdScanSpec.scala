@@ -16,10 +16,14 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
   private val Fixtures = Paths.get("test/resources/fixtures")
   private val RatingSites = Seq("www.metacritic.com", "www.rottentomatoes.com")
 
+  /** The RECORDED pages: the ones git tracks. Walking the tree read whatever another suite running
+   *  beside this one was writing into it at that moment — a page mid-write, or gone before it was
+   *  read — and failed intermittently on a page nobody recorded. */
   private def ratingPages: Seq[Path] =
-    Files.walk(Fixtures).iterator.asScala
-      .filter(path => Files.isRegularFile(path) && RatingSites.exists(site => path.toString.contains(site)))
-      .toSeq
+    scala.sys.process.Process(Seq("git", "ls-files", "-z", "--", Fixtures.toString)).!!.split('\u0000').toSeq
+      .filter(path => path.nonEmpty && RatingSites.exists(path.contains))
+      .map(Paths.get(_))
+      .filter(Files.isRegularFile(_))
 
   private def byJsoup(html: String): Seq[String] =
     Jsoup.parse(html).select("script[type=application/ld+json]").asScala.toSeq.map(_.data())
