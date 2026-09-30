@@ -203,8 +203,14 @@ object RepoFile {
     listed(".")(f => f.getName.startsWith("fly") && f.getName.endsWith(".toml"))
 
   /** Every dashboard monitoring-1's Grafana provisions from the apps folder, sorted by name. */
-  def dashboards(): Seq[java.io.File] =
-    listed("infra/nix/files/monitoring/grafana/dashboards/apps")(_.getName.endsWith(".json"))
+  def dashboards(): Seq[java.io.File] = {
+    val dir   = "infra/nix/files/monitoring/grafana/dashboards/apps"
+    val files = listed(dir)(_.getName.endsWith(".json"))
+    // More than one: a sweep that only ever sees a single dashboard is a sign the glob or the
+    // directory moved, not that the fleet shrank to one board.
+    if (files.size < 2) throw new AssertionError(s"$dir lists only ${files.map(_.getName)} — expected several dashboards")
+    files
+  }
 
   /** Every country that deploys a worker — one k3s overlay directory each, sorted. Read
    *  from the overlays rather than listed, so a country onboarded tomorrow is covered by
