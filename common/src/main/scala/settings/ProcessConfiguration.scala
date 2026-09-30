@@ -287,6 +287,8 @@ final class ProcessConfiguration(val env: Env) {
 
   /** `KINOWO_CONVERGENCE_HERMETIC` (`true`). */
   def hermeticReplay: HermeticReplay = HermeticReplay(text("KINOWO_CONVERGENCE_HERMETIC").exists(_.equalsIgnoreCase("true")))
+  /** `KINOWO_CONVERGENCE_FILL_ONLY` (`true`). */
+  def gapFill: GapFill = GapFill(text("KINOWO_CONVERGENCE_FILL_ONLY").exists(_.equalsIgnoreCase("true")))
 
   /** `KINOWO_IDENTITY_LOOKUPS` (`true`). */
   def identityLookupSweep: IdentityLookupSweepEnabled =

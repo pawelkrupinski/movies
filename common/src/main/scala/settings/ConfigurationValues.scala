@@ -128,6 +128,10 @@ final case class RaceSeed(value: Long) extends AnyVal
 final case class EnrichmentFixtureTree(value: String) extends AnyVal
 /** `KINOWO_CONVERGENCE_HERMETIC` — a convergence leg refuses every request it cannot replay. */
 final case class HermeticReplay(value: Boolean) extends AnyVal
+/** `KINOWO_CONVERGENCE_FILL_ONLY` — a convergence leg replays its tree as a hermetic one does (no
+ *  expiry, remembered failures replayed) but fetches, live, only what the tree lacks, and records it:
+ *  the `Identity model convergence` build's overlay of the model's own enrichment. */
+final case class GapFill(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
  *  calibrated identity confidence are served without ratings. Off by default. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal

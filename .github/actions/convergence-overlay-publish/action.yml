@@ -1,0 +1,45 @@
+# Publish the identity model's enrichment OVERLAY for one country: what `Identity model convergence`
+# legs fetched live because the pipeline's recorded tree lacked it (films the model matches and the
+# pipeline did not), keyed to the pinned pair it overlays — `identity-overlay-<code>-<corpus run>.tar.gz`.
+#
+# Separate from convergence-publish on purpose: it never touches the pipeline's `enrichment-<code>*`
+# trees or its `hermetic-<code>.txt` pin, and that action's prune (`^enrichment-<code>-[0-9]+\.tar\.gz$`)
+# cannot match this name. A newer pin names a new overlay; the old one is dead weight nobody reads.
+# The overlay is CUMULATIVE: the files the leg restored from the last one, plus every file it wrote
+# since convergence-setup's stamp. Main only, as every write to the shared release.
+# (ConvergencePublishMainOnlySpec, IdentityModelConvergenceWiringSpec)
+name: Publish the identity model's enrichment overlay
+description: Pack the files an overlay leg recorded, plus the overlay it restored, and upload them to the fixture release.
+inputs:
+  code:
+    description: The country's two-letter code.
+    required: true
+  token:
+    description: "A token with `contents: write` on the repository."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Publish the overlay to the rolling release
+      if: github.ref == 'refs/heads/main'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          TREE: test/resources/fixtures/enrichment-${{ inputs.code }}
+      run: |
+          set -euo pipefail
+          [ -f "$RUNNER_TEMP/overlay-stamp" ] || { echo "no overlay stamp — setup ran no overlay step; nothing to publish"; exit 0; }
+          fresh=$(mktemp)
+          { cat "$RUNNER_TEMP/overlay-files.txt" 2>/dev/null || true
+            find "$TREE" -type f -newer "$RUNNER_TEMP/overlay-stamp" 2>/dev/null || true; } | sort -u > "$fresh"
+          recorded=$(find "$TREE" -type f -newer "$RUNNER_TEMP/overlay-stamp" 2>/dev/null | wc -l)
+          if [ "$recorded" -eq 0 ]; then
+              echo "the leg recorded nothing new — ${KINOWO_CONVERGENCE_OVERLAY_ASSET} stays as it was"
+              exit 0
+          fi
+          mkdir -p overlay-upload
+          archive="overlay-upload/${KINOWO_CONVERGENCE_OVERLAY_ASSET}"
+          tar --ignore-failed-read -czf "$archive" -T "$fresh"
+          RELEASE=scripts/ci/gh-release.sh
+          "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$archive" --clobber
+          echo "published $archive: $recorded file(s) recorded by this leg, $(wc -l < "$fresh") in all"

@@ -42,6 +42,14 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
       IdentityProjectionInterval(90.seconds)
   }
 
+  it should "resolve a convergence leg's replay: hermetic, or filling only the gaps, each off unless asked" in {
+    resolvedFrom().hermeticReplay shouldBe HermeticReplay(false)
+    resolvedFrom().gapFill shouldBe GapFill(false)
+    resolvedFrom("KINOWO_CONVERGENCE_HERMETIC" -> "true").hermeticReplay shouldBe HermeticReplay(true)
+    resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "true").gapFill shouldBe GapFill(true)
+    resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "no").gapFill shouldBe GapFill(false)
+  }
+
   it should "resolve the commit and the port, with their defaults" in {
     resolvedFrom("COMMIT_SHA" -> "abc123").commit shouldBe CommitSha("abc123")
     resolvedFrom("PORT" -> "9123").healthPort(HealthPort(9000)) shouldBe HealthPort(9123)

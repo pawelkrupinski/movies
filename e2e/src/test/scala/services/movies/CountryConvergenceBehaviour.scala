@@ -233,9 +233,15 @@ abstract class CountryConvergenceBehaviour(
     // job, and an entry that ages out between the recording and a replay of it would turn
     // into a refused fetch the recording never saw.
     val beside = FileEnrichmentCacheStore.beside(fixtureRoot, fixtureDirectory)
-    missingFixtures.fold(new FileEnrichmentCacheStore(beside))(_ =>
-      new FileEnrichmentCacheStore(beside, FileEnrichmentCacheStore.NeverExpires))
+    if (replaysRecording) new FileEnrichmentCacheStore(beside, FileEnrichmentCacheStore.NeverExpires)
+    else new FileEnrichmentCacheStore(beside)
   }
+
+  /** The tree is replayed as recorded — nothing in it expires and a remembered failure is replayed,
+   *  never asked again — on a HERMETIC leg, and on a GAP-FILL one (`KINOWO_CONVERGENCE_FILL_ONLY`),
+   *  which differs only in fetching live, and recording, what the tree lacks instead of refusing it.
+   *  Only a recording leg re-asks and ages the tree. */
+  private lazy val replaysRecording: Boolean = missingFixtures.isDefined || configuration.gapFill.value
 
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
@@ -252,7 +258,7 @@ abstract class CountryConvergenceBehaviour(
   private lazy val expireStaleFixtures: Int =
     // Never in a hermetic run, for the reason the store above never expires: the tree it
     // replays is the one the recorder left, whole, however old.
-    if (missingFixtures.isDefined) 0
+    if (replaysRecording) 0
     else step("expireStaleEnrichment")(
       EnrichmentFreshness.prune(java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))))
 
@@ -289,7 +295,7 @@ abstract class CountryConvergenceBehaviour(
     // recording is only a complete record of what the pipeline asked if it holds the
     // requests that failed as well as those that answered.
     val cache  = new EnrichmentCache(store, persistSuccesses = false,
-      transients = missingFixtures.fold(EnrichmentCache.Transients.Recorded)(_ => EnrichmentCache.Transients.Replayed))
+      transients = if (replaysRecording) EnrichmentCache.Transients.Replayed else EnrichmentCache.Transients.Recorded)
     val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${store.root}")
     cache

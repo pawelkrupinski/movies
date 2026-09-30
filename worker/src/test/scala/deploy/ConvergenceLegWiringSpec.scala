@@ -453,7 +453,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  the whole run. */
   it should "leave the publish to the row that is not racing another for it" in {
     RepoFile.block(leg, "convergence") should
-      include(s"$PublishAction\n              if: always() && matrix.phase == 'convergence'")
+      include(s"$PublishAction\n              if: always() && matrix.phase == 'convergence' && inputs.mode != 'overlay'")
   }
 
   /**

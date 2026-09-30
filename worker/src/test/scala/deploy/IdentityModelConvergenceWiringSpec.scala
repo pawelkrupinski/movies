@@ -13,6 +13,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val suite    = RepoFile.read(".github/workflows/country-convergence.yml")
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
   private lazy val main     = RepoFile.read(".github/workflows/main.yml")
+  private lazy val overlay  = RepoFile.read(".github/actions/convergence-overlay-publish/action.yml")
 
   "the identity model convergence build" should "run only when dispatched by hand" in {
     val triggers = RepoFile.block(workflow, "on")
@@ -27,6 +28,22 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "decide its legs' films by the identity model" in {
     RepoFile.jobs(workflow)("leg") should include regex """identity-model:\s+true"""
+  }
+
+  /** The pipeline's pair was recorded by the PIPELINE; the model's enrichment gaps are filled live and
+   *  published as an overlay beside it — so the next dispatch replays more and fetches less. */
+  it should "fill and publish the model's gaps as an overlay, never into the pipeline's pair" in {
+    RepoFile.jobs(workflow)("leg") should include regex """mode:\s+overlay"""
+    overlay should include("identity-overlay-")
+    val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+    Seq("enrichment-${{ inputs.code }}.tar.gz", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)
+    leg should include regex """uses: ./.github/actions/convergence-overlay-publish\s+if: always\(\) && inputs.mode == 'overlay'"""
+  }
+
+  it should "never mark the pipeline's corpus green from a new-model leg" in {
+    val conditions = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-publish") => cond }.toSeq
+    conditions should not be empty
+    conditions.foreach(cond => cond should (include("inputs.mode == 'record'") or include("inputs.mode != 'overlay'")))
   }
 
   it should "hold a lane of its own, which a newer dispatch replaces" in {
