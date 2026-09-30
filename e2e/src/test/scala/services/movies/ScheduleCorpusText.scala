@@ -8,9 +8,7 @@ import tools.FixtureTestWiring
 import java.time.LocalDateTime
 import java.util.Locale
 
-/** The whole-corpus text `expected-schedules.txt` holds — shared by `FilmScheduleEndToEndSpec`,
- *  which pins it, and `ObservationCaptureEndToEndSpec`, which proves capture leaves it
- *  byte-identical. */
+/** The whole-corpus text `expected-schedules.txt` holds, which `FilmScheduleEndToEndSpec` pins. */
 object ScheduleCorpusText {
 
   /** The whole corpus of a booted fixture wiring, as the `/` view for `city` at `now` renders it. */

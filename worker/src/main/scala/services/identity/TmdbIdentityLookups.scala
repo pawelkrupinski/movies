@@ -27,18 +27,13 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
                                 gaps: TmdbIdentityLookups.Gaps = TmdbIdentityLookups.NoGaps)
     extends IdentityLookups {
 
-  private val enricherOf: Map[Cinema, DetailEnricher] = enrichers.map(e => e.cinema -> e).toMap
+  private val venueDetails = new VenueDetails(enrichers, gaps)
 
   private def answered[A](read: => A): Answer[A] = gaps.answered(read)
 
-  override def hasDetail(listing: Listing): Boolean = listing.page.isDefined && enricherOf.contains(listing.cinema)
+  override def hasDetail(listing: Listing): Boolean = venueDetails.hasDetail(listing)
 
-  override def detail(listing: Listing): Answer[Option[DetailFacts]] =
-    (listing.page, enricherOf.get(listing.cinema)) match {
-      case (Some(page), Some(e)) => answered(e.fetchFilmDetail(page).map(d =>
-        DetailFacts(d.releaseYear, d.director.map(_.trim).filter(_.nonEmpty), d.runtimeMinutes, d.originalTitle, d.countries)))
-      case _                     => Answer.Known(None)
-    }
+  override def detail(listing: Listing): Answer[Option[DetailFacts]] = venueDetails.detail(listing)
 
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text)    =>
@@ -80,3 +75,18 @@ object TmdbIdentityLookups {
     }
   }
 }
+
+/** A listing's venue detail through its cinema's enricher: the page's facts as the model reads them. */
+final class VenueDetails(enrichers: Seq[DetailEnricher], gaps: TmdbIdentityLookups.Gaps) {
+  private val enricherOf: Map[Cinema, DetailEnricher] = enrichers.map(e => e.cinema -> e).toMap
+
+  def hasDetail(listing: Listing): Boolean = listing.page.isDefined && enricherOf.contains(listing.cinema)
+
+  def detail(listing: Listing): Answer[Option[DetailFacts]] =
+    (listing.page, enricherOf.get(listing.cinema)) match {
+      case (Some(page), Some(e)) => gaps.answered(e.fetchFilmDetail(page).map(d =>
+        DetailFacts(d.releaseYear, d.director.map(_.trim).filter(_.nonEmpty), d.runtimeMinutes, d.originalTitle, d.countries)))
+      case _                     => Answer.Known(None)
+    }
+}
+

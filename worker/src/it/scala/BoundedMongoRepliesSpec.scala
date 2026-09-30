@@ -6,7 +6,6 @@ import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.MongoIdentityModelStore
-import services.observations.{MongoObservationBackend, ObservationStore}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -15,9 +14,9 @@ import scala.jdk.CollectionConverters._
 /**
  * A find read to completion with `toFuture()` asks the server for batchSize = Int.MaxValue, so each
  * reply fills to Mongo's 16 MB cap and the driver keeps a buffer that size pooled (32 MB of idle
- * pooled read buffers in worker-uk's live heap, 2026-09-29). The largest documents came from these
- * two reads: the observation store's current scan (obs_lookups replies to 16 MB) and the identity
- * model's families (identity_model_families replies to 16 MB at every take-up). Each must ask for a
+ * pooled read buffers in worker-uk's live heap, 2026-09-29). The largest documents came from the
+ * identity model's families (identity_model_families replies to 16 MB at every take-up), and from the
+ * observation store's scan until that store was removed (2026-09-30). Each must ask for a
  * batch sized to its documents.
  */
 class BoundedMongoRepliesSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
@@ -38,13 +37,6 @@ class BoundedMongoRepliesSpec extends AnyFlatSpec with Matchers with tools.Integ
 
   private def batchOf(cmd: org.bson.BsonDocument): Int =
     Option(cmd.get("batchSize")).map(_.asNumber.intValue).getOrElse(Int.MaxValue)
-
-  "the observation store's current scan" should "ask for replies sized to observation documents" in withFinds("bounded-obs") { (db, finds) =>
-    val backend = new MongoObservationBackend(db, ObservationStore.LookupsCollection, new services.TtlIndexMismatches)
-    backend.eachCurrent(None)(_ => ())
-    finds() should not be empty
-    finds().foreach(cmd => withClue(s"$cmd ")(batchOf(cmd) should (be > 0 and be <= tools.MongoReplies.Observations)))
-  }
 
   "the identity model's families read" should "ask for replies sized to family documents" in withFinds("bounded-families") { (db, finds) =>
     new MongoIdentityModelStore(db).families() shouldBe empty

@@ -2,16 +2,13 @@ package integration
 
 import clients.TmdbClient
 import com.mongodb.{ConnectionString, MongoClientSettings}
-import models.Source
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.TtlIndexMismatches
-import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.identity._
-import services.observations.{ObservationStore, ObservingDetailEnricher, ObservingHttpFetch}
 import tools._
 
 import java.lang.management.ManagementFactory
@@ -26,11 +23,12 @@ import scala.util.Try
  * corpora (docs/design/identity-resolver.md §8). Per corpus:
  *
  *  1. the offline resolve `IdentityShadowIntegrationSpec` makes — `TmdbIdentityLookups` over the
- *     corpus's recorded answers — with every answer it received filed by the PRODUCTION capture
- *     (`ObservingHttpFetch`, `ObservingDetailEnricher`) into an observation store. A request the
- *     recording could not answer is filed as the failed read it is, so it stays a gap;
- *  2. one reaper tick over that store alone, the pipeline booted beside it for the diff, its run
- *     persisted in Mongo (`identity_shadow_decisions` / `identity_shadow_diff`).
+ *     corpus's recorded answers — with every TMDB and IMDb answer it received filed by the PRODUCTION
+ *     normalizer (`NormalizingHttpFetch`) into the model's TMDB store. A request the recording could
+ *     not answer is no answer, so it stays a gap;
+ *  2. one reaper tick over what PRODUCTION reads (`StoredTmdbLookups` over that store, venue details
+ *     from the booted pipeline's own enriched slots, `VenueDetailLookups`), the pipeline booted beside
+ *     it for the diff, its run persisted in Mongo (`identity_shadow_decisions` / `identity_shadow_diff`).
  *
  * It requires the persisted decisions to EQUAL the offline resolver's, the corpus's fetch to see
  * ZERO requests during the tick, and no family crossing; and it reports what the tick cost (CPU,
@@ -84,14 +82,6 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
     override def post(url: String, body: String, contentType: String): String = gapsFail(misses)(inner.post(url, body, contentType))
   }
 
-  private final class DetailGapsFail(inner: DetailEnricher, misses: () => Long) extends DetailEnricher {
-    override def cinema: models.Cinema                      = inner.cinema
-    override def detailGroup: String                        = inner.detailGroup
-    override def detailTarget: Source                       = inner.detailTarget
-    override def enrichmentServiceOverride: Option[String] = inner.enrichmentServiceOverride
-    override def defersTmdbResolution: Boolean              = inner.defersTmdbResolution
-    override def fetchFilmDetail(ref: String): Option[FilmDetail] = gapsFail(misses)(inner.fetchFilmDetail(ref))
-  }
 
   private final class Recorded extends ShadowIdentityMetrics {
     @volatile var films: Map[ShadowRelation, Int] = Map.empty
@@ -107,22 +97,30 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
   }
 
   corpora.foreach { c =>
-    "the production shadow run" should s"decide exactly as the offline resolver, from observations alone and with no request, on ${c.label}" in {
+    "the production shadow run" should s"decide exactly as the offline resolver, from the model's store and the enriched slots, with no request, on ${c.label}" in {
       val database = databaseFor(c)
       val w = wiring(mongoTarget, c, storages, fixtureRoot, configuration.env)
       bootPipeline(w)
       val listings = listingsOf(w, c.normalizer)
 
-      // 1. the offline resolve, its answers filed by the production capture
-      val observations = ObservationStore.inMemory(clock)
-      val offlineFetch  = new ObservingHttpFetch(new GapsFail(c.fetch, c.misses), observations)
-      val offlineSource = new TmdbIdentityLookups(
+      // 1. the offline resolve, its TMDB and IMDb answers filed into the model's store by the production
+      // normalizer; venue details, on both sides, the pipeline's own enriched slots (`VenueDetailSlots`),
+      // so the claim is the store's: a tick over it decides as a resolve over the answers it holds.
+      val tmdbStore     = new TmdbStore(new InMemoryTmdbDocuments, clock)
+      val offlineFetch  = new NormalizingHttpFetch(new GapsFail(c.fetch, c.misses), new TmdbNormalizer(tmdbStore))
+      val venueDetails  = new VenueDetailLookups(w.detailEnrichers, w.venueDetailSlots)
+      val offlineTmdb   = new TmdbIdentityLookups(
         new TmdbClient(offlineFetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
-        new services.enrichment.ImdbClient(offlineFetch),
-        w.detailEnrichers.map(e => new ObservingDetailEnricher(new DetailGapsFail(e, c.misses), observations)), new TmdbIdentityLookups.CountedGaps(c.misses))
+        new services.enrichment.ImdbClient(offlineFetch), Nil, new TmdbIdentityLookups.CountedGaps(c.misses))
+      val offlineSource = new IdentityLookups {
+        def hasDetail(listing: Listing): Boolean                     = venueDetails.hasDetail(listing)
+        def detail(listing: Listing): Answer[Option[DetailFacts]]    = venueDetails.detail(listing)
+        def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = offlineTmdb.candidates(query)
+        def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = offlineTmdb.film(tmdbId)
+      }
       val offline = IdentityResolver.resolve(listings, offlineSource, c.normalizer, IdentityCalibration.resolver)
 
-      // 2. one production tick over the store alone
+      // 2. one production tick over what production reads
       Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection)
         .foreach(n => Await.result(database.getCollection(n).drop().toFuture(), 30.seconds))
       val runs    = new ShadowRunStore(MongoShadowRunBackend.writer(database, new TtlIndexMismatches), clock)
@@ -131,16 +129,15 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
         source        = ShadowIdentityReaper.resolving(
           // Production's own listing read: the worker's scrape archive, streamed a page at a time.
           listings    = () => w.shadowListings(),
-          // Another key than the offline client's: the observations are keyed with credentials masked.
-          lookups     = () => ObservedIdentityLookups.over(observations,
-            new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("shadow-key")), language = c.country.language), w.detailEnrichers),
+          lookups     = () => (new StoredTmdbLookups(tmdbStore, c.country.language.toLanguageTag,
+            venueDetails, new ObservationReads), new LookupGaps),
           pins        = new InMemoryPinStore,
           normalizer  = c.normalizer,
           calibration = IdentityCalibration.resolver),
         pipelineFilms = () => w.movieCache.snapshot(),
         normalizer    = c.normalizer,
         runs          = runs,
-        retention     = ShadowRetention(services.observations.ObservationRetention.Window),
+        retention     = ShadowRetention(modules.WorkerWiring.ShadowRetentionWindow),
         metrics       = metrics,
         clock         = clock)
 
@@ -154,16 +151,11 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val run = runs.latestRun().getOrElse(fail("no run persisted"))
       val (decisionsSize, decisionsStorage) = sizeOf(database, ShadowRunStore.DecisionsCollection)
       val (diffSize, diffStorage)           = sizeOf(database, ShadowRunStore.DiffCollection)
-      val lookupBytes = observations.currentLookups().map(o => o.query.key.length.toLong + (o.answer match {
-        case services.observations.LookupAnswer.Body(t)  => t.length.toLong
-        case b: services.observations.LookupAnswer.Bytes => b.base64.length.toLong
-        case f: services.observations.LookupAnswer.Failed => f.message.length.toLong
-      })).sum
       info(f"[${c.label}] ${listings.size} listings → ${run.clusters.size} clusters (${tick.films.toSeq.sortBy(_._1.ordinal)
         .map { case (r, n) => s"${r.label} $n" }.mkString(", ")}), ${run.families.size} families differ; tick $wall%.1fs wall, " +
-        f"resolve ${metrics.seconds}%.1fs, CPU $cpu%.1fs, allocated ${alloc / 1e6}%.0f MB; ${tick.gaps} unobserved lookups; " +
+        f"resolve ${metrics.seconds}%.1fs, CPU $cpu%.1fs, allocated ${alloc / 1e6}%.0f MB; ${tick.gaps} unanswered lookups; " +
         f"Mongo: decisions ${decisionsSize / 1e6}%.2f MB (${decisionsStorage / 1e6}%.2f MB on disk), diff ${diffSize / 1e6}%.2f MB " +
-        f"(${diffStorage / 1e6}%.2f MB); observations it read: ${observations.currentLookups().size} (${lookupBytes / 1e6}%.1f MB uncompressed)")
+        f"(${diffStorage / 1e6}%.2f MB)")
 
       withClue(s"[${c.label}] ") {
         c.fetch.requests.get() shouldBe requests

@@ -633,6 +633,14 @@ own shadow run, which reads what this phase stores) turns the evidence into data
 
 ### Capture
 
+> **Removed 2026-09-30.** The raw observation store (`obs_lookups`, `obs_listings`), its capture
+> (`KINOWO_OBSERVATION_CAPTURE`), the observed lookups, the backfill from it and its purge tool are
+> gone. The identity model's TMDB and IMDb answers live only in its normalized TMDB store (`TmdbStore`,
+> filled through `identityLookupFetch`); venue detail pages are read from the pipeline's own enriched
+> slots (`VenueDetailSlots`), re-asked when the enrichment announces a page (`VenueDetailRead`); a
+> cut-over model answers from the store first and asks TMDB live only for what it lacks
+> (`StoredFirstLookups`). What follows is the record of what phase 1 was.
+
 One decorator per seam, generic over everything that passes it — no per-source or per-venue
 code: `ObservingHttpFetch` on `identityLookupFetch` (the enrich-phase chain under the TMDB client, the
 one external client the resolver's `TmdbIdentityLookups` asks), `ObservingDetailEnricher` on every `DetailEnricher`, and

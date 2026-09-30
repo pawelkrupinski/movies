@@ -9,7 +9,6 @@ import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FlicksClient, KinoprogrammClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
-import services.observations.ObservingScrapeArchive
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.{InMemoryScrapeCostStore, MongoScrapeCostStore, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
@@ -286,15 +285,13 @@ trait ScrapeWiring { self: WorkerWiring =>
   // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
   // CinemaMovieAdded) plus the DetailReaper backstop; the runner publishes
   // MovieDetailsComplete only for rows that don't await deferred detail.
-  // The runner archives through the observing archive when the identity program's shadow
-  // capture is on (`observationStore`): every scraped listing becomes an observation too.
   // Wrapped to hand each landing to the copied-feed detector (where one runs), and once more, outermost, to page
   // for a gone venue nothing else pages for.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
     new GoneVenueAlertingArchive(
       copiedFeedDetector.foldLeft(
-        identityModel.filter(_ => !identityCutover).fold(observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)))(model =>
-          new services.identity.IdentityModelFeed(observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)), model)))(
+        identityModel.filter(_ => !identityCutover).fold(scrapeArchive)(model =>
+          new services.identity.IdentityModelFeed(scrapeArchive, model)))(
         new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,
       fallbackPager("gone-venue")),

@@ -4,7 +4,7 @@ import models.{MovieRecord, SourceData}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.freshness.FreshnessStore
 import services.movies.MovieCacheReader
-import services.observations.LookupQuery
+import services.lookups.LookupQuery
 import services.staging.StagingRepository
 import services.tasks.{EnrichDetailsTasks, StagingTaskKeys}
 
@@ -69,14 +69,27 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
     (films ++ staged).groupMap(_._1)(_._2)
   }
 
-  /** Each enricher of a cinema `record` shows, the page it would fetch for it, and the slot that page merged into. */
-  private def entriesOf(record: MovieRecord): Seq[(DetailEnricher, String, SourceData)] =
-    record.cinemaData.keys.toSeq.flatMap(enricherOf.get).flatMap { e =>
+  /** Each venue slot of `record` whose cinema has an enricher, by the page that slot names, and the
+   *  slot that page merged into: the venue slot itself — one listing's, never the cinema's slots merged,
+   *  which would lend one listing's page facts to another's — or, for a chain, its shared target. */
+  private def entriesOf(record: MovieRecord): Seq[(DetailEnricher, String, SourceData)] = {
+    val paged = record.data.toSeq.flatMap { case (source, venueSlot) =>
       for {
-        page <- e.nativeDetailRef(record)
-        slot <- if (e.detailTarget != e.cinema) record.data.get(e.detailTarget) else record.cinemaData.get(e.cinema)
-      } yield (e, page, slot)
+        cinema <- models.Source.cinemaOf(source).toSeq
+        e      <- enricherOf.get(cinema).toSeq
+        page   <- DetailEnricher.nativeRefOf(venueSlot).toSeq
+      } yield (e, page, venueSlot)
     }
+    // A chain lands every page of a row on ONE shared target slot, so it holds whichever was written
+    // last: it answers for a page only when the row names that chain no other page (Cinema City's
+    // "Lalka" and "Ladies Night - Lalka" on one row carried the other film's director).
+    val pagesOf = paged.filter { case (e, _, _) => e.detailTarget != e.cinema }.groupMap(_._1.detailGroup)(_._2).view.mapValues(_.toSet).toMap
+    paged.flatMap { case (e, page, venueSlot) =>
+      if (e.detailTarget == e.cinema) Seq((e, page, venueSlot))
+      else if (pagesOf.get(e.detailGroup).exists(_.sizeIs == 1)) record.data.get(e.detailTarget).map(slot => (e, page, slot)).toSeq
+      else Nil
+    }
+  }
 }
 
 object VenueDetailSlots {
@@ -104,7 +117,7 @@ object VenueDetailSlots {
  * page the enrichment has not asked yet is a gap — `Answer.Unknown` to the model, which re-asks it
  * when the enrichment announces the page — never a failure and never a live fetch.
  */
-final class SourceDataDetailEnricher(underlying: DetailEnricher, slots: VenueDetailSlots, gaps: ObservationGaps,
+final class SourceDataDetailEnricher(underlying: DetailEnricher, slots: VenueDetailSlots, gaps: LookupGaps,
                                      reads: ObservationReads = ObservationReads.Untracked) extends DetailEnricher {
 
   override def cinema: models.Cinema                      = underlying.cinema
@@ -117,7 +130,7 @@ final class SourceDataDetailEnricher(underlying: DetailEnricher, slots: VenueDet
     val key = VenueDetailSlots.keyOf(detailGroup, ref)
     reads.read(key)
     slots.answer(underlying, ref).getOrElse {
-      gaps.record(LookupQuery(key)); throw new ObservationGap(key)
+      gaps.record(LookupQuery(key)); throw new LookupGap(key)
     }
   }
 }

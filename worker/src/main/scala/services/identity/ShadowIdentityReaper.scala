@@ -101,7 +101,7 @@ final case class ShadowInput(resolution: Resolution, listings: Seq[Listing], gap
 object ShadowIdentityReaper {
   /** A WHOLE resolve of `listings` per tick — the shadow before the incremental model, and the
    *  reference the specs hold the model to. */
-  def resolving(listings: () => Seq[Listing], lookups: () => (IdentityLookups, ObservationGaps), pins: PinStore,
+  def resolving(listings: () => Seq[Listing], lookups: () => (IdentityLookups, LookupGaps), pins: PinStore,
                 normalizer: TitleNormalizer, calibration: IdentityCalibration): () => Option[ShadowInput] = () => {
     val corpus         = listings()
     val (source, gaps) = lookups()

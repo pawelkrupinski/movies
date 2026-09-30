@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
+import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
@@ -32,13 +32,13 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
   private val Full  = FilmDetail(director = Seq("Denis Villeneuve"), runtimeMinutes = Some(155), releaseYear = Some(2021),
     originalTitle = Some("Dune"), countries = Seq("US"), synopsis = Some("Sand."))
 
-  private final class World(enricher: FakeDetailEnricher) {
+  private final class World(enricher: FakeDetailEnricher, others: FakeDetailEnricher*) {
     val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
       normalizer = titleNormalizer, clock = clock)
     val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val freshness = new InMemoryFreshnessStore
     val bus       = new RecordingEventBus
-    val slots     = new VenueDetailSlots(cache, staging, freshness, Seq(enricher))
+    val slots     = new VenueDetailSlots(cache, staging, freshness, enricher +: others)
     val handler   = new EnrichDetailsHandler(Map(Group -> enricher), cache, freshness, new UptimeMonitor(), bus,
       new DueWindow(6.hours), clock = clock)
 
@@ -89,13 +89,44 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     world.slots.answer(enricher, "http://arco").flatten.map(_.director) shouldBe Some(Seq("Ugo Bienvenu"))
   }
 
+  /** A chain lands every page of a row on one shared slot: it is a page's answer only when the row
+   *  names that chain no other page. */
+  "A chain's shared detail slot" should "answer the one page the row names for the chain" in {
+    val chain = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", target = Some(CinemaCityChain))
+    val world = new World(chain, new FakeDetailEnricher(CinemaCityKinepolis, "cinema-city", target = Some(CinemaCityChain)))
+    val key   = world.cache.keyOf("Lalka", None)
+    world.cache.put(key, MovieRecord(data = Map(
+      CinemaCityPoznanPlaza -> SourceData(filmUrl = Some("http://cc/lalka")),
+      CinemaCityKinepolis   -> SourceData(filmUrl = Some("http://cc/lalka")),
+      CinemaCityChain       -> SourceData(director = Seq("Maciej Kawalski")))))
+    world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
+      FreshnessKind.DetailEnrich, clock.instant())
+    world.slots.changed()
+    world.slots.answer(chain, "http://cc/lalka").flatten.map(_.director) shouldBe Some(Seq("Maciej Kawalski"))
+  }
+
+  it should "answer nothing when the row names the chain two pages, whose facts it cannot tell apart" in {
+    val chain = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", target = Some(CinemaCityChain))
+    val world = new World(chain, new FakeDetailEnricher(CinemaCityKinepolis, "cinema-city", target = Some(CinemaCityChain)))
+    val key   = world.cache.keyOf("Lalka", None)
+    world.cache.put(key, MovieRecord(data = Map(
+      CinemaCityPoznanPlaza -> SourceData(filmUrl = Some("http://cc/lalka")),
+      CinemaCityKinepolis   -> SourceData(filmUrl = Some("http://cc/ladies-night-lalka")),
+      CinemaCityChain       -> SourceData(director = Seq("Rod Blackhurst")))))
+    world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
+      FreshnessKind.DetailEnrich, clock.instant())
+    world.slots.changed()
+    world.slots.answer(chain, "http://cc/lalka") shouldBe None
+    world.slots.answer(chain, "http://cc/ladies-night-lalka") shouldBe None
+  }
+
   "The model's detail lookup" should "read the page's key and answer Unknown for an unasked page, Known once asked" in {
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
     val world    = new World(enricher)
     val reads    = new ObservationReads
     val lookups  = new TmdbIdentityLookups(new clients.TmdbClient(NoNetwork, apiKey = None),
       new services.enrichment.ImdbClient(NoNetwork),
-      Seq(new SourceDataDetailEnricher(enricher, world.slots, new ObservationGaps, reads)), new ObservationGaps)
+      Seq(new SourceDataDetailEnricher(enricher, world.slots, new LookupGaps, reads)), new LookupGaps)
     val listing  = Listing.of(KinoApollo, CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = Some(Page),
       synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Nil), titleNormalizer)
 

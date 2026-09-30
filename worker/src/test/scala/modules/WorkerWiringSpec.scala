@@ -582,57 +582,37 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // shadow collection is written — until the composition root is told so.
   "the identity shadow run" should "be wired only when KINOWO_IDENTITY_SHADOW switches it on" in {
     val budget = new SharedExecutionBudget(4)
-    def probe(env: tools.Env) = new Probe(Country.Spain, budget, env) {
-      override lazy val observationStore: Option[services.observations.ObservationStore] =
-        Some(services.observations.ObservationStore.inMemory(clock))
-    }
+    def probe(env: tools.Env) = new Probe(Country.Spain, budget, env)
     probe(tools.Env.of()).shadowIdentityReaper shouldBe None
+    // Its TMDB store and the venues' enriched slots are there with or without a database.
     probe(tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")).shadowIdentityReaper shouldBe defined
-    // With nothing observed to read (no capture, no database) there is nothing to resolve from.
-    new Probe(Country.Spain, budget, tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")).shadowIdentityReaper shouldBe None
   }
 
-  // The capture keeps the identity resolver's evidence — what `TmdbIdentityLookups` reads: the
-  // TMDB client's answers and every venue's details — and nothing else. A rating page is per-film
-  // enrichment with no bearing on identity (docs/design/identity-resolver.md §2), and Metacritic
-  // and Rotten Tomatoes pages were ~80% of what the capture wrote in production.
-  "the observation capture" should "observe the TMDB client and the venue details, and no rating or other enrichment client" in {
-    val store = services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
-    val answersEverything: HttpFetch = new HttpFetch {
-      override def get(url: String): String                                  = "{}"
-      override def post(url: String, body: String, contentType: String): String = "{}"
+  // A cut-over model reads TMDB from its normalized store first (`StoredFirstLookups`): a question the
+  // store has no answer to is asked live once, filed into the store as it arrives, and read from there
+  // after — never asked again per take-up.
+  "a cut-over model's lookups" should "ask TMDB live only for what the model's store lacks, and file the answer there" in {
+    val requests = new java.util.concurrent.atomic.AtomicInteger()
+    val counting: HttpFetch = new HttpFetch {
+      override def get(url: String): String = { requests.incrementAndGet(); """{"results":[]}""" }
+      override def post(url: String, body: String, contentType: String): String = get(url)
     }
-    val wiring = new Probe(Country.Poland, new SharedExecutionBudget(4), tools.Env.of("TMDB_API_KEY" -> "test-key")) {
-      override lazy val observationStore: Option[services.observations.ObservationStore] = Some(store)
-      override lazy val enrichmentFetch: HttpFetch = answersEverything
-      override lazy val httoFetch: HttpFetch       = answersEverything
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
+      tools.Env.of("TMDB_API_KEY" -> "test-key", "KINOWO_IDENTITY_CUTOVER" -> Country.Spain.code)) {
+      override lazy val enrichmentFetch: HttpFetch = counting
     }
-    def attempt(call: => Any): Unit = { scala.util.Try(call); () }
-    attempt(wiring.metacriticClient.canonicalUrl("Dune"))
-    attempt(wiring.rottenTomatoesClient.scoreFor("https://www.rottentomatoes.com/m/dune"))
-    attempt(wiring.imdbClient.lookup("tt1160419"))
-    attempt(wiring.imdbClient.findId("Dune", Some(2021)))
-    attempt(wiring.filmwebClient.search("Dune"))
-    attempt(wiring.wikidataClient.findImdbIdByTitle("Dune", Some(2021)))
-    val otherHosts = store.currentLookups().map(_.query.host).toSet
-    withClue("rating / enrichment lookups observed: ")(otherHosts shouldBe empty)
-
-    attempt(wiring.tmdbClient.searchAsRanked("Dune"))
-    attempt(wiring.detailEnrichers.head.fetchFilmDetail("dune"))
-    val observed = store.currentLookups().map(_.query)
-    observed.map(_.host).toSet should contain ("api.themoviedb.org")
-    observed.count(_.key.startsWith("DETAIL ")) shouldBe 1
-    // What the capture files is exactly what the purge of the unscoped capture keeps.
-    observed.filterNot(_.isIdentityEvidence) shouldBe empty
+    val question = services.identity.CandidateQuery.Title("dune")
+    wiring.cutoverLookups().candidates(question) shouldBe services.identity.Answer.Known(Nil)
+    val asked = requests.get
+    asked should be > 0
+    wiring.cutoverLookups().candidates(question) shouldBe services.identity.Answer.Known(Nil)
+    requests.get shouldBe asked
     wiring.stop()
   }
 
   "the shadow run's live lookup fill" should "be wired only when KINOWO_IDENTITY_SHADOW_LOOKUPS and the shadow run are both on" in {
     val budget = new SharedExecutionBudget(4)
-    def probe(pairs: (String, String)*) = new Probe(Country.Spain, budget, tools.Env.of(pairs*)) {
-      override lazy val observationStore: Option[services.observations.ObservationStore] =
-        Some(services.observations.ObservationStore.inMemory(clock))
-    }
+    def probe(pairs: (String, String)*) = new Probe(Country.Spain, budget, tools.Env.of(pairs*))
     probe("KINOWO_IDENTITY_SHADOW" -> "true").shadowLookupFill shouldBe None
     probe("KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true").shadowLookupFill shouldBe None
     val on = probe("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")
@@ -646,8 +626,6 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val rounds = new java.util.concurrent.atomic.AtomicInteger()
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
       tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")) {
-      override lazy val observationStore: Option[services.observations.ObservationStore] =
-        Some(services.observations.ObservationStore.inMemory(clock))
       override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
         def execute(command: Runnable): Unit = { rounds.incrementAndGet(); command.run() }
         def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
@@ -660,10 +638,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "the identity shadow run" should "tick on its own claimed schedule, not the settle's, and persist its run" in {
-    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")) {
-      override lazy val observationStore: Option[services.observations.ObservationStore] =
-        Some(services.observations.ObservationStore.inMemory(clock))
-    }
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true"))
     wiring.settleTick()
     wiring.shadowRuns.latestRun() shouldBe None
     // Before its model is taken up the tick has nothing to diff; after, it persists the model's run.

@@ -12,10 +12,10 @@ package tools
  * pass, which is both the slow half of the sweep and the half most likely to
  * answer differently the second time.
  */
-type CachedResponse = services.observations.LookupAnswer
-/** The same shape a lookup OBSERVATION keeps (`services.observations.LookupAnswer`): a remembered
+type CachedResponse = services.lookups.LookupAnswer
+/** The same shape a lookup OBSERVATION keeps (`services.lookups.LookupAnswer`): a remembered
  *  answer and an observed one are one type, so neither can drift from the other. */
-val CachedResponse: services.observations.LookupAnswer.type = services.observations.LookupAnswer
+val CachedResponse: services.lookups.LookupAnswer.type = services.lookups.LookupAnswer
 
 /**
  * Where an [[EnrichmentCache]]'s remembered responses live between runs.

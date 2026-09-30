@@ -4,18 +4,16 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{ShadowLookupRound, ShadowTick}
-import services.observations.ObservationStore
 import tools._
 
-import java.time.{Clock, ZoneOffset}
 import scala.collection.mutable
 import scala.util.Try
 
 /**
  * The shadow run's paced live lookup fill, as PRODUCTION wires it (`WorkerWiring.shadowLookupFill`,
  * docs/design/identity-resolver.md §17), on the recorded corpora — the replay standing in for the
- * live services. The pipeline boots with the capture on, so the store starts as production's would:
- * holding only the pipeline's own lookups. Then shadow ticks and fill rounds alternate, as the
+ * live services. The pipeline boots first, so the model's TMDB store starts as production's would:
+ * holding only what the pipeline's own client asked. Then shadow ticks and fill rounds alternate, as the
  * settle tick runs them, at the default cap, until a round finds nothing left to ask.
  *
  * It requires every round to stay within its allowance, no request during a shadow tick, and the
@@ -39,15 +37,13 @@ class ShadowLookupFillIntegrationSpec extends AnyFlatSpec with Matchers with Bef
   override def afterAll(): Unit = { storages.synchronized(storages.foreach(s => Try(s.close()))); super.afterAll() }
 
   corpora.foreach { c =>
-    "the shadow run's live lookup fill" should s"close the shadow's gaps within its cap, from the pipeline's capture alone, on ${c.label}" in {
-      val observations = ObservationStore.inMemory(Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
+    "the shadow run's live lookup fill" should s"close the shadow's gaps within its cap, from what the pipeline's own client filed, on ${c.label}" in {
       val storage      = ConvergenceStorage.mongo(mongoTarget, s"shadow-fill-${c.label}", c.normalizer)
       storages.synchronized(storages += storage)
       val w = FetchReplayWiring(c.country, storage, c.rows, c.fetch, fixtureRoot, retrySleep = (_: Long) => (),
         // The suite's own environment (as `IdentityShadow.wiring` passes it), with both switches on.
         environment = new Env(key => Map("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true").get(key)
-          .orElse(configuration.env.get(key))),
-        observations = Some(observations))
+          .orElse(configuration.env.get(key))))
       bootPipeline(w)
       // The model the shadow reads: taken up over the archive, then fed by what the fill files — the
       // store tells it of each new answer, and a drain re-reads exactly the questions that read it.

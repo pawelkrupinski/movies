@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.identity.{CutoverIdentityLookups, CutoverTaskHandlers, FilmIdCounterStore, IdentityCalibration, IdentityListingIntake,
+import services.identity.{CutoverTaskHandlers, FilmIdCounterStore, IdentityCalibration, IdentityListingIntake,
   IdentityProjection, InMemoryFilmIdCounterStore, MongoFilmIdCounterStore, MongoPinStore}
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
@@ -52,7 +52,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new IdentityProjection(
       listings    = () => intake.listings(cinemaScrapers.map(_.cinema)),
       resolve     = identityModel.fold(IdentityProjection.resolving(
-        () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, identityLookupFetch, detailEnrichers),
+        () => cutoverLookups(),
         new MongoPinStore(mongoConnection.database), titleNormalizer, IdentityCalibration.resolver))(
         IdentityProjection.modelled(_, IdentityCutoverWiring.ModelTimeout)),
       cache       = movieCache,

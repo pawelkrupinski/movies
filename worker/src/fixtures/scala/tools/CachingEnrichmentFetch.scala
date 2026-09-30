@@ -111,9 +111,9 @@ object CachingEnrichmentFetch {
 
   /** `METHOD <credential-masked url>`, plus a body fingerprint where the body is
    *  what distinguishes two calls — the one canonical request key, shared with the lookup
-   *  observations (`services.observations.LookupQuery`). */
+   *  observations (`services.lookups.LookupQuery`). */
   def keyOf(method: String, url: String, body: Option[String] = None): String =
-    services.observations.LookupQuery.of(method, url, body).key
+    services.lookups.LookupQuery.of(method, url, body).key
 
   /** Reconstruct the exception a cached failure stands for. A status-bearing
    *  failure comes back as the same typed [[HttpStatusException]] with the same
@@ -127,7 +127,7 @@ object CachingEnrichmentFetch {
   /** What to remember about a failure — the observation store's rule, so a remembered verdict
    *  and an observed one encode a failure identically. */
   def failureOf(failure: Throwable, method: String): CachedResponse.Failed =
-    services.observations.LookupAnswer.failureOf(failure, method)
+    services.lookups.LookupAnswer.failureOf(failure, method)
 }
 
 /** A replayed non-HTTP failure — a timeout or connection error the cache saw on an

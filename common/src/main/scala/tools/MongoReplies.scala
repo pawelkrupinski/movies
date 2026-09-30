@@ -16,8 +16,6 @@ object MongoReplies {
   val Default: Int = 1000
   /** Stored films (`movies`, staging rows): ~25 KB each, a film's every slot. */
   val Films: Int = 50
-  /** Observations (`obs_lookups`, `obs_listings`): a captured response or listing, 7-20 KB. */
-  val Observations: Int = 100
   /** Identity families (`identity_model_families`): a region's decisions, tens of KB. */
   val Families: Int = 50
   /** Scrape archive rows (`cinema_scrapes`): one whole venue scrape, ~170 KB. */

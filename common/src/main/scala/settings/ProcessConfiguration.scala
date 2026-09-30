@@ -153,8 +153,6 @@ final class ProcessConfiguration(val env: Env) {
   def mongoMaxPoolSize(default: MongoMaxPoolSize): MongoMaxPoolSize = MongoMaxPoolSize(count("KINOWO_MONGO_MAX_POOL_SIZE", default.value))
   def mongoOptional: MongoOptional = MongoOptional(env.flag("MONGODB_OPTIONAL"))
 
-  /** `KINOWO_OBSERVATION_CAPTURE` (`true` / `1`); off when unset. */
-  def observationCapture: ObservationCapture = ObservationCapture(env.flag("KINOWO_OBSERVATION_CAPTURE"))
   /** `KINOWO_LISTING_KEY_SHADOW_READ` (`true` / `1`); off when unset. */
   def listingKeyShadowRead: ListingKeyShadowReadEnabled = ListingKeyShadowReadEnabled(env.flag("KINOWO_LISTING_KEY_SHADOW_READ"))
   def listingKeyShadowSample(default: ListingKeyShadowSample): ListingKeyShadowSample =

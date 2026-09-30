@@ -3,8 +3,6 @@ package services.identity
 import clients.TmdbClient
 import play.api.Logging
 import settings.IdentityShadowLookupRate
-import services.cinemas.common.DetailEnricher
-import services.observations.{ObservationStore, ObservingHttpFetch}
 import tools.{CircuitOpenException, HttpFetch, HttpStatusException}
 
 import java.util.concurrent.ExecutorService
@@ -48,9 +46,9 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
 }
 
 /** The fill's LIVE side: every request through `fetch` (the pipeline's shared lookup chain — its
- *  429 gate, breaker and meters — observed into the store, the only place its answer goes), each
- *  taking one slot of the round's `budget`. Without a slot it is deferred: an [[ObservationGap]],
- *  as unobserved as before. An overload ends the round's asks. */
+ *  429 gate, breaker and meters — normalized into the model's TMDB store, the only place its answer
+ *  goes), each taking one slot of the round's `budget`. Without a slot it is deferred: a
+ *  [[LookupGap]], as unanswered as before. An overload ends the round's asks. */
 final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extends HttpFetch with Logging {
 
   override def get(url: String): String = ask(url)(_.get(url))
@@ -60,7 +58,7 @@ final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extend
 
   private def ask[A](url: String)(call: HttpFetch => A): A = {
     val host = ShadowLiveFetch.hostOf(url)
-    if (!budget.acquire(host)) throw new ObservationGap(s"deferred: $url")
+    if (!budget.acquire(host)) throw new LookupGap(s"deferred: $url")
     else try { val a = call(fetch); budget.answered.incrementAndGet(); a }
     catch {
       case definitive: HttpStatusException if HttpStatusException.isDurable(definitive.code) =>
@@ -106,7 +104,7 @@ object ShadowLookupMetrics {
 
 /**
  * The PACED LIVE LOOKUP FILL for the identity shadow run (docs/design/identity-resolver.md §19):
- * the shadow run answers only from the observation store, and most of the resolver's questions
+ * the shadow run answers only from the model's normalized TMDB store, and most of the resolver's questions
  * (yearless searches, director walks, candidate records) are ones the pipeline never asks. After
  * each shadow tick, a round takes the identity model's GAPS (`IncrementalResolver.gaps`: the
  * questions its nodes asked that the store cannot answer, and the records it lacks) — so the
@@ -116,9 +114,8 @@ object ShadowLookupMetrics {
  * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick
  * reads them. Nothing here writes a pipeline cache or row.
  *
- * Venue details are NOT asked: the pipeline's own detail refresh fetches every listing's page on
- * its own cadence (and the capture files it), while a shadow fetch would write the pipeline's
- * detail cache.
+ * Venue details are NOT asked: the pipeline's own detail enrichment fetches every listing's page on
+ * its own cadence, and the model reads it from there (`VenueDetailSlots`).
  *
  * Back-off: an overload (429, 5xx, open breaker, timeout) ends the round at once, and the next
  * round runs at half the rate; each clean round doubles it back, up to the configured rate. One
@@ -126,16 +123,14 @@ object ShadowLookupMetrics {
  */
 final class ShadowLookupFill(
   questions:   () => AnswersChanged,
-  store:       ObservationStore,
   tmdb:        HttpFetch => TmdbClient,
   liveFetch:   HttpFetch,
-  enrichers:   Seq[DetailEnricher],
+  normalizer:  TmdbNormalizer,
   rate:        => IdentityShadowLookupRate,
   window:      => settings.IdentityShadowInterval,
   metrics:     ShadowLookupMetrics,
   executor:    ExecutorService,
   sleep:       Long => Unit = Thread.sleep,
-  normalizer:  Option[TmdbNormalizer] = None,
   beforeRound: () => Unit = () => (),
   refreshes:   () => Seq[CandidateQuery] = () => Nil,
   gapMemory:   Option[TmdbGapMemory] = None
@@ -151,17 +146,11 @@ final class ShadowLookupFill(
   def round(): ShadowLookupRound = {
     val at     = effectiveRate
     val budget = new ShadowLookupBudget(at.allowanceOver(window.value), at.pace, sleep)
-    // Observed first (main's `ObservedFirstHttpFetch`, the cut-over projection's own), live for a
-    // gap within the budget; details from the store only.
-    val gaps    = new ObservationGaps
-    // Live answers kept raw only where no normalized store takes them.
-    val live          = if (normalizer.isDefined) liveFetch else new ObservingHttpFetch(liveFetch, store)
-    val observedFirst = new ObservedFirstHttpFetch(store, new ShadowLiveFetch(live, budget))
-    // Every answer the round reads — observed or live — normalized into the model's TMDB store: a gap
-    // the store lacks is filled whichever way it was answered.
-    val fetch   = normalizer.fold[tools.HttpFetch](observedFirst)(new NormalizingHttpFetch(observedFirst, _))
-    val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch),
-      enrichers.map(new ObservedDetailEnricher(_, store, gaps)), gaps)
+    // Live within the budget, every answer normalized into the model's TMDB store — where the model's
+    // gaps are, by definition, not yet.
+    val gaps    = new LookupGaps
+    val fetch   = new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), normalizer)
+    val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch), Nil, gaps)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
@@ -179,12 +168,8 @@ final class ShadowLookupFill(
     val unansweredFilms   = asked.films.toSeq.sorted.filter(id => stillUnanswered(lookups.film(id)))
     gapMemory.foreach(_.unanswered(unansweredQueries, unansweredFilms))
     // Then, with what the allowance has left, questions asked again because they have aged
-    // (`TmdbRefreshes`) — live only: an answer stored raw is exactly the old one.
-    normalizer.foreach { n =>
-      val live = new TmdbIdentityLookups(tmdb(new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), n)),
-        new services.enrichment.ImdbClient(new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), n)), Nil)
-      refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(live.candidates)
-    }
+    // (`TmdbRefreshes`) — through the same live fetch.
+    refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityShadowLookupRate((at.perMinute * 2).min(rate.perMinute)))
     val r = ShadowLookupRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)

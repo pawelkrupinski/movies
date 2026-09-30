@@ -84,20 +84,13 @@ trait HttpWiring { self: WorkerWiring =>
   lazy val enrichmentFetch: HttpFetch =
     phaseFetch(WorkerHttpMetrics.Phase.Enrich)
 
-  // What the identity resolver's lookups draw from: `enrichmentFetch`, observed when the identity
-  // program's shadow capture is on (`observationStore`). The resolver's lookups are
-  // `TmdbIdentityLookups` — a TMDB client plus the venues' `detailEnrichers` (observed in
-  // DetailWiring) — so the TMDB client is the ONE external client over this fetch; every rating,
-  // metadata and id-crosswalk client draws from `enrichmentFetch` unobserved, since none of them
-  // is identity evidence (docs/design/identity-resolver.md §2, "Capture"). Wrapped OUTSIDE the
-  // chain, so an observation is what the pipeline itself received — a replayed fixture, a
-  // remembered verdict or the wire — and a harness that swaps `enrichmentFetch` is still observed.
+  // What the TMDB client draws from: `enrichmentFetch`, its answers normalized into the identity
+  // model's TMDB store (`TmdbStore`) as they arrive wherever the model runs — the one place the
+  // model's TMDB and IMDb answers are kept, whoever asked them (the pipeline's resolve, the shadow's
+  // fill, a cut-over model's live gap). Wrapped OUTSIDE the chain, so what is filed is what the
+  // pipeline itself received — a replayed fixture, a remembered verdict or the wire.
   lazy val identityLookupFetch: HttpFetch =
-    // Normalized into the identity model's TMDB store (`TmdbStore`) as it arrives, where the model runs;
-    // kept raw in `obs_lookups` only where it does not — a raw copy would be refiled daily for nothing
-    // but TMDB's popularity drift (2.6 GB/day of fleet-wide churn, 2026-09-29).
-    identityTmdbNormalizer.fold(observationStore.fold(enrichmentFetch)(new services.observations.ObservingHttpFetch(enrichmentFetch, _)))(
-      new services.identity.NormalizingHttpFetch(enrichmentFetch, _))
+    identityTmdbNormalizer.fold(enrichmentFetch)(new services.identity.NormalizingHttpFetch(enrichmentFetch, _))
 
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from the `enrich` phase (the TMDB client through `identityLookupFetch`), apart from

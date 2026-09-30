@@ -235,8 +235,7 @@ trait TestWiring extends WorkerWiring {
     cinemaScrapers.foreach { scraper =>
       try {
         val movies  = scraper.fetch()
-        // Archived as the runner's `run` archives — which is also where the identity
-        // program's shadow capture observes each listing (`ObservationCaptureEndToEndSpec`).
+        // Archived as the runner's `run` archives.
         cinemaScrapeRunner.archive(scraper, movies, error = None)
         val touched = movieCache.recordCinemaScrape(scraper.cinema, movies)
         // `classify` marks rows that await deferred detail `detailPending` (held

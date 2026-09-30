@@ -52,11 +52,6 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[StickyShardHttpFetch]        -> ((d: HttpFetch) => new StickyShardHttpFetch(IndexedSeq(d))),
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
-      classOf[services.observations.ObservingHttpFetch] -> ((d: HttpFetch) =>
-        new services.observations.ObservingHttpFetch(d, services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))),
-      // An empty store observed nothing, so every call reaches the live fetch it decorates.
-      classOf[services.identity.ObservedFirstHttpFetch] -> ((d: HttpFetch) =>
-        new services.identity.ObservedFirstHttpFetch(services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), d)),
       // A budget with room: every call reaches the fetch it decorates.
       classOf[services.identity.ShadowLiveFetch] -> ((d: HttpFetch) =>
         new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ()))),
@@ -71,8 +66,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       Seq(classOf[RateLimitedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
-          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.observations.ObservingHttpFetch],
-          classOf[services.identity.ObservedFirstHttpFetch], classOf[services.identity.ShadowLiveFetch],
+          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.ShadowLiveFetch],
           classOf[services.identity.NormalizingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(

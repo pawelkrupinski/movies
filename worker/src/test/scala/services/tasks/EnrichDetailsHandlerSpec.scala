@@ -164,7 +164,8 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     cache.get(key).map(_.detailPending) shouldBe Some(false)
     // The TMDB re-trigger carries the detail-page director + original title — the
     // hints a director-less first scrape lacked.
-    bus.published.toList shouldBe List(MovieDetailsComplete("Hamnet", None, Some("Hamnet"), Some("Chloé Zhao")))
+    // The TMDB re-trigger; the page's own announcement (`VenueDetailRead`) is the identity model's.
+    bus.published.collect { case e: MovieDetailsComplete => e } shouldBe List(MovieDetailsComplete("Hamnet", None, Some("Hamnet"), Some("Chloé Zhao")))
   }
 
   it should "NOT re-trigger TMDB when refreshing a row that wasn't awaiting detail (no detailPending)" in {
@@ -174,7 +175,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, dueWindow, clock = specClock)
 
     h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
-    bus.published shouldBe empty // a periodic detail refresh mustn't churn the TMDB stage
+    bus.published.collect { case e: MovieDetailsComplete => e } shouldBe empty // a periodic detail refresh mustn't churn the TMDB stage
   }
 
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {

@@ -237,24 +237,6 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString).keySet should not contain allOf ("local", "english")
   }
 
-  "the backfill" should "move the raw TMDB answers the observation store holds into the normalized store, 404s included, once" in {
-    import services.observations.{LookupAnswer, LookupQuery, ObservationStore}
-    val w   = new World
-    val obs = ObservationStore.inMemory(w.clock)
-    obs.observeLookup(LookupQuery.of("GET", url("credits,release_dates", language)), LookupAnswer.Body(local()))
-    obs.observeLookup(LookupQuery.of("GET", url("alternative_titles", "en-US")), LookupAnswer.Body(english))
-    obs.observeLookup(LookupQuery.of("GET", "https://api.themoviedb.org/3/person/5/movie_credits?language=pl-PL"),
-      LookupAnswer.Failed(Some(404), "GET", "HTTP 404"))
-    obs.observeLookup(LookupQuery.of("GET", "https://www.metacritic.com/movie/lalka/"), LookupAnswer.Body("<html/>"))
-    val backfill = new TmdbStoreBackfill(obs, w.normalizer, w.docs, w.clock)
-    backfill.ensure()
-    w.lookups.film(film).toOption.flatten.map(_.directors) shouldBe Some(Some(Seq("David Lynch")))
-    w.docs.get(TmdbKind.Person, Seq("5"))("5").getArray("directed").size shouldBe 0            // 404: a person with no credits
-    val filed = w.changed.size
-    backfill.ensure()                                                                             // done once: marked
-    w.changed.size shouldBe filed
-  }
-
   "the popularity bucket" should "be the measure's own, and give itself back from its representative" in {
     (-10 to 20).foreach(b => PopularityBucket.of(PopularityBucket.representative(b)) shouldBe b)
     PopularityBucket.of(0.0) shouldBe -10
