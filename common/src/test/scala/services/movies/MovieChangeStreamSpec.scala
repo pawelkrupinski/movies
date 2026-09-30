@@ -104,7 +104,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     rereadRetryMillis:   Long                        = 20L,
-    fence:               FilmWriteFence              = new FilmWriteFence()
+    fence:               FilmWriteFence              = new FilmWriteFence(),
+    sideCoalesceDelay:   scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -118,7 +119,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
     clock               = clock,
     rereadRetryMillis   = rereadRetryMillis,
-    decodeFailures      = decodeFailures)
+    decodeFailures      = decodeFailures,
+    sideCoalesceDelay   = sideCoalesceDelay)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -276,6 +278,44 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       slotsSeen.coalesced.get()  shouldBe Burst - 1  // every slot event after the first rode the queued apply
       screeningsSeen.coalesced.get() shouldBe 1      // …and so did the screenings event, counted on ITS cursor
     } finally { handle.close(); under.close() }
+  }
+
+  // Coalescing only while an apply is QUEUED misses a burst whose rows land seconds apart — a
+  // venue scrape writing a film's rows, a Flicks venue landing in day-chunks — and each of those
+  // events bought a full re-read of the film. Holding the opening event's apply for a delay lets
+  // the rest of the burst find it pending, whatever the apply thread is doing.
+  private def spacedBurst(delay: scala.concurrent.duration.FiniteDuration): Int = {
+    val slots  = new InMemorySlotsRepository
+    val reread = new AtomicInteger(0)
+    val under  = stream(new HandFedSource, slots = Some(slots), sideCoalesceDelay = delay,
+      reread = id => { if (id == "film|2024") reread.incrementAndGet(); Some(recordOf(id)) })
+    val handle = under.watch(_ => (), _ => ())
+    try {
+      (0 until 6).foreach { i => slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i"))); Thread.sleep(30) }
+      Thread.sleep(delay.toMillis + 500)
+      reread.get()
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "re-read a film once for a burst whose rows land within its coalescing delay, not once a row" in {
+    spacedBurst(scala.concurrent.duration.Duration(300, "millis")) shouldBe 1
+  }
+
+  it should "re-read a film per row of a spaced burst when it holds nothing back" in {
+    spacedBurst(scala.concurrent.duration.Duration.Zero) should be > 1
+  }
+
+  it should "apply a film still held for its coalescing delay when it closes, not drop it" in {
+    val slots  = new InMemorySlotsRepository
+    val reread = new AtomicInteger(0)
+    val under  = stream(new HandFedSource, slots = Some(slots), sideCoalesceDelay = scala.concurrent.duration.Duration(1, "hour"),
+      reread = id => { reread.incrementAndGet(); Some(recordOf(id)) })
+    val handle = under.watch(_ => (), _ => ())
+    slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
+    Thread.sleep(200)
+    reread.get() shouldBe 0            // held
+    handle.close(); under.close()
+    reread.get() shouldBe 1            // released and drained at close
   }
 
   // THE THIRD CURSOR'S BLIND SPOT (2026-09-15). `dropCinemaSlots` writes `retainedSynopses`

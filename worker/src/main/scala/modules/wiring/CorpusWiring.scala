@@ -4,7 +4,7 @@ import scala.concurrent.duration.DurationInt
 import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
 import modules.WorkerWiring
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
 
 /** ── MovieRecord cache (write-through) ───────────────────────────────────────
  *  The `movies` corpus and its side collections, the write-through cache every
@@ -48,6 +48,7 @@ trait CorpusWiring { self: WorkerWiring =>
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
+    changeCoalesceDelay = MovieChangeStream.WorkerSideCoalesceDelay,
     // The worker is the durable read-model/cache mirror: persist the change-stream resume
     // token so a restart replays events missed while down instead of leaning on the backstop.
     persistResumeToken = true)

@@ -69,7 +69,10 @@ final class MovieChangeStream(
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
   rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis,
   // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
-  decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
+  decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
+  // How long a side-collection event that opens a film's apply waits before the apply is queued,
+  // so the rest of that film's burst rides it — see `SideCursor.applyChange`. Zero queues at once.
+  sideCoalesceDelay:   scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -140,6 +143,23 @@ final class MovieChangeStream(
   // and its side-collection burst now arriving together are one re-read too, not two.
   private val sideApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
 
+  // Holds a film's side-collection apply for `sideCoalesceDelay` before it is queued. A burst
+  // ringing within that time rides the one apply; the same delay for every film keeps the applies
+  // in the order their first events arrived, which the resume positions rely on.
+  private lazy val coalescer = tools.DaemonExecutors.scheduler("movie-change-coalesce")
+  // The applies waiting out their delay, by film — released by their timer or by `close`, whichever
+  // takes one first (a cancelled scheduler would drop them silently rather than run them).
+  private val held = new java.util.concurrent.ConcurrentHashMap[String, () => Unit]()
+
+  private def afterCoalesceDelay(filmId: String)(queue: => Unit): Unit =
+    if (sideCoalesceDelay <= scala.concurrent.duration.Duration.Zero) queue
+    else {
+      held.put(filmId, () => queue)
+      coalescer.schedule((() => Option(held.remove(filmId)).foreach(_())): Runnable,
+        sideCoalesceDelay.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+      ()
+    }
+
   /** One side-collection cursor — `screenings` or `movie_slots` — with its own demand
    *  window and its own coalescing counter, ringing into the shared apply. */
   private final class SideCursor(
@@ -175,6 +195,14 @@ final class MovieChangeStream(
      *  the read would let exactly that event be swallowed by an apply that could not have seen
      *  it. The cost of the safe order is at most one extra apply per burst.
      *
+     *  Coalescing only while an apply is QUEUED caught just the events that arrived behind a busy
+     *  apply thread: a venue scrape writes a film's rows seconds apart, a Flicks venue lands in
+     *  day-chunks, and each missed the window and bought its own full re-read — ~0.6 a second on
+     *  the US, each decoding every venue's showtimes of the film (its widest: 2,466 screenings
+     *  rows, ~50 MB). `sideCoalesceDelay` holds the opening event's apply so the rest of the burst
+     *  finds it pending: over ten minutes of the US corpus's own writes, 30 s merged 44% of the
+     *  events into applies already waiting (2026-09-30).
+     *
      *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes its cursor
      *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
      *  and an event that rides an already-queued apply never reaches that task's `finally`. It
@@ -193,12 +221,12 @@ final class MovieChangeStream(
     private def applyChange(filmId: String, applied: () => Unit): Unit = {
       liveness.delivered(collection)
       if (sideApplyPending.add(filmId))
-        applyOffLoop(collection, demand) {
+        afterCoalesceDelay(filmId)(applyOffLoop(collection, demand) {
           sideApplyPending.remove(filmId)
           // this cursor's resume position moves only once the film is fanned out — see
           // `SideCollectionWatch` and `applyReread`
           applyReread(filmId, hold)(applied)
-        }
+        })
       else {
         metrics.recordCoalescedChange()
         demand.applied()
@@ -481,6 +509,11 @@ final class MovieChangeStream(
     rereadRetry.shutdownNow()
     Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
     moviesDemand.closed()
+    // An apply still held for its coalescing delay is queued now, so it drains with the rest.
+    if (sideCoalesceDelay > scala.concurrent.duration.Duration.Zero) {
+      coalescer.shutdownNow()
+      held.keySet.forEach(filmId => Option(held.remove(filmId)).foreach(release => scala.util.Try(release())))
+    }
     // Let the applies already queued FINISH (bounded) before the final positions are saved:
     // saved first, a position misses them; and the apply thread is a daemon, so JVM exit
     // would otherwise cut a fan-out short.
@@ -505,6 +538,11 @@ object MovieChangeStream {
   private[movies] val RereadBackoffMillis = 100L
   /** When a film whose re-read failed is first read again, and the most its delay doubles to. */
   private[movies] val RereadRetryMillis    = 30_000L
+
+  /** The worker's `sideCoalesceDelay`: 30 s merged 44% of a sample of the US corpus's writes into an
+   *  apply already waiting (10 s: 26%, 60 s: 53%), and a showtime reaching the site 30 s later is
+   *  well inside the apply-lag alerts (180 s rising, 600 s). */
+  val WorkerSideCoalesceDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "seconds")
   private[movies] val RereadRetryMaxMillis = 600_000L
   /** How long `close()` waits for queued applies before saving the final positions. */
   private[movies] val CloseDrainSeconds   = 10L

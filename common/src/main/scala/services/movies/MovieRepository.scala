@@ -509,6 +509,9 @@ class MongoMovieRepository(
   // so a spec can prove the bound with a handful of writes instead of a full window's
   // worth; production never passes it. See [[ChangeStreamDemand]].
   changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow,
+  // How long a side-collection change waits for the rest of its film's burst before the film is
+  // re-read — see `MovieChangeStream.sideCoalesceDelay`. The worker passes its own; zero re-reads at once.
+  changeCoalesceDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero,
   // What the SCREENINGS cursor's apply does — its events, and the ones it coalesced away.
   // Separate from `changeStreamMetrics` (which is the `movies` cursor's) because they are
   // two different streams answering two different questions; the worker happens to satisfy
@@ -1237,7 +1240,8 @@ class MongoMovieRepository(
       screeningsMetrics   = screeningsMetrics,
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
-      decodeFailures      = decodeFailures)
+      decodeFailures      = decodeFailures,
+      sideCoalesceDelay   = changeCoalesceDelay)
   }
 
   /** Change events handed to the apply thread but not yet applied — see
