@@ -3,9 +3,8 @@ package services.tasks
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScrapeRunner, CinemaScraper}
+import services.cinemas.common.CinemaScrapeRunner
 import services.events.InProcessEventBus
-import services.freshness.InMemoryFreshnessStore
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -35,8 +34,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * them. This spec is about carrying that fact instead of discarding it.
  */
 class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
-  import HandlerOutcome._
-
   private val cinema     = Multikino
   private val cinemaName = cinema.displayName
   private val now        = Instant.parse("2026-06-25T00:00:00Z")
@@ -47,54 +44,30 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     CinemaMovie(Movie(title), cinema, None, Some(s"https://f/$title"), None, Nil, Nil,
       Seq(Showtime(LocalDateTime.of(2026, 6, day, 18, 0), None)), Map.empty, None)
 
-  private class FakeChunked(slices: Map[String, Seq[CinemaMovie]], failAlways: Set[String] = Set.empty)
-    extends ChunkedCinemaScraper {
-    val cinema: models.Cinema = PartialReducePruneSpec.this.cinema
-    def scrapeHosts: Set[String] = Set("fake.pl")
-    def planChunks(): Seq[String] = slices.keys.toSeq.sorted
-    def fetchChunk(k: String): Seq[CinemaMovie] =
-      if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k down")
-      else slices.getOrElse(k, Nil)
-  }
-
   // The daily film is in every chunk; the advance-booking film sits alone in chunk "b".
   private val daily   = film("Daily Blockbuster", 25)
   private val advance = film("Met Opera 2026/27 Macbeth", 26)
 
-  private class Harness(scraper: FakeChunked) {
-    val queue     = new InMemoryTaskQueue
-    val store     = new InMemoryChunkScrapeStore
-    val freshness = new InMemoryFreshnessStore
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
-    // The REAL publish path: runner → MovieCache.recordCinemaScrape, which is where the
-    // prune lives. The existing ChunkScrapeFlowSpec stubs this out, which is exactly why
-    // it never saw this.
-    val runner    = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
-    val publish: CinemaScraper => Unit = s => { runner.run(s); () }
-    val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
-    val clk     = Clock.fixed(now, ZoneOffset.UTC)
-    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clk)
-    val planner = new ChunkScrapePlanner(map, store, queue, publish, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clk)
-    val chunkH  = new ScrapeChunkHandler(map, store, clk)
-    val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clk)
-    val coord   = new ChunkScrapeCoordinator(store, queue)
-    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock = c)
+  private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
-    def drain(at: Instant = now): Unit = {
-      var next = queue.claim("w", 30.seconds, at)
-      while (next.isDefined) {
-        val task = next.get
-        val handler = if (task.taskType == TaskType.ScrapeChunk) chunkH else reduceH
-        handler.handle(task) match {
-          case Done | Skipped =>
-            queue.complete(task.id, "w")
-            // Only ScrapeChunk drives the coordinator, exactly as the prod subscription does.
-            if (task.taskType == TaskType.ScrapeChunk) coord.onTaskFinished(
-              services.events.TaskFinished(task.taskType, task.dedupKey, task.payload))
-          case _ => queue.complete(task.id, "w")
-        }
-        next = queue.claim("w", 30.seconds, at)
-      }
+  /** A cache, and the chunked stack over it publishing down the REAL path: runner →
+   *  `MovieCache.recordCinemaScrape`, which is where the prune lives. `ChunkScrapeFlowSpec`
+   *  stubs the publish out, which is exactly why it never saw this. */
+  private def harness(scraper: FakeChunkedScraper): (CaffeineMovieCache, ChunkScrapeHarness) = {
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val runner = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
+    (cache, new ChunkScrapeHarness(scraper, s => { runner.run(s); () }, clock, staleAfter = stale))
+  }
+
+  /** Run every claimable task once and complete it, WITHOUT firing the coordinator —
+   *  so a run whose chunk failed cannot complete on its own. */
+  private def runEachOnce(h: ChunkScrapeHarness, at: Instant): Unit = {
+    var next = h.queue.claim("w", 30.seconds, at)
+    while (next.isDefined) {
+      val t = next.get
+      h.handlerFor(t).handle(t)
+      h.queue.complete(t.id, "w")
+      next = h.queue.claim("w", 30.seconds, at)
     }
   }
 
@@ -105,10 +78,10 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     }.flatten).toSet
 
   "a healthy chunked scrape" should "hold both the daily and the advance-booking film" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(daily), "b" -> Seq(advance))))
+    val (cache, h) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))
     h.planner.plan(cinemaName)
-    h.drain()
-    slotTitles(h.cache) should contain allOf ("Daily Blockbuster", "Met Opera 2026/27 Macbeth")
+    h.drain(now)
+    slotTitles(cache) should contain allOf ("Daily Blockbuster", "Met Opera 2026/27 Macbeth")
   }
 
   // THE regression. Chunk "b" — the only chunk the advance-booking title appears in —
@@ -117,40 +90,23 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
   // nobody looked at its date.
   it should "not prune a film whose only chunk never landed" in {
     // First, a COMPLETE run, so the cinema legitimately holds both films.
-    val healthy = new Harness(new FakeChunked(Map("a" -> Seq(daily), "b" -> Seq(advance))))
+    val (cache, healthy) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))
     healthy.planner.plan(cinemaName)
-    healthy.drain()
-    slotTitles(healthy.cache) should contain ("Met Opera 2026/27 Macbeth")
+    healthy.drain(now)
+    slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
 
     // Now the same cinema re-scrapes and chunk "b" is dead. The reaper gives up and
     // partial-reduces: the published listing has only the daily film.
-    val partial = new FakeChunked(Map("a" -> Seq(daily), "b" -> Seq(advance)), failAlways = Set("b"))
-    val map     = Map(cinemaName -> (partial: ChunkedCinemaScraper))
-    val clk     = Clock.fixed(now, ZoneOffset.UTC)
-    val planner = new ChunkScrapePlanner(map, healthy.store, healthy.queue, healthy.publish, healthy.policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clk)
-    val chunkH  = new ScrapeChunkHandler(map, healthy.store, clk)
-    val reduceH = new ScrapeChunkReduceHandler(map, healthy.store, healthy.publish, healthy.policy, clk)
-    planner.plan(cinemaName)
+    val partial = healthy.rescraping(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance)), failAlways = Set("b")))
+    partial.planner.plan(cinemaName)
     // drain chunk 'a' (stores) and 'b' (fails); the run cannot complete on its own
-    var next = healthy.queue.claim("w", 30.seconds, now)
-    while (next.isDefined) {
-      val t = next.get
-      (if (t.taskType == TaskType.ScrapeChunk) chunkH else reduceH).handle(t)
-      healthy.queue.complete(t.id, "w")
-      next = healthy.queue.claim("w", 30.seconds, now)
-    }
+    runEachOnce(partial, now)
     val past = now.plusSeconds(16 * 60)
-    healthy.reaper(Clock.fixed(past, ZoneOffset.UTC)).tick() shouldBe 1
-    next = healthy.queue.claim("w", 30.seconds, past)
-    while (next.isDefined) {
-      val t = next.get
-      (if (t.taskType == TaskType.ScrapeChunk) chunkH else reduceH).handle(t)
-      healthy.queue.complete(t.id, "w")
-      next = healthy.queue.claim("w", 30.seconds, past)
-    }
+    partial.reaper(Clock.fixed(past, ZoneOffset.UTC)).tick() shouldBe 1
+    runEachOnce(partial, past)
 
-    withClue(s"cinema now holds ${slotTitles(healthy.cache)}: ") {
-      slotTitles(healthy.cache) should contain ("Met Opera 2026/27 Macbeth")
+    withClue(s"cinema now holds ${slotTitles(cache)}: ") {
+      slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
     }
   }
 
@@ -159,35 +115,19 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
   // real evidence it stopped screening, and must still prune. Otherwise every chunked
   // venue accumulates films forever.
   it should "still prune a film a COMPLETE run no longer lists" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(daily), "b" -> Seq(advance))))
+    val (cache, h) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))
     h.planner.plan(cinemaName)
-    h.drain()
-    slotTitles(h.cache) should contain ("Met Opera 2026/27 Macbeth")
+    h.drain(now)
+    slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
 
     // Same cinema, every chunk lands, but the advance title is gone from the listing.
-    val dropped = new FakeChunked(Map("a" -> Seq(daily), "b" -> Seq.empty))
-    val map     = Map(cinemaName -> (dropped: ChunkedCinemaScraper))
-    val clk     = Clock.fixed(now, ZoneOffset.UTC)
-    val planner = new ChunkScrapePlanner(map, h.store, h.queue, h.publish, h.policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clk)
-    val chunkH  = new ScrapeChunkHandler(map, h.store, clk)
-    val reduceH = new ScrapeChunkReduceHandler(map, h.store, h.publish, h.policy, clk)
-    planner.plan(cinemaName)
-    var next = h.queue.claim("w", 30.seconds, now)
-    while (next.isDefined) {
-      val t = next.get
-      (if (t.taskType == TaskType.ScrapeChunk) chunkH else reduceH).handle(t) match {
-        case Done | Skipped =>
-          h.queue.complete(t.id, "w")
-          if (t.taskType == TaskType.ScrapeChunk) h.coord.onTaskFinished(
-            services.events.TaskFinished(t.taskType, t.dedupKey, t.payload))
-        case _ => h.queue.complete(t.id, "w")
-      }
-      next = h.queue.claim("w", 30.seconds, now)
-    }
+    val dropped = h.rescraping(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq.empty)))
+    dropped.planner.plan(cinemaName)
+    dropped.drain(now)
 
-    withClue(s"cinema now holds ${slotTitles(h.cache)}: ") {
-      slotTitles(h.cache) should not contain "Met Opera 2026/27 Macbeth"
-      slotTitles(h.cache) should contain ("Daily Blockbuster")
+    withClue(s"cinema now holds ${slotTitles(cache)}: ") {
+      slotTitles(cache) should not contain "Met Opera 2026/27 Macbeth"
+      slotTitles(cache) should contain ("Daily Blockbuster")
     }
   }
 }

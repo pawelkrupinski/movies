@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import FakeChunkedScraper.CircuitBlockMs
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.collection.mutable
@@ -29,93 +30,27 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     CinemaMovie(Movie(title), cinema, None, Some(s"https://f/$title"), None, Nil, Nil,
       Seq(Showtime(LocalDateTime.of(2026, 6, day, 18, 0), None)), Map.empty, None)
 
-  /** A fake chunked cinema: each cinemaName maps to its slice; keys in `failOnce` throw
-   *  on their first `fetchChunk` then succeed; keys in `circuitOpen` fast-fail as a
-   *  breaker-blocked host would; `planThrows` fails enumeration. */
-  private class FakeChunked(slices: Map[String, Seq[CinemaMovie]], failOnce: Set[String] = Set.empty,
-                            failAlways: Set[String] = Set.empty, planThrows: Boolean = false,
-                            circuitOpen: Set[String] = Set.empty, gone: Set[String] = Set.empty) extends ChunkedCinemaScraper {
-    private val failed = mutable.Set.empty[String]
-    val cinema: models.Cinema = ChunkScrapeFlowSpec.this.cinema
-    def scrapeHosts: Set[String] = Set("fake.pl")
-    def planChunks(): Seq[String] = if (planThrows) throw new RuntimeException("nav down") else slices.keys.toSeq.sorted
-    def fetchChunk(k: String): Seq[CinemaMovie] =
-      if (circuitOpen.contains(k)) throw new tools.CircuitOpenException("fake.pl", CircuitBlockMs)
-      else if (gone.contains(k)) throw new tools.HttpStatusException(404, "GET", s"https://fake.pl/$k", None)
-      else if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
-      else if (failOnce.contains(k) && failed.add(k)) throw new RuntimeException(s"chunk $k transient")
-      else slices.getOrElse(k, Nil)
-  }
-
-  private val CircuitBlockMs = 45000L
-
-  /** A clock the test drives forward by hand — for the cases whose subject measures
-   *  a window from "now" (a circuit block), where a fixed clock would keep handing
-   *  back a deadline that has already passed. */
-  private class AdvancingClock(start: Instant) extends Clock {
-    private var current = start
-    def advanceMillis(ms: Long): Unit = current = current.plusMillis(ms)
-    override def instant(): Instant = current
-    override def getZone: java.time.ZoneId = ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): Clock = this
-  }
-
-  private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
+  /** The chunked-scrape stack publishing into `published`. As production's recording
+   *  wrapper does, a failed scrape re-raises — unless the venue's fallback served it
+   *  instead (`fallbackServes`), which returns normally. */
+  private class Harness(scraper: FakeChunkedScraper, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
                          venueCadenceDefault: FiniteDuration = 14.hours,
-                         val store: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore,
+                         chunkStore: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore,
                          fallbackServes: Boolean = false) {
-    val queue     = new InMemoryTaskQueue
-    val freshness = new InMemoryFreshnessStore
     val venueCadence = new VenueCadenceStore(settings.ScrapeFreshness(venueCadenceDefault))
-    val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
-    // As production's recording wrapper: a failed scrape re-raises, unless the venue's
-    // fallback served it instead (`fallbackServes`), which returns normally.
-    val publishScrape: CinemaScraper => Unit = s => {
+    val published    = mutable.ListBuffer.empty[Seq[CinemaMovie]]
+    private val stack = new ChunkScrapeHarness(scraper, s => {
       val scraped = scala.util.Try(s.fetch())
       published += scraped.getOrElse(Seq.empty)
       if (!fallbackServes) scraped.get
       ()
-    }
-    private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
-    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock, venueCadence = Some(venueCadence))
-    val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock)
-    val chunkH  = new ScrapeChunkHandler(map, store, clock)
-    val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, policy, clock)
-    val coord   = new ChunkScrapeCoordinator(store, queue)
-    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock = c)
-
-    /** Claim+handle every currently-claimable task once; on a finished ScrapeChunk
-     *  fire the coordinator (as the EventBus subscription does in prod). Rescheduled
-     *  and deferred tasks are held back so the pass terminates. Returns tasks
-     *  processed. Bounded like `StagingQueueEndToEndSpec`'s pump: a task released to
-     *  an instant this pass has already reached is claimable again immediately, and
-     *  an unguarded loop then spins the suite instead of failing it. */
-    def drain(at: Instant = now): Int = {
-      var n = 0
-      var next = queue.claim("w", 30.seconds, at)
-      while (next.isDefined && n < 500) {
-        val task = next.get
-        val handler = if (task.taskType == TaskType.ScrapeChunk) chunkH else reduceH
-        handler.handle(task) match {
-          case Done | Skipped =>
-            queue.complete(task.id, "w")
-            if (task.taskType == TaskType.ScrapeChunk)
-              coord.onTaskFinished(TaskFinished(task.taskType, task.dedupKey, task.payload))
-          case Reschedule(err) => queue.release(task.id, "w", err, Some(at.plusSeconds(60)))
-          // Mirrors TaskWorker: a deferred chunk waits out the block it named and
-          // gets its attempt back, since it never ran.
-          case Deferred(err, notBefore) =>
-            queue.release(task.id, "w", err, Some(notBefore.getOrElse(at.plusSeconds(60))), refundAttempt = true)
-        }
-        n += 1
-        next = queue.claim("w", 30.seconds, at)
-      }
-      n
-    }
+    }, clock, chunkStore, venueCadence = Some(venueCadence), staleAfter = stale)
+    export stack.{queue, store, freshness, planner, chunkH, reduceH, coord, reaper}
+    def drain(at: Instant = now): Int = stack.drain(at)
   }
 
   "a chunked scrape" should "fan out, gather, and publish the merged listing once every chunk lands" in {
-    val h = new Harness(new FakeChunked(Map(
+    val h = new Harness(new FakeChunkedScraper(Map(
       "2026-06-25" -> Seq(film("Dune", 25)),
       "2026-06-26" -> Seq(film("Dune", 26), film("Wicked", 26)))))
     h.planner.plan(cinemaName) shouldBe 2
@@ -132,7 +67,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
 
   it should "not publish or complete a run whose chunks it could not read — the reduce retries" in {
     val store = new FailingReadChunkScrapeStore
-    val h = new Harness(new FakeChunked(Map("2026-06-25" -> Seq(film("Dune", 25)))), store = store)
+    val h = new Harness(new FakeChunkedScraper(Map("2026-06-25" -> Seq(film("Dune", 25)))), chunkStore = store)
     h.planner.plan(cinemaName) shouldBe 1
     // Run the chunk with the store readable, which enqueues the reduce…
     val chunk = h.queue.claim("w", 30.seconds, now).value
@@ -166,7 +101,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val thinDay = LocalDateTime.of(2026, 6, 25, 6, 0)
     val thin    = CinemaMovie(Movie("Coyote vs. Acme"), cinema, None, Some("https://f/thin"), None, Nil, Nil,
       Seq(Showtime(thinDay, None)), Map.empty, None)
-    val h = new Harness(new FakeChunked(Map("2026-06-25" -> Seq(thin))))
+    val h = new Harness(new FakeChunkedScraper(Map("2026-06-25" -> Seq(thin))))
     h.planner.plan(cinemaName) shouldBe 1
     h.drain()
 
@@ -175,7 +110,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "NOT reduce until every expected chunk has landed" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25)))))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25)))))
     val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
     h.chunkH.handle(Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName,runId, "a"), 1)) shouldBe Done
     h.coord.maybeReduce(cinemaName, runId) shouldBe false // only 1 of 2 chunks
@@ -183,7 +118,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "retry a failing chunk and still complete" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), failOnce = Set("b")))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), failOnce = Set("b")))
     h.planner.plan(cinemaName) shouldBe 2
     h.drain()                       // chunk b fails once (rescheduled, held back), a stores
     h.published shouldBe empty      // run not complete yet
@@ -197,7 +132,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // sat waiting on those chunks, retrying them to exhaustion (20+ min, paid egress each
   // time), and published only through the backstop's partial reduce.
   it should "land a chunk the upstream says does not exist as an empty slice, so the run completes" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), gone = Set("b")))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), gone = Set("b")))
     h.planner.plan(cinemaName) shouldBe 2
     h.drain()
     h.published should have size 1
@@ -207,7 +142,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   it should "DEFER a chunk the host's circuit breaker refused, waiting out the block it named" in {
     // The fetch never reached the wire, so this is not a chunk failure and must not
     // be charged as one: it waits exactly as long as the breaker has left to run.
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")))
     val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
     val payload = ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a")
 
@@ -225,15 +160,15 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     // doubling backoff curve toward the 30-minute cap — without one wire call.
     // Needs a MOVING clock: the breaker's block is always measured from "now", so a
     // frozen one would re-defer to an instant already reached and spin the drain.
-    val clock = new AdvancingClock(now)
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")), clock)
+    val clock = new tools.MutableClock(now)
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")), clock)
     h.planner.plan(cinemaName) shouldBe 1
 
     // Five blocks' worth of passes: each claims the chunk, is refused before the
     // wire, and hands the attempt straight back.
     (1 to 5).foreach { _ =>
       h.drain(clock.instant())
-      clock.advanceMillis(CircuitBlockMs + 1000)
+      clock.advance(java.time.Duration.ofMillis(CircuitBlockMs + 1000))
     }
 
     h.published shouldBe empty
@@ -241,7 +176,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "refuse a second concurrent run for the same cinema (the conflict guard)" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)))))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)))))
     h.planner.plan(cinemaName) shouldBe 1
     val runId = h.store.activeRun(cinemaName).get.runId
     h.planner.plan(cinemaName) shouldBe 0 // a run is already active → no second run
@@ -250,7 +185,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "drop a stale run's chunk once a superseding run is active" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)))))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)))))
     h.planner.plan(cinemaName)
     val stale1 = h.store.activeRun(cinemaName).get.runId
     // Supersede: a fresh plan after the run goes stale starts a new run.
@@ -264,7 +199,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
 
   it should "partial-reduce an abandoned run via the backstop reaper" in {
     // Chunk 'b' is permanently dead, so the run never completes on its own.
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), failAlways = Set("b")))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), failAlways = Set("b")))
     h.planner.plan(cinemaName)
     h.drain()                 // 'a' stores; 'b' fails (rescheduled, held back); not complete
     h.published shouldBe empty
@@ -279,19 +214,12 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     // Two instances share ONE queue + ONE store (prod = shared Mongo); each has
     // its own coordinator (its own in-process EventBus). No data is duplicated and
     // exactly one reduce/publish happens regardless of which instance did what.
-    val queue = new InMemoryTaskQueue
-    val store = new InMemoryChunkScrapeStore
-    val freshness = new InMemoryFreshnessStore
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val publish: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
-    val scraper = new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))))
-    val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
-    val clk = Clock.fixed(now, ZoneOffset.UTC)
-    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clk)
-    val planner = new ChunkScrapePlanner(map, store, queue, publish, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clk)
-    val chunkH  = new ScrapeChunkHandler(map, store, clk)
-    val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clk)
-    val coordA  = new ChunkScrapeCoordinator(store, queue) // instance A
+    val h = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25)))),
+      publish, Clock.fixed(now, ZoneOffset.UTC), staleAfter = stale)
+    val (queue, store, planner, chunkH, reduceH) = (h.queue, h.store, h.planner, h.chunkH, h.reduceH)
+    val coordA  = h.coord                                   // instance A
     val coordB  = new ChunkScrapeCoordinator(store, queue) // instance B
 
     planner.plan(cinemaName) // one instance plans; the run + chunk tasks are shared
@@ -325,7 +253,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // minute for days and Germany's ~1000 working cinemas were never enqueued once.
   // An empty repertoire is a SUCCESSFUL scrape and must advance the due schedule.
   it should "mark a chunked cinema fresh when its plan is legitimately empty, so it waits its normal window" in {
-    val h   = new Harness(new FakeChunked(Map.empty))
+    val h   = new Harness(new FakeChunkedScraper(Map.empty))
     val key = ScrapeCinemaHandler.dedupKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
@@ -338,7 +266,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // only for the retry budget, after which it is parked on the normal window. This
   // is the UK half of the same outage: ~40 venues 404ing on every tick forever.
   it should "retry a failed plan at tick cadence for the budget, then park it on the normal window" in {
-    val h   = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), planThrows = true))
+    val h   = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), planThrows = true))
     val key = ScrapeCinemaHandler.dedupKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
@@ -353,7 +281,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // plain path: kept due, the venue was re-run twice a minute apart, and each re-run
   // re-walked the fallback's whole horizon.
   it should "mark a chunked cinema fresh when its fallback served the plan that failed" in {
-    val h   = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), planThrows = true), fallbackServes = true)
+    val h   = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), planThrows = true), fallbackServes = true)
     val key = ScrapeCinemaHandler.dedupKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
@@ -361,7 +289,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "re-process a chunk whose worker instance crashed mid-run (lease expiry)" in {
-    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)))))
+    val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)))))
     h.planner.plan(cinemaName)
     // Instance A claims the chunk on a 1s lease, then "crashes" (never completes).
     val ta = h.queue.claim("A", 1.second, now).get
@@ -381,7 +309,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val queue   = new InMemoryTaskQueue
     val store   = new InMemoryChunkScrapeStore
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
-    val map     = Map(cinemaName -> (new FakeChunked(slices): ChunkedCinemaScraper))
+    val map     = Map(cinemaName -> (new FakeChunkedScraper(slices): ChunkedCinemaScraper))
     val planner = new ChunkScrapePlanner(map, store, queue, _ => (),
       new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(6.minutes))
@@ -401,7 +329,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val queue   = new InMemoryTaskQueue
     val costs   = new InMemoryScrapeCostStore
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
-    val scraper = new FakeChunked(slices)
+    val scraper = new FakeChunkedScraper(slices)
     val planner = new ChunkScrapePlanner(Map(cinemaName -> (scraper: ChunkedCinemaScraper)), new InMemoryChunkScrapeStore, queue, _ => (),
       new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), costs = costs)
@@ -420,9 +348,9 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val queue   = new InMemoryTaskQueue
     val store   = new InMemoryChunkScrapeStore
     def slices(day: Int) = (0 until 2).map(i => f"2026-06-${day + i}%02d" -> Seq(film("F", day + i))).toMap
-    val older   = new FakeChunked(slices(10))
-    val newer   = new FakeChunked(slices(20)) { override val cinema: models.Cinema = KinoApollo }
-    def planAt(at: Instant, scraper: FakeChunked) =
+    val older   = new FakeChunkedScraper(slices(10))
+    val newer   = new FakeChunkedScraper(slices(20), cinema = KinoApollo)
+    def planAt(at: Instant, scraper: FakeChunkedScraper) =
       new ChunkScrapePlanner(Map(scraper.cinema.displayName -> (scraper: ChunkedCinemaScraper)), store, queue, _ => (),
         new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
         Clock.fixed(at, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(5.minutes)).plan(scraper.cinema.displayName)
@@ -444,7 +372,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   }
 
   it should "record the scrape's failure when chunk-plan enumeration throws" in {
-    val h = new Harness(new FakeChunked(Map.empty, planThrows = true))
+    val h = new Harness(new FakeChunkedScraper(Map.empty, planThrows = true))
     h.planner.plan(cinemaName) shouldBe 0
     h.store.activeRun(cinemaName) shouldBe None  // no run started
     h.published should have size 1        // the failure was published through the recorder path
