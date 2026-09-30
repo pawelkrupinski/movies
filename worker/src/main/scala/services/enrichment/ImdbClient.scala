@@ -172,15 +172,13 @@ class ImdbClient(http: HttpFetch) {
 
   /** The IMDb ids of every film IMDb's suggestion endpoint lists under `title` itself — its display
    *  title the query's, deburred and a leading English article aside, as `parseSuggestions` matches
-   *  a title — in IMDb's order; or, when none is displayed so, every film IMDb suggests for it: IMDb
-   *  matched the query by another of the film's titles ("W tym kraju nie ma dobrych mężczyzn" is
-   *  displayed as "No Good Men"). No choice between them: the identity resolver's candidate path to a
-   *  record TMDB's own search does not return (`TmdbIdentityLookups`), each judged by its score. Empty
-   *  for a blank title or a query IMDb does not know; a failed read throws, as `http` threw it. */
+   *  a title — in IMDb's order. No choice between them: the identity resolver's candidate path to a
+   *  record TMDB's own search does not return (`TmdbIdentityLookups`). Empty for a blank title or a
+   *  query IMDb does not know; a failed read throws, as `http` threw it. */
   def titledIds(title: String): Seq[String] =
     if (title.trim.isEmpty) Nil
     else EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).toSeq.flatMap { body =>
-      Try(Json.parse(body)).toOption.toSeq.flatMap(js => titledOrSuggested(movieSuggestions(js), title)).map(_.id).distinct
+      Try(Json.parse(body)).toOption.toSeq.flatMap(js => titleMatches(movieSuggestions(js), title)).map(_.id).distinct
     }
 
   /** Director-based fallback: when `parseSuggestions` finds no title match (the
@@ -297,14 +295,6 @@ object ImdbClient {
    *  therefore finds exactly one confident hit and it is the wrong film. Counting the
    *  article-stripped forms as matches too makes the ambiguity VISIBLE rather than letting it
    *  resolve silently. */
-  /** The `movies` IMDb titles `title` itself ([[titleMatches]]); or, when none is, every one of them
-   *  — IMDb matched the query by another of the film's titles, which its payload does not show. The
-   *  identity resolver's candidates by IMDb, live (`titledIds`) and stored (`StoredTmdbLookups`) alike. */
-  private[services] def titledOrSuggested(movies: Seq[Suggestion], title: String): Seq[Suggestion] = {
-    val titled = titleMatches(movies, title)
-    if (titled.nonEmpty) titled else movies
-  }
-
   private[services] def titleMatches(movies: Seq[Suggestion], title: String): Seq[Suggestion] = {
     val normalizedTitle = TitleMatch.deburredFold(title)
     def withoutArticle(t: String) = LeadingArticle.replaceFirstIn(t, "")

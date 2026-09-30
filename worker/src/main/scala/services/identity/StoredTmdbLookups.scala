@@ -117,13 +117,13 @@ object StoredTmdbLookups {
 
   private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = TmdbStore.intsOf(d.get(field))
 
-  /** The `tt` ids IMDb's suggestions give `title` — `ImdbClient.titledIds`' own choice. */
+  /** The `tt` ids IMDb's suggestions give `title` — `ImdbClient.titledIds`' own filter. */
   private def suggestionIds(d: BsonDocument, title: String): Seq[String] = {
     val entries = d.getArray("suggestions").getValues.asScala.toSeq.map(_.asDocument).map { s =>
       ImdbClient.Suggestion(s.getString("id").getValue, Option(s.get("title")).map(_.asString.getValue),
         Option(s.get("year")).map(_.asInt32.getValue), s.getInt32("rank").getValue)
     }
-    if (title.trim.isEmpty) Nil else ImdbClient.titledOrSuggested(entries, title).map(_.id).distinct
+    if (title.trim.isEmpty) Nil else ImdbClient.titleMatches(entries, title).map(_.id).distinct
   }
 
   extension [A](answer: Answer[A]) private def mapKnown[B](f: A => B): Answer[B] = answer match {
