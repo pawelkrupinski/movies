@@ -115,10 +115,18 @@ abstract class CountryConvergenceBehaviour(
     })(Failed(_))
 
   /** Every request this hermetic run could not replay, as the failure that names them —
-   *  or `None` when there were none, or when the run is a RECORDING one (which fills the
-   *  gaps live instead). */
+   *  or `None` when there were none, when the run is a RECORDING one (which fills the
+   *  gaps live instead), or when it measures the new model (see [[measuresNewModel]]). */
   private def hermeticGaps: Option[IllegalStateException] =
-    missingFixtures.filterNot(_.isEmpty).map(m => new IllegalStateException(m.report(fixtureDirectory)))
+    missingFixtures.filterNot(_.isEmpty).filterNot(_ => measuresNewModel).map(m => new IllegalStateException(m.report(fixtureDirectory)))
+
+  /** A leg run with `KINOWO_IDENTITY_CUTOVER` naming this country (`Identity model convergence`)
+   *  replays a tree the PIPELINE recorded. The model's own identity lookups are in it, but a film
+   *  the model matches and the pipeline did not is enriched (external ids, ratings, images) through
+   *  requests the tree never held. Those gaps cost ratings, not identity, and no recorder records the
+   *  model's enrichment yet — so on this leg they are REPORTED at the end of the run, never fatal:
+   *  failing every claim on them would leave the build measuring nothing about the model. */
+  private lazy val measuresNewModel: Boolean = configuration.identityCutover.covers(country)
 
   /** Fail the leg NOW if the phase just run met a gap in the recording, rather than letting
    *  it spend the rest of its budget replaying over refused fetches. */
@@ -147,6 +155,13 @@ abstract class CountryConvergenceBehaviour(
   }
 
   override def afterAll(): Unit = {
+    missingFixtures.filter(m => measuresNewModel && !m.isEmpty).foreach { m =>
+      val report = s"${country.displayName} (identity model): enrichment the pipeline's tree does not hold, " +
+        s"so these films went unrated here —\n${m.report(fixtureDirectory)}"
+      println(report)
+      configuration.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
+        s"```\n$report\n```\n\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
+    }
     enrichmentCacheStore.close()
     passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
     storage.close()
