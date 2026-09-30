@@ -118,7 +118,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   "a backlog row with no TMDB resolve stamp" should "still age from when the census first saw it" in {
     val registry            = new PrometheusRegistry()
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
-    val clock               = new MovingClock(now)
+    val clock               = new tools.MutableClock(now)
     val census = new RatingRunCensus(
       cacheOf(Seq(imdbOnly -> recordImdbOnly)), freshness(), notRun, oldestAge, Country.Poland, clock)
 
@@ -127,7 +127,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     withClue("the first sighting IS the clock start — no wait accrued yet: ")(
       gauge(PrometheusExposition.render(registry), RatingRunCensus.OldestAgeName, "imdb") shouldBe Some(0.0))
 
-    clock.advance(600)
+    clock.advanceSeconds(600)
     census.sample()
     val text = PrometheusExposition.render(registry)
     gauge(text, RatingRunCensus.NotRunName, "imdb") shouldBe Some(1.0)
@@ -138,7 +138,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   it should "forget its sighting once the rating runs, so a relapse starts a fresh clock" in {
     val registry            = new PrometheusRegistry()
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
-    val clock               = new MovingClock(now)
+    val clock               = new tools.MutableClock(now)
     val f                   = freshness()
     val census = new RatingRunCensus(
       cacheOf(Seq(imdbOnly -> recordImdbOnly)), f, notRun, oldestAge, Country.Poland, clock)
@@ -146,7 +146,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     val stamp = RatingTasks.dedupKey(FreshnessKind.ImdbRating, imdbOnly, None)
 
     census.sample()
-    clock.advance(600)
+    clock.advanceSeconds(600)
     // The rating runs — the row leaves the backlog, and its sighting must go with it.
     f.markFresh(stamp, FreshnessKind.ImdbRating, clock.instant())
     census.sample()
@@ -155,10 +155,10 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     // A merge/re-key drops the stamp and the row relapses into the backlog. The clock
     // starts over from the relapse rather than resuming the abandoned 600s — which is
     // also what stops a drained row's sighting from being retained forever.
-    clock.advance(60)
+    clock.advanceSeconds(60)
     f.invalidate(stamp)
     census.sample()
-    clock.advance(30)
+    clock.advanceSeconds(30)
     census.sample()
     val relapsed = PrometheusExposition.render(registry)
     gauge(relapsed, RatingRunCensus.NotRunName, "imdb") shouldBe Some(1.0)
@@ -167,14 +167,6 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────
-  private class MovingClock(start: Instant) extends java.time.Clock {
-    private var at: Instant                                  = start
-    def advance(seconds: Long): Unit                         = at = at.plusSeconds(seconds)
-    def instant(): Instant                                   = at
-    def getZone: java.time.ZoneId                            = java.time.ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
-  }
-
   private def cacheOf(rows: Seq[(CacheKey, MovieRecord)]): MovieCacheReader = new MovieCacheReader {
     val normalizer: services.movies.TitleNormalizer          = titleNormalizer
     def hasResolvedSiblingByTitle(rawTitle: String): Boolean = false

@@ -7,9 +7,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.staging.InMemoryStagingRepository
 
-import java.time.{Clock, Instant, ZoneId, ZoneOffset}
+import tools.MutableClock
+
+import java.time.Instant
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
+import scala.jdk.DurationConverters._
 
 /**
  * StagingStuckAlerter: a staging row that has been TMDB-unresolved for longer
@@ -20,16 +23,9 @@ import scala.concurrent.duration._
  */
 class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
+  // Each test advances a MutableClock from here between scan passes, so one alerter
+  // instance (carrying its in-memory first-seen map) ages its rows over time.
   private val Start = Instant.parse("2026-06-14T18:00:00Z")
-
-  /** A clock whose `instant` the test advances between scan passes, so one alerter
-   *  instance (carrying its in-memory first-seen map) ages its rows over time. */
-  private class MutableClock(var now: Instant) extends Clock {
-    override def getZone: ZoneId               = ZoneOffset.UTC
-    override def withZone(z: ZoneId): Clock     = this
-    override def instant(): Instant            = now
-    def advance(d: FiniteDuration): Unit       = now = now.plusMillis(d.toMillis)
-  }
 
   /** A staging seed tuple for a still-unresolved newcomer (default record), or a
    *  resolved/no-match one. The SourceData title is what `findAll` derives the
@@ -54,11 +50,11 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     a.runOnce() shouldBe None              // just observed — not stuck yet
     sent shouldBe empty
 
-    clock.advance(59.minutes)
+    clock.advance(59.minutes.toJava)
     a.runOnce() shouldBe None              // still under 1h
     sent shouldBe empty
 
-    clock.advance(2.minutes)               // now 61m unresolved
+    clock.advance(2.minutes.toJava)               // now 61m unresolved
     val message = a.runOnce()
     message should not be empty
     sent.size shouldBe 1
@@ -66,7 +62,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     sent.head should include ("(2026)")
     sent.head should include ("Helios")
 
-    clock.advance(1.hour)                  // still stuck → no repeat
+    clock.advance(1.hour.toJava)                  // still stuck → no repeat
     a.runOnce() shouldBe None
     sent.size shouldBe 1
   }
@@ -78,11 +74,11 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val (a, sent)  = newAlerter(repository, clock)
     a.runOnce() shouldBe None                // first seen at Start
 
-    clock.advance(30.minutes)
+    clock.advance(30.minutes.toJava)
     repository.failing = true
     a.runOnce() shouldBe None                // unreadable: nothing concluded about the row
 
-    clock.advance(31.minutes)                // 61m since first seen
+    clock.advance(31.minutes.toJava)                // 61m since first seen
     repository.failing = false
     a.runOnce() should not be empty          // alerts on time — the blind pass did not restart its hour
     sent.size shouldBe 1
@@ -96,7 +92,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
-    clock.advance(3.hours)
+    clock.advance(3.hours.toJava)
     a.runOnce() shouldBe None
     sent shouldBe empty
   }
@@ -107,12 +103,12 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
-    clock.advance(30.minutes)
+    clock.advance(30.minutes.toJava)
     // Resolves (folds out / gets a tmdbId) before the hour is up.
     repository.upsert(Helios, "Quick Film", Some(2026),
       MovieRecord(tmdbId = Some(999),
         data = Map[Source, SourceData](Helios -> SourceData(title = Some("Quick Film"), releaseYear = Some(2026)))))
-    clock.advance(40.minutes)              // 70m elapsed, but now concluded
+    clock.advance(40.minutes.toJava)              // 70m elapsed, but now concluded
     a.runOnce() shouldBe None
     sent shouldBe empty
   }
@@ -126,7 +122,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
-    clock.advance(61.minutes)
+    clock.advance(61.minutes.toJava)
     a.runOnce()
 
     sent.size shouldBe 1
@@ -142,7 +138,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
-    clock.advance(61.minutes)
+    clock.advance(61.minutes.toJava)
     a.runOnce()
     sent.size shouldBe 1
 
@@ -155,7 +151,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Comeback Film"), releaseYear = Some(2026)))))
     a.runOnce() shouldBe None              // freshly re-seen → not stuck yet
     sent.size shouldBe 1
-    clock.advance(61.minutes)
+    clock.advance(61.minutes.toJava)
     a.runOnce() should not be empty        // stuck again → alerts again
     sent.size shouldBe 2
   }
