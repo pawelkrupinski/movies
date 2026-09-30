@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
+import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ShadowCoverage, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -64,8 +64,12 @@ object RecordCorpusFixture {
       // set at exactly T. Recorded anywhere else it would drift against the corpus
       // and the band it guards would become a flake.
       val database     = client.getDatabase(databaseName)
-      val baselinePath = ProdCoverageBaseline.write(country.code, ProdCoverage.of(database))
-      println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire")
+      // …and what production's NEW model decided for it (its latest shadow run), which a cut-over
+      // leg must reproduce. Only the full corpus: the sample's films are resolved apart from the rest.
+      val shadow       = ShadowCoverage.latest(database)
+      val baselinePath = ProdCoverageBaseline.write(country.code, ProdCoverage.of(database).copy(shadow = shadow))
+      println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire" +
+        shadow.fold(" (no shadow run)")(s => s", and its new model's ${s.films} films, ${s.tmdbId} on TMDB (shadow run ${s.runAt})"))
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs
       // ahead of the full matrix. The draw happens HERE, once, and the files pin it:

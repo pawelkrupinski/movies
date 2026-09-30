@@ -44,7 +44,10 @@ case class ProdCoverageBaseline(
   imdbRating:     Int,
   filmwebRating:  Int,
   metascore:      Int,
-  rottenTomatoes: Int
+  rottenTomatoes: Int,
+  /** Production's NEW model on the same repertoire — its latest shadow run — which a cut-over leg
+   *  is judged against; absent from a baseline recorded before it was captured. */
+  shadow:         Option[ShadowCoverage] = None
 ) {
 
   /** The metrics by name, in report order — so a comparison walks them all rather
@@ -52,6 +55,43 @@ case class ProdCoverageBaseline(
   def metrics: Seq[(String, Int)] = Seq(
     "films" -> films, "tmdbId" -> tmdbId, "imdbId" -> imdbId, "imdbRating" -> imdbRating,
     "filmwebRating" -> filmwebRating, "metascore" -> metascore, "rottenTomatoes" -> rottenTomatoes)
+}
+
+/**
+ * What production's NEW identity model decided for a country: its latest shadow run
+ * (`identity_shadow_decisions`), read when the corpus is recorded. A cut-over convergence leg runs
+ * the same model over the same repertoire, so this is what it must reproduce — while the pipeline's
+ * baseline beside it says how the model compares with what production serves today.
+ *
+ * Only identification: the shadow decides films and their TMDB match, and rates nothing. Counted over
+ * every film the run decided, as the leg counts its whole corpus — both read the same intake, white
+ * venues' last scrapes included, so neither needs the screening restriction the pipeline's side does.
+ */
+final case class ShadowCoverage(runAt: java.time.Instant, films: Int, tmdbId: Int) {
+
+  /** The axes a run sits further from the shadow on than `tolerance` allows — identification only. */
+  def divergences(run: ProdCoverageBaseline, tolerance: Double): Seq[String] =
+    ProdCoverageBaseline.divergences(run, asBaseline, tolerance, ShadowCoverage.Axes)
+
+  def report(run: ProdCoverageBaseline, tolerance: Double): Seq[String] =
+    ProdCoverageBaseline.report(run, asBaseline, tolerance, ShadowCoverage.Axes)
+
+  private def asBaseline = ProdCoverageBaseline(runAt, films, tmdbId, 0, 0, 0, 0, 0)
+}
+
+object ShadowCoverage {
+  val Axes: Set[String] = Set("films", "tmdbId")
+
+  def of(run: services.identity.ShadowRun): ShadowCoverage =
+    ShadowCoverage(run.at, run.clusters.size, run.clusters.count(_.decision.film.isDefined))
+
+  /** The country database's latest shadow run, if its worker runs the shadow. */
+  def latest(database: org.mongodb.scala.MongoDatabase): Option[ShadowCoverage] =
+    services.identity.MongoShadowRunBackend.reader(database).latest().map { case (run, _) => of(run) }
+
+  private implicit val instantFormat: Format[java.time.Instant] =
+    Format(Reads.DefaultInstantReads, Writes.DefaultInstantWrites)
+  implicit val format: OFormat[ShadowCoverage] = Json.format[ShadowCoverage]
 }
 
 object ProdCoverageBaseline {
@@ -114,6 +154,8 @@ object ProdCoverageBaseline {
    */
   val NoiseFloorFilms = 15
 
+  private val AllAxes: Set[String] = ProdCoverageBaseline(java.time.Instant.EPOCH, 0, 0, 0, 0, 0, 0, 0).metrics.map(_._1).toSet
+
   /**
    * The floor for ONE axis. `films` keeps the whole [[NoiseFloorFilms]]: capture skew is a
    * count of films, and it lands on that axis whole. A downstream axis gets
@@ -151,10 +193,10 @@ object ProdCoverageBaseline {
    * production's 93.0% and 91.7%: a healthy pipeline, flagged for a deficit one level
    * up. `films` is the one axis compared as a count — it IS the denominator.
    */
-  private def axes(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline)
+  private def axes(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, only: Set[String])
       : Seq[(String, Double, Double, Int, Int)] = {
     def share(count: Int, of: Int): Double = if (of == 0) 0.0 else count.toDouble / of
-    actual.metrics.zip(prod.metrics).map { case ((name, mine), (_, theirs)) =>
+    actual.metrics.zip(prod.metrics).filter { case ((name, _), _) => only(name) }.map { case ((name, mine), (_, theirs)) =>
       val (a, b) =
         if (name == "films")       (actual.films.toDouble,        prod.films.toDouble)
         else if (name == "tmdbId") (share(mine, actual.films),    share(theirs, prod.films))
@@ -176,8 +218,9 @@ object ProdCoverageBaseline {
    * drift is legible in the log of a PASSING leg rather than discovered by a failing
    * one weeks later.
    */
-  def report(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] =
-    axes(actual, prod).map { case (name, a, b, mine, theirs) =>
+  def report(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double,
+             only: Set[String] = AllAxes): Seq[String] =
+    axes(actual, prod, only).map { case (name, a, b, mine, theirs) =>
       val off   = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       val apart = math.abs(mine - theirs)
       val note =
@@ -188,8 +231,9 @@ object ProdCoverageBaseline {
       f"$apart%3d film(s) apart $note"
     }
 
-  def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] = {
-    axes(actual, prod).flatMap { case (name, a, b, mine, theirs) =>
+  def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double,
+                  only: Set[String] = AllAxes): Seq[String] = {
+    axes(actual, prod, only).flatMap { case (name, a, b, mine, theirs) =>
       val off = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       // Outside the relative band AND more than a few films apart. Either alone
       // misfires: the ratio is noise-dominated on a small corpus, and a raw count is

@@ -1299,6 +1299,16 @@ abstract class CountryConvergenceBehaviour(
       // for as long as the band existed, and crossed 5% on 2026-08-23 without anything
       // in the pipeline moving. See `CorpusCoverage`.
       val corpus       = w.movieRepository.findAll().map(_.record)
+      // A CUT-OVER leg runs production's new model, so it is judged against that model's own
+      // decisions for the same repertoire (its shadow run, recorded with the corpus); the
+      // pipeline's band below is then how the new model compares with what production serves,
+      // reported, not asserted — that is the cut-over gate's question, not this harness's.
+      val againstShadow = baseline.shadow.filter(_ => w.identityCutover)
+      againstShadow.foreach { shadow =>
+        val whole = CorpusCoverage.of(corpus)
+        info(s"${country.displayName}: new model against production's new model (shadow run ${shadow.runAt}: " +
+             s"${shadow.films} films, ${shadow.tmdbId} on TMDB) —\n  " + shadow.report(whole, ProdTolerance).mkString("\n  "))
+      }
       val screeningAt  = CorpusCoverage.localise(baseline.recordedAt, country)
       val mine         = CorpusCoverage.of(CorpusCoverage.screening(corpus, screeningAt))
       info(s"${country.displayName}: counted over the ${mine.films} film(s) a cinema was still screening at " +
@@ -1308,10 +1318,11 @@ abstract class CountryConvergenceBehaviour(
       // Printed whether or not it passes. A band that only speaks when it breaks hides
       // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
       // band while the rating axes it feeds were the ones failing.
-      info(s"${country.displayName}: coverage against production —\n  " +
+      info(s"${country.displayName}: coverage against production${if (againstShadow.isDefined) "'s pipeline (reported only)" else ""} —\n  " +
            ProdCoverageBaseline.report(mine, baseline, ProdTolerance).mkString("\n  "))
 
-      val offBand = ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance)
+      val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance))(
+        _.divergences(CorpusCoverage.of(corpus), ProdTolerance))
 
       // Reported above either way; only the ASSERTION is conditional. A country
       // whose worker is stopped has a frozen baseline that the replay can no
