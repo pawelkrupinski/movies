@@ -27,16 +27,19 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     val executionContext      = DaemonExecutors.boundedEC("storm", 1)
     val running = new CountDownLatch(1)
     val release = new CountDownLatch(1)
+    val worker  = new java.util.concurrent.atomic.AtomicReference[Thread]()
     val printed = captureStdErr {
       val p      = Promise[Int]()
-      val stage1 = p.future.map { x => running.countDown(); release.await(); x }(using executionContext)
+      val stage1 = p.future.map { x => worker.set(Thread.currentThread()); running.countDown(); release.await(); x }(using executionContext)
       stage1.onComplete(_ => ())(using executionContext) // terminal: submit fires from stage1's run(), no
                                            // downstream to capture the failure → it's reported
       p.success(1)                         // schedules stage1 onto executionContext
       running.await(5, TimeUnit.SECONDS) shouldBe true
       executionContext.shutdown()                        // pool drained while stage1 is still running
       release.countDown()                  // stage1 finishes → notifies the callback → submit rejected
-      Thread.sleep(300)                    // let the reported/uncaught rejection surface
+      // The rejected submit happens on stage1's own thread, and an uncaught rejection is
+      // reported before that thread ends: once it has ended, anything it would print has.
+      worker.get.join(java.time.Duration.ofSeconds(5)) shouldBe true
     }
     printed should not include "RejectedExecutionException"
   }

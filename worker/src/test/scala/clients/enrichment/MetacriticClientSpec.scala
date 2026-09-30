@@ -694,10 +694,15 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // the RIGHT film's page (the year-suffixed slug) is slow. If candidate
   // resolution picked whichever response landed first, the wrong film would win.
   it should "keep priority order deciding the winner even when a later, wrong-film candidate answers faster" in {
+    val wrongFilmAnswered = new java.util.concurrent.CountDownLatch(1)
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/movie/the-odyssey-2026/")) { Thread.sleep(150); moviePage("The Odyssey", 2026, 89) }
-        else if (url.endsWith("/movie/the-odyssey/")) undatedMoviePage("The Odyssey")
+        if (url.endsWith("/movie/the-odyssey-2026/")) {
+          // The right film answers only once the wrong one already has (bounded, in case it is never asked).
+          wrongFilmAnswered.await(5, java.util.concurrent.TimeUnit.SECONDS)
+          moviePage("The Odyssey", 2026, 89)
+        }
+        else if (url.endsWith("/movie/the-odyssey/")) try undatedMoviePage("The Odyssey") finally wrongFilmAnswered.countDown()
         else UpstreamNotFound(url)
     })
     c.urlFor("The Odyssey", year = Some(2026)) shouldBe

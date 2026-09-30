@@ -1,5 +1,6 @@
 package tools
 
+import clients.tools.ConstantHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -186,23 +187,24 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // disagree (a 429 for one, a 200 for the other) read as an order-dependent
   // divergence that has nothing to do with ordering.
   it should "put only one live call on the wire when several passes miss at once" in {
-    val started = new java.util.concurrent.CountDownLatch(1)
     val calls   = new java.util.concurrent.atomic.AtomicInteger(0)
-    val slowDelegate = new HttpFetch {
-      override def get(url: String): String = {
-        calls.incrementAndGet()
-        started.countDown()
-        Thread.sleep(200)   // hold the fill open so the others are certain to queue
-        "answer"
-      }
-      override def post(url: String, body: String, contentType: String): String = ???
-    }
-    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore())
-
-    val threads = (1 to 4).map(_ => new Thread(() => {
+    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore())
+    lazy val threads: Seq[Thread] = (1 to 4).map(_ => new Thread(() => {
       new CachingEnrichmentFetch(cache, slowDelegate).get("https://example.test/contended")
       ()
     }))
+    // Hold the fill open until every other pass is parked behind it, so they are
+    // certain to have queued (bounded: a cache that let them through never parks them).
+    lazy val slowDelegate: HttpFetch = new ConstantHttpFetch("answer") {
+      override def get(url: String): String = {
+        calls.incrementAndGet()
+        val others = threads.filterNot(_ eq Thread.currentThread())
+        Eventually.poll(timeoutMs = 5000, pollMs = 1)(others.forall(other =>
+          Set(Thread.State.BLOCKED, Thread.State.WAITING, Thread.State.TIMED_WAITING).contains(other.getState)))
+        super.get(url)
+      }
+    }
+
     threads.foreach(_.start())
     threads.foreach(_.join(10000))
 
@@ -225,10 +227,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Answers anything, so a test about the STORE isn't limited by a script. */
-  private class AlwaysAnswering extends HttpFetch {
-    override def get(url: String): String = "answer"
-    override def post(url: String, body: String, contentType: String): String = "answer"
-  }
+  private def alwaysAnswering = new ConstantHttpFetch("answer")
 
   /** `round` keeps the URLs distinct between calls: a repeat of the same URL is an
    *  in-memory HIT and never reaches the store at all, so a second sweep over the
@@ -244,7 +243,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // nothing but wait. A store that cannot be reached has to stop being asked.
   it should "stop writing through to a store that keeps failing, rather than pay its timeout on every miss" in {
     val store = new UnreachableEnrichmentCacheStore
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), alwaysAnswering)
 
     fill(fetch, 40)
 
@@ -268,7 +267,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   it should "probe the store again once the suspension has elapsed" in {
     val store = new UnreachableEnrichmentCacheStore
     var now   = 0L
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, () => now), new AlwaysAnswering)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, () => now), alwaysAnswering)
 
     fill(fetch, 10)
     store.attempts shouldBe EnrichmentCache.MaxConsecutiveWriteFailures
@@ -424,7 +423,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "resume writing through once the store answers again" in {
     val store = new IntermittentEnrichmentCacheStore(failFirst = EnrichmentCache.MaxConsecutiveWriteFailures - 1)
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), alwaysAnswering)
 
     fill(fetch, 10)
 

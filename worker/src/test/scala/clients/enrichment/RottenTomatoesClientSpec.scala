@@ -469,10 +469,16 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // If candidate resolution picked whichever response landed first, the
   // undated (possibly wrong) page would win.
   it should "keep priority order deciding the winner even when a later, undated candidate answers faster" in {
+    val undatedAnswered = new java.util.concurrent.CountDownLatch(1)
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/m/the_north_2026")) { Thread.sleep(150); rtMoviePage(2026) }
-        else if (url.endsWith("/m/the_north")) """<html><body><script>{"mediaType":"movie"}</script></body></html>"""
+        if (url.endsWith("/m/the_north_2026")) {
+          // The dated page answers only once the undated one already has (bounded, in case it is never asked).
+          undatedAnswered.await(5, java.util.concurrent.TimeUnit.SECONDS)
+          rtMoviePage(2026)
+        }
+        else if (url.endsWith("/m/the_north"))
+          try """<html><body><script>{"mediaType":"movie"}</script></body></html>""" finally undatedAnswered.countDown()
         else throw new RuntimeException("HTTP 404")
     })
     c.canonicalUrl("The North", Some(2026)) shouldBe
