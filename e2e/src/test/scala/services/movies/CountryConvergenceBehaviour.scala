@@ -662,14 +662,21 @@ abstract class CountryConvergenceBehaviour(
   }
 
   /** One settle of whichever model decides this country's films: the pipeline's periodic pair
-   *  (`settle()` then `canonicalizeBySanitize()`), or — on a cut-over leg — one identity
-   *  projection over what the intake holds. A fixpoint claim re-applies THIS, so it asks the
+   *  (`settle()` then `canonicalizeBySanitize()`), or — on a cut-over leg — an identity
+   *  projection over what the intake holds (repeated only through a shrink's grace). A fixpoint claim re-applies THIS, so it asks the
    *  deciding model whether it is at rest, never the other one whether it agrees. */
   /** Projections after the boot's first that a cut-over boot may take to reach rest. */
   private val CutoverSettleProjections = 4
 
   private def settleOnce(w: ArchiveReplayWiring): Unit =
-    if (w.identityCutover) { w.projectIdentity(); () }
+    if (w.identityCutover) {
+      // A projection that would drop more than ProjectionGuard's share of the films is REFUSED, and
+      // accepted once it has been refused `Grace` projections running — which production's
+      // projection interval reaches on its own. A day that withdraws films is exactly that shrink, so
+      // the settle projects through the grace, as the interval would, and no further.
+      Iterator.continually(w.projectIdentity()).take(services.identity.ProjectionGuard.Grace + 1).find(_.refused.isEmpty)
+      ()
+    }
     else { w.movieService.settle(); w.movieCache.canonicalizeBySanitize(); () }
 
   private def bootPipeline(w: ArchiveReplayWiring): Unit = {
