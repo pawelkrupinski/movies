@@ -2,12 +2,14 @@ package services.movies
 
 import tools.RetryWithBackoff
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
 /**
  * Keyset-paged scan of a whole Mongo collection by a unique, immutable `_id`-like
- * string key. Reads one `batchSize`-row page at a time — each a fresh, bounded,
+ * string key. Reads one `batchSize`-row page at a time (the next one prefetched while the
+ * current one is consumed) — each a fresh, bounded,
  * independently-retried `find(_id > lastSeen).sort(_id).limit(batchSize)` — and hands
  * every batch to `onBatch`, rather than pulling the whole collection through ONE
  * unbounded `find().toFuture()`.
@@ -48,24 +50,29 @@ object KeysetScan {
     fetchPage:      (Option[String], Int) => Seq[A],
     onIncomplete:   Throwable => Unit = _ => ()
   )(onBatch: Seq[A] => Unit): Boolean = {
-    var afterId: Option[String] = None
-    var more                    = true
-    var complete                = true
+    // The page AND where the next one starts are the read: a last row whose key cannot be
+    // taken is a scan that cannot continue, so it is incomplete like a failed fetch.
+    def read(afterId: Option[String]): Future[(Seq[A], Option[String])] = Future(blocking {
+      val batch = RetryWithBackoff(
+        label          = label,
+        maxAttempts    = maxAttempts,
+        initialBackoff = initialBackoff
+      )(fetchPage(afterId, batchSize))
+      (batch, batch.lastOption.map(keyOf))
+    })(using ExecutionContext.global)
+    // The next page is fetched while this one is consumed: where it starts is known the moment
+    // this one arrives, and a consumer (a boot hydrate stitching side rows and populating the
+    // cache) spends about as long on a page as Mongo takes to deliver one, so reading them in
+    // turn left each waiting on the other. At most two pages are ever held.
+    var pending: Future[(Seq[A], Option[String])] = read(None)
+    var more     = true
+    var complete = true
     while (more) {
-      // The page AND where the next one starts are the read: a last row whose key cannot be
-      // taken is a scan that cannot continue, so it is incomplete like a failed fetch.
-      Try {
-        val batch = RetryWithBackoff(
-          label          = label,
-          maxAttempts    = maxAttempts,
-          initialBackoff = initialBackoff
-        )(fetchPage(afterId, batchSize))
-        (batch, batch.lastOption.map(keyOf))
-      } match {
+      Try(Await.result(pending, Duration.Inf)) match {
         case Success((batch, nextAfter)) =>
+          more = batch.sizeIs == batchSize
+          if (more) pending = read(nextAfter)
           onBatch(batch)   // outside the Try: a consumer failure is not a read failure
-          afterId = nextAfter
-          more    = batch.sizeIs == batchSize
         case Failure(exception) =>
           onIncomplete(exception)
           complete = false

@@ -101,7 +101,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     // after retries", sent a pruning caller down its skip path with a misleading warning, and
     // hid the bug indefinitely. A read failure keeps its `false` (the spec above).
     var notified: Option[Throwable] = None
-    var pagesFetched = 0
+    val fetchesFrom = java.util.concurrent.ConcurrentHashMap[Option[String], Int]()
     val base = collectionOf("a", "b", "c", "d")
     val thrown = the[IllegalStateException] thrownBy KeysetScan.scan[String](
       label          = "test",
@@ -109,12 +109,13 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
       maxAttempts    = 3,
       initialBackoff = 1.milli,
       keyOf          = identity,
-      fetchPage      = (afterId, limit) => { pagesFetched += 1; base(afterId, limit) },
+      fetchPage      = (afterId, limit) => { fetchesFrom.merge(afterId, 1, _ + _); base(afterId, limit) },
       onIncomplete   = e => notified = Some(e)
     )(batch => if (batch.contains("c")) throw new IllegalStateException("consumer bug"))
     thrown.getMessage shouldBe "consumer bug"
     notified shouldBe None      // not reported as an incomplete read
-    pagesFetched shouldBe 2     // and not retried as one: the consumer saw each page once
+    // and not retried as one: no page was read twice
+    fetchesFrom.values().stream().allMatch(_ == 1) shouldBe true
   }
 
   // Where the next page starts is part of READING the page: a row whose `_id` is not the
@@ -133,5 +134,21 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     )(_ => ())
     complete shouldBe false
     notified.map(_.getMessage) shouldBe Some("ObjectId is not a String")
+  }
+
+  it should "fetch the next page while the consumer is still working on this one" in {
+    val base          = collectionOf("a", "b", "c", "d", "e")
+    val secondStarted = java.util.concurrent.CountDownLatch(1)
+    var overlapped    = false
+    val complete = KeysetScan.scan[String](
+      label          = "test",
+      batchSize      = 2,
+      maxAttempts    = 1,
+      initialBackoff = 1.milli,
+      keyOf          = identity,
+      fetchPage      = (afterId, limit) => { if (afterId.contains("b")) secondStarted.countDown(); base(afterId, limit) }
+    )(batch => if (batch.head == "a") overlapped = secondStarted.await(5, java.util.concurrent.TimeUnit.SECONDS))
+    complete   shouldBe true
+    overlapped shouldBe true
   }
 }
