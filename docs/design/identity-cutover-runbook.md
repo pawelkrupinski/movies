@@ -32,9 +32,9 @@ film, the web tier.
    `kinowo_worker_listing_key_shadow_read_rows{outcome!="agree"}` = 0 over that week (the 73 PL
    fold-hidden listings of §16.5 excepted; they are the projection's to fix, one slot per listing).
 3. **The FilmId map is seeded** (`scripts.FilmIdCounterSeed --apply`; done 2026-09-26 for all five).
-4. **Observation capture on**: `KINOWO_OBSERVATION_CAPTURE=true` for at least the observations'
-   retention window (8 days), so the projection's lookups are answered from the store and the
-   projection does not re-ask TMDB every tick.
+4. **The model's TMDB store is filled**: `KINOWO_IDENTITY_SHADOW_LOOKUPS=true` with the shadow run
+   until its gaps settle (`ShadowLookupFill`'s deferred count near 0), so the cut-over projection's
+   lookups are answered from the normalized store (`TmdbStore`) and it asks TMDB live only on a gap.
 5. **The no-worse gate** from the combined measurement (§15.5, §15.7, §17.3), re-run on a recording
    no older than a week, on the country's full corpus:
    - 0 cannot-link violations, 0 order variants;

@@ -2052,8 +2052,8 @@ self-heal near-no-op to it. Each tick:
 
 **Switches** (staged-migration, read per worker process, off by default):
 `KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityShadow`) wires the run;
-`KINOWO_OBSERVATION_CAPTURE` fills what it reads. With the shadow on and capture off it reads whatever
-the store holds.
+`KINOWO_IDENTITY_SHADOW_LOOKUPS` (`ShadowLookupFill`) fills the TMDB store it reads; with the fill off it
+reads what the pipeline's own lookups filed there (`identityLookupFetch`).
 
 ### 17.2 Proof
 
@@ -2186,18 +2186,17 @@ on its own daemon thread, one round at a time:
   store cannot answer, and the film records it lacks), so the questions are exactly the resolver's own
   (`CandidateQueries`) — no second list, and no walk of every listing's questions per round; a record
   a newly answered search names is the model's gap after its next drain, and the next round's question;
-- each TMDB request the store holds no live definitive answer to is asked live — through the
-  cut-over projection's `ObservedFirstHttpFetch` (§18), its live side a `ShadowLiveFetch` — over
-  `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker and meters), wrapped in
-  `ObservingHttpFetch`, so the answer goes ONLY to `obs_lookups`. No pipeline cache or row is
-  written; dedupe is the observation key; the 8-day retention is the store's;
+- each TMDB or IMDb-suggestion question the store cannot answer is asked live through a
+  `ShadowLiveFetch` over `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker
+  and meters), and the answer is normalized (`TmdbNormalizer`) into the model's TMDB store
+  (`TmdbStore`) ONLY. No pipeline cache or row is written; dedupe is the store's question key;
 - at most `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` asks a minute (default 60, ~2% of TMDB's ~50 req/s),
   one per pace, up to rate × settle interval per round; the rest is deferred to the next round;
 - the first overload (429, 5xx, open breaker, network failure) ends the round, and the next runs
   at half the rate, doubling back after each clean round;
 - venue detail pages are NOT asked: the pipeline's detail refresh fetches every listing's page on
-  its own cadence and the capture files it, while a shadow fetch would write the pipeline's
-  `detailCache-*`.
+  its own cadence and the model reads the enriched slots (`VenueDetailSlots`), while a shadow fetch
+  would write the pipeline's `detailCache-*`.
 
 Gauge: `kinowo_worker_identity_shadow_lookups{country,outcome=asked|answered|failed|deferred|rate}`,
 last round. Switch: `KINOWO_IDENTITY_SHADOW_LOOKUPS` (with `KINOWO_IDENTITY_SHADOW`), off by default.

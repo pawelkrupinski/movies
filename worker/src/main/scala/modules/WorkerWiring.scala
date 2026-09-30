@@ -111,8 +111,8 @@ class WorkerWiring(
 
   // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
   // a person and a question each once, as native BSON holding only what the resolver reads. Filled
-  // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model; backfilled once
-  // from the raw answers `obs_lookups` holds. Where the model runs, in the country's database.
+  // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
+  // runs, in the country's database.
   lazy val identityTmdbDocuments: Option[services.identity.TmdbDocuments] =
     Option.when(configuration.identityShadow.value || identityCutover)(
       mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_)))
