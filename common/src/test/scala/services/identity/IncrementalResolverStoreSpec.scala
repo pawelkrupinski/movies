@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
+import tools.IndependentCases
 
 import scala.util.Random
 
@@ -55,16 +56,20 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     (ResolutionSignature.of(restored) == ResolutionSignature.of(expected), restored.familiesResolved, expected.families)
   }
 
+  /** Every seed's answers-while-down outcome, computed once: two properties read it. */
+  private lazy val answeredWhileDownBySeed: Seq[(Long, (Boolean, Int, Int))] =
+    IndependentCases.map(Seeds)(seed => seed -> answeredWhileDown(seed))
+
   "a restored model" should "decide as a resolve of what it holds, whatever moved while it was down" in {
-    Seeds.map(seed => seed -> restart(seed)).collect { case (seed, (false, _, _)) => seed } shouldBe empty
+    IndependentCases.map(Seeds)(seed => seed -> restart(seed)).collect { case (seed, (false, _, _)) => seed } shouldBe empty
   }
 
   it should "decide as a resolve when only answers came in while it was down" in {
-    Seeds.map(seed => seed -> answeredWhileDown(seed)).collect { case (seed, (false, _, _)) => seed } shouldBe empty
+    answeredWhileDownBySeed.collect { case (seed, (false, _, _)) => seed } shouldBe empty
   }
 
   it should "re-resolve fewer families than there are when only answers came in, reusing the ones they did not reach" in {
-    val (resolved, held) = Seeds.map(answeredWhileDown(_)).foldLeft((0, 0)) { case ((r, h), (_, resolves, families)) => (r + resolves, h + families) }
+    val (resolved, held) = answeredWhileDownBySeed.map(_._2).foldLeft((0, 0)) { case ((r, h), (_, resolves, families)) => (r + resolves, h + families) }
     resolved should be < held
   }
 

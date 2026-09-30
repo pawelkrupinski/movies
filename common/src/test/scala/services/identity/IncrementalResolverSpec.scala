@@ -4,6 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
 
+import tools.IndependentCases
+
 import scala.collection.mutable
 import scala.util.Random
 
@@ -41,11 +43,11 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   "the incremental resolver" should "equal a resolve of what it holds after every event of a random sequence" in {
-    Seeds.flatMap(divergence(_)) shouldBe empty
+    IndependentCases.flatMap(Seeds)(divergence(_)) shouldBe empty
   }
 
   it should "equal it too when every update resolves in batches of a few listings" in {
-    Seeds.flatMap(divergence(_, regionBatch = 3)) shouldBe empty
+    IndependentCases.flatMap(Seeds)(divergence(_, regionBatch = 3)) shouldBe empty
   }
 
   it should "be caught by the sequence when it never pulls in a family it now shares a key with (the teeth)" in {
@@ -88,7 +90,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay equal as a cross-family case's families arrive and leave in every order" in {
-    crossFamily.flatMap { case (label, listings, lookups) =>
+    IndependentCases.flatMap(crossFamily) { case (label, listings, lookups) =>
       arrivals(listings, lookups, IncrementalResolver.Mutation.None).map(s"$label: " + _) } shouldBe empty
   }
 
@@ -127,13 +129,13 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "equal a resolve of what it holds after every batch of events" in {
-    Seeds.flatMap(batchedDivergence) shouldBe empty
+    IndependentCases.flatMap(Seeds)(batchedDivergence) shouldBe empty
   }
 
   it should "equal a resolve when it takes a corpus whole, component by component, and after events that follow" in {
     val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
       .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
-    cases.flatMap { case (label, listings, lookups) =>
+    IndependentCases.flatMap(cases) { case (label, listings, lookups) =>
       val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
       def differs(expected: Iterable[Listing]) =
         ResolutionSignature.of(model) != ResolutionSignature.of(IdentityResolver.resolveWith(expected, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
@@ -151,7 +153,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   it should "decide as a whole resolve when a full build splits the corpus into small batches" in {
     val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
       .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
-    cases.flatMap { case (label, listings, lookups) =>
+    IndependentCases.flatMap(cases) { case (label, listings, lookups) =>
       Seq(1, 3, 7).flatMap { batch =>
         val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = batch)
         model.seed(listings)
@@ -286,7 +288,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
   "a family" should "decide alone, with the corpus's context, exactly as the whole resolve does" in {
     val generated = Seeds.map(seed => GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48))
       .map(c => (s"generated", c.listings, c.lookups))
-    (generated ++ crossFamily).flatMap { case (label, listings, lookups) =>
+    IndependentCases.flatMap(generated ++ crossFamily) { case (label, listings, lookups) =>
       familyAlone(listings, lookups, withContext = true).map(s"$label: " + _) } shouldBe empty
   }
 

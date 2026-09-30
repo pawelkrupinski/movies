@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
+import tools.IndependentCases
 
 import scala.util.Random
 
@@ -54,9 +55,11 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
   private def signature(r: Resolution) =
     r.decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9), d.basis)).toSet
 
-  /** The first presentation whose outcome differs from the sorted one, per corpus. */
-  private def orderViolation(mutation: IdentityResolver.Mutation, lookupsToo: Boolean): Option[String] =
-    Seeds.iterator.flatMap { seed =>
+  /** The first presentation whose outcome differs from the sorted one, per corpus. A property
+   *  expected to hold must run every corpus, so they run at once; a mutation expected to break it
+   *  stops at the first corpus that does. */
+  private def orderViolation(mutation: IdentityResolver.Mutation, lookupsToo: Boolean): Option[String] = {
+    def violation(seed: Long): Option[String] = {
       val c = corpus(seed)
       val refLookups = new Recording(c.lookups)
       val reference  = run(c.listings.sortBy(_.sortKey), refLookups, mutation)
@@ -67,7 +70,10 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
         if (lookupsToo && rec.multiset != refLookups.multiset) Some(s"seed $seed $label: lookup multiset differs")
         else Option.when(!lookupsToo && signature(got) != signature(reference))(s"seed $seed $label: outcome differs")
       }.nextOption()
-    }.nextOption()
+    }
+    if (mutation == IdentityResolver.Mutation.None) IndependentCases.flatMap(Seeds)(violation).headOption
+    else Seeds.iterator.flatMap(violation).nextOption()
+  }
 
   "A1" should "issue the same multiset of lookups for 21 presentations of 40 generated corpora" in {
     orderViolation(IdentityResolver.Mutation.None, lookupsToo = true) shouldBe None
@@ -86,7 +92,7 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
   }
 
   "P2" should "be a fixpoint: a second resolve of the same set changes no decision and no id" in {
-    Seeds.foreach { seed =>
+    IndependentCases.foreach(Seeds) { seed =>
       val c = corpus(seed)
       val (a, b) = (run(c.listings, c.lookups), run(c.listings.reverse, c.lookups))
       signature(a) shouldBe signature(b)
@@ -98,7 +104,7 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
   }
 
   "P3" should "never put a cannot-linked pair in one cluster" in {
-    Seeds.foreach { seed =>
+    IndependentCases.foreach(Seeds) { seed =>
       val c = corpus(seed)
       val r = run(c.listings, c.lookups)
       r.violations shouldBe 0
@@ -112,7 +118,7 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A3 families" should "resolve each family alone exactly as the whole set" in {
-    Seeds.foreach { seed =>
+    IndependentCases.foreach(Seeds) { seed =>
       val c = corpus(seed)
       val global = run(c.listings, c.lookups)
       val scoped = c.listings.groupBy(l => global.familyOf(l.key)).values.flatMap(ls => run(ls, c.lookups).decisions)
@@ -132,7 +138,7 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
   "Every decision" should "explain itself in printable text: no control character reaches a report or a log" in {
     // A NUL in an explanation made logs binary, and `grep` (ugrep -I) then skipped them silently —
     // a green shadow run read as one that exited mid-pass.
-    Seeds.foreach { seed =>
+    IndependentCases.foreach(Seeds) { seed =>
       val c = corpus(seed)
       run(c.listings, c.lookups).decisions.flatMap(d => d.explanation :+ d.render).foreach { line =>
         withClue(line.replace('\u0000', '␀'))(line.exists(ch => Character.isISOControl(ch) && ch != '\n') shouldBe false)
