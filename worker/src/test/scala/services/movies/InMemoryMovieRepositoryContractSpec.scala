@@ -1,6 +1,7 @@
 package services.movies
 
 import models._
+import org.scalatest.LoneElement
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -23,7 +24,7 @@ import java.time.LocalDateTime
  * twin, and it exists so the two implementations cannot drift apart again — they now share the
  * decision in [[ScreeningsSplit.applyFilm]], and this is what proves the fake calls it.
  */
-class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
+class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with LoneElement {
 
   private val when  = LocalDateTime.of(2026, 8, 1, 20, 0)
   private val times = Seq(Showtime(when, None))
@@ -160,5 +161,35 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
     repository.upsert("First", year, record(screened).copy(imdbId = Some("tt1"))) shouldBe WriteOutcome.Written
+  }
+
+  // A read re-derives each row (stitch + `fromStorage`), and `findAll` does it for EVERY film —
+  // over the fixture corpus, once per staging fold, that was over half of every end-to-end
+  // boot's CPU. So a film nothing touched hands back the row already derived, and a film whose
+  // stored row OR side rows moved is derived afresh, even when the side rows were written
+  // straight to their own store rather than through this repository.
+  "InMemoryMovieRepository.findAll" should "hand back the row it already derived for a film nothing touched" in {
+    val repo = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+      slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
+    repo.upsert(title, year, record(screened))
+    val first = repo.findAll().loneElement
+    repo.findAll().loneElement should be theSameInstanceAs first
+  }
+
+  it should "re-derive a film whose side rows were written behind its back" in {
+    val screenings = new InMemoryScreeningsRepository
+    val slots      = new InMemorySlotsRepository
+    val repo = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots),
+      normalizer = SingleCountryNormalizer.titleNormalizer)
+    repo.upsert(title, year, record(screened))
+    val film    = repo.findAll().loneElement
+    val slotKey = slots.findForFilm(film.id.value).keys.loneElement
+
+    val later = Showtime(when.plusHours(2), None)
+    screenings.upsertSlot(film.id.value, slotKey, ListedShowtimes(times :+ later, None))
+    repo.findAll().loneElement.record.data(Multikino).showtimes shouldBe times :+ later
+
+    slots.upsertSlot(film.id.value, slotKey, stripped.copy(runtimeMinutes = Some(99)))
+    repo.findAll().loneElement.record.data(Multikino).runtimeMinutes shouldBe Some(99)
   }
 }

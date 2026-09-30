@@ -124,13 +124,32 @@ class InMemoryMovieRepository(
     val allScreenings = screenings.map(_.findAll()).getOrElse(Map.empty)
     val allSlots      = slots.map(_.findAll()).getOrElse(Map.empty)
     store.iterator.filter { case (id, _) => wanted(id) }.map { case (id, s) =>
-      // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
-      // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
-      // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
-      StoredMovieRecord.fromStorage(id, Some(s.key(normalizer)),
-        s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)), normalizer)
+      val filmSlots      = allSlots.getOrElse(id, Map.empty)
+      val filmScreenings = allScreenings.getOrElse(id, Map.empty)
+      readMemo.get(id) match {
+        case Some(m) if m.derivedFrom(s, filmSlots, filmScreenings) => m.row
+        case _ =>
+          // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
+          // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
+          // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
+          val row = StoredMovieRecord.fromStorage(id, Some(s.key(normalizer)),
+            s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)), normalizer)
+          readMemo.update(id, InMemoryMovieRepository.ReadMemo(s, filmSlots, filmScreenings, row))
+          row
+      }
     }.toSeq
   }
+
+  /** The last row `readRows` derived per film, with the inputs it derived it from.
+   *
+   *  A read's stitch + `fromStorage` derivation is a pure function of the stored row, the
+   *  film's slots and its screenings (and this repository's fixed normalizer), so an
+   *  unchanged film re-derives to the same row. Without the memo every `findAll` re-derived
+   *  EVERY film — and `InMemoryStagingFolder.foldGroup` calls `findAll` once per fold, which
+   *  over the fixture corpus was over half the CPU of every end-to-end boot. A write
+   *  replaces the stored row (`put`) or its side rows, so the next read misses and
+   *  re-derives: nothing a caller can observe changes, only how often it is recomputed. */
+  private val readMemo = mutable.HashMap.empty[String, InMemoryMovieRepository.ReadMemo]
 
   /** Rebuild a row's `data` the way every production reader does: `movie_slots` UNIONED
    *  with whatever the `movies` document still embeds (neither is complete mid-migration),
@@ -315,6 +334,7 @@ class InMemoryMovieRepository(
   def delete(film: FilmId): WriteOutcome = lock.synchronized {
     val id = film.value
     updatedAtById.remove(id)
+    readMemo.remove(id)
     store.remove(id).fold[WriteOutcome](WriteOutcome.Written) { removed =>
       // the cascade the real repository owns
       val sideDeletes = screenings.map(_.deleteFilm(id)) ++ slots.map(_.deleteFilm(id))
@@ -332,7 +352,6 @@ class InMemoryMovieRepository(
     StrandedSideRows.sweep(screenings, slots, liveIds = () => Some(store.keySet.toSet))
   }
 
-  /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
   /** THE SLOTS-ONLY SCAN, WITHOUT SHOWTIMES — as `MongoMovieRepository` does under the
    *  read/write split, and NOT as the trait's default does (which hands back a fully
    *  stitched row). The difference is not cosmetic: `ReadModelProjection.screeningIds`
@@ -345,6 +364,7 @@ class InMemoryMovieRepository(
     true
   }
 
+  /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
   override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = {
     readRows(id => updatedAtById.get(id).exists(_.isAfter(since))).foreach(f)
     true
@@ -390,4 +410,20 @@ class InMemoryMovieRepository(
 
 object InMemoryMovieRepository {
   private val logger = play.api.Logger(classOf[InMemoryMovieRepository])
+
+  /** See `readMemo`. The stored row and the slot map are compared by REFERENCE: `put`
+   *  stores a fresh row on every write and the in-memory slot store replaces a film's map
+   *  whenever a slot changes, while `SourceData`'s own equality ignores showtimes, so `==`
+   *  could call two different slot maps equal. A slot store that hands back a fresh map on
+   *  every read only costs a re-derive. The screenings map is rebuilt on every
+   *  `findAll`, so it is compared by value — `Showtime` is a plain case class. */
+  private final case class ReadMemo(
+    stored:     StoredMovieRecord,
+    slots:      Map[String, SourceData],
+    screenings: Map[String, Seq[models.Showtime]],
+    row:        StoredMovieRecord
+  ) {
+    def derivedFrom(s: StoredMovieRecord, filmSlots: Map[String, SourceData], filmScreenings: Map[String, Seq[models.Showtime]]): Boolean =
+      (stored eq s) && (slots eq filmSlots) && screenings == filmScreenings
+  }
 }
