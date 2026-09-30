@@ -1614,7 +1614,7 @@ abstract class CountryConvergenceBehaviour(
       // fell before the cutoff, none of their venues failed, no venue gained them. A tick
       // that rewrites one of THEM is churn, whatever else it had to do.
       val touchedVenues = failing.toSet ++ arrivals.map(_._1) ++ withdrawn.map(_._1)
-      val unchanged = before.filter { r =>
+      val ownUnchanged = before.filter { r =>
         !arrivals.exists(_._3.id == r.id) &&
           r.record.data.keysIterator.forall {
             case models.CinemaShowing(c, key) =>
@@ -1623,6 +1623,18 @@ abstract class CountryConvergenceBehaviour(
             case _ => true
           }
       }
+      // A cut-over country's films are decided a FAMILY at a time — the listings whose candidates
+      // compete — so a film is untouched only when no listing in its family changed: a sibling
+      // that leaves can settle what it had kept open. Run 36777365475: 'DKF Zamek: Lawa' (Wajda,
+      // 1989) ending let a bare 'Lawa' join 'Konwicki. Lawa' (2023), its own listing unchanged.
+      val familyOf: Map[services.movies.ListingKey, Int] =
+        if (!w.identityCutover) Map.empty
+        else w.identityModel.flatMap(_.current(scala.concurrent.duration.Duration(5, "minutes")))
+          .fold(fail("the identity model could not be read for the next day's families"))(_.resolution.familyOf)
+      def familiesOf(r: StoredMovieRecord): Set[Int] =
+        r.record.data.toSeq.flatMap { case (source, slot) => services.movies.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
+      val movedFamilies = before.filterNot(ownUnchanged.contains).flatMap(familiesOf).toSet
+      val unchanged     = ownUnchanged.filter(r => (familiesOf(r) & movedFamilies).isEmpty)
       val leaving = before.filter(r => r.record.data.keysIterator.forall {
         case models.CinemaShowing(c, key) => !failing.contains(c) && !reported.getOrElse(c, Nil).exists(cm => keyOf(c, cm) == key)
         case _                            => true
@@ -1631,7 +1643,8 @@ abstract class CountryConvergenceBehaviour(
            s"(${arrivals.map { case (to, cm, _) => s"'${cm.movie.title}' at ${to.displayName}" }.mkString(", ")}), " +
            s"${withdrawn.size} withdrawn (${withdrawn.map { case (c, cm, _) => s"'${cm.movie.title}' at ${c.displayName}" }.mkString(", ")}), " +
            s"${throwing.map(_.displayName).mkString} throws, ${blank.map(_.displayName).mkString} comes back empty, " +
-           s"${unchanged.size} film(s) untouched")
+           s"${unchanged.size} film(s) untouched" +
+           (if (w.identityCutover) s" (${ownUnchanged.size - unchanged.size} more share a family with a changed listing)" else ""))
       withClue("the next day moves nothing, so it would prove nothing — the corpus has no second day or no venue to fail: ") {
         arrivals should not be empty
         withdrawn should not be empty
