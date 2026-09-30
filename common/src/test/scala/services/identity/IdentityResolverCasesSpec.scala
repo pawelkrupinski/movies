@@ -105,6 +105,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "A season listing's banner" should "name its house from every season production of its work, not only those its own search found" in {
+    // The Met's record reached the family through another venue's search only; as evidence it names
+    // the banner's house by its words (`MetSeasonHouseCase`).
+    import MetSeasonHouseCase.*
+    val r = IdentityResolver.resolve(Seq(cosi, carmen, other), lookups(normalizer), normalizer, IdentityCalibration.resolver)
+    withClue(Seq(cosi, carmen, other).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(carmen.key).film should not be Some(RboCarmen)
+      r.decisionOf(cosi.key).film should not be Some(RboCosi)
+    }
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")

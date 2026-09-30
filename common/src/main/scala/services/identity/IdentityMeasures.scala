@@ -111,13 +111,20 @@ object IdentityMeasures {
    *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
    *  the banner, never the work. */
   def namesSeasonProduction(l: Listing, f: Film): Boolean =
-    l.seasonYear.exists(s => filmSeason(f).contains(s)) && seasonWork(l, f).isDefined
+    seasonWorks(l).exists(seasonWorks(f))
 
-  /** The work a listing and a film's titles share outside the season (`namesSeasonProduction`). */
-  private def seasonWork(l: Listing, f: Film): Option[String] = {
-    def works(titles: Seq[String]) = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
-    (works(titleShapes(l)) intersect works(f.titles.flatMap(SearchTitles.candidates(_, None)))).toSeq.sorted.headOption
-  }
+  /** The (work, season) pairs a listing's title names: each whole segment outside its season, keyed,
+   *  beside the season. [[namesSeasonProduction]] is exactly two sides' pairs meeting, so a record
+   *  of the listing's season production can be found by pair, whoever searched it up. */
+  def seasonWorks(l: Listing): Set[(String, Int)] =
+    l.seasonYear.fold(Set.empty[(String, Int)])(season => seasonlessWorks(titleShapes(l)).map(_ -> season))
+
+  /** A film's (work, season) pairs, as [[seasonWorks]] reads a listing's. */
+  def seasonWorks(f: Film): Set[(String, Int)] =
+    filmSeason(f).fold(Set.empty[(String, Int)])(season => seasonlessWorks(f.titles.flatMap(SearchTitles.candidates(_, None))).map(_ -> season))
+
+  private def seasonlessWorks(titles: Seq[String]): Set[String] =
+    titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
 
   /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
    *  piece (a title shape of each), and what each title adds to it along one edge — its banner,

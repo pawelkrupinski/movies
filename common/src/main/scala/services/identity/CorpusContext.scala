@@ -154,6 +154,19 @@ private[identity] object CorpusContext {
     def updated[V1 >: V](key: K, value: V1): Map[K, V1] = throw new UnsupportedOperationException("a keyed view answers lookups only")
   }
 
+  /** Every recorded season production, by the (work, season) pairs its titles name. */
+  def seasonProductions(films: Iterable[(Int, IdentityMeasures.Film)]): Map[(String, Int), Set[Int]] =
+    films.toSeq.flatMap { case (id, film) => IdentityMeasures.seasonWorks(film).map(_ -> id) }.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+
+  /** The films a node's banner is billed against (`Houses.evidence`): the ones it reached, then —
+   *  a listing naming a season — every recorded production of its work that season, whoever searched
+   *  it up. PL Kino 1410's "Cosi fan tutte | metropolitan opera: live in hd 2026/27" reached only
+   *  Royal Ballet & Opera's; the Met's record, another venue's hit, is what names its banner's house. */
+  def billedFilms(reached: Seq[Int], listing: IdentityMeasures.Listing, seasonFilms: ((String, Int)) => Iterable[Int]): Seq[Int] = {
+    val own = reached.toSet
+    reached ++ IdentityMeasures.seasonWorks(listing).toSeq.flatMap(seasonFilms).distinct.sorted.filterNot(own)
+  }
+
   /** The context of exactly `nodes`: what a whole resolve of them reads. `reached` is each node's
    *  own candidates (its searches' and walks'), `recorded` every record their answers named. */
   def of(nodes: Seq[EvidenceNode], reached: EvidenceNode => Seq[Int], recorded: Map[Int, Candidate],
@@ -161,7 +174,10 @@ private[identity] object CorpusContext {
     val venueTitles = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
     val candidates  = recorded.map { case (id, candidate) =>
       id -> candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, venueTitles.getOrElse(id, Nil))) }
-    val houseEvidence = nodes.flatMap(node => IdentityMeasures.Houses.evidence(node.evidence.measured, reached(node).map(candidates(_).film)))
+    val seasonFilms   = seasonProductions(candidates.map { case (id, candidate) => id -> candidate.film })
+    val houseEvidence = nodes.flatMap { node =>
+      val listing = node.evidence.measured
+      IdentityMeasures.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
     val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (listing.venue -> node.evidence.measured)))
       .groupMap(_._1)(_._2)
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet

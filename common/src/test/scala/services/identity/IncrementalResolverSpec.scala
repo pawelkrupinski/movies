@@ -217,6 +217,20 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
+  "a season production another venue's search reaches later" should "re-learn the banner's house and move the broadcasts it names" in {
+    // Kino 1410's Met broadcasts arrive first and learn Royal Ballet & Opera; the venue whose search
+    // reaches the Met's record arrives after, and must move them as the whole resolve does.
+    import MetSeasonHouseCase.*
+    val seasonLookups = lookups(normalizer)
+    val model = new IncrementalResolver(seasonLookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.listingsSeen(Seq(cosi, carmen))
+    model.decisions.find(_.listings(carmen.key)).flatMap(_.film) shouldBe Some(RboCarmen)
+    model.listingsSeen(Seq(other))
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(
+      IdentityResolver.resolveWith(Seq(cosi, carmen, other), seasonLookups, normalizer, calibration, IdentityResolver.Mutation.None))
+    model.decisions.find(_.listings(carmen.key)).flatMap(_.film) should not be Some(RboCarmen)
+  }
+
   "a family's size" should "name its busiest nodes by their published titles, readable in a log line" in {
     val size = IncrementalResolver.FamilySize(3, 2, 4, Seq("Pressure\u0000Pressure\u0000\u0000Anthony Maras\u0000100" -> 2, "Pressure" -> 1))
     size.render shouldBe "3 listings / 2 nodes / 4 keys (Pressure×2, Pressure×1)"
