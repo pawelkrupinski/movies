@@ -162,7 +162,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
-    scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || scored.number("runtime.delta").exists(_ >= 30)
+    scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || scored.number("runtime.delta").exists(_ >= IdentityMeasures.RuntimeContradiction)
 
   /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
    *  candidate, and no other candidate is one the title names — the rest only a director's

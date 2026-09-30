@@ -920,6 +920,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       .decisionOf(dated.key).film shouldBe Some(8461)
   }
 
+  it should "keep the year of a revival whose runtime is not the film's" in {
+    // DE Gloria Palast and Roxy Kinos: "MET Opera Live im Kino: Manon", 2027, Laurent Pelly, 264
+    // minutes — the Met's 2026/27 revival of Pelly's staging. His 2019 recording of it runs 232: a
+    // re-release is the same cut, so a runtime half an hour off makes the 2027 another production's
+    // year, not the 2019 film's screening year.
+    val films = Seq(F(616147, "The Metropolitan Opera: Manon", 2019, "Laurent Pelly", 232, 1))
+    val revival = Seq(Multikino, Helios).map(listing(_, "MET Opera Live im Kino: Manon", Some(2027), Some("Laurent Pelly"), Some(264)))
+    val r = IdentityResolver.resolve(revival, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    revival.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+  }
+
   it should "still veto a film of that title another director made decades before" in {
     val films = Seq(F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
     val other = listing(Multikino, "Diabły", Some(2026), Some("Someone Else"), Some(95))

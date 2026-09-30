@@ -1008,6 +1008,11 @@ object IdentityMeasures {
    *  when the pool has it, still wins on the year's score (Helios RePlay's 2026 "Diabły" is Ken
    *  Russell's 1971 film). */
   val PublishedYear: Set[String] = Set("year.delta", "year.distance")
+  /** Minutes off at which a listing's stated runtime is its own fact against the film, not a
+   *  venue's rounding or trailers. */
+  val RuntimeContradiction: Int = 30
+  def runtimeContradicts(m: Map[String, Measure]): Boolean =
+    m.get("runtime.delta").exists { case Number(d) => d >= RuntimeContradiction; case _ => false }
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
   /** Does the listing's original title only repeat its own title — the whole of it (a venue
    *  filling the field with the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2:
@@ -1109,9 +1114,12 @@ object IdentityMeasures {
    *  (Nowe Horyzonty's 2026 double bill "Basia. Humor w paski mam + Kocia Szajka…" is not
    *  Wasilewski's 2018 "Basia").
    *  "Credited" is by the listing that published the year ([[Listing.creditedBesideYear]]), never
-   *  borrowed from a sibling's credit. */
+   *  borrowed from a sibling's credit. A re-release is the same cut: a runtime that contradicts
+   *  the film ([[runtimeContradicts]]) makes the year another production's — DE's 2027 "MET Opera
+   *  Live im Kino: Manon" at 264 minutes is the Met's revival of Laurent Pelly's staging, not his
+   *  232-minute 2019 recording. */
   private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
-    if (TitledRelations(title.value) && ownAgreement(m)._2("year") &&
+    if (TitledRelations(title.value) && ownAgreement(m)._2("year") && !runtimeContradicts(m) &&
         f.directorCredits.exists(creditRelation(l.creditsBesideYear, _) == Category("same_person")))
       m ++ PublishedYear.map(_ -> MissingListing)
     else m
