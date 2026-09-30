@@ -33,6 +33,10 @@ import scala.collection.mutable
  * resolved only when a sibling's canonical-order spelling had already merged in —
  * an arrival-order dependence. The persisted corpus + every rendered city row
  * must now be byte-identical across arrival orders.
+ *
+ * The targeted single-film reproductions of the same disorder — boots of just the
+ * cinemas reporting one film — live in [[StagingSubsetOrderDeterminismSpec]], so
+ * they run beside this whole-corpus boot rather than after it.
  */
 @CorpusReplay // CI runs this heavy spec on its own parallel e2e shard — see CorpusReplay.java
 class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
@@ -136,84 +140,6 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     info(s"$Iterations interleaved staging boots (${record0.size} films) in ${elapsedMs}ms")
     withClue(s"${divergences.size} divergence(s):\n${divergences.take(40).mkString("\n")}\n") {
       divergences.toList shouldBe empty
-    }
-  }
-
-  // ── Targeted fast reproduction ──────────────────────────────────────────────
-  // Boot ONLY the cinemas that report a film of interest (their REAL scrapers,
-  // real deferred-detail) — seconds instead of the 14-min full corpus —
-  // to pin a single film's arrival-order resolution race.
-  private val HindRajabCinemas: Set[Cinema] =
-    Set(CharlieMonroe, KinoMuranow, KinoAmondo, SluzewskiDomKultury)
-
-  private def replaySubset(cinemas: Set[Cinema], seed: Long): Seq[StoredMovieRecord] = {
-    val rnd = new scala.util.Random(seed)
-    val w = new FixtureTestWiring(Fixture) {
-      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
-    }
-    w.bootStartupInterleaved(rnd, cinemas.contains)
-    w.converge(Some(rnd))
-    w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
-  }
-
-  private val CaravaggioCinemas: Set[Cinema] =
-    Set(KinoNoweHoryzonty, KinoMuranow, KinoZamekSzczecin, KinoAmok)
-
-  "Caravaggio. Arcydzieła niepokornego geniusza, booted from just its cinemas" should
-    "settle to an identical readyToProject state regardless of arrival order" in {
-    def caravaggio(rs: Seq[StoredMovieRecord]) =
-      rs.filter(r => r.title.toLowerCase.contains("arcydzieła niepokornego"))
-    def shape(rs: Seq[StoredMovieRecord]) = caravaggio(rs).map { x =>
-      (x.title, x.year, x.record.tmdbId, x.record.tmdbNoMatch, x.record.detailPending,
-        x.record.readyToProject, x.record.cinemaData.keySet.map(_.displayName))
-    }.mkString("\n  ")
-    val ref = replaySubset(CaravaggioCinemas, 700000L)
-    (1 to 5).foreach { i =>
-      val r = replaySubset(CaravaggioCinemas, 700000L + i)
-      withClue(s"seed ${700000L + i} vs 700000:\n  ref=${shape(ref)}\n  r  =${shape(r)}\n")(
-        caravaggio(r).map(_.record.readyToProject) shouldBe caravaggio(ref).map(_.record.readyToProject))
-    }
-  }
-
-  // Kino Sfinks lists "Robin Hood: Koniec legendy" three times — bare, "Tani wtorek: …"
-  // and "Filmowy Klub Seniora i Seniorki: …" — and its detail resolves the film; Kino
-  // Pionier Żary lists it yearless as "Robin Hood:Koniec Legendy", which TMDB can't
-  // resolve on its own. When Sfinks folds first its resolved row is keyed under the
-  // decorated "Tani wtorek" spelling, so Pionier's row folds beside it, and only the
-  // settle's search-title edge joins the two. A converge that runs its enrichment sweep
-  // before that settle audits Filmweb on the two halves and never on the merged film,
-  // so its "steady state" is not steady: a second pass still finds the film's page.
-  private val RobinHoodCinemas: Set[Cinema] = Set(KinoSfinks, KinoPionierZary)
-
-  "converge" should "leave a staging-booted corpus that a second converge does not change" in {
-    (0 to 5).foreach { i =>
-      val seed = 700000L + i
-      val w = new FixtureTestWiring(Fixture) {
-        override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
-      }
-      val rnd = new scala.util.Random(seed)
-      w.bootStartupInterleaved(rnd, RobinHoodCinemas.contains)
-      w.converge(Some(rnd))
-      def robin = OrderIndependentIds(w.movieRepository.findAll().filter(_.title.toLowerCase.contains("robin hood")), w.titleNormalizer)
-        .stableRecords.map(r => (r.title, r.year, r.record.tmdbId, r.record.filmwebUrl, r.record.cinemaData.keySet))
-      val settled = robin
-      w.converge()
-      withClue(s"seed $seed:\n")(robin shouldBe settled)
-    }
-  }
-
-  "Głos Hind Rajab, booted from just its cinemas" should
-    "settle to one identical record regardless of arrival order" in {
-    // Ids are opaque and depend on which key the row was FIRST created under — i.e. on
-    // arrival order, by design (`FilmId`); everything else about the row must not.
-    def hind(rs: Seq[StoredMovieRecord]) =
-      OrderIndependentIds(rs.filter(_.title.toLowerCase.contains("hind rajab")), TitleNormalizer.forCountry(Country.Poland)).stableRecords
-    def shape(rs: Seq[StoredMovieRecord]) =
-      hind(rs).map(x => (x.title, x.year, x.record.tmdbId, x.record.cinemaData.keySet)).mkString("\n  ")
-    val ref = replaySubset(HindRajabCinemas, 700000L)
-    (1 to 5).foreach { i =>
-      val r = replaySubset(HindRajabCinemas, 700000L + i)
-      withClue(s"seed ${700000L + i} vs 700000:\n  ref=${shape(ref)}\n  r  =${shape(r)}\n")(hind(r) shouldBe hind(ref))
     }
   }
 }
