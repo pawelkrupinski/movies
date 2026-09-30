@@ -191,64 +191,78 @@ object MovieCodecs extends PersistedCodecs {
     override def encode(w: BsonWriter, v: SourceData, c: EncoderContext): Unit =
       macroSourceDataCodec.encode(w, v.persisted, c)
 
+    // Streamed field by field off the reader — a slot is decoded ~100k times in a US worker's
+    // boot hydrate, and building each one's whole BsonDocument tree first, then reading it back,
+    // was the costliest part of the decode on the restart's critical path. Every legacy rule the
+    // tree-based reader applied holds (`MovieCodecsSpec` pins each legacy shape): a text field
+    // only when it is a string, a number only when it is an int32, a list from an array or from
+    // one comma-joined string, null and absent alike empty, every other field skipped.
     override def decode(r: BsonReader, c: DecoderContext): SourceData = {
-      val document = org.bson.codecs.BsonDocumentCodec().decode(r, c)
-      def optStr(key: String): Option[String] =
-        if (document.containsKey(key) && document.get(key).isString) Some(document.getString(key).getValue)
-        else None
-      def optInt(key: String): Option[Int] =
-        if (document.containsKey(key) && document.get(key).isInt32) Some(document.getInt32(key).getValue)
-        else None
-      def seqStr(key: String): Seq[String] =
-        if (!document.containsKey(key) || document.get(key).isNull) Seq.empty
-        else if (document.get(key).isString) {
-          val stringValue = document.getString(key).getValue
-          if (stringValue.isEmpty) Seq.empty else stringValue.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+      import org.bson.BsonType
+      def str(): Option[String] = if (r.getCurrentBsonType == BsonType.STRING) Some(r.readString()) else { r.skipValue(); None }
+      def int(): Option[Int]    = if (r.getCurrentBsonType == BsonType.INT32) Some(r.readInt32()) else { r.skipValue(); None }
+      def strings(): Seq[String] = r.getCurrentBsonType match {
+        case BsonType.STRING =>
+          val joined = r.readString()
+          if (joined.isEmpty) Seq.empty else joined.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+        case BsonType.ARRAY =>
+          r.readStartArray()
+          val out = Seq.newBuilder[String]
+          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
+          r.readEndArray()
+          out.result()
+        case _ => r.skipValue(); Seq.empty
+      }
+      def documents[A](codec: Codec[A]): Seq[A] = r.getCurrentBsonType match {
+        case BsonType.ARRAY =>
+          r.readStartArray()
+          val out = Seq.newBuilder[A]
+          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += codec.decode(r, c)
+          r.readEndArray()
+          out.result()
+        case _ => r.skipValue(); Seq.empty
+      }
+      var title, rawTitle, originalTitle, englishTitle, synopsis, posterUrl, filmUrl, trailerUrl, language, ageRating =
+        Option.empty[String]
+      var runtimeMinutes, releaseYear = Option.empty[Int]
+      var cast, director, countries, genres = Seq.empty[String]
+      var showtimes     = Seq.empty[Showtime]
+      var titleSearches = Seq.empty[TitleSearch]
+      r.readStartDocument()
+      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+        r.readName() match {
+          case "title"          => title = str()
+          case "rawTitle"       => rawTitle = str()
+          case "originalTitle"  => originalTitle = str()
+          case "englishTitle"   => englishTitle = str()
+          case "synopsis"       => synopsis = str()
+          case "cast"           => cast = strings()
+          case "director"       => director = strings()
+          case "runtimeMinutes" => runtimeMinutes = int()
+          case "releaseYear"    => releaseYear = int()
+          case "countries"      => countries = strings()
+          case "genres"         => genres = strings()
+          case "posterUrl"      => posterUrl = str()
+          case "filmUrl"        => filmUrl = str()
+          case "trailerUrl"     => trailerUrl = str()
+          // Absent on every row written before the stamp existed — `None` reads as pl-PL (the
+          // historical hardcoded enrichment language), which is what those rows actually hold.
+          case "language"       => language = str()
+          case "showtimes"      => showtimes = documents(showtimeCodec)
+          // Absent on every row written before the certificate field existed → None.
+          case "ageRating"      => ageRating = str()
+          // Absent on every slot written before the field existed → no search evidence.
+          case "titleSearches"  => titleSearches = documents(titleSearchCodec)
+          case _                => r.skipValue()
         }
-        else if (document.get(key).isArray) {
-          val array = document.getArray(key)
-          (0 until array.size()).map(i => array.get(i).asString().getValue).toSeq
-        }
-        else Seq.empty
-      def showtimes: Seq[Showtime] =
-        if (!document.containsKey("showtimes") || document.get("showtimes").isNull) Seq.empty
-        else {
-          val array = document.getArray("showtimes")
-          (0 until array.size()).map { i =>
-            showtimeCodec.decode(new org.bson.BsonDocumentReader(array.get(i).asDocument()), c)
-          }.toSeq
-        }
-      def titleSearches: Seq[TitleSearch] =
-        if (!document.containsKey("titleSearches") || !document.get("titleSearches").isArray) Seq.empty
-        else {
-          val array = document.getArray("titleSearches")
-          (0 until array.size()).map(i => titleSearchCodec.decode(new org.bson.BsonDocumentReader(array.get(i).asDocument()), c)).toSeq
-        }
+      }
+      r.readEndDocument()
       SourceData(
-        title          = optStr("title"),
-        rawTitle       = optStr("rawTitle"),
-        originalTitle  = optStr("originalTitle"),
-        englishTitle   = optStr("englishTitle"),
-        synopsis       = optStr("synopsis"),
-        cast           = seqStr("cast"),
-        director       = seqStr("director"),
-        runtimeMinutes = optInt("runtimeMinutes"),
-        releaseYear    = optInt("releaseYear"),
-        countries      = seqStr("countries"),
-        genres         = seqStr("genres"),
-        posterUrl      = optStr("posterUrl"),
-        filmUrl        = optStr("filmUrl"),
-        trailerUrl     = optStr("trailerUrl"),
-        // Absent on every row written before the stamp existed — `None` reads as
-        // pl-PL (the historical hardcoded enrichment language), which is what
-        // those rows actually hold.
-        language       = optStr("language"),
-        showtimes      = showtimes,
-        // Absent on every row written before the certificate field existed → None.
-        ageRating      = optStr("ageRating"),
-        // Absent on every slot written before the field existed → no search evidence.
-        titleSearches  = titleSearches
-      )
+        title = title, rawTitle = rawTitle, originalTitle = originalTitle, englishTitle = englishTitle,
+        synopsis = synopsis, cast = cast, director = director, runtimeMinutes = runtimeMinutes,
+        releaseYear = releaseYear, countries = countries, genres = genres, posterUrl = posterUrl,
+        filmUrl = filmUrl, trailerUrl = trailerUrl, language = language, showtimes = showtimes,
+        ageRating = ageRating, titleSearches = titleSearches)
     }
   }
 

@@ -444,4 +444,29 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.year shouldBe Some(2021)
     back.key(titleNormalizer) shouldBe "legacykey|2021"
   }
+  // The slot decode streams off the reader rather than building a BsonDocument first,
+  // so every legacy wire shape a stored slot can carry is pinned here field by field.
+  it should "read every legacy slot shape the way it always has" in {
+    val wire = BsonDocument.parse(
+      """{ "title": "Tytuł", "rawTitle": null, "originalTitle": 42, "synopsis": "",
+        |  "cast": "Anna Kowalska, , Jan Nowak ", "director": ["Agnieszka Holland"],
+        |  "countries": "", "genres": null,
+        |  "runtimeMinutes": 97, "releaseYear": "2021",
+        |  "showtimes": [ { "dateTime": { "$date": "2026-09-30T18:00:00Z" }, "bookingUrl": "https://b/1",
+        |                   "room": "Sala 3", "format": ["2D", "NAP"] } ],
+        |  "titleSearches": "not a list",
+        |  "showtimesDigest": "cache-only", "showtimeStartMinutes": [1, 2],
+        |  "retired": { "nested": [ { "deep": 1 } ] } }""".stripMargin)
+    val decoded = MovieCodecs.registry.get(classOf[SourceData]).decode(new BsonDocumentReader(wire), DecoderContext.builder().build())
+    decoded shouldBe SourceData(
+      title = Some("Tytuł"), synopsis = Some(""),
+      cast = Seq("Anna Kowalska", "Jan Nowak"), director = Seq("Agnieszka Holland"),
+      runtimeMinutes = Some(97),
+      showtimes = Seq(Showtime(decoded.showtimes.head.dateTime, Some("https://b/1"), Some("Sala 3"), List("2D", "NAP"))))
+    decoded.showtimes should have size 1
+
+    val sparse = BsonDocument.parse("""{ "showtimes": null, "titleSearches": [ { "titleKey": "k", "rival": 0, "rivals": 2 } ] }""")
+    val back = MovieCodecs.registry.get(classOf[SourceData]).decode(new BsonDocumentReader(sparse), DecoderContext.builder().build())
+    back shouldBe SourceData(titleSearches = Seq(TitleSearch("k", None, 2)))
+  }
 }
