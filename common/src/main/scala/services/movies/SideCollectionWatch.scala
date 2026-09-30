@@ -34,8 +34,8 @@ import scala.reflect.ClassTag
  * why the demand window is the caller's: only the caller knows when an event is APPLIED.
  *
  * A row the codec cannot decode is SKIPPED, not fatal — see [[ChangeEventDecoder]]: it is
- * counted, logged, releases its unit of demand and is never acknowledged, so the resume
- * position does not move for it.
+ * counted, logged, releases its unit of demand and is acknowledged at once — there is nothing to
+ * apply, and the position moves only over a contiguous run of acknowledged events ([[AppliedPrefix]]).
  *
  * Requires a replica set (a single-node RS counts), like the `movies` stream.
  */
@@ -56,6 +56,9 @@ final class SideCollectionWatch[Dto: ClassTag](
    *  unsubscribes. */
   def watch(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): AutoCloseable = {
     val decoder = ChangeEventDecoder.of[Dto](name, collection.codecRegistry, decodeFailures)
+    // The events this cursor has delivered and not yet had applied: the position moves only past
+    // a contiguous run of applied ones — see [[AppliedPrefix]].
+    val appliedPrefix = new AppliedPrefix((token, generation) => { resumeToken.advance(token, generation); resumeToken.save(force = false) })
     val subRef = new AtomicReference[Subscription]()
     // A terminal error is the END of a cursor — the driver never brings it back, and unlike
     // the movies stream there is not even a later registration to re-open this one. Without
@@ -84,7 +87,7 @@ final class SideCollectionWatch[Dto: ClassTag](
             // late acknowledgement re-arming a token `clear()` has since thrown away.
             val token      = change.getResumeToken
             val generation = resumeToken.generation
-            val applied    = () => { resumeToken.advance(token, generation); resumeToken.save(force = false) }
+            val applied    = appliedPrefix.deliver(token, generation)
             def deletedFilm = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
               .map(v => if (v.isString) v.asString.getValue else v.toString)
               .map(SlotKeyed.filmIdOf) // a delete carries no post-image — split the _id
@@ -98,8 +101,9 @@ final class SideCollectionWatch[Dto: ClassTag](
                 catch { case e: Throwable => logger.warn(s"$name watch onChange($fid) failed: ${e.getMessage}") }
               // Nothing to hand the caller, so nothing will release this event's demand but us —
               // left unreleased, every skipped event narrowed the window until the cursor stalled.
-              // Not acknowledged: the event was not applied, so the resume position stays put.
-              case None => demand.applied()
+              // Acknowledged at once: there is nothing to apply, and an event never acknowledged
+              // would hold every later one's position for good.
+              case None => applied(); demand.applied()
             }
           }
           override def onError(e: Throwable): Unit = {

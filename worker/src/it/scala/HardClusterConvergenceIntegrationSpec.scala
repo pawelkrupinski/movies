@@ -111,7 +111,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
-    val storage = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", TitleNormalizer.forCountry(country))
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", TitleNormalizer.forCountry(country),
+      services.movies.MovieChangeStream.Debounce.forCountry(country))
     storages.synchronized(storages += storage)
     val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), wrap(responses(country)),
       FixtureRoot, clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)),

@@ -159,7 +159,8 @@ object FixpointPass {
   }
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
-   *  no event waiting on any cursor's apply thread, and none delivered for `quiet`.
+   *  no event waiting on any cursor's apply thread or held by its debounce, and none delivered
+   *  for `quiet`.
    *
    *  A Mongo cursor delivers whenever it gets there, so without this the projector's work
    *  for one pass lands in the NEXT one's ledger — on 2026-09-24 the UK leg's first pass
@@ -173,8 +174,11 @@ object FixpointPass {
     val watched  = services.movies.ChangeStreamLiveness.Collections.filter(liveness.isWatching)
     val deadline = System.nanoTime() + within.toNanos
     def settled: Boolean = {
+      // A re-read the debounce holds is a pass's write not yet applied: release it rather than
+      // wait out its burst — the read it makes is of the film's state now, as a timer's would be.
+      w.movieRepository.releaseHeldChanges()
       val now = liveness.now()
-      watched.forall { c =>
+      w.movieRepository.heldChanges == 0 && watched.forall { c =>
         liveness.pendingApplies(c) == 0 &&
           liveness.lastDelivered(c).forall(at => java.time.Duration.between(at, now).toMillis >= quiet.toMillis)
       }

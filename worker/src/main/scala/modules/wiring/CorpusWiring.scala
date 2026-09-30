@@ -48,7 +48,7 @@ trait CorpusWiring { self: WorkerWiring =>
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
-    changeCoalesceDelay = MovieChangeStream.WorkerSideCoalesceDelay,
+    changeDebounce = MovieChangeStream.Debounce.forCountry(country),
     // The worker is the durable read-model/cache mirror: persist the change-stream resume
     // token so a restart replays events missed while down instead of leaning on the backstop.
     persistResumeToken = true)

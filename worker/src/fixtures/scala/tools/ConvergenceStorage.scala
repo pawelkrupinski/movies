@@ -86,9 +86,10 @@ object ConvergenceStorage {
    * exact shape of the enrichment gate that resolved 0 of 892 films while three specs
    * passed. An unreachable database fails the run rather than degrading it.
    */
-  def fromConfiguration(configuration: settings.ProcessConfiguration, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
+  def fromConfiguration(configuration: settings.ProcessConfiguration, purpose: String, normalizer: TitleNormalizer,
+                        changeDebounce: Option[services.movies.MovieChangeStream.Debounce] = None): ConvergenceStorage =
     IntegrationMongoTarget.from(configuration)
-      .map(target => mongo(target, purpose, normalizer))
+      .map(target => mongo(target, purpose, normalizer, changeDebounce))
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
         "in-memory storage any more, because a claim proved against a map is not a claim " +
@@ -104,7 +105,8 @@ object ConvergenceStorage {
    *  German and UK legs keyed their corpora through the Polish " & " -> " i "
    *  unification — `wallaceigromitthecurseofthewererabbit` in a UK corpus (2026-08-04).
    *  Naming the country here is what makes that a compile-time question. */
-  def mongo(target: IntegrationMongoTarget, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage = {
+  def mongo(target: IntegrationMongoTarget, purpose: String, normalizer: TitleNormalizer,
+            changeDebounce: Option[services.movies.MovieChangeStream.Debounce] = None): ConvergenceStorage = {
     // The name is taken FROM the opened database, never generated a second time.
     // `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so calling it again for
     // the connection produced a DIFFERENT database from the one the repositories were
@@ -113,11 +115,12 @@ object ConvergenceStorage {
     // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
     // anywhere was in error — each half was doing exactly what it was told.
     val isolated = IsolatedMongoDatabase.open(target, purpose)
-    new MongoConvergenceStorage(isolated, target.uri.value, isolated.database.name, normalizer)
+    new MongoConvergenceStorage(isolated, target.uri.value, isolated.database.name, normalizer, changeDebounce)
   }
 
   private final class MongoConvergenceStorage(isolated: IsolatedMongoDatabase, uri: String, name: String,
-                                              normalizer: TitleNormalizer)
+                                              normalizer: TitleNormalizer,
+                                              changeDebounce: Option[services.movies.MovieChangeStream.Debounce])
     extends ConvergenceStorage {
 
     override val describe = s"MongoDB $name"
@@ -155,8 +158,9 @@ object ConvergenceStorage {
     // is built once per COUNTRY leg. A Poland default here keyed the German and UK
     // corpora through Polish rules — `minionsimonster` all over again, and the
     // convergence legs caught it.
+    // …and debounced as the worker's country is, when the leg names it (`changeDebounce`).
     override lazy val movies     = new MongoMovieRepository(shared, normalizer = normalizer,
-      screenings = Some(screenings), slots = Some(slots))
+      screenings = Some(screenings), slots = Some(slots), changeDebounce = changeDebounce)
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared)

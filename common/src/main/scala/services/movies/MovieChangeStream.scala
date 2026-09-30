@@ -6,6 +6,7 @@ import org.mongodb.scala.{Document, MongoCollection, Observer, Subscription}
 import play.api.Logging
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 /**
@@ -70,9 +71,9 @@ final class MovieChangeStream(
   rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis,
   // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
   decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
-  // How long a side-collection event that opens a film's apply waits before the apply is queued,
-  // so the rest of that film's burst rides it — see `SideCursor.applyChange`. Zero queues at once.
-  sideCoalesceDelay:   scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero
+  // How long a film's re-read waits for the rest of its burst — see [[MovieChangeStream.Debounce]].
+  // None queues each film's re-read at once, as every repository but the worker's does.
+  debounce:            Option[MovieChangeStream.Debounce] = None
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -135,30 +136,77 @@ final class MovieChangeStream(
     }
   }
 
-  // Film ids with an apply already QUEUED AND NOT YET STARTED. The set is the whole
-  // coalescing mechanism — see `SideCursor.applyChange` below and the `movies` cursor's own
-  // use of it in `ensureWatching`. ONE set for ALL THREE cursors (2026-09-15, was screenings
-  // + movie_slots only): `dropCinemaSlots` writes `retainedSynopses` to `movies` in the SAME
-  // tick it deletes the dropped venue's screenings/movie_slots rows, so a film's movies event
-  // and its side-collection burst now arriving together are one re-read too, not two.
-  private val sideApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+  /** A film with a re-read pending: every event riding it — from any of the three cursors — as the
+   *  acknowledgement its cursor's [[AppliedPrefix]] waits on, and, while the debounce holds it,
+   *  when it is due. `queued` once it is handed to the apply thread; it still collects riders
+   *  until the apply TAKES it, just before its read. */
+  private final class Pending(val openedAt: Long, val cursor: String, val demand: ChangeStreamDemand, val hold: CursorHold) {
+    val acks            = new java.util.concurrent.ConcurrentLinkedQueue[() => Unit]()
+    @volatile var dueAt = openedAt
+    private val handedOff = new java.util.concurrent.atomic.AtomicBoolean(false)
+    def queued: Boolean = handedOff.get()
+    /** True for exactly one caller: the timer and `close` may race to queue it. */
+    def handOff(): Boolean = handedOff.compareAndSet(false, true)
+  }
 
-  // Holds a film's side-collection apply for `sideCoalesceDelay` before it is queued. A burst
-  // ringing within that time rides the one apply; the same delay for every film keeps the applies
-  // in the order their first events arrived, which the resume positions rely on.
-  private lazy val coalescer = tools.DaemonExecutors.scheduler("movie-change-coalesce")
-  // The applies waiting out their delay, by film — released by their timer or by `close`, whichever
-  // takes one first (a cancelled scheduler would drop them silently rather than run them).
-  private val held = new java.util.concurrent.ConcurrentHashMap[String, () => Unit]()
+  // The films with a re-read pending, and what rides each. The map is the whole coalescing
+  // mechanism — see `SideCursor.applyChange` below and the `movies` cursor's own use of it in
+  // `ensureWatching`. ONE map for ALL THREE cursors (2026-09-15, was screenings + movie_slots
+  // only): `dropCinemaSlots` writes `retainedSynopses` to `movies` in the SAME tick it deletes the
+  // dropped venue's screenings/movie_slots rows, so a film's movies event and its side-collection
+  // burst arriving together are one re-read too, not two.
+  private val pending = new java.util.concurrent.ConcurrentHashMap[String, Pending]()
 
-  private def afterCoalesceDelay(filmId: String)(queue: => Unit): Unit =
-    if (sideCoalesceDelay <= scala.concurrent.duration.Duration.Zero) queue
-    else {
-      held.put(filmId, () => queue)
-      coalescer.schedule((() => Option(held.remove(filmId)).foreach(_())): Runnable,
-        sideCoalesceDelay.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
-      ()
+  /** Ride `filmId`'s pending re-read with `ack`, opening one if none is pending; the new one when
+   *  this event opened it (its caller schedules it), else None. A `debounced` event pushes a re-read
+   *  the debounce still holds to `quiet` after it — never past `cap` after it opened. Only the side
+   *  cursors' events are: they come in a film's bursts, while a `movies` write is one enrichment
+   *  landing, which opens a re-read due at once (and rides a held one without moving it). */
+  private def ride(filmId: String, cursor: String, demand: ChangeStreamDemand, hold: CursorHold, ack: () => Unit,
+                   debounced: Boolean): Option[Pending] = {
+    var opened = Option.empty[Pending]
+    pending.compute(filmId, (_, existing) => {
+      val now   = clock.millis()
+      val entry = Option(existing).getOrElse { val fresh = new Pending(now, cursor, demand, hold); opened = Some(fresh); fresh }
+      entry.acks.add(ack)
+      debounce.filter(_ => debounced && !entry.queued)
+        .foreach(d => entry.dueAt = math.min(now + d.quiet.toMillis, entry.openedAt + d.cap.toMillis))
+      entry
+    })
+    opened
+  }
+
+  /** Re-reads the debounce is holding for the rest of their film's burst. */
+  def held: Int = pending.values().asScala.count(!_.queued)
+
+  /** Queue every re-read the debounce holds, now — at close, so their events are applied before
+   *  the final positions are saved, and wherever a caller must see the stream settled. */
+  def releaseHeld(): Unit = pending.forEach((filmId, entry) => queue(filmId, entry))
+
+  // Waits out a film's debounce; the re-read itself runs on `changeApply`, like every apply.
+  private lazy val debouncer = tools.DaemonExecutors.scheduler("movie-change-debounce")
+
+  /** Queue `entry`'s re-read once its film is due: at once without a debounce, else when its due
+   *  time — moved by every event that rides it — has passed. */
+  private def schedule(filmId: String, entry: Pending): Unit = {
+      val wait = entry.dueAt - clock.millis()
+      if (wait <= 0) queue(filmId, entry)
+      else scala.util.Try(debouncer.schedule((() => schedule(filmId, entry)): Runnable, wait, java.util.concurrent.TimeUnit.MILLISECONDS))
+        .failed.foreach(_ => queue(filmId, entry)) // shut down by `close`: queue it now, to drain with the rest
+  }
+
+  /** Hand `entry` to the apply thread. It is TAKEN — removed, if still this film's — before the
+   *  read, so an event landing during the read opens its own re-read and gets a read after its own
+   *  write; the acknowledgements riding it are released once the film is applied. */
+  private def queue(filmId: String, entry: Pending): Unit = if (entry.handOff()) {
+    applyOffLoop(entry.cursor, entry.demand) {
+      pending.remove(filmId, entry)
+      applyReread(filmId, entry.hold)(drain(entry))
     }
+  }
+
+  private def drain(entry: Pending): Seq[() => Unit] =
+    Iterator.continually(entry.acks.poll()).takeWhile(_ != null).toSeq
 
   /** One side-collection cursor — `screenings` or `movie_slots` — with its own demand
    *  window and its own coalescing counter, ringing into the shared apply. */
@@ -189,9 +237,9 @@ final class MovieChangeStream(
      *  apply does not need to run per row: it re-reads the film's CURRENT state, so one read
      *  after the last of a burst sees everything the burst did.
      *
-     *  Correctness rests on the ORDER of `remove` and the read: the id is removed BEFORE the
-     *  re-read, so an event that lands while we are reading finds the set clear, enqueues its
-     *  own apply, and gets a read that is guaranteed to be after its own write. Removing after
+     *  Correctness rests on the ORDER of `remove` and the read: the film's entry is taken BEFORE
+     *  the re-read, so an event that lands while we are reading finds none, opens its own
+     *  re-read, and gets a read that is guaranteed to be after its own write. Removing after
      *  the read would let exactly that event be swallowed by an apply that could not have seen
      *  it. The cost of the safe order is at most one extra apply per burst.
      *
@@ -199,59 +247,59 @@ final class MovieChangeStream(
      *  apply thread: a venue scrape writes a film's rows seconds apart, a Flicks venue lands in
      *  day-chunks, and each missed the window and bought its own full re-read — ~0.6 a second on
      *  the US, each decoding every venue's showtimes of the film (its widest: 2,466 screenings
-     *  rows, ~50 MB). `sideCoalesceDelay` holds the opening event's apply so the rest of the burst
-     *  finds it pending: over ten minutes of the US corpus's own writes, 30 s merged 44% of the
-     *  events into applies already waiting (2026-09-30).
+     *  rows, ~50 MB). The `debounce` holds the opening event's apply so the rest of the burst
+     *  finds it pending — see [[MovieChangeStream.Debounce]] for what it saves per country.
      *
      *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes its cursor
      *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
      *  and an event that rides an already-queued apply never reaches that task's `finally`. It
      *  releases ITS OWN cursor's demand, whichever cursor queued the apply it rides.
      *
-     *  A coalesced event is NOT acknowledged to its cursor (`applied`), so that cursor's resume
-     *  position does not move for it: the apply it rode was queued BEFORE it, and the events
-     *  queued in between have not run yet — moving past it would move past them too. It is
-     *  covered by the next acknowledged event, or replayed (a harmless re-read) after a restart.
+     *  A coalesced event is acknowledged to its cursor (`applied`) with the re-read it rode, whose
+     *  read came after its write. The re-reads finish out of delivery order — one film's waits
+     *  out its burst while a quieter film's runs — so the cursor's position moves only past a
+     *  contiguous run of acknowledged events ([[AppliedPrefix]]): a restart replays every event
+     *  still waiting, as a harmless re-read of the film's current state.
      *
      *  `close()` closes the side cursors, but an event already in flight on a driver thread can
      *  still land after it: that enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so
-     *  the id stays in the set and its demand is never released. That is deliberate, not an
+     *  the film's entry stays pending and its demand is never released. That is deliberate, not an
      *  oversight: the repository is being discarded and nobody is waiting on its cursor any more.
-     *  Anything that resurrects a closed repository would have to clear the set first. */
+     *  Anything that resurrects a closed repository would have to clear `pending` first. */
     private def applyChange(filmId: String, applied: () => Unit): Unit = {
       liveness.delivered(collection)
-      if (sideApplyPending.add(filmId))
-        afterCoalesceDelay(filmId)(applyOffLoop(collection, demand) {
-          sideApplyPending.remove(filmId)
-          // this cursor's resume position moves only once the film is fanned out — see
-          // `SideCollectionWatch` and `applyReread`
-          applyReread(filmId, hold)(applied)
-        })
-      else {
-        metrics.recordCoalescedChange()
-        demand.applied()
+      // Either way the event is acknowledged only once the film is fanned out — by the re-read it
+      // opened or the one it rides — see `SideCollectionWatch` and `applyReread`.
+      ride(filmId, collection, demand, hold, applied, debounced = true) match {
+        case Some(opened) => schedule(filmId, opened)
+        case None         => metrics.recordCoalescedChange(); demand.applied()
       }
     }
   }
 
-  /** The films whose change one cursor failed to apply, and so its resume position is held for.
-   *  Touched only on `changeApply`, the single apply thread, so its reads and writes are ordered
-   *  with every acknowledgement. */
+  /** The films whose re-read one cursor failed, and the acknowledgements of the events waiting on
+   *  them: those events are not applied, so their cursor's position cannot move past them
+   *  ([[AppliedPrefix]]) and a restart replays them. Touched only on `changeApply`, the single
+   *  apply thread. */
   private final class CursorHold(val cursor: String) {
-    private val failing = scala.collection.mutable.Set.empty[String]
-    def held: Boolean = failing.nonEmpty
-    /** Record `filmId`'s failure; true when it was not already failing (its retry is not yet running). */
-    def fail(filmId: String): Boolean = {
+    private val failing = scala.collection.mutable.Map.empty[String, Seq[() => Unit]]
+    /** Record `filmId`'s failure with the events waiting on it; true when it was not already
+     *  failing (its retry is not yet running). */
+    def fail(filmId: String, acks: Seq[() => Unit]): Boolean = {
       if (failing.isEmpty)
         logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed — its change is NOT " +
-          "applied yet, and this cursor's resume position is held until it is, so a restart replays it.")
-      failing.add(filmId)
+          "applied yet, and this cursor's resume position stays before it until it is, so a restart replays it.")
+      val first = !failing.contains(filmId)
+      failing.update(filmId, failing.getOrElse(filmId, Seq.empty) ++ acks)
+      first
     }
     def isFailing(filmId: String): Boolean = failing.contains(filmId)
-    /** `filmId`'s current state has been fanned out: it no longer needs a replay. */
+    /** `filmId`'s current state has been fanned out: the events that waited on it are applied. */
     def applied(filmId: String): Unit =
-      if (failing.remove(filmId) && failing.isEmpty)
-        logger.info(s"MovieRepository change stream ($cursor): every failed re-read is applied — releasing the held position.")
+      failing.remove(filmId).foreach { acks =>
+        acks.foreach(_())
+        if (failing.isEmpty) logger.info(s"MovieRepository change stream ($cursor): every failed re-read is applied.")
+      }
   }
 
   private val moviesHold = new CursorHold(ChangeStreamLiveness.Movies)
@@ -261,30 +309,29 @@ final class MovieChangeStream(
     resumeToken.advance(token, generation)
     resumeToken.save(force = false) // time-throttled, fire-and-forget
   }
+  // The movies cursor's delivered events: its position moves only past a contiguous run of applied ones.
+  private val moviesPrefix = new AppliedPrefix(advanceMovies)
 
-  /** One apply's re-read and fan-out, then `acknowledge` — the cursor's resume position moves
-   *  only once the event is fully APPLIED, listeners included, so a shutdown cutting a fan-out
-   *  short cannot have persisted its position first.
+  /** One apply's re-read and fan-out, then the `acks` of every event it covers — a cursor's resume
+   *  position moves only once an event is fully APPLIED, listeners included, so a shutdown
+   *  cutting a fan-out short cannot have persisted its position first.
    *
    *  A re-read that FAILED is not a film that is gone ([[MovieRepository.findByIdChecked]]):
-   *  nothing is fanned out, and the event is NOT applied. It is retried briefly (most failures
-   *  are a blip), and if it still fails the cursor is HELD: no later event is acknowledged for
-   *  the rest of this process either, because each cursor has ONE position and acknowledging a
-   *  later event moves it past the failed one just the same. A held cursor keeps applying —
-   *  the site stays live — and a restart resumes from before the failure and replays it (a
-   *  harmless re-read of everything since). If that replay has fallen out of the oplog window,
-   *  the invalid-token path starts fresh and the periodic backstop resyncs, as for any gap.
+   *  nothing is fanned out, and the events are NOT applied. It is retried briefly (most failures
+   *  are a blip), and if it still fails their acknowledgements wait in the cursor's [[CursorHold]]:
+   *  the position cannot move past them ([[AppliedPrefix]]), so a restart resumes from before the
+   *  failure and replays it (a harmless re-read of everything since), while the cursor keeps
+   *  applying later events — the site stays live. If that replay has fallen out of the oplog
+   *  window, the invalid-token path starts fresh and the periodic backstop resyncs, as for any gap.
    *
-   *  …and the FILM is read again later ([[rereadLater]]), until a read answers. The held
-   *  position only helps the next process, and a worker runs for days: until then the film's
-   *  projection kept whatever the failed event should have replaced — a changed showtime, which
-   *  the read model's id-only sweeps never see. Once every failed film of a cursor has been read
-   *  and fanned out (by its retry, or by any later apply of it — each reads the film's CURRENT
-   *  state), nothing is left to replay, and the cursor acknowledges again from its next applied
-   *  event. Held for good, one blip froze the persisted position for the rest of the process. */
-  private def applyReread(filmId: String, hold: CursorHold)(acknowledge: () => Unit): Unit =
-    if (rereadAndDispatch(filmId)) { if (!hold.held) acknowledge() }
-    else if (hold.fail(filmId)) rereadLater(filmId, hold, rereadRetryMillis)
+   *  …and the FILM is read again later ([[rereadLater]]), until a read answers: a worker runs for
+   *  days, and until then the film's projection kept whatever the failed event should have
+   *  replaced — a changed showtime, which the read model's id-only sweeps never see. Once a read
+   *  of the film is fanned out (by its retry, or by any later apply of it — each reads the film's
+   *  CURRENT state), its waiting events are applied and acknowledged. */
+  private def applyReread(filmId: String, hold: CursorHold)(acks: Seq[() => Unit]): Unit =
+    if (rereadAndDispatch(filmId)) acks.foreach(_())
+    else if (hold.fail(filmId, acks)) rereadLater(filmId, hold, rereadRetryMillis)
 
   /** Re-read `filmId` (a few quick attempts) and fan it out, with the fence mark the
    *  successful read was taken under; false when every read failed. */
@@ -310,18 +357,17 @@ final class MovieChangeStream(
   /** Read a film whose re-read failed again after `delayMillis`, doubling the delay while it
    *  keeps failing — ONE such chain per failing film and cursor, however many of its events
    *  fail meanwhile. It stops once any apply has read the film (it is no longer failing). It
-   *  joins the coalescing set like any event: when an apply is already queued for the film,
-   *  that apply's read serves, and this chain looks again after the next delay. It
-   *  acknowledges nothing — its cursor is held — and owes no demand, since no cursor delivered it. */
+   *  defers to any re-read pending for the film: that read serves, and this chain looks again
+   *  after the next delay. Its success acknowledges the events waiting on the film (through the
+   *  [[CursorHold]]); it owes no demand, since no cursor delivered it. */
   private def rereadLater(filmId: String, hold: CursorHold, delayMillis: Long): Unit = {
     val next = math.min(delayMillis * 2, MovieChangeStream.RereadRetryMaxMillis)
     scala.util.Try(rereadRetry.schedule((() =>
-      if (!sideApplyPending.add(filmId)) rereadLater(filmId, hold, next)
+      if (pending.containsKey(filmId)) rereadLater(filmId, hold, next)
       else {
         backlog.incrementAndGet()
         changeApply.execute { () =>
           try {
-            sideApplyPending.remove(filmId)
             if (hold.isFailing(filmId) && !rereadAndDispatch(filmId)) {
               logger.warn(s"MovieRepository change stream (${hold.cursor}): re-reading $filmId still fails — trying again later.")
               rereadLater(filmId, hold, next)
@@ -387,6 +433,7 @@ final class MovieChangeStream(
           // a `clear()` (invalid token) landing while this event is still queued.
           val token      = change.getResumeToken
           val generation = resumeToken.generation
+          val ack        = moviesPrefix.deliver(token, generation)
           val deletedId    = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
             .map(v => if (v.isString) v.asString.getValue else v.toString)
           // Apply OFF the Netty I/O loop: the stitch read + projection must not run
@@ -398,7 +445,7 @@ final class MovieChangeStream(
             // projector turns into a screenings wipe) and holds the position — see `applyReread`.
             //
             // COALESCE with a same-film apply already queued — by an earlier movies event,
-            // or by the screenings/movie_slots cursors sharing this pending set. This is the
+            // or by the screenings/movie_slots cursors sharing `pending`. This is the
             // common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
             // `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
             // rows, so a slot drop used to buy the film TWO re-projections (one bought here,
@@ -414,31 +461,27 @@ final class MovieChangeStream(
             // `reread` closes that window the same way the side cursors' own re-read already
             // does, at the cost of one extra point read per movies apply.)
             case ChangeEventDecoder.PostImage.Present(dto) =>
-              if (sideApplyPending.add(dto._id))
-                applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
-                  sideApplyPending.remove(dto._id)
-                  applyReread(dto._id, moviesHold)(() => advanceMovies(token, generation))
-                }
-              else { // not advanced — see `SideCursor.applyChange` on why a coalesced event must not be
-                changeStreamMetrics.recordCoalescedChange()
-                moviesDemand.applied()
+              ride(dto._id, ChangeStreamLiveness.Movies, moviesDemand, moviesHold, ack, debounced = false) match {
+                case Some(opened) => schedule(dto._id, opened)
+                case None         => changeStreamMetrics.recordCoalescedChange(); moviesDemand.applied()
               }
             // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill). Surface
             // its _id so consumers can drop the row. Never coalesced: once a row is gone
             // there is nothing to re-read, and every delete must still reach the fan-out.
             //
-            // And a delete is a coalescing BARRIER: it clears the id from the pending set, so a
+            // And a delete is a coalescing BARRIER: it takes the id's queued entry out of `pending`, so a
             // later event for the same id queues its own apply AFTER the delete instead of riding
             // one queued before it. Ids are derived from the creation key (`FilmId.fresh`), so a
             // film deleted and re-created under the same key comes back with the same id — riding
             // the earlier apply would dispatch the re-created film first and the delete last,
-            // leaving every listener on "deleted" for a film that exists. (The earlier apply's own
-            // `remove` may then clear the later one's marker; that only costs an extra apply.)
+            // leaving every listener on "deleted" for a film that exists.
             case ChangeEventDecoder.PostImage.Absent =>
-              deletedId.foreach(sideApplyPending.remove)
+              // Only a re-read already QUEUED is behind the barrier: one the debounce still holds is
+              // queued after this delete, so it runs after it and reads whatever the key holds then.
+              deletedId.foreach(id => pending.computeIfPresent(id, (_, entry) => if (entry.queued) null else entry))
               applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                 deletedId.foreach(movieChanges.dispatchDelete)
-                if (!moviesHold.held) advanceMovies(token, generation)
+                ack()
               }
             // A document the codec refuses (counted and logged by the decoder). Nothing to apply,
             // and it must not END the cursor: decoded inside the driver, it did — and a cursor
@@ -446,7 +489,7 @@ final class MovieChangeStream(
             // demand is released; its position is NOT acknowledged, since nothing was applied —
             // the next applied event moves past it, and a restart replays it into the same skip.
             case ChangeEventDecoder.PostImage.Undecodable =>
-              moviesDemand.applied()
+              ack(); moviesDemand.applied()
           }
         }
         override def onError(e: Throwable): Unit = {
@@ -509,11 +552,10 @@ final class MovieChangeStream(
     rereadRetry.shutdownNow()
     Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
     moviesDemand.closed()
-    // An apply still held for its coalescing delay is queued now, so it drains with the rest.
-    if (sideCoalesceDelay > scala.concurrent.duration.Duration.Zero) {
-      coalescer.shutdownNow()
-      held.keySet.forEach(filmId => Option(held.remove(filmId)).foreach(release => scala.util.Try(release())))
-    }
+    // A re-read the debounce still holds is queued now, so it drains with the rest and its events
+    // are applied before the final positions are saved.
+    if (debounce.isDefined) debouncer.shutdownNow()
+    releaseHeld()
     // Let the applies already queued FINISH (bounded) before the final positions are saved:
     // saved first, a position misses them; and the apply thread is a daemon, so JVM exit
     // would otherwise cut a fan-out short.
@@ -539,10 +581,21 @@ object MovieChangeStream {
   /** When a film whose re-read failed is first read again, and the most its delay doubles to. */
   private[movies] val RereadRetryMillis    = 30_000L
 
-  /** The worker's `sideCoalesceDelay`: 30 s merged 44% of a sample of the US corpus's writes into an
-   *  apply already waiting (10 s: 26%, 60 s: 53%), and a showtime reaching the site 30 s later is
-   *  well inside the apply-lag alerts (180 s rising, 600 s). */
-  val WorkerSideCoalesceDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "seconds")
+  /** How long a film's re-read waits for the rest of its burst: each event pushes it to `quiet`
+   *  after that event, never past `cap` after the burst's first. A venue scrape writes a film's rows
+   *  seconds apart, a Flicks venue lands in day-chunks, and a wide release is written by one venue
+   *  after another; every event re-read the WHOLE film (the widest US one: 3,167 screenings rows).
+   *  Measured over ten minutes of each country's own writes (2026-09-30), 30 s / 2 min saved the
+   *  re-read work US 60%, UK 43%, DE 23% — and PL ~1%, ES 0%, where a film's changes rarely cluster,
+   *  so there it would be delay for nothing ([[forCountry]]). */
+  final case class Debounce(quiet: scala.concurrent.duration.FiniteDuration, cap: scala.concurrent.duration.FiniteDuration)
+
+  object Debounce {
+    val Worker: Debounce = Debounce(scala.concurrent.duration.Duration(30, "seconds"), scala.concurrent.duration.Duration(2, "minutes"))
+    /** The worker's debounce for `country`: on where its films' changes cluster, off elsewhere. */
+    def forCountry(country: models.Country): Option[Debounce] =
+      Option.when(Set[models.Country](models.Country.UnitedStates, models.Country.UnitedKingdom, models.Country.Germany)(country))(Worker)
+  }
   private[movies] val RereadRetryMaxMillis = 600_000L
   /** How long `close()` waits for queued applies before saving the final positions. */
   private[movies] val CloseDrainSeconds   = 10L

@@ -22,7 +22,7 @@ import scala.collection.mutable
  * synchronously: a `movie_slots` or `screenings` change must re-read the film and fan it
  * out as an upsert, and a burst on one film must collapse onto one re-read.
  */
-class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
+class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest.concurrent.Eventually {
 
   /** Hands the observer back so the spec can push events; counts the opens, since ONE
    *  shared cursor for any number of listeners is the point of the fan-out. */
@@ -105,7 +105,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     rereadRetryMillis:   Long                        = 20L,
     fence:               FilmWriteFence              = new FilmWriteFence(),
-    sideCoalesceDelay:   scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero
+    debounce:            Option[MovieChangeStream.Debounce] = None
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -120,7 +120,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     clock               = clock,
     rereadRetryMillis   = rereadRetryMillis,
     decodeFailures      = decodeFailures,
-    sideCoalesceDelay   = sideCoalesceDelay)
+    debounce            = debounce)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -147,8 +147,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
 
   // One document the codec refuses used to END the cursor: the driver decoded post-images, and
   // a stream resuming from a persisted token met the same document on every reopen. Now it is
-  // one skipped event — counted, its demand released, its position NOT acknowledged (it was
-  // not applied) — and the next event is applied as usual.
+  // one skipped event — counted, its demand released, and acknowledged at once: there is nothing
+  // to apply, a restart would skip it the same way, and left unacknowledged it would hold every
+  // later event's position for good ([[AppliedPrefix]]) — and the next event is applied as usual.
   it should "skip a post-image it cannot decode, counting it, and keep applying the events after it" in {
     val source    = new HandFedSource
     val counted   = mutable.Buffer.empty[String]
@@ -162,7 +163,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
         .append("sourceData", new BsonString("not a document"))))
       counted.synchronized(counted.toSeq) shouldBe Seq("movies")
       source.requested.get() shouldBe before + 1 // its unit of demand released — no apply will release it
-      token.current shouldBe None                 // …and its position not acknowledged
+      token.current.map(_.getString("_data").getValue) shouldBe Some("token-bad|2024") // …and it is past
 
       source.emit(event("insert", "good|2024", StoredMovieDto.fromDomain("good|2024", MovieRecord(), Instant.EPOCH)))
       delivered.await(5, TimeUnit.SECONDS) shouldBe true
@@ -282,40 +283,100 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
 
   // Coalescing only while an apply is QUEUED misses a burst whose rows land seconds apart — a
   // venue scrape writing a film's rows, a Flicks venue landing in day-chunks — and each of those
-  // events bought a full re-read of the film. Holding the opening event's apply for a delay lets
-  // the rest of the burst find it pending, whatever the apply thread is doing.
-  private def spacedBurst(delay: scala.concurrent.duration.FiniteDuration): Int = {
+  // events bought a full re-read of the film. The debounce holds the film's re-read until its
+  // burst goes quiet, so the rest of the burst finds it pending, whatever the apply thread is doing.
+  private def millis(n: Int) = scala.concurrent.duration.Duration(n.toLong, "millis")
+
+  /** Re-reads of one film over `rows` slot writes `spacing` apart, under `debounce`. */
+  private def spacedBurst(debounce: Option[MovieChangeStream.Debounce], rows: Int, spacing: Int): Int = {
     val slots  = new InMemorySlotsRepository
     val reread = new AtomicInteger(0)
-    val under  = stream(new HandFedSource, slots = Some(slots), sideCoalesceDelay = delay,
+    val under  = stream(new HandFedSource, slots = Some(slots), debounce = debounce,
       reread = id => { if (id == "film|2024") reread.incrementAndGet(); Some(recordOf(id)) })
     val handle = under.watch(_ => (), _ => ())
     try {
-      (0 until 6).foreach { i => slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i"))); Thread.sleep(30) }
-      Thread.sleep(delay.toMillis + 500)
+      (0 until rows).foreach { i => slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i"))); Thread.sleep(spacing.toLong) }
+      Thread.sleep(debounce.fold(0L)(_.cap.toMillis) + 500)
       reread.get()
     } finally { handle.close(); under.close() }
   }
 
-  it should "re-read a film once for a burst whose rows land within its coalescing delay, not once a row" in {
-    spacedBurst(scala.concurrent.duration.Duration(300, "millis")) shouldBe 1
+  it should "re-read a film once for a burst whose rows keep landing within its quiet time, however long it runs" in {
+    // 8 rows 150 ms apart: 1.05 s of burst, far past the 300 ms quiet time — each row pushes it on
+    spacedBurst(Some(MovieChangeStream.Debounce(millis(300), millis(5000))), rows = 8, spacing = 150) shouldBe 1
   }
 
-  it should "re-read a film per row of a spaced burst when it holds nothing back" in {
-    spacedBurst(scala.concurrent.duration.Duration.Zero) should be > 1
+  it should "re-read a film per row of a spaced burst when nothing debounces" in {
+    spacedBurst(None, rows = 6, spacing = 30) should be > 1
   }
 
-  it should "apply a film still held for its coalescing delay when it closes, not drop it" in {
+  it should "re-read a film whose burst never goes quiet once its cap is reached, not when the burst ends" in {
+    // 20 rows 100 ms apart (2 s) under a 600 ms cap: the re-read must not wait the whole burst out
+    spacedBurst(Some(MovieChangeStream.Debounce(millis(300), millis(600))), rows = 20, spacing = 100) should be >= 2
+  }
+
+  it should "apply a film still held by its debounce when it closes, not drop it" in {
     val slots  = new InMemorySlotsRepository
     val reread = new AtomicInteger(0)
-    val under  = stream(new HandFedSource, slots = Some(slots), sideCoalesceDelay = scala.concurrent.duration.Duration(1, "hour"),
+    val hour   = scala.concurrent.duration.Duration(1, "hour")
+    val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
       reread = id => { reread.incrementAndGet(); Some(recordOf(id)) })
     val handle = under.watch(_ => (), _ => ())
     slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
     Thread.sleep(200)
-    reread.get() shouldBe 0            // held
+    reread.get()    shouldBe 0            // held
+    under.held      shouldBe 1
     handle.close(); under.close()
-    reread.get() shouldBe 1            // released and drained at close
+    reread.get()    shouldBe 1            // released and drained at close
+  }
+
+  it should "apply what it holds at once when a caller releases it" in {
+    val slots  = new InMemorySlotsRepository
+    val reread = new AtomicInteger(0)
+    val hour   = scala.concurrent.duration.Duration(1, "hour")
+    val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
+      reread = id => { reread.incrementAndGet(); Some(recordOf(id)) })
+    val handle = under.watch(_ => (), _ => ())
+    try {
+      slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
+      under.releaseHeld()
+      eventually(reread.get() shouldBe 1)
+      under.held shouldBe 0
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "debounce where a country's films' changes cluster — the US, the UK and Germany — and nowhere else" in {
+    import models.Country.*
+    Seq(UnitedStates, UnitedKingdom, Germany).map(MovieChangeStream.Debounce.forCountry).distinct shouldBe
+      Seq(Some(MovieChangeStream.Debounce.Worker))
+    Seq(Poland, Spain).flatMap(MovieChangeStream.Debounce.forCountry) shouldBe empty
+    models.Country.all.toSet shouldBe Set(UnitedStates, UnitedKingdom, Germany, Poland, Spain) // a new country decides too
+  }
+
+  // RESTART RESILIENCE. A cursor has one resume position and a restart replays only what lies
+  // after it. With the debounce a film's re-read finishes out of delivery order — a later event on
+  // a quiet film is applied while an earlier one waits out a busy film's burst — and moving the
+  // position to each event as it was applied moved it PAST the one still waiting: a crash then
+  // resumed after a change that was never applied, and lost it.
+  it should "keep its resume position before an event still held, even once a later event is applied" in {
+    val source = new HandFedSource
+    val slots  = new InMemorySlotsRepository
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val hour   = scala.concurrent.duration.Duration(1, "hour")
+    val quiet  = mutable.Buffer.empty[String]
+    val under  = stream(source, slots = Some(slots), resumeToken = token,
+      debounce = Some(MovieChangeStream.Debounce(hour, hour)))
+    val handle = under.watch(r => quiet.synchronized(quiet += r.id.value), _ => ())
+    try {
+      slots.upsertSlot("busy|2024", "Venue0␟busy", SourceData(title = Some("Busy")))   // holds busy's re-read
+      source.emit(event("update", "busy|2024", StoredMovieDto.fromDomain("busy|2024", MovieRecord(), Instant.EPOCH))) // rides it
+      source.emit(event("update", "quiet|2024", StoredMovieDto.fromDomain("quiet|2024", MovieRecord(), Instant.EPOCH))) // due at once
+      eventually(quiet.synchronized(quiet.toSeq) should contain("quiet|2024"))
+      Thread.sleep(100)
+      token.current shouldBe None                                   // NOT past busy's waiting event
+      under.releaseHeld()
+      eventually(token.current.map(_.getString("_data").getValue) shouldBe Some("token-quiet|2024"))
+    } finally { handle.close(); under.close() }
   }
 
   // THE THIRD CURSOR'S BLIND SPOT (2026-09-15). `dropCinemaSlots` writes `retainedSynopses`
@@ -548,8 +609,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       source.emit(event("insert", "broken|2024", StoredMovieDto.fromDomain("broken|2024", MovieRecord(), Instant.EPOCH)))
       withClue("the failed film must reach the listeners once a later read answers: ")(
         delivered.poll(10, TimeUnit.SECONDS) shouldBe "broken|2024")
-      withClue("the position stays held — the retry is not the event, and a restart still replays it: ")(
-        token.current shouldBe None)
+      withClue("the retry read the film's current state, so the event is applied and the position may pass it: ")(
+        eventually(token.current.map(_.getString("_data").getValue) shouldBe Some("token-broken|2024")))
     } finally { handle.close(); under.close() }
   }
 
@@ -578,6 +639,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     } finally { handle.close(); under.close() }
   }
 
+  // Acknowledging "later" is safe: its cursor's position moves only over a contiguous run of
+  // acknowledged events ([[AppliedPrefix]]), so it cannot pass the unacknowledged "broken".
   it should "not acknowledge a side-collection event whose re-read failed" in {
     val source = new HandFedSource
     @volatile var ring: (String, () => Unit) => Unit = null
@@ -598,7 +661,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       ring("later|2024", () => acks.add("later"))
       delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024"
       import scala.jdk.CollectionConverters._
-      acks.asScala.toSeq shouldBe empty // held: acknowledging "later" would move the position past "broken"
+      eventually(acks.asScala.toSeq shouldBe Seq("later"))
+      Thread.sleep(100)
+      acks.asScala.toSeq should not contain "broken"
     } finally { handle.close(); under.close() }
   }
 
@@ -643,11 +708,11 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
   }
 
   // The side cursors' half of the same rule: each delivered side event hands over an
-  // `applied` acknowledgement (which advances THAT cursor's position), and it is called
-  // only by the apply the event queued — never at delivery, and never for an event that
-  // coalesced onto an apply queued before it (acknowledging that one would move the
-  // position past events queued in between).
-  it should "acknowledge a side-collection event only when its own apply has run" in {
+  // `applied` acknowledgement, and it is called only once an apply that read the film AFTER the
+  // event's write has run — never at delivery. An event that rode a queued apply is covered by
+  // that apply's read (the apply takes the film's pending entry just before reading), so it is
+  // acknowledged with it; its cursor's [[AppliedPrefix]] keeps the order.
+  it should "acknowledge a side-collection event only once an apply covering it has run" in {
     val source = new HandFedSource
     @volatile var ring: (String, () => Unit) => Unit = null
     val slots = new InMemorySlotsRepository {
@@ -673,7 +738,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       gate.countDown()
       drained.await(5, TimeUnit.SECONDS) shouldBe true
       import scala.jdk.CollectionConverters._
-      acks.asScala.toSeq shouldBe Seq("first")
+      acks.asScala.toSeq shouldBe Seq("first", "coalesced")
     } finally { handle.close(); under.close() }
   }
 

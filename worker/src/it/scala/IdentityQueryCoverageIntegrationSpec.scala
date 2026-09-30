@@ -77,7 +77,8 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = {
-    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country))
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country),
+      services.movies.MovieChangeStream.Debounce.forCountry(corpus.country))
     storages.synchronized(storages += storage)
     val (fetch, missed)     = corpus.recording()
     val (coverage, summary) = IdentityQueryCoverage.measure(corpus.label, corpus.country, storage, corpus.rows, fetch, missed)
@@ -124,7 +125,8 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body))
     }
     val country = corpus.country
-    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country))
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country),
+      services.movies.MovieChangeStream.Debounce.forCountry(country))
     storages.synchronized(storages += storage)
     CorpusFixture.seedInto(storage.archive, corpus.rows)
     val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, s"enrichment-${country.code}")),

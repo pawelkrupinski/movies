@@ -373,6 +373,11 @@ trait MovieRepository {
    *  stamped — [[MongoMovieRepository]] and [[InMemoryMovieRepository]] each answer with the
    *  stream's own. */
   def changeStreamLiveness: ChangeStreamLiveness = unwatchedLiveness
+  /** Re-reads the change stream holds back for the rest of their film's burst — see
+   *  [[MovieChangeStream.Debounce]]; 0 where nothing is watched or nothing debounces. */
+  def heldChanges: Int = 0
+  /** Queue every held re-read now — for a caller that must see the stream settled. */
+  def releaseHeldChanges(): Unit = ()
   private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
 
   /** Release any underlying resources. No-op when nothing to release. */
@@ -509,9 +514,9 @@ class MongoMovieRepository(
   // so a spec can prove the bound with a handful of writes instead of a full window's
   // worth; production never passes it. See [[ChangeStreamDemand]].
   changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow,
-  // How long a side-collection change waits for the rest of its film's burst before the film is
-  // re-read — see `MovieChangeStream.sideCoalesceDelay`. The worker passes its own; zero re-reads at once.
-  changeCoalesceDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero,
+  // How long a change waits for the rest of its film's burst before the film is
+  // re-read — see `MovieChangeStream.Debounce`. The worker passes its country's; None re-reads at once.
+  changeDebounce: Option[MovieChangeStream.Debounce] = None,
   // What the SCREENINGS cursor's apply does — its events, and the ones it coalesced away.
   // Separate from `changeStreamMetrics` (which is the `movies` cursor's) because they are
   // two different streams answering two different questions; the worker happens to satisfy
@@ -1241,7 +1246,7 @@ class MongoMovieRepository(
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
       decodeFailures      = decodeFailures,
-      sideCoalesceDelay   = changeCoalesceDelay)
+      debounce            = changeDebounce)
   }
 
   /** Change events handed to the apply thread but not yet applied — see
@@ -1264,6 +1269,8 @@ class MongoMovieRepository(
 
   override def changeStreamLiveness: ChangeStreamLiveness =
     changeStream.fold(super.changeStreamLiveness)(_.liveness)
+  override def heldChanges: Int          = changeStream.fold(0)(_.held)
+  override def releaseHeldChanges(): Unit = changeStream.foreach(_.releaseHeld())
 
   def close(): Unit = changeStream.foreach(_.close())
 

@@ -179,7 +179,8 @@ abstract class CountryConvergenceBehaviour(
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
+    ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey", TitleNormalizer.forCountry(country),
+      MovieChangeStream.Debounce.forCountry(country))
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -1143,7 +1144,8 @@ abstract class CountryConvergenceBehaviour(
     // The pass's own scope for the phase log, matching its database's suffix so a line
     // in the interleaved output of `Passes` concurrent replays names which pass wrote it.
     val scope = s"${country.code}p${seed - OrderSeed}"
-    val passStorage = ConvergenceStorage.fromConfiguration(configuration, scope, TitleNormalizer.forCountry(country))
+    val passStorage = ConvergenceStorage.fromConfiguration(configuration, scope, TitleNormalizer.forCountry(country),
+      MovieChangeStream.Debounce.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget

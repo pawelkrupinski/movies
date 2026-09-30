@@ -43,7 +43,8 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     countries.map(c => c -> RecordedResponses.replaying(RecordedResponses.pathFor(c.code))).toMap
 
   private def storage(country: Country, label: String): ConvergenceStorage = {
-    val s = ConvergenceStorage.mongo(mongoTarget, s"cut-${country.code}-$label", TitleNormalizer.forCountry(country))
+    val s = ConvergenceStorage.mongo(mongoTarget, s"cut-${country.code}-$label", TitleNormalizer.forCountry(country),
+      services.movies.MovieChangeStream.Debounce.forCountry(country))
     storages += s
     s
   }
