@@ -136,11 +136,6 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     client.findImdbIdByFilmwebId("1118") shouldBe Some("tt0052080")
   }
 
-  it should "build canonical RT and Metacritic URLs from the harvested ids" in {
-    WikidataClient.rottenTomatoesUrl("m/the_matrix") shouldBe "https://www.rottentomatoes.com/m/the_matrix"
-    WikidataClient.metacriticUrl("movie/the-matrix") shouldBe "https://www.metacritic.com/movie/the-matrix"
-  }
-
   // ── direct-title lookup (the TMDB-less / no-Filmweb-page rung) ────────────────
 
   private val titleSearchHit =

@@ -249,11 +249,13 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "backfill the RT and Metacritic page URLs from the Wikidata harvest" in {
+  it should "recover the imdbId from the Wikidata harvest, leaving the RT and Metacritic links to their rating tasks" in {
     val bus = new InProcessEventBus()
-    // A film with no imdbId AND no RT/MC page URL yet — one Wikidata claims call
-    // recovers the imdbId and the RT/MC slugs (which those rating clients would
-    // otherwise slug-probe for).
+    // A film with no imdbId AND no RT/MC page URL yet. The claims call also names RT and MC
+    // slugs, but writing them here raced the rating tasks resolving the same row: PL
+    // convergence 2026-09-30 fetched Wikidata's stale "m/1016356-pippi_longstocking" (404)
+    // in some runs and not others, whichever thread read the row first. Those tasks own
+    // their links; the harvest recovers the id.
     val record = MovieRecord(
       tmdbId     = Some(603),
       filmwebUrl = Some("https://www.filmweb.pl/film/Matrix-1999-33986"),
@@ -282,9 +284,12 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
     eventually {
       val row = cache.get(cache.keyOf("Matrix", Some(1999)))
-      row.flatMap(_.imdbId)            shouldBe Some("tt0133093")
-      row.flatMap(_.rottenTomatoesUrl) shouldBe Some("https://www.rottentomatoes.com/m/the_matrix")
-      row.flatMap(_.metacriticUrl)     shouldBe Some("https://www.metacritic.com/movie/the-matrix")
+      row.flatMap(_.imdbId) shouldBe Some("tt0133093")
+    }
+    val row = cache.get(cache.keyOf("Matrix", Some(1999)))
+    row.flatMap(_.rottenTomatoesUrl) shouldBe None
+    row.flatMap(_.metacriticUrl)     shouldBe None
+    locally {
     }
   }
 

@@ -193,14 +193,6 @@ object WikidataClient {
    *  id and aren't actionable. */
   def filmwebEntityId(url: String): Option[String] =
     raw"-(\d+)/?$$".r.findFirstMatchIn(url).map(_.group(1))
-
-  /** RT's canonical Tomatometer page URL for a P1258 id (which already carries
-   *  the `m/<slug>` path segment). Matches `RottenTomatoesClient`'s host. */
-  def rottenTomatoesUrl(p1258: String): String = s"https://www.rottentomatoes.com/$p1258"
-
-  /** Metacritic's canonical movie page URL for a P1712 id (which already carries
-   *  the `movie/<slug>` path segment). Matches `MetacriticClient`'s host. */
-  def metacriticUrl(p1712: String): String = s"https://www.metacritic.com/$p1712"
 }
 
 /** The film-database cross-reference ids Wikidata records for one film. Each is
