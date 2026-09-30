@@ -1,12 +1,11 @@
 package modules
 
-import controllers.{FilterDescription, RetiredSiteController, WellKnownController}
+import controllers.FilterDescription
 import models.Country
-import testsupport.TestMessages.given
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.mvc.{Action, AnyContent, Handler, Result, Results}
+import play.api.mvc.Result
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import play.api.{ApplicationLoader, Environment}
@@ -42,20 +41,9 @@ class RetiredSiteSpec extends AnyFlatSpec with Matchers {
   private val country = Country.Poland
   private val poznan  = country.bySlug("poznan")
 
-  private val router = AppLoader.retiredRoutes(
-    new RetiredSiteController(
-      Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi), country),
-    new WellKnownController(Helpers.stubControllerComponents()),
-    file => Helpers.stubControllerComponents().actionBuilder(Results.Ok(s"asset:$file")))
+  private val router = new RetiredRouter(country)
 
-  private def respond(method: String, path: String): Future[Result] = {
-    val request = FakeRequest(method, path)
-    router.routes.lift(request) match {
-      case Some(action: Action[?]) => action.asInstanceOf[Action[AnyContent]].apply(request)
-      case Some(other: Handler)    => fail(s"$method $path routed to a non-action handler: $other")
-      case None                    => fail(s"$method $path is not routed at all")
-    }
-  }
+  private def respond(method: String, path: String): Future[Result] = router.respond(method, path)
 
   private def body(path: String): String = contentAsString(respond("GET", path))
 
