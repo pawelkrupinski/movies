@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
  * prune.
  *
  * The fix ports the discriminant `kinowo-movies-served-city-empty` already carries (since
- * 2026-09-13, see [[GrafanaCityEmptyAlertSpec]]) onto this rule: query A now excludes
+ * 2026-09-13, see [[GrafanaCityEmptyQualifierSpec]]) onto this rule: query A now excludes
  * (`unless on (city) (...)`) any city whose corpus-side gauge swung down by the same >50% margin
  * over the same window, so a city whose corpus thinned in lockstep — cause (2), not a bug — stays
  * silent, and only a city whose corpus did NOT also crater still fires: cause (1), the read-model

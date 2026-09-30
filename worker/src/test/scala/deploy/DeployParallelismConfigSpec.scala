@@ -34,18 +34,14 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
     job("deploy") should not include "concurrency:"
   }
 
-  // Through the pipeline-path gate (ConvergenceDispatchGateSpec), which names each suite.
-  it should "dispatch the country convergence suite" in {
-    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"""")
-  }
-
   /**
-   * And ONLY that one: the United States ran from a workflow of its own, dispatched beside
-   * it, until its legs went hermetic; it is a row of the shared suite since 2026-09-30. A
-   * dispatch naming the retired build would fail the job on a workflow that is not there.
+   * Through the pipeline-path gate (ConvergenceDispatchGateSpec), which names each suite —
+   * and ONLY the country one: the United States ran from a workflow of its own, dispatched
+   * beside it, until its legs went hermetic; it is a row of the shared suite since 2026-09-30.
+   * A dispatch naming the retired build would fail the job on a workflow that is not there.
    */
   it should "dispatch the one convergence build, which runs every country" in {
-    job("kick-convergence") should include(""""$GITHUB_REF_NAME" "Country convergence"""")
+    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"""")
     job("kick-convergence") should not include "US convergence"
   }
 
