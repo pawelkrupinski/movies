@@ -183,4 +183,88 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     html should include ("""<a href="/poznan/">Poznań</a>""")
     html should include ("""<a href="/turek/">Turek i okolice</a>""")
   }
+
+  // ── The share preview ──────────────────────────────────────────────────────
+  //
+  // The bare `/` landing is the URL people actually paste into Facebook /
+  // Messenger / Slack / X. The page itself is a city picker, but its share
+  // preview must sell the product (repertoire + ratings), not show "Wybierz
+  // miasto". These pin the Open Graph / Twitter card it emits — in particular
+  // that og:image points at the national `og-home.jpg` repertoire card ("…w
+  // Twoim mieście"), as opposed to a city index's own `og-{slug}.jpg`.
+
+  "the landing preview" should "point og:image + twitter:image at the dedicated home card" in {
+    html should include ("""<meta property="og:image"       content="https://kinowo.net/assets/img/og-home.jpg">""")
+    html should include ("""<meta name="twitter:image"       content="https://kinowo.net/assets/img/og-home.jpg">""")
+  }
+
+  it should "use the large-image twitter card declared as 1200×630" in {
+    html should include ("""<meta name="twitter:card"        content="summary_large_image">""")
+    html should include ("""<meta property="og:image:width"  content="1200">""")
+    html should include ("""<meta property="og:image:height" content="630">""")
+  }
+
+  it should "advertise the product in og:title, not the city picker" in {
+    // The page body still reads "Wybierz miasto" (it IS the picker) — but the
+    // share card's title must sell the repertoire instead.
+    html should include ("""<meta property="og:title"       content="Kinowo — repertuar kin w Twoim mieście">""")
+    html should not include """content="Wybierz miasto"""
+  }
+
+  it should "carry the canonical landing URL so Facebook keeps the card" in {
+    html should include ("""<meta property="og:url"         content="https://kinowo.net/">""")
+  }
+
+  // The `showtimes.cc` bare apex (the brand front door — see `LandingController`)
+  // is pasted into Facebook/Slack/X like any other landing URL, but it lists every
+  // country rather than belonging to one. Its share card must not default to
+  // Poland's Polish-language `og-home.jpg`: pin it at the US card instead, since
+  // English + US posters is the closest thing this brand-neutral page has to a
+  // representative image.
+  private val apexHtml =
+    views.html.landing(models.Country.default, isApex = true)(using testsupport.TestMessages.forLang("en")).body
+
+  "the front-door preview" should "point og:image + twitter:image at the US home card, not Poland's" in {
+    apexHtml should include ("""<meta property="og:image"       content="https://showtimes.cc/assets/img/og-home-us.jpg">""")
+    apexHtml should include ("""<meta name="twitter:image"       content="https://showtimes.cc/assets/img/og-home-us.jpg">""")
+    apexHtml should not include "og-home.jpg\""
+  }
+
+  it should "advertise the brand in English, not Polish" in {
+    apexHtml should include ("""<html lang="en"""")
+  }
+
+  // ── The picker's country names ─────────────────────────────────────────────
+  //
+  // The dynamic picker's country pills (`renderPickerCountries`) used to read
+  // `country.name` straight off `KINOWO_CATALOG`, i.e. `Country.displayName` —
+  // each country's own FIXED native/English label, baked once into the
+  // boot-time `/api/catalog` JSON and so incapable of varying with a visitor's
+  // chosen UI language (Germany's pill always said "Deutschland", everywhere).
+  //
+  // The fix is client-side: `countryName(code)` calls `t('country.' + code)`
+  // against the embedded language pack (`#i18n-packs`, `controllers.I18nPacks`)
+  // at RUNTIME, driven by whatever the visitor last picked (`localStorage`) —
+  // not a server-baked, request-language-scoped object. So every page embeds
+  // EVERY language's country names regardless of which `Messages` rendered it;
+  // these assert the pack itself carries the right mapping in every language
+  // and that the picker's own lookup function is present. (The pack doesn't
+  // depend on the rendering `Messages`, so `html`'s Polish render serves.)
+
+  "the embedded language pack" should "carry Germany's name in every language, not just its native one" in {
+    html should include (""""country.de":"Deutschland"""")
+    html should include (""""country.de":"Germany"""")
+    html should include (""""country.de":"Niemcy"""")
+  }
+
+  it should "carry every switchable country, keyed by its localized name in Spanish" in {
+    models.Country.switchable.foreach { c =>
+      html should include (s""""country.${c.code}":"${testsupport.TestMessages.forLang("es")("country." + c.code)}"""")
+    }
+  }
+
+  it should "expose the client-side lookup the dynamic picker calls per pill" in {
+    html should include ("function countryName(code)")
+    html should include ("t('country.' + code)")
+  }
 }

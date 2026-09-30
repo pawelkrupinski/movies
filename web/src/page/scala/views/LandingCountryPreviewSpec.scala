@@ -12,7 +12,7 @@ import play.api.i18n.Messages
  * a non-Polish deployment's share preview must sell the RIGHT product: an
  * English card, the country's own host, and its English-poster home montage —
  * not Poland's `kinowo.net` / `og-home.jpg`. This pins the UK variant; the
- * default (Poland) variant is covered by `LandingPreviewMetaSpec`.
+ * default (Poland) variant is covered by `LandingViewSpec` ("the landing preview").
  *
  * The template and every partial it renders (`_ogTagsApp` included) take the
  * deployment's country as a parameter, so the spec simply hands it the UK — the
