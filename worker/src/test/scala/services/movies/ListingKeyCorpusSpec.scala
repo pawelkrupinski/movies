@@ -34,6 +34,16 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
   private final case class Corpus(label: String, country: Option[Country], path: Path) {
     lazy val listings: Seq[(Cinema, CinemaMovie)] =
       CorpusFixture.readFrom(path).flatMap(row => row.films.map(row.cinema -> _))
+    /** The country's normalizer, built once per corpus — never per key or per test. */
+    lazy val normalizer: Option[TitleNormalizer] = country.map(TitleNormalizer.forCountry)
+    /** Each venue's raw listings beside the slots the production fold keeps of them — computed
+     *  once, read by both fold properties. Only for a corpus of a known country. */
+    lazy val folded: Seq[(Cinema, Seq[CinemaMovie], Seq[CinemaMovie])] = {
+      val tokens = ScreeningTokens.of(country.get)
+      listings.groupMap(_._1)(_._2).toSeq.map { case (cinema, raw) =>
+        (cinema, raw, ScrapeListing.prepare(cinema, raw, normalizer.get, tokens).movies)
+      }
+    }
   }
 
   private def countryOf(file: String): Option[Country] =
@@ -76,7 +86,7 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
     "venue + page"      -> ((cin, cm) => (cin.displayName, cm.filmUrl.getOrElse(published(cm)._1))),
     "venue + page + raw title (the shadow prototype's ListingId)" ->
       ((cin, cm) => (cin.displayName, cm.filmUrl.getOrElse(""), published(cm)._1))
-  ) ++ c.country.map(TitleNormalizer.forCountry).toSeq.map(n =>
+  ) ++ c.normalizer.toSeq.map(n =>
     "the production slot key" -> ((cin: Cinema, cm: CinemaMovie) => (cin.displayName, ScrapeListing.slotKey(cin, cm.movie.title, n))))
 
   "ListingKey" should "give every distinct listing of a venue its own key, on every recorded corpus" in {
@@ -118,11 +128,9 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
   "The production slot fold" should "never put two films a venue lists under one title on one slot, on every recorded corpus" in {
     corpora.map(_.label) should contain ("listing-key-collisions-us.json.gz")
     val found = corpora.filter(_.country.isDefined).flatMap { c =>
-      val normalizer = TitleNormalizer.forCountry(c.country.get)
-      val tokens     = ScreeningTokens.of(c.country.get)
-      c.listings.groupMap(_._1)(_._2).toSeq.flatMap { case (cinema, raw) =>
-        val slots = ScrapeListing.prepare(cinema, raw, normalizer, tokens).movies
-          .groupBy(slot => ScrapeListing.slotKey(cinema, slot.movie.title, normalizer))
+      val normalizer = c.normalizer.get
+      c.folded.flatMap { case (cinema, raw, prepared) =>
+        val slots = prepared.groupBy(slot => ScrapeListing.slotKey(cinema, slot.movie.title, normalizer))
         // A listing's own slot carries what it published: its directors and its year. Two
         // listings of different films each need a slot of their own — not one representative
         // standing in for both (showtimes can't tell them apart: a double bill shares them).
@@ -147,10 +155,8 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
    *  `ScrapeListing.prepare` unioned it into a slot whose representative is another listing — each
    *  with that slot and what tells the two keys apart (docs/design/identity-resolver.md §16.4 item 3). */
   private def hiddenListings(c: Corpus): Seq[(Cinema, CinemaMovie, CinemaMovie, String)] = {
-    val normalizer = TitleNormalizer.forCountry(c.country.get)
-    val tokens     = ScreeningTokens.of(c.country.get)
-    c.listings.groupMap(_._1)(_._2).toSeq.flatMap { case (cinema, raw) =>
-      val slots = ScrapeListing.prepare(cinema, raw, normalizer, tokens).movies
+    val normalizer = c.normalizer.get
+    c.folded.flatMap { case (cinema, raw, slots) =>
       val held  = slots.map(ListingKey.of(cinema, _)).toSet
       raw.distinctBy(ListingKey.of(cinema, _)).filterNot(cm => held(ListingKey.of(cinema, cm))).map { cm =>
         val key  = ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)

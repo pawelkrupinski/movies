@@ -43,14 +43,26 @@ class AdaptiveParallelSpec extends AnyFlatSpec with Matchers {
   // flight, then queue empty. Between them another worker could take the last
   // item, be throttled, shrink the pool below its own index and leave; everyone
   // was then gone and the item came back "never processed" (seen in a full
-  // unit run). Repeated so the interleaving actually gets a chance to occur.
+  // unit run). Repeated so the interleaving actually gets a chance to occur — 3000 runs, from
+  // four driver threads at once (each run is its own pool; running them side by side only adds
+  // the preemption the race needs).
   it should "never abandon an item when a throttle retires the worker holding it" in {
-    (1 to 3000).foreach { _ =>
-      val (results, _) = AdaptiveParallel.map(Seq("x"), workers = 16, maxAttempts = 5, sleep = noSleep)(_ == Throttled) { _ =>
-        Thread.`yield`(); throw Throttled
-      }
-      results.head._2.failed.get shouldBe Throttled
+    val (runs, drivers) = (3000, 4)
+    val answers = new java.util.concurrent.ConcurrentLinkedQueue[scala.util.Try[String]]()
+    val driving = (1 to drivers).map { _ =>
+      val t = new Thread(() => (1 to runs / drivers).foreach { _ =>
+        val (results, _) = AdaptiveParallel.map(Seq("x"), workers = 16, maxAttempts = 5, sleep = noSleep)(_ == Throttled) { _ =>
+          Thread.`yield`(); throw Throttled
+        }
+        answers.add(results.head._2)
+      })
+      t.setDaemon(true)
+      t.start()
+      t
     }
+    driving.foreach(_.join())
+    answers.size shouldBe runs
+    answers.forEach(answer => { answer.failed.get shouldBe Throttled; () })
   }
 
   // `Try` does not catch a fatal error, so it killed its worker thread with the item
