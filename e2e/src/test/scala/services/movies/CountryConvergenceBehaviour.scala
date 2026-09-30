@@ -635,6 +635,14 @@ abstract class CountryConvergenceBehaviour(
   private def bootSettled(w: ArchiveReplayWiring): Unit =
     if (w.identityCutover) {
       step("bootCutover")(w.bootCutover())
+      // Production projects on an interval, and the first projection's films are enriched after it
+      // (an IMDb year can complete a yearless film's key), which the next one takes in — as the
+      // pipeline boot's conclude pass completes rows its settle made. The boot settles to that steady
+      // state, bounded, and says how long it took: a model that never gets there fails the claims.
+      val further = step("settleCutover")(Iterator.continually(w.projectIdentity()).take(CutoverSettleProjections)
+        .indexWhere(_.wroteNothing))
+      info(s"${country.displayName}: identity projection at rest after " +
+        (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
       step("project")(w.readModelProjector.reconcile())
       step("reloadReadModel")(w.webReadModel.reload())
     } else bootPipeline(w)
@@ -657,6 +665,9 @@ abstract class CountryConvergenceBehaviour(
    *  (`settle()` then `canonicalizeBySanitize()`), or — on a cut-over leg — one identity
    *  projection over what the intake holds. A fixpoint claim re-applies THIS, so it asks the
    *  deciding model whether it is at rest, never the other one whether it agrees. */
+  /** Projections after the boot's first that a cut-over boot may take to reach rest. */
+  private val CutoverSettleProjections = 4
+
   private def settleOnce(w: ArchiveReplayWiring): Unit =
     if (w.identityCutover) { w.projectIdentity(); () }
     else { w.movieService.settle(); w.movieCache.canonicalizeBySanitize(); () }

@@ -388,7 +388,7 @@ trait TestWiring extends WorkerWiring {
    * `filmwebEnabled`), and one task per source owns the isolation. The harness supplies
    * only what production gets from its clock: repetition until quiescent.
    */
-  def enrichRatingsSync(): Unit = {
+  def enrichRatingsSync(): Unit = try {
     UntilQuiet(s"[${country.code}] the rating phase", UntilQuiet.MaxRatingRounds) { round =>
       // `enrichmentReaper.tick` is `private[tasks]`, so the harness supplies the walk
       // the reaper would have done and hands each row to the SAME enqueuer the reaper
@@ -403,7 +403,21 @@ trait TestWiring extends WorkerWiring {
       done
     }
     ()
+  } catch {
+    // WHICH tasks keep coming back, and what their handler made of them: "297 unit(s) of work" alone
+    // could not say whether the enqueuer or the handler was wrong about a film being due.
+    case e: IllegalStateException =>
+      val round   = { import scala.jdk.CollectionConverters._; lastRatingRound.asScala.toSeq }
+      val tallied = round.groupMapReduce { case (task, outcome) => s"${task.taskType} → $outcome" }(_ => 1)(_ + _)
+        .toSeq.sortBy(-_._2).map { case (kind, n) => s"  $n × $kind" }
+      val sample  = round.take(10).map { case (task, outcome) => s"  ${task.taskType} ${task.dedupKey} → $outcome" }
+      throw new IllegalStateException((Seq(e.getMessage, "the last round's tasks, by handler outcome:") ++ tallied ++
+        Seq("e.g.") ++ sample).mkString("\n"), e)
   }
+
+  /** The last rating round's tasks and what their handler returned (or threw), for the report a
+   *  rating phase that never goes quiet fails with. */
+  private val lastRatingRound = new java.util.concurrent.ConcurrentLinkedQueue[(services.tasks.Task, String)]()
 
   private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
 
@@ -447,6 +461,7 @@ trait TestWiring extends WorkerWiring {
    * claimant enqueued mid-round is picked up on the next one rather than lost.
    */
   private def drainRatingQueueOnce(): Int = {
+    lastRatingRound.clear()
     val handled   = new java.util.concurrent.atomic.AtomicInteger(0)
     val claimants = (0 until drainClaimants).map { i =>
       val workerId = s"rating-sync-$i"
@@ -456,7 +471,8 @@ trait TestWiring extends WorkerWiring {
             .takeWhile(_.isDefined).flatten
             .foreach { task =>
               ratingHandlerByType.get(task.taskType).foreach { h =>
-                try { h.handle(task); handled.incrementAndGet() } catch { case _: Exception => () }
+                try { lastRatingRound.add(task -> h.handle(task).toString); handled.incrementAndGet() }
+                catch { case e: Exception => lastRatingRound.add(task -> s"threw ${e.getClass.getSimpleName}: ${e.getMessage}"); () }
               }
               taskQueue.complete(task.id, workerId)
             },
