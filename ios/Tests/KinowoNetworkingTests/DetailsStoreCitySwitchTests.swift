@@ -29,16 +29,18 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
             let isOld = request.url!.path.contains("/\(slowCity)/")
             var response = URLProtocolStub.Response(
                 statusCode: 200, headers: [:], body: try! JSONEncoder().encode(isOld ? oldCity : newCity))
-            if isOld { response.delay = 0.4 }
+            if isOld { response.delay = 0.15 }
             return response
         }
 
         let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache)
         let slowReload = Task { await store.reload() }
-        try await Task.sleep(for: .milliseconds(100))
+        let slowRequestOnTheWire = await pollUntil { URLProtocolStub.requestedURLs.contains { $0.path.contains("/\(slowCity)/") } }
+        XCTAssertTrue(slowRequestOnTheWire)
         store.use(citySlug: otherCity)
         await slowReload.value
-        try await Task.sleep(for: .milliseconds(300))
+        let newCityLanded = await pollUntil { store.details(for: "New City Film") != nil }
+        XCTAssertTrue(newCityLanded)
 
         XCTAssertNil(store.details(for: "Old City Film"))
         XCTAssertNotNil(store.details(for: "New City Film"))

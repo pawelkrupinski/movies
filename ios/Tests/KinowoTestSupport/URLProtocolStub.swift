@@ -21,7 +21,15 @@ public final class URLProtocolStub: URLProtocol {
         }
     }
 
-    public static var handler: ((URLRequest) -> Response)?
+    public static var handler: ((URLRequest) -> Response)? {
+        didSet { requestLog.withLock { $0 = [] } }
+    }
+
+    private static let requestLog = LockedValue<[URL]>([])
+
+    /// Every URL requested since `handler` was last set — lets a test wait
+    /// for a request to be on the wire instead of sleeping and hoping.
+    public static var requestedURLs: [URL] { requestLog.withLock { $0 } }
 
     /// An ephemeral session whose every request this stub answers.
     public static func session() -> URLSession {
@@ -38,6 +46,7 @@ public final class URLProtocolStub: URLProtocol {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }
+        Self.requestLog.withLock { $0.append(url) }
         let response = handler(request)
         let httpResponse = HTTPURLResponse(
             url: url, statusCode: response.statusCode,
@@ -55,4 +64,16 @@ public final class URLProtocolStub: URLProtocol {
     }
 
     override public func stopLoading() {}
+}
+
+/// A value behind a lock: the stub's request log is written on URLSession's
+/// loading threads and read from the test's.
+private final class LockedValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+    init(_ value: Value) { self.value = value }
+    func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
+        lock.lock(); defer { lock.unlock() }
+        return body(&value)
+    }
 }

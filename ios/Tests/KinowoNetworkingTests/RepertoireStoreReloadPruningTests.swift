@@ -118,7 +118,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
             if path.hasSuffix("/cinemas") { return .init(statusCode: 404, headers: [:], body: Data()) }
             if path.contains("/\(self.city)/") {
                 var slow = jsonResponse([oldCityFilm])
-                slow.delay = 0.4
+                slow.delay = 0.15
                 return slow
             }
             return jsonResponse([newCityFilm])
@@ -126,10 +126,12 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
 
         let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
         let slowReload = Task { await store.reload() }
-        try await Task.sleep(for: .milliseconds(100))
+        let slowRequestOnTheWire = await pollUntil { URLProtocolStub.requestedURLs.contains { $0.path.contains("/\(self.city)/") } }
+        XCTAssertTrue(slowRequestOnTheWire)
         store.use(citySlug: otherCity)
         await slowReload.value
-        try await Task.sleep(for: .milliseconds(300))
+        let newCityLanded = await pollUntil { store.films.map(\.title) == ["New City Film"] }
+        XCTAssertTrue(newCityLanded)
 
         XCTAssertEqual(store.films.map(\.title), ["New City Film"])
         XCTAssertEqual(store.loadedCitySlug, otherCity)

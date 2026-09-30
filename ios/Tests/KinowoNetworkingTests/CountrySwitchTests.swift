@@ -41,7 +41,9 @@ final class CountrySwitchTests: XCTestCase {
         switchCountry(to: unitedKingdom, prefs: prefs, store: store, details: details)
         store.use(citySlug: "london")
         details.use(citySlug: "london")
-        try await Task.sleep(for: .milliseconds(300))
+        // Each store asks the new city for its details and its cinemas.
+        let fetched = await pollUntil { URLProtocolStub.requestedURLs.count >= 4 }
+        XCTAssertTrue(fetched)
 
         XCTAssertEqual(prefs.selectedCountry, unitedKingdom)
         XCTAssertFalse(requestedHosts.all.isEmpty)
