@@ -1,10 +1,10 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, CinemaMovie, Country}
+import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.CinemaScraper
+import services.cinemas.StubCinemaScraper
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.tasks.ScrapeCinemaHandler
 
@@ -22,11 +22,6 @@ import java.time.{Clock, Instant, ZoneOffset}
 class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
 
   private val now = Instant.parse("2026-07-28T20:00:00Z")
-
-  private class FakeScraper(val cinema: Cinema) extends CinemaScraper {
-    def scrapeHosts: Set[String]  = Set.empty
-    def fetch(): Seq[CinemaMovie] = Seq.empty
-  }
 
   private def keyOf(cinema: Cinema) = ScrapeCinemaHandler.dedupKey(cinema)
 
@@ -76,7 +71,7 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
   "sample" should "publish both gauges under this country's label" in {
     val registry                    = new PrometheusRegistry()
     val (oldestAge, neverScraped)   = CinemaScrapeCensus.gauges(registry)
-    val scrapers                    = Seq(fresh, stale, nevers).map(new FakeScraper(_))
+    val scrapers                    = Seq(fresh, stale, nevers).map(new StubCinemaScraper(_))
 
     val census = new CinemaScrapeCensus(scrapers, freshness(), oldestAge, neverScraped, Country.Poland,
       Clock.fixed(now, ZoneOffset.UTC))
@@ -92,7 +87,7 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
     val (oldestAge, neverScraped) = CinemaScrapeCensus.gauges(registry)
 
     // Constructed but never sampled — the series must already exist.
-    new CinemaScrapeCensus(Seq(new FakeScraper(stale)), freshness(), oldestAge, neverScraped, Country.Poland,
+    new CinemaScrapeCensus(Seq(new StubCinemaScraper(stale)), freshness(), oldestAge, neverScraped, Country.Poland,
       Clock.fixed(now, ZoneOffset.UTC))
 
     val exposition = PrometheusExposition.render(registry)

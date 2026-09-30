@@ -1,25 +1,20 @@
 package services.cinemas
 
 import tools.{DaemonExecutors, HostScrapeStats}
-import models.{Cinema, CinemaMovie, Multikino}
+import models.{CinemaMovie, Multikino}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.ScriptedCinemaScraper.OneMovie
 import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaScraper}
 
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{CountDownLatch, TimeoutException}
+import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 
 class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
 
-  private def delegate(
-    hosts: Set[String],
-    who:   Cinema = Multikino
-  )(body: => Seq[CinemaMovie]): CinemaScraper = new CinemaScraper {
-    val cinema: Cinema           = who
-    def scrapeHosts: Set[String] = hosts
-    def fetch(): Seq[CinemaMovie] = body
-  }
+  private def delegate(hosts: Set[String])(body: => Seq[CinemaMovie]): CinemaScraper =
+    new StubCinemaScraper(Multikino, body, scrapeHosts = hosts)
 
   "hostKey" should "be the sorted host set so a chain's venues pool together" in {
     val s = new AdaptiveTimeoutScraper(delegate(Set("b.pl", "a.pl"))(OneMovie), new HostScrapeStats(), DaemonExecutors.directExecutor())
@@ -40,18 +35,20 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "cut a scrape that overruns its budget and throw a TimeoutException naming the host" in {
-    // ceiling 120ms is the warm-up budget; the delegate sleeps far past it.
+    // ceiling 120ms is the warm-up budget; the delegate hangs far past it — until the
+    // test releases it, so the abandoned scrape doesn't outlive the test.
     val stats    = new HostScrapeStats(floor = 1.milli, ceiling = 120.millis)
     val executor = DaemonExecutors.virtualThreadEC("test-adaptive-timeout")
+    val release  = new CountDownLatch(1)
     try {
-      val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { Thread.sleep(3000); OneMovie }, stats, executor)
+      val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { release.await(3, SECONDS); OneMovie }, stats, executor)
       val t0 = System.nanoTime() / 1000000
       val thrown = intercept[TimeoutException](s.fetch())
       val elapsed = System.nanoTime() / 1000000 - t0
       thrown.getMessage should include ("slow.pl")
-      elapsed should be < 2000L                       // returned at the budget, not after the 3s sleep
+      elapsed should be < 2000L                       // returned at the budget, not after the 3s hang
       stats.deadlineFor("slow.pl") shouldBe 120.millis // the cut scrape did NOT feed the baseline
-    } finally executor.shutdown()
+    } finally { release.countDown(); executor.shutdown() }
   }
 
   it should "propagate the delegate's own exception unwrapped (so retry/uptime see the real cause)" in {

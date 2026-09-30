@@ -1,9 +1,10 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, CinemaMovie, Country}
+import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.StubCinemaScraper
 import services.cinemas.common.CinemaScraper
 import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository}
 
@@ -24,16 +25,11 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
 
   private val now = Instant.parse("2026-08-03T12:00:00Z")
 
-  private class FakeScraper(val cinema: Cinema) extends CinemaScraper {
-    def scrapeHosts: Set[String]  = Set.empty
-    def fetch(): Seq[CinemaMovie] = Seq.empty
-  }
-
   private val producing = CinemaCityKinepolis   // had films this morning
   private val quiet     = CinemaCityWroclavia   // last had films 40 days ago
   private val never     = CinemaCityArkadia     // has never produced any
 
-  private val roster = Seq(producing, quiet, never).map(new FakeScraper(_))
+  private val roster = Seq(producing, quiet, never).map(new StubCinemaScraper(_))
 
   /** An archive that answers with exactly `stamps` — including, when empty, the
    *  read that could not be completed. */

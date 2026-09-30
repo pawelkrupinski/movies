@@ -25,13 +25,16 @@ class ListingOutageSpec extends AnyFlatSpec with Matchers {
   // so no day reports anything at all — and "nothing reported" must not read as
   // "nothing failed".
   "FilmwebShowtimesClient" should "fail the scrape when every day's page timed out, not report it empty" in {
+    // Hangs until the test ends, so the abandoned page fetches don't outlive it.
+    val release = new java.util.concurrent.CountDownLatch(1)
     val hanging = new tools.HttpFetch {
-      def get(url: String): String = { Thread.sleep(10000); "[]" }
+      def get(url: String): String = { release.await(10, java.util.concurrent.TimeUnit.SECONDS); "[]" }
       def post(url: String, body: String, contentType: String): String = get(url)
     }
     val client = new FilmwebShowtimesClient(hanging, 2352, KinoDiana, daysAhead = 1, today = today,
       pageTimeout = scala.concurrent.duration.DurationInt(50).millis)
-    a[java.util.concurrent.TimeoutException] should be thrownBy client.fetch()
+    try a[java.util.concurrent.TimeoutException] should be thrownBy client.fetch()
+    finally release.countDown()
   }
 
   "ListingPages.requireAnyReached" should "tolerate some pages failing, but throw the first failure when all did" in {

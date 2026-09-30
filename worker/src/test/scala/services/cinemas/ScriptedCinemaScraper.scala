@@ -1,15 +1,13 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
-import services.cinemas.common.CinemaScraper
 
 import java.time.LocalDateTime
 
 /**
- * Test double: a `CinemaScraper` that replays a scripted list of outcomes —
- * each either a result (`Right`) or a throw (`Left`) — one per `fetch()` call.
- * Shared by the retry + recording decorator specs so the scripting shape isn't
- * re-spelled per spec.
+ * A [[StubCinemaScraper]] that replays a scripted list of outcomes — each either a
+ * result (`Right`) or a throw (`Left`) — one per `fetch()` call, plus the stock
+ * listings the scraper specs share.
  */
 object ScriptedCinemaScraper {
 
@@ -42,17 +40,27 @@ object ScriptedCinemaScraper {
     )
   )
 
+  /** Replays `plan`, one outcome per `fetch()`: a `Right` is the listing, a `Left` is
+   *  thrown. Past the end it repeats the last outcome when `repeatLast`, and
+   *  otherwise throws — so an unexpected extra call fails the spec. */
   def apply(
-    plan:      List[Either[Throwable, Seq[CinemaMovie]]],
-    forCinema: Cinema = Multikino
-  ): CinemaScraper = new CinemaScraper {
-    private var remaining = plan
-    val cinema: Cinema           = forCinema
-    def scrapeHosts: Set[String] = Set.empty
-    def fetch(): Seq[CinemaMovie] = remaining match {
-      case Right(v) :: rest => remaining = rest; v
-      case Left(t)  :: rest => remaining = rest; throw t
-      case Nil              => throw new IllegalStateException("scripted scraper exhausted")
+    plan:       Seq[Either[Throwable, Seq[CinemaMovie]]],
+    forCinema:  Cinema = Multikino,
+    repeatLast: Boolean = false
+  ): StubCinemaScraper = {
+    val script = new Script(plan, repeatLast)
+    new StubCinemaScraper(forCinema, script.next())
+  }
+
+  private final class Script(plan: Seq[Either[Throwable, Seq[CinemaMovie]]], repeatLast: Boolean) {
+    private var played = 0
+    def next(): Seq[CinemaMovie] = {
+      val outcome = synchronized {
+        val i = if (repeatLast) math.min(played, plan.length - 1) else played
+        played += 1
+        plan.lift(i).getOrElse(throw new IllegalStateException("scripted scraper exhausted"))
+      }
+      outcome.fold(t => throw t, identity)
     }
   }
 }

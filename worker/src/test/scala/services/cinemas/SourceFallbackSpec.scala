@@ -2,7 +2,7 @@ package services.cinemas
 
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.alerts.FallbackAlert
-import models.{Cinema, CinemaMovie, Multikino}
+import models.{CinemaMovie, Multikino}
 import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -16,18 +16,6 @@ import scala.concurrent.duration._
 class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.OptionValues {
 
   private val Service = Multikino.displayName
-
-  /** A scraper replaying a plan, repeating the last entry, and counting calls so
-   *  a test can assert the primary was (not) probed. */
-  private class FakeScraper(plan: Seq[Either[Throwable, Seq[CinemaMovie]]]) extends CinemaScraper {
-    var calls = 0
-    val cinema: Cinema           = Multikino
-    def scrapeHosts: Set[String] = Set.empty
-    def fetch(): Seq[CinemaMovie] = {
-      val o = plan(math.min(calls, plan.length - 1)); calls += 1
-      o match { case Right(v) => v; case Left(t) => throw t }
-    }
-  }
 
   private def boom = new RuntimeException("primary down")
 
@@ -48,7 +36,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       def getZone: java.time.ZoneId              = java.time.ZoneOffset.UTC
       override def withZone(zone: java.time.ZoneId): java.time.Clock = this
     })
-    val primary = new FakeScraper(primaryPlan)
+    val primary = ScriptedCinemaScraper(primaryPlan, repeatLast = true)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
     val events = collection.mutable.ListBuffer.empty[(FallbackState, FallbackEvent)]
     val scraper = new SourceFallbackScraper(

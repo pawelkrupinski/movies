@@ -3,9 +3,8 @@ package tools
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{Cinema, CinemaMovie, KinoMikro, KinoNaBoku, Movie}
-import services.cinemas.common.CinemaScraper
+import services.cinemas.StubCinemaScraper
 
-import java.util.concurrent.atomic.AtomicInteger
 import scala.util.{Failure, Success}
 
 /** Pins `FilmwebDiff.fetchOursInParallel`: parallel pre-fetch of the OUR side
@@ -17,24 +16,19 @@ class FilmwebDiffParallelFetchSpec extends AnyFlatSpec with Matchers {
   private def movieFor(c: Cinema): CinemaMovie =
     CinemaMovie(Movie(c.displayName + " film"), c, None, None, None, Nil, Nil, Nil)
 
-  private class FakeScraper(override val cinema: Cinema, calls: AtomicInteger, boom: Boolean = false)
-    extends CinemaScraper {
-    def scrapeHosts: Set[String] = Set.empty
-    def fetch(): Seq[CinemaMovie] = {
-      calls.incrementAndGet()
-      Thread.sleep(20) // overlap windows so a keying bug would surface
-      if (boom) throw new RuntimeException("scrape blew up")
-      Seq(movieFor(cinema))
-    }
-  }
+  /** Sleeps so the parallel fetches overlap — a keying bug would surface. */
+  private def scraper(c: Cinema, boom: Boolean = false) = new StubCinemaScraper(c, {
+    Thread.sleep(20)
+    if (boom) throw new RuntimeException("scrape blew up")
+    Seq(movieFor(c))
+  })
 
   "fetchOursInParallel" should "run every scraper and key each result to its own cinema" in {
-    val calls = new AtomicInteger(0)
-    val scrapers = Seq(new FakeScraper(KinoNaBoku, calls), new FakeScraper(KinoMikro, calls))
+    val scrapers = Seq(scraper(KinoNaBoku), scraper(KinoMikro))
 
     val results = FilmwebDiff.fetchOursInParallel(scrapers)
 
-    calls.get() shouldBe 2
+    scrapers.map(_.calls) shouldBe Seq(1, 1)
     results.keySet shouldBe Set(KinoNaBoku, KinoMikro)
     results(KinoNaBoku) match {
       case Success(ms) => ms.map(_.cinema).toSet shouldBe Set(KinoNaBoku)
@@ -44,8 +38,7 @@ class FilmwebDiffParallelFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "isolate a throwing scraper without sinking the batch" in {
-    val calls = new AtomicInteger(0)
-    val scrapers = Seq(new FakeScraper(KinoNaBoku, calls, boom = true), new FakeScraper(KinoMikro, calls))
+    val scrapers = Seq(scraper(KinoNaBoku, boom = true), scraper(KinoMikro))
 
     val results = FilmwebDiff.fetchOursInParallel(scrapers)
 

@@ -3,6 +3,7 @@ package services.cinemas.common
 import models.{Cinema, CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.StubCinemaScraper
 import services.events.InProcessEventBus
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeOutcome}
@@ -18,16 +19,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * just the simple half of it.
  */
 class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
-
-  private class FakeScraper(
-    val cinema: Cinema,
-    result:     => Seq[CinemaMovie],
-    complete:   Boolean = true
-  ) extends CinemaScraper {
-    def scrapeHosts: Set[String]            = Set.empty
-    def fetch(): Seq[CinemaMovie]           = result
-    override def listingIsComplete: Boolean = complete
-  }
 
   private def film(cinema: Cinema, title: String, showtimes: Int = 1) =
     CinemaMovie(Movie(title), cinema, Some("https://poster"), Some("https://film"), Some("A blurb"),
@@ -45,7 +36,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
 
   "CinemaScrapeRunner" should "archive a cinema's listing as the client produced it" in {
     val archive = new InMemoryScrapeArchiveRepository
-    runnerWith(archive).run(new FakeScraper(Multikino, Seq(film(Multikino, "Dune", showtimes = 3), film(Multikino, "Alien"))))
+    runnerWith(archive).run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune", showtimes = 3), film(Multikino, "Alien"))))
 
     val stored = archive.find(Multikino).getOrElse(fail("nothing archived"))
     stored.films.map(_.movie.title) should contain theSameElementsAs Seq("Dune", "Alien")
@@ -71,7 +62,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
 
   it should "mark a partial listing so a replay knows not to trust it as complete" in {
     val archive = new InMemoryScrapeArchiveRepository
-    runnerWith(archive).run(new FakeScraper(Multikino, Seq(film(Multikino, "Dune")), complete = false))
+    runnerWith(archive).run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")), listingIsComplete = false))
 
     archive.find(Multikino).getOrElse(fail("nothing archived"))
       .lastSuccess.map(_.listingComplete) shouldBe Some(false)
@@ -80,8 +71,8 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
   it should "keep the last listing and flag it white when a scrape comes back empty" in {
     val archive = new InMemoryScrapeArchiveRepository
     val runner  = runnerWith(archive)
-    runner.run(new FakeScraper(Multikino, Seq(film(Multikino, "Dune"))))
-    runner.run(new FakeScraper(Multikino, Seq.empty))
+    runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune"))))
+    runner.run(new StubCinemaScraper(Multikino, Seq.empty))
 
     val stored = archive.find(Multikino).getOrElse(fail("nothing archived"))
     stored.films.map(_.movie.title) shouldBe Seq("Dune")
@@ -92,10 +83,10 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
   it should "keep the last listing and flag it red when a scrape throws" in {
     val archive = new InMemoryScrapeArchiveRepository
     val runner  = runnerWith(archive)
-    runner.run(new FakeScraper(Multikino, Seq(film(Multikino, "Dune"))))
+    runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune"))))
 
     a[RuntimeException] should be thrownBy
-      runner.run(new FakeScraper(Multikino, throw new RuntimeException("503 from multikino.pl")))
+      runner.run(new StubCinemaScraper(Multikino, throw new RuntimeException("503 from multikino.pl")))
 
     val stored = archive.find(Multikino).getOrElse(fail("nothing archived"))
     stored.films.map(_.movie.title)      shouldBe Seq("Dune")
@@ -110,7 +101,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
     val boom    = new IllegalStateException("layout changed")
 
     val thrown = the[IllegalStateException] thrownBy
-      runnerWith(archive).run(new FakeScraper(Multikino, throw boom))
+      runnerWith(archive).run(new StubCinemaScraper(Multikino, throw boom))
 
     thrown should be theSameInstanceAs boom
     archive.find(Multikino).getOrElse(fail("nothing archived")).outcome shouldBe ScrapeOutcome.Failed
@@ -122,6 +113,6 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
       new InProcessEventBus(),
       deferredCinemas = Set.empty
     )
-    runner.run(new FakeScraper(Multikino, Seq(film(Multikino, "Dune")))) should have size 1
+    runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")))) should have size 1
   }
 }

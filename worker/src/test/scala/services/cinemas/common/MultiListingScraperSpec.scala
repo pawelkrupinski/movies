@@ -3,6 +3,7 @@ package services.cinemas.common
 import models.{Cinema, CinemaMovie, KinoKoneckieCentrumKultury, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.StubCinemaScraper
 
 import java.time.LocalDateTime
 
@@ -12,12 +13,8 @@ class MultiListingScraperSpec extends AnyFlatSpec with Matchers {
   private def film(title: String, at: String, room: String) =
     CinemaMovie(Movie(title), Konskie, None, None, None, Nil, Nil, Seq(Showtime(LocalDateTime.parse(at), None, Some(room))))
 
-  private def listing(host: String, films: => Seq[CinemaMovie], venue: Cinema = Konskie): CinemaScraper = new CinemaScraper {
-    def cinema: Cinema = venue
-    def fetch(): Seq[CinemaMovie] = films
-    def scrapeHosts: Set[String] = Set(host)
-    override def sourceUrl: Option[String] = Some(s"https://$host/")
-  }
+  private def listing(host: String, films: => Seq[CinemaMovie], venue: Cinema = Konskie): CinemaScraper =
+    new StubCinemaScraper(venue, films, scrapeHosts = Set(host), sourceUrl = Some(s"https://$host/"))
 
   "a venue listed once per hall" should "be one cinema whose film carries every hall's showtimes" in {
     val venue = new MultiListingScraper(Konskie, Seq(
