@@ -11,7 +11,11 @@ object Digest {
   /** SHA-256, for the share-card store's versions (a card's inputs, a poster's URL). */
   def sha256Hex(s: String): String = hex("SHA-256", s)
 
+  // `HexFormat`, not `f"$b%02x"` per byte: that was a `String.format` — a parse of the pattern and
+  // a Formatter — for every byte of every digest, and `FilmId` derives each film's id through
+  // here: 11% of a busy US worker's allocation (JFR, 2026-09-30). Same lowercase hex.
+  private val hexFormat = java.util.HexFormat.of()
+
   private def hex(algorithm: String, s: String): String =
-    MessageDigest.getInstance(algorithm).digest(s.getBytes(StandardCharsets.UTF_8))
-      .map(b => f"${b & 0xff}%02x").mkString
+    hexFormat.formatHex(MessageDigest.getInstance(algorithm).digest(s.getBytes(StandardCharsets.UTF_8)))
 }
