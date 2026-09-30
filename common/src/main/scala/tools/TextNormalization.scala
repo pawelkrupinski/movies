@@ -41,7 +41,9 @@ object TextNormalization {
    * fold does it locally (see `CinemaCorroboration.nameTokens`).
    */
   def deburr(s: String): String =
-    CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
+    // ASCII has nothing to decompose, no combining mark and no `ł`: most titles skip the normalizer.
+    if (s.chars().allMatch(_ < 0x80)) s
+    else CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
       .replace('ł', 'l').replace('Ł', 'l')
 
   // Cyrillic → Latin transliteration for the EXTERNAL-SEARCH title tier only

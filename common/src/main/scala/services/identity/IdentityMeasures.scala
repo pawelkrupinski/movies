@@ -93,9 +93,11 @@ object IdentityMeasures {
     val end   = m.group(2)
     Option.when((end.length == 4 && end.toInt == start + 1) || (end.length == 2 && end.toInt == (start + 1) % 100))(start)
   }
+  /** A season or a bracketed year needs an ASCII digit (`\d` is ASCII-only in Java): a title without
+   *  one skips their regexes. */
+  private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
   def seasonYear(titles: Seq[String]): Option[Int] =
-    // A season needs an ASCII digit (`\d` is ASCII-only in Java): titles without one skip the regex.
-    titles.iterator.filter(_.exists(c => c >= '0' && c <= '9')).flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
+    titles.iterator.filter(hasAsciiDigit).flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
       case Seq(one) => Some(one)
       case _        => None
     }
@@ -299,12 +301,12 @@ object IdentityMeasures {
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
   /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
-  def withoutYears(t: String): String = BracketedYear.replaceAllIn(withoutSeasons(t), " ")
+  def withoutYears(t: String): String = if (!hasAsciiDigit(t)) t else BracketedYear.replaceAllIn(withoutSeasons(t), " ")
   private[identity] def yearlessTokens(t: String): Seq[String] = TitleContainment.tokens(withoutYears(t))
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
   def withoutSeasons(t: String): String =
-    Season.replaceAllIn(t, m => if (seasonStart(m).isDefined) " " else scala.util.matching.Regex.quoteReplacement(m.matched))
+    if (!hasAsciiDigit(t)) t else Season.replaceAllIn(t, m => if (seasonStart(m).isDefined) " " else scala.util.matching.Regex.quoteReplacement(m.matched))
 
   /** What TMDB says about a candidate film. `directors`/`countries` are `None` when the film's
    *  details were not fetched, which is not the same as TMDB crediting nobody. `countries` are

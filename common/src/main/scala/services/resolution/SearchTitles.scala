@@ -6,6 +6,11 @@ package services.resolution
  * for the movies path, the staging path and the IMDb id recovery alike.
  */
 object SearchTitles {
+  // Compiled once: `candidates` runs for every title of every record the identity model reads.
+  private val PipeSeparator       = java.util.regex.Pattern.compile("""\s+\|\s+""")
+  private val DashedTitle         = java.util.regex.Pattern.compile(""".*\s[-–—]\s.*""")
+  private val DashSeparator       = java.util.regex.Pattern.compile("""\s+[-–—]\s+""")
+  private val TrailingParenthesis = java.util.regex.Pattern.compile("""\s*\([^)]*\)\s*$""")
 
   /** Search candidates for a row, in priority order: the row's title, the
    *  cinema-provided original title, then every other reported title (the row's
@@ -21,14 +26,14 @@ object SearchTitles {
    *  title a cinema printed (see [[wholeCandidates]]). */
   def candidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
     def deDecorate(t: String): Seq[String] = {
-      val pipeParts       = if (t.contains(" | ")) t.split("""\s+\|\s+""").toIndexedSeq else Nil
+      val pipeParts       = if (t.contains(" | ")) PipeSeparator.split(t).toIndexedSeq else Nil
       // A programme banner is joined with a DASH as often as a pipe or a colon, and
       // the film's own title is the part after it. Hyphen, en dash and em dash all
       // appear; the surrounding spaces are what mark it as a separator rather than
       // a hyphenated word ("Spider-Man" is untouched). Purely ADDITIVE — the
       // undivided title stays a candidate — and a candidate only ever becomes a
       // resolution by matching, so an over-eager split costs nothing.
-      val dashParts       = if (t.matches(""".*\s[-–—]\s.*""")) t.split("""\s+[-–—]\s+""").toIndexedSeq else Nil
+      val dashParts       = if (DashedTitle.matcher(t).matches()) DashSeparator.split(t).toIndexedSeq else Nil
       // A programme banner is also introduced with a ": " prefix ("Akademia
       // Kina Polskiego: Człowiek z żelaza", "Modoteka: Tootsie"). Only the
       // FIRST colon is used, so one further into a legitimate title ("Kill
@@ -58,7 +63,7 @@ object SearchTitles {
         case _ => None
       }
       val bannerParts     = afterBanner(": ").toSeq
-      val noTrailingParen = t.replaceAll("""\s*\([^)]*\)\s*$""", "").trim
+      val noTrailingParen = TrailingParenthesis.matcher(t).replaceAll("").trim
       (Seq(t) ++ pipeParts ++ dashParts ++ bannerParts :+ noTrailingParen)
     }
     (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
