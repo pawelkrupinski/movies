@@ -442,7 +442,11 @@ object IdentityMeasures {
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
+    /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
+    lazy val unglossedKey: Option[String] =
+      TrailingGloss.findFirstMatchIn(text).map(m => IdentityMeasures.key(m.group(1))).filter(k => k.nonEmpty && k != key)
   }
+  private val TrailingGloss = """^(.*\S)\s*\([^()]*\)\s*$""".r
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
@@ -766,9 +770,11 @@ object IdentityMeasures {
       case None => MissingListing
       case Some(o) =>
         if (others.isEmpty) MissingFilm
-        // The same title once years and seasons are dropped: "The Metropolitan Opera: Così fan tutte
+        // The same title — or the film's without its trailing gloss ("TKT (T'inquiète)") — or once years
+        // and seasons are dropped: "The Metropolitan Opera: Così fan tutte
         // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
-        else if (others.exists(_.key == o.form.key) || others.exists(t => oneTypoApart(o.form.words, t.words)) ||
+        else if (others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key)) ||
+                 others.exists(t => oneTypoApart(o.form.words, t.words)) ||
                  others.exists(_.latinKey == o.form.latinKey) ||
                  (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty && t.yearlessWords == o.form.yearlessWords)))
           Category("match")

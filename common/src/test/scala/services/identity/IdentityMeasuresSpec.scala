@@ -113,6 +113,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.originalTitleRelation(Some("Michael Mann's Manhunter: The Final Cut"), Seq("Manhunter")) shouldBe Category("decorated")
   }
 
+  "the original-title relation" should "read a film title's trailing bracketed gloss as that title again" in {
+    // PL Helios lists Solange Cicurel's "Nie martw się, nic mi nie jest" with original title "TKT";
+    // TMDB's is "TKT (T'inquiète)", the title with its gloss. As a fragment (−4.53) it sank an exact,
+    // rank-1 title to 3.4% on all 10 listings.
+    IdentityMeasures.originalTitleRelation(Some("TKT"), Seq("Nie martw się, nic mi nie jest", "TKT (T'inquiète)")) shouldBe Category("match")
+    // Only a trailing gloss, the whole of what precedes it: a piece before a colon is still a segment.
+    IdentityMeasures.originalTitleRelation(Some("Your Name"), Seq("Your Name: Director's Cut (2016)")) should not be Category("match")
+  }
+
   "own agreement" should "count a bracketed year that matches, and deny only on a published year" in {
     IdentityMeasures.ownAgreement(measures(Listing("It (1990)"), Film("It", year = Some(1990))))._1 should contain ("year")
     IdentityMeasures.ownAgreement(measures(Listing("Toy Story (2026)"), Film("Toy Story", year = Some(1995))))._2 should not contain ("year")
