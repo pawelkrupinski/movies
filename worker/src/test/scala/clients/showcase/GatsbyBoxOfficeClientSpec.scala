@@ -43,6 +43,28 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   private def film(title: String): CinemaMovie = films.find(_.movie.title == title).value
 
+  "a details response naming none of the films asked" should "be asked once more, not taken as films without credits" in {
+    // Landmark, 2026-09-29: three venues' whole `movies?ids=` batches came back 200 but unparseable,
+    // so every film there was listed bare and "Nosferatu" (Eggers, 132 min) resolved as the 1922 film.
+    // Each batch's first answer is the busy page; asked again, it names Jurassic Park.
+    val asked = scala.collection.mutable.Map.empty[String, Int]
+    val fetch = new tools.GetOnlyHttpFetch {
+      private val recorded = new FakeHttpFetch("showcase")
+      def get(url: String): String = synchronized {
+        if (!url.contains("/movies?ids=")) recorded.get(url)
+        else {
+          asked(url) = asked.getOrElse(url, 0) + 1
+          if (asked(url) == 1) "<html><body>Service busy</body></html>"
+          else """[{"id":"8488","direction":["Steven Spielberg"],"runtime":7620}]"""
+        }
+      }
+    }
+    val jurassic = new GatsbyBoxOfficeClient(fetch, GatsbyBoxOfficeClient.ShowcaseBaseUrl, Bluewater, ShowcaseDeLuxBluewater, today = Today)
+      .fetch().find(_.movie.title == "Jurassic Park").value
+    jurassic.director shouldBe Seq("Steven Spielberg")
+    jurassic.movie.runtimeMinutes shouldBe Some(127)
+  }
+
   "fetch" should "join the venue's schedule against the chain catalogue into one row per film" in {
     films.size shouldBe 81
     films.map(_.cinema).toSet shouldBe Set(ShowcaseDeLuxBluewater)

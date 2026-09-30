@@ -6,6 +6,7 @@ import tools.HttpFetch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, ZoneId}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -113,7 +114,15 @@ class GatsbyBoxOfficeClient(
    *  without a credit is what every scrape published before this request existed. */
   private def details(ids: Seq[String]): Map[String, GatsbyBoxOfficeParser.FilmDetails] =
     ids.distinct.sorted.grouped(DetailsBatch).flatMap { batch =>
-      try GatsbyBoxOfficeParser.parseDetails(http.get(detailsUrl(baseUrl, batch)))
+      // A 200 naming none of the batch's films is a failed read too, asked once more: three Landmark
+      // venues' whole batches came back unparseable on 2026-09-29, and every film there was listed
+      // bare ("Nosferatu", Eggers' 132 minutes, then resolved as the 1922 film).
+      def ask(): Map[String, GatsbyBoxOfficeParser.FilmDetails] = {
+        val answered = GatsbyBoxOfficeParser.parseDetails(http.get(detailsUrl(baseUrl, batch)))
+        if (answered.isEmpty) throw new IllegalStateException(s"the response named none of the ${batch.size} film(s) asked")
+        answered
+      }
+      try (1 until DetailsAttempts).foldLeft(Try(ask()))((tried, _) => tried.orElse(Try(ask()))).get
       catch {
         case NonFatal(e) =>
           logger.warn(s"${cinema.displayName}: film details for ${batch.size} film(s) unavailable, listing them without credits: ${e.getMessage}")
@@ -167,6 +176,9 @@ object GatsbyBoxOfficeClient {
 
   /** How many films one details request asks about. */
   val DetailsBatch = 50
+
+  /** How many times one details batch is asked before its films are listed without credits. */
+  val DetailsAttempts = 2
 
   /** The films' credits and running times, as the film page loads them: one repeated `ids` per film. */
   def detailsUrl(baseUrl: String, ids: Seq[String]): String =
