@@ -1,6 +1,7 @@
 package tools
 
 import com.sun.net.httpserver.{HttpServer, HttpsConfigurator, HttpsServer}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -23,7 +24,7 @@ import scala.util.{Try, Using}
  * path builder first loads, and the spec's own JVM may already have loaded it either way —
  * and because setting it in the spec's JVM would set it for every suite beside it.
  */
-class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
+class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 
@@ -53,36 +54,45 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private def handshake(applied: Option[IssuerCertificateFetching], jvmOptions: Seq[String] = Nil): (Int, String) = {
-    val dir = Files.createTempDirectory("issuer-fetching")
-    // The AIA server first: its port goes into the leaf.
+  /** The servers and the chain, minted ONCE for the suite: minting is ten keytool runs (a JVM
+   *  each), and nothing a child does changes them — every child JVM is still a fresh process
+   *  that has fetched nothing. The AIA server starts first: its port goes into the leaf. */
+  private final class Servers {
+    val dir     = Files.createTempDirectory("issuer-fetching")
     val issuers = HttpServer.create(new InetSocketAddress(Loopback, 0), 0)
     issuers.start()
-    val origin = HttpsServer.create(new InetSocketAddress(Loopback, 0), 0)
-    try {
-      val chain = Chain.mint(new Keytool(configuration.javaHome), dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
-      issuers.createContext("/intermediate.cer", exchange => {
-        val bytes = Files.readAllBytes(chain.intermediateDer)
-        exchange.getResponseHeaders.set("Content-Type", "application/pkix-cert")
-        exchange.sendResponseHeaders(200, bytes.length)
-        Using.resource(exchange.getResponseBody)(_.write(bytes))
-      })
-      origin.setHttpsConfigurator(new HttpsConfigurator(chain.leafOnlyServerContext))
-      origin.createContext("/", exchange => {
-        val bytes = "leaf-only-ok".getBytes(UTF_8)
-        exchange.sendResponseHeaders(200, bytes.length)
-        Using.resource(exchange.getResponseBody)(_.write(bytes))
-      })
-      origin.start()
-      ChildJvm(configuration).run(ProbeMain,
-        jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${chain.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
-        args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${origin.getAddress.getPort}/"))
-    } finally {
+    val chain   = Chain.mint(new Keytool(configuration.javaHome), dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
+    issuers.createContext("/intermediate.cer", exchange => {
+      val bytes = Files.readAllBytes(chain.intermediateDer)
+      exchange.getResponseHeaders.set("Content-Type", "application/pkix-cert")
+      exchange.sendResponseHeaders(200, bytes.length)
+      Using.resource(exchange.getResponseBody)(_.write(bytes))
+    })
+    val origin  = HttpsServer.create(new InetSocketAddress(Loopback, 0), 0)
+    origin.setHttpsConfigurator(new HttpsConfigurator(chain.leafOnlyServerContext))
+    origin.createContext("/", exchange => {
+      val bytes = "leaf-only-ok".getBytes(UTF_8)
+      exchange.sendResponseHeaders(200, bytes.length)
+      Using.resource(exchange.getResponseBody)(_.write(bytes))
+    })
+    origin.start()
+
+    def close(): Unit = {
       origin.stop(0); issuers.stop(0)
       Using.resource(Files.list(dir))(_.forEach(Files.delete(_)))
       Files.delete(dir)
     }
   }
+
+  private var started: Option[Servers] = None
+  private def servers: Servers = synchronized { started.getOrElse { val s = new Servers; started = Some(s); s } }
+
+  override def afterAll(): Unit = try synchronized(started.foreach(_.close())) finally super.afterAll()
+
+  private def handshake(applied: Option[IssuerCertificateFetching], jvmOptions: Seq[String] = Nil): (Int, String) =
+    ChildJvm(configuration).run(ProbeMain,
+      jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${servers.chain.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
+      args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${servers.origin.getAddress.getPort}/"))
 }
 
 object IssuerCertificateFetchingSpec {

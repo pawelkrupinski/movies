@@ -3,11 +3,6 @@ package models
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-// Named imports, not `scala.sys.process._`: the wildcard also brings in an implicit
-// conversion from `java.net.URL` to a process Source, which silently hijacks any
-// method call on the classloader URLs below.
-import scala.sys.process.{Process, ProcessLogger}
-
 /**
  * `Cinema` and `GermanRoster` initialise each other — `Cinema.byCity` appends
  * `GermanRoster.byCity`, and `GermanRoster` reads `Cinema.polishAndUk` to find the display
@@ -21,7 +16,7 @@ import scala.sys.process.{Process, ProcessLogger}
  * first. That is the worst shape a bug can have: invisible in the run everyone does, fatal
  * in the run someone does when they are already debugging something else.
  *
- * A fresh JVM is the whole point, so this forks one. Asserting it in-process would prove
+ * A fresh JVM is the whole point, so this forks one ([[tools.ChildJvm]]). Asserting it in-process would prove
  * nothing: by the time any spec runs, some other suite has almost certainly initialised
  * `Cinema` already, and the assertion would pass whatever the field strictness is.
  */
@@ -29,30 +24,8 @@ class RosterInitOrderSpec extends AnyFlatSpec with Matchers {
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 
-  /** This run's real classpath, walked off the loader chain.
-   *
-   *  NOT `java.class.path`: under sbt that property is the launcher's own classpath, so a
-   *  JVM forked with it cannot see the classes under test and dies with
-   *  `ClassNotFoundException` — a failure that looks exactly like the bug this spec is
-   *  guarding against, which would make the guard worthless in the direction that matters.
-   *  sbt's loaders are `URLClassLoader`s, so the entries can be collected directly. */
-  private def testClasspath: String = {
-    val entries = Iterator.iterate(getClass.getClassLoader)(_.getParent).takeWhile(_ != null)
-      .collect { case loader: java.net.URLClassLoader => loader.getURLs.toSeq }
-      .flatten.map(entry => new java.io.File(entry.toURI).getPath).toSeq.distinct
-    entries.mkString(java.io.File.pathSeparator)
-  }
-
   /** Run `entryPoint`'s main in a new JVM on this run's classpath, returning its output. */
-  private def inFreshJvm(entryPoint: String): (Int, String) = {
-    val java      = configuration.javaHome.binary("java").toString
-    val classpath = testClasspath
-    val output    = new StringBuilder
-    val logger    = ProcessLogger(line => output.append(line).append('\n'),
-                                  line => output.append(line).append('\n'))
-    val exit = Process(Seq(java, "-cp", classpath, entryPoint)).!(logger)
-    (exit, output.toString)
-  }
+  private def inFreshJvm(entryPoint: String): (Int, String) = tools.ChildJvm(configuration).run(entryPoint)
 
   "The German roster" should "initialise when it is the first thing a JVM touches" in {
     val (exit, output) = inFreshJvm("models.TouchGermanRosterFirst")

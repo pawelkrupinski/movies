@@ -1,6 +1,7 @@
 package tools
 
 import com.sun.net.httpserver.{HttpServer, HttpsConfigurator, HttpsServer}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -35,7 +36,7 @@ import scala.util.{Try, Using}
  * origin (a throwaway self-signed certificate the child is told to trust) are
  * all on loopback.
  */
-class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
+class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 
@@ -81,9 +82,26 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
 
   /** One child JVM: a direct fetch, then a proxied one. `applied` is the policy its
    *  `main` applies first (None: none — the JDK default, or whatever `jvmOptions` set). */
+  /** The origin's certificate, minted ONCE for the suite (three keytool runs, a JVM each):
+   *  no child changes it, and each child is still a fresh process. */
+  private var minted: Option[(Path, Path, Path)] = None
+  private def stores: (Path, Path, Path) = synchronized {
+    minted.getOrElse {
+      val dir = Files.createTempDirectory("proxied-after-direct")
+      val (keyStore, trustStore) = selfSignedStores(new Keytool(configuration.javaHome), dir)
+      minted = Some((dir, keyStore, trustStore))
+      (dir, keyStore, trustStore)
+    }
+  }
+
+  override def afterAll(): Unit =
+    try synchronized(minted.foreach { case (dir, _, _) =>
+      Using.resource(Files.list(dir))(_.forEach(Files.delete(_)))
+      Files.delete(dir)
+    }) finally super.afterAll()
+
   private def directThenProxied(applied: Option[ProxyTunnelAuthentication], jvmOptions: Seq[String] = Nil): ChildRun = {
-    val dir = Files.createTempDirectory("proxied-after-direct")
-    val (keyStore, trustStore) = selfSignedStores(new Keytool(configuration.javaHome), dir)
+    val (_, keyStore, trustStore) = stores
 
     val direct = HttpServer.create(new InetSocketAddress(Loopback, 0), 0)
     direct.createContext("/", exchange => respond(exchange, "direct-ok"))
@@ -102,8 +120,6 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
       ChildRun(exit, output, proxy.challenged.get, proxy.authenticated.get)
     } finally {
       direct.stop(0); origin.stop(0); proxy.close()
-      Using.resource(Files.list(dir))(_.forEach(Files.delete(_)))
-      Files.delete(dir)
     }
   }
 }
