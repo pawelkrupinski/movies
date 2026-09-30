@@ -1,9 +1,7 @@
 package services.alerts
 
 import models.Cinema
-import services.scrapes.{ArchivedScrape, BarrenAttempt, GoneUpstream, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome, SuccessfulScrape}
-
-import java.time.Instant
+import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
 
 /**
  * The scrape archive, plus one page when a venue with no fallback has answered
@@ -27,15 +25,10 @@ final class GoneVenueAlertingArchive(
   // Venues another alert already pages for (a fallback's UNCOVERED, the Filmweb-drop alert).
   pagedElsewhere:     Set[String],
   notify:             String => Unit
-) extends ScrapeArchiveRepository {
+) extends ForwardingScrapeArchive(underlying) {
   import GoneVenueAlertingArchive._
 
-  override def enabled: Boolean = underlying.enabled
-
-  protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit =
-    underlying.record(ScrapeAttempt(cinema, city, scrape.at, scrape.listingComplete, scrape.films))
-
-  protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit = {
+  override protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit = {
     val watched = attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName)
     // The count before this attempt, so only the attempt that MOVES it onto the
     // threshold pages: the retries of that run leave it there, and would page again.
@@ -47,11 +40,6 @@ final class GoneVenueAlertingArchive(
       // Telegram send each handle their own failures.
       underlying.find(cinema).flatMap(_.lastBarren).flatMap(messageFor(cinema, _)).foreach(notify)
   }
-
-  override def find(cinema: Cinema): Option[ArchivedScrape]  = underlying.find(cinema)
-  override def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = underlying.scan(consume)
-  override def lastContentAt(): Map[String, Option[Instant]] = underlying.lastContentAt()
-  override def close(): Unit                                 = underlying.close()
 }
 
 object GoneVenueAlertingArchive {

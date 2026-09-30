@@ -4,10 +4,9 @@ import models.{Cinema, Source}
 import play.api.Logging
 import play.api.libs.json._
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.scrapes.{ArchivedScrape, BarrenAttempt, ScrapeArchiveRepository, ScrapeAttempt, SuccessfulScrape}
+import services.scrapes.{ForwardingScrapeArchive, ScrapeArchiveRepository, SuccessfulScrape}
 import tools.HttpFetch
 
-import java.time.Instant
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -105,21 +104,11 @@ object ObservingDetailEnricher {
 /** The scrape archive, every listing of a scrape with content kept as a listing observation.
  *  Every read and every archiving rule is the wrapped archive's. */
 final class ObservingScrapeArchive(underlying: ScrapeArchiveRepository, store: ObservationStore)
-  extends ScrapeArchiveRepository {
+  extends ForwardingScrapeArchive(underlying) {
   import Capture._
 
-  override def enabled: Boolean = underlying.enabled
-
-  protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit = {
-    underlying.record(ScrapeAttempt(cinema, city, scrape.at, scrape.listingComplete, scrape.films))
+  override protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit = {
+    super.storeSuccess(cinema, city, scrape)
     scrape.films.foreach(film => safely(s"${cinema.displayName} ${film.movie.title}")(store.observeListing(cinema, film)))
   }
-
-  protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
-    underlying.record(ScrapeAttempt(cinema, city, attempt.at, listingComplete = true, films = Nil, error = attempt.error))
-
-  override def find(cinema: Cinema): Option[ArchivedScrape]     = underlying.find(cinema)
-  override def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = underlying.scan(consume)
-  override def lastContentAt(): Map[String, Option[Instant]]    = underlying.lastContentAt()
-  override def close(): Unit                                    = underlying.close()
 }
