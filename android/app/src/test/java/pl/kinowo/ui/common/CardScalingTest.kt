@@ -27,11 +27,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
+import pl.kinowo.TestData
 import pl.kinowo.model.DateLabel
 import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
 import pl.kinowo.ui.theme.KinowoTheme
 
 /**
@@ -83,33 +81,11 @@ class CardScalingTest {
      *  for wire compatibility only. `date` here is fixed so the rendered
      *  text is deterministic; `label` is set to something else entirely, to
      *  prove nothing reads it. */
-    private fun labelFilm(cinema: String) = Film(
-        title = "T",
-        releaseYear = 2020,
-        runtimeMinutes = 130,
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-08",
-                label = "unused",
-                cinemas = listOf(
-                    CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
-                ),
-            ),
-        ),
-    )
+    private fun labelFilm(cinema: String) =
+        TestData.oneDayFilm("2026-06-08", cinema, listOf(TestData.slot("12:55", "2D")), label = "unused")
 
-    private fun roomFilm() = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "12:55", format = "2D", room = "Sala 8"))),
-                ),
-            ),
-        ),
-    )
+    private fun roomFilm() =
+        TestData.oneDayFilm("2026-06-03", "Kino", listOf(TestData.slot("12:55", "2D", room = "Sala 8")), label = "środa")
 
     /** Asserts exactly two nodes carry [text] — the scaled element and its fixed
      *  reference — and the wider (scaled) one beats the reference by a clear margin. */

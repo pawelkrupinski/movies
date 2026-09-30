@@ -23,10 +23,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.filter.CinemaSection
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
+import pl.kinowo.TestData
 import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.CinemaGrid
 import pl.kinowo.ui.theme.KinowoTheme
@@ -66,28 +64,15 @@ class TuningStylesTest {
         CinemaSection(
             cinema = cinema,
             films = listOf(
-                Film(
-                    title = "T-$cinema",
-                    showings = listOf(
-                        DayShowings(
-                            date = "2026-06-08", label = "Poniedziałek",
-                            cinemas = listOf(CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D")))),
-                        ),
-                    ),
-                ),
+                TestData.oneDayFilm("2026-06-08", cinema, listOf(TestData.slot("12:55", "2D")), label = "Poniedziałek", title = "T-$cinema"),
             ),
         ),
     )
 
-    private fun filmWithShowings(title: String) = Film(
-        title = title,
+    private fun filmWithShowings(title: String) = TestData.film(
+        title,
+        listOf(TestData.day("2026-06-08", listOf(TestData.cinema("Kino", listOf(TestData.slot("12:55", "2D")))), label = "Poniedziałek")),
         directors = listOf("Reżyser"),
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-08", label = "Poniedziałek",
-                cinemas = listOf(CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "12:55", format = "2D")))),
-            ),
-        ),
     )
 
     /**

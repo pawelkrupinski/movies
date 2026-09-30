@@ -20,10 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
+import pl.kinowo.TestData
 
 /**
  * Off-device (Robolectric) check that a showtime chip is sized identically in
@@ -65,18 +62,8 @@ class ShowtimeChipOrientationTest {
         CompositionLocalProvider(LocalConfiguration provides config, content = content)
     }
 
-    private fun filmAt(time: String) = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = time, format = "2D"))),
-                ),
-            ),
-        ),
-    )
+    private fun filmAt(time: String) =
+        TestData.oneDayFilm("2026-06-03", "Kino", listOf(TestData.slot(time, "2D")), label = "środa")
 
     @Test
     fun chipSameSizeInLandscapeAndPortrait() {

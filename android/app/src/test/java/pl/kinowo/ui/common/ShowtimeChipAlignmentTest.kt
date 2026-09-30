@@ -15,10 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
+import pl.kinowo.TestData
 import pl.kinowo.ui.theme.KinowoTheme
 
 /**
@@ -42,23 +39,10 @@ class ShowtimeChipAlignmentTest {
     // Two showtimes with different token sets, so the common-token filter strips
     // nothing and the "2D DUB" format actually renders (a single showtime would
     // have all its tokens treated as common and stripped to "").
-    private fun film() = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(
-                        cinema = "Kino",
-                        showtimes = listOf(
-                            Showtime(time = "12:55", format = "2D DUB"),
-                            Showtime(time = "14:00", format = "3D"),
-                        ),
-                    ),
-                ),
-            ),
-        ),
+    private fun film() = TestData.oneDayFilm(
+        "2026-06-03", "Kino",
+        listOf(TestData.slot("12:55", "2D DUB"), TestData.slot("14:00", "3D")),
+        label = "środa",
     )
 
     @Test

@@ -22,10 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
+import pl.kinowo.TestData
 import pl.kinowo.ui.theme.KinowoTheme
 
 /**
@@ -63,21 +60,8 @@ class RoomTooltipSizeTest {
     private val ref16 = "REF16"
     private val ref24 = "REF24"
 
-    private fun roomFilm() = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(
-                        cinema = "Kino",
-                        showtimes = listOf(Showtime(time = "12:55", format = "2D", room = room)),
-                    ),
-                ),
-            ),
-        ),
-    )
+    private fun roomFilm() =
+        TestData.oneDayFilm("2026-06-03", "Kino", listOf(TestData.slot("12:55", "2D", room = room)), label = "środa")
 
     private fun setUp() {
         // The tooltip lives only while the finger stays down (release clears

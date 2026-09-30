@@ -15,10 +15,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
+import pl.kinowo.TestData
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
 
 /**
  * Off-device (Robolectric) render of the real `Showings` tree, checking what a
@@ -38,21 +37,15 @@ class UniformFormatChipTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun film(vararg formats: String) = Film(
-        title = "Minimaraton Spider-Man",
-        showings = listOf(day("2026-09-04", "piątek", "Multikino Stary Browar", *formats)),
-    )
+    private fun film(vararg formats: String) = filmOf(day("2026-09-04", "piątek", "Multikino Stary Browar", *formats))
+
+    private fun filmOf(vararg days: DayShowings) = TestData.film("Minimaraton Spider-Man", days.toList())
 
     private fun day(date: String, label: String, cinema: String, vararg formats: String) =
-        DayShowings(
-            date = date,
-            label = label,
-            cinemas = listOf(
-                CinemaShowings(
-                    cinema = cinema,
-                    showtimes = formats.mapIndexed { i, f -> Showtime(time = "1${i}:00", format = f) },
-                ),
-            ),
+        TestData.day(
+            date,
+            listOf(TestData.cinema(cinema, formats.mapIndexed { i, f -> TestData.slot("1${i}:00", f) })),
+            label,
         )
 
     private fun render(film: Film, showCinemaHeaders: Boolean) {
@@ -102,21 +95,14 @@ class UniformFormatChipTest {
     @Test
     fun twoCinemasThatDisagreeSayTheirVersionOnEveryChip() {
         // Neither cinema is mixed on its own; the FILM is, so both keep the tag.
-        val film = Film(
-            title = "Minimaraton Spider-Man",
-            showings = listOf(
-                DayShowings(
-                    date = "2026-09-04",
-                    label = "piątek",
-                    cinemas = listOf(
-                        CinemaShowings("Multikino Stary Browar", showtimes = listOf(
-                            Showtime(time = "14:30", format = "2D DUB"),
-                            Showtime(time = "17:00", format = "2D DUB"))),
-                        CinemaShowings("Helios", showtimes = listOf(
-                            Showtime(time = "15:00", format = "2D NAP"),
-                            Showtime(time = "19:00", format = "2D NAP"))),
-                    ),
+        val film = filmOf(
+            TestData.day(
+                "2026-09-04",
+                listOf(
+                    TestData.cinema("Multikino Stary Browar", listOf(TestData.slot("14:30", "2D DUB"), TestData.slot("17:00", "2D DUB"))),
+                    TestData.cinema("Helios", listOf(TestData.slot("15:00", "2D NAP"), TestData.slot("19:00", "2D NAP"))),
                 ),
+                label = "piątek",
             ),
         )
         render(film, showCinemaHeaders = true)
@@ -128,12 +114,9 @@ class UniformFormatChipTest {
 
     @Test
     fun twoDaysThatDisagreeSayTheirVersionOnEveryChip() {
-        val film = Film(
-            title = "Minimaraton Spider-Man",
-            showings = listOf(
-                day("2026-09-04", "piątek", "Multikino Stary Browar", "2D NAP", "2D NAP"),
-                day("2026-09-05", "sobota", "Multikino Stary Browar", "2D DUB", "2D DUB"),
-            ),
+        val film = filmOf(
+            day("2026-09-04", "piątek", "Multikino Stary Browar", "2D NAP", "2D NAP"),
+            day("2026-09-05", "sobota", "Multikino Stary Browar", "2D DUB", "2D DUB"),
         )
         render(film, showCinemaHeaders = true)
         compose.onAllNodesWithText("NAP", useUnmergedTree = true).assertCountEquals(2)

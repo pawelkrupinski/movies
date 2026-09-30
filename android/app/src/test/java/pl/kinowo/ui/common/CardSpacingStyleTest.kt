@@ -16,11 +16,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
+import pl.kinowo.TestData
 import pl.kinowo.model.DateLabel
-import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
 import pl.kinowo.ui.list.FilmCard
 import pl.kinowo.ui.theme.KinowoTheme
 
@@ -47,39 +45,17 @@ class CardSpacingStyleTest {
     // `Showings` renders from `date` via `DateLabel.format`, not `label` — can be
     // told apart in one composition. `label` is set to something else entirely,
     // to prove nothing reads it.
-    private fun twoDayFilm(title: String, dateA: String, dateB: String) = Film(
-        title = title,
-        showings = listOf(
-            DayShowings(
-                date = dateA,
-                label = "unused",
-                cinemas = listOf(
-                    CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
-                ),
-            ),
-            DayShowings(
-                date = dateB,
-                label = "unused",
-                cinemas = listOf(
-                    CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "16:00", format = "2D"))),
-                ),
-            ),
+    private fun twoDayFilm(title: String, dateA: String, dateB: String) = TestData.film(
+        title,
+        listOf(
+            TestData.day(dateA, listOf(TestData.cinema("Kino", listOf(TestData.slot("12:55", "2D")))), label = "unused"),
+            TestData.day(dateB, listOf(TestData.cinema("Kino", listOf(TestData.slot("16:00", "2D")))), label = "unused"),
         ),
     )
 
     // One day, one named cinema, so the day-label → cinema-name gap is measurable.
-    private fun oneCinemaFilm(title: String, date: String, cinema: String) = Film(
-        title = title,
-        showings = listOf(
-            DayShowings(
-                date = date,
-                label = "unused",
-                cinemas = listOf(
-                    CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
-                ),
-            ),
-        ),
-    )
+    private fun oneCinemaFilm(title: String, date: String, cinema: String) =
+        TestData.oneDayFilm(date, cinema, listOf(TestData.slot("12:55", "2D")), label = "unused", title = title)
 
     @androidx.compose.runtime.Composable
     private fun card(film: Film, style: CardSpacingStyle, showCinemaHeaders: Boolean = false) {

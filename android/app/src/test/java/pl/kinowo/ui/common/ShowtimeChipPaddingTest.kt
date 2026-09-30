@@ -20,10 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
+import pl.kinowo.TestData
 import pl.kinowo.ui.theme.KinowoTheme
 
 /**
@@ -47,21 +44,8 @@ class ShowtimeChipPaddingTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun oneShowtimeFilm() = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(
-                        cinema = "Kino",
-                        showtimes = listOf(Showtime(time = "12:55", format = "2D")),
-                    ),
-                ),
-            ),
-        ),
-    )
+    private fun oneShowtimeFilm() =
+        TestData.oneDayFilm("2026-06-03", "Kino", listOf(TestData.slot("12:55", "2D")), label = "środa")
 
     /**
      * The chip's height is the trimmed time font box plus a 4.5 dp inset top and

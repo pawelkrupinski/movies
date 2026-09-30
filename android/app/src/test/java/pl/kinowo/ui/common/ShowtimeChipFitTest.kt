@@ -20,10 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
+import pl.kinowo.TestData
 
 /**
  * Off-device (Robolectric) Compose layout test for the showtime chips — the
@@ -81,23 +78,10 @@ class ShowtimeChipFitTest {
      *  the shared `PosterGridMetrics` geometry. */
     private fun cardContentDp(screenDp: Int) = PosterGridMetrics.cardContentDp(screenDp)
 
-    private fun twoShowtimeFilm(t1: String, t2: String) = Film(
-        title = "T",
-        showings = listOf(
-            DayShowings(
-                date = "2026-06-03",
-                label = "środa",
-                cinemas = listOf(
-                    CinemaShowings(
-                        cinema = "Kino",
-                        showtimes = listOf(
-                            Showtime(time = t1, format = "2D DUB"),
-                            Showtime(time = t2, format = "3D NAP"),
-                        ),
-                    ),
-                ),
-            ),
-        ),
+    private fun twoShowtimeFilm(t1: String, t2: String) = TestData.oneDayFilm(
+        "2026-06-03", "Kino",
+        listOf(TestData.slot(t1, "2D DUB"), TestData.slot(t2, "3D NAP")),
+        label = "środa",
     )
 
     @Test

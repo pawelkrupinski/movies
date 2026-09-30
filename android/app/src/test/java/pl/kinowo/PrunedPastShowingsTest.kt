@@ -2,32 +2,15 @@ package pl.kinowo
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import pl.kinowo.TestData.cinema
+import pl.kinowo.TestData.day
+import pl.kinowo.TestData.film
+import pl.kinowo.TestData.slot
 import pl.kinowo.TestData.warsawInstant
 import pl.kinowo.filter.prunedPastShowings
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Ratings
-import pl.kinowo.model.Showtime
 import java.time.Instant
 
 class PrunedPastShowingsTest {
-
-    private fun slot(time: String): Showtime =
-        Showtime(time = time, format = "2D", room = null, bookingURL = null)
-
-    private fun cinema(name: String, times: List<Showtime>): CinemaShowings =
-        CinemaShowings(cinema = name, cinemaURL = null, showtimes = times)
-
-    private fun day(date: String, cinemas: List<CinemaShowings>): DayShowings =
-        DayShowings(date = date, label = date, cinemas = cinemas)
-
-    private fun film(title: String, days: List<DayShowings>): Film =
-        Film(
-            title = title, posterURL = null, fallbackPosterURLs = emptyList(),
-            runtimeMinutes = 90, ratings = Ratings.EMPTY, countries = emptyList(),
-            directors = emptyList(), cast = emptyList(), showings = days,
-        )
 
     private fun pinnedNow(): Instant = warsawInstant(2026, 5, 22, 18, 0)
 
