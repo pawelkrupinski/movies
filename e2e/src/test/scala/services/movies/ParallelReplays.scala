@@ -32,8 +32,16 @@ object ParallelReplays {
    *  cache cut its boot by 18 minutes) down with them. */
   val DefaultWithin: FiniteDuration = 75.minutes
 
-  /** Compute `replay(seed)` for every seed concurrently, returning the results
-   *  in the SAME order as `seeds` (so `head` stays the reference replay).
+  /** The pool bound for a spec that fans out MANY cheap replays (a film × seed
+   *  grid, a handful of subset boots) rather than a few whole-corpus ones: one
+   *  thread per replay would oversubscribe the cores that sbt already shares with
+   *  every other suite running in parallel. */
+  val ManyReplays: Int = 4
+
+  /** Compute `replay(seed)` for every seed concurrently — on at most `parallelism`
+   *  threads, one per seed by default — returning the results in the SAME order as
+   *  `seeds` (so `head` stays the reference replay). A seed is anything that names
+   *  one independent replay: a `Long` RNG seed, or a (film, seed) pair.
    *
    *  `within` is a RUNAWAY GUARD, not a budget: it exists so a wedged replay fails
    *  instead of hanging until the job is cancelled, which would discard the recorded
@@ -46,8 +54,8 @@ object ParallelReplays {
    *  having diverged on nothing. Keep it just under the step ceiling that wraps the run,
    *  so an overrun FAILS the step (which reports) rather than cancelling the job (which
    *  does not). */
-  def apply[A](seeds: Seq[Long], within: FiniteDuration = DefaultWithin)(replay: Long => A): Seq[A] = {
-    val pool = Executors.newFixedThreadPool(seeds.size.max(1))
+  def apply[S, A](seeds: Seq[S], within: FiniteDuration = DefaultWithin, parallelism: Int = Int.MaxValue)(replay: S => A): Seq[A] = {
+    val pool = Executors.newFixedThreadPool(seeds.size.min(parallelism).max(1))
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
     try Await.result(Future.sequence(seeds.map(s => Future(replay(s)))), within)
     finally pool.shutdown()

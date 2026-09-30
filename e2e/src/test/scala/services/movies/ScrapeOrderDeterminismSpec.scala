@@ -182,12 +182,17 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     targets should not be empty
 
     val started = System.nanoTime()
+    // Every (film, iteration) replay builds its own isolated wiring, so the grid
+    // runs on a bounded pool instead of serially — same seeds, same comparisons.
+    val grid = for { (group, mi) <- targets.zipWithIndex; i <- 0 until IterationsPerMovie } yield (group, seed(mi, i))
+    val replays = ParallelReplays(grid, parallelism = ParallelReplays.ManyReplays)(replay.tupled)
+      .grouped(IterationsPerMovie).toSeq
     val divergences = mutable.ListBuffer.empty[String]
-    targets.zipWithIndex.foreach { case (group, mi) =>
-      val (record0, rows0) = replay(group, seed(mi, 0))
+    targets.zip(replays).foreach { case (group, filmReplays) =>
+      val (record0, rows0) = filmReplays.head
       if (record0.isEmpty) divergences += s"NO RECORD for '${group.cleanTitle}' (${group.cinemaCount} cinemas)"
       (1 until IterationsPerMovie).foreach { i =>
-        val (recordI, rowsI) = replay(group, seed(mi, i))
+        val (recordI, rowsI) = filmReplays(i)
         if (recordI != record0)
           divergences += s"RECORD '${group.cleanTitle}' iter $i:\n${CorpusDiff.records(record0, recordI, "iter0", s"iter$i")}"
         if (rowsI != rows0)
@@ -355,17 +360,4 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.
   private def seed(movieIndex: Int, iter: Int): Long = movieIndex.toLong * 1000L + iter
-
-  /** Concise field-level diff of two persisted record sets — pinpoints the
-   *  exact (record, source, field) that diverged instead of dumping the whole
-   *  (huge) record, so the failure clue is actionable. */
-
-  private def renderRows(rows: Seq[FilmSchedule]): String =
-    rows.map { s =>
-      val showings = s.showings.map { case (d, cs) =>
-        s"$d:" + cs.map(c => s"${c.cinema.displayName}(${c.showtimes.size})").mkString(",")
-      }.mkString(";")
-      s"${s.movie.title}/${s.movie.releaseYear} | poster=${s.posterUrl} | cast=${s.cast.mkString(",")} | " +
-        s"dir=${s.director.mkString(",")} | $showings"
-    }.mkString("\n")
 }
