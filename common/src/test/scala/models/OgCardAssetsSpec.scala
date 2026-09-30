@@ -31,7 +31,7 @@ import java.io.File
  * delete the set in the same commit as the cards.
  *
  * Runs off the filenames rather than the rendered HTML on purpose: the page
- * specs (`RepertoirePreviewMetaSpec`, `LandingPreviewMetaSpec`) already pin the
+ * specs (`RepertoirePreviewMetaSpec`, `LandingViewSpec`) already pin the
  * URL a page emits, so what is left to prove is that the other end of that URL
  * is on disk — cheap to check for all 739 cards, where rendering 739 pages
  * would not be.
