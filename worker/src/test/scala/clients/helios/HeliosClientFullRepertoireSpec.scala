@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import models.{Helios, Showtime}
 import services.cinemas.pl.HeliosClient
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
@@ -630,6 +630,75 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     cyrillic.director shouldBe empty
     latin.posterUrl    shouldBe Some("https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg")
     cyrillic.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg")
+  }
+
+  // ── Today's repertoire ────────────────────────────────────────────────────
+  //
+  // The fixture was captured on 2026-05-13 — pin "today" to that so the
+  // assertion stays deterministic. Using `LocalDate.now()` against a recorded
+  // fixture causes the expected set to drift every day.
+
+  it should "return the exact expected movie titles for today from the recorded fixture" in {
+    val today = LocalDate.of(2026, 5, 13)
+    results.filter(_.showtimes.exists(_.dateTime.toLocalDate == today)).map(_.movie.title).toSet shouldBe Set(
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live",
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D",
+      "Diabeł ubiera się u Prady 2",
+      "Drama",
+      "Michael",
+      "Mortal Kombat II",
+      "Mumia: Film Lee Cronina",
+      "Nawet myszy idą do nieba",
+      "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
+      "Projekt Hail Mary",
+      "Pucio",
+      "Sprawiedliwość owiec",
+      "Super Mario Galaxy Film",
+      "Top Gun 40. Rocznica",
+      "Top Gun: Maverick"
+    )
+  }
+
+  // ── REST movie-detail fields ──────────────────────────────────────────────
+
+  it should "lift originalTitle from the REST movie response" in {
+    byTitle("Projekt Hail Mary").movie.originalTitle shouldBe Some("Project Hail Mary")
+  }
+
+  // Helios ships the Polish age certificate as `ratings: [{symbol, value,
+  // description}]` on the movie DETAIL body — `symbol`/`value` the clean short
+  // form ("15", "7", "0"), `description` the verbose "od lat 15" / "b.o.". The
+  // client lifts the first rating's clean symbol onto `CinemaMovie.ageRating`.
+
+  it should "lift the clean age-rating symbol from the REST movie details" in {
+    // "Projekt Hail Mary" carries ratings[].symbol == "15" in its fixture.
+    byTitle("Projekt Hail Mary").ageRating shouldBe Some("15")
+  }
+
+  it should "map the no-restriction marker (symbol 0 / b.o.) to no age rating" in {
+    // "Pucio" carries ratings[].symbol == "0" / description == "b.o." — bez
+    // ograniczeń — which must collapse to None rather than showing "0".
+    byTitle("Pucio").ageRating shouldBe None
+    // No row anywhere should surface the raw no-restriction sentinel.
+    results.flatMap(_.ageRating) should not contain "0"
+  }
+
+  // Helios ships `genres: [{id, name, description}]` with lowercase Polish
+  // labels — "animowany", "dramat", "science fiction". The client
+  // title-cases them at the write boundary so display matches TMDB/Filmweb
+  // spelling.
+
+  it should "extract Polish genre labels from REST movie details, title-cased" in {
+    byTitle("Kurozając i Świątynia Świstaka").movie.genres shouldBe Seq("Animowany")
+    // Every enriched row that had a `genres` array in its fixture should
+    // surface at least one title-cased label.
+    val withGenres = results.filter(_.movie.genres.nonEmpty)
+    withGenres should not be empty
+    withGenres.foreach { m =>
+      m.movie.genres.foreach { g =>
+        g.headOption.exists(_.isUpper) shouldBe true
+      }
+    }
   }
 
   // ── Output shape invariants ───────────────────────────────────────────────

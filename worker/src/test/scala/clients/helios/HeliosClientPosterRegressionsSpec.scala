@@ -7,18 +7,15 @@ import services.cinemas.pl.HeliosClient
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
-  private val fakeHttp = new FakeHttpFetch("helios/posters")
-  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
-
-  private def fetch() = client.fetch()
+  // Every case reads the same immutable result, so the fixture is parsed once.
+  private lazy val results = new HeliosClient(new FakeHttpFetch("helios/posters"), titles = titleNormalizer).fetch()
 
   // ── Smoke test ────────────────────────────────────────────────────────────
 
   "HeliosClient.fetch" should "return results from real fixture data" in {
-    val result = fetch()
-    result                    should not be empty
-    result.size               should be >= 5
-    result.flatMap(_.showtimes) should not be empty
+    results                     should not be empty
+    results.size                should be >= 5
+    results.flatMap(_.showtimes) should not be empty
   }
 
   // ── Collision regression ───────────────────────────────────────────────────
@@ -31,17 +28,9 @@ class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
   // 1:1 assignment regardless of ordering or collision count.
 
   it should "assign the correct poster to a movie whose only screening shares a timeslot with another movie" in {
-    val oPsie = fetch().find(_.movie.title.startsWith("O psie"))
+    val oPsie = results.find(_.movie.title.startsWith("O psie"))
     oPsie                    shouldBe defined
-    println(oPsie.get.showtimes)
     oPsie.get.showtimes.size shouldBe 1
     oPsie.get.posterUrl      shouldBe Some("https://movies.helios.pl/images/opsieplakat.jpg")
-  }
-
-  it should "not assign Sprawiedliwość owiec's poster to O psie" in {
-    val wrongPoster = "https://movies.helios.pl/images/Sprawiedliwoscowiecplakat.jpg"
-    fetch()
-      .find(_.movie.title.startsWith("O psie"))
-      .flatMap(_.posterUrl) should not be Some(wrongPoster)
   }
 }

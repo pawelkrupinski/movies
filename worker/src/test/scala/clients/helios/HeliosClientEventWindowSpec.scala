@@ -2,12 +2,10 @@ package clients.helios
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.GetOnlyHttpFetch
+import clients.tools.{ConstantHttpFetch, RequestLogHttpFetch}
 import services.cinemas.pl.HeliosClient
 import services.cinemas.common.ScrapeHorizon
 
-import java.util.concurrent.CompletableFuture
-import scala.collection.mutable
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 // The `/event` endpoint returns the cinema's ENTIRE event history when called
@@ -22,21 +20,16 @@ class HeliosClientEventWindowSpec extends AnyFlatSpec with Matchers {
 
   /** Records every URL the client requests and returns empty bodies, so we can
    *  assert on the request shape without a fixture. */
-  private class RecordingFetch extends GetOnlyHttpFetch {
-    val urls = mutable.ListBuffer[String]()
-    override def get(url: String): String = { urls.synchronized(urls += url); "[]" }
-    override def getAsync(url: String): CompletableFuture[String] =
-      CompletableFuture.completedFuture(get(url))
-  }
+  private def recordingFetch() = new RequestLogHttpFetch(new ConstantHttpFetch("[]"))
 
   "HeliosClient" should "request /event with the same date window as /screening" in {
-    val fetch = new RecordingFetch
+    val fetch = recordingFetch()
     new HeliosClient(fetch, titles = titleNormalizer).fetch()
 
-    val eventUrl     = fetch.urls.find(u => u.contains("/event")).getOrElse(
-      fail(s"client never requested /event; saw: ${fetch.urls.mkString(", ")}"))
-    val screeningUrl = fetch.urls.find(u => u.contains("/screening")).getOrElse(
-      fail(s"client never requested /screening; saw: ${fetch.urls.mkString(", ")}"))
+    val eventUrl     = fetch.gets.find(u => u.contains("/event")).getOrElse(
+      fail(s"client never requested /event; saw: ${fetch.gets.mkString(", ")}"))
+    val screeningUrl = fetch.gets.find(u => u.contains("/screening")).getOrElse(
+      fail(s"client never requested /screening; saw: ${fetch.gets.mkString(", ")}"))
 
     val window = """dateTimeFrom=([^&]+)&dateTimeTo=([^&]+)""".r
     val eventWindow     = window.findFirstMatchIn(eventUrl)
@@ -52,12 +45,12 @@ class HeliosClientEventWindowSpec extends AnyFlatSpec with Matchers {
   // beyond them. Both endpoints take an arbitrary range, so the near week is
   // asked for as before and a second window sweeps the rest to the horizon.
   it should "sweep the programme past the near week, out to the scrape horizon" in {
-    val fetch = new RecordingFetch
+    val fetch = recordingFetch()
     val today = java.time.LocalDate.of(2026, 8, 5)
     new HeliosClient(fetch, today = today, titles = titleNormalizer).fetch()
 
     def endsOf(endpoint: String): Seq[String] =
-      fetch.urls.filter(_.contains(endpoint))
+      fetch.gets.filter(_.contains(endpoint))
         .flatMap("""dateTimeTo=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(_).map(_.group(1))).toSeq
 
     val horizon = today.plusDays(ScrapeHorizon.MaxDays.toLong).toString
