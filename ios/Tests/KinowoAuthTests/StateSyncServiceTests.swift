@@ -26,12 +26,18 @@ final class StateSyncServiceTests: XCTestCase {
         super.tearDown()
     }
 
-    private func makeSyncService() -> StateSyncService {
+    /// The language push's debounce, advanced by hand (`debounce.fireAll()`),
+    /// so a pick's push costs no 400 ms wait. The one test that proves the
+    /// production clock passes `MainQueueDebounceScheduler()` instead.
+    private let debounce = ManualDebounceScheduler()
+
+    private func makeSyncService(debounceScheduler: DebounceScheduler? = nil) -> StateSyncService {
         StateSyncService(
             prefs: prefs,
             userPublisher: userSubject.eraseToAnyPublisher(),
             client: client,
-            languageClient: languageClient
+            languageClient: languageClient,
+            debounceScheduler: debounceScheduler ?? debounce
         )
     }
 
@@ -43,6 +49,15 @@ final class StateSyncServiceTests: XCTestCase {
                 XCTFail("condition not met within \(timeout)s", file: file, line: line); return
             }
             try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    /// The login reconcile has finished — language adopted, the country's
+    /// set migrated, nothing on the wire — so the change observers are live.
+    private func loginSettled(language: String) async throws {
+        try await waitUntil {
+            self.prefs.selectedLanguage == language && self.languageClient.inFlight == 0
+                && self.prefs.isHiddenFilmsMigrated(country: self.pl)
         }
     }
 
@@ -145,7 +160,8 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await Task.sleep(for: .milliseconds(200))
+        try await loginSettled(language: resolvedAtInit)
+        XCTAssertFalse(debounce.hasPending)
 
         XCTAssertEqual(prefs.selectedLanguage, resolvedAtInit)
         XCTAssertNil(languageClient.lastPushed)
@@ -156,18 +172,17 @@ final class StateSyncServiceTests: XCTestCase {
     /// reaches the server too, through language's own debounced push.
     func testLanguagePickAfterLoginIsPushed() async throws {
         languageClient.remote = nil
-        let sync = makeSyncService()
+        let sync = makeSyncService(debounceScheduler: MainQueueDebounceScheduler())
         login()
         // Neither side has a pick, so this merge pushes nothing — no
-        // expectation to await. `observeLocalChanges()` runs right after the
-        // merge settles, so a short sleep (same idiom the "nothing happens"
-        // tests elsewhere in this file use) is enough to let it land before
-        // the pick below, which the observer must be live for.
-        try await Task.sleep(for: .milliseconds(200))
+        // expectation to await; wait for it to settle so the observer the
+        // pick below needs is live.
+        try await loginSettled(language: prefs.selectedLanguage)
 
         let pushed = expectation(description: "explicit pick pushed")
         languageClient.onPush = { language in if language == "de" { pushed.fulfill() } }
         prefs.setLanguage("de")
+        debounce.fireAll()
         await fulfillment(of: [pushed], timeout: 1)
         _ = sync
     }
@@ -180,8 +195,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         prefs.setLanguage("es")
         await Task.yield()
@@ -189,7 +203,10 @@ final class StateSyncServiceTests: XCTestCase {
 
         XCTAssertEqual(prefs.selectedLanguage, "es")
         try await waitUntil { self.languageClient.remote == "es" }
-        try await Task.sleep(for: .milliseconds(500))
+        // The debounce runs out after the reconcile already sent the pick:
+        // it must find nothing left to send.
+        debounce.fireAll()
+        await Task.yield()
         XCTAssertEqual(languageClient.pushes, ["es"])
         _ = sync
     }
@@ -201,15 +218,16 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         languageClient.remote = "pl"
         await sync.reconcileCurrentCountry()
         XCTAssertEqual(prefs.selectedLanguage, "pl")
 
-        try await Task.sleep(for: .milliseconds(600))
-
+        // Whatever debounce the adoption left armed runs out: still no push.
+        XCTAssertFalse(debounce.hasPending)
+        debounce.fireAll()
+        await Task.yield()
         XCTAssertEqual(languageClient.pushes, [])
         _ = sync
     }
@@ -220,13 +238,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         languageClient.shouldFailPush = true
         let attempted = expectation(description: "push attempted")
         languageClient.onPush = { _ in attempted.fulfill() }
         prefs.setLanguage("es")
+        debounce.fireAll()
         await fulfillment(of: [attempted], timeout: 1)
         languageClient.onPush = nil
 
@@ -317,13 +335,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         languageClient.refusePush = true
         let attempted = expectation(description: "push attempted")
         languageClient.onPush = { _ in attempted.fulfill() }
         prefs.setLanguage("es")
+        debounce.fireAll()
         await fulfillment(of: [attempted], timeout: 1)
         languageClient.onPush = nil
 
@@ -344,8 +362,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         languageClient.refusePush = true
         let gate = AsyncGate()
@@ -355,12 +372,13 @@ final class StateSyncServiceTests: XCTestCase {
         }
         let fetchesBefore = languageClient.fetchesStarted
         prefs.setLanguage("es")
+        debounce.fireAll()
         try await waitUntil({ self.languageClient.fetchesStarted > fetchesBefore }, timeout: 2) // refused, fetching
         prefs.setLanguage("fr")
         await gate.open()
+        debounce.fireAll()
 
-        try await waitUntil({ self.languageClient.remote == "fr" }, timeout: 2)
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntil({ self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }, timeout: 2)
         XCTAssertEqual(prefs.selectedLanguage, "fr")
         _ = sync
     }
@@ -372,13 +390,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync1 = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         languageClient.shouldFailPush = true
         let attempted = expectation(description: "push attempted")
         languageClient.onPush = { _ in attempted.fulfill() }
         prefs.setLanguage("es")
+        debounce.fireAll()
         await fulfillment(of: [attempted], timeout: 1)
         languageClient.onPush = nil
         languageClient.shouldFailPush = false
@@ -401,16 +419,17 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePush = { await gate.wait() }
         prefs.setLanguage("es")
+        debounce.fireAll()
         try await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("de")
         languageClient.beforePush = nil
         await gate.open()
+        debounce.fireAll()
 
         try await waitUntil { self.languageClient.pushes.last == "de" }
         XCTAssertEqual(languageClient.remote, "de")
@@ -425,12 +444,12 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePushResponse = { await gate.wait(); throw URLError(.networkConnectionLost) }
         prefs.setLanguage("es")
+        debounce.fireAll()
         try await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("de")
         await gate.open()
@@ -451,15 +470,16 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePushResponse = { await gate.wait() }
         prefs.setLanguage("es")
+        debounce.fireAll()
         try await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("fr")
-        try await Task.sleep(for: .milliseconds(600)) // past the debounce
+        debounce.fireAll() // past the debounce, with the first push still on the wire
+        await Task.yield()
         XCTAssertEqual(languageClient.pushesStarted, 1)
         await gate.open()
 
@@ -477,9 +497,7 @@ final class StateSyncServiceTests: XCTestCase {
     /// the send lock after the failure and sends it.
     func testAPickWaitingOnAFailedPushIsSentAfterIt() async throws {
         languageClient.remote = "de"
-        let debounce = ManualDebounceScheduler()
-        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
-                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        let sync = makeSyncService()
         login()
         try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
@@ -507,9 +525,7 @@ final class StateSyncServiceTests: XCTestCase {
     /// account's older pick back over the one it just confirmed. Mirrors Android.
     func testAPickSentDuringAReconcileFetchSurvivesItsAnswer() async throws {
         languageClient.remote = "de"
-        let debounce = ManualDebounceScheduler()
-        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
-                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        let sync = makeSyncService()
         login()
         try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
@@ -533,9 +549,7 @@ final class StateSyncServiceTests: XCTestCase {
     /// must be sent, not taken as already done. Mirrors Android.
     func testARepeatedPickMadeWhileItsTwinIsOnTheWireIsSentAgain() async throws {
         languageClient.remote = "de"
-        let debounce = ManualDebounceScheduler()
-        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
-                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        let sync = makeSyncService()
         login()
         try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
@@ -568,6 +582,7 @@ final class StateSyncServiceTests: XCTestCase {
         try await waitUntil { self.languageClient.fetchesStarted == 1 }
 
         prefs.setLanguage("es")
+        debounce.fireAll()
         languageClient.beforeFetch = nil
         await gate.open()
 
@@ -582,8 +597,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
-        try await Task.sleep(for: .milliseconds(100))
+        try await loginSettled(language: "de")
         languageClient.shouldFailPush = true
         prefs.setLanguage("es")
         XCTAssertEqual(prefs.pendingLanguagePush, "es")
@@ -664,7 +678,8 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Film A"]
         let sync = makeSyncService()
 
-        try await Task.sleep(for: .milliseconds(200))
+        // Nothing to wait FOR: give a (wrongly) triggered sync a bounded window.
+        try await Task.sleep(for: .milliseconds(50))
 
         XCTAssertTrue(prefs.hiddenFilms.isEmpty)
         XCTAssertTrue(client.fetchedCountries.isEmpty)
@@ -677,7 +692,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await Task.sleep(for: .milliseconds(200))
+        try await waitUntil { self.client.fetchedCountries == [self.pl] && self.client.inFlight == 0 }
 
         XCTAssertEqual(prefs.hiddenFilms, ["My Film"])
         XCTAssertFalse(prefs.isHiddenFilmsMigrated(country: pl))
@@ -826,8 +841,9 @@ final class StateSyncServiceTests: XCTestCase {
         try await waitUntil { self.client.remote[self.pl] == ["First"] } // applied, response on the wire
         userSubject.send(nil)
         try await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        let fetchesBefore = languageClient.fetchesStarted
         login()
-        try await Task.sleep(for: .milliseconds(100)) // the new session is observing edits
+        try await waitUntil { self.languageClient.fetchesStarted > fetchesBefore } // the new session's reconcile started, so it is observing edits
         client.beforeWriteResponse = nil
         prefs.unhideAll()
         try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl) == [.clearedAll] }
@@ -964,7 +980,7 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["PL Film", "PL Film 2"]
         client.fetchDelay[pl] = .milliseconds(300)
         let slowResume = Task { await sync.reconcileCurrentCountry() }
-        try await Task.sleep(for: .milliseconds(50))
+        try await waitUntil { self.client.fetchedCountries.count == 2 } // the slow fetch is on the wire
         prefs.setCountry(unitedKingdom)
         try await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
 
@@ -983,10 +999,11 @@ final class StateSyncServiceTests: XCTestCase {
         login()
         try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
         login()
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(50)) // the second emission is handled (or, wrongly, stacks observers)
 
         prefs.hide("New Hide")
-        try await Task.sleep(for: .milliseconds(200))
+        try await waitUntil { self.client.hideCalls.count >= 1 && self.client.inFlight == 0 }
+        try await Task.sleep(for: .milliseconds(50)) // a stacked observer's second PUT would be here by now
 
         XCTAssertEqual(client.hideCalls.map(\.title), ["New Hide"])
         _ = sync
