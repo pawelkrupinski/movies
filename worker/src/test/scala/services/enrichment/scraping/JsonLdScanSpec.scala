@@ -6,6 +6,8 @@ import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import scala.concurrent.duration.*
+import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
 /** The JSON-LD scan reads a page's `<script type="application/ld+json">` blocks without building
@@ -28,14 +30,27 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
   private def byJsoup(html: String): Seq[String] =
     Jsoup.parse(html).select("script[type=application/ld+json]").asScala.toSeq.map(_.data())
 
+  /** The pages whose scan disagrees with Jsoup. Each page is independent and Jsoup-parsing 400+
+   *  full rating pages one after another was most of this suite's time, so they are compared on a
+   *  small bounded pool. */
+  private def differingFromJsoup(pages: Seq[Path]): Seq[String] = {
+    val pool = tools.DaemonExecutors.boundedEC("json-ld-scan-spec", Runtime.getRuntime.availableProcessors.min(8))
+    try {
+      val checks = pages.map { page =>
+        Future {
+          val html = new String(Files.readAllBytes(page), StandardCharsets.UTF_8)
+          Option.when(JsonLdAggregateRating.scripts(html) != byJsoup(html))(page.toString)
+        }(using pool)
+      }
+      Await.result(Future.sequence(checks)(using implicitly, pool), 2.minutes).flatten
+    } finally pool.shutdown()
+  }
+
   "the JSON-LD scan" should "find the same blocks as Jsoup on every recorded rating-site page" in {
     withClue(s"$Fixtures must exist (run from the repo root)")(Files.isDirectory(Fixtures) shouldBe true)
     val pages = ratingPages
     pages.size should be > 400
-    val differing = pages.flatMap { page =>
-      val html = new String(Files.readAllBytes(page), StandardCharsets.UTF_8)
-      Option.when(JsonLdAggregateRating.scripts(html) != byJsoup(html))(page.toString)
-    }
+    val differing = differingFromJsoup(pages)
     withClue(s"pages whose blocks differ from Jsoup's:\n${differing.take(20).mkString("\n")}\n")(differing shouldBe empty)
   }
 
