@@ -46,8 +46,9 @@ object WorkerMain extends Logging {
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
     val port   = process.healthPort(HealthPort(9000)).value
-    val liveness = new BootLiveness
-    val health   = startHealthServer(port, liveness)
+    val liveness  = new BootLiveness
+    val readiness = new BootReadiness(WorkerMain.ReadinessCap)
+    val health    = startHealthServer(port, liveness, readiness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
     // The countries this worker runs (KINOWO_COUNTRIES, default just the default
@@ -118,6 +119,7 @@ object WorkerMain extends Logging {
     // wiring — one dump dir per machine, not per country.
     val heapDumpDir = wirings.head.heapDumpDirectory
     logger.info("Worker up — scraping/enriching")
+    readiness.becomes(() => wirings.forall(_.bootSettled))
 
     // Register /metrics now that every country's queue + metrics are live: one
     // scrape renders the shared registry with all countries' series.
@@ -173,9 +175,10 @@ object WorkerMain extends Logging {
       s"KINOWO_COUNTRIES names ${countries.size} countries (${countries.map(_.code).mkString(", ")}), but a " +
         s"worker runs one country per process: give each country its own worker.")
 
-  private def startHealthServer(port: Int, liveness: BootLiveness): HttpServer = {
+  private def startHealthServer(port: Int, liveness: BootLiveness, readiness: BootReadiness): HttpServer = {
     val server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0)
     addHealthEndpoint(server, liveness)
+    addReadyEndpoint(server, readiness)
     // A tiny daemon pool (not the default single caller-runs executor) so a
     // /metrics scrape — which reads the queue depth from Mongo and can block up
     // to its Await timeout if Mongo is slow — can't delay the /health check.
@@ -192,6 +195,18 @@ object WorkerMain extends Logging {
       val alive = liveness.isAlive
       val body  = (if (alive) "ok" else "wedged").getBytes("UTF-8")
       exchange.sendResponseHeaders(if (alive) 200 else 503, body.length.toLong)
+      val os = exchange.getResponseBody
+      try os.write(body) finally os.close()
+    })
+    ()
+  }
+
+  /** `/ready`: 200 once the boot work has settled (see [[BootReadiness]]), 503 while it runs. */
+  private[modules] def addReadyEndpoint(server: HttpServer, readiness: BootReadiness): Unit = {
+    server.createContext("/ready", exchange => {
+      val ready = readiness.isReady
+      val body  = (if (ready) "ready" else "booting").getBytes("UTF-8")
+      exchange.sendResponseHeaders(if (ready) 200 else 503, body.length.toLong)
       val os = exchange.getResponseBody
       try os.write(body) finally os.close()
     })
@@ -232,6 +247,11 @@ object WorkerMain extends Logging {
   }
 
   private val MetricsActiveLimit = 1000
+
+  /** How long `/ready` waits for the boot work at most: a US boot's slowest part, the identity
+   *  take-up, settles in ~4–5 min on a contended node, so a step still running past twice that
+   *  is stuck, and the next rollout should not wait on it. */
+  val ReadinessCap: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(8, "minutes")
 
   /** Worker task-pipeline metrics for the VictoriaMetrics scrape (the `[[metrics]]`
    *  block in each worker overlay). Registered on the SAME HttpServer as /health, AFTER

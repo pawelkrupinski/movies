@@ -156,4 +156,20 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.takeUp()
     service.drain().map(_.venues) shouldBe Some(1)
   }
+
+  // A worker's readiness waits on the take-up (the next workers roll out only once it settles), so
+  // a take-up that FAILED must count as settled too, or one bad boot would hold every rollout.
+  it should "say its take-up has settled once it finished, even when it failed" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val service   = new IdentityModelService(
+      () => throw new IllegalStateException("store unreachable"),
+      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+    try {
+      service.takeUpSettled shouldBe false
+      service.start()
+      scheduler.submit((() => ()): Runnable).get(10, java.util.concurrent.TimeUnit.SECONDS)   // behind the take-up
+      service.takeUpSettled shouldBe true
+    } finally scheduler.shutdownNow()
+  }
 }

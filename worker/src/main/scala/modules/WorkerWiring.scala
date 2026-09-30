@@ -414,7 +414,23 @@ class WorkerWiring(
   // (and a film the first-publish gate holds is published).
   eventBus.subscribe(shareCardFollowUp.onTaskFinished)
 
+  // The boot work a worker's readiness waits on (`BootReadiness`): the projector's prepare and the
+  // identity take-up, both off the boot thread. Settled when each has finished, whether or not it
+  // succeeded — a failure is logged where it happens, and waiting on it would only stall rollouts.
+  @volatile private var projectorPrepared = false
+  private val bootStarted = new java.util.concurrent.atomic.AtomicReference[Option[tools.Stopwatch.Started]](None)
+  private val settledLogged = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+  /** Whether this country's boot work has settled: started, projector prepared, model taken up. */
+  def bootSettled: Boolean = {
+    val settled = bootStarted.get.isDefined && projectorPrepared && identityModel.forall(_.takeUpSettled)
+    if (settled && settledLogged.compareAndSet(false, true))
+      bootStarted.get.foreach(started => logger.info(f"[${country.code}] boot work settled in ${started.seconds}%.1fs"))
+    settled
+  }
+
   def start(): Unit = {
+    bootStarted.set(Some(tools.Stopwatch.start()))
     val boot = new BootSteps(country.code)
     // Force Mongo at boot so connection errors surface in the boot timeline.
     boot.step("mongo")(mongoConnection.database)
@@ -431,7 +447,7 @@ class WorkerWiring(
     // stream watch still starts only once the cache has, as it always did.
     val cacheStarted = new java.util.concurrent.CountDownLatch(1)
     boot.inBackground("read-model projector") {
-      readModelProjector.prepare()
+      try readModelProjector.prepare() finally projectorPrepared = true
       cacheStarted.await()
       readModelProjector.watch()
     }

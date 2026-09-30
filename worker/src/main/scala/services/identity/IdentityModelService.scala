@@ -93,8 +93,13 @@ final class IdentityModelService(
   private def onModel[A](timeout: FiniteDuration)(body: => Option[A]): Option[A] =
     scala.util.Try(scheduler.submit[Option[A]](() => body).get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten
 
+  @volatile private var tookUp = false
+  /** Whether the take-up [[start]] scheduled has finished — taken up, or failed and left to the
+   *  drains to rebuild: the boot work a worker's readiness waits on. */
+  def takeUpSettled: Boolean = tookUp
+
   def start(): Unit = {
-    scheduler.execute(() => safely("restore")(takeUp()))
+    scheduler.execute(() => try safely("restore")(takeUp()) finally tookUp = true)
     scheduler.scheduleWithFixedDelay(() => safely("drain")(drain()), settle.toMillis, settle.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
