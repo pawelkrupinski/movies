@@ -82,6 +82,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
   }
 
+  "a title crediting its director and dating an anniversary" should "also be searched without them" in {
+    // US Showcase ×6 "Guillermo del Toro's Pan's Labyrinth 20th Anniversary": TMDB's search finds no
+    // record by the whole title, and none of its pieces is one.
+    IdentityMeasures.searchQueries(Listing("Guillermo del Toro's Pan's Labyrinth 20th Anniversary")) should contain ("Pan's Labyrinth")
+    IdentityMeasures.searchQueries(Listing("Rocky 50th Anniversary")) should contain ("Rocky")
+    // A one-word possessive is the title's own ("Schindler's List"), never a credit.
+    IdentityMeasures.searchQueries(Listing("Schindler's List")) shouldBe Seq("Schindler's List")
+  }
+
   "a title" should "name the same work with or without a possessive" in {
     // UK Odeon's "Andre Rieu 2026 Christmas Concert: Let it Snow" ×76 was only an overlap of TMDB's
     // "Andre Rieu's 2026 Christmas Concert Let It Snow", and vetoed it for want of other facts.

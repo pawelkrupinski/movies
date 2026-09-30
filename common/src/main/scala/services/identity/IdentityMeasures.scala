@@ -890,8 +890,18 @@ object IdentityMeasures {
    *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
-  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l))
+  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l) ++ uncredited(l))
     .map(_.trim).filter(_.nonEmpty).distinct
+
+  /** The title without an anniversary it dates ("… 20th Anniversary") and a director's possessive
+   *  credit before it ("Guillermo del Toro's …"): the work a re-release bills under both, which no
+   *  piece of the title is. A credit is a name of two words or more, so "Schindler's List" keeps its own. */
+  private def uncredited(l: Listing): Seq[String] = {
+    val undated = AnniversarySuffix.replaceFirstIn(l.title.trim, "").trim
+    Seq(undated, PossessiveCredit.replaceFirstIn(undated, "").trim).filter(q => q.nonEmpty && q != l.title.trim)
+  }
+  private val AnniversarySuffix = """(?i)\s*[-–—:]?\s*\(?\d{1,3}(?:st|nd|rd|th)\s+anniversary\)?\s*$""".r
+  private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
 
   private val BillJoin = """\s\+\s""".r
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
