@@ -10,8 +10,6 @@ import pl.kinowo.model.Country
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.RepertoireApi
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -21,10 +19,7 @@ class OfflineKinowoApplication : Application(), KinowoGraphProvider {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val api = object : RepertoireApi {
-                    override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?) =
-                        KinowoApi.Fetched(listOf(film(TARGET), film("Other")), null, false)
-                }
+                val api = StaticRepertoireApi(listOf(film(TARGET), film("Other")))
                 val repository = RepertoireRepository(api, JsonListCache(cacheDir, "rep_recreate", Film.serializer()))
                 return testKinowoViewModel(this@OfflineKinowoApplication, repository) as T
             }

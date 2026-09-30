@@ -1,6 +1,7 @@
 package pl.kinowo.ui.list
 
 import pl.kinowo.KinowoViewModelHarness
+import pl.kinowo.StaticRepertoireApi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import kotlinx.coroutines.runBlocking
@@ -18,8 +19,6 @@ import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.RepertoireApi
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.KinowoTheme
 import java.time.LocalDate
@@ -63,11 +62,7 @@ class CinemaLabelAlwaysShownTest {
                 ),
             ),
         )
-        val fakeApi = object : RepertoireApi {
-            override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?) =
-                KinowoApi.Fetched(all, null, false)
-        }
-        val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_label", Film.serializer()))
+        val repository = RepertoireRepository(StaticRepertoireApi(all), JsonListCache(context.cacheDir, "rep_label", Film.serializer()))
         runBlocking { repository.reload("warszawa") }
         return harness.viewModel(prefs = prefs, repository = repository)
     }

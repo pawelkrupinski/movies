@@ -26,8 +26,7 @@ import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.RepertoireApi
+import pl.kinowo.StaticRepertoireApi
 import pl.kinowo.testKinowoViewModel
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.KinowoTheme
@@ -67,11 +66,7 @@ class DayScrollOnSwipeTest {
             }
             Film(title = "F-$i", posterURL = "https://x/$i.jpg", showings = showings)
         }
-        val fakeApi = object : RepertoireApi {
-            override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?) =
-                KinowoApi.Fetched(all, null, false)
-        }
-        val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_probe", Film.serializer()))
+        val repository = RepertoireRepository(StaticRepertoireApi(all), JsonListCache(context.cacheDir, "rep_probe", Film.serializer()))
         runBlocking { repository.reload("warszawa") }
         return testKinowoViewModel(context, repository)
     }
