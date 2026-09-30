@@ -530,6 +530,15 @@ class MovieService(
       bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
     }
 
+  /** Announce a film an identity projection wrote under a new TMDB answer. The projection builds
+   *  such a record afresh, without the ratings its former identity held, so — as after a forced
+   *  re-resolve — every rating source's schedule restarts: stamps a TMDB-less film left under its
+   *  title key would otherwise read fresh and leave the rebuilt record unrated until they lapse. */
+  def announceReidentified(key: CacheKey, record: MovieRecord): Unit = {
+    forceRatingRefresh(key, record)
+    announceResolvedNewMovie(key, record)
+  }
+
   // Publish the post-resolution event so the rating refreshers re-run for the
   // row off the existing event chain.
   private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit = {

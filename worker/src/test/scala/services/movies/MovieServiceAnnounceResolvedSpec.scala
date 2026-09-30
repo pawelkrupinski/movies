@@ -3,12 +3,12 @@ package services.movies
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import clients.TmdbClient
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, ImdbIdMissing, InProcessEventBus}
 import services.freshness.InMemoryFreshnessStore
-import services.tasks.{DueWindow, InMemoryTaskQueue, RatingEnqueuer, RatingTasks, TaskState}
+import services.tasks.{DueWindow, RatingSources, InMemoryTaskQueue, RatingEnqueuer, RatingTasks, TaskState}
 import tools.RoutingHttpFetch
 
 import java.time.Instant
@@ -39,7 +39,8 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     val enqueuer  = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
     val service = new MovieService(
       new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer), bus, deadTmdb, freshness = freshness,
-      enqueueNewcomerRatings = (key, record) => { enqueuer.enqueueDueFor(key, record, Instant.parse("2026-06-21T00:00:00Z")); () })
+      enqueueNewcomerRatings = (key, record) => { enqueuer.enqueueDueFor(key, record, Instant.parse("2026-06-21T00:00:00Z")); () },
+      forceRatingRefresh = (key, record) => { enqueuer.enqueueDueFor(key, record, Instant.parse("2026-06-21T00:00:00Z"), force = true); () })
     (service, seen, freshness, queue)
   }
 
@@ -86,5 +87,20 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
 
     seen shouldBe empty
     waiting(queue) shouldBe 0L
+  }
+
+  "announceReidentified" should "re-fetch every rating of a film an identity projection rebuilt under a new TMDB answer, though its title rated it minutes before" in {
+    // Run 36771862724: 'Afrykanska Przygoda' was rated while TMDB-less (stamps under its title key), then
+    // matched on the next projection, which rebuilt its record without those ratings. The title-keyed
+    // stamps still read fresh, so nothing re-rated it until the next day's due window — a day-one card
+    // with no ratings that the next day filled in.
+    val (service, _, freshness, queue) = fixture()
+    val key = CacheKey("Afrykanska Przygoda", Some(2007), titleNormalizer)
+    RatingSources.forCountry(Country.default).foreach(s =>
+      freshness.markFresh(RatingTasks.dedupKey(s.kind, key), s.kind, Instant.parse("2026-06-20T23:59:00Z")))
+
+    service.announceReidentified(key, MovieRecord(tmdbId = Some(435263), imdbId = Some("tt1099921")))
+
+    waiting(queue) shouldBe 4L
   }
 }

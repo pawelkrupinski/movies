@@ -49,7 +49,8 @@ object IdentityProjectionMetrics {
  *  5. fetches, BY ID, the TMDB details of a film new to its record (`details`);
  *  6. writes the films that changed and retires the ids no film carries (through the cache's
  *     projection funnel, no identity gate), extends the FilmId map, and announces a film whose
- *     TMDB answer changed to the enrichment chain (`announce`: IMDb-id recovery, ratings).
+ *     TMDB answer changed to the enrichment chain (`announce`: IMDb-id recovery, and every rating
+ *     re-fetched — the record was built afresh, without its former identity's ratings).
  *
  * `movies` / `movie_slots` / `screenings` keep their shape, so `ReadModelProjector` and every
  * enrichment keyed by the film read them unchanged, and switching the country back leaves rows the
