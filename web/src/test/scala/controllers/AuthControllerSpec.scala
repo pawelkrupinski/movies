@@ -432,8 +432,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val userId = signedIn(repository, "alice@example.com")
 
     val result = ctl.ssoStart()(
-      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london")
-        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
+      EdgeRequest(s"/auth/sso/start?to=$UkBase&city=london", host = "showtimes.cc")
         .withSession("userId" -> userId))
 
     redirectLocation(result).value shouldBe s"$UkBase/london/"
@@ -520,8 +519,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixtureFor(models.Country.UnitedKingdom)
 
     val result = ctl.ssoFinish()(
-      FakeRequest("GET", "/uk/auth/sso/finish?city=london")
-        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc"))
+      EdgeRequest("/uk/auth/sso/finish?city=london", host = "showtimes.cc"))
 
     val binding  = session(result).get(AuthController.SsoBindingKey).value
     val location = redirectLocation(result).value

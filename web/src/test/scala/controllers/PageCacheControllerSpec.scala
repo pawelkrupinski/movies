@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -17,22 +16,10 @@ import java.util.zip.GZIPInputStream
  *  correctly. */
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def cacheTestRecord(): MovieRecord = {
-    val now = TestMovieController.now
-    MovieRecord(
-      imdbId = Some("tt123"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title       = Some("Cache Test Film"),
-          releaseYear = Some(2024),
-          showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-        )
-      )
-    )
-  }
+  private val cacheTestFilm = TestMovieController.showing("Cache Test Film", Some(2024), imdbId = Some("tt123"))
 
   private def buildController(): (MovieController, services.readmodel.WebReadModel) =
-    TestMovieController.build(Seq(("Cache Test Film", Some(2024), cacheTestRecord())))
+    TestMovieController.build(Seq(cacheTestFilm))
 
   private def gzipRequest(path: String) =
     FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate")
@@ -313,7 +300,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
   it should "still keep no blob" in {
     val cache = TestResponseCache()
     val (ctrl, _) = TestMovieController.build(
-      Seq(("Cache Test Film", Some(2024), cacheTestRecord())), responseCache = cache)
+      Seq(cacheTestFilm), responseCache = cache)
 
     ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))
     withClue("a filter variant must not take an entry in the byte-bounded LRU: ")(

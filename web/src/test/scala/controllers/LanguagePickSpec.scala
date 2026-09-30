@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,15 +34,8 @@ import play.api.test.Helpers._
  */
 class LanguagePickSpec extends AnyFlatSpec with Matchers {
 
-  private val Now = TestMovieController.now
-
-  private def controller() = TestMovieController.build(
-    Seq(("Test Film", Some(2024), MovieRecord(
-      imdbId = Some("tt999"),
-      data = Map[Source, SourceData](Helios -> SourceData(
-        title = Some("Test Film"), releaseYear = Some(2024),
-        showtimes = Seq(models.Showtime(Now.plusHours(2), None, None, Nil)))))))
-  )._1
+  private def controller() =
+    TestMovieController.build(Seq(TestMovieController.showing("Test Film", Some(2024), imdbId = Some("tt999"))))._1
 
   "the plain city listing" should "always render the deployment's default language, ignoring any PLAY_LANG cookie" in {
     val ctrl    = controller()

@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -18,15 +17,10 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
 
   private val card = "f0123456789abcd.jpg?v=0123456789abcdef"
 
-  private def record(title: String) = MovieRecord(
-    imdbId = None,
-    data = Map[Source, SourceData](Helios -> SourceData(
-      title     = Some(title),
-      posterUrl = Some(s"https://cinema.example/${title.toLowerCase}.jpg"),
-      showtimes = Seq(models.Showtime(TestMovieController.now.plusHours(2), None, None, Nil))
-    )))
+  private def film(title: String) =
+    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase}.jpg"))
 
-  private val records = Seq(("Diuna", Option.empty[Int], record("Diuna")), ("Belle", Option.empty[Int], record("Belle")))
+  private val records = Seq(film("Diuna"), film("Belle"))
 
   /** The controller over a read model where Diuna has a share card and Belle has none. */
   private def controller(): MovieController = {

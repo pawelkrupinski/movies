@@ -3,7 +3,6 @@ package controllers
 import models.{City, Cinema, Country, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
 
@@ -75,8 +74,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     servingCountry = Country.UnitedKingdom,
   )._1
 
-  private def req(path: String) =
-    FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
+  private def req(path: String) = EdgeRequest(path, host = "showtimes.cc")
 
   // The unified `/` picker (`landing.scala.html`) reads `KINOWO_CATALOG` —
   // the embedded `models.Catalog.json` — rather than a server-rendered

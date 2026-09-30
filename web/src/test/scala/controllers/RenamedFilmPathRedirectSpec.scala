@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -21,19 +20,8 @@ import play.api.test.Helpers._
 class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
 
   private def controller(country: models.Country = models.Country.default): MovieController = {
-    val now = TestMovieController.now
-    val record = MovieRecord(
-      imdbId = Some("tt1375666"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title       = Some("Incepcja"),
-          releaseYear = Some(2010),
-          posterUrl   = Some("https://cinema.example/poster.jpg"),
-          showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-        )
-      )
-    )
-    TestMovieController.build(Seq(("Incepcja", Some(2010), record)), servingCountry = country)._1
+    TestMovieController.build(Seq(TestMovieController.showing("Incepcja", Some(2010), imdbId = Some("tt1375666"),
+      posterUrl = Some("https://cinema.example/poster.jpg"))), servingCountry = country)._1
   }
 
   private def locationOf(result: scala.concurrent.Future[play.api.mvc.Result]): String =

@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -11,24 +10,11 @@ import play.api.test.Helpers._
  *  the title lookup never had to deal with. */
 class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
-  private def controllerFor(titles: (String, Int)*): MovieController = {
-    val now = TestMovieController.now
-    val rows = titles.map { case (title, year) =>
-      val record = MovieRecord(
-        imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
-        data = Map[Source, SourceData](
-          Helios -> SourceData(
-            title       = Some(title),
-            releaseYear = Some(year),
-            posterUrl   = Some("https://cinema.example/poster.jpg"),
-            showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-          )
-        )
-      )
-      (title, Some(year), record)
-    }
-    TestMovieController.build(rows)._1
-  }
+  private def controllerFor(titles: (String, Int)*): MovieController =
+    TestMovieController.build(titles.map { case (title, year) =>
+      TestMovieController.showing(title, Some(year), imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
+        posterUrl = Some("https://cinema.example/poster.jpg"))
+    })._1
 
   private def titleOf(html: String): String =
     "<title>(.*?)</title>".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")

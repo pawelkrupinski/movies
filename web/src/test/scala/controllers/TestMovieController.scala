@@ -17,6 +17,25 @@ object TestMovieController {
   /** [[clock]]'s wall-clock time in Poland — where a spec's fixture screenings are placed from. */
   def now: java.time.LocalDateTime = java.time.LocalDateTime.now(clock.withZone(java.time.ZoneId.of("Europe/Warsaw")))
 
+  /** A film playing at Helios two hours from [[now]] — the one-row corpus most
+   *  controller specs render — as the `(title, year, record)` row [[build]] takes.
+   *  `otherSources` adds further sources' data beside the Helios slot. */
+  def showing(
+    title: String,
+    year: Option[Int] = None,
+    imdbId: Option[String] = None,
+    posterUrl: Option[String] = None,
+    otherSources: Map[models.Source, models.SourceData] = Map.empty,
+  ): (String, Option[Int], models.MovieRecord) =
+    (title, year, models.MovieRecord(
+      imdbId = imdbId,
+      data = Map[models.Source, models.SourceData](models.Helios -> models.SourceData(
+        title       = Some(title),
+        releaseYear = year,
+        posterUrl   = posterUrl,
+        showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil)),
+      )) ++ otherSources))
+
   def build(
     records: Seq[(String, Option[Int], models.MovieRecord)],
     mode: Mode = Mode.Test,

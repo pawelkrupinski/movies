@@ -1,10 +1,8 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
-import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
 
@@ -20,23 +18,10 @@ import play.api.test.Helpers._
  *  both halves. */
 class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def controller(): MovieController = {
-    val now = TestMovieController.now
-    val rec = MovieRecord(
-      imdbId = Some("tt1"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title = Some("Testowy Film"), releaseYear = Some(2024),
-          showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil)),
-        )
-      )
-    )
-    TestMovieController.build(Seq(("Testowy Film", Some(2024), rec)))._1
-  }
+  private def controller(): MovieController =
+    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))._1
 
-  private def req(path: String) =
-    FakeRequest(GET, path)
-      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.net")
+  private def req(path: String) = EdgeRequest(path)
 
   private def canonicalOf(html: String): Option[String] =
     """<link rel="canonical" href="([^"]+)">""".r.findFirstMatchIn(html).map(_.group(1))
@@ -68,8 +53,7 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
   "a country sharing the brand domain" should "canonicalise under its mount point" in {
     val uk   = TestMovieController.build(Nil, servingCountry = models.Country.UnitedKingdom)._1
     val html = contentAsString(uk.index("kent")(
-      FakeRequest(GET, "/kent/").withHeaders(
-        "X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")))
+      EdgeRequest("/kent/", host = "showtimes.cc")))
     canonicalOf(html) shouldBe Some("https://showtimes.cc/uk/kent/")
   }
 

@@ -1,6 +1,5 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -17,13 +16,7 @@ import tools.Env
 class PageTagsSpec extends AnyFlatSpec with Matchers {
 
   private def controller(env: Env): MovieController = {
-    val rec = MovieRecord(
-      imdbId = Some("tt1"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title = Some("Testowy Film"), releaseYear = Some(2024),
-          showtimes = Seq(models.Showtime(TestMovieController.now.plusHours(2), None, None, Nil)))))
-    TestMovieController.build(Seq(("Testowy Film", Some(2024), rec)), pageTags = () => PageTags.from(new settings.ProcessConfiguration(env)))._1
+    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))), pageTags = () => PageTags.from(new settings.ProcessConfiguration(env)))._1
   }
 
   private def fbAppIdOf(html: String): Option[String] =

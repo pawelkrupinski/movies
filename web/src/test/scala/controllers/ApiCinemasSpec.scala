@@ -1,6 +1,6 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
+import models.{SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
@@ -17,18 +17,8 @@ import play.api.test.Helpers._
 class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
   private def controller(servingCountry: models.Country = models.Country.default): MovieController = {
-    val now = TestMovieController.now
-    val record = MovieRecord(
-      imdbId = Some("tt999"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title     = Some("Test Film"),
-          showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-        ),
-        Tmdb -> SourceData()
-      )
-    )
-    TestMovieController.build(Seq(("Test Film", None, record)), servingCountry = servingCountry)._1
+    TestMovieController.build(Seq(TestMovieController.showing("Test Film", imdbId = Some("tt999"),
+      otherSources = Map(Tmdb -> SourceData()))), servingCountry = servingCountry)._1
   }
 
   "apiCinemas for a flat city" should "list every venue and an empty areas array" in {

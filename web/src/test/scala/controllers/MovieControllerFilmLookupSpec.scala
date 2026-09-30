@@ -1,6 +1,6 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
+import models.{SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
@@ -20,20 +20,9 @@ import play.api.test.Helpers._
 class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(title: String, year: Option[Int]): MovieController = {
-    val now = TestMovieController.now
-    val record = MovieRecord(
-      imdbId = Some("tt12340108"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title          = Some(title),
-          releaseYear    = year,
-          posterUrl      = Some("https://cinema.example/poster.jpg"),
-          showtimes      = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-        ),
-        Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))
-      )
-    )
-    TestMovieController.build(Seq((title, year, record)))._1
+    TestMovieController.build(Seq(TestMovieController.showing(title, year, imdbId = Some("tt12340108"),
+      posterUrl = Some("https://cinema.example/poster.jpg"),
+      otherSources = Map(Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))))))._1
   }
 
   "GET /movie/{slug}" should "resolve a displayed title that contains a single-digit Arabic numeral" in {

@@ -1,9 +1,8 @@
 package controllers
 
-import models.{CityScreening, Helios, Multikino, MultikinoPasazGrunwaldzki, MovieRecord, ResolvedMovie, ResolvedRatings, Source, SourceData}
+import models.{CityScreening, Multikino, MultikinoPasazGrunwaldzki, ResolvedMovie, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.readmodel.{InMemoryReadModelRepository, WebReadModel}
 
@@ -14,25 +13,11 @@ import java.time.Instant
  *  Facebook's scraper), and sitemap.xml enumerates the live corpus. */
 class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(): MovieController = {
-    val now = TestMovieController.now
-    val rec = MovieRecord(
-      imdbId = Some("tt1"),
-      data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title       = Some("Testowy Film"),
-          releaseYear = Some(2024),
-          showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil)),
-        )
-      )
-    )
-    TestMovieController.build(Seq(("Testowy Film", Some(2024), rec)))._1
-  }
+  private def controller(): MovieController =
+    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))._1
 
   // X-Forwarded-* mirror the Fly edge so PageMeta.origin yields the prod host.
-  private def req(path: String) =
-    FakeRequest(GET, path)
-      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.net")
+  private def req(path: String) = EdgeRequest(path)
 
   "robots.txt" should "stay crawlable, advertise the sitemap, and fence off noise" in {
     val res  = controller().robotsTxt(req("/robots.txt"))
@@ -116,8 +101,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   it should "hang every URL off the mount point on a country sharing the brand domain" in {
     val uk = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedKingdom)._1
     val body = contentAsString(uk.sitemap(
-      FakeRequest(GET, "/sitemap.xml")
-        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")))
+      EdgeRequest("/sitemap.xml", host = "showtimes.cc")))
     body should include("<loc>https://showtimes.cc/uk/</loc>")
     body should include("<loc>https://showtimes.cc/uk/kent/</loc>")
     body should not include "<loc>https://showtimes.cc/kent/</loc>"
@@ -127,9 +111,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
    *  `sitemap.xml` a crawler will ever fetch for `showtimes.cc` — the countries
    *  mounted beneath it have no host root of their own. Answered by the
    *  deployment mounted at `/`, which is the one on its own domain. */
-  private def apexReq(path: String) =
-    FakeRequest(GET, path)
-      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
+  private def apexReq(path: String) = EdgeRequest(path, host = "showtimes.cc")
 
   "the front door's sitemap.xml" should "be an index of the countries mounted under the apex" in {
     val body = contentAsString(controller().sitemap(apexReq("/sitemap.xml")))
