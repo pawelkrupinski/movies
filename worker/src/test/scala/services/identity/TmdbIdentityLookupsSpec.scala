@@ -53,6 +53,20 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     fetch.calls.map(_._2).filter(_.contains("/find/")) should have size 1
   }
 
+  it should "be IMDb's own entries when none carries the title, IMDb having matched it by another" in {
+    // PL, nine venues' "W tym kraju nie ma dobrych mężczyzn": IMDb's suggestion endpoint finds Shahrbanoo
+    // Sadat's film by that Polish title but displays it as "No Good Men"; TMDB knows it as "Kabul Jan"
+    // and has no Polish title for it, so its own search returns nothing.
+    def fixture(path: String) = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8)
+    val fetch = tools.RoutingHttpFetch.getOnly(Seq(
+      "suggestion/w/W+tym" -> fixture("test/resources/fixtures/imdb/suggestion_w_tym_kraju_nie_ma_dobrych_mezczyzn.json"),
+      "/find/tt13868840"   -> fixture("test/resources/fixtures/tmdb/find_tt13868840.json")))
+    val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ())
+    val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil)
+      .candidates(CandidateQuery.Imdb("W tym kraju nie ma dobrych mężczyzn")).toOption.get
+    hits.map(_.tmdbId) shouldBe Seq(1241574)
+  }
+
   "lookups over a live source" should "read side by side, so a prefetch's threads overlap their round-trips" in {
     val body = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(
       "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92")), java.nio.charset.StandardCharsets.UTF_8)

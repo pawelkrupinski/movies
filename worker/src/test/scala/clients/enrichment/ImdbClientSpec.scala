@@ -215,6 +215,16 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions(body, "Spider–Man", None) shouldBe Some("tt0145487")
   }
 
+  "the identity resolver's IMDb candidates" should "be the entries titled as asked, else every film IMDb suggests" in {
+    def answering(path: String) = new ImdbClient(http = new GetOnlyHttpFetch {
+      def get(url: String): String = loadFixture(path)
+    })
+    // Titled so: only the re-cut, not the 1979 film IMDb also lists.
+    answering("/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json").titledIds("Caligula: The Ultimate Cut") shouldBe Seq("tt29703523")
+    // Titled otherwise: IMDb matched the Polish title, displaying "No Good Men".
+    answering("/fixtures/imdb/suggestion_w_tym_kraju_nie_ma_dobrych_mezczyzn.json").titledIds("W tym kraju nie ma dobrych mężczyzn") shouldBe Seq("tt13868840")
+  }
+
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
     val c = new ImdbClient(http = new GetOnlyHttpFetch {
