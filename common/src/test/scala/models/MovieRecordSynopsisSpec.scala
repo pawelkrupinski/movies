@@ -226,6 +226,33 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsesForCities(cities) shouldBe cities.map(city => city -> record.synopsisForCity(city))
   }
 
+  // A synopsis must NEVER reach a city it does not belong to — the batch shares one pick between
+  // cities only when their candidates are identical, and this holds it to that from the other side:
+  // over randomly scattered venue blurbs, every city's pick is a city-independent source's text or
+  // a blurb from a venue IN that city, never another city's.
+  it should "never hand a city another city's venue blurb, batch or not" in {
+    val random = new scala.util.Random(11)
+    val cities = City.all.filter(_.country == Country.Poland)
+    val venues = cities.flatMap(_.cinemas).distinct.filter(v => Cinema.chainDetailVenues.get(v).isEmpty)
+    (1 to 40).foreach { round =>
+      val blurbs = random.shuffle(venues).take(1 + random.nextInt(8)).zipWithIndex.map { case (v, i) =>
+        v -> s"Opis kina #$i# w rundzie $round, ${"długi " * random.nextInt(40)}." }
+      val record = MovieRecord(data =
+        blurbs.map { case (v, text) => (v: Source) -> SourceData(synopsis = Some(text)) }.toMap ++
+          Option.when(random.nextBoolean())((Tmdb: Source) -> SourceData(synopsis = Some("Opis z TMDB."))).toMap)
+      val batch = record.synopsesForCities(cities)
+      batch shouldBe cities.map(city => city -> record.synopsisForCity(city))
+      batch.foreach { case (city, picked) =>
+        picked.foreach { text =>
+          val venue = "#(\\d+)#".r.findFirstMatchIn(text).map(m => blurbs(m.group(1).toInt)._1)
+          withClue(s"round $round, ${city.slug} got '${text.take(40)}': ") {
+            (text == "Opis z TMDB." || venue.exists(city.cinemaSet.contains)) shouldBe true
+          }
+        }
+      }
+    }
+  }
+
   // ── The same scoping, over PER-TITLE slot keys ──────────────────────────────
   // Every slot prod writes today is a `CinemaShowing(cinema, titleKey)`, not a
   // bare `Cinema` (see `Source.dropSupersededCinemaSlots` — the bare key is the
