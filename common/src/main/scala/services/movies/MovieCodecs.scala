@@ -303,6 +303,38 @@ private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScr
   }
 }
 
+/** A `movie_slots` row read field by field — its slot through the backward-compatible
+ *  [[SourceData]] codec. ~113k rows a US pass. Written by the macro codec; read as it reads:
+ *  an absent or null `listingKey` is `None`, an unknown field is skipped, a missing required
+ *  field fails (`SlotDecodeSpec`). */
+private[movies] final class StreamingSlotCodec(macroCodec: Codec[StoredSlotDto], sourceData: Codec[SourceData])
+    extends Codec[StoredSlotDto] {
+  override def getEncoderClass: Class[StoredSlotDto] = classOf[StoredSlotDto]
+  override def encode(w: BsonWriter, v: StoredSlotDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  override def decode(r: BsonReader, c: DecoderContext): StoredSlotDto = {
+    var id, filmId, slotKey: String = null
+    var slot: SourceData            = null
+    var updatedAt: Instant          = null
+    var listingKey                  = Option.empty[String]
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      r.readName() match {
+        case "_id"        => id = r.readString()
+        case "filmId"     => filmId = r.readString()
+        case "slotKey"    => slotKey = r.readString()
+        case "slot"       => slot = sourceData.decode(r, c)
+        case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
+        case "listingKey" => listingKey = BsonReads.optionalString(r)
+        case _            => r.skipValue()
+      }
+    }
+    r.readEndDocument()
+    if (id == null || filmId == null || slotKey == null || slot == null || updatedAt == null)
+      throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredSlotDto ${Option(id).getOrElse("?")}: a required field is missing")
+    StoredSlotDto(id, filmId, slotKey, slot, updatedAt, listingKey)
+  }
+}
+
 /** The BSON reads the hand-written decoders share. Stateless. */
 private[movies] object BsonReads {
   def optionalString(r: BsonReader): Option[String] =
@@ -325,7 +357,7 @@ private[movies] object BsonReads {
  */
 object MovieCodecs extends PersistedCodecs {
 
-  /** `SourceData`, `Showtime` and `StoredScreeningsDto` are READ by the hand-written codecs above,
+  /** `SourceData`, `Showtime`, `StoredScreeningsDto` and `StoredSlotDto` are READ by the hand-written codecs above,
    *  each writing through the macro codec derived here. */
   type OmittingNone = (SourceData, Showtime, TitleSearch)
   /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
@@ -337,15 +369,21 @@ object MovieCodecs extends PersistedCodecs {
       fromCodecs(JavaTimeCodecs.localDateTime),
       fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
       DEFAULT_CODEC_REGISTRY)
-    val showtimes = new StreamingShowtimeCodec(macros.get(classOf[Showtime]))
+    val showtimes  = new StreamingShowtimeCodec(macros.get(classOf[Showtime]))
+    val sourceData = new BackwardCompatibleSourceDataCodec(macros.get(classOf[SourceData]), showtimes, macros.get(classOf[TitleSearch]))
+    // The macro codecs a row codec WRITES through, their nested slots and showtimes going through
+    // the codecs above — so a cache-stripped slot sheds its cache-only fields in a `movie_slots`
+    // row exactly as in `movies`.
+    val writers = fromRegistries(fromCodecs(JavaTimeCodecs.localDateTime, sourceData, showtimes), macros)
     fromRegistries(
       // FIRST, so they shadow the macro codecs of the same classes: a slot round-trips through the
       // SAME backward-compatible codec whether it is read from `movies` or from its own
       // `movie_slots` row, and every showtime through the one streaming decoder.
       fromCodecs(JavaTimeCodecs.localDateTime,
-        new BackwardCompatibleSourceDataCodec(macros.get(classOf[SourceData]), showtimes, macros.get(classOf[TitleSearch])),
+        sourceData,
         showtimes,
-        new StreamingScreeningsCodec(macros.get(classOf[StoredScreeningsDto]), showtimes)),
+        new StreamingScreeningsCodec(writers.get(classOf[StoredScreeningsDto]), showtimes),
+        new StreamingSlotCodec(writers.get(classOf[StoredSlotDto]), sourceData)),
       fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
       DEFAULT_CODEC_REGISTRY)
   }

@@ -1,6 +1,6 @@
 package services.movies
 
-import models.Showtime
+import models.{Showtime, SourceData}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.{Codec, DecoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader}
@@ -76,5 +76,28 @@ class ShowtimeDecodeSpec extends AnyFlatSpec with Matchers {
     }
     both(classOf[StoredScreeningsDto], rows(1))._2.get shouldBe
       StoredScreeningsDto("a", "a", "Helios", Nil, Instant.parse("2026-09-30T10:00:00Z"), None)
+  }
+
+  private val slots = Seq(
+    s"""{ "_id": "a\u001fHelios", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "showtimes": [${showtimes.head}] }, "updatedAt": $updated, "listingKey": "k" }""",
+    s"""{ "_id": "a", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "cast": "A, B" }, "updatedAt": $updated }""",
+    s"""{ "slot": {}, "updatedAt": $updated, "listingKey": null, "slotKey": "Helios", "filmId": "a", "_id": "a", "extra": 1 }""",
+    s"""{ "_id": "a", "filmId": "a", "slotKey": "Helios", "updatedAt": $updated }""",
+    s"""{ "_id": "a", "filmId": "a", "slot": {}, "updatedAt": $updated }""")
+
+  "a movie_slots row" should "read every stored shape exactly as its macro codec, with the slot's own codec, reads it" in {
+    // The macro registry's SourceData codec is the plain macro; the slot inside is compared through
+    // the registry's own backward-compatible one on both sides, so this pins the WRAPPER.
+    val slotCodec = MovieCodecs.registry.get(classOf[SourceData])
+    val viaMacroRegistry = fromRegistries(fromCodecs(slotCodec), macroRegistry)
+    MovieCodecs.registry.get(classOf[StoredSlotDto]).getClass.getName should include("StreamingSlotCodec")
+    slots.foreach { json =>
+      def read(codec: Codec[StoredSlotDto]) = Try(codec.decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build()))
+      val (viaMacro, streamed) = (read(viaMacroRegistry.get(classOf[StoredSlotDto])), read(MovieCodecs.registry.get(classOf[StoredSlotDto])))
+      withClue(json) {
+        streamed.isSuccess shouldBe viaMacro.isSuccess
+        streamed.toOption shouldBe viaMacro.toOption
+      }
+    }
   }
 }

@@ -51,7 +51,9 @@ class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
 
   "a side-collection storage row" should "be built only by its factory, which stamps the listing key" in {
     withClue("build a `movie_slots` row with `StoredSlotDto.of`, never its constructor: ") {
-      constructions("StoredSlotDto") shouldBe Seq("common/src/main/scala/services/movies/SlotsRepository.scala" -> 1)
+      constructions("StoredSlotDto").toSet shouldBe Set(
+        "common/src/main/scala/services/movies/SlotsRepository.scala" -> 1,  // the factory
+        "common/src/main/scala/services/movies/MovieCodecs.scala"     -> 1)  // a stored row read back, with the key it holds
     }
     withClue("build a `screenings` row with `StoredScreeningsDto.of`, never its constructor: ") {
       constructions("StoredScreeningsDto").toSet shouldBe Set(
