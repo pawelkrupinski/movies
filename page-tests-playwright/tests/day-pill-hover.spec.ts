@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoAndWaitForCards } from './helpers';
+import { gotoAndWaitForCards, settleLayout } from './helpers';
 
 // The day pills carry two highlights: `.active` (light blue #aad4ff = the
 // selected day) and `:hover` (dark blue #3a3a6e). On a phone, tapping a pill
@@ -33,7 +33,7 @@ test('day-pill hover styling applies only to hover-capable (non-touch) pointers'
   if (hoverCapable) {
     await expect.poll(bg).toBe(HOVER_BLUE);    // desktop / mouse: hover still works
   } else {
-    await page.waitForTimeout(250);
+    await settleLayout(page);   // the .15s background transition has finished
     expect(await bg()).not.toBe(HOVER_BLUE);   // phone: no sticky dark-blue hover
   }
 });

@@ -179,7 +179,11 @@ test.describe('navbar row count at project viewport', () => {
   });
 });
 
-test.describe('navbar overflow under maxed filters + long logged-in name', () => {
+// The 19 VIEWPORTS below are set with `setViewportSize` inside each test, so the
+// project's own viewport never matters — only the engine does. `@agnostic` runs
+// the whole sweep once on WebKit (iPhone 13) and once on mobile Chromium instead
+// of re-running it on every one of the 35 projects.
+test.describe('navbar overflow under maxed filters + long logged-in name', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
   });

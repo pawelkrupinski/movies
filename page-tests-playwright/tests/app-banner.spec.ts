@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { reload } from './helpers';
+import { clearLocalStorage, reload, settleLayout } from './helpers';
 
 // The app-promo top banner: nudges EVERY visitor (not just phones, unlike the
 // swipe hint) toward the native app, picking the store badge that matches the
@@ -10,6 +10,13 @@ import { reload } from './helpers';
 // the interval cap. It's also suppressed outright when Chrome can confirm
 // (Android only — no iOS/Safari equivalent) the app is already installed via
 // `navigator.getInstalledRelatedApps()`.
+//
+// Tagging: the behaviour is viewport-independent, so those cases are `@agnostic`
+// (WebKit iPhone 13 + mobile Chromium in CI — the two engines whose paint timing
+// the regressions below are about). Two cases read the project's own UA/pointer
+// to pick the branch they assert — the OS badge and the touch-vs-mouse interval —
+// so they stay untagged and keep running on the desktop projects too, which are
+// the only ones that reach the "cannot tell" and 10-day branches.
 test.describe('app banner', () => {
   const banner      = (page: Page) => page.locator('#app-banner');
   const iosBadge     = (page: Page) => page.locator('#app-banner-ios');
@@ -25,8 +32,8 @@ test.describe('app banner', () => {
     await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });
   });
 
-  test('shows on a fresh visit, with the Polish headline', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('shows on a fresh visit, with the Polish headline', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
     await expect(banner(page)).toContainText('Kinowo — aplikacja mobilna');
@@ -43,7 +50,7 @@ test.describe('app banner', () => {
   // frame. Reading the style the instant `.visible` lands — in a
   // MutationObserver callback, a microtask no frame can precede — makes that
   // dependency deterministic instead of load-dependent.
-  test('is visible the moment it is shown, without waiting for a rendered frame', async ({ page }) => {
+  test('is visible the moment it is shown, without waiting for a rendered frame', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       // A transition only starts from a style the element already HAD. On a
       // slow runner the ~600-card document paints a frame mid-parse, so the
@@ -66,7 +73,7 @@ test.describe('app banner', () => {
         }
       }).observe(document, { subtree: true, attributes: true, attributeFilter: ['class'] });
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect.poll(() => page.evaluate(() =>
       (window as unknown as { bannerVisibilityOnShow?: string }).bannerVisibilityOnShow)).toBe('visible');
@@ -79,7 +86,7 @@ test.describe('app banner', () => {
   // exists in. shared.js is held back 500ms — a slow network, and what makes
   // the pre-fix first paint deterministic on a fast runner too — so a decision
   // that waits for it is caught every time.
-  test('decides before the first paint, so the navbar never moves', async ({ page }) => {
+  test('decides before the first paint, so the navbar never moves', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       const tops: number[] = [];
       (window as unknown as { navbarTops: number[] }).navbarTops = tops;
@@ -94,11 +101,13 @@ test.describe('app banner', () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await route.continue();
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
     await page.waitForLoadState('load');
-    await page.waitForTimeout(800);   // past the delayed shared.js and a few frames after it
+    // `load` is past the (deferred) shared.js the route holds back 500ms; a few more
+    // frames then let any late navbar move show up in the samples.
+    await settleLayout(page, 10);
 
     const tops = await page.evaluate(() => (window as unknown as { navbarTops: number[] }).navbarTops);
     expect(tops.length).toBeGreaterThan(0);
@@ -106,8 +115,8 @@ test.describe('app banner', () => {
     expect(new Set(tops)).toEqual(new Set([tops[0]]));
   });
 
-  test('does not show a second time the same day', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('does not show a second time the same day', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();   // first visit today
     await reload(page);
@@ -137,8 +146,8 @@ test.describe('app banner', () => {
   // must be the visitor's actual day in the city, whatever HTML carried it.
   // (The fixture server renders a pinned June-2026 day, so every page here
   // is such a stale page.)
-  test('stamps the visitor\'s real day in the city, not the page\'s render day', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('stamps the visitor\'s real day in the city, not the page\'s render day', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
     const [stamped, cityToday] = await page.evaluate(() => [
@@ -149,7 +158,7 @@ test.describe('app banner', () => {
   });
 
   test('a touch device sees it again after 1 day; a mouse/trackpad device needs 10', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();   // first visit today
     const isMobile = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
@@ -164,12 +173,12 @@ test.describe('app banner', () => {
     }
   });
 
-  test('suppressed when the app is already installed (Android/Chrome only signal)', async ({ page }) => {
+  test('suppressed when the app is already installed (Android/Chrome only signal)', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeHidden();
   });
@@ -184,7 +193,7 @@ test.describe('app banner', () => {
   // out of. Reading the style the instant `.visible` is removed — in a
   // MutationObserver callback, which no frame can precede — pins it on every
   // engine, fast runner or not.
-  test('an installed-app suppression hides it at once, without waiting for a rendered frame', async ({ page }) => {
+  test('an installed-app suppression hides it at once, without waiting for a rendered frame', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
@@ -199,34 +208,34 @@ test.describe('app banner', () => {
         }
       }).observe(document, { subtree: true, attributes: true, attributeOldValue: true, attributeFilter: ['class'] });
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect.poll(() => page.evaluate(() =>
       (window as unknown as { bannerVisibilityOnHide?: string }).bannerVisibilityOnHide)).toBe('hidden');
   });
 
-  test('shows normally when the installed-apps check reports no match', async ({ page }) => {
+  test('shows normally when the installed-apps check reports no match', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [];
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
   });
 
-  test('?forceAppBanner=1 bypasses the installed-app check too', async ({ page }) => {
+  test('?forceAppBanner=1 bypasses the installed-app check too', { tag: '@agnostic' }, async ({ page }) => {
     await page.addInitScript(() => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
     });
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
     await expect(banner(page)).toBeVisible();
   });
 
   test('picks the store badge matching the detected OS, both when it cannot tell', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
     const ua = await page.evaluate(() => navigator.userAgent);
@@ -244,8 +253,8 @@ test.describe('app banner', () => {
     }
   });
 
-  test('the ✕ hides it and survives a per-day reset (24h snooze)', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('the ✕ hides it and survives a per-day reset (24h snooze)', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();
     await page.locator('.app-banner-close').click();
@@ -261,16 +270,16 @@ test.describe('app banner', () => {
     await expect(banner(page)).toBeHidden();
   });
 
-  test('store badges link to the real App Store / Play Store listings', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('store badges link to the real App Store / Play Store listings', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(iosBadge(page)).toHaveAttribute('href', 'https://apps.apple.com/app/id6792566321');
     await expect(androidBadge(page))
       .toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=net.pawel.kinowo');
   });
 
-  test('logs its gate state to the console on every visit', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('logs its gate state to the console on every visit', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     // `console.log('[app-banner]', {…})` — the second arg is a JSHandle, not
     // text, so read it back via jsonValue() rather than ConsoleMessage.text().
     const states: Array<Record<string, unknown>> = [];
@@ -285,8 +294,8 @@ test.describe('app banner', () => {
     expect(states[0]).toMatchObject({ willShow: true, dueByInterval: true, snoozed: false });
   });
 
-  test('?forceAppBanner=1 bypasses both the daily cap and the dismiss snooze', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('?forceAppBanner=1 bypasses both the daily cap and the dismiss snooze', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();          // first visit today
     await page.locator('.app-banner-close').click();   // dismiss → snoozed 24h
@@ -303,8 +312,8 @@ test.describe('app banner', () => {
   // the banner instead and never reached the modal. Broke
   // hidden-modal-ui.spec.ts's "clicking the backdrop dismisses the modal" in
   // CI, since a fresh browser context always shows the banner on first load.
-  test('does not intercept clicks meant for a modal backdrop underneath it', async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
+  test('does not intercept clicks meant for a modal backdrop underneath it', { tag: '@agnostic' }, async ({ page }) => {
+    await clearLocalStorage(page);
     await reload(page);
     await expect(banner(page)).toBeVisible();   // the overlap only exists while it's up
 

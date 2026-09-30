@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoAndWaitForCards, waitForCards } from './helpers';
+import { gotoAndWaitForCards, settleLayout } from './helpers';
 
 // At 150% display zoom the CSS viewport shrinks to 240×507 (Galaxy S10).
 // The `--ms` scale variable clamps to its 0.85 floor, and Bootstrap's
@@ -29,7 +29,7 @@ test.describe('zoomed portrait card gaps', () => {
     await page.evaluate(() => {
       document.querySelector('#film-grid')?.scrollIntoView();
     });
-    await page.waitForTimeout(200);
+    await settleLayout(page);
 
     const result = await page.evaluate(() => {
       const cols = Array.from(document.querySelectorAll('#film-grid > .col'));

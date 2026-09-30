@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
+import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime, setLocalStorageJson } from './helpers';
+import type { Page } from '@playwright/test';
 
 // `/poznan/movie/{slug}` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
@@ -8,7 +9,7 @@ import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime } from './h
 test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
   // Helper: navigate to /movie for the first visible card on /
-  async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {
+  async function gotoFirstFilm(page: Page): Promise<string> {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
     const card  = await firstVisibleCard(page);
@@ -23,6 +24,14 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     // image-load stall eats the whole 30s budget and times the navigation out.
     await page.goto(`/poznan/movie/${slug}`, { waitUntil: 'domcontentloaded' });
     return title!;
+  }
+
+  // Switch `names` (display names) off in Filtry the way the visitor's own
+  // selection does — `disabledCinemas` in localStorage — and re-run the page's
+  // filter pass so the showings tree and the cinema-link row follow.
+  async function disableCinemas(page: Page, names: Array<string | undefined>): Promise<void> {
+    await setLocalStorageJson(page, 'disabledCinemas', names);
+    await page.evaluate(() => (window as unknown as { applyFilters: () => void }).applyFilters());
   }
 
   test('renders the film title and Seanse heading', async ({ page }) => {
@@ -193,10 +202,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
     const off = (await page.locator('.cinema-link[data-cinema]')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema))).slice(0, 4);
-    await page.evaluate((names) => {
-      localStorage.setItem('disabledCinemas', JSON.stringify(names));
-      (window as unknown as { applyFilters: () => void }).applyFilters();
-    }, off);
+    await disableCinemas(page, off);
 
     // Eight left, all under the ten-pill cap, so nothing folds and the button
     // retires rather than offering rows that are no longer there.
@@ -216,10 +222,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
     const off = (await page.locator('.cinema-group[data-cinema]')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema))).slice(0, 4);
-    await page.evaluate((names) => {
-      localStorage.setItem('disabledCinemas', JSON.stringify(names));
-      (window as unknown as { applyFilters: () => void }).applyFilters();
-    }, off);
+    await disableCinemas(page, off);
 
     await expect(page.locator('.cinema-group:visible')).toHaveCount(8);
     await expect(page.locator('#showings-empty')).toBeHidden();
@@ -230,10 +233,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
     const all = await page.locator('.cinema-group[data-cinema]')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema));
-    await page.evaluate((names) => {
-      localStorage.setItem('disabledCinemas', JSON.stringify(names));
-      (window as unknown as { applyFilters: () => void }).applyFilters();
-    }, all);
+    await disableCinemas(page, all);
 
     await expect(page.locator('.cinema-group:visible')).toHaveCount(0);
     await expect(page.locator('.date-group:visible')).toHaveCount(0);

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { cdpSwipe, reload } from './helpers';
+import { cdpSwipe, clearLocalStorage, reload } from './helpers';
 
 // The first-run swipe hint ("Przesuń, aby zmienić dzień"): shown once per
 // calendar day on touch devices and retired for good after the first swipe —
@@ -8,7 +8,10 @@ import { cdpSwipe, reload } from './helpers';
 test.describe('swipe hint', () => {
   const hint = (page: Page) => page.locator('#swipe-hint');
 
-  test.describe('phones (coarse pointer)', () => {
+  // Touch + viewport-independent: once on mobile Chromium (the only engine with CDP
+  // touch injection) is the whole answer, so it rides `@agnostic`. The desktop
+  // describe below stays untagged — it only runs on fine-pointer projects.
+  test.describe('phones (coarse pointer)', { tag: '@agnostic' }, () => {
     test.beforeEach(async ({ page, browserName }) => {
       test.skip(browserName !== 'chromium', 'CDP touch injection is chromium-only');
       await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });
@@ -17,14 +20,14 @@ test.describe('swipe hint', () => {
     });
 
     test('shows on a fresh device, with the day-swipe copy', async ({ page }) => {
-      await page.evaluate(() => localStorage.clear());
+      await clearLocalStorage(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();
       await expect(hint(page)).toContainText('Przesuń, aby zmienić dzień');
     });
 
     test('does not show a second time the same day', async ({ page }) => {
-      await page.evaluate(() => localStorage.clear());
+      await clearLocalStorage(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();   // first visit today
       await reload(page);
@@ -32,7 +35,7 @@ test.describe('swipe hint', () => {
     });
 
     test('a swipe retires it for good (survives the per-day reset)', async ({ page }) => {
-      await page.evaluate(() => localStorage.clear());
+      await clearLocalStorage(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();
       await cdpSwipe(page, 'left');             // commit a day-swipe
@@ -49,7 +52,7 @@ test.describe('swipe hint', () => {
       await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });
       const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
       test.skip(coarse, 'this case is for fine-pointer (desktop) projects');
-      await page.evaluate(() => localStorage.clear());
+      await clearLocalStorage(page);
       await reload(page);
       await expect(hint(page)).toBeHidden();
     });

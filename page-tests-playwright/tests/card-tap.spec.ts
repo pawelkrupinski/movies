@@ -53,23 +53,4 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     expect(new URL(page.url()).pathname).toBe(`/poznan/movie/${slug}`);
     expect(new URL(page.url()).search).toBe('');
   });
-
-  test('detail page renders without a JS error', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-
-    const title = (await firstVisibleCard(page))?.title;
-    expect(title).toBeTruthy();
-    const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
-    await expect(image).toBeVisible();
-    await image.tap();
-    // `domcontentloaded`: the inline boot scripts run at DCL, so the JS-error
-    // assertion doesn't need the poster/iframe `load` that can stall a runner.
-    await page.waitForURL(/\/movie\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
-
-    // film.scala.html's inline `toggleFavMovie` + `playTrailer` blocks
-    // run on DOMContentLoaded — a syntax error or undefined reference
-    // would surface here. Empty `errors` is the assertion.
-    expect(errors).toEqual([]);
-  });
 });

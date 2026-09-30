@@ -2,10 +2,11 @@ import { test, expect } from '@playwright/test';
 
 // The tune-panel viewport readout is a pure function shared by the browser and
 // this test, so exercise it directly in node (no browser/server needed) — it
-// can't drift from what `_tunePanel` renders.
+// can't drift from what `_tunePanel` renders. Pure node: one run is the whole
+// answer, so it rides the `@agnostic` slice instead of every project.
 const { formatViewportInfo } = require('../../web/src/main/assets/js/viewportInfo.js');
 
-test.describe('tune-panel viewport readout', () => {
+test.describe('tune-panel viewport readout', { tag: '@agnostic' }, () => {
   test('reports viewport, ratio and physical px', () => {
     expect(
       formatViewportInfo({ innerWidth: 1280, innerHeight: 720, dpr: 2, screenW: 1512, screenH: 982 }),

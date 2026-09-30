@@ -12,7 +12,7 @@ import { waitForCards, cdpSwipe, setDateFilter } from './helpers';
 // the production handlers use. CDP touch injection is chromium-only and the
 // swipe is gated to coarse pointers (phones), so this runs on the
 // mobile-chromium projects.
-test.describe('day-swipe', () => {
+test.describe('day-swipe', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'CDP touch injection is chromium-only');
     // Force the animated slide path (not the reduced-motion instant commit) so

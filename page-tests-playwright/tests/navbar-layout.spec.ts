@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { gotoAndWaitForCards, measureGridRatio, pinDateFilterAnytime, waitForCards } from './helpers';
+import { gotoAndWaitForCards, measureGridRatio, pinDateFilterAnytime, settleLayout, waitForCards } from './helpers';
 
 // Consolidated navbar layout spec — covers control-height uniformity,
 // orientation stability, compact-landscape constraints, and grid
@@ -608,8 +608,8 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
     expect(before, 'navbar / date not found').not.toBeNull();
 
     await page.locator('.search-input').focus();
-    // Give the focus width transition a beat to settle.
-    await page.waitForTimeout(100);
+    // Let the focus width transition finish before measuring.
+    await settleLayout(page);
 
     const after = await read();
     // The date stepper must not move vertically — a wrap caused by the
@@ -691,7 +691,7 @@ test.describe('navbar orientation uniformity', () => {
 
 // ── Narrow landscape (760×360): compact navbar + 4-col grid ───────
 
-test.describe('narrow landscape (760×360)', () => {
+test.describe('narrow landscape (760×360)', { tag: '@agnostic' }, () => {
   test.use({ viewport: { width: 760, height: 360 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -747,7 +747,7 @@ test.describe('narrow landscape (760×360)', () => {
 
 // ── Portrait Filtry button containment ────────────────────────────
 
-test.describe('portrait filtry button (360×760)', () => {
+test.describe('portrait filtry button (360×760)', { tag: '@agnostic' }, () => {
   test.use({ viewport: { width: 360, height: 760 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -772,7 +772,7 @@ test.describe('portrait filtry button (360×760)', () => {
 // render at a non-zero width, stay inside the navbar, and not be internally
 // clipped (scrollWidth ≈ clientWidth) at a typical phone width.
 
-test.describe('day pills (390×844)', () => {
+test.describe('day pills (390×844)', { tag: '@agnostic' }, () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -816,7 +816,7 @@ test.describe('day pills (390×844)', () => {
 // only the small navbar inter-item gap. The viewport is 440px on purpose: it
 // has real horizontal slack, so the old packed-right CSS shows the big gap
 // (test fails) and the spread layout closes it (test passes).
-test.describe('day pills spread to fill the bar (440×956)', () => {
+test.describe('day pills spread to fill the bar (440×956)', { tag: '@agnostic' }, () => {
   test.use({ viewport: { width: 440, height: 956 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -925,7 +925,7 @@ test.describe('navbar order — search position vs the day pills', () => {
 const PORTRAIT  = { width: 440, height: 956 };
 const LANDSCAPE = { width: 956, height: 440 };
 
-test.describe('orientation flip: portrait → landscape', () => {
+test.describe('orientation flip: portrait → landscape', { tag: '@agnostic' }, () => {
   test.use({ viewport: PORTRAIT });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -935,7 +935,7 @@ test.describe('orientation flip: portrait → landscape', () => {
 
   test('navbar controls become uniform 28px and height ≤ 42px after rotating', async ({ page }) => {
     await page.setViewportSize(LANDSCAPE);
-    await page.waitForTimeout(200);
+    await settleLayout(page);
 
     const heights = await measureHeights(page);
     const values = Object.values(heights);
@@ -961,7 +961,7 @@ test.describe('orientation flip: portrait → landscape', () => {
     expect(before).toBeLessThan(0.55);
 
     await page.setViewportSize(LANDSCAPE);
-    await page.waitForTimeout(200);
+    await settleLayout(page);
 
     const after = await measureGridRatio(page);
     expect(after).toBeGreaterThan(0.15);
@@ -969,7 +969,7 @@ test.describe('orientation flip: portrait → landscape', () => {
   });
 });
 
-test.describe('orientation flip: landscape → portrait', () => {
+test.describe('orientation flip: landscape → portrait', { tag: '@agnostic' }, () => {
   test.use({ viewport: LANDSCAPE });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -984,7 +984,7 @@ test.describe('orientation flip: landscape → portrait', () => {
     expect(before).toBeLessThan(0.18);
 
     await page.setViewportSize(PORTRAIT);
-    await page.waitForTimeout(200);
+    await settleLayout(page);
 
     const after = await measureGridRatio(page);
     expect(after).toBeGreaterThan(0.45);

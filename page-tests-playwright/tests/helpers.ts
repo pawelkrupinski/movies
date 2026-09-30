@@ -248,3 +248,27 @@ export async function firstVisibleCard(page: Page): Promise<VisibleCard | null> 
   // replace the real timeout with a confusing one.
   return page.evaluate(firstVisibleCardIn, false).catch(() => null);
 }
+
+/**
+ * Wait until the page has painted `frames` animation frames AND every finite
+ * CSS transition / animation currently running has finished. The condition a
+ * fixed `waitForTimeout(100–250)` was standing in for after a viewport flip, a
+ * scroll or a focus: layout and transitions have landed, so the next
+ * `getBoundingClientRect()` / `getComputedStyle()` read sees the settled value.
+ * Infinite animations (spinners) are skipped — they never finish.
+ */
+export async function settleLayout(page: Page, frames = 2): Promise<void> {
+  await page.evaluate(async (n) => {
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    for (let i = 0; i < n; i++) await nextFrame();
+    const finite = document.getAnimations().filter((a) =>
+      a.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.all(finite.map((a) => a.finished.catch(() => undefined)));
+    await nextFrame();
+  }, frames);
+}
+
+/** Wipe every `localStorage` key on the CURRENT page. */
+export async function clearLocalStorage(page: Page): Promise<void> {
+  await page.evaluate(() => localStorage.clear());
+}

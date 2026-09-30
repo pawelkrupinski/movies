@@ -11,7 +11,7 @@ import { waitForCards, cdpSwipe } from './helpers';
 // grid in place — see shared.js `usesInstantDayChange`. This is the same
 // gesture path `day-swipe.spec.ts` exercises on a normal-size city, asserting
 // the OPPOSITE: no `.day-col` is ever mounted, `#day-track` never arms.
-test.describe('day-swipe on a large city', () => {
+test.describe('day-swipe on a large city', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'CDP touch injection is chromium-only');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
