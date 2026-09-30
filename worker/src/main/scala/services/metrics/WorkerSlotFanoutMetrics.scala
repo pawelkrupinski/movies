@@ -2,7 +2,6 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.movies.StoredMovieRecord
 
 /**
  * How many cinema slots the WIDEST film in the corpus carries — the blast radius of a
@@ -29,7 +28,7 @@ import services.movies.StoredMovieRecord
  * This gauge is what watches the part the fix does not cover, and what will say — before it
  * bites — that a new market has landed a film wider than anything the pipeline has carried.
  *
- * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min) like its three
+ * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 15 min) like its three
  * sibling censuses, so it costs no reads of its own — it reads only each row's slot count
  * and ignores the showtimes the pass stitches. Mirrors [[WorkerCorpusMetrics]]' shape,
  * including its refusal to publish a partial pass.
@@ -64,7 +63,8 @@ class WorkerSlotFanoutMetrics(widest: Gauge, countryCode: String) extends Corpus
     // This runs once per film on a corpus-wide pass, and the number it wants is a count. The
     // predicate lives on `MovieRecord` beside `cinemaSlots` rather than being spelled out here, so
     // the two cannot drift into disagreeing about what a cinema slot is.
-    def accept(row: StoredMovieRecord): Unit = {
+    def accept(corpusRow: CorpusRow): Unit = {
+      val row = corpusRow.stored
       val slots = row.record.cinemaSlotCount
       if (slots > max) max = slots
     }

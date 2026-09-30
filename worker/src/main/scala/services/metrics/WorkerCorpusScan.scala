@@ -51,7 +51,10 @@ class WorkerCorpusScan(
   def sample(): WorkerCorpusScan.Pass = {
     val samplers = collectors.map(c => (WorkerCorpusScan.nameOf(c), c.startSample(), stopwatch.total()))
     val pass     = stopwatch.start()
-    val complete = repository.foreachRecord(row => samplers.foreach { case (_, sampler, time) => time(sampler.accept(row)) })
+    val complete = repository.foreachRecord { stored =>
+      val row = new CorpusRow(stored)
+      samplers.foreach { case (_, sampler, time) => time(sampler.accept(row)) }
+    }
     if (!complete) {
       metrics.recordIncompleteSample()
       logger.warn("worker-corpus-scan: corpus scan incomplete — census gauges keep their previous values " +
@@ -90,10 +93,11 @@ object WorkerCorpusScan {
   private def nameOf(collector: CorpusMetricsCollector): String =
     Option(collector.getClass.getSimpleName).filter(_.nonEmpty).getOrElse(collector.getClass.getName).stripSuffix("$")
 
-  /** Once every 5 minutes — the corpus changes on the order of a scrape cadence, far
-   *  slower than the seconds-apart Fly `/metrics` scrape, so a more frequent re-scan
-   *  would be wasted reads. */
-  val DefaultSampleInterval: FiniteDuration = 5.minutes
+  /** Once every 15 minutes — the corpus changes on the order of a scrape cadence (hours; 14 on
+   *  the US), and every rule these gauges feed holds 30 minutes or more over a gauge that keeps
+   *  its value between samples. At 5 minutes the US pass was 29% of the worker's CPU and a third
+   *  of its allocation (2026-09-30). */
+  val DefaultSampleInterval: FiniteDuration = 15.minutes
 
   val IncompleteMetricName = "kinowo_worker_corpus_scan_incomplete_total"
 
@@ -145,10 +149,32 @@ trait CorpusMetricsCollector {
 trait CorpusRowSampler {
 
   /** Fold one corpus row in. Called once per row, in scan order. */
-  def accept(row: StoredMovieRecord): Unit
+  def accept(row: CorpusRow): Unit
 
   /** Write the accumulated counts onto the gauges. `scanComplete` is `false` when the
    *  scan stopped early on a failed batch read, i.e. the rows seen are NOT the whole
    *  corpus — a collector that must not publish a partial census gates on it. */
   def publish(scanComplete: Boolean): Unit
+}
+
+/** One corpus row as the scan hands it to every collector: the stored row, and the screenings the
+ *  read model would project from it — built at most ONCE per row however many collectors ask, and
+ *  only if one does. Two do (films served, upcoming showtimes), and each used to project every row
+ *  itself: on the US worker a pass was 29% of the worker's CPU and 9 GB of allocation (2026-09-30),
+ *  the projection its costliest step. `None` for a row not ready to project, or one that fails to —
+ *  the rows the projector itself skips. */
+final class CorpusRow(val stored: StoredMovieRecord) {
+  private var projected: Option[(services.movies.TitleNormalizer, Option[Seq[Seq[models.CityScreening]]])] = None
+
+  /** The row's screenings as `normalizer` folds its titles. Shared only with a collector asking
+   *  through the SAME normalizer — the wiring hands every collector of a country its one. */
+  def screenings(normalizer: services.movies.TitleNormalizer): Option[Seq[Seq[models.CityScreening]]] =
+    projected match {
+      case Some((by, cards)) if by eq normalizer => cards
+      case _ =>
+        val cards = Option.when(stored.record.readyToProject)(
+          scala.util.Try(services.readmodel.ReadModelProjection.screeningsAll(stored, normalizer)).toOption).flatten
+        projected = Some((normalizer, cards))
+        cards
+    }
 }

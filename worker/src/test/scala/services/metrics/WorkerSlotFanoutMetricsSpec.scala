@@ -31,11 +31,13 @@ class WorkerSlotFanoutMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def slot(title: String) = SourceData(title = Some(title))
 
+  private def corpusRow(title: String, record: MovieRecord) = new CorpusRow(row(title, record))
+
   "WorkerSlotFanoutMetrics" should "count a film's cinema slots and not its metadata sources" in {
     val (registry, metrics) = fixture
     val sampler = metrics.startSample()
     // Two venues, three metadata sources. The blast radius is two.
-    sampler.accept(row("Wide Release", MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+    sampler.accept(corpusRow("Wide Release", MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> slot("Wide Release"),
       KinoMuranow -> slot("Wide Release"),
       Tmdb        -> slot("Wide Release"),
@@ -51,7 +53,7 @@ class WorkerSlotFanoutMetricsSpec extends AnyFlatSpec with Matchers {
     val sampler = metrics.startSample()
     // Resolved against TMDB, showing nowhere. It writes no `screenings` row, so it has no
     // blast radius — the case that made the old count structurally unable to reach zero.
-    sampler.accept(row("Metadata Only", MovieRecord(tmdbId = Some(2), data = Map[Source, SourceData](
+    sampler.accept(corpusRow("Metadata Only", MovieRecord(tmdbId = Some(2), data = Map[Source, SourceData](
       Tmdb -> slot("Metadata Only"), Imdb -> slot("Metadata Only")))))
     sampler.publish(scanComplete = true)
 
@@ -61,9 +63,9 @@ class WorkerSlotFanoutMetricsSpec extends AnyFlatSpec with Matchers {
   it should "take the maximum across the corpus, not the last row" in {
     val (registry, metrics) = fixture
     val sampler = metrics.startSample()
-    sampler.accept(row("Three Venues", MovieRecord(data = Map[Source, SourceData](
+    sampler.accept(corpusRow("Three Venues", MovieRecord(data = Map[Source, SourceData](
       Multikino -> slot("Three Venues"), KinoMuranow -> slot("Three Venues"), Helios -> slot("Three Venues")))))
-    sampler.accept(row("One Venue", MovieRecord(data = Map[Source, SourceData](
+    sampler.accept(corpusRow("One Venue", MovieRecord(data = Map[Source, SourceData](
       Multikino -> slot("One Venue")))))
     sampler.publish(scanComplete = true)
 

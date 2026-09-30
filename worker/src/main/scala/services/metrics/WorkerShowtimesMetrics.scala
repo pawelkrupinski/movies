@@ -4,10 +4,8 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import services.movies.StoredMovieRecord
-import services.readmodel.ReadModelProjection
 
 import java.time.{Clock, LocalDateTime}
-import scala.util.{Failure, Success, Try}
 
 /**
  * Per-city census of how many INDIVIDUAL SHOWTIMES (single dated slots) the source
@@ -51,7 +49,7 @@ class WorkerShowtimesMetrics(
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val tally = new ShowtimeTally(cities, clock, normalizer)
 
-    def accept(row: StoredMovieRecord): Unit = tally.accept(row)
+    def accept(row: CorpusRow): Unit = tally.accept(row)
 
     /** Publishes ONLY a complete census — see [[WorkerCorpusMetrics]] for the incident
      *  that forced this. It matters most here: `kinowo-showtime-volume-collapsed` pages
@@ -76,7 +74,7 @@ object WorkerShowtimesMetrics {
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per country and city, sampled every 5 min through the REAL projection path and gated on readyToProject. sum() across cities is the country total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
+      .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per country and city, sampled every 15 min through the REAL projection path and gated on readyToProject. sum() across cities is the country total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
       .labelNames("country", "city")
       .register(registry)
 
@@ -88,26 +86,22 @@ object WorkerShowtimesMetrics {
    *  per-row resilience. */
   class ShowtimeTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
     private val bySlug = cities.map(c => c.slug -> c).toMap
+    // Each city's "now", read once a pass rather than once per card and city.
+    private val nowIn  = cities.map(c => c.slug -> LocalDateTime.now(clock.withZone(c.zoneId))).toMap
     private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
-    def accept(stored: StoredMovieRecord): Unit =
-      if (stored.record.readyToProject)
-        Try(ReadModelProjection.screeningsAll(stored, normalizer)) match {
-          case Success(cards) =>
-            cards.foreach { screenings =>
-              // Each CityScreening is (film, city, cinema); sum its upcoming slots into
-              // the owning city. A slot belongs to exactly one city, so the per-city
-              // series sum to the general total without double-counting.
-              screenings.groupBy(_.city).foreach { case (citySlug, scs) =>
-                bySlug.get(citySlug).foreach { city =>
-                  val now      = LocalDateTime.now(clock.withZone(city.zoneId))
-                  val upcoming = scs.flatMap(_.showtimes).count(_.isUpcoming(now))
-                  if (upcoming > 0) acc(citySlug) += upcoming
-                }
-              }
-            }
-          case Failure(_) => () // a row that won't project simply doesn't count
+    def accept(row: CorpusRow): Unit =
+      row.screenings(normalizer).foreach(_.foreach { screenings =>
+        // Each CityScreening is (film, city, cinema); sum its upcoming slots into
+        // the owning city. A slot belongs to exactly one city, so the per-city
+        // series sum to the general total without double-counting.
+        screenings.groupBy(_.city).foreach { case (citySlug, scs) =>
+          nowIn.get(citySlug).foreach { now =>
+            val upcoming = scs.iterator.flatMap(_.showtimes).count(_.isUpcoming(now))
+            if (upcoming > 0) acc(citySlug) += upcoming
+          }
         }
+      })
 
     def counts: Map[String, Int] = acc.toMap
   }
@@ -116,7 +110,7 @@ object WorkerShowtimesMetrics {
    *  production folds the same [[ShowtimeTally]] row-by-row off the shared scan. */
   def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer): Map[String, Int] = {
     val tally = new ShowtimeTally(cities, clock, normalizer)
-    rows.iterator.foreach(tally.accept)
+    rows.iterator.foreach(stored => tally.accept(new CorpusRow(stored)))
     tally.counts
   }
 }

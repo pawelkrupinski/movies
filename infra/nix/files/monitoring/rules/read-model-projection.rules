@@ -374,12 +374,12 @@ groups:
       # never reaches zero -- however small -- is what pages.
       #
       # THE WINDOW MUST EXCEED THE CENSUS CADENCE, which is the only reason it is not one minute.
-      # `for: 20m` IS FOUR CENSUS REFRESHES. The worker side is recomputed off the shared corpus
-      # scan every 5 minutes (`WorkerCorpusScan`, KINOWO_CORPUS_SCAN_SECONDS) while the web side
-      # is live off its change streams, so the pair is legitimately out of step for up to one
-      # scan -- and a film whose last showtime passes between the two evaluations flips on one
-      # side first. Twenty minutes is past any of that and still less than half the 45 minutes
-      # the page below waits. WARNING, not critical: a handful of cards is a defect worth a
+      # The worker side is recomputed off the shared corpus scan every 15 minutes
+      # (`WorkerCorpusScan.DefaultSampleInterval`, 5 until 2026-09-30) while the web side is live
+      # off its change streams, so the pair is legitimately out of step for up to one scan plus the
+      # pass itself (under a minute) -- and a film whose last showtime passes between the two
+      # evaluations flips on one side first. `for: 20m` is past that and still less than half the
+      # 45 minutes the page below waits. WARNING, not critical: a handful of cards is a defect worth a
       # working day, not a night. The page below is what fires when the site is visibly short.
       #
       # IF THIS IS LIT AND THE COUNT IS SMALL, do not raise the threshold -- there is nothing to

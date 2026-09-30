@@ -82,27 +82,27 @@ tests:
           - labels: '{country="pl",service="IMDb"}'
             value: 0.05
 
-  # ── kinowo-corpus-census-stuck (> 1.5 incomplete scans in 30m) ────────────────────────────────
-  # The US census gives up on two passes in half an hour -- the gauges it feeds are frozen. DE has
+  # ── kinowo-corpus-census-stuck (> 1.5 incomplete scans in 45m) ────────────────────────────────
+  # The US census gives up on two passes 15 minutes apart -- the gauges it feeds are frozen. DE has
   # ONE incomplete pass after an earlier one since boot (the counter already at 5), which a single
-  # slow read produces and the next pass fixes. `increase` extrapolates that single step to 1.017
-  # at the app's 30s scrape interval: over the `> 1` this rule used to have, for the whole half
-  # hour, so it paged on one miss. The first DE-like pass after boot reads exactly 1, because the
-  # extrapolation stops at the counter's zero -- which is why a boot-fresh test never saw it.
+  # slow read produces and the next pass fixes. `increase` extrapolates that single step past 1 at
+  # the app's 30s scrape interval: over the `> 1` this rule used to have, for the whole window, so
+  # it paged on one miss. The window is 45 minutes since the scan went from every 5 minutes to
+  # every 15 (2026-09-30): three passes, so two failed ones still fit with room.
   - interval: 30s
     input_series:
       - series: 'kinowo_worker_corpus_scan_incomplete_total{country="us",job="kinowo-worker"}'
-        values: '5x40 6x10 7x50'
+        values: '5x40 6x30 7x60'
       - series: 'kinowo_worker_corpus_scan_incomplete_total{country="de",job="kinowo-worker"}'
-        values: '5x40 6x60'
+        values: '5x40 6x90'
     promql_expr_test:
-      - expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[30m]))'
-        eval_time: 40m
+      - expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[45m]))'
+        eval_time: 55m
         exp_samples:
           - labels: '{country="us"}'
-            value: 2.0338983050847457
+            value: 2.0224719101123596
           - labels: '{country="de"}'
-            value: 1.0169491525423728
+            value: 1.0112359550561798
 
   # ── kinowo-worker-task-age-high (head-of-line wait > 600s) ───────────────────────────────────
   # The PL queue's oldest waiting task is 20 minutes old; the US queue's is 90 seconds, a queue

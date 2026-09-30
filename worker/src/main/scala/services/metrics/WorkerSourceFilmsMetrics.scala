@@ -4,10 +4,8 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, CityScreening}
 import services.movies.StoredMovieRecord
-import services.readmodel.ReadModelProjection
 
 import java.time.{Clock, LocalDateTime}
-import scala.util.{Failure, Success, Try}
 
 /**
  * Per-city census of how many films the SOURCE `movies` collection would serve —
@@ -52,7 +50,7 @@ class WorkerSourceFilmsMetrics(
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val tally = new FilmTally(cities, clock, normalizer)
 
-    def accept(row: StoredMovieRecord): Unit = tally.accept(row)
+    def accept(row: CorpusRow): Unit = tally.accept(row)
 
     /** Publishes ONLY a complete census — see [[WorkerCorpusMetrics]] for the incident
      *  that forced this. This gauge is the source-vs-read-model drift comparison, so a
@@ -96,22 +94,18 @@ object WorkerSourceFilmsMetrics {
    *  bucketing) and gated on `readyToProject`; a row that fails to project is skipped,
    *  matching the projector's per-row resilience. */
   class FilmTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
-    private val bySlug = cities.map(c => c.slug -> c).toMap
+    // Each city's "now" and local tomorrow, read once a pass rather than once per card and city.
+    private val clocks = cities.map { c =>
+      val now = LocalDateTime.now(clock.withZone(c.zoneId)); c.slug -> (now, now.toLocalDate.plusDays(1)) }.toMap
     private val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
 
-    def accept(stored: StoredMovieRecord): Unit =
-      if (stored.record.readyToProject)
-        // Only the SCREENINGS half is needed to count qualifying cards per city;
-        // `screeningsAll` skips the `resolve`/synopsis/ratings materialisation
-        // `projectAll` does (this census re-reads the whole corpus every 5 min,
-        // and that metadata work was the worker's single biggest CPU consumer).
-        Try(ReadModelProjection.screeningsAll(stored, normalizer)) match {
-          case Success(cards) =>
-            cards.foreach { screenings =>
-              qualifyingKeys(screenings, bySlug, clock).foreach(key => acc(key) += 1)
-            }
-          case Failure(_) => () // a row that won't project simply doesn't count
-        }
+    // Only the SCREENINGS half is needed to count qualifying cards per city — `screeningsAll`
+    // skips the `resolve`/synopsis/ratings materialisation `projectAll` does — and the row's
+    // projection is shared with the showtimes census ([[CorpusRow]]).
+    def accept(row: CorpusRow): Unit =
+      row.screenings(normalizer).foreach(_.foreach { screenings =>
+        qualifyingKeys(screenings, clocks).foreach(key => acc(key) += 1)
+      })
 
     def counts: Map[(String, String), Int] = acc.toMap
   }
@@ -120,7 +114,7 @@ object WorkerSourceFilmsMetrics {
    *  production folds the same [[FilmTally]] row-by-row off the shared scan. */
   def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer): Map[(String, String), Int] = {
     val tally = new FilmTally(cities, clock, normalizer)
-    rows.iterator.foreach(tally.accept)
+    rows.iterator.foreach(stored => tally.accept(new CorpusRow(stored)))
     tally.counts
   }
 
@@ -129,16 +123,13 @@ object WorkerSourceFilmsMetrics {
    *  that city's local tomorrow. The two scopes are independent — a card can hit
    *  both — and a city the card never plays in contributes nothing. */
   private def qualifyingKeys(screenings: Seq[CityScreening],
-                             bySlug:     Map[String, City],
-                             clock:      Clock): Set[(String, String)] =
+                             clocks:     Map[String, (LocalDateTime, java.time.LocalDate)]): Set[(String, String)] =
     // `.toSeq` before flatMap: a Map#flatMap returning (citySlug, scope) pairs would
     // rebuild a Map keyed by citySlug, collapsing a city's `all` and `tomorrow` keys
     // into one (last wins). A Seq keeps both.
     screenings.groupBy(_.city).toSeq.flatMap { case (citySlug, scs) =>
-      bySlug.get(citySlug).toSeq.flatMap { city =>
-        val now       = LocalDateTime.now(clock.withZone(city.zoneId))
-        val tomorrow  = now.toLocalDate.plusDays(1)
-        val showtimes = scs.flatMap(_.showtimes)
+      clocks.get(citySlug).toSeq.flatMap { case (now, tomorrow) =>
+        val showtimes = scs.iterator.flatMap(_.showtimes).toSeq
         Seq(
           Option.when(showtimes.exists(_.isUpcoming(now)))(citySlug -> Scope.All),
           Option.when(showtimes.exists(_.dateTime.toLocalDate == tomorrow))(citySlug -> Scope.Tomorrow)

@@ -3,7 +3,6 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
-import services.movies.StoredMovieRecord
 
 import java.time.{Clock, LocalDateTime}
 
@@ -24,7 +23,7 @@ import java.time.{Clock, LocalDateTime}
  *   - `misresolved`      resolved to a film its own cinemas contradict
  *   - `unresolved_with_showtimes`  NOT resolved, yet still screening — invisible on the site
  *
- * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min), decoupled
+ * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 15 min), decoupled
  * from the scrape rate, so it costs no reads of its own. Most subsets read ids and
  * ratings only; `unresolved_with_showtimes` also reads the showtimes the pass already
  * stitches for its sibling collectors, which is why it is free to compute here and
@@ -46,7 +45,7 @@ class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clo
     private val now    = LocalDateTime.now(clock)
     private var counts = CorpusCounts.empty
 
-    def accept(row: StoredMovieRecord): Unit = counts = counts.add(row.record, now)
+    def accept(row: CorpusRow): Unit = counts = counts.add(row.stored.record, now)
 
     /** Publishes ONLY a complete census. A partial scan's counts are not a smaller
      *  corpus, they are fewer rows read — and published as a gauge the two are

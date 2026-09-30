@@ -176,7 +176,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val stopwatch = new tools.Stopwatch(() => now)
     final class Costing(perRow: Long, onPublish: Long) extends CorpusMetricsCollector {
       def startSample(): CorpusRowSampler = new CorpusRowSampler {
-        def accept(row: StoredMovieRecord): Unit    = now += perRow
+        def accept(row: CorpusRow): Unit            = now += perRow
         def publish(scanComplete: Boolean): Unit   = now += onPublish
       }
     }
@@ -186,5 +186,21 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     pass.byCollector.map(_._2.toMillis) shouldBe Seq(2L, 25L)   // two rows each, then the publish
     pass.byCollector.map(_._1).distinct shouldBe Seq("Costing")
     pass.summary should startWith("worker-corpus-scan: pass took 27ms — Costing 25ms, Costing 2ms")
+  }
+
+  // Two collectors read every row's projection (films served, upcoming showtimes), and each used to
+  // build it itself — the pass's costliest step, twice over. The scan hands them one row, projected once.
+  it should "project each row once however many collectors read its screenings" in {
+    val seen       = scala.collection.mutable.ArrayBuffer.empty[AnyRef]
+    val normalizer = SingleCountryNormalizer.titleNormalizer   // one per country, as the wiring hands every collector
+    final class Reading extends CorpusMetricsCollector {
+      def startSample(): CorpusRowSampler = new CorpusRowSampler {
+        def accept(row: CorpusRow): Unit         = row.screenings(normalizer).foreach(seen += _)
+        def publish(scanComplete: Boolean): Unit = ()
+      }
+    }
+    new WorkerCorpusScan(repositoryOf(rows*), Seq(new Reading, new Reading)).sample()
+    seen should have size (rows.size * 2)
+    seen.grouped(2).foreach(pair => (pair(0) eq pair(1)) shouldBe true)
   }
 }
