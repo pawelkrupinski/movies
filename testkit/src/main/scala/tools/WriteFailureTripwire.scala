@@ -90,7 +90,7 @@ object WriteFailureTripwire {
    *  one log line carries, so the tripwire and the `repository_write_failed` counter share
    *  one source of truth rather than a message pattern. */
   def isWriteFailure(event: ILoggingEvent): Boolean =
-    Option(event.getMarkerList).exists(_.asScala.exists(_.contains(RepositoryWrite.FailedMarker)))
+    Option(event.getMarkerList).exists(_.asScala.contains(RepositoryWrite.FailedMarker))
 
   private def describe(event: ILoggingEvent): String =
     s"[${event.getLevel} ${event.getLoggerName}] ${event.getFormattedMessage}"
