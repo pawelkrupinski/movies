@@ -638,7 +638,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.reload()
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
-      Thread.sleep(150)
+      awaitHiddenFilmsWrites(page)
       page.evalString(
         "performance.getEntriesByType('resource')" +
           ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
@@ -695,7 +695,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.navigate(server.baseUrl + cityPrefix + "/li")        // signed back in, on pl
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
-      Thread.sleep(150)
+      awaitHiddenFilmsWrites(page)
       page.evalString(
         "performance.getEntriesByType('resource')" +
           ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
@@ -867,11 +867,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("hideFilmOnServer('New Hide')")
       // 150ms: comfortably under the retired 400ms debounce window, so this
       // only passes if the request fires immediately rather than waiting.
-      Thread.sleep(150)
-      val hit = page.evalString(
+      page.waitFor(
         "performance.getEntriesByType('resource')" +
-          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/New%20Hide') !== -1; }).toString()")
-      hit shouldBe "true"
+          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/New%20Hide') !== -1; })",
+        timeoutMs = 150)
     }
   }
 
@@ -888,7 +887,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           ".length.toString()")
       val before = bucketHits()
       page.eval("clearHiddenFilmsOnServer()")
-      Thread.sleep(150)
+      awaitHiddenFilmsWrites(page)
       bucketHits().toInt shouldBe (before.toInt + 1)
     }
   }
@@ -1916,9 +1915,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "width" -> 500, "height" -> 896, "deviceScaleFactor" -> 1.0, "mobile" -> false
       ))
       // The override triggers a re-layout but doesn't always re-fire
-      // applyFilters etc.; wait a frame for the resize listeners to
-      // settle.
-      Thread.sleep(100L)
+      // applyFilters etc.; wait for the resize listeners to settle.
+      page.awaitRenderedFrame()
       // beforeAll renders the corpus with `oauthProviders = Set.empty`,
       // which leaves `<div class="navbar-auth">` empty. An empty flex item
       // has zero size and its `getBoundingClientRect` reports a degenerate
@@ -1982,7 +1980,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.getElementById('from-hour').value = '18'; onFormatChange(); " +
         "updateFormatBtn();"
       )
-      Thread.sleep(50L)
+      page.awaitRenderedFrame()
       val (dateTop2,   _) = rect(".navbar-date")
       val (filtryTop2, _) = rect(".navbar-filtry")
       withClue(s"after filters: dateTop=$dateTop2 filtryTop=$filtryTop2") {
@@ -2053,8 +2051,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           page.setViewport(w, 800)
           // CDP's setDeviceMetricsOverride triggers a relayout, but
           // resize-listeners and font-driven flex-shrink can settle on a
-          // second tick. A short pause + a forced reflow read is enough.
-          Thread.sleep(60L)
+          // second tick — past a rendered frame they have.
+          page.awaitRenderedFrame()
 
           // Skip zero-size slots (empty anonymous auth) AND the floating
           // search pill: on portrait it's `position:fixed`, lifted out of the
@@ -2490,7 +2488,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pinDeterministicFont(page)
       val overflows: Seq[(Int, Int)] = MobileViewports.map { w =>
         page.setViewport(w, 1000)
-        Thread.sleep(60L)
+        page.awaitRenderedFrame()
         // Document scroll-width vs viewport width — the simplest
         // "anything overflowing horizontally" check. Body content
         // wider than the viewport produces a horizontal scrollbar
@@ -2551,7 +2549,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath(filmTarget) { page =>
       val rows = FilmCrampedWidths.map { w =>
         page.setViewport(w, 1100)
-        Thread.sleep(60L)
+        page.awaitRenderedFrame()
         val (_, _, posterBottom, _, titleTop, _) = filmHeroGeometry(page)
         (w, posterBottom, titleTop)
       }
@@ -2571,7 +2569,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "sit side by side at desktop width (1280px)" in {
     onPath(filmTarget) { page =>
       page.setDesktopViewport(1280, 900)
-      Thread.sleep(60L)
+      page.awaitRenderedFrame()
       val (_, posterRight, posterBottom, _, titleTop, titleLeft) = filmHeroGeometry(page)
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
       withClue(s"posterRight=$posterRight posterBottom=$posterBottom titleTop=$titleTop titleLeft=$titleLeft ") {
@@ -2626,7 +2624,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         case class Row(width: Int, rows: Int, documentOverflow: Int)
         val measured: Seq[Row] = DesktopViewports.map { w =>
           page.setDesktopViewport(w, 900)
-          Thread.sleep(60L)
+          page.awaitRenderedFrame()
 
           val rowCount = page.evalInt(
             "(() => { const nav = document.querySelector('.navbar');" +
@@ -5550,17 +5548,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "scheduleDayRollover()")
       page.evalBool("window.__preRollover === true") shouldBe true
 
-      Thread.sleep(1500L)   // rollover fires at ~550ms, then the navigation
-      page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
-      page.evalBool("window.__preRollover === undefined") shouldBe true
+      // The rollover fires at ~550ms; the marker going is the navigation landing.
+      page.waitFor("window.__preRollover === undefined && document.readyState === 'complete'", timeoutMs = 5000)
       // The reloaded page is a working listing again — and, since its own
-      // midnight is a day out, it settles rather than reloading on a loop.
+      // midnight is a day out, it settles rather than reloading on a loop: a
+      // bounce would come within one ~250ms grace of the load, well inside this.
       page.evalInt("document.querySelectorAll('.badge-time').length") should be > 0
-      Thread.sleep(800L)
-      page.evalBool("document.readyState === 'complete'") shouldBe true
       page.eval("window.__postRollover = true")
       Thread.sleep(800L)
-      page.evalBool("window.__postRollover === true") shouldBe true
+      page.evalBool("document.readyState === 'complete' && window.__postRollover === true") shouldBe true
     }
   }
 
@@ -5575,6 +5571,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
+
+  /** Wait until every hiddenFilms write this page has made so far has come back
+   *  — the tail of `shared.js`'s per-country write chain. A negative check ("no
+   *  PUT for X") read after this is final, not a guess at how long a request takes. */
+  private def awaitHiddenFilmsWrites(page: CdpPage, country: String = "pl"): Unit =
+    page.eval(s"(_hiddenFilmsWrites[${jsString(country)}] || Promise.resolve()).then(() => true)")
 
   private def clearLocalStorage(page: CdpPage): Unit =
     page.eval("localStorage.clear(); applyFilters()")

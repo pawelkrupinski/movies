@@ -625,6 +625,14 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     ))
   }
 
+  /** Return once the page has rendered two more frames. A resize (or any
+   *  change a listener reacts to) is handled in a frame's rendering steps —
+   *  resize events, then rAF callbacks — so past the second frame every
+   *  listener the first one queued has run and its layout has landed. The
+   *  positive signal a fixed "let it settle" sleep only guessed at. */
+  def awaitRenderedFrame(): Unit =
+    eval("new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))")
+
   override def close(): Unit =
     try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
     catch { case _: Throwable => () }
