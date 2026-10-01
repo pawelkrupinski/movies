@@ -23,10 +23,13 @@ import scala.util.Try
  * `div.js-event-details-filter.movies-movie__single` blocks.  Within each block:
  *
  *   - `.movies-movie__single__title` (an `h2` or, since 2026-06-16, an `h3`) —
- *     a composite string:
- *     "CLEAN TITLE, Country, genres, rating   INTERNAL-CODE".
- *     The clean film title is the segment before the FIRST comma (the rest
- *     carries locale / genre metadata that we discard).
+ *     a composite string, read by [[McswElektrowniaCinemaClient.parseTitle]]:
+ *     "CLEAN TITLE, Country, genres, rating   KS N 2026D2D4410" — and since
+ *     autumn 2026 also "OBCY-kryminał/Francja/15lat N, KS 2025T2D10184", the
+ *     genre / country / age glued to the title by a dash. The countries, genres
+ *     and age become the film's; the catalogue code's year is its production
+ *     year and its letter the version (D dubbing, T subtitles, O the Polish
+ *     original), beside its "2D".
  *   - `li[event-filter]` / `a[href^="/MSI/Default.aspx?event_id="]` — each
  *     list item is ONE screening occurrence; the anchor text is its time
  *     ("HH:MM") and the href is the per-occurrence booking URL.
@@ -68,18 +71,20 @@ class McswElektrowniaCinemaClient(
     val slots: Seq[RawSlot] = byDate.values.toSeq.flatMap(_.toOption).flatten
 
     // Group by normalised title and merge showtimes across days.
-    SlotsToMovies.fold(slots, _.normTitle, s => Showtime(s.dateTime, Some(BookingBase + s.eventPath))) {
+    SlotsToMovies.fold(slots, _.normTitle, s => Showtime(s.dateTime, Some(BookingBase + s.eventPath), format = s.parts.format)) {
       (_, group, showtimes) =>
         val head = group.head
         CinemaMovie(
-          movie     = Movie(head.displayTitle),
+          movie     = Movie(head.displayTitle, releaseYear = head.parts.year, countries = head.parts.countries,
+            genres = head.parts.genres),
           cinema    = cinema,
           posterUrl = head.posterUrl,
           filmUrl   = None,
           synopsis  = None,
           cast      = Seq.empty,
           director  = Seq.empty,
-          showtimes = showtimes
+          showtimes = showtimes,
+          ageRating = head.parts.ageRating
         )
     }
   }
@@ -98,26 +103,67 @@ object McswElektrowniaCinemaClient {
   /** A raw (date + time) screening extracted from one day page. */
   private[cinemas] case class RawSlot(
     displayTitle: String,  // cleaned title for user display
+    parts:        TitleParts,
     normTitle:    String,  // lowercased key for cross-day grouping
     posterUrl:    Option[String],
     dateTime:     LocalDateTime,
     eventPath:    String   // e.g. "/MSI/Default.aspx?event_id=14125&typetran=0&..."
   )
 
-  /** Extract the user-facing film title: the first segment before the first
-   *  ", " separator.  The MSI system embeds country / genre / rating metadata
-   *  as comma-delimited tail segments, and sometimes appends an internal
-   *  catalogue code ("2026D2D2251"). */
-  private[cinemas] def extractTitle(raw: String): String = {
-    val trimmed = raw.trim
-    val commaIndex = trimmed.indexOf(", ")
-    val base = if (commaIndex > 0) trimmed.substring(0, commaIndex)
-               else {
-                 // No ", " separator — try a bare comma
-                 val bare = trimmed.indexOf(',')
-                 if (bare > 0) trimmed.substring(0, bare) else trimmed
-               }
-    base.trim
+  /** What one composite title says: the film's title, and what its tail and catalogue code state. */
+  private[cinemas] final case class TitleParts(title: String, year: Option[Int] = None, countries: Seq[String] = Nil,
+                                               genres: Seq[String] = Nil, ageRating: Option[String] = None, format: List[String] = Nil)
+
+  // "2026D2D4410" / "2025T2D10184" / "19532DT0004": production year, version letter, dimension, number.
+  private val CatalogueCode = """\s*\b(\d{4})(?:([A-Z])([23]D)|([23]D)([A-Z]))\d+\s*$""".r
+  // The venue's markers before the code ("KS N"), and a note in brackets ("(kopia cyfrowa 4K, …)").
+  private val Markers       = """(?:\s*,?\s*\b(?:KS|N)\b)+\s*$""".r
+  private val Note          = """\s*\([^)]*\)""".r
+  private val Age           = """(?i)^(?:od\s*)?(\d{1,2})\s*lat(?:\s+(?:KS|N))*$""".r
+  private val VersionOf     = Map('D' -> "DUB", 'T' -> "NAP")
+  private val VersionWords  = Map("dubbing" -> "DUB", "napisy" -> "NAP", "lektor" -> "LEK")
+  /** The genres this venue writes (lower-cased), "fatasy" its own spelling. */
+  private val Genres = Set("animowany", "animacja", "dramat", "obyczajowy", "komedia", "romans", "thriller", "horror",
+    "kryminał", "familijny", "fantasy", "fatasy", "sci-fi", "przygodowy", "dokumentalny", "biograficzny", "historyczny",
+    "kostiumowy", "muzyczny", "musical", "wojenny", "western", "akcja", "sensacyjny", "psychologiczny", "polityczny",
+    "katastroficzny", "baśń", "romantyczna", "romantyczny", "kryminalny", "mystery")
+
+  private enum Piece { case Country(name: String); case Genre(name: String); case AgeOf(years: String); case Version(token: String) }
+
+  /** One tail segment as what it states, or `None` when it states nothing this venue writes. */
+  private def piece(raw: String): Option[Seq[Piece]] = {
+    val t = raw.trim
+    val country = services.cinemas.CountryNames.canonical(t)
+    if (t.isEmpty) Some(Nil)
+    else if (services.identity.IdentityMeasures.countryCode(country).isDefined) Some(Seq(Piece.Country(country)))
+    else Age.findFirstMatchIn(t).map(m => Seq(Piece.AgeOf(m.group(1))))
+      .orElse(VersionWords.get(t.toLowerCase).map(v => Seq(Piece.Version(v))))
+      .orElse(Option.when(t.toLowerCase.split("\\s+").forall(Genres))(t.toLowerCase.split("\\s+").toSeq.map(Piece.Genre(_))))
+  }
+
+  /** Read a composite title (see the class doc). A dash tail is the title's only when one of its
+   *  segments states nothing this venue writes ("SZTUKA NA EKRANIE-HAUSER" keeps its performer). */
+  private[cinemas] def parseTitle(raw: String): TitleParts = {
+    val code    = CatalogueCode.findFirstMatchIn(raw.trim)
+    val body    = Note.replaceAllIn(code.fold(raw.trim)(m => raw.trim.take(m.start)), "")
+    val unmarked = Markers.replaceFirstIn(body, "").trim
+    val segments = unmarked.split(",").map(_.trim).toSeq
+    val (head, rest) = (segments.headOption.getOrElse(""), segments.drop(1))
+    val dashed = """^(.+?\S)\s*[-–]\s*(\S.*)$""".r.findFirstMatchIn(head).flatMap { m =>
+      val tail = m.group(2).split("/").toSeq.map(piece)
+      Option.when(tail.forall(_.isDefined))(m.group(1).trim -> tail.flatten.flatten)
+    }
+    val (title, fromDash) = dashed.getOrElse(head.trim -> Nil)
+    val pieces = fromDash ++ rest.flatMap(_.split("/")).flatMap(piece(_).getOrElse(Nil))
+    val version = code.flatMap(m => Option(m.group(2)).orElse(Option(m.group(5)))).flatMap(l => VersionOf.get(l.head))
+    val dim     = code.flatMap(m => Option(m.group(3)).orElse(Option(m.group(4))))
+    TitleParts(
+      title     = title,
+      year      = code.map(_.group(1).toInt).filter(y => y >= 1888 && y <= 2100),
+      countries = pieces.collect { case Piece.Country(c) => c }.distinct,
+      genres    = pieces.collect { case Piece.Genre(g) => g }.distinct,
+      ageRating = pieces.collectFirst { case Piece.AgeOf(a) => a },
+      format    = (dim.toList ++ version.toList ++ pieces.collect { case Piece.Version(v) => v }).distinct)
   }
 
   private[cinemas] def parseDayPage(html: String, date: LocalDate): Seq[RawSlot] = {
@@ -130,7 +176,8 @@ object McswElektrowniaCinemaClient {
         .map(_.text.trim).getOrElse("")
       if (rawTitle.isEmpty) Seq.empty
       else {
-        val displayTitle = extractTitle(rawTitle)
+        val parts        = parseTitle(rawTitle)
+        val displayTitle = parts.title
         val normTitle    = displayTitle.trim.toLowerCase
 
         val posterUrl = Option(block.selectFirst("img[src]"))
@@ -150,7 +197,7 @@ object McswElektrowniaCinemaClient {
           if (timeOpt.isEmpty || !seenKeys.add(key)) Nil
           else {
             val dateTime = LocalDateTime.of(date, timeOpt.get)
-            Seq(RawSlot(displayTitle, normTitle, posterUrl, dateTime, path))
+            Seq(RawSlot(displayTitle, parts, normTitle, posterUrl, dateTime, path))
           }
         }
       }
