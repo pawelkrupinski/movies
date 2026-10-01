@@ -8,7 +8,7 @@ import scala.collection.mutable.ListBuffer
 class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
 
   "ChangeStreamFanout" should "deliver every upsert to ALL registered listeners" in {
-    val fanout = new ChangeStreamFanout[String]("test")
+    val fanout = new ChangeStreamFanout[String, String]("test")
     val a, b = ListBuffer.empty[String]
     fanout.register(a += _, _ => ())
     fanout.register(b += _, _ => ())
@@ -20,7 +20,7 @@ class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stop delivering to a listener once its handle is closed, leaving others attached" in {
-    val fanout = new ChangeStreamFanout[String]("test")
+    val fanout = new ChangeStreamFanout[String, String]("test")
     val a, b = ListBuffer.empty[String]
     val handleA = fanout.register(a += _, _ => ())
     fanout.register(b += _, _ => ())
@@ -34,7 +34,7 @@ class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "report isEmpty only once every listener has detached (the cursor-stop signal)" in {
-    val fanout = new ChangeStreamFanout[String]("test")
+    val fanout = new ChangeStreamFanout[String, String]("test")
     fanout.isEmpty shouldBe true
     val h1 = fanout.register(_ => (), _ => ())
     val h2 = fanout.register(_ => (), _ => ())
@@ -46,7 +46,7 @@ class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "isolate a throwing listener so the others still receive the event" in {
-    val fanout = new ChangeStreamFanout[String]("test")
+    val fanout = new ChangeStreamFanout[String, String]("test")
     val seen = ListBuffer.empty[String]
     fanout.register(_ => throw new RuntimeException("boom"), _ => ())
     fanout.register(seen += _, _ => ())
@@ -56,7 +56,7 @@ class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "route deletes to every listener's onDelete by id" in {
-    val fanout = new ChangeStreamFanout[String]("test")
+    val fanout = new ChangeStreamFanout[String, String]("test")
     val deletedA, deletedB = ListBuffer.empty[String]
     fanout.register(_ => (), deletedA += _)
     fanout.register(_ => (), deletedB += _)

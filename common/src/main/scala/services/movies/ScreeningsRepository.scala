@@ -51,6 +51,12 @@ trait ScreeningsRepository extends SlotKeyedRows {
     (rows.view.mapValues(_.showtimes).toMap, complete)
   }
 
+  /** [[findForFilmChecked]] narrowed to the film's slots at `cinemas` (`Cinema.displayName`s). */
+  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, Seq[Showtime]], Boolean) = {
+    val (rows, complete) = findForFilmChecked(filmId)
+    (rows.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) }, complete)
+  }
+
   /** [[findForFilmChecked]] with each row's `listingKey` beside its showtimes — what a WRITE
    *  compares against and a merge carries across, so a row whose listing key moved is rewritten
    *  and a moved row keeps the key it had. Serving never needs the key (phase 4 of the identity
@@ -118,6 +124,12 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  listeners synchronously have no backlog and can ignore it. */
   def watchApplied(onChange: (String, () => Unit) => Unit,
                    demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
+
+  /** [[watchApplied]] naming the changed ROW — its composite `_id` ([[SlotKeyed.idOf]]) — where
+   *  the store knows it, so a caller can tell which of a film's rows moved; else the film id, as
+   *  [[watchApplied]] does ([[SlotKeyed.filmIdOf]] reads both). */
+  def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    watchApplied(onChange, demand)
 
   def close(): Unit = ()
 }
@@ -295,6 +307,17 @@ class MongoScreeningsRepository(
   // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
   // answered opposite things for the same state, and a caller that treats "unreadable" as
   // "defer" would have deferred forever against a Mongo-less stack.
+  /** One `_id` range per venue, so only those venues' rows are read and decoded. */
+  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, Seq[Showtime]], Boolean) =
+    coll.fold((Map.empty[String, Seq[Showtime]], true)) { c =>
+      Try(Await.result(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
+        case Success(docs) => (docs.map(d => d.slotKey -> d.listed.showtimes).toMap, true)
+        case Failure(e) =>
+          logger.warn(s"ScreeningsRepository.findAtCinemas($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
+          (Map.empty, false)
+      }
+    }
+
   def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
     coll.fold((Map.empty[String, ListedShowtimes], true)) { c =>
       Try(Await.result(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
@@ -501,6 +524,9 @@ class MongoScreeningsRepository(
     coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))
+
+  override def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch(onChange, demand))
 
   override def close(): Unit = resumeToken.save(force = true)

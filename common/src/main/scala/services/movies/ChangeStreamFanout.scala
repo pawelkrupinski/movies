@@ -24,13 +24,15 @@ import java.util.concurrent.CopyOnWriteArrayList
  * registration (on app threads), and each listener runs under its own try/catch
  * so one throwing consumer can't starve the others.
  */
-final class ChangeStreamFanout[A](name: String) extends Logging {
-  private final case class Listener(onUpsert: A => Unit, onDelete: String => Unit)
+final class ChangeStreamFanout[A, V](name: String) extends Logging {
+  private final case class Listener(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => Boolean)
   private val listeners = new CopyOnWriteArrayList[Listener]()
 
-  /** Attach a consumer; the returned handle detaches only that consumer. */
-  def register(onUpsert: A => Unit, onDelete: String => Unit): AutoCloseable = {
-    val entry = Listener(onUpsert, onDelete)
+  /** Attach a consumer; the returned handle detaches only that consumer. `onPart` takes a change
+   *  delivered as a PART of the record (see [[dispatchPart]]) and answers whether it applied it —
+   *  a consumer that cannot never does, and is handed the whole record instead. */
+  def register(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => Boolean = (_: V) => false): AutoCloseable = {
+    val entry = Listener(onUpsert, onDelete, onPart)
     listeners.add(entry)
     new AutoCloseable { override def close(): Unit = { listeners.remove(entry); () } }
   }
@@ -42,6 +44,19 @@ final class ChangeStreamFanout[A](name: String) extends Logging {
   def dispatchUpsert(record: A): Unit = listeners.forEach { l =>
     try l.onUpsert(record)
     catch { case exception: Throwable => logger.warn(s"$name change-stream apply failed: ${exception.getMessage}") }
+  }
+
+  /** Offer every listener a part of the record; true only when EVERY one applied it. A false
+   *  answer obliges the caller to [[dispatchUpsert]] the whole record — to every listener, the
+   *  ones that applied the part included: a whole record is a superset of any part of it. A
+   *  listener that throws counts as one that did not apply it. */
+  def dispatchPart(part: V): Boolean = {
+    var all = true
+    listeners.forEach { l =>
+      try { if (!l.onPart(part)) all = false }
+      catch { case exception: Throwable => all = false; logger.warn(s"$name change-stream part apply failed: ${exception.getMessage}") }
+    }
+    all
   }
 
   def dispatchDelete(id: String): Unit = listeners.forEach { l =>

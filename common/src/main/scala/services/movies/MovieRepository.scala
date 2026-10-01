@@ -363,6 +363,23 @@ trait MovieRepository {
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = watchChanges(onUpsert(_, FilmWriteFence.Unfenced), onDelete)
 
+  /** [[watchChanges]] for a consumer that can also take a change confined to some venues'
+   *  showtimes as those venues alone ([[VenueSlots]]), answering whether it applied it — a false
+   *  answer brings it the whole film. A store that cannot read venues alone hands every change
+   *  over whole. */
+  def watchChangesWithVenues(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: VenueSlots => Boolean
+  ): Option[AutoCloseable] = watchChanges(onUpsert, onDelete)
+
+  /** [[watchChangesWithVenues]] fenced as [[watchChangesFenced]] is. */
+  def watchChangesFencedWithVenues(
+    onUpsert: (StoredMovieRecord, Long) => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: (VenueSlots, Long) => Boolean
+  ): Option[AutoCloseable] = watchChangesFenced(onUpsert, onDelete)
+
   /** Where a consumer of [[watchChangesFenced]] fences its own writes of a film. */
   lazy val writeFence: FilmWriteFence = new FilmWriteFence()
 
@@ -545,6 +562,30 @@ class MongoMovieRepository(
     if (screenings.isEmpty) withSlots
     else withSlots.copy(record = withSlots.record.copy(
       data = ScreeningsSplit.stitch(withSlots.record.data, scr)))
+  }
+
+  /** The film's slots at `cinemas` as a whole-film read stitches them (see [[VenueSlots]]) —
+   *  reading only those venues' `movie_slots` and `screenings` rows. None when either read fails,
+   *  when a slot key names no known per-title venue slot, or when a `screenings` row has no slot
+   *  row beside it (a whole-film read would take that slot from the `movies` document, which this
+   *  does not read): the caller then reads the whole film. */
+  private[movies] def readVenues(filmId: String, cinemas: Set[models.Cinema]): Option[VenueSlots] = {
+    val names = cinemas.map(_.displayName)
+    for {
+      sl                        <- slots
+      sc                        <- screenings
+      (slotRows, slotsRead)      = sl.findAtCinemasChecked(filmId, names)
+      if slotsRead
+      (showtimeRows, showsRead)  = sc.findAtCinemasChecked(filmId, names)
+      if showsRead && showtimeRows.keySet.subsetOf(slotRows.keySet)
+      placed                     = slotRows.toSeq.map { case (key, slot) => Source.byWireKey(key).collect {
+                                     case showing: models.CinemaShowing if cinemas(showing.cinema) => showing -> slot } }
+      if placed.forall(_.isDefined)
+    } yield {
+      val stitched = ScreeningsSplit.stitch(placed.flatten.toMap[Source, SourceData], showtimeRows)
+      VenueSlots(FilmId(filmId), cinemas.map(cinema => cinema -> stitched.toSeq.collect {
+        case (showing: models.CinemaShowing, slot) if showing.cinema == cinema => showing -> slot }).toMap)
+    }
   }
 
   /** Union a row's stored `movie_slots` rows with whatever its `movies` document still
@@ -1246,7 +1287,9 @@ class MongoMovieRepository(
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
       decodeFailures      = decodeFailures,
-      debounce            = changeDebounce)
+      debounce            = changeDebounce,
+      // Only where both side collections are split out is a venue readable alone.
+      readVenues          = Option.when(screenings.isDefined && slots.isDefined)(readVenues))
   }
 
   /** Change events handed to the apply thread but not yet applied — see
@@ -1262,6 +1305,18 @@ class MongoMovieRepository(
     onUpsert: (StoredMovieRecord, Long) => Unit,
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id))))
+
+  override def watchChangesWithVenues(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: VenueSlots => Boolean
+  ): Option[AutoCloseable] = changeStream.map(_.watchFenced((film, _) => onUpsert(film), id => onDelete(FilmId(id)), (venues, _) => onVenues(venues)))
+
+  override def watchChangesFencedWithVenues(
+    onUpsert: (StoredMovieRecord, Long) => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: (VenueSlots, Long) => Boolean
+  ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id)), onVenues))
 
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */

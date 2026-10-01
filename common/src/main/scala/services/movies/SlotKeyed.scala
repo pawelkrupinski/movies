@@ -91,6 +91,21 @@ object SlotKeyed {
   /** The slot-key suffix of a composite `_id` — [[idOf]]'s other half. */
   def slotKeyOf(compositeId: String): String = compositeId.drop(filmIdOf(compositeId).length + 1)
 
+  /** The rows of one film at the venues named `cinemas` (`Cinema.displayName`s), in either side
+   *  collection: an `_id` range per venue — a venue's slot keys are its name, `␟`, the title key —
+   *  served by the `_id` index, so a change at one venue of a wide film reads that venue's rows. */
+  def atCinemasFilter(filmId: String, cinemas: Set[String]): Bson =
+    Filters.or(cinemas.toSeq.map { cinema =>
+      val prefix = idOf(filmId, s"$cinema${models.CinemaShowing.Separator}")
+      Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", s"$prefix\uffff"))
+    }*)
+
+  /** Whether `slotKey` is a slot at one of `cinemas` — [[atCinemasFilter]] for rows already in hand. */
+  def isAtCinemas(slotKey: String, cinemas: Set[String]): Boolean = {
+    val sep = slotKey.indexOf(models.CinemaShowing.Separator)
+    sep >= 0 && cinemas.contains(slotKey.substring(0, sep))
+  }
+
   /** Every stored row of one film, in either side collection — the per-film read/delete
    *  predicate. Shared so a caller that reaches a side collection directly (the staging
    *  fold, which deletes `movies` rows inside its own transaction and must take their

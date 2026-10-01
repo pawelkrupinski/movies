@@ -73,7 +73,11 @@ final class MovieChangeStream(
   decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
   // How long a film's re-read waits for the rest of its burst — see [[MovieChangeStream.Debounce]].
   // None queues each film's re-read at once, as every repository but the worker's does.
-  debounce:            Option[MovieChangeStream.Debounce] = None
+  debounce:            Option[MovieChangeStream.Debounce] = None,
+  // Reads a film's slots at some venues as a whole-film read stitches them — what lets a change
+  // confined to a few venues' showtimes skip the whole-film re-read ([[applyVenues]]). None (every
+  // repository but the worker's) re-reads every change whole.
+  readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -85,7 +89,7 @@ final class MovieChangeStream(
   // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
   // refuses is one skipped event rather than the end of the cursor.
   private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures)
-  private val movieChanges = new ChangeStreamFanout[MovieChangeStream.Delivery]("MovieRepository")
+  private val movieChanges = new ChangeStreamFanout[MovieChangeStream.Delivery, MovieChangeStream.VenueDelivery]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
   // Applies change-stream events OFF the Mongo driver's Netty I/O event loops. The
@@ -143,6 +147,9 @@ final class MovieChangeStream(
   private final class Pending(val openedAt: Long, val cursor: String, val demand: ChangeStreamDemand, val hold: CursorHold) {
     val acks            = new java.util.concurrent.ConcurrentLinkedQueue[() => Unit]()
     @volatile var dueAt = openedAt
+    // The venues every event riding this re-read changed showtimes at — or None once one rode it
+    // that was not a `screenings` row at a known venue, and only the whole film will do.
+    @volatile var venues: Option[Set[models.Cinema]] = Some(Set.empty)
     private val handedOff = new java.util.concurrent.atomic.AtomicBoolean(false)
     def queued: Boolean = handedOff.get()
     /** True for exactly one caller: the timer and `close` may race to queue it. */
@@ -163,12 +170,13 @@ final class MovieChangeStream(
    *  cursors' events are: they come in a film's bursts, while a `movies` write is one enrichment
    *  landing, which opens a re-read due at once (and rides a held one without moving it). */
   private def ride(filmId: String, cursor: String, demand: ChangeStreamDemand, hold: CursorHold, ack: () => Unit,
-                   debounced: Boolean): Option[Pending] = {
+                   debounced: Boolean, venue: Option[models.Cinema] = None): Option[Pending] = {
     var opened = Option.empty[Pending]
     pending.compute(filmId, (_, existing) => {
       val now   = clock.millis()
       val entry = Option(existing).getOrElse { val fresh = new Pending(now, cursor, demand, hold); opened = Some(fresh); fresh }
       entry.acks.add(ack)
+      entry.venues = for { seen <- entry.venues; at <- venue } yield seen + at
       debounce.filter(_ => debounced && !entry.queued)
         .foreach(d => entry.dueAt = math.min(now + d.quiet.toMillis, entry.openedAt + d.cap.toMillis))
       entry
@@ -201,7 +209,9 @@ final class MovieChangeStream(
   private def queue(filmId: String, entry: Pending): Unit = if (entry.handOff()) {
     applyOffLoop(entry.cursor, entry.demand) {
       pending.remove(filmId, entry)
-      applyReread(filmId, entry.hold)(drain(entry))
+      val acks = drain(entry)
+      if (applyVenues(filmId, entry.venues)) acks.foreach(_())
+      else applyReread(filmId, entry.hold)(acks)
     }
   }
 
@@ -266,11 +276,15 @@ final class MovieChangeStream(
      *  the film's entry stays pending and its demand is never released. That is deliberate, not an
      *  oversight: the repository is being discarded and nobody is waiting on its cursor any more.
      *  Anything that resurrects a closed repository would have to clear `pending` first. */
-    private def applyChange(filmId: String, applied: () => Unit): Unit = {
+    private def applyChange(rowId: String, applied: () => Unit): Unit = {
       liveness.delivered(collection)
+      val filmId = SlotKeyed.filmIdOf(rowId)
+      // A `screenings` row at a known venue can be applied from that venue alone — see `applyVenues`.
+      val venue  = Option.when(collection == ChangeStreamLiveness.Screenings && rowId != filmId)(SlotKeyed.slotKeyOf(rowId))
+        .flatMap(models.Source.byWireKey).collect { case showing: models.CinemaShowing => showing.cinema }
       // Either way the event is acknowledged only once the film is fanned out — by the re-read it
       // opened or the one it rides — see `SideCollectionWatch` and `applyReread`.
-      ride(filmId, collection, demand, hold, applied, debounced = true) match {
+      ride(filmId, collection, demand, hold, applied, debounced = true, venue) match {
         case Some(opened) => schedule(filmId, opened)
         case None         => metrics.recordCoalescedChange(); demand.applied()
       }
@@ -311,6 +325,22 @@ final class MovieChangeStream(
   }
   // The movies cursor's delivered events: its position moves only past a contiguous run of applied ones.
   private val moviesPrefix = new AppliedPrefix(advanceMovies)
+
+  /** Apply a change confined to some venues' showtimes from those venues alone: their slots read
+   *  and offered to every listener as a [[VenueSlots]]. True when every listener applied it; false —
+   *  and the caller re-reads the film whole, for every listener — when it was not confined to known
+   *  venues, touched too many, or its film is failing a re-read (whose retry must read it whole),
+   *  when the venue read failed, or when any listener declined. A whole re-read after a partial
+   *  apply is harmless: it is a superset of every part. A US wide release carries thousands of
+   *  venues' showtimes, and a change at one of them re-read every one: most of a busy US worker's
+   *  change-apply CPU (JFR, 2026-10-01). */
+  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): Boolean =
+    (readVenues, venues) match {
+      case (Some(read), Some(at)) if at.nonEmpty && at.sizeIs <= MovieChangeStream.MaxVenuesApplied && !holds.exists(_.isFailing(filmId)) =>
+        val mark = fence.mark(filmId)
+        read(filmId, at).exists(slots => movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark)))
+      case _ => false
+    }
 
   /** One apply's re-read and fan-out, then the `acks` of every event it covers — a cursor's resume
    *  position moves only once an event is fully APPLIED, listeners included, so a shutdown
@@ -383,9 +413,9 @@ final class MovieChangeStream(
   // `movie_slots` (movies stays put), so without these the projector would never see either.
   private val sideCursors: Seq[SideCursor] = Seq(
     new SideCursor(ChangeStreamLiveness.Screenings, screeningsMetrics,
-      (onChange, demand) => screenings.flatMap(_.watchApplied(onChange, demand))),
+      (onChange, demand) => screenings.flatMap(_.watchRowsApplied(onChange, demand))),
     new SideCursor(ChangeStreamLiveness.Slots, slotsMetrics,
-      (onChange, demand) => slots.flatMap(_.watchApplied(onChange, demand))))
+      (onChange, demand) => slots.flatMap(_.watchRowsApplied(onChange, demand))))
 
   // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
   // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
@@ -401,8 +431,9 @@ final class MovieChangeStream(
     watchFenced((film, _) => onUpsert(film), onDelete)
 
   /** [[watch]] handing each upsert the [[FilmWriteFence]] mark its re-read was taken under. */
-  def watchFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit): AutoCloseable = {
-    val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete)
+  def watchFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit,
+                  onVenues: (VenueSlots, Long) => Boolean = (_, _) => false): AutoCloseable = {
+    val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete, d => onVenues(d.venues, d.mark))
     ensureWatching()
     new AutoCloseable { override def close(): Unit = { handle.close(); stopWatchingIfIdle() } }
   }
@@ -574,6 +605,12 @@ final class MovieChangeStream(
 object MovieChangeStream {
   /** One re-read film on its way to the listeners, with the fence mark taken before the read. */
   private final case class Delivery(film: StoredMovieRecord, mark: Long)
+
+  /** Some of a film's venues on their way to the listeners, with the fence mark taken before the read. */
+  private final case class VenueDelivery(venues: VenueSlots, mark: Long)
+
+  /** The most venues one apply reads alone; a burst across more re-reads the film whole. */
+  private[movies] val MaxVenuesApplied = 16
 
   /** How many times an apply re-reads a film whose read failed before holding its cursor. */
   private[movies] val RereadAttempts      = 3

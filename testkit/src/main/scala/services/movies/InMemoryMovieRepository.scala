@@ -76,7 +76,7 @@ class InMemoryMovieRepository(
   // repository it fans ONE write path out to every registered listener (prod
   // attaches the cache AND the read-model projector); a single-watcher stub
   // would model only one and hide the multiplexing the real cursor now does.
-  private val changes = new ChangeStreamFanout[StoredMovieRecord]("InMemoryMovieRepository")
+  private val changes = new ChangeStreamFanout[StoredMovieRecord, VenueSlots]("InMemoryMovieRepository")
   // Every dispatch below is a `movies` delivery, the same way the real cursor's `onNext` is.
   override val changeStreamLiveness: ChangeStreamLiveness = new ChangeStreamLiveness(clock)
   private def notifyWatcher(id: String, t: String, y: Option[Int], e: MovieRecord): Unit = {

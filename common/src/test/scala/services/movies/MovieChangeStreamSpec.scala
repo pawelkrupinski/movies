@@ -105,7 +105,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     rereadRetryMillis:   Long                        = 20L,
     fence:               FilmWriteFence              = new FilmWriteFence(),
-    debounce:            Option[MovieChangeStream.Debounce] = None
+    debounce:            Option[MovieChangeStream.Debounce] = None,
+    readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -120,7 +121,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     clock               = clock,
     rereadRetryMillis   = rereadRetryMillis,
     decodeFailures      = decodeFailures,
-    debounce            = debounce)
+    debounce            = debounce,
+    readVenues          = readVenues)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -351,6 +353,78 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       Seq(Some(MovieChangeStream.Debounce.Worker))
     Seq(Poland, Spain).flatMap(MovieChangeStream.Debounce.forCountry) shouldBe empty
     models.Country.all.toSet shouldBe Set(UnitedStates, UnitedKingdom, Germany, Poland, Spain) // a new country decides too
+  }
+
+  // A change confined to some venues' showtimes is applied from those venues alone when every
+  // listener can take it — a wide film's other venues are never read — and whole otherwise.
+  private final class VenueWorld(declines: Boolean = false, venueRead: Boolean = true) {
+    @volatile var ring: (String, () => Unit) => Unit = null
+    val screenings = new InMemoryScreeningsRepository {
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) = {
+        ring = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
+    }
+    @volatile var slotRing: (String, () => Unit) => Unit = null
+    val slots = new InMemorySlotsRepository {
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) = {
+        slotRing = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
+    }
+    val rereads, venueReads, venueApplies, upserts = new AtomicInteger(0)
+    val acks   = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val under  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots),
+      reread     = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
+      readVenues = Some((id, at) => { venueReads.incrementAndGet(); Option.when(venueRead)(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
+    val handle = under.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (),
+      (_, _) => { venueApplies.incrementAndGet(); !declines })
+    val venue  = models.KinoApollo
+    def row(film: String, at: models.Cinema) = SlotKeyed.idOf(film, s"${at.displayName}${models.CinemaShowing.Separator}film")
+    def settle(): Unit = eventually(under.applyBacklog shouldBe 0)
+  }
+
+  it should "apply a burst of showtime changes at one venue from that venue alone" in {
+    val world = new VenueWorld
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a")); ring(row("film|2024", venue), () => acks.add("b"))
+      eventually(acks.size shouldBe 2)
+      venueReads.get() should be >= 1; venueApplies.get() shouldBe venueReads.get()
+      rereads.get() shouldBe 0;        upserts.get() shouldBe 0
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "re-read the film whole when a listener declines the venues" in {
+    val world = new VenueWorld(declines = true)
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a"))
+      eventually(acks.size shouldBe 1)
+      venueApplies.get() shouldBe 1; rereads.get() shouldBe 1; upserts.get() shouldBe 1
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "re-read the film whole when the venues cannot be read alone" in {
+    val world = new VenueWorld(venueRead = false)
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a"))
+      eventually(acks.size shouldBe 1)
+      venueApplies.get() shouldBe 0; rereads.get() shouldBe 1; upserts.get() shouldBe 1
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "re-read the film whole when a slot change rides with the showtime changes" in {
+    val hour  = scala.concurrent.duration.Duration(1, "hour")
+    val world = new VenueWorld
+    import world.*
+    val held  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
+      reread = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
+      readVenues = Some((id, at) => { venueReads.incrementAndGet(); Some(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
+    val heldHandle = held.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (), (_, _) => { venueApplies.incrementAndGet(); true })
+    try {
+      ring(row("film|2024", venue), () => acks.add("showtimes")); slotRing(row("film|2024", venue), () => acks.add("slot"))
+      held.releaseHeld()
+      eventually(acks.size shouldBe 2)
+      venueReads.get() shouldBe 0; rereads.get() shouldBe 1
+    } finally { heldHandle.close(); held.close(); handle.close(); under.close() }
   }
 
   // RESTART RESILIENCE. A cursor has one resume position and a restart replays only what lies

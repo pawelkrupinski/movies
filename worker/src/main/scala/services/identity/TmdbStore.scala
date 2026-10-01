@@ -141,39 +141,23 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   private def update(kind: TmdbKind, id: String)(change: Option[BsonDocument] => BsonDocument): Unit =
     updateAll(kind, Seq(id))((_, before) => change(before))
 
-  // Each write reads its documents and writes them back, so two writes of ONE document must not
-  // interleave (a film's two partials would lose one) — but writes of different documents need not
-  // wait for each other: a take-up of an empty store files every film it names from the prefetch's
-  // threads, and one store-wide lock made those round-trips serial. So a lock per document, striped.
-  private val stripes = Array.fill(LockStripes)(new java.util.concurrent.locks.ReentrantLock())
-
-  /** `body` holding the locks of `ids`' documents, taken in one order so two writes never deadlock. */
-  private def locking[A](kind: TmdbKind, ids: Seq[String])(body: => A): A = {
-    val held = ids.map(id => Math.floorMod(keyOf(kind, id).hashCode, LockStripes)).distinct.sorted.map(stripes)
-    held.foreach(_.lock())
-    try body finally held.reverseIterator.foreach(_.unlock())
-  }
-
   /** `change` each of `ids`' documents; write, and announce, only those whose value moved — in one
    *  read and one write however many there are. One whose value did not move is only re-stamped
-   *  (`fetchedAt`), at most once per [[TmdbStore.RenewEvery]], and announced to no one. Announced once
-   *  written and unlocked, so a listener never runs holding a document's lock. */
-  private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = {
-    val distinct = ids.distinct
-    val moved = locking(kind, distinct) {
-      val now     = clock.millis()
-      val before  = docs.get(kind, distinct)
-      val written = distinct.flatMap { id =>
-        def value = before.get(id).map { d => val c = d.clone(); Stamps.foreach(c.remove); c }
-        val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
-        if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
-        else before.get(id).filter(d => fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
-          .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
-      }
-      if (written.nonEmpty) docs.put(kind, written.map { case (id, d, _) => id -> d })
-      written.collect { case (id, _, true) => id }
+   *  (`fetchedAt`), at most once per [[TmdbStore.RenewEvery]], and announced to no one. */
+  private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = synchronized {
+    val now     = clock.millis()
+    val before  = docs.get(kind, ids.distinct)
+    val written = ids.distinct.flatMap { id =>
+      def value = before.get(id).map { d => val c = d.clone(); Stamps.foreach(c.remove); c }
+      val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
+      if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
+      else before.get(id).filter(d => fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
+        .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
     }
-    moved.foreach(id => listeners.forEach(_(keyOf(kind, id))))
+    if (written.nonEmpty) {
+      docs.put(kind, written.map { case (id, d, _) => id -> d })
+      written.collect { case (id, _, true) => id }.foreach(id => listeners.forEach(_(keyOf(kind, id))))
+    }
   }
 
   /** A title search's (or find's) films, in its order, each hit's fields kept on its film. */
@@ -241,8 +225,6 @@ object TmdbStore {
   val FetchedAt = "fetchedAt"
   /** How often an unchanged answer is re-stamped at most — each re-stamp is a write. */
   val RenewEvery: FiniteDuration = 1.day
-  /** How many locks a store's documents share: enough that the prefetch's threads rarely meet. */
-  private val LockStripes = 1024
   private val Stamps = Seq(ChangedAt, FetchedAt)
   def fetchedAt(d: BsonDocument): Option[Long] = Option(d.get(FetchedAt)).filter(_.isInt64).map(_.asInt64.getValue)
 

@@ -1603,7 +1603,7 @@ class CaffeineMovieCache(
    *  [[FilmWriteFence]]): that read is older than the resident row, and storing it rolled
    *  the write back until the write's own event re-read the film. That event still comes,
    *  so skipping the older read loses nothing. */
-  private def applyUpsert(r: StoredMovieRecord, mark: Long): Unit = {
+  private[services] def applyUpsert(r: StoredMovieRecord, mark: Long): Unit = {
     val key = r.cacheKey(normalizer)
     val applied = repository.writeFence.ifUndisturbed(r.id.value, mark) {
       // A retitle arriving from another writer: the id's previous key entry is stale.
@@ -1613,6 +1613,28 @@ class CaffeineMovieCache(
     if (applied) touch()
     else logger.debug(s"MovieCache: skipped a change-stream read of '${key.cleanTitle}' taken before this cache's own write of it.")
   }
+
+  /** Apply a change confined to some venues' showtimes from those venues alone: their slots
+   *  stripped again, the rest of the resident row untouched — exactly what [[applyUpsert]] of the
+   *  whole film would store. False, having stored nothing, when the film is not resident or a
+   *  venue holds other slots than the resident ones (a slot came or went), and the caller hands
+   *  over the whole film instead. Fenced like [[applyUpsert]]. */
+  private[services] def applyVenueSlots(venues: VenueSlots, mark: Long): Boolean =
+    corpusIndex.keyOf(venues.filmId).flatMap(key => get(key).map(key -> _)).exists { case (key, resident) =>
+      // The venues' slots replace the resident ones whole, read as a whole-film read reads them, so
+      // the row stored is that read's exactly when the venues hold the same slots it does.
+      val fits = venues.atCinemas.forall { case (cinema, slots) =>
+        resident.data.keysIterator.collect { case s @ models.CinemaShowing(`cinema`, _) => s }.toSet == slots.map(_._1).toSet
+      }
+      fits && {
+        val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
+          store(key, resident.copy(data = resident.data ++ venues.atCinemas.valuesIterator.flatten.map {
+            case (source, slot) => source -> forCacheSlot(slot) }), venues.filmId)
+        }
+        if (applied) touch()
+        true
+      }
+    }
 
   /** Apply an out-of-band DELETE from the change stream: drop the mirrored row whose
    *  source `_id` was removed (a fold/merge loser, an `UnscreenedCleanup` removal, a
@@ -1633,7 +1655,7 @@ class CaffeineMovieCache(
   }
 
   def start(): Unit = {
-    watchHandle = repository.watchChangesFenced(applyUpsert, applyDelete)
+    watchHandle = repository.watchChangesFencedWithVenues(applyUpsert, applyDelete, applyVenueSlots)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")

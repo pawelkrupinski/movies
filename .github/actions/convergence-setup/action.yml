@@ -69,48 +69,6 @@ runs:
       shell: bash
       run: '"$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
 
-    # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
-    # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
-    # restored enrichment tree is up to 127k files that every such glob walks for nothing —
-    # ~50 s of the United States' setup.
-    - uses: ./.github/actions/setup-jdk
-      with:
-          distribution: temurin
-          java-version: 27
-          cache: sbt
-    # sbt 1.x keeps no sbt-2 disk cache: the step restored nothing and saved nothing, at ~30 s a
-    # leg in its key's workspace glob.
-    - uses: sbt/setup-sbt@v1
-      with:
-          disk-cache: false
-
-    # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
-    # inputs for its post-job save, and by then the restored fixture trees put 127k files
-    # (US) under the `**` globs — 17 s to restore and 21 s to save, hashing sources that
-    # tree holds none of.
-    - name: Key the sbt build cache
-      id: sbt-key
-      shell: bash
-      run: echo "key=sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}" >> "$GITHUB_OUTPUT"
-    # NOT the root `target/`: every module writes its JUnit XML into the one root-level
-    # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
-    # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
-    # directory full of specs it never ran — the United States' leg died on an OOM before
-    # ScalaTest reported a result on 2026-09-01, and its check-run went green naming
-    # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
-    # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
-    - uses: actions/cache@v5
-      with:
-          path: |
-              project/target
-              project/project/target
-              */target/scala-*
-          key: ${{ steps.sbt-key.outputs.key }}
-          restore-keys: |
-              sbt-target-convergence-${{ runner.os }}-
-              sbt-target-e2e-${{ runner.os }}-
-              sbt-target-${{ runner.os }}-
-
     # WHICH recording to replay, decided once and before anything is downloaded.
     #
     # A HERMETIC leg replays a PAIR: a corpus and the enrichment tree recorded against it,
@@ -405,3 +363,30 @@ runs:
           fi
           echo "KINOWO_CONVERGENCE_OVERLAY_ASSET=$overlay" >> "$GITHUB_ENV"
           sleep 1; touch "$RUNNER_TEMP/overlay-stamp"
+
+    - uses: ./.github/actions/setup-jdk
+      with:
+          distribution: temurin
+          java-version: 27
+          cache: sbt
+    - uses: sbt/setup-sbt@v1
+
+    # NOT the root `target/`: every module writes its JUnit XML into the one root-level
+    # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
+    # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
+    # directory full of specs it never ran — the United States' leg died on an OOM before
+    # ScalaTest reported a result on 2026-09-01, and its check-run went green naming
+    # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
+    # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
+    - uses: actions/cache@v5
+      with:
+          path: |
+              project/target
+              project/project/target
+              */target/scala-*
+          key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+          restore-keys: |
+              sbt-target-convergence-${{ runner.os }}-
+              sbt-target-e2e-${{ runner.os }}-
+              sbt-target-${{ runner.os }}-
+

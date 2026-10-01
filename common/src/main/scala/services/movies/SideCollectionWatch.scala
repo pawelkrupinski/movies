@@ -24,7 +24,8 @@ import scala.reflect.ClassTag
  * third change-stream observer in the codebase to get the resume-token / reopen / demand
  * dance subtly different from the others; this is the one place it is written.
  *
- * `onChange(filmId, applied)`: the caller calls `applied()` once it has APPLIED the event
+ * `onChange(rowId, applied)`: `rowId` is the changed row's composite `_id` (`filmId␟slotKey`,
+ * [[SlotKeyed.idOf]]) — [[SlotKeyed.filmIdOf]] recovers the film. The caller calls `applied()` once it has APPLIED the event
  * (not merely queued it) — that, and only that, moves this cursor's resume position.
  *
  * What an event carries: insert/update/replace deliver the document, whose `filmIdOf`
@@ -96,9 +97,14 @@ final class SideCollectionWatch[Dto: ClassTag](
               case ChangeEventDecoder.PostImage.Absent       => deletedFilm
               case ChangeEventDecoder.PostImage.Undecodable  => None // counted and logged by the decoder
             }
-            filmId match {
-              case Some(fid) => try onChange(fid, applied)
-                catch { case e: Throwable => logger.warn(s"$name watch onChange($fid) failed: ${e.getMessage}") }
+            // The row's own `_id` (`filmId␟slotKey`) when the event names it, so the caller knows
+            // WHICH of the film's rows moved, not only which film; else the film id alone.
+            val rowId = filmId.map(fid => Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+              .collect { case v if v.isString && SlotKeyed.filmIdOf(v.asString.getValue) == fid => v.asString.getValue }
+              .getOrElse(fid))
+            rowId match {
+              case Some(id) => try onChange(id, applied)
+                catch { case e: Throwable => logger.warn(s"$name watch onChange($id) failed: ${e.getMessage}") }
               // Nothing to hand the caller, so nothing will release this event's demand but us —
               // left unreleased, every skipped event narrowed the window until the cursor stalled.
               // Acknowledged at once: there is nothing to apply, and an event never acknowledged

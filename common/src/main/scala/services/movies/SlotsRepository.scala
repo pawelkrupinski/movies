@@ -61,6 +61,12 @@ trait SlotsRepository extends SlotKeyedRows {
    *  infer it from the emptiness. A store that cannot fail always reports true. */
   def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean)
 
+  /** [[findForFilmChecked]] narrowed to the film's slots at `cinemas` (`Cinema.displayName`s). */
+  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, SourceData], Boolean) = {
+    val (rows, complete) = findForFilmChecked(filmId)
+    (rows.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) }, complete)
+  }
+
   /** Every film's slots: `filmId -> (slotKey -> slot)`. For the boot hydrate /
    *  `findAll` read-stitch. */
   def findAll(): Map[String, Map[String, SourceData]] = findAllChecked()._1
@@ -132,6 +138,12 @@ trait SlotsRepository extends SlotKeyedRows {
    *  listeners synchronously have no backlog and can ignore it. */
   def watchApplied(onChange: (String, () => Unit) => Unit,
                    demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
+
+  /** [[watchApplied]] naming the changed ROW — its composite `_id` ([[SlotKeyed.idOf]]) — where
+   *  the store knows it, so a caller can tell which of a film's rows moved; else the film id, as
+   *  [[watchApplied]] does ([[SlotKeyed.filmIdOf]] reads both). */
+  def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    watchApplied(onChange, demand)
 
   def close(): Unit = ()
 }
@@ -357,6 +369,17 @@ class MongoSlotsRepository(
       }
     }
 
+  /** One `_id` range per venue, so only those venues' rows are read and decoded. */
+  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, SourceData], Boolean) =
+    coll.fold((Map.empty[String, SourceData], true)) { c =>
+      Try(Await.result(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
+        case scala.util.Success(rows) => (rows.map(d => d.slotKey -> d.slot).toMap, true)
+        case scala.util.Failure(e) =>
+          logger.warn(s"SlotsRepository.findAtCinemas($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
+          (Map.empty, false)
+      }
+    }
+
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
     coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
@@ -501,6 +524,9 @@ class MongoSlotsRepository(
     coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))
+
+  override def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch(onChange, demand))
 
   override def close(): Unit = resumeToken.save(force = true)

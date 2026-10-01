@@ -158,6 +158,11 @@ object ReadModelProjection {
       }
       .sortBy(_._id)
 
+  /** The row one venue holding `slot` would build under card `fid` — None when the slot has no
+   *  showtimes or the cinema maps to no city. The single-venue form of [[venuesFor]]. */
+  private[readmodel] def venueOf(cinema: Cinema, slot: SourceData, fid: String): Option[VenueScreening] =
+    venuesFor(Seq(cinema -> slot), fid).headOption
+
   /** One venue's screenings row, before it is built: its id and EVERYTHING the row is
    *  built from — the card, the city, the cinema and the venue's slots in this variant, in
    *  the slots' own order. The row is a pure function of those, so two venues with equal
@@ -173,6 +178,9 @@ object ReadModelProjection {
      *  row and the side rows it was projected from name the same listings. */
     private lazy val listingKeys: Seq[String] =
       slots.flatMap(ListingKey.ofVenueSlot(cinema, _)).map(ListingKey.serialised).distinct.sorted
+
+    /** How many of the film's slots this venue's row unions. */
+    def slotCount: Int = slots.size
 
     /** The city this venue's row is filed under. */
     def citySlug: String = city.slug
@@ -215,7 +223,13 @@ object ReadModelProjection {
    *  card, byte-identical to [[resolve]]/[[screenings]], so an unsplit film never churns.
    *  Only a genuinely multi-title record (Cyrillic / English-alias / banner-prefixed
    *  listings of one film) carries one [[Variant]] per group, in key order. */
-  final class Partition private[readmodel] (val stored: StoredMovieRecord, normalizer: TitleNormalizer, split: Seq[Variant]) {
+  final class Partition private[readmodel] (val stored: StoredMovieRecord, normalizer: TitleNormalizer, split: Seq[Variant],
+                                            /** The group a slot with no title of its own falls into. */
+                                            private[readmodel] val anchorKey: String,
+                                            /** The card each display-title group's venues are filed under, by
+                                             *  [[partition]]'s group key. */
+                                            private[readmodel] val cardByGroup: Map[String, String]) {
+
     /** Every read-model film id the row projects to — one per display-title variant.
      *  The read-model reconcile uses this to know which `web_movies` ids are still
      *  live for a row, so a split-off variant card isn't pruned as an orphan. */
@@ -298,7 +312,10 @@ object ReadModelProjection {
         val title  = scoped.displayTitle(stored.title, normalizer)
         Variant(sources, scoped, title, cardId(title))
       }
-    new Partition(stored, normalizer, split)
+    val cardByGroup =
+      if (split.isEmpty) groups.map(_._1 -> filmId(stored, normalizer)).toMap
+      else groups.map(_._1).zip(split.map(_.filmId)).toMap
+    new Partition(stored, normalizer, split, anchorKey, cardByGroup)
   }
 
   /** Single-question forms of the [[Partition]] methods, for a caller that asks a row

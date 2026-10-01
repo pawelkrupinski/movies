@@ -134,6 +134,9 @@ class ReadModelProjector(
   // must not go public before its share card exists — but no film waits longer than
   // `firstCardHold` for one (see [[releaseExpiredHolds]]).
   private val held           = scala.collection.mutable.Map.empty[String, HeldCard]
+  // Each projected row's display-title groups and the card each files its venues under, from its last
+  // projection: what lets [[onVenueSlots]] place a venue without the rest of the film. A few entries a row.
+  private val lastGroups     = scala.collection.mutable.Map.empty[String, RowGroups]
   // Cards published by an expired hold that still have no share card: `shareCardPending` on their
   // documents, and seeded from them at boot, so a later projection keeps the mark until the card lands.
   private val pendingCards   = scala.collection.mutable.Set.empty[String]
@@ -173,6 +176,70 @@ class ReadModelProjector(
       ()
     }
 
+  /** Apply a change confined to some venues' showtimes from those venues alone — the whole film
+   *  unread — when that is exactly what projecting the whole film again would write: the venues' rows
+   *  rebuilt, nothing else touched. False, having written nothing, whenever it cannot vouch for that,
+   *  and the caller projects the whole film instead:
+   *    - the row was not projected by this process, or a venue's slot reports a title outside the
+   *      groups it was (a retitle would move venues between cards);
+   *    - a venue holds two slots of the film (its row unions them in the record's own slot order);
+   *    - a venue would appear or vanish (a card's first screening gates its publication, and a card's
+   *      screenings decide whether it is served at all);
+   *    - a card is held or unpublished, or its rows are remembered without the inputs they were built
+   *      from (seeded from the read model at boot).
+   *  Card metadata never reads showtimes ([[ReadModelProjection.metadataHash]]), so a showtime-only
+   *  change leaves every card as it is. */
+  def onVenueSlots(venues: services.movies.VenueSlots): Boolean = lock.synchronized {
+    val rowId = venues.filmId.value
+    planVenues(rowId, venues).exists { byCard =>
+      appliedSinceSweep.foreach(_ += rowId)
+      byCard.foreach { case (card, changed) =>
+        val replaced = changed.map(venue => venue._id -> venue).toMap
+        val next = lastScreenings.of(card).toSeq.map { case (id, written) =>
+          // Every remembered row carries its input — `planVenues` declines a card with one that does not.
+          val input = written.input.get
+          replaced.get(id).fold(PlannedScreening(id, input, None)) { venue =>
+            val moved = venue.inputHash
+            PlannedScreening(id, moved, if (moved == input) None else Some(venue.screening))
+          }
+        }
+        val rebuilt = next.count(_.built.isDefined)
+        metrics.recordVenueProjection(rebuilt = rebuilt, reused = next.size - rebuilt)
+        diffScreenings(card, next)
+      }
+      if (held.nonEmpty) releaseExpired()
+      true
+    }
+  }
+
+  /** Caller holds `lock`. The venues [[onVenueSlots]] rebuilds, by card — None when it cannot vouch
+   *  that they are all a whole-film projection would change (see there). */
+  private def planVenues(rowId: String, venues: services.movies.VenueSlots): Option[Map[String, Seq[ReadModelProjection.VenueScreening]]] =
+    lastGroups.get(rowId).flatMap { case RowGroups(anchor, cardByGroup, multiSlot) =>
+      val cards   = cardByGroup.values.toSeq.distinct
+      val written = cards.map(card => card -> lastScreenings.of(card)).toMap
+      val planned = scala.collection.mutable.ArrayBuffer.empty[(String, ReadModelProjection.VenueScreening)]
+      val vouched = venues.atCinemas.forall { case (cinema, slots) =>
+        val placed = slots.map { case (_, slot) => cardByGroup.get(slot.title.map(normalizer.sanitize).getOrElse(anchor)) -> slot }
+        placed.forall(_._1.isDefined) && {
+          val byCard = placed.collect { case (Some(card), slot) => card -> slot }.groupMap(_._1)(_._2)
+          byCard.forall(_._2.sizeIs == 1) && cards.forall { card =>
+            val before = models.City.forCinema(cinema).map(city => s"$card|${city.slug}|${cinema.displayName}")
+              .filter(written(card).contains)
+            val after  = byCard.get(card).flatMap(slots => ReadModelProjection.venueOf(cinema, slots.head, card))
+            (before, after) match {
+              case (None, None)                                         => true
+              case (Some(id), Some(venue)) if venue._id == id && !multiSlot(id) => planned += card -> venue; true
+              case _                                                    => false
+            }
+          }
+        }
+      }
+      val byCard = planned.toSeq.groupMap(_._1)(_._2)
+      Option.when(vouched && byCard.keys.forall(card => !held.contains(card) && lastMovie.contains(card) &&
+        written(card).valuesIterator.forall(_.input.isDefined)))(byCard)
+    }
+
   /** A row deleted or merged away: every card it produced goes with it, now — not at the
    *  next prune. The cards are what this process remembers producing for the row, plus
    *  anything in the read model under the row's id (a card a previous process wrote). */
@@ -182,6 +249,7 @@ class ReadModelProjector(
     val underId    = lastMovie.keysIterator.filter(card => card == id.value || card.startsWith(id.value + "~")).toSet
     (remembered ++ underId).foreach(retireCard(_, RetireReason.RowDeleted))
     lastCardsByRow.remove(id.value)
+    lastGroups.remove(id.value)
     ()
   }
 
@@ -201,6 +269,7 @@ class ReadModelProjector(
   private def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = {
     val rowId = partition.stored.id.value
     if (!partition.stored.record.readyToProject) {
+      lastGroups.remove(rowId)
       healedClean.remove(rowId)
       // A row that lost its readiness takes its cards with it (the prune would, later).
       lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
@@ -216,7 +285,10 @@ class ReadModelProjector(
     // be compared against process CPU is the CPU one — see `recordProject`.
     val wall      = tools.Stopwatch.start()
     val cpuStart  = cpuClock.nanos()
-    val variants  = projectReusingMetadata(partition).map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
+    val projected = projectReusingMetadata(partition)
+    val variants  = projected.map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
+    lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
+      projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
     dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     metrics.recordProject(
       trigger,
@@ -896,7 +968,7 @@ class ReadModelProjector(
     // resume token, replays every upsert missed while the worker was down); the seeded
     // state above means incremental writes are no-ops for already-correct documents. Only
     // the cheap orphan prune is scheduled — the full reproject was retired (see class doc).
-    watchHandle = movieRepository.watchChanges(onMovieUpsert, onMovieDelete)
+    watchHandle = movieRepository.watchChangesWithVenues(onMovieUpsert, onMovieDelete, onVenueSlots)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
@@ -1115,6 +1187,12 @@ private[readmodel] final case class WrittenScreening(output: Int, input: Option[
 /** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
  *  unbuilt because the row written from the same `input` is still current. */
 private[readmodel] final case class PlannedScreening(_id: String, input: Int, built: Option[CityScreening])
+
+/** A projected row's display-title groups — the group a slot with no title of its own falls into
+ *  (`anchor`), the card each group's venues are filed under, and the venues whose row unioned two
+ *  or more of the film's slots (a slot the venue read cannot see — one the `movies` document still
+ *  embeds — would be among them). */
+private[readmodel] final case class RowGroups(anchor: String, cardByGroup: Map[String, String], multiSlot: Set[String])
 
 /** A card held back by the first-publish gate: the source row that projects it, and when its
  *  hold ends (epoch millis). */
