@@ -50,8 +50,12 @@ class ArchiveReplayWiring(
   hermetic:         Option[MissingFixtures] = None,
   // The suite's configuration — the process's for a convergence leg, which is where TMDB's
   // key comes from; an empty one for a unit spec. Handed in: the wiring never asks the process.
-  environment:      Env = Env.of()
+  environment:      Env = Env.of(),
+  // A gap-fill leg's passes, given one live answer per request between them ([[SharedLiveAnswers]]).
+  sharedLive:       Option[SharedLiveAnswers] = None
 ) extends WorkerWiring(country, env = environment) with TestWiring {
+
+  private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
 
   /** The one seam a hermetic run changes. Every chain above the wire — fixtures first,
    *  remembered verdicts, recorder, throttles, breakers — is built exactly as the
@@ -93,7 +97,7 @@ class ArchiveReplayWiring(
    */
   override lazy val httoFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), "detail-fixtures", "detail-live")
+      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
@@ -137,7 +141,7 @@ class ArchiveReplayWiring(
     // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
     // exactly like one re-fetching every one of them.
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich), "enrichment-fixtures", "remembered-or-live")
+      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live")
 
   /** The real key and the country's own language — the enrichment is meant to be the one
    *  production would do. Overridden because `TestWiring` pins a stub key and the DEFAULT

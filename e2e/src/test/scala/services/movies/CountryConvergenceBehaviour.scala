@@ -244,6 +244,10 @@ abstract class CountryConvergenceBehaviour(
    *  Only a recording leg re-asks and ages the tree. */
   private lazy val replaysRecording: Boolean = missingFixtures.isDefined || configuration.gapFill.value
 
+  /** On a gap-fill leg, every pass's live fetches answered once between them: passes run side by
+   *  side and would otherwise each ask the live web, which need not answer twice alike. */
+  private lazy val sharedLive: Option[tools.SharedLiveAnswers] = Option.when(configuration.gapFill.value)(new tools.SharedLiveAnswers)
+
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
@@ -400,7 +404,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
       // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
@@ -1147,7 +1151,7 @@ abstract class CountryConvergenceBehaviour(
     val passStorage = ConvergenceStorage.fromConfiguration(configuration, scope, TitleNormalizer.forCountry(country),
       MovieChangeStream.Debounce.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
