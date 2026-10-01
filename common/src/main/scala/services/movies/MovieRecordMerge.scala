@@ -332,7 +332,15 @@ object MovieRecordMerge {
    *  otherwise trigger. Total across every field (unlike [[dedupShowtimes]]'s
    *  `dateTime`-only sort): `dateTime` first (its ISO string sorts
    *  chronologically), then room/format/bookingUrl, so equal multisets of
-   *  showings always collapse to the same sequence. */
+   *  showings always collapse to the same sequence.
+   *
+   *  Each showing's key built ONCE: `sortBy` builds it on every comparison, and a projection sorts
+   *  every venue slot of every film (~1.7M US showtimes) — the key's date string and joined formats
+   *  per comparison were ~11 GB of a US convergence leg's allocation (JFR). Stable, as `sortBy` is. */
   def sortShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] =
-    showtimes.sortBy(s => (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse("")))
+    if (showtimes.sizeIs < 2) showtimes
+    else showtimes.map(s => (showtimeOrder(s), s)).sortBy(_._1).map(_._2)
+
+  private[movies] def showtimeOrder(s: Showtime): (String, String, String, String) =
+    (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse(""))
 }

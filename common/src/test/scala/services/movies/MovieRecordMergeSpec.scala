@@ -317,4 +317,17 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     MovieRecordMerge.mergeSlots(Seq(a, b)).titleSearches shouldBe want
     MovieRecordMerge.mergeSlots(Seq(b, a)).titleSearches shouldBe want
   }
+
+  "sortShowtimes" should "order showings exactly as sorting by the whole key on every comparison did" in {
+    val random = new Random(20261001L)
+    val base   = LocalDateTime.of(2026, 10, 1, 12, 0)
+    def showing = Showtime(base.plusMinutes(random.nextInt(6) * 30L).plusSeconds(if (random.nextInt(4) == 0) random.nextInt(60).toLong else 0L),
+      Option.when(random.nextBoolean())(s"https://b/${random.nextInt(3)}"), Option.when(random.nextBoolean())(s"Sala ${random.nextInt(3)}"),
+      List.fill(random.nextInt(3))(Seq("2D", "NAP", "IMAX", "3D")(random.nextInt(4))))
+    (1 to 500).foreach { _ =>
+      val showtimes = Vector.fill(random.nextInt(40))(showing)
+      MovieRecordMerge.sortShowtimes(showtimes) shouldBe
+        showtimes.sortBy(s => (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse("")))
+    }
+  }
 }
