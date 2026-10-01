@@ -7,6 +7,7 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - 'scripts/ci/ios-sim-destination*.sh'
+            - 'scripts/ci/xcresult_junit*.py'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -17,6 +18,7 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - 'scripts/ci/ios-sim-destination*.sh'
+            - 'scripts/ci/xcresult_junit*.py'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -81,7 +83,7 @@ jobs:
 
     ui-tests:
         runs-on: macos-latest
-        # Build ~2 min + XCUITest step (bounded below) + xcresult conversion ~3 min + SPM ~2 min.
+        # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
         steps:
             - uses: actions/checkout@v5
@@ -139,11 +141,14 @@ jobs:
             # Turn the binary XCUITest result bundle into JUnit XML so a
             # failure is readable on the run page without Xcode. The
             # upload below keeps the full bundle for deep inspection.
+            # Plain `xcresulttool` + a script, not `brew install xcresultparser` (~50 s a run).
             - name: Convert xcresult to JUnit
               if: always()
               run: |
-                  brew install a7ex/homebrew-formulae/xcresultparser
-                  xcresultparser --output-format junit build/Kinowo.xcresult > xcuitest.xml || true
+                  python3 scripts/ci/xcresult_junit_test.py
+                  [ -d build/Kinowo.xcresult ] || exit 0
+                  python3 scripts/ci/xcresult_junit.py build/Kinowo.xcresult > xcuitest.xml \
+                      || echo "::warning title=xcresult::could not read build/Kinowo.xcresult (step killed mid-write?)"
 
             - name: Publish XCUITest report
               if: always()
@@ -155,8 +160,9 @@ jobs:
                   include_passed: false
 
             # XCUITest step is continue-on-error (see there), so leave a glance-able signal when
-            # it has failures, WITH each failure's assertion and line: the JUnit report above only
-            # names the test ("Uncategorized"), which left run 36157983964's two failures unexplained.
+            # it has failures, WITH each failure's assertion and line, as annotations on the run page
+            # itself (the xcresultparser report this used to sit beside named only the test, under
+            # "Uncategorized", which left run 36157983964's two failures unexplained).
             - name: Flag XCUITest failures
               if: always()
               run: |
