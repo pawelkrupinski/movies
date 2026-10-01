@@ -70,12 +70,12 @@ jobs:
             contents: read
             checks: write
 
-    # The image builds take their staged dist FROM ci rather than staging their own. It has
-    # been both ways round: `test` used to upload `stage-web` / `stage-worker` for a deploy
-    # leg, then stopped once the build ran alongside ci (waiting for `test` would have put the
-    # container build on the critical path). The runner budget (`CiRunnerBudgetSpec`) later
+    # The image builds take their staged dist FROM ci (its `e2e (staging)` row) rather than
+    # staging their own. It has been both ways round: ci's `test` used to upload `stage-web` /
+    # `stage-worker` for a deploy leg, then stopped once the build ran alongside ci (waiting
+    # for `test` would have put the container build on the critical path). The runner budget (`CiRunnerBudgetSpec`) later
     # hung the builds off `needs: ci` after all, and from then on each one recompiled from a
-    # cold zinc state — ~2 min of `sbt stage` on the post-CI critical path for bytes `test`
+    # cold zinc state — ~2 min of `sbt stage` on the post-CI critical path for bytes ci
     # had already produced. So the upload is back, and `DeployImageReuseSpec` keeps the two
     # halves together.
     #
@@ -387,12 +387,12 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - name: Fetch the web distribution ci's `test` job staged
+            - name: Fetch the web distribution ci's e2e staging row staged
               if: steps.changed.outputs.changed == 'true'
-              # NOT A SECOND `sbt "web/stage"`. `test` stages both apps anyway (it is what proves
-              # the dists link), and this job `needs: ci`, so that copy always exists by now —
-              # restaging it here was ~2 min of cold compile on the post-CI critical path, for
-              # bytes identical to the ones `test` already had. Downloaded straight into `stage/`,
+              # NOT A SECOND `sbt "web/stage"`. ci's `e2e (staging)` row stages both apps anyway
+              # (it is what proves the dists link), and this job `needs: ci`, so that copy always
+              # exists by now — restaging it here was ~2 min of cold compile on the post-CI
+              # critical path, for bytes identical to the ones ci already had. Downloaded straight into `stage/`,
               # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
               # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
               # that matters.
@@ -580,12 +580,12 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - name: Fetch the worker distribution ci's `test` job staged
+            - name: Fetch the worker distribution ci's e2e staging row staged
               if: steps.changed.outputs.changed == 'true'
-              # NOT A SECOND `sbt "worker/stage"`. `test` stages both apps anyway (it is what proves
-              # the dists link), and this job `needs: ci`, so that copy always exists by now —
-              # restaging it here was ~2 min of cold compile on the post-CI critical path, for
-              # bytes identical to the ones `test` already had. Downloaded straight into `stage/`,
+              # NOT A SECOND `sbt "worker/stage"`. ci's `e2e (staging)` row stages both apps anyway
+              # (it is what proves the dists link), and this job `needs: ci`, so that copy always
+              # exists by now — restaging it here was ~2 min of cold compile on the post-CI
+              # critical path, for bytes identical to the ones ci already had. Downloaded straight into `stage/`,
               # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
               # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
               # that matters.

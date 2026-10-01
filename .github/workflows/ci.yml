@@ -242,73 +242,6 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # Prove BOTH apps' universal-stage distributions still link. Reuses
-            # the warm zinc state from `sbt testUnit` — only linking + writing the
-            # dists costs anything. On a push to main the dists are then handed to
-            # main.yml's `build-web` / `build-worker` (uploads below), which
-            # `needs: ci` and so would otherwise restage them from a cold compile
-            # on the post-CI critical path. On a PR run (branch-ci.yml never
-            # reaches main.yml) this staging is the only place a dist that stopped
-            # linking, or a reappearing Scaladoc tree, is caught at all.
-            - run: sbt "web/stage" "worker/stage"
-
-            # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
-            # both ship a `share/doc/api` tree by default, which put dotty's
-            # scaladoc on the deploy critical path — it NPE'd here on JDK 25
-            # and failed a deploy whose only diff was a workflow file. Nothing
-            # reads these docs, so their reappearance is a regression: fail
-            # loudly rather than let an unread artefact break deploys again.
-            - name: Deploy artefacts carry no generated Scaladoc
-              run: |
-                  found=$(find web/target/universal/stage worker/target/universal/stage \
-                              -type d -name doc -print -quit)
-                  if [ -n "$found" ]; then
-                      echo "::error::staged dist ships generated Scaladoc at $found — see noApiDocs in build.sbt"
-                      exit 1
-                  fi
-
-            - name: Hand the staged web dist to main.yml's image build
-              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
-              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
-              # jars, already zipped, so compressing again only costs upload time — and
-              # kept one day, since its one consumer runs minutes after this job.
-              if: github.event_name != 'pull_request'
-              uses: actions/upload-artifact@v6
-              with:
-                  name: stage-web
-                  path: web/target/universal/stage
-                  compression-level: 0
-                  retention-days: 1
-                  if-no-files-found: error
-
-            - name: Hand the staged worker dist to main.yml's image build
-              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
-              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
-              # jars, already zipped, so compressing again only costs upload time — and
-              # kept one day, since its one consumer runs minutes after this job.
-              if: github.event_name != 'pull_request'
-              uses: actions/upload-artifact@v6
-              with:
-                  name: stage-worker
-                  path: worker/target/universal/stage
-                  compression-level: 0
-                  retention-days: 1
-                  if-no-files-found: error
-
-            # ESLint over the production JS in `public/js/`. Folded into this job
-            # (was a standalone `lint` job) to free a runner slot for the dedicated
-            # `e2e` job, keeping CI at 20 jobs so nothing queues. Runs LAST: the
-            # unit-test check is published above with `always()`, so a lint failure
-            # never hides it, and the stage artifacts upload first. Cross-file
-            # globals (constants from `_sharedJsConfig`, functions called from
-            # inline `<script>` blocks) are listed in `eslint.config.js` so
-            # `no-undef` stays meaningful.
-            - uses: actions/setup-node@v5
-              with:
-                  node-version: '22'
-                  cache: 'npm'
-            - run: npm ci
-            - run: npm run lint
 
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
     # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
@@ -682,6 +615,80 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
+            # Prove BOTH apps' universal-stage distributions still link — on the
+            # STAGING row only, the lightest e2e shard, which has compiled the apps
+            # already. (This used to close the `test` job, Main's longest ci row,
+            # whose tail it lengthened by ~1 min of staging + uploads + lint.) On a
+            # push to main the dists are then handed to main.yml's `build-web` /
+            # `build-worker` (uploads below), which `needs: ci` and so would
+            # otherwise restage them from a cold compile
+            # on the post-CI critical path. On a PR run (branch-ci.yml never
+            # reaches main.yml) this staging is the only place a dist that stopped
+            # linking, or a reappearing Scaladoc tree, is caught at all.
+            - if: matrix.shard == 'staging'
+              run: sbt "web/stage" "worker/stage"
+
+            # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
+            # both ship a `share/doc/api` tree by default, which put dotty's
+            # scaladoc on the deploy critical path — it NPE'd here on JDK 25
+            # and failed a deploy whose only diff was a workflow file. Nothing
+            # reads these docs, so their reappearance is a regression: fail
+            # loudly rather than let an unread artefact break deploys again.
+            - name: Deploy artefacts carry no generated Scaladoc
+              if: matrix.shard == 'staging'
+              run: |
+                  found=$(find web/target/universal/stage worker/target/universal/stage \
+                              -type d -name doc -print -quit)
+                  if [ -n "$found" ]; then
+                      echo "::error::staged dist ships generated Scaladoc at $found — see noApiDocs in build.sbt"
+                      exit 1
+                  fi
+
+            - name: Hand the staged web dist to main.yml's image build
+              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
+              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
+              # jars, already zipped, so compressing again only costs upload time — and
+              # kept one day, since its one consumer runs minutes after this job.
+              if: matrix.shard == 'staging' && github.event_name != 'pull_request'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: stage-web
+                  path: web/target/universal/stage
+                  compression-level: 0
+                  retention-days: 1
+                  if-no-files-found: error
+
+            - name: Hand the staged worker dist to main.yml's image build
+              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
+              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
+              # jars, already zipped, so compressing again only costs upload time — and
+              # kept one day, since its one consumer runs minutes after this job.
+              if: matrix.shard == 'staging' && github.event_name != 'pull_request'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: stage-worker
+                  path: worker/target/universal/stage
+                  compression-level: 0
+                  retention-days: 1
+                  if-no-files-found: error
+
+            # ESLint over the production JS in `public/js/`, on the staging row for
+            # the same reason as the staging above (it was a standalone `lint` job
+            # once; folding it into a shard keeps CI inside the runner budget). Runs
+            # LAST: the e2e check is published above with `always()`, so a lint
+            # failure never hides it, and the stage artifacts upload first. Cross-file
+            # globals (constants from `_sharedJsConfig`, functions called from
+            # inline `<script>` blocks) are listed in `eslint.config.js` so
+            # `no-undef` stays meaningful.
+            - uses: actions/setup-node@v5
+              if: matrix.shard == 'staging'
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+            - if: matrix.shard == 'staging'
+              run: npm ci
+            - if: matrix.shard == 'staging'
+              run: npm run lint
 
     # Cross-browser page tests, split into one matrix job per engine
     # family so the CI checks list groups red rows by browser. Every

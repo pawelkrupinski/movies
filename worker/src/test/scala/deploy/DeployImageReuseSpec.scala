@@ -150,13 +150,13 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The image builds take `test`'s staged dists instead of restaging them: they `needs: ci`
+   * The image builds take the dists ci's `e2e (staging)` row staged instead of restaging them: they `needs: ci`
    * (the runner budget), so restaging was ~2 min of cold `sbt stage` on the post-CI critical
-   * path for bytes `test` had already produced. The two halves must move together — an upload
+   * path for bytes ci had already produced. The two halves must move together — an upload
    * nothing downloads is a GB of storage per run that nothing complains about, and a download
    * with no upload fails the build — and a build job that runs sbt again has put the 2 min back.
    */
-  it should "build both images from the dists ci's test job staged, not restage them" in {
+  it should "build both images from the dists ci staged, not restage them" in {
     val ciYml = RepoFile.read(".github/workflows/ci.yml")
     // On the COMMANDS: the download step's own comment names the `sbt stage` it replaces.
     def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
