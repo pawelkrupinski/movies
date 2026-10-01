@@ -155,7 +155,7 @@ incidents:
       sweep's heal verdict neither saw a held re-read nor waited that long, so a sweep healing a
       film whose burst was held counted a stream miss. The same wide releases healed sweep after
       sweep (clayface|2026 x4, whalefall|2026 x3) with no card retirement behind any; PL and ES
-      healed nothing once undebounced. Fixed by 94694426e; the window ends before it can deploy.
+      healed nothing once undebounced. Fixed by 823bc569b; the window ends before it can deploy.
     source: worker WARN "projected N ready row(s) missing a card or a venue before the prune" 2026-09-30 21:22Z .. 10-01 15:12Z (us/uk/de only after 23:36Z); ALERTS{alertname="ReadModelHealsRecurring"} firing us/uk/de
     start: 2026-09-30T21:13:00Z
     end: 2026-10-01T15:30:00Z
