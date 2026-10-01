@@ -1569,7 +1569,10 @@ abstract class CountryConvergenceBehaviour(
       val before     = w.movieRepository.findAll()
       val holderOf: Map[(Cinema, String), StoredMovieRecord] = before.flatMap(r =>
         r.record.data.keysIterator.collect { case models.CinemaShowing(c, key) => (c, key) -> r }).toMap
-      def keyOf(c: Cinema, cm: CinemaMovie) = ScrapeListing.slotKey(c, cm.movie.title, normalizer)
+      // Each (venue, title)'s slot key once: the checks below ask it of every venue's films once per
+      // slot they test — millions of title cleanings over the US corpus, for ~100,000 answers.
+      val slotKeys = mutable.HashMap.empty[(Cinema, String), String]
+      def keyOf(c: Cinema, cm: CinemaMovie) = slotKeys.getOrElseUpdate((c, cm.movie.title), ScrapeListing.slotKey(c, cm.movie.title, normalizer))
       val receivers  = tomorrow.toSeq.filter { case (c, fs) => fs.nonEmpty && !failing.contains(c) }.sortBy(_._1.displayName)
       val arrivals: Seq[(Cinema, CinemaMovie, StoredMovieRecord)] =
         tomorrow.toSeq.sortBy(_._1.displayName).iterator.flatMap { case (from, fs) =>
@@ -1668,11 +1671,16 @@ abstract class CountryConvergenceBehaviour(
       val renamed  = country.cities.filter(c => City.formerSlugs(c.slug).nonEmpty).sortBy(_.slug)
       def filmsIn(c: City) = service.toSchedules(c, renderAt).map(_.resolved._id).toSet
       val servedBefore = renamed.map(c => c -> filmsIn(c)).toMap
-      renamed.foreach { c =>
+      // The read model read ONCE and kept in step with the moves (a city's moved rows are what a
+      // later city's read would see), rather than re-read whole for each renamed city.
+      renamed.foldLeft(if (renamed.isEmpty) Seq.empty else w.readModelRepository.findAllScreenings()) { (screenings, c) =>
         val former = City.formerSlugs(c.slug).head
-        w.readModelRepository.findAllScreenings().filter(_.city == c.slug).foreach { sc =>
+        val (moving, staying) = screenings.partition(_.city == c.slug)
+        staying ++ moving.map { sc =>
+          val moved = sc.copy(_id = sc._id.replace(s"|${c.slug}|", s"|$former|"), city = former)
           w.readModelRepository.deleteScreening(sc._id)
-          w.readModelRepository.upsertScreening(sc.copy(_id = sc._id.replace(s"|${c.slug}|", s"|$former|"), city = former))
+          w.readModelRepository.upsertScreening(moved)
+          moved
         }
       }
       // The rename reaches production as a DEPLOY: the next worker boots over rows it did not
