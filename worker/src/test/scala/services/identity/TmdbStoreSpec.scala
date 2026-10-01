@@ -222,19 +222,52 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
     val wholeFilmReads = new java.util.concurrent.atomic.AtomicInteger()
-    val docs = new TmdbDocuments {
-      def get(kind: TmdbKind, ids: Seq[String]) = { if (kind == TmdbKind.Film) wholeFilmReads.incrementAndGet(); w.docs.get(kind, ids) }
-      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
-      def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit) = w.docs.scan(kind)(page)
-      def delete(kind: TmdbKind, ids: Seq[String]) = w.docs.delete(kind, ids)
-      override def answers(kind: TmdbKind, ids: Seq[String]) = w.docs.answers(kind, ids)
-    }
+    val docs = readingThrough(w.docs)(kind => if (kind == TmdbKind.Film) { wholeFilmReads.incrementAndGet(); () })
     val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, NoDetails, new ObservationReads)
     lookups.prefetch(Nil, Seq(film), Nil)
     lookups.film(film) shouldBe w.lookups.film(film)
     lookups.film(film).toOption.flatten shouldBe defined
     wholeFilmReads.get shouldBe 0
     w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString).keySet should not contain allOf ("local", "english")
+  }
+
+  /** `docs`, with `onGet` run before each whole-document read — the read every write's compare makes. */
+  private def readingThrough(docs: TmdbDocuments)(onGet: TmdbKind => Unit): TmdbDocuments = new TmdbDocuments {
+    def get(kind: TmdbKind, ids: Seq[String]) = { onGet(kind); docs.get(kind, ids) }
+    def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = docs.put(kind, d)
+    def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit) = docs.scan(kind)(page)
+    def delete(kind: TmdbKind, ids: Seq[String]) = docs.delete(kind, ids)
+    override def answers(kind: TmdbKind, ids: Seq[String]) = docs.answers(kind, ids)
+  }
+
+  /** Run `writes` on threads of their own, all at once, and wait for every one — failing with the first that threw. */
+  private def atOnce(writes: Seq[() => Unit]): Unit = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(writes.size)
+    try writes.map(write => pool.submit[Unit](() => write())).foreach(_.get(10, java.util.concurrent.TimeUnit.SECONDS))
+    finally { pool.shutdownNow(); () }
+  }
+
+  private def minimalOf(body: String): play.api.libs.json.JsValue = TmdbNormalizer.minimal(play.api.libs.json.Json.parse(body))
+
+  /** A take-up of an empty store files every film it names through these writes, from 64 prefetch
+   *  threads: one store-wide lock held across each write's read and write round-trips made them one
+   *  at a time — the US convergence leg's take-up spent 138 s filing 40,950 film records serially. */
+  "writes to different documents" should "not wait for each other" in {
+    val w        = new World
+    val bothRead = new java.util.concurrent.CyclicBarrier(2)
+    // Each write's read waits for the other's: under one store-wide lock the second never arrives.
+    val store = new TmdbStore(readingThrough(w.docs)(_ => { bothRead.await(5, java.util.concurrent.TimeUnit.SECONDS); () }), w.clock)
+    atOnce(Seq(film, film + 1).map(id => () => store.filmPartial(id, TmdbStore.Partial.Local, minimalOf(local()))))
+    w.docs.get(TmdbKind.Film, Seq(film.toString, (film + 1).toString)).keySet shouldBe Set(film.toString, (film + 1).toString)
+  }
+
+  "a film's two partial responses" should "both land when they arrive at once" in {
+    val w     = new World
+    // Widen the window between a write's read and its write, where an unguarded pair loses one partial.
+    val store = new TmdbStore(readingThrough(w.docs)(_ => Thread.sleep(50)), w.clock)
+    atOnce(Seq(TmdbStore.Partial.Local -> local(), TmdbStore.Partial.English -> english)
+      .map { case (partial, body) => () => store.filmPartial(film, partial, minimalOf(body)) })
+    w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).keySet should contain allOf ("local", "english", "record")
   }
 
   "the popularity bucket" should "be the measure's own, and give itself back from its representative" in {
