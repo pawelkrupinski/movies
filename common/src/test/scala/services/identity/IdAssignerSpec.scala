@@ -78,14 +78,31 @@ class IdAssignerSpec extends AnyFlatSpec with Matchers {
  *  re-hashed a whole cluster, and the sort of the overlap pairs did that on every comparison —
  *  seconds of every US projection. */
 class IdAssignerCostSpec extends AnyFlatSpec with Matchers {
-  "IdAssigner over a country's clusters" should "cost time in the listings, not in re-hashing the clusters" in {
-    def cluster(c: Int, size: Int) = (0 until size).map(i => ListingKey.Native("Kino", s"page-$c-$i", s"title $c"): ListingKey).toSet
+
+  /** A cluster that counts every time it is hashed — a whole walk of its members, which is what
+   *  keying a map by the cluster costs per lookup. Counted, not timed: a 3 s wall-clock ceiling
+   *  read 3.2 s in a loaded test run with the code fine. */
+  private final class CountedCluster(members: Set[ListingKey], hashes: java.util.concurrent.atomic.AtomicLong)
+      extends scala.collection.immutable.AbstractSet[ListingKey] {
+    def contains(key: ListingKey): Boolean          = members.contains(key)
+    def iterator: Iterator[ListingKey]              = members.iterator
+    def incl(key: ListingKey): Set[ListingKey]      = members.incl(key)
+    def excl(key: ListingKey): Set[ListingKey]      = members.excl(key)
+    override def knownSize: Int                     = members.size
+    override def hashCode(): Int                    = { hashes.incrementAndGet(); members.hashCode() }
+  }
+
+  "IdAssigner over a country's clusters" should "hash each cluster a bounded number of times, not once per listing" in {
+    val hashes = new java.util.concurrent.atomic.AtomicLong(0)
+    def cluster(c: Int, size: Int): Set[ListingKey] =
+      new CountedCluster((0 until size).map(i => ListingKey.Native("Kino", s"page-$c-$i", s"title $c"): ListingKey).toSet, hashes)
     // A steady day: the same films as before, 150 of them shown at 3,000 venues each — every
     // listing of a film was counted against its cluster, each count hashing the whole cluster.
     val clusters = (0 until 150).map(cluster(_, 3000)) ++ (150 until 2150).map(cluster(_, 20))
-    val started  = System.nanoTime()
     val assigned = IdAssigner.assign(clusters.zipWithIndex.map { case (ls, i) => (i + 1).toLong -> ls }, clusters, clusters.size + 1L)
-    (System.nanoTime() - started) / 1e9 should be < 3.0
     assigned.ids.map(_._1) shouldBe (1L to 2150L)
+    withClue(s"${hashes.get} cluster hashes for ${clusters.size} clusters over ${clusters.map(_.size).sum} listings: ") {
+      hashes.get should be <= 2L * clusters.size
+    }
   }
 }
