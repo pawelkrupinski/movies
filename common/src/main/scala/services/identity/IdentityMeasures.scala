@@ -540,9 +540,22 @@ object IdentityMeasures {
    *  decorated piece of one of the titles. */
   private def shapes(titles: Seq[String], decorations: TitleDecorations = TitleDecorations.None): Seq[String] =
     Iterator.iterate(titles.map(_.trim).filter(_.nonEmpty).distinct)(s =>
-        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip) ++ s.flatMap(beforeItsYear))
+        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip) ++ s.flatMap(beforeItsYear) ++
+          s.flatMap(delimitedPieces))
           .map(_.trim).filter(_.nonEmpty).distinct)
       .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
+
+  /** The pieces two more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
+   *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne") and a code of up to
+   *  three letters before a colon with no space ("MS:HOT SPOT"). A slash or colon inside a word is the
+   *  title's own ("Face/Off", "AC/DC"). Here, not in `SearchTitles`, which the old pipeline also reads. */
+  private def delimitedPieces(title: String): Seq[String] = {
+    val slashed = if (SpacedSlash.findFirstIn(title).isDefined) SpacedSlash.split(title).toSeq.map(_.trim) else Nil
+    val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
+    (slashed ++ coded).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+  }
+  private val SpacedSlash     = """\s+/\s*|\s*/\s+""".r
+  private val CodeBeforeColon = """^\p{L}{1,3}:(?=\S)""".r
 
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
    *  Mossy Botton", "Pradhama Drishtiya Kuttakkar") — where both spellings of that word run to five

@@ -359,6 +359,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
   }
 
+  they should "split a spaced slash and a short code before an unspaced colon, as the banner separators" in {
+    // Kinoteatr Pasja bills "MISTYCZKA /film polski/"; Kino Millenium "MS:HOT SPOT": each piece is searched.
+    IdentityMeasures.titleShapes(Listing("MISTYCZKA /film polski/")) should contain ("MISTYCZKA")
+    IdentityMeasures.titleShapes(Listing("Róża / Spotkanie Filozoficzne")) should contain allOf ("Róża", "Spotkanie Filozoficzne")
+    IdentityMeasures.titleShapes(Listing("MS:HOT SPOT")) should contain ("HOT SPOT")
+    // A slash or colon inside a word is the title's own: "Face/Off", "AC/DC", "Star Wars:Episode".
+    IdentityMeasures.titleShapes(Listing("Face/Off")) shouldBe Seq("Face/Off")
+    IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
+  }
+
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
     IdentityMeasures.FactMeasures shouldBe Set("originalTitle", "year.delta", "year.distance", "titleYear.delta", "season.delta",
       "director", "runtime.delta", "country")
