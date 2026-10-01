@@ -57,4 +57,17 @@ class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
       hits shouldBe 3
     }
   }
+
+  /**
+   * setup-java's own sbt cache has no fallback key, so a build.sbt edit sent every runner of a
+   * push to Maven Central at once for sbt and all its dependencies, and Central answered the
+   * burst with 403s (run 36807612216). The cache lives in setup-jdk with a prefix restore-key
+   * instead, and setup-java must not be handed `sbt` as well.
+   */
+  it should "cache sbt's dependencies with a fallback key, not through setup-java" in {
+    val action = RepoFile.read(sharedAction)
+    action should include("key: sbt-deps-${{ runner.os }}-")
+    action should include("restore-keys: |\n          sbt-deps-${{ runner.os }}-")
+    action should not include "cache: ${{ inputs.cache }}"
+  }
 }
