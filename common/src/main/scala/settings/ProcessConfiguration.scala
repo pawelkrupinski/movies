@@ -331,7 +331,7 @@ final class ProcessConfiguration(val env: Env) {
     IdentityShadowOutput(Path.of(text("KINOWO_IDENTITY_OUT").getOrElse("target/identity-shadow")))
   /** `KINOWO_IDENTITY_DUMP` — a directory the resolver-only run writes every listing's decision to
    *  (`IdentityResolveDumpIntegrationSpec`): the fast local loop for a resolver change. */
-  def identityDump: Option[Path] = text("KINOWO_IDENTITY_DUMP").map(Path.of(_))
+  def identityDump: Option[IdentityDump] = text("KINOWO_IDENTITY_DUMP").map(dir => IdentityDump(Path.of(dir)))
   /** `KINOWO_IDENTITY_SEED_FILMS` — a directory of `films-<cc>.json`, today's films as sets of listing
    *  keys (`scripts.ListingKeyBackfill --export`), that the ID-seeding review assigns ids from. */
   def identitySeedFilms: Option[IdentitySeedFilms] =
