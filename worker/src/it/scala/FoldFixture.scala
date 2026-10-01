@@ -44,6 +44,13 @@ import scala.concurrent.duration._
  */
 object FoldFixture {
 
+  /** Counts the folds a folder abandoned — what production's `kinowo_worker_staging_fold_aborts` sees. */
+  final class CountingFoldMetrics extends services.staging.StagingFoldMetrics {
+    private val count = new java.util.concurrent.atomic.AtomicInteger(0)
+    def recordFoldAborted(): Unit = { count.incrementAndGet(); () }
+    def aborts: Int = count.get
+  }
+
   private val Timeout = 10.seconds
   private def now     = java.util.Date.from(java.time.Instant.now())
 
@@ -64,9 +71,10 @@ object FoldFixture {
      *  failure (see `FoldOnUnreadableRowSpec`). */
     def folder(repository: MovieRepository = splitAwareRepository, maxRetries: Int = 3,
                commit: org.mongodb.scala.ClientSession => Unit = MongoStagingFolder.commitTransaction,
-               clock: java.time.Clock = java.time.Clock.systemUTC()): MongoStagingFolder =
+               clock: java.time.Clock = java.time.Clock.systemUTC(),
+               metrics: services.staging.StagingFoldMetrics = services.staging.StagingFoldMetrics.noop): MongoStagingFolder =
       new MongoStagingFolder(connection, normalizer = titleNormalizer, movieRepository = repository,
-        maxRetries = maxRetries, commit = commit, clock = clock)
+        maxRetries = maxRetries, commit = commit, clock = clock, metrics = metrics)
 
     /** A MIGRATED film: a raw `movies` document carrying NO `sourceData`, which is the shape
      *  prod's corpus is converging to and the one that makes the fold blind to the film's

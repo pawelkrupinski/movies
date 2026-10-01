@@ -2115,6 +2115,57 @@
       ]
     },
     {
+      "id": 57,
+      "title": "Staging folds ABANDONED — by country",
+      "description": "`kinowo_worker_staging_fold_aborts_total`: staging folds MongoStagingFolder gave up on -- out of retries, or a failure retrying cannot help -- and rethrew, so the newcomer stays in pending_movies with its listing off the site until a later fold succeeds. ZERO IS THE HEALTHY READING. A transient abort is retried by the reaper's next tick and heals; a line that never drops is one film failing deterministically, and the worker's ERROR line (`Staging fold '<title>' aborted after N attempt(s): ...`) names it. Alerted by StagingFoldsAborting (worker-pipeline.rules). Added 2026-10-01: one UK film's fold died on E11000 every minute for six days from 2026-09-25 with nothing counting it -- the fold runs in an event listener, not as a task.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 209
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_staging_fold_aborts_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}}"
+        }
+      ]
+    },
+    {
       "id": 36,
       "title": "Share-card directory — bytes on disk vs the budget, by country and kind",
       "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`), the poster cache (`kind=\"poster\"`) and the card bases (`kind=\"base\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers all three TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: the card, base and poster of every film web_movies points a card at. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
@@ -2127,7 +2178,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 209
+        "y": 217
       },
       "fieldConfig": {
         "defaults": {
@@ -2240,7 +2291,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 217
+        "y": 225
       },
       "fieldConfig": {
         "defaults": {
@@ -2291,7 +2342,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 225
+        "y": 233
       },
       "fieldConfig": {
         "defaults": {
@@ -2374,7 +2425,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 233
+        "y": 241
       },
       "fieldConfig": {
         "defaults": {
@@ -2425,7 +2476,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 241
+        "y": 249
       },
       "fieldConfig": {
         "defaults": {
@@ -2508,7 +2559,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 249
+        "y": 257
       },
       "fieldConfig": {
         "defaults": {
@@ -2559,7 +2610,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 249
+        "y": 257
       },
       "targets": [
         {
@@ -2599,7 +2650,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 257
+        "y": 265
       },
       "fieldConfig": {
         "defaults": {
@@ -2659,7 +2710,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 265
+        "y": 273
       },
       "fieldConfig": {
         "defaults": {
@@ -2725,7 +2776,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 273
+        "y": 281
       },
       "fieldConfig": {
         "defaults": {
@@ -2776,7 +2827,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 273
+        "y": 281
       },
       "fieldConfig": {
         "defaults": {
@@ -2836,7 +2887,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 281
+        "y": 289
       },
       "fieldConfig": {
         "defaults": {
@@ -2913,7 +2964,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 289
+        "y": 297
       },
       "fieldConfig": {
         "defaults": {
@@ -2982,7 +3033,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 289
+        "y": 297
       },
       "fieldConfig": {
         "defaults": {
@@ -3051,7 +3102,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 297
+        "y": 305
       },
       "fieldConfig": {
         "defaults": {
@@ -3102,7 +3153,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 305
+        "y": 313
       },
       "fieldConfig": {
         "defaults": {
@@ -3171,7 +3222,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 305
+        "y": 313
       },
       "fieldConfig": {
         "defaults": {
@@ -3231,7 +3282,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 313
+        "y": 321
       },
       "fieldConfig": {
         "defaults": {

@@ -39,11 +39,13 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers with tools.Integ
       fold.seedMigratedFilm(title, Some(2026), tmdbId)
       fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
 
+      val metrics = new FoldFixture.CountingFoldMetrics
       val thrown = intercept[IllegalStateException](
-        fold.folder(new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)).foldGroup(title))
+        fold.folder(new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer), metrics = metrics).foldGroup(title))
       withClue(s"the fold failed, but not for the reason under test: ${thrown.getMessage}\n") {
         thrown.getMessage should include("Refusing to re-key the film")
       }
+      metrics.aborts shouldBe 1   // an abandoned fold is counted, not only logged
     }
   }
 

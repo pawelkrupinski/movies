@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
-import services.staging.{StagingMetrics, StagingStep}
+import services.staging.{StagingFoldMetrics, StagingMetrics, StagingStep}
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, ResolveMode, Task, TaskState, TaskType}
 
 import java.time.Instant
@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with StagingFoldMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -95,6 +95,9 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
   // ── StagingMetrics ──────────────────────────────────────────────────────────
   def recordNewcomerKick(groupRows: Int): Unit = series.recordStagingNewcomerKick(countryCode, groupRows)
+
+  // ── StagingFoldMetrics ──────────────────────────────────────────────────────
+  def recordFoldAborted(): Unit = series.recordStagingFoldAborted(countryCode)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
@@ -526,6 +529,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "collection", "op", "exception")
       .register(registry)
 
+    private val stagingFoldAborts = Counter.builder()
+      .name("kinowo_worker_staging_fold_aborts")
+      .help("Staging folds MongoStagingFolder GAVE UP on, by country: out of retries or a failure retrying cannot help, rethrown so the fold reschedules and the newcomer stays in pending_movies, its listing off the site. ZERO IS THE HEALTHY READING. Added 2026-10-01: one UK film's fold died on E11000 about once a minute from 2026-09-25 for six days and only an ERROR line said so -- the fold runs in an event listener, not as a task, so tasks_finished never counted it. Each abort is also an ERROR line naming the film. Alerted by StagingFoldsAborting (worker-pipeline.rules). Seeded at 0 so increase() sees the first.")
+      .labelNames("country")
+      .register(registry)
+
     private val decodeFailures = Counter.builder()
       .name("kinowo_worker_decode_failures")
       .help("Documents that could not be decoded, by country and collection. web_movies|web_screenings: SKIPPED by a whole-collection scan, a film or screening the reader goes without while the rest of its page is kept. movies: a read that FAILED on it — a point read answering unreadable, or the whole corpus scan left incomplete. movies|screenings|movie_slots from a change stream: a post-image it SKIPPED (not applied) rather than end its cursor on, which before 2026-09-24 killed the stream for good. ZERO IS THE HEALTHY READING; each was a WARN line and nothing else before 2026-09-24. Alerted by DocumentsUndecodable (worker-pipeline.rules). Seeded at 0 per collection so increase() sees the first skip.")
@@ -553,6 +562,7 @@ object WorkerTaskMetrics {
         StagingStep.all.foreach(s => stagingMovies.labelValues(c, s.label).set(0.0))
         MergeReason.all.foreach(r => merges.labelValues(c, r.label))
         RekeyReason.all.foreach(r => rekeys.labelValues(c, r.label))
+        stagingFoldAborts.labelValues(c).inc(0.0)
         splits.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
         ScrapeLandingMetrics.Guards.foreach(g =>
           ScrapeLandingMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
@@ -691,6 +701,9 @@ object WorkerTaskMetrics {
     // ── RepositoryWriteMetrics ─────────────────────────────────────────────────
     def recordRepositoryWriteFailed(country: String, collection: String, op: String, exception: String): Unit =
       repositoryWriteFailed.labelValues(country, collection, op, exception).inc()
+
+    // ── StagingFoldMetrics ─────────────────────────────────────────────────────
+    def recordStagingFoldAborted(country: String): Unit = stagingFoldAborts.labelValues(country).inc()
 
     // ── DecodeFailureMetrics ───────────────────────────────────────────────────
     def recordDecodeFailure(country: String, collection: String): Unit =

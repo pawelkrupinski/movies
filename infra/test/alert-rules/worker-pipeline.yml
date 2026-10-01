@@ -416,6 +416,56 @@ tests:
               summary: "de's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
 
+  # STAGING FOLDS ABORTING. The 2026-09-25 UK shape: one abandoned fold a minute, seeded at 0
+  # from boot. Quiet before half an hour of it, firing after.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_fold_aborts_total{country="uk",job="kinowo-worker"}'
+        values: '0x4 1+1x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: StagingFoldsAborting
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: StagingFoldsAborting
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk }
+            exp_annotations:
+              summary: "uk's worker has been abandoning staging folds for 30 minutes"
+              description: "A concluded newcomer keeps failing to fold into `movies`, so its listing is resolved and never shown. The worker's ERROR lines name the film and the cause (`Staging fold '<title>' aborted after N attempt(s): ...`). The same film every time is a deterministic failure -- an E11000 on `tmdbId_1` is the fold planning two documents for one film, a decode error a row it cannot read -- and only a code or data fix clears it; many different films at once is the database (timeouts, elections)."
+
+  # A TRANSIENT ABORT HEALS ITSELF. Two aborts in one minute (a lost commit reply), then the
+  # reaper's retry graduates the film: nothing to page about, ever.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_fold_aborts_total{country="pl",job="kinowo-worker"}'
+        values: '0x4 2x55'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: StagingFoldsAborting
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: StagingFoldsAborting
+        exp_alerts: []
+
+  # A ROLLOUT IN THE MIDDLE OF IT. The old pod aborts every minute until t=20 and goes stale; the
+  # new pod's series is absent for three minutes and then keeps aborting. The `for:` must carry
+  # across the gap -- firing by t=40, which a hold restarted at the gap could not reach.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_fold_aborts_total{country="de",job="kinowo-worker",pod="worker-de-a"}'
+        values: '0 1+1x20 stale'
+      - series: 'kinowo_worker_staging_fold_aborts_total{country="de",job="kinowo-worker",pod="worker-de-b"}'
+        values: '_x24 0 1+1x40'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: StagingFoldsAborting
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de's worker has been abandoning staging folds for 30 minutes"
+              description: "A concluded newcomer keeps failing to fold into `movies`, so its listing is resolved and never shown. The worker's ERROR lines name the film and the cause (`Staging fold '<title>' aborted after N attempt(s): ...`). The same film every time is a deterministic failure -- an E11000 on `tmdbId_1` is the fold planning two documents for one film, a decode error a row it cannot read -- and only a code or data fix clears it; many different films at once is the database (timeouts, elections)."
+
   # A TASK PARKED PAST THE CAP. A Deferred that named an instant six hours out, before
   # TaskWorker clamped it: the hold falls a second per second from 21600. Fires once the
   # `for: 2m` is up, per (country, task_type), however many worker pods sample the queue.

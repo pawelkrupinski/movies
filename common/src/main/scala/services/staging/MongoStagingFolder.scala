@@ -62,7 +62,9 @@ class MongoStagingFolder(
    *  missing (or fail transiently) after, or instead of, the real commit. */
   commit: ClientSession => Unit = MongoStagingFolder.commitTransaction,
   /** Stamps each attempt's `writtenAt` — the worker's one clock, so a spec can pin it. */
-  clock: java.time.Clock = java.time.Clock.systemUTC()
+  clock: java.time.Clock = java.time.Clock.systemUTC(),
+  /** Counts every fold this folder abandons — see [[StagingFoldMetrics]]. */
+  metrics: StagingFoldMetrics = StagingFoldMetrics.noop
 ) extends StagingFolder with Logging {
 
 
@@ -157,6 +159,7 @@ class MongoStagingFolder(
           abortQuietly(session)
           logger.error(s"Staging fold '$cleanTitle' aborted after $attempt attempt(s): ${e.getMessage} " +
             "— rethrowing so the task reschedules instead of reporting an empty fold as success.")
+          metrics.recordFoldAborted()
           throw e
       }
     }
@@ -205,6 +208,7 @@ class MongoStagingFolder(
               } else {
                 logger.error(s"Staging fold '$cleanTitle' could not commit after $attempt attempt(s): ${cause.getMessage} " +
                   "— rethrowing so the task reschedules.")
+                metrics.recordFoldAborted()
                 throw cause
               }
           }

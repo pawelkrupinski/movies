@@ -296,7 +296,9 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
         throw e
       }
 
-      a[com.mongodb.MongoException] should be thrownBy fold.folder(commit = neverLands).foldGroup(newcomerTitle)
+      val metrics = new FoldFixture.CountingFoldMetrics
+      a[com.mongodb.MongoException] should be thrownBy fold.folder(commit = neverLands, metrics = metrics).foldGroup(newcomerTitle)
+      metrics.aborts shouldBe 1   // the give-up is counted, not only logged
       Await.result(movies.find(Filters.regex("key",
         s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds) shouldBe empty
       Await.result(staging.countDocuments().toFuture(), 10.seconds) should be > 0L
@@ -339,7 +341,9 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
           throw e
         } else services.staging.MongoStagingFolder.commitTransaction(session)
 
-      noException should be thrownBy fold.folder(commit = transientOnce).foldGroup(newcomerTitle)
+      val metrics = new FoldFixture.CountingFoldMetrics
+      noException should be thrownBy fold.folder(commit = transientOnce, metrics = metrics).foldGroup(newcomerTitle)
+      metrics.aborts shouldBe 0   // a retry that succeeded is not an abort
       commits.get() shouldBe 2
       Await.result(movies.find(Filters.regex("key",
         s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds) should not be empty

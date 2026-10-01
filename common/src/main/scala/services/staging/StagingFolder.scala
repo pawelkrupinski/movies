@@ -102,3 +102,18 @@ class InMemoryStagingFolder(
     }
   }
 }
+
+/** Where a staging fold that GAVE UP is counted — the folder abandoned the group (out of
+ *  retries, or a failure retrying cannot help) and rethrew so the task reschedules. The
+ *  worker wires the Prometheus-backed `WorkerTaskMetrics`; tests and scripts use `noop`.
+ *
+ *  Why it exists: from 2026-09-25 to 10-01 one UK film's fold died on E11000 every minute,
+ *  ~4,300 times, and the only trace was an ERROR line. The fold runs in an event listener,
+ *  not as a task, so `tasks_finished{outcome="failed"}` never saw it. */
+trait StagingFoldMetrics {
+  def recordFoldAborted(): Unit
+}
+
+object StagingFoldMetrics {
+  val noop: StagingFoldMetrics = () => ()
+}
