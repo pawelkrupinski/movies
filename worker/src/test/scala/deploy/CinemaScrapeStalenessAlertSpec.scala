@@ -2,6 +2,7 @@ package deploy
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.tasks.ScrapeCadence
 
 /**
  * Guards the alerting over ROSTER FRESHNESS — whether every cinema is still
@@ -27,14 +28,16 @@ import org.scalatest.matchers.should.Matchers
  * (`infra/nix/files/monitoring/scrape-kinowo-apps.yaml`), so a rule there
  * actually runs.
  *
- * WHAT IS ASSERTED, AND WHAT IS DELIBERATELY NOT. The per-country THRESHOLDS are
- * pinned, because they are derived — 1.5x each country's deployed
+ * WHAT IS ASSERTED. The per-country THRESHOLDS are pinned, because they are
+ * derived — [[WiggleRoom]] times each country's deployed
  * `KINOWO_SCRAPE_FRESHNESS_MINUTES` — and a derived literal that nothing checks
  * drifts the moment the value it was derived from moves. That is not
  * hypothetical: the oldest-scrape PANEL misstated DE's window within an hour of
  * being written, which is why `WorkerScrapeCadenceConfigSpec` now generates its
- * sentence. The MULTIPLIER itself is a judgement about alert noise and is
- * asserted only to be uniform across countries, not to be any particular number.
+ * sentence. The multiplier is derived too, from the longest gap the scrape
+ * schedule itself allows between two refreshes of one cinema, because the
+ * schedule moving under a fixed multiplier is exactly what left it on the line:
+ * see [[WiggleRoom]].
  */
 class CinemaScrapeStalenessAlertSpec extends AnyFlatSpec with Matchers {
 
@@ -43,13 +46,18 @@ class CinemaScrapeStalenessAlertSpec extends AnyFlatSpec with Matchers {
   private val RuleFiles  = "infra/nix/files/monitoring/prometheus.yaml"
   private val OverlayDir = "infra/kubernetes/worker/overlays"
 
-  /** The wiggle room over each country's own sweep window. HEALTHY IS A SAWTOOTH
-   *  RIDING JUST UNDER THAT WINDOW — cinemas fall due, get swept, and the maximum
-   *  resets — so a rule firing at 1.0x would fire on healthy operation every
-   *  cycle. One half-window of slack sits clear of the normal peak (DE measured
-   *  9.6h against its 10h window on 2026-08-30 while running AHEAD of schedule)
-   *  and still far inside the shape that has actually bitten, at >4x. */
-  private val WiggleRoom = 1.5
+  /** The wiggle room over each country's own sweep window: the longest gap the
+   *  scrape schedule ALLOWS between two refreshes of one cinema, plus one half-window
+   *  of slack. Healthy operation rides up to that schedule ceiling — cinemas fall due,
+   *  get swept, and the maximum resets — so a rule firing AT it fires on a healthy
+   *  roster. The ceiling was 1.0x until 2026-09-28, when the scrape schedule began
+   *  counting each refresh toward its NEAREST boundary (cost-spaced phases move
+   *  hourly), which by design lets a cinema wait up to 1.5 windows. The rule stayed at
+   *  1.5x, and from that deploy PL and the US sat at 1.46-1.5x and 1.5x for days,
+   *  pending on and off, until the US fired on 2026-10-01 at 21.1h against its 21h line
+   *  with nothing wrong. The half-window of slack is still far inside the shape that
+   *  has actually bitten, at >4x (DE, July 2026). */
+  private val WiggleRoom = ScrapeCadence.Counting.longestGapPeriods + 0.5
 
   private lazy val rules = RepoFile.read(Rules)
 
@@ -148,11 +156,13 @@ class CinemaScrapeStalenessAlertSpec extends AnyFlatSpec with Matchers {
       .map(_.group(1).toInt)
       .getOrElse(fail(s"CinemaScrapeNeverScraped in $Rules has no `for:` in whole hours"))
 
+    // A cold-started cinema is due at once, and no cinema waits longer than the
+    // schedule's longest gap, so that gap on the slowest window bounds the first sweep.
     val slowestHorizonHours =
-      deployedCountries.flatMap(RepoFile.deployedFreshnessMinutes).max * WiggleRoom / 60
+      deployedCountries.flatMap(RepoFile.deployedFreshnessMinutes).max * ScrapeCadence.Counting.longestGapPeriods / 60
 
     withClue(
-      s"CinemaScrapeNeverScraped waits ${grace}h, but the slowest country's alerting horizon is " +
+      s"CinemaScrapeNeverScraped waits ${grace}h, but the slowest country's first sweep can take " +
         f"$slowestHorizonHours%.1fh. A shorter wait pages on every rollout of that country's worker. "
     ) {
       grace.toDouble should be >= slowestHorizonHours

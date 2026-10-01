@@ -91,6 +91,25 @@ class DueWindowSpec extends AnyFlatSpec with Matchers {
     gaps.max should be <= 91
   }
 
+  // `longestGapPeriods` is what the scrape-staleness alert's threshold is built on
+  // (CinemaScrapeStalenessAlertSpec), so it must be the gap the counting really allows:
+  // a refresh just before its window's midpoint under nearest counting, or one right at a
+  // boundary under preceding counting, waits that long and no longer.
+  it should "allow at most, and at worst exactly, each counting's longestGapPeriods between refreshes" in {
+    val period = 60.minutes
+    val phase  = FixedPhase(10.minutes)
+    Seq(DueBoundary.PrecedingBoundary, DueBoundary.NearestBoundary).foreach { counting =>
+      val dw   = new DueWindow(_ => period, period, phase, counting)
+      val gaps = (0 until 120).map { offsetMinutes =>
+        val lastRun = t0.plusSeconds((10 + offsetMinutes) * 60L)
+        (1 to 240).find(m => dw.isDue("scrape|Foo", Some(lastRun), lastRun.plusSeconds(m * 60L))).get
+      }
+      withClue(s"$counting: ") {
+        gaps.max shouldBe (counting.longestGapPeriods * 60).toInt +- 1
+      }
+    }
+  }
+
   private final case class FixedPhase(offset: FiniteDuration) extends PhaseOffset {
     def millis(dedupKey: String, periodMillis: Long): Long = offset.toMillis % periodMillis
   }

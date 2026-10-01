@@ -8,9 +8,9 @@ import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor}
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
-import services.cadence.{DueBoundary, RatingCadence}
+import services.cadence.RatingCadence
 import services.metrics.WorkerMetrics
-import services.tasks.{CostSpacedPhaseOffset, DueWindow, VenueCadenceStore}
+import services.tasks.{CostSpacedPhaseOffset, DueWindow, ScrapeCadence, VenueCadenceStore}
 import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 
 /**
@@ -358,7 +358,7 @@ class WorkerWiring(
   // `CostSpacedPhaseOffset`; `scrapePhasePlanner` (ScrapeWiring) keeps the plan fresh.
   // Because a re-plan moves phases, a scrape counts toward its nearest boundary.
   val scrapePhases    = new CostSpacedPhaseOffset
-  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, scrapeFreshness.value, scrapePhases, DueBoundary.NearestBoundary)
+  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, scrapeFreshness.value, scrapePhases, ScrapeCadence.Counting)
   // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
   // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
   // own TTL is defined as "shorter than this window" and pinned by a spec against

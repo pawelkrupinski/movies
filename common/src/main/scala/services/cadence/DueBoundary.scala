@@ -15,6 +15,11 @@ object DueBoundary {
   /** Which boundary a refresh counts toward. */
   sealed trait Counting {
     private[DueBoundary] def countedBoundary(atMillis: Long, phaseMillis: Long, periodMillis: Long): Long
+
+    /** The longest a key can wait between two refreshes, in periods, when every refresh
+     *  runs the moment it falls due -- the ceiling a healthy schedule's oldest key rides
+     *  up to, and so the floor under any alert on that age. */
+    def longestGapPeriods: Double
   }
 
   /** The boundary at or before the refresh: a key refreshed anywhere in a window is due
@@ -23,6 +28,7 @@ object DueBoundary {
   case object PrecedingBoundary extends Counting {
     private[DueBoundary] def countedBoundary(atMillis: Long, phaseMillis: Long, periodMillis: Long): Long =
       Math.floorDiv(atMillis - phaseMillis, periodMillis)
+    def longestGapPeriods: Double = 1.0
   }
 
   /** The boundary NEAREST the refresh, so the next one lands in
@@ -35,6 +41,7 @@ object DueBoundary {
   case object NearestBoundary extends Counting {
     private[DueBoundary] def countedBoundary(atMillis: Long, phaseMillis: Long, periodMillis: Long): Long =
       Math.floorDiv(atMillis - phaseMillis + periodMillis / 2, periodMillis)
+    def longestGapPeriods: Double = 1.5
   }
 
   /** The default phase: a deterministic offset in `[0, period)` hashed from the key —

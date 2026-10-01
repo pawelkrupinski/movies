@@ -31,19 +31,22 @@
 # would either page PL eleven hours late or page the US constantly. So each country is compared to
 # ITS OWN window.
 #
-# HEALTHY IS A SAWTOOTH RIDING JUST UNDER THAT WINDOW, which is the reason for the 1.5x multiplier
-# rather than a comparison against the window itself. Cinemas fall due, get swept, and the maximum
-# resets -- so the gauge is SUPPOSED to approach the window from below and drop. DE peaked near
-# 9.6h against its 10h window on 2026-08-30 while running comfortably ahead of schedule. A rule
-# that fired at 1.0x would fire on healthy operation every cycle; the whole margin is there so that
-# only a sweep genuinely failing to keep up says anything.
+# HEALTHY RIDES UP TO THE SCHEDULE'S OWN CEILING, which is the reason for the 2x multiplier rather
+# than a comparison against the window itself. Cinemas fall due, get swept, and the maximum resets
+# -- so the gauge is SUPPOSED to climb toward the longest gap the schedule allows and drop. That
+# ceiling was 1.0x the window until 2026-09-28, when the scrape schedule began counting a refresh
+# toward its NEAREST boundary (b9700f37b: cost-spaced phases are replanned hourly, and preceding
+# counting made half the corpus due on every replan). Nearest counting lets a cinema wait up to
+# 1.5 windows BY DESIGN (`DueBoundary.Counting.longestGapPeriods`). The rule was then still at
+# 1.5x -- exactly on the new ceiling -- and from that deploy PL sat at 1.46-1.5x and the US at
+# 1.5x for days, pending on and off, until the US fired on 2026-10-01 at 21.1h against 21h with
+# nothing wrong. So the multiplier is that ceiling plus one half-window of slack.
 #
-# 1.5x IS WIGGLE ROOM, NOT A MEASUREMENT, and it is worth being honest about that. It is one half-
-# window of slack, chosen because it is comfortably outside the sawtooth's normal peak and still
-# far inside the shape that has actually bitten: DE's real overrun in July 2026 sat at ~12.8h
-# against a 3h window -- more than 4x -- and ran for weeks with every other panel clean. Anything
-# in the 1.2-2.0x range would have caught it. Revise this by looking at what the gauge did in the
-# week before it fired, not by raising it because it fired.
+# THE HALF-WINDOW IS WIGGLE ROOM, NOT A MEASUREMENT. It is comfortably outside the healthy peak
+# and still far inside the shape that has actually bitten: DE's real overrun in July 2026 sat at
+# ~12.8h against a 3h window -- more than 4x -- and ran for weeks with every other panel clean.
+# Revise it by looking at what the gauge did in the week before it fired, not by raising it
+# because it fired -- and if the schedule's counting changes again, the spec below moves it.
 #
 # THE MULTIPLIER AND THE PER-COUNTRY NUMBERS BELOW ARE GENERATED AND ASSERTED by
 # `CinemaScrapeStalenessAlertSpec` in the application repository, from the same deploy configs the
@@ -75,13 +78,13 @@ groups:
       # overlay has a clause here, so it cannot happen quietly.
       - alert: CinemaScrapeOldestAgeHigh
         expr: >-
-          last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"}[10m]) > 54000
-          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="es"}[10m]) > 37800
-          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}[10m]) > 5400
-          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="uk"}[10m]) > 37800
-          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}[10m]) > 75600
+          last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"}[10m]) > 72000
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="es"}[10m]) > 50400
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}[10m]) > 7200
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="uk"}[10m]) > 50400
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}[10m]) > 100800
         # THIRTY MINUTES, and it is doing less work than it looks like. Once the oldest cinema is
-        # past 1.5x its window the number only climbs -- a failed scrape deliberately does not mark
+        # past 2x its window the number only climbs -- a failed scrape deliberately does not mark
         # freshness, so nothing resets it until that venue is scraped successfully. The `for:` is
         # therefore not waiting for the condition to persist, it is filtering the one-sample spike
         # a worker restart can leave while the census re-reads the freshness mirror.
@@ -93,7 +96,7 @@ groups:
         annotations:
           summary: "{{ $labels.country }}'s oldest cinema has not scraped in {{ $value | humanizeDuration }}"
           description: >-
-            The least recently scraped cinema in "{{ $labels.country }}" is past 1.5x that
+            The least recently scraped cinema in "{{ $labels.country }}" is past 2x that
             country's KINOWO_SCRAPE_FRESHNESS_MINUTES window, so the sweep is not keeping up with
             its own cadence. Read the shape before reading the number: a line climbing in a
             straight diagonal is ONE cinema failing every attempt (a failed scrape does not mark
@@ -123,8 +126,8 @@ groups:
         expr: last_over_time(kinowo_worker_cinema_scrape_never_scraped[10m]) > 0
         # TWENTY-FOUR HOURS, and it MUST stay longer than the slowest country's full sweep. Every
         # cinema is legitimately never-scraped on a fresh worker until the first sweep reaches it,
-        # so a shorter window would page on every US rollout -- 14h cadence, and 1.5x of that is
-        # 21h. 24h clears it with room and is still the same day.
+        # so a shorter window would page on every US rollout -- 14h cadence, and the schedule's
+        # longest gap (1.5x) of that is 21h. 24h clears it with room and is still the same day.
         for: 24h
         labels:
           severity: warning

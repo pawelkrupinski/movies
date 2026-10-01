@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.cadence.DueBoundary
+
 import scala.concurrent.duration._
 
 /**
@@ -19,6 +21,14 @@ import scala.concurrent.duration._
  * still clears the whole catalogue within one freshness window.
  */
 object ScrapeCadence {
+  /** Which boundary a cinema's scrape counts toward. NEAREST, because the cost-spaced
+   *  phases ([[CostSpacedPhaseOffset]]) move as costs are re-measured, and under
+   *  preceding counting every move made about half the corpus due at once. The price is
+   *  that a cinema can wait up to `longestGapPeriods` (1.5) windows between scrapes by
+   *  design, which the scrape-staleness alert's threshold is derived from
+   *  (CinemaScrapeStalenessAlertSpec). */
+  val Counting: DueBoundary.Counting = DueBoundary.NearestBoundary
+
   /** ScrapeReaper tick cadence (also the phase-spread granularity). */
   val ReaperTickInterval: FiniteDuration = 1.minute
 
