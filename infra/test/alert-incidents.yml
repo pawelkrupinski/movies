@@ -190,3 +190,77 @@ incidents:
     end: 2026-10-01T07:45:00Z
     grace: 30m
     expect_firing: [ReadModelServingDiffersFromCorpus]
+
+  - id: auto-apply-mongodb-8-3-restart-2026-09-27
+    description: >-
+      b4aa74516 moved mongo-1 to MongoDB 8.3.11, so the staged closure changed mongodb.service and
+      the applier refused to restart the replica set's primary on its own -- the refusal it exists
+      to make -- until the closure was switched in by hand. AutoApplyRefusingChange must keep
+      saying so for a staged change to a unit it may not restart.
+    source: ALERTS{alertname="AutoApplyRefusingChange",host="mongo-1",reason="units_would_change"} firing 04:46-07:48Z; commit b4aa74516 (03:39Z)
+    start: 2026-09-27T03:40:00Z
+    end: 2026-09-27T07:50:00Z
+    expect_firing: [AutoApplyRefusingChange]
+
+  - id: auto-apply-systemd-hardlinked-by-optimise-2026-09-28
+    description: >-
+      The nightly nix-store --optimise hard-linked a duplicate over PID 1's systemd binary, so
+      /proc/1/exe read "(deleted)" and every closure "would restart systemd" while the unit tree
+      saw no change: all three hosts sat in classifier_disagreement (k3s-worker-1 4.5h, mongo-1
+      and monitoring-1 18h) until hand switches re-executed the identical binary. A refusal on a
+      false premise, closed by 7a1aafecc (forgive it when PID 1 already runs the candidate's
+      systemd byte for byte); the host-reported reason is still in history, so the replay fires.
+    source: ALERTS{alertname="AutoApplyRefusingChange",reason="classifier_disagreement"} k3s-worker-1 09-28 04:48-09:22Z, mongo-1 + monitoring-1 09-28T15:52Z..09-29T10:10Z; commit 7a1aafecc
+    start: 2026-09-28T03:45:00Z
+    end: 2026-09-29T10:15:00Z
+    expect_firing: [AutoApplyRefusingChange]
+
+  - id: us-drive-ins-closed-for-season-2026-09-27
+    description: >-
+      Seventeen US drive-ins closed for the season: their Flicks pages parsed and carried the
+      "no movie times" notice, yet an empty plan archived exactly like a parser that stopped
+      matching, so CinemaContentStaleVenuesGrowing (us) held for 44 hours on venues that were
+      fine. A firing on a false premise, closed by b821575ec (a venue whose own page says it has
+      no schedule is left out of the stale count); the archive written before it does not carry
+      that flag, so the replay fires.
+    source: ALERTS{alertname="CinemaContentStaleVenuesGrowing",country="us"} firing 09-27T23:04Z..09-29T19:08Z; commit b821575ec
+    start: 2026-09-27T23:00:00Z
+    end: 2026-09-29T19:10:00Z
+    expect_firing: [CinemaContentStaleVenuesGrowing]
+
+  - id: worker-pl-metaspace-growth-2026-09-27
+    description: >-
+      worker-pl's metaspace climbed to its 128m cap (every worker sat at 80-97% of it), pushing
+      the container's resident memory past JvmResidentNearContainerLimit's threshold again and
+      again before the metaspace OOMs below. Fixed by c62064dbb, which serves the apps' classes
+      from an AOT cache trained into the image, out of metaspace.
+    source: ALERTS{alertname="JvmResidentNearContainerLimit",tier="worker",country="pl"} 19 episodes 09-27T14:26Z..09-28T20:36Z; commit c62064dbb
+    start: 2026-09-27T14:20:00Z
+    end: 2026-09-28T20:40:00Z
+    expect_firing: [JvmResidentNearContainerLimit]
+
+  - id: worker-uk-heap-and-pl-metaspace-ooms-2026-09-28
+    description: >-
+      Real JVM deaths, each writing a heap dump: worker-uk ran out of heap five times under the
+      identity take-up (fixed by gitops b140647 raising its heap 448m -> 640m, recorded by
+      f5572b448), then worker-pl died of OutOfMemoryError: Metaspace at its 128m cap (fixed by
+      c62064dbb). HeapDumpWritten must page for every one.
+    source: ALERTS{alertname="HeapDumpWritten"} dir=worker-uk 09-28 02:46, 07:16, 11:00, 17:48, 19:48Z; dir=worker-pl 09-28T21:48Z .. 09-29T03:18Z (4 episodes); commits f5572b448, c62064dbb
+    start: 2026-09-28T02:40:00Z
+    end: 2026-09-29T03:50:00Z
+    grace: 0m
+    expect_firing: [HeapDumpWritten]
+
+  - id: heap-dumps-requested-on-demand-2026-09-29
+    description: >-
+      Two dumps taken through POST /heapdump while measuring the heap (worker-uk 13:05Z,
+      worker-us 17:42Z; both pods kept running) were written as wedge-<millis>.hprof like the
+      liveness watchdog's, so HeapDumpWritten paged them as worker deaths. A firing on a false
+      premise, closed by ee5b94f19 (an on-demand dump is named requested-* and the newest-death
+      time skips it); the dumps written before it carry the old name, so the replay fires. The
+      window spans both dumps; nothing else fired between them.
+    source: ALERTS{alertname="HeapDumpWritten"} dir=worker-uk 13:18-13:46Z, dir=worker-us 17:46-18:14Z; commit ee5b94f19
+    start: 2026-09-29T13:00:00Z
+    end: 2026-09-29T18:20:00Z
+    grace: 0m
+    expect_firing: [HeapDumpWritten]

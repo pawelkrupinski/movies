@@ -31,18 +31,20 @@
       "status": "ok"
     },
     "AutoApplyRefusingChange": {
-      "episodes": 3,
+      "episodes": 4,
+      "episodes_outside_incidents": 1,
       "file": "nixos-deploy.rules",
-      "firing_fraction": 0.0774,
+      "firing_fraction": 0.0791,
+      "firing_fraction_outside_incidents": 0.0019,
       "for": "1h",
       "longest_episode": [
         "2026-09-28T15:52:00Z",
         "2026-09-29T10:10:00Z"
       ],
-      "observed_firing_fraction": 0.0774,
-      "peak_series": 2,
-      "series_episodes": 4,
-      "status": "noisy"
+      "observed_firing_fraction": 0.0791,
+      "peak_series": 3,
+      "series_episodes": 7,
+      "status": "ok"
     },
     "AutoApplyStalled": {
       "episodes": 0,
@@ -73,7 +75,7 @@
         "2026-09-23T18:23:00Z",
         "2026-09-23T19:20:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-23T16:45:00Z",
+      "metrics_rolled_out_at": "2026-09-23T16:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 1,
       "series_episodes": 1,
@@ -116,7 +118,7 @@
       "file": "read-model-projection.rules",
       "firing_fraction": 0.0,
       "for": "5m",
-      "metrics_rolled_out_at": "2026-09-23T16:45:00Z",
+      "metrics_rolled_out_at": "2026-09-23T16:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -127,7 +129,7 @@
       "file": "read-model-projection.rules",
       "firing_fraction": 0.0,
       "for": "10m",
-      "metrics_rolled_out_at": "2026-09-23T16:45:00Z",
+      "metrics_rolled_out_at": "2026-09-23T16:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -145,18 +147,20 @@
     },
     "CinemaContentStaleVenuesGrowing": {
       "episodes": 1,
+      "episodes_outside_incidents": 0,
       "file": "runtime-invariants.rules",
-      "firing_fraction": 0.2629,
+      "firing_fraction": 0.2613,
+      "firing_fraction_outside_incidents": 0.0,
       "for": "24h",
       "longest_episode": [
         "2026-09-27T23:01:00Z",
         "2026-09-29T19:10:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-24T16:30:00Z",
-      "observed_firing_fraction": 0.2625,
+      "metrics_rolled_out_at": "2026-09-24T16:23:00Z",
+      "observed_firing_fraction": 0.2609,
       "peak_series": 1,
       "series_episodes": 1,
-      "status": "noisy"
+      "status": "ok"
     },
     "CinemaScrapeCensusAbsent": {
       "episodes": 0,
@@ -203,7 +207,7 @@
       "file": "runtime-invariants.rules",
       "firing_fraction": 0.0,
       "for": "12h",
-      "metrics_rolled_out_at": "2026-09-24T18:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T17:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -272,7 +276,7 @@
       "file": "worker-pipeline.rules",
       "firing_fraction": 0.0,
       "for": "0s",
-      "metrics_rolled_out_at": "2026-09-24T16:30:00Z",
+      "metrics_rolled_out_at": "2026-09-24T16:23:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -392,7 +396,7 @@
         "2026-09-27T12:13:00Z",
         "2026-09-27T13:29:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-24T18:15:00Z",
+      "metrics_rolled_out_at": "2026-09-24T18:08:00Z",
       "observed_firing_fraction": 0.0077,
       "peak_series": 2,
       "series_episodes": 3,
@@ -404,8 +408,8 @@
       "file": "flux.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T18:15:00Z",
-      "observed_firing_fraction": 0.0,
+      "metrics_rolled_out_at": "2026-09-24T18:08:00Z",
+      "observed_firing_fraction": 0.0004,
       "peak_series": 0,
       "series_episodes": 0,
       "status": "ok"
@@ -416,7 +420,7 @@
       "file": "flux.rules",
       "firing_fraction": 0.0,
       "for": "1h",
-      "metrics_rolled_out_at": "2026-09-24T18:15:00Z",
+      "metrics_rolled_out_at": "2026-09-24T18:08:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -437,7 +441,7 @@
       "file": "jvm-heap.rules",
       "firing_fraction": 0.0,
       "for": "1h",
-      "metrics_rolled_out_at": "2026-09-24T07:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T06:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -448,7 +452,7 @@
       "file": "jvm-heap.rules",
       "firing_fraction": 0.0,
       "for": "0s",
-      "metrics_rolled_out_at": "2026-09-24T07:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T06:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -456,32 +460,30 @@
     },
     "HeapDumpWritten": {
       "episodes": 11,
+      "episodes_outside_incidents": 0,
       "file": "jvm-heap.rules",
-      "firing_fraction": 0.031,
+      "firing_fraction": 0.0308,
+      "firing_fraction_outside_incidents": 0.0,
       "for": "0s",
       "longest_episode": [
         "2026-09-28T02:47:00Z",
         "2026-09-28T03:16:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-24T07:00:00Z",
-      "observed_firing_fraction": 0.031,
+      "metrics_rolled_out_at": "2026-09-24T06:53:00Z",
+      "observed_firing_fraction": 0.0308,
       "peak_series": 1,
       "series_episodes": 11,
-      "status": "noisy"
+      "status": "ok"
     },
     "HostOomKilled": {
-      "episodes": 1,
+      "episodes": 0,
       "file": "host-health.rules",
-      "firing_fraction": 0.0003,
+      "firing_fraction": 0.0,
       "for": "1m",
-      "longest_episode": [
-        "2026-09-17T16:42:00Z",
-        "2026-09-17T16:47:00Z"
-      ],
-      "observed_firing_fraction": 0.0036,
-      "peak_series": 1,
-      "series_episodes": 1,
-      "status": "ok"
+      "observed_firing_fraction": 0.0031,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
     },
     "HostRecentlyRebooted": {
       "episodes": 1,
@@ -508,9 +510,11 @@
       "status": "ok"
     },
     "JvmResidentNearContainerLimit": {
-      "episodes": 22,
+      "episodes": 21,
+      "episodes_outside_incidents": 2,
       "file": "jvm-heap.rules",
-      "firing_fraction": 0.0094,
+      "firing_fraction": 0.0091,
+      "firing_fraction_outside_incidents": 0.0009,
       "for": "2m",
       "longest_episode": [
         "2026-09-27T14:27:00Z",
@@ -518,8 +522,8 @@
       ],
       "observed_firing_fraction": 0.0089,
       "peak_series": 1,
-      "series_episodes": 22,
-      "status": "noisy"
+      "series_episodes": 21,
+      "status": "ok"
     },
     "K3sAgentNotRunning": {
       "episodes": 0,
@@ -559,6 +563,20 @@
       "observed_firing_fraction": 0.0011,
       "peak_series": 5,
       "series_episodes": 5,
+      "status": "ok"
+    },
+    "K3sImagePullFailing": {
+      "episodes": 1,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0015,
+      "for": "5m",
+      "longest_episode": [
+        "2026-09-27T13:38:00Z",
+        "2026-09-27T14:07:00Z"
+      ],
+      "observed_firing_fraction": 0.0,
+      "peak_series": 8,
+      "series_episodes": 12,
       "status": "ok"
     },
     "K3sNodeNotReady": {
@@ -808,8 +826,8 @@
       "firing_fraction": 1.0,
       "for": "0s",
       "longest_episode": [
-        "2026-09-17T16:30:00Z",
-        "2026-10-01T16:30:00Z"
+        "2026-09-17T17:23:00Z",
+        "2026-10-01T17:23:00Z"
       ],
       "observed_firing_fraction": 1.0,
       "peak_series": 1,
@@ -851,7 +869,7 @@
       "file": "residential-proxy.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-23T15:45:00Z",
+      "metrics_rolled_out_at": "2026-09-23T15:38:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -861,15 +879,15 @@
       "episodes": 2,
       "episodes_outside_incidents": 1,
       "file": "synthetic-probes.rules",
-      "firing_fraction": 0.0088,
+      "firing_fraction": 0.0094,
       "firing_fraction_outside_incidents": 0.0001,
       "for": "15m",
       "longest_episode": [
-        "2026-09-24T16:15:00Z",
+        "2026-09-24T16:08:00Z",
         "2026-09-24T17:25:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-24T16:00:00Z",
-      "observed_firing_fraction": 0.0097,
+      "metrics_rolled_out_at": "2026-09-24T15:53:00Z",
+      "observed_firing_fraction": 0.0096,
       "peak_series": 4,
       "series_episodes": 10,
       "status": "ok"
@@ -879,7 +897,7 @@
       "file": "synthetic-probes.rules",
       "firing_fraction": 0.0,
       "for": "15m",
-      "metrics_rolled_out_at": "2026-09-24T16:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T15:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -890,7 +908,7 @@
       "file": "synthetic-probes.rules",
       "firing_fraction": 0.0,
       "for": "5m",
-      "metrics_rolled_out_at": "2026-09-24T16:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T15:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -901,7 +919,7 @@
       "file": "synthetic-probes.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T16:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T15:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -912,7 +930,7 @@
       "file": "synthetic-probes.rules",
       "firing_fraction": 0.0,
       "for": "10m",
-      "metrics_rolled_out_at": "2026-09-24T16:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T15:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -942,15 +960,15 @@
       "episodes": 1,
       "episodes_outside_incidents": 0,
       "file": "runtime-invariants.rules",
-      "firing_fraction": 0.0139,
+      "firing_fraction": 0.0138,
       "firing_fraction_outside_incidents": 0.0,
       "for": "30m",
       "longest_episode": [
         "2026-09-24T19:03:00Z",
         "2026-09-24T21:22:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-24T16:30:00Z",
-      "observed_firing_fraction": 0.0139,
+      "metrics_rolled_out_at": "2026-09-24T16:23:00Z",
+      "observed_firing_fraction": 0.0138,
       "peak_series": 1,
       "series_episodes": 1,
       "status": "ok"
@@ -966,34 +984,28 @@
       "status": "quiet"
     },
     "ReadModelFilmsInvisibleWithScreenings": {
-      "episodes": 1,
-      "episodes_outside_incidents": 0,
+      "episodes": 0,
       "file": "read-model-projection.rules",
-      "firing_fraction": 0.0018,
-      "firing_fraction_outside_incidents": 0.0,
+      "firing_fraction": 0.0,
       "for": "2h",
-      "longest_episode": [
-        "2026-09-17T16:30:00Z",
-        "2026-09-17T17:05:00Z"
-      ],
-      "observed_firing_fraction": 0.0005,
-      "peak_series": 1,
-      "series_episodes": 1,
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
       "status": "ok"
     },
     "ReadModelHealsRecurring": {
       "episodes": 15,
-      "episodes_outside_incidents": 4,
+      "episodes_outside_incidents": 5,
       "file": "read-model-projection.rules",
-      "firing_fraction": 0.0872,
-      "firing_fraction_outside_incidents": 0.015,
+      "firing_fraction": 0.0871,
+      "firing_fraction_outside_incidents": 0.0152,
       "for": "5m",
       "longest_episode": [
         "2026-10-01T02:53:00Z",
         "2026-10-01T07:21:00Z"
       ],
-      "metrics_rolled_out_at": "2026-09-23T16:45:00Z",
-      "observed_firing_fraction": 0.0872,
+      "metrics_rolled_out_at": "2026-09-23T16:53:00Z",
+      "observed_firing_fraction": 0.0871,
       "peak_series": 3,
       "series_episodes": 20,
       "status": "ok"
@@ -1022,11 +1034,11 @@
       "episodes": 2,
       "episodes_outside_incidents": 1,
       "file": "read-model-projection.rules",
-      "firing_fraction": 0.4547,
-      "firing_fraction_outside_incidents": 0.0157,
+      "firing_fraction": 0.4521,
+      "firing_fraction_outside_incidents": 0.0156,
       "for": "1h",
       "longest_episode": [
-        "2026-09-17T16:30:00Z",
+        "2026-09-17T17:23:00Z",
         "2026-09-23T22:23:00Z"
       ],
       "observed_firing_fraction": 0.0144,
@@ -1055,7 +1067,7 @@
         "2026-09-30T16:46:00Z",
         "2026-09-30T17:55:00Z"
       ],
-      "observed_firing_fraction": 0.0163,
+      "observed_firing_fraction": 0.0168,
       "peak_series": 1,
       "series_episodes": 17,
       "status": "ok"
@@ -1075,7 +1087,7 @@
       "file": "read-model-projection.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-23T21:00:00Z",
+      "metrics_rolled_out_at": "2026-09-23T21:08:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1096,7 +1108,7 @@
       "file": "worker-pipeline.rules",
       "firing_fraction": 0.0,
       "for": "10m",
-      "metrics_rolled_out_at": "2026-09-24T05:45:00Z",
+      "metrics_rolled_out_at": "2026-09-24T05:38:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1121,7 +1133,7 @@
       "file": "cinema-scrape.rules",
       "firing_fraction": 0.0,
       "for": "50h",
-      "metrics_rolled_out_at": "2026-09-23T16:45:00Z",
+      "metrics_rolled_out_at": "2026-09-23T16:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1156,7 +1168,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "1h",
-      "metrics_rolled_out_at": "2026-09-24T10:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T09:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1167,7 +1179,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "6h",
-      "metrics_rolled_out_at": "2026-09-24T10:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T09:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1178,7 +1190,7 @@
       "file": "runtime-invariants.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T16:30:00Z",
+      "metrics_rolled_out_at": "2026-09-24T16:23:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1189,7 +1201,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T12:45:00Z",
+      "metrics_rolled_out_at": "2026-09-24T12:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1200,7 +1212,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T10:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T09:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1211,7 +1223,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "1h",
-      "metrics_rolled_out_at": "2026-09-26T07:00:00Z",
+      "metrics_rolled_out_at": "2026-09-26T06:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1222,7 +1234,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-24T10:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T09:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1233,7 +1245,7 @@
       "file": "share-cards.rules",
       "firing_fraction": 0.0,
       "for": "15m",
-      "metrics_rolled_out_at": "2026-09-24T10:00:00Z",
+      "metrics_rolled_out_at": "2026-09-24T09:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1259,12 +1271,23 @@
       "series_episodes": 0,
       "status": "ok"
     },
+    "StagingFoldsAborting": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "metrics_rolled_out_at": "2026-10-01T16:53:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
     "StagingNewcomerKickReadsWide": {
       "episodes": 0,
       "file": "read-model-projection.rules",
       "firing_fraction": 0.0,
       "for": "15m",
-      "metrics_rolled_out_at": "2026-09-24T03:15:00Z",
+      "metrics_rolled_out_at": "2026-09-24T03:23:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1323,7 +1346,7 @@
       "file": "web-errors.rules",
       "firing_fraction": 0.0,
       "for": "10m",
-      "metrics_rolled_out_at": "2026-09-24T03:15:00Z",
+      "metrics_rolled_out_at": "2026-09-24T03:23:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1428,9 +1451,9 @@
       "status": "ok"
     },
     "WebRestartNotOOMKilled": {
-      "episodes": 5,
+      "episodes": 4,
       "file": "k3s.rules",
-      "firing_fraction": 0.0029,
+      "firing_fraction": 0.0023,
       "for": "0s",
       "longest_episode": [
         "2026-09-18T06:52:00Z",
@@ -1438,7 +1461,7 @@
       ],
       "observed_firing_fraction": 0.0,
       "peak_series": 1,
-      "series_episodes": 5,
+      "series_episodes": 4,
       "status": "ok"
     },
     "WebServerErrorsServed": {
@@ -1456,7 +1479,7 @@
       "file": "worker-pipeline.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-25T06:00:00Z",
+      "metrics_rolled_out_at": "2026-09-25T05:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1481,7 +1504,7 @@
       "file": "worker-pipeline.rules",
       "firing_fraction": 0.0,
       "for": "30m",
-      "metrics_rolled_out_at": "2026-09-25T06:00:00Z",
+      "metrics_rolled_out_at": "2026-09-25T05:53:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1546,7 +1569,7 @@
       "file": "worker-pipeline.rules",
       "firing_fraction": 0.0,
       "for": "2m",
-      "metrics_rolled_out_at": "2026-09-24T16:30:00Z",
+      "metrics_rolled_out_at": "2026-09-24T16:23:00Z",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,
@@ -1578,6 +1601,16 @@
       "firing_fraction": 0.0,
       "for": "30m",
       "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "WorkerTelegramAlertsFailing": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "metrics_rolled_out_at": "2026-10-01T17:23:00Z",
       "peak_series": 0,
       "series_episodes": 0,
       "status": "ok"
@@ -1773,11 +1806,53 @@
       },
       "id": "readmodel-chicago-served-ahead-2026-09-30",
       "quiet": {}
+    },
+    {
+      "firing": {
+        "AutoApplyRefusingChange": "2026-09-27T04:47:00Z"
+      },
+      "id": "auto-apply-mongodb-8-3-restart-2026-09-27",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "AutoApplyRefusingChange": "2026-09-28T04:47:00Z"
+      },
+      "id": "auto-apply-systemd-hardlinked-by-optimise-2026-09-28",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "CinemaContentStaleVenuesGrowing": "2026-09-27T23:01:00Z"
+      },
+      "id": "us-drive-ins-closed-for-season-2026-09-27",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "JvmResidentNearContainerLimit": "2026-09-27T14:27:00Z"
+      },
+      "id": "worker-pl-metaspace-growth-2026-09-27",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "HeapDumpWritten": "2026-09-28T02:47:00Z"
+      },
+      "id": "worker-uk-heap-and-pl-metaspace-ooms-2026-09-28",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "HeapDumpWritten": "2026-09-29T13:17:00Z"
+      },
+      "id": "heap-dumps-requested-on-demand-2026-09-29",
+      "quiet": {}
     }
   ],
   "window": {
-    "end": "2026-10-01T16:30:00Z",
-    "start": "2026-09-17T16:30:00Z",
+    "end": "2026-10-01T17:23:00Z",
+    "start": "2026-09-17T17:23:00Z",
     "step_seconds": 60
   }
 }
