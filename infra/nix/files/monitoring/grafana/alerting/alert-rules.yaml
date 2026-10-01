@@ -125,10 +125,12 @@ deleteRules:
     uid: kinowo-worker-throttled
   - orgId: 1
     uid: kinowo-residential-proxy-failing
+  - orgId: 1
+    uid: kinowo-worker-crash-looping
 
 groups:
   # ================================================================================================
-  # WHAT IS LEFT OF THIS GROUP, and why it is one rule.
+  # WHAT WAS THE `app-processes` GROUP, and why nothing is left of it.
   #
   # It held seven rules about the MACHINE: CPU credit exhausted, CPU throttled, CPU steal high,
   # worker CPU starved, worker crash-looping, memory pressure, memory pressure (PSI) -- plus two
@@ -142,14 +144,10 @@ groups:
   # RAM -- by rules/jvm-heap.rules. Steal and shared-CPU credit have no analogue at all on a
   # dedicated box; they were properties of somebody else's scheduler.
   #
-  # The survivor is crash-looping, which reads `process_start_time_seconds` off the app's own
-  # /metrics and never needed Fly for anything but the datasource.
+  # The last survivor, crash-looping, moved to Prometheus on 2026-10-01 (its tombstone says why),
+  # which emptied the group; it is removed rather than left holding no rules. Its tombstones stay
+  # here, where the rules stood.
   # ================================================================================================
-  - orgId: 1
-    name: app-processes
-    folder: Kinowo Alerts
-    interval: 1m
-    rules:
       # ---- CPU credit exhaustion (the 93%-steal root cause) -----------------
       # Shared-cpu credit balance collapsing toward 0 on a serving app means it
       # is about to run at baseline only = the latency/steal incident. Worker is
@@ -218,51 +216,15 @@ groups:
       # could only evaluate to absent.
 
       # ---- Worker crash-looping (restarts far above the normal cadence) -----
-      # The worker restarts a few times a day BY DESIGN — a JVM-internal non-heap
-      # OOM (exit_code=3, ExitOnOutOfMemoryError) every ~5-6h; flyd restarts it in
-      # 2s and credit recovers, so the baseline (~0.5 restarts/h) is not an
-      # incident (see reference_worker_native_oom_and_disk). But a BURST — a bad
-      # deploy, a boot failure, or the OOM cadence collapsing — is a crash loop.
-      # >4 restarts in 1h clears the baseline with wide margin. `changes()` on the
-      # ever-increasing process_start_time counts boots in the window.
-      - uid: kinowo-worker-crash-looping
-        title: Worker crash-looping
-        condition: C
-        for: 5m
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} restarted > 4 times in the last hour'
-          description: 'changes(process_start_time_seconds[1h]) > 4 on {{ $labels.app }} — the worker is restarting far above its normal ~5-6h cadence. Check `kubectl -n kinowo describe pod <pod>` for the exit reason (exit code 3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure; OOMKilled = the cgroup limit), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 3600, to: 0 }
-            datasourceUid: local-prometheus
-            model:
-              datasource: { type: prometheus, uid: local-prometheus }
-              editorMode: code
-              expr: 'max by (app, instance) (changes(process_start_time_seconds{app=~"kinowo-worker.*"}[1h]))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [4] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # RETIRED RULE kinowo-worker-crash-looping -- moved to Prometheus as
+      # `WorkerRestartingRepeatedly` in nix/files/monitoring/rules/k3s.rules, 2026-10-01.
+      # It counted `changes(process_start_time_seconds[1h]) > 4`, which cannot tell a crash
+      # from a deploy (every rollout is a new process -- 2026-09-26 01:00 fired for all five
+      # countries in a busy merge hour, no container restarted), its summary named only `kinowo-worker`, never the
+      # country, and Grafana's Telegram rejected every one of its 14 sends from 09-06 to
+      # 09-30 with 400 because the description held `<pod>` and parse_mode was HTML. The
+      # Prometheus rule counts container restarts, which a rollout does not touch, and is
+      # routed by Alertmanager like the rest of the worker's liveness alerts.
 
       # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
       # RETIRED RULE kinowo-memory-pressure -- deleted with the Fly platform, 2026-09-04. It read
@@ -327,7 +289,7 @@ groups:
       # could only evaluate to absent.
 
   # ================================================================================================
-  # WHAT IS LEFT OF THIS GROUP, and why it is one rule.
+  # WHAT WAS THE `app-processes` GROUP, and why nothing is left of it.
   #
   # Four rules watched the SERVING path through Fly's edge: 5xx rate, p95 latency, and two
   # `fly_instance_up` down-alarms (one for `kinowo`, one for `showtimes-uk`). All four went with the

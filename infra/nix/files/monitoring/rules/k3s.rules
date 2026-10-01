@@ -347,6 +347,48 @@ groups:
             exit, 137 without OOMKilled is a liveness kill). The site served 502s for this pod's
             country while the replacement hydrated.
 
+      # A WORKER CONTAINER RESTARTING OVER AND OVER -- the case between `K3sPodCrashLooping` (which
+      # needs ten unbroken minutes of CrashLoopBackOff) and nothing. A JVM that runs for minutes,
+      # exits, and is restarted never sits in backoff that long. worker-us did exactly that on
+      # 2026-09-30, three restarts of one pod in under an hour.
+      #
+      # PORTED FROM GRAFANA'S "Worker crash-looping" ON 2026-10-01, and changed on the way. That
+      # rule counted `changes(process_start_time_seconds[1h]) > 4`, a Fly-era signal that cannot
+      # tell a crash from a deploy: every rollout is a new process, so on a five-merge hour it fired
+      # for all five countries at once (2026-09-26 01:00) with no container restarted. It also lost the
+      # country (its summary named only `kinowo-worker`), and it went through Grafana's Telegram,
+      # which had never delivered it. The restart counter is per container instance, so -- as
+      # `WebRestartNotOOMKilled` relies on -- a rollout starts each new pod at 0 and counts nothing.
+      #
+      # SUMMED BY DEPLOYMENT, NOT POD, so restarts on either side of a rollout still add up; the
+      # Deployment is the pod name less its ReplicaSet hash and pod suffix. MORE THAN TWO IN AN
+      # HOUR: measured over 2026-09-24..10-01, worker container restarts were single events, ~10
+      # across all five countries, apart from that worker-us hour. 2.5 RATHER THAN 2 because
+      # `increase()` extrapolates: that hour's two-restart point read 2.02 on the real series, and
+      # extrapolation only ever inflates a raw count. NO `for:`, as with
+      # `WebRestartNotOOMKilled`: a restart is an event, and the hour window is how long it shows.
+      - alert: WorkerRestartingRepeatedly
+        expr: >-
+          sum by (namespace, deployment) (
+            label_replace(
+              increase(kube_pod_container_status_restarts_total{namespace="kinowo",container="worker"}[1h]),
+              "deployment", "$1", "pod", "(.+)-[a-z0-9]+-[a-z0-9]+")
+          ) > 2.5
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.deployment }} restarted {{ printf \"%.0f\" $value }} times in the last hour"
+          description: >-
+            Container restarts, not rollouts -- a rollout starts each new pod at 0, so this counts
+            only containers the kubelet restarted. Three in an hour is far above this fleet's
+            baseline (a handful a WEEK across all five workers), yet a worker that runs for minutes
+            between exits never sits in CrashLoopBackOff long enough for `K3sPodCrashLooping`.
+            Nothing is scraping, enriching or projecting for this country during each restart's
+            hydrate. `kubectl -n {{ $labels.namespace }} get pods | grep {{ $labels.deployment }}`,
+            then `logs <pod> -c worker --previous` and the pod's `lastState` exit code: 3 is the
+            JVM's ExitOnOutOfMemoryError (heap), OOMKilled is the cgroup limit
+            (`K3sContainerOOMKilled` fires too), 137 without OOMKilled is a liveness kill.
+
       - alert: KubeStateMetricsSeriesAbsent
         # ONE COMPANION FOR THE WHOLE GROUP, on the series that cannot legitimately be missing: this
         # cluster always has at least one node, so `kube_node_info` is absent only if

@@ -403,3 +403,55 @@ tests:
       - eval_time: 15m
         alertname: WebRestartNotOOMKilled
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A WORKER CONTAINER RESTARTING OVER AND OVER, ported from Grafana's "Worker crash-looping" on
+  # 2026-10-01. Shaped from worker-us on 2026-09-30: pod 646cc786db-66q89 restarted three times in
+  # under an hour (07:5x, 08:1x, 08:3x) while staying out of CrashLoopBackOff long enough for
+  # `K3sPodCrashLooping` to say nothing. Two pods of the same Deployment, as across a rollout: the
+  # count is the Deployment's, not one pod's.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: three worker restarts inside an hour fire, named by deployment
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-us-544598ccdd-25mqw",container="worker",job="kube-state-metrics"}'
+        values: '0x10 1x50'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-us-646cc786db-66q89",container="worker",job="kube-state-metrics"}'
+        values: '_x15 0x10 1x15 2x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerRestartingRepeatedly
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: WorkerRestartingRepeatedly
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: kinowo
+              deployment: worker-us
+            exp_annotations:
+              summary: "kinowo/worker-us restarted 3 times in the last hour"
+              description: "Container restarts, not rollouts -- a rollout starts each new pod at 0, so this counts only containers the kubelet restarted. Three in an hour is far above this fleet's baseline (a handful a WEEK across all five workers), yet a worker that runs for minutes between exits never sits in CrashLoopBackOff long enough for `K3sPodCrashLooping`. Nothing is scraping, enriching or projecting for this country during each restart's hydrate. `kubectl -n kinowo get pods | grep worker-us`, then `logs <pod> -c worker --previous` and the pod's `lastState` exit code: 3 is the JVM's ExitOnOutOfMemoryError (heap), OOMKilled is the cgroup limit (`K3sContainerOOMKilled` fires too), 137 without OOMKilled is a liveness kill."
+
+  # ...AND WHAT IT MUST LEAVE ALONE: two restarts in an hour, and a burst of rollouts -- five new
+  # pods in an hour, each starting at 0 restarts, which is what Grafana's process-start count
+  # mistook for a crash loop on 2026-09-26 for all five countries at once.
+  - interval: 1m
+    name: two restarts and a burst of rollouts stay quiet
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-pl-6884f7dfd9-hg9bn",container="worker"}'
+        values: '0x10 1x20 2x30'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-de-aaaaaaaaaa-00001",container="worker"}'
+        values: '0x12'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-de-bbbbbbbbbb-00002",container="worker"}'
+        values: '_x12 0x12'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-de-cccccccccc-00003",container="worker"}'
+        values: '_x24 0x12'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-de-dddddddddd-00004",container="worker"}'
+        values: '_x36 0x12'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-de-eeeeeeeeee-00005",container="worker"}'
+        values: '_x48 0x12'
+    alert_rule_test:
+      - eval_time: 58m
+        alertname: WorkerRestartingRepeatedly
+        exp_alerts: []

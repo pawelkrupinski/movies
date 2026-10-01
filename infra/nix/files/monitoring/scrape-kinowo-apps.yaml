@@ -35,8 +35,7 @@ scrape_configs:
     # `instance` IS NAMED, as the web targets' are below, so an alert says "kinowo-worker-de
     # restarted" rather than "10.20.0.12:30901 restarted" -- the same node and a port nobody has
     # memorised. Nothing selects on the raw host:port (checked 2026-09-06 across the rules,
-    # dashboards and Alertmanager routes), and the one worker rule that groups by `instance`
-    # (`kinowo-worker-crash-looping`) keys on whatever value the label holds.
+    # dashboards and Alertmanager routes).
     static_configs:
       - targets: ["10.20.0.12:30900"]
         labels: { app: kinowo-worker, country: pl, tier: worker, platform: k3s, instance: kinowo-worker-pl }
