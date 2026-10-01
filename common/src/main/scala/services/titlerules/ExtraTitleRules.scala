@@ -780,6 +780,13 @@ object ExtraTitleRules {
     canon("xtra-canonical-helios-na-scenie",
       """(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$""", "",
       "'<film> w Helios na Scenie' Helios event-branding suffix — merge-key fold"),
+    // A Polish distributor's ". Film" suffix ("Rolling Loud. Film" for "Rolling Loud: The Movie", Jaworzyna's
+    // "Rolling Loud. Film 2026"): the film's own title, shown and merged without it. The full stop right
+    // before it is required — "Straszny film" ends in the word and keeps it.
+    // A REWRITE (it keeps the title before the suffix, `$1`), so a card every venue bills alike shows it too.
+    canon("xtra-canonical-kropka-film-suffix",
+      """(?iu)^(.*\S)\.\s*Film(?:\s+\d{4})?\s*$""", "$1",
+      "'<film>. Film [2026]' distributor suffix — CANONICAL rewrite to the film's title"),
     canon("xtra-canonical-gwiezdne-wojny-ci",
       """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),

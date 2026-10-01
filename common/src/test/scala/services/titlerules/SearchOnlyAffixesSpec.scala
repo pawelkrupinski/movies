@@ -26,6 +26,15 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
       .foreach(t => n.sanitize(t) should not be n.sanitize(n.apiQuery(t)))
   }
 
+  "A distributor's \". Film\" suffix" should "come off the title it shows and the key it merges by" in {
+    // https://kinowo.net/poznan/movie/rolling-loud-film — the Polish distributor bills "Rolling Loud. Film"
+    // (and Jaworzyna "Rolling Loud. Film 2026"); the film is "Rolling Loud".
+    n.preferredDisplay(Seq("Rolling Loud. Film")) shouldBe Some("Rolling Loud")
+    n.sanitize("Rolling Loud. Film 2026") shouldBe n.sanitize("Rolling Loud")
+    // A title merely ending in the word keeps it.
+    n.preferredDisplay(Seq("Straszny film")) shouldBe Some("Straszny film")
+  }
+
   "A film titled by the word" should "keep it" in {
     // A title that is only the word is the film's own, however it reads.
     n.apiQuery("Premiera") shouldBe "Premiera"
