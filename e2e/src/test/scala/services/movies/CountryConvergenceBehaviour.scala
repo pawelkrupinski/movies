@@ -338,8 +338,8 @@ abstract class CountryConvergenceBehaviour(
   private def keySet(w: ArchiveReplayWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
 
-  private def cinemasByFilm(w: ArchiveReplayWiring): Map[String, Set[String]] =
-    w.movieRepository.findAll().map(r =>
+  private def cinemasByFilm(records: Seq[StoredMovieRecord]): Map[String, Set[String]] =
+    records.map(r =>
       r.id.value -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
   /** How many showtimes each film is holding, per film id.
@@ -356,8 +356,8 @@ abstract class CountryConvergenceBehaviour(
    *  Deliberately NOT read from `w.screeningsRepository`: this harness never writes it
    *  (see the note on the order-independence axis below), so a check sourced there would
    *  compare two empty maps and pass on any corpus at all. */
-  private def showtimesByFilm(w: ArchiveReplayWiring): Map[String, Int] =
-    w.movieRepository.findAll().map(r =>
+  private def showtimesByFilm(records: Seq[StoredMovieRecord]): Map[String, Int] =
+    records.map(r =>
       r.id.value ->
         r.record.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).sum).toMap
 
@@ -889,10 +889,12 @@ abstract class CountryConvergenceBehaviour(
 
       // ── 1) The settle is a fixpoint of itself ────────────────────────────────
       val before        = keySet(w)
-      val cinemasBefore = cinemasByFilm(w)
-      val recordsBefore = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      // ONE read of the stored films for every axis below — the US corpus is ~1 s a read, and the
+      // axes describe the same state, so separate reads could only ever agree.
+      val recordsBefore = recordSnapshot(w)
+      val cinemasBefore = cinemasByFilm(recordsBefore)
       val screeningsBefore = w.screeningsRepository.findAll()
-      val showtimesBefore  = showtimesByFilm(w)
+      val showtimesBefore  = showtimesByFilm(recordsBefore)
       val mergesBefore  = merges.total
       info(s"${country.displayName}: ${showtimesBefore.count(_._2 > 0)} of ${showtimesBefore.size} films hold " +
            s"${showtimesBefore.values.sum} showtime(s)")
@@ -935,8 +937,8 @@ abstract class CountryConvergenceBehaviour(
       }
 
       val after        = keySet(w)
-      val cinemasAfter = cinemasByFilm(w)
-      val recordsAfter = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val recordsAfter = recordSnapshot(w)
+      val cinemasAfter = cinemasByFilm(recordsAfter)
       val screeningsAfter = w.screeningsRepository.findAll()
       withClue(
         s"a settle on a settled ${country.displayName} corpus folded ${merges.total - mergesBefore} row(s); " +
@@ -975,7 +977,7 @@ abstract class CountryConvergenceBehaviour(
       // the film holding none: still a row, still keyed, still listing its cinemas, with
       // an empty board. Records-equality above would catch it here, but it says nothing
       // about the ticks below, and this is the axis that names WHICH film emptied.
-      val emptiedBySettle = emptiedFilms(showtimesBefore, showtimesByFilm(w))
+      val emptiedBySettle = emptiedFilms(showtimesBefore, showtimesByFilm(recordsAfter))
       withClue(s"a settle on a settled ${country.displayName} corpus emptied film(s) of every " +
                s"showtime:\n${emptiedBySettle.take(8).mkString("\n")}\n") {
         emptiedBySettle shouldBe empty
@@ -1004,7 +1006,7 @@ abstract class CountryConvergenceBehaviour(
         // alone gives you nothing to check a hypothesis against — it cost two rounds of
         // work on causes that turned out to leave the count at exactly 31.
         val recordsBeforeTick   = recordSnapshot(w)
-        val showtimesBeforeTick = showtimesByFilm(w)
+        val showtimesBeforeTick = showtimesByFilm(recordsBeforeTick)
         written.clear()
         // On Mongo, the oplog says which collection and which fields each write touched —
         // the only way to see a write whose stored record reads back unchanged.
@@ -1017,6 +1019,7 @@ abstract class CountryConvergenceBehaviour(
         val mergesDelta  = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBeforeTick(r))).filter(_._2 > 0)
         val emissionsDelta = emissions.get - emissionsBeforeTick
         val keysNow  = keySet(w)
+        val recordsAfterTick = recordSnapshot(w)
         val appeared = keysNow -- settledKeys
         val vanished = settledKeys -- keysNow
 
@@ -1025,7 +1028,6 @@ abstract class CountryConvergenceBehaviour(
         if (diversions.nonEmpty)
           churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
         if (emissionsDelta != 0) {
-          val recordsAfterTick = recordSnapshot(w)
           import scala.jdk.CollectionConverters._
           val named = written.asScala.toSeq.distinct
           churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing" +
@@ -1045,7 +1047,7 @@ abstract class CountryConvergenceBehaviour(
         // The merge/diversion counters above see the movement, but a film left with an
         // empty board is invisible to them — it keeps its key, its cinemas and its
         // record — so count the boards themselves.
-        val emptied = emptiedFilms(showtimesBeforeTick, showtimesByFilm(w))
+        val emptied = emptiedFilms(showtimesBeforeTick, showtimesByFilm(recordsAfterTick))
         if (emptied.nonEmpty)
           churn += s"tick $t: ${emptied.size} film(s) came out of the tick with no showtimes at all — " +
                    s"a re-scrape and settle must not empty a film's board:\n  ${emptied.take(6).mkString("\n  ")}"
