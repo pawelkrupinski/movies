@@ -30,6 +30,10 @@ trait ScrapeInFlight {
    *  Keyed by `Cinema.displayName` — what `ScrapeCinemaHandler.scraperKey` and the
    *  chunk-run store both key by. */
   def isRunning(cinemaName: String): Boolean
+
+  /** [[isRunning]] for one moment, asked of many venues at once — the reaper's tick. A source that
+   *  can answer for every venue in one read overrides it; by default each venue is asked alone. */
+  def snapshot(): String => Boolean = isRunning
 }
 
 object ScrapeInFlight {

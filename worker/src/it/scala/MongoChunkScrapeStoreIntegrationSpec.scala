@@ -1,0 +1,25 @@
+package services.tasks
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.time.Instant
+import scala.concurrent.duration.*
+
+/** The chunk-run store on a real Mongo: a run's stored keys — read keys-only, the chunks' parses left
+ *  on the server — name every chunk stored, and the chunks themselves come back whole. */
+class MongoChunkScrapeStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
+  private val now = Instant.parse("2026-10-01T10:00:00Z")
+
+  "MongoChunkScrapeStore" should "name every stored chunk by key, and return each one's value" in {
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "chunk-store") { db =>
+      val store = new MongoChunkScrapeStore(Some(db))
+      val runId = store.startRun("Odeon Norwich", Seq("2026-10-01", "2026-10-02", "2026-10-03"), now, 1.hour).get
+      store.storeChunk("Odeon Norwich", runId, "2026-10-01", """[{"a":1}]""", now)
+      store.storeChunk("Odeon Norwich", runId, "2026-10-02", """[{"b":2}]""", now)
+      store.storedKeys("Odeon Norwich", runId) shouldBe Set("2026-10-01", "2026-10-02")
+      store.loadChunks("Odeon Norwich", runId) shouldBe Map("2026-10-01" -> """[{"a":1}]""", "2026-10-02" -> """[{"b":2}]""")
+      store.activeRuns().map(_.cinema) shouldBe Seq("Odeon Norwich")
+    }
+  }
+}

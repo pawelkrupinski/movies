@@ -511,6 +511,22 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 2
   }
 
+  // Asked one venue at a time, the chunk-run store was read once per due venue every tick
+  // (~24 reads/s of `scrape_runs` on US, 2026-10-01). A tick asks for one snapshot.
+  it should "ask which cinemas are mid-scrape once per tick, not once per due cinema" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new StubCinemaScraper(c, movieAt(c)))
+    var snapshots, single = 0
+    val inFlight = new ScrapeInFlight {
+      def isRunning(cinemaName: String): Boolean = { single += 1; false }
+      override def snapshot(): String => Boolean = { snapshots += 1; _ == Multikino.displayName }
+    }
+    val reaper = new ScrapeReaper(scrapers, new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), inFlight = inFlight)
+    reaper.tick() shouldBe 4
+    snapshots shouldBe 1
+    single shouldBe 0
+  }
+
   // A venue whose planner has been admitted but has NOT run yet is 36 tasks of work
   // that exist only as an intention. Counting it as the one task it currently is lets
   // the reaper keep admitting against a budget it has already committed: prod showed

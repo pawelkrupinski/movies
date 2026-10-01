@@ -257,10 +257,12 @@ class ScrapeReaper(
    *  deterministic (no clock/random in the ordering — see ScrapeOrderDeterminismSpec).
    *  In steady state far fewer than the cap are due, so the sort is a cheap no-op. */
   private[tasks] def tick(now: Instant = clock.instant()): Int = {
+    // Which venues are mid-scrape, read once for the tick rather than once per due venue.
+    val running = inFlight.snapshot()
     val due = scrapers.iterator
       .map(s => (ScrapeCinemaHandler.dedupKey(s.cinema), s.cinema.displayName))
       .filter { case (key, _) => dueWindow.isDue(key, freshness.lastFetchedAt(key), now) }
-      .filterNot { case (_, cinemaName) => inFlight.isRunning(cinemaName) }
+      .filterNot { case (_, cinemaName) => running(cinemaName) }
       .toVector
       // Oldest-fetched first; never-fetched (None) sorts ahead of any timestamp.
       .sortBy { case (key, _) =>

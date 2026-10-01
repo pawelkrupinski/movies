@@ -91,7 +91,13 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
       .recover { case e => logger.warn(s"storeChunk($cinema/$runId/$key) failed: ${e.getMessage}") }
   }
 
-  def storedKeys(cinema: String, runId: String): Set[String] = loadDocs(cinema, runId).map(_.getString("key")).toSet
+  // Only the keys: asked on every chunk that lands, reading each stored chunk's parse (~7 KB) as well
+  // made a run's completion checks quadratic in its chunks.
+  def storedKeys(cinema: String, runId: String): Set[String] = chunks.toSeq.flatMap { c =>
+    Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId)))
+      .projection(org.mongodb.scala.model.Projections.include("key"))
+      .batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
+  }.map(_.getString("key")).toSet
 
   def loadChunks(cinema: String, runId: String): Map[String, String] =
     loadDocs(cinema, runId).map(d => d.getString("key") -> d.getString("value")).toMap

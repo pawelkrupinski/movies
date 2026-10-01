@@ -4,7 +4,7 @@ import settings.ScrapeChunkSpread
 
 import modules.WorkerWiring
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
-import services.tasks.{ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
+import services.tasks.{ChunkRun, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
 
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
@@ -50,7 +50,14 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
 
   /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
    *  Keeps the reaper from re-admitting it into a no-op — see [[ScrapeInFlight]]. */
-  lazy val chunkRunInFlight: ScrapeInFlight = (cinemaName: String) =>
-    chunkScrapeStore.activeRun(cinemaName)
-      .exists(!_.isStale(java.time.Instant.now(), ChunkScrapePlanner.DefaultRunTimeout))
+  lazy val chunkRunInFlight: ScrapeInFlight = new ScrapeInFlight {
+    private def live(run: ChunkRun) = !run.isStale(clock.instant(), ChunkScrapePlanner.DefaultRunTimeout)
+    def isRunning(cinemaName: String): Boolean = chunkScrapeStore.activeRun(cinemaName).exists(live)
+    // One read of every run for the reaper's tick: asked one venue at a time it read `scrape_runs`
+    // once per due venue each minute (~24 reads/s on US, 2026-10-01).
+    override def snapshot(): String => Boolean = {
+      val running = chunkScrapeStore.activeRuns().filter(live).map(_.cinema).toSet
+      running.contains
+    }
+  }
 }
