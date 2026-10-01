@@ -150,17 +150,25 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * `test` used to upload the staged dists for the deploy leg to download. The
-   * leg builds from its own checkout now, so an upload here would be an artifact
-   * with no consumer — 16s and a GB of storage per run, and the kind of thing
-   * that survives for years because nothing complains. The two must move
-   * together: no `download-artifact` in the leg means no `stage-*` upload in ci.
+   * The image builds take `test`'s staged dists instead of restaging them: they `needs: ci`
+   * (the runner budget), so restaging was ~2 min of cold `sbt stage` on the post-CI critical
+   * path for bytes `test` had already produced. The two halves must move together — an upload
+   * nothing downloads is a GB of storage per run that nothing complains about, and a download
+   * with no upload fails the build — and a build job that runs sbt again has put the 2 min back.
    */
-  it should "not publish a build artifact nothing downloads" in {
+  it should "build both images from the dists ci's test job staged, not restage them" in {
     val ciYml = RepoFile.read(".github/workflows/ci.yml")
-    ciYml should not include "name: stage-web"
-    ciYml should not include "name: stage-worker"
-    // …but the staging itself stays: it is what proves the dist still links.
+    // On the COMMANDS: the download step's own comment names the `sbt stage` it replaces.
+    def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+    for ((tier, build) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
+      withClue(s"$tier: ") {
+        ciYml should include(s"name: stage-$tier")
+        build should include("actions/download-artifact")
+        build should include(s"name: stage-$tier")
+        commands(build) should not include "sbt "
+      }
+    }
+    // …and the staging itself stays in ci: it is what proves the dists still link on a PR run.
     ciYml should include("""sbt "web/stage" "worker/stage"""")
     ciYml should include("Deploy artefacts carry no generated Scaladoc")
   }

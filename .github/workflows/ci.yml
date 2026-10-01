@@ -244,16 +244,12 @@ jobs:
 
             # Prove BOTH apps' universal-stage distributions still link. Reuses
             # the warm zinc state from `sbt testUnit` — only linking + writing the
-            # dists costs anything.
-            #
-            # The dists used to be UPLOADED here for the deploy job to download.
-            # Nothing downloads them now: main.yml stages its own copy in
-            # `build-image`, which runs alongside this job rather than after it,
-            # so the container build is off the post-CI critical path. What
-            # staging still buys is the guard below, and on a PR run
-            # (branch-ci.yml never reaches main.yml) this is the only place a
-            # dist that stopped linking, or a reappearing Scaladoc tree, is
-            # caught at all.
+            # dists costs anything. On a push to main the dists are then handed to
+            # main.yml's `build-web` / `build-worker` (uploads below), which
+            # `needs: ci` and so would otherwise restage them from a cold compile
+            # on the post-CI critical path. On a PR run (branch-ci.yml never
+            # reaches main.yml) this staging is the only place a dist that stopped
+            # linking, or a reappearing Scaladoc tree, is caught at all.
             - run: sbt "web/stage" "worker/stage"
 
             # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
@@ -270,6 +266,34 @@ jobs:
                       echo "::error::staged dist ships generated Scaladoc at $found — see noApiDocs in build.sbt"
                       exit 1
                   fi
+
+            - name: Hand the staged web dist to main.yml's image build
+              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
+              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
+              # jars, already zipped, so compressing again only costs upload time — and
+              # kept one day, since its one consumer runs minutes after this job.
+              if: github.event_name != 'pull_request'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: stage-web
+                  path: web/target/universal/stage
+                  compression-level: 0
+                  retention-days: 1
+                  if-no-files-found: error
+
+            - name: Hand the staged worker dist to main.yml's image build
+              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
+              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
+              # jars, already zipped, so compressing again only costs upload time — and
+              # kept one day, since its one consumer runs minutes after this job.
+              if: github.event_name != 'pull_request'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: stage-worker
+                  path: worker/target/universal/stage
+                  compression-level: 0
+                  retention-days: 1
+                  if-no-files-found: error
 
             # ESLint over the production JS in `public/js/`. Folded into this job
             # (was a standalone `lint` job) to free a runner slot for the dedicated

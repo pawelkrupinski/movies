@@ -70,14 +70,14 @@ jobs:
             contents: read
             checks: write
 
-    # It stages independently rather than taking a build artifact from ci. It
-    # used to: `test` uploaded `stage-web` / `stage-worker` and the deploy leg
-    # downloaded them. But those only exist once `test` finishes, and waiting for
-    # that is exactly what put the container build on the critical path — so the
-    # artifacts were dropped rather than kept for a consumer that no longer
-    # exists. `test` still STAGES both apps, because that is what proves the dist
-    # links and ships no Scaladoc on a PR run (branch-ci.yml never reaches this
-    # file); it just doesn't publish the result any more.
+    # The image builds take their staged dist FROM ci rather than staging their own. It has
+    # been both ways round: `test` used to upload `stage-web` / `stage-worker` for a deploy
+    # leg, then stopped once the build ran alongside ci (waiting for `test` would have put the
+    # container build on the critical path). The runner budget (`CiRunnerBudgetSpec`) later
+    # hung the builds off `needs: ci` after all, and from then on each one recompiled from a
+    # cold zinc state — ~2 min of `sbt stage` on the post-CI critical path for bytes `test`
+    # had already produced. So the upload is back, and `DeployImageReuseSpec` keeps the two
+    # halves together.
     #
     # Both images are built unconditionally, including the worker's on a push
     # that will skip the worker deploy. Building is not restarting: the skip
@@ -387,29 +387,19 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - uses: ./.github/actions/setup-jdk
+            - name: Fetch the web distribution ci's `test` job staged
               if: steps.changed.outputs.changed == 'true'
+              # NOT A SECOND `sbt "web/stage"`. `test` stages both apps anyway (it is what proves
+              # the dists link), and this job `needs: ci`, so that copy always exists by now —
+              # restaging it here was ~2 min of cold compile on the post-CI critical path, for
+              # bytes identical to the ones `test` already had. Downloaded straight into `stage/`,
+              # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
+              # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
+              # that matters.
+              uses: actions/download-artifact@v6
               with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-              if: steps.changed.outputs.changed == 'true'
-
-            - name: Stage the web distribution
-              if: steps.changed.outputs.changed == 'true'
-              # `web/stage` only: staging the worker as well would roughly double the sbt time for
-              # an artifact this job does not consume — `build-worker` stages its own.
-              run: sbt "web/stage"
-
-            - name: Place the staged distribution where the Dockerfile expects it
-              if: steps.changed.outputs.changed == 'true'
-              # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore),
-              # which is why this copy exists rather than the Dockerfile reaching into
-              # target/universal/stage: .dockerignore cannot reliably re-include a deep path whose
-              # parents are excluded by `*`.
-              run: rm -rf stage && cp -r web/target/universal/stage stage
+                  name: stage-web
+                  path: stage
 
             - uses: docker/login-action@v3
               if: steps.changed.outputs.changed == 'true'
@@ -467,10 +457,10 @@ jobs:
 
     record-web:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-web`, and the reason is the TOKEN.
-        # Moving the marker is a ref write; `build-web` runs sbt and a Docker build, which is
-        # arbitrary project code. Keeping the write-capable token in a job that does nothing but
-        # call `gh api` is the difference between a build that could push to this repository and
-        # one that could not.
+        # Moving the marker is a ref write; `build-web` runs a Docker build (the Dockerfile and the
+        # staged app it trains an AOT cache with), which is arbitrary project code. Keeping the
+        # write-capable token in a job that does nothing but call `gh api` is the difference
+        # between a build that could push to this repository and one that could not.
         needs: build-web
         runs-on: ubuntu-latest
 
@@ -584,29 +574,19 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - uses: ./.github/actions/setup-jdk
+            - name: Fetch the worker distribution ci's `test` job staged
               if: steps.changed.outputs.changed == 'true'
+              # NOT A SECOND `sbt "worker/stage"`. `test` stages both apps anyway (it is what proves
+              # the dists link), and this job `needs: ci`, so that copy always exists by now —
+              # restaging it here was ~2 min of cold compile on the post-CI critical path, for
+              # bytes identical to the ones `test` already had. Downloaded straight into `stage/`,
+              # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
+              # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
+              # that matters.
+              uses: actions/download-artifact@v6
               with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-              if: steps.changed.outputs.changed == 'true'
-
-            - name: Stage the worker distribution
-              if: steps.changed.outputs.changed == 'true'
-              # `worker/stage` only, not `web/stage` — this job builds one image and staging the web
-              # app as well would roughly double the sbt time for an artifact nothing here consumes.
-              run: sbt "worker/stage"
-
-            - name: Place the staged distribution where the Dockerfile expects it
-              if: steps.changed.outputs.changed == 'true'
-              # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore),
-              # which is why this copy exists rather than the Dockerfile reaching into
-              # target/universal/stage: .dockerignore cannot reliably re-include a deep path whose
-              # parents are excluded by `*`.
-              run: rm -rf stage && cp -r worker/target/universal/stage stage
+                  name: stage-worker
+                  path: stage
 
             - uses: docker/login-action@v3
               if: steps.changed.outputs.changed == 'true'
@@ -664,8 +644,9 @@ jobs:
 
     record-worker:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-worker`, for the token: `build-worker`
-        # runs sbt and a Docker build, and this holds a ref-write token. Keeping them apart is the
-        # difference between a build that could push to this repository and one that could not.
+        # runs a Docker build that executes project code, and this holds a ref-write token.
+        # Keeping them apart is the difference between a build that could push to this
+        # repository and one that could not.
         needs: build-worker
         runs-on: ubuntu-latest
 
