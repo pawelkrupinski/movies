@@ -81,9 +81,10 @@ android {
         // scripts/mobile-release.sh writes it; scripts/mobile-release-test.sh guards it.
         versionName = mobileVersion
         // Play rejects re-uploading a versionCode, so CI passes a strictly
-        // increasing one (the workflow run number) via KINOWO_VERSION_CODE.
-        // Locally it is DERIVED from the same marketing version (1.4.0 → 10400),
-        // which keeps a local build's code ordered the same way the versions are.
+        // increasing one (the workflow run number) via KINOWO_VERSION_CODE. It
+        // changes every run, which is why `buildConfig` stays off (see
+        // buildFeatures). Locally it is DERIVED from the same marketing
+        // version (1.4.0 → 10400), which keeps a local build's code ordered the same way the versions are.
         versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: mobileVersionCode
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -110,9 +111,6 @@ android {
             // coexists. Off by default, so a plain debug build keeps the prod
             // applicationId.
             if (project.hasProperty("debugSuffix")) applicationIdSuffix = ".debug"
-            // Tuning (the tweak screen + "Kinowo Tune" launcher icon) is on in
-            // debug builds.
-            buildConfigField("boolean", "ENABLE_TUNING", "true")
         }
         release {
             isMinifyEnabled = true
@@ -130,8 +128,6 @@ android {
             ndk {
                 debugSymbolLevel = "FULL"
             }
-            // The public / Play build never exposes the tweak screen.
-            buildConfigField("boolean", "ENABLE_TUNING", "false")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
@@ -144,7 +140,6 @@ android {
         // `android-tune-latest`) so the public `release` / Play build stays clean.
         create("tuneRelease") {
             initWith(getByName("release"))
-            buildConfigField("boolean", "ENABLE_TUNING", "true")
         }
         // The build `runOnDevice` installs: the public, tuning-free `release`
         // (signed, same applicationId) but with R8 minification + resource
@@ -158,8 +153,9 @@ android {
     }
 
     // The tweak-screen launcher (TuningLauncherActivity + its manifest entry)
-    // is shared by every build that enables tuning — `debug` and `tuneRelease` —
-    // from one `src/tuning` source set, so there's a single copy.
+    // and `TUNING_ENABLED = true` are shared by every build that enables
+    // tuning — `debug` and `tuneRelease` — from one `src/tuning` source set, so
+    // there's a single copy.
     sourceSets {
         // Test fixtures both the JVM and the on-device suites build ViewModels from.
         getByName("test") { kotlin.directories.add("src/sharedTest/java") }
@@ -174,6 +170,9 @@ android {
             kotlin.directories.add("src/tuning/java")
             manifest.srcFile("src/tuning/AndroidManifest.xml")
         }
+        // The builds without the tweak screen get `TUNING_ENABLED = false`.
+        getByName("release") { kotlin.directories.add("src/noTuning/java") }
+        getByName("releaseFast") { kotlin.directories.add("src/noTuning/java") }
     }
 
     compileOptions {
@@ -182,7 +181,12 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
+        // OFF: AGP writes versionCode into BuildConfig, so CI's per-run
+        // versionCode changed the compile and Compose-mapping inputs of both
+        // release variants and they never came from the build cache (see
+        // NoBuildConfigTest). The tuning switch is TUNING_ENABLED, from the
+        // tuning/noTuning source sets.
+        buildConfig = false
     }
     testOptions {
         unitTests {
@@ -748,9 +752,9 @@ tasks.register("debugOnEmulator") {
 // remembered, so later sessions only need `adb connect`.
 //
 // Caveat: a phone carrying a Play-installed build refuses a local install as
-// INSTALL_FAILED_VERSION_DOWNGRADE, because the local default versionCode is 1
-// and Play's is higher (`-d` can't force it — that only works for debuggable
-// builds). Pass a versionCode above the installed one:
+// INSTALL_FAILED_VERSION_DOWNGRADE, because the local default versionCode
+// (derived from mobile-version.txt) is below Play's (`-d` can't force it —
+// that only works for debuggable builds). Pass a versionCode above the installed one:
 // `KINOWO_VERSION_CODE=<play+1> ./gradlew runOnDevice`.
 //
 // We `adb install` the assembled APK ourselves rather than depend on AGP's

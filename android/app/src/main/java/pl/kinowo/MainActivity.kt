@@ -130,12 +130,12 @@ class MainActivity : ComponentActivity() {
         // [KinowoViewModel.handleDeepLink]).
         if (savedInstanceState == null) consumeLinks(intent)
         // Non-prod tweak screen, gated behind a launch extra so it never shows in
-        // a normal run, AND behind BuildConfig.ENABLE_TUNING so it's compiled out
+        // a normal run, AND behind TUNING_ENABLED so it's compiled out
         // of the public `release` build (it's on for `debug` + `tuneRelease`).
         // The "Kinowo Tune" launcher icon (TuningLauncherActivity, src/tuning)
         // passes the extra; or via adb:
         //   adb shell am start -n pl.kinowo/.MainActivity --ez kinowo_tuning true
-        val tuning = BuildConfig.ENABLE_TUNING && intent.getBooleanExtra("kinowo_tuning", false)
+        val tuning = TUNING_ENABLED && intent.getBooleanExtra("kinowo_tuning", false)
         setContent {
             KinowoTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Background) {

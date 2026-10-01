@@ -19,4 +19,9 @@ class TuningLauncherCompiledTest {
         val found = runCatching { Class.forName("pl.kinowo.TuningLauncherActivity") }.isSuccess
         assertTrue("src/tuning must be compiled into debug, whose manifest declares its activity", found)
     }
+
+    @Test
+    fun theDebugVariantEnablesTheTweakScreen() {
+        assertTrue("debug takes TUNING_ENABLED from src/tuning, not src/noTuning", TUNING_ENABLED)
+    }
 }

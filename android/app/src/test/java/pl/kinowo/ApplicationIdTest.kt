@@ -1,7 +1,12 @@
 package pl.kinowo
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * The Play Console registered this app under the package name
@@ -10,11 +15,15 @@ import org.junit.Test
  * net.pawel.kinowo"). Pin it so a stray rename can't silently break uploads.
  *
  * Note this is the installed *applicationId*, deliberately distinct from the
- * `pl.kinowo` code namespace (this very test class lives in `pl.kinowo`).
+ * `pl.kinowo` code namespace (this very test class lives in `pl.kinowo`). Read
+ * from the merged manifest Robolectric loads — there is no BuildConfig (see
+ * [NoBuildConfigTest]).
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], application = OfflineKinowoApplication::class)
 class ApplicationIdTest {
     @Test
     fun applicationIdIsThePlayRegisteredPackageName() {
-        assertEquals("net.pawel.kinowo", BuildConfig.APPLICATION_ID)
+        assertEquals("net.pawel.kinowo", ApplicationProvider.getApplicationContext<Context>().packageName)
     }
 }
