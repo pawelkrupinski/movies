@@ -94,6 +94,7 @@ jobs:
                   sparse-checkout: |
                       /ios/
                       /scripts/ci/
+                      /scripts/shell-spec.sh
                       /test/resources/retry-classification.json
                   sparse-checkout-cone-mode: false
 
