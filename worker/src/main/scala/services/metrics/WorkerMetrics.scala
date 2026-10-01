@@ -97,6 +97,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 
+  // Every in-app Telegram alert's delivery attempt — see TelegramNotificationMetrics.
+  val telegramNotifications: TelegramNotificationMetrics = new TelegramNotificationMetrics(countryCodes, registry)
+
   // Census gauges, each registered once with a leading `country` label; a
   // per-country sampler (built in the wiring) writes its own slice.
   val corpusGauge:    Gauge          = WorkerCorpusMetrics.gauge(registry)

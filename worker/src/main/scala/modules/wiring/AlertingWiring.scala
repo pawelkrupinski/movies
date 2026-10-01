@@ -3,7 +3,7 @@ package modules.wiring
 import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration, StagingStuckScanInterval, StagingStuckThreshold}
 
 import modules.WorkerWiring
-import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
+import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, StagingStuckAlerter, TelegramAlertKind, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
 
@@ -17,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
  *  See reference_fallback_telegram_channel. */
 trait AlertingWiring { self: WorkerWiring =>
 
-  private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httoFetch, route)
+  private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httoFetch, route, country.code, workerMetrics.telegramNotifications.recorderFor(country.code))
 
   // Telegram alerter for fallback ENTER / RECOVERED events. Posts to the dedicated
   // "Fallback to Filmweb" topic when a topic id is set.
@@ -31,7 +31,7 @@ trait AlertingWiring { self: WorkerWiring =>
     fallbackTelegramNotifier.map(notifier =>
       new BurstLimitedPager(notifier.send, AlertBurst(10, FiniteDuration(1L, TimeUnit.HOURS)), clock))
 
-  protected def fallbackPager(kind: String): String => Unit =
+  protected def fallbackPager(kind: TelegramAlertKind): String => Unit =
     message => fallbackPagers.foreach(_.pagerFor(kind)(message))
 
   // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
@@ -41,7 +41,7 @@ trait AlertingWiring { self: WorkerWiring =>
   // so CI / local without secrets raise no alerts.
   protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] =
     configuration.telegramRoute(AlertRoute.FilmwebDrop).toOption.filter(_ => filmwebEnabled).map { route =>
-      new FilmwebDropAlerter(filmwebOnlyCinemas, notifierFor(route).send,
+      new FilmwebDropAlerter(filmwebOnlyCinemas, notifierFor(route).send(TelegramAlertKind.FilmwebDrop),
         configuration.filmwebDropThreshold(FilmwebDropThreshold(3)))
     }
 
@@ -57,7 +57,7 @@ trait AlertingWiring { self: WorkerWiring =>
   // works on prod without a new secret; off in CI / local without any chat id.
   protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] =
     configuration.telegramRoute(AlertRoute.StagingStuck).toOption.map { route =>
-      new StagingStuckAlerter(stagingRepository, notifierFor(route).send,
+      new StagingStuckAlerter(stagingRepository, notifierFor(route).send(TelegramAlertKind.StagingStuck),
         stuckThreshold = configuration.stagingStuckThreshold(StagingStuckThreshold(FiniteDuration(60L, TimeUnit.MINUTES))),
         interval       = configuration.stagingStuckScanInterval(StagingStuckScanInterval(FiniteDuration(10L, TimeUnit.MINUTES))))
     }

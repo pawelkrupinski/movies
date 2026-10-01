@@ -47,10 +47,10 @@ class BurstLimitedNotifierSpec extends AnyFlatSpec with Matchers {
   "BurstLimitedPager" should "give each kind of page its own budget" in {
     val clock = new MutableClock(Instant.parse("2026-09-26T12:00:00Z"))
     val sent  = ListBuffer.empty[String]
-    val pager = new BurstLimitedPager(message => { sent += message; () }, AlertBurst(3, 1.hour), clock)
-    (1 to 10).foreach(i => pager.pagerFor("ENTER")(s"enter $i"))
-    pager.pagerFor("RECOVERED")("recovered 1")
-    pager.pagerFor("gone-venue")("gone 1")
+    val pager = new BurstLimitedPager(_ => message => { sent += message; () }, AlertBurst(3, 1.hour), clock)
+    (1 to 10).foreach(i => pager.pagerFor(TelegramAlertKind.fallback("ENTER"))(s"enter $i"))
+    pager.pagerFor(TelegramAlertKind.fallback("RECOVERED"))("recovered 1")
+    pager.pagerFor(TelegramAlertKind.GoneVenue)("gone 1")
     sent should contain allOf ("recovered 1", "gone 1")
   }
 }

@@ -182,6 +182,9 @@ route_is telegram-and-email alertname=WorkerQueueMetricsAbsent severity=warning
 # The two rules that watch whether the movement ACHIEVES anything, added 2026-09-06.
 route_is telegram-and-email alertname=WorkerTasksFailingRepeatedly severity=warning country=pl
 route_is telegram-and-email alertname=WorkerTaskTypeUnhandled severity=warning country=de
+# The in-app Telegram bot failing: the email half is what still reaches someone if Telegram is
+# the thing broken. See worker-pipeline.rules.
+route_is telegram-and-email alertname=WorkerTelegramAlertsFailing severity=warning country=us kind=gone_venue
 
 # THE READ-MODEL GAP EARNS THE MAILBOX FOR THE SAME REASON AND MORE SHARPLY. On 2026-09-07 a prune
 # left 509 cards missing, the prune-RATE alert fired for 25 minutes and resolved correctly on its

@@ -46,9 +46,9 @@ final class BurstLimitedNotifier(deliver: String => Unit, burst: AlertBurst, clo
 /** One [[BurstLimitedNotifier]] per KIND of page, so an outage's flood of one kind
  *  (ENTER) cannot spend the budget of the pages that close it out (RECOVERED) or of
  *  a rare one-off (the gone-venue page). */
-final class BurstLimitedPager(deliver: String => Unit, burst: AlertBurst, clock: Clock) {
-  private val limiters = new java.util.concurrent.ConcurrentHashMap[String, BurstLimitedNotifier]()
+final class BurstLimitedPager(deliver: TelegramAlertKind => String => Unit, burst: AlertBurst, clock: Clock) {
+  private val limiters = new java.util.concurrent.ConcurrentHashMap[TelegramAlertKind, BurstLimitedNotifier]()
 
-  def pagerFor(kind: String): String => Unit =
-    limiters.computeIfAbsent(kind, k => new BurstLimitedNotifier(deliver, burst, clock, k)).send
+  def pagerFor(kind: TelegramAlertKind): String => Unit =
+    limiters.computeIfAbsent(kind, k => new BurstLimitedNotifier(deliver(k), burst, clock, k.value)).send
 }

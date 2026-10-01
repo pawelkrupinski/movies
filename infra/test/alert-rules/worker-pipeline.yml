@@ -686,3 +686,49 @@ tests:
       - eval_time: 50m
         alertname: WorkerAlerterDisabled
         exp_alerts: []
+
+  # ───────────────────────────────────────────────────────────────────────────────────────────
+  # WorkerTelegramAlertsFailing. A revoked bot token: every gone-venue page fails, and the
+  # worker restarts in the middle of it (the counter resets to its seeded 0 after a stale gap).
+  # `increase` over 6h counts across the reset, so the hold is not lost with the pod.
+  - interval: 1m
+    name: a kind that keeps failing with nothing sent fires, across a worker restart
+    input_series:
+      - series: 'kinowo_worker_telegram_notifications_total{country="us",kind="gone_venue",outcome="failed",job="kinowo-worker"}'
+        values: '0x10 1x10 stale stale stale 0x5 1x10 2x40'
+      - series: 'kinowo_worker_telegram_notifications_total{country="us",kind="gone_venue",outcome="sent",job="kinowo-worker"}'
+        values: '0x20 stale stale stale 0x55'
+    alert_rule_test:
+      # One failure, then the restart: not yet two.
+      - eval_time: 25m
+        alertname: WorkerTelegramAlertsFailing
+        exp_alerts: []
+      # The second failure lands at 35m; held 15m it fires.
+      - eval_time: 55m
+        alertname: WorkerTelegramAlertsFailing
+        exp_alerts:
+          - exp_labels:
+              country: us
+              kind: gone_venue
+              severity: warning
+            exp_annotations:
+              summary: "us: the worker's gone_venue Telegram pages are failing to send"
+              description: "The worker tried to send 3 `gone_venue` Telegram pages in the last 6h and none got through, so the incidents they report are reaching nobody. The reason is on the WARN line: `kubectl -n kinowo logs deploy/worker-us | grep 'Telegram notify failed'` -- a 401 is a revoked bot token (`worker-secrets`), a 400/403 \"chat not found\" or \"bot was kicked\" a chat or topic id in the `worker-env` ConfigMap (movies-gitops worker/base/all.yaml), a timeout the node's egress to api.telegram.org."
+
+  # A HEALTHY ALERTER STAYS SILENT: a transient failure beside pages that went through is a
+  # blip, not a broken bot -- and a failure of ANOTHER kind does not borrow this kind's count.
+  - interval: 1m
+    name: failures beside a successful send of the same kind stay quiet
+    input_series:
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="fallback_enter",outcome="failed",job="kinowo-worker"}'
+        values: '0x10 1x10 2x10 3x30'
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="fallback_enter",outcome="sent",job="kinowo-worker"}'
+        values: '0x15 1x45'
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="failed",job="kinowo-worker"}'
+        values: '0x10 1x50'
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="sent",job="kinowo-worker"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 58m
+        alertname: WorkerTelegramAlertsFailing
+        exp_alerts: []

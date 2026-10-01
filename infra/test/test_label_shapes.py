@@ -57,6 +57,12 @@ EVENT_ONLY_VALUES = {
     # Re-snapshot once the series exists; `ready="False"` then stays here as event-only.
     ("flux:resource_info", "ready", "False"),
     ("flux:resource_info", "suspended", "true"),
+    # NOT PUBLISHED YET: the worker's in-app Telegram counter is new (TelegramNotificationMetrics),
+    # so the fleet has no series to snapshot. `outcome` is the closed set TelegramOutcome seeds and
+    # `job` the worker's scrape job. Re-snapshot once a worker with it has run, then drop these.
+    ("kinowo_worker_telegram_notifications_total", "job", "kinowo-worker"),
+    ("kinowo_worker_telegram_notifications_total", "outcome", "sent"),
+    ("kinowo_worker_telegram_notifications_total", "outcome", "failed"),
 }
 
 

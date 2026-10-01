@@ -239,7 +239,7 @@ class WorkerWiring(
   lazy val closureLedger: services.closure.ClosureLedger =
     mongoConnection.database.fold[services.closure.ClosureLedger](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
   lazy val closureSweep = new services.closure.ClosureSweep(() => closureCandidates, scrapeArchive, filmwebFallbackStore,
-    closureLedger, fallbackPager("venue-closure"),
+    closureLedger, fallbackPager(services.alerts.TelegramAlertKind.VenueClosure),
     configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
       java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
     clock)

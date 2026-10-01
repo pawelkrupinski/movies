@@ -501,3 +501,40 @@ groups:
             changed share card. The worker's boot log names the key: `kubectl -n kinowo logs
             deploy/worker-{{ $labels.country }} | grep 'is OFF: missing'`. The secrets are in
             `worker-secrets` (the Facebook pair in `web-secrets`), managed outside movies-gitops.
+
+      # -----------------------------------------------------------------------------------------
+      # A WIRED ALERTER WHOSE PAGES DO NOT ARRIVE. `WorkerAlerterDisabled` above catches an
+      # alerter that is not wired; this catches one that is wired and failing -- a revoked or
+      # rotated bot token, a chat the bot was removed from, api.telegram.org unreachable from the
+      # node. Each attempt counts into `kinowo_worker_telegram_notifications_total{kind,outcome}`
+      # (and logs `Telegram notify sent` / `Telegram notify failed`), so "failing" is a count,
+      # not a WARN line somebody has to notice.
+      #
+      # TWO FAILURES IN SIX HOURS AND NOTHING SENT. Pages are rare and bursty (a gone venue, a
+      # fallback ENTER), so a rate would be noise and one failure is a blip. Any successful send
+      # of the same kind in the window clears it: delivery works, and a lone failure beside it was
+      # transient. The 6h window bridges a worker restart (the counter resets; `increase` corrects
+      # for it) and the 15m hold lets a burst's next page land first.
+      #
+      # Routed telegram-and-email (`Worker.*` in alertmanager.yaml), and the EMAIL HALF IS THE
+      # POINT: when the in-app bot is what is broken, Alertmanager's own Telegram may be too.
+      #
+      # NOT REPLAYED: the counter is new in this change, so there is no history to replay.
+      - alert: WorkerTelegramAlertsFailing
+        expr: >-
+          sum by (country, kind) (increase(kinowo_worker_telegram_notifications_total{outcome="failed"}[6h])) >= 2
+          unless on (country, kind)
+          sum by (country, kind) (increase(kinowo_worker_telegram_notifications_total{outcome="sent"}[6h])) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the worker's {{ $labels.kind }} Telegram pages are failing to send"
+          description: >-
+            The worker tried to send {{ $value | printf "%.0f" }} `{{ $labels.kind }}` Telegram
+            pages in the last 6h and none got through, so the incidents they report are reaching
+            nobody. The reason is on the WARN line: `kubectl -n kinowo logs
+            deploy/worker-{{ $labels.country }} | grep 'Telegram notify failed'` -- a 401 is a
+            revoked bot token (`worker-secrets`), a 400/403 "chat not found" or "bot was kicked" a
+            chat or topic id in the `worker-env` ConfigMap (movies-gitops worker/base/all.yaml), a
+            timeout the node's egress to api.telegram.org.
