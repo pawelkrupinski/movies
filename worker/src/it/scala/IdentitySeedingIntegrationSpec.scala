@@ -66,6 +66,13 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val (resolution, seconds) = timed(IdentityResolver.resolve(listings, new Memo(source), c.normalizer, IdentityCalibration.resolver))
       val clusters = resolution.decisions.map(_.listings)
       val review   = IdSeeding.review(films, clusters)
+      // A review over unanswered lookups is a review of nothing: every cluster without a film, every
+      // decorated spelling its own. A wrong fixture root did exactly that, and the run still passed.
+      val unanswered = resolution.unknownQueries + resolution.unknownDetails
+      withClue(s"$unanswered of ${resolution.queries.size} queries and the venue pages unanswered — is KINOWO_FIXTURE_ROOT the fixtures directory?") {
+        unanswered.toDouble should be <= (resolution.queries.size * 0.1)
+      }
+      val filmOf   = resolution.decisions.map(d => d.listings -> d.film).toMap
 
       // How much of today's corpus the recording holds, and what the slot fold hides.
       val corpusKeys = listings.map(_.key).toSet
@@ -92,13 +99,31 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       section("films the resolver splits over two or more clusters", review.split) { case (f, cs) =>
         s"${f.id} (${f.listings.size}) → ${cs.map(k => s"[${cluster(k.intersect(f.listings))}]").mkString(" + ")}" }
       val (freshSeen, freshUnseen) = review.fresh.partition(_._2.nonEmpty)
-      section("clusters that get a fresh id, overlapping a film that went elsewhere", freshSeen) { case (k, fs) =>
-        s"${cluster(k)} — overlaps ${fs.mkString(", ")}" }
+      // Why a cluster leaves the film it overlaps: the resolver names ANOTHER film for it (the old film had
+      // merged two — a remake, a sequel), names NO film (a spelling it could not match: a card of its own),
+      // or the SAME film under a second cluster.
+      val freshWhy = freshSeen.map { case (k, fs) =>
+        val keeperFilms = fs.flatMap(review.keeps.get).flatMap(filmOf.get).flatten.toSet
+        val why = filmOf.get(k).flatten match {
+          case None                                   => "unmatched"
+          case Some(film) if keeperFilms.contains(film) => "same film"
+          case Some(_)                                => "another film"
+        }
+        (k, fs, why)
+      }
+      def count(why: String): Int = freshWhy.count(_._3 == why)
+      def listingsBy(why: String): Int = freshWhy.filter(_._3 == why).map(_._1.size).sum
+      lines += s"\nfresh ids overlapping a film that went elsewhere, by why: another film ${count("another film")} " +
+        s"(${listingsBy("another film")} listings), unmatched ${count("unmatched")} (${listingsBy("unmatched")} listings), " +
+        s"same film ${count("same film")} (${listingsBy("same film")} listings)"
+      for (why <- Seq("another film", "unmatched", "same film"))
+        section(s"clusters that get a fresh id, overlapping a film that went elsewhere — $why", freshWhy.filter(_._3 == why)) {
+          case (k, fs, _) => s"${cluster(k)} — overlaps ${fs.mkString(", ")}" }
       section("clusters that get a fresh id, overlapping no production film", freshUnseen) { case (k, _) => cluster(k) }
       Files.createDirectories(out)
       Files.writeString(out.resolve(s"seeding-${c.country.code}.txt"), lines.mkString("\n") + "\n")
       summary.synchronized(summary += f"| ${c.country.code} | ${films.size} | ${clusters.size} | ${review.keeps.size} | ${review.unmatched.size} | " +
-        s"${review.mergedAway.size} | ${review.split.size} | ${freshSeen.size} | ${freshUnseen.size} | " +
+        s"${review.mergedAway.size} | ${review.split.size} | ${freshSeen.size} (${count("another film")} / ${count("unmatched")} / ${count("same film")}) | ${freshUnseen.size} | " +
         s"${pct(todayKeys.count(corpusKeys).toLong, todayKeys.size.toLong)} | $hidden |")
       println(lines.take(3).mkString("\n"))
 
@@ -109,7 +134,7 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   override protected def afterAll(): Unit = {
     if (summary.nonEmpty) {
-      val table = ("| country | films | clusters | keep id | no cluster | merged away | split | fresh (film elsewhere) | fresh (unseen) | keys in corpus | fold-hidden listings |" +:
+      val table = ("| country | films | clusters | keep id | no cluster | merged away | split | fresh (film elsewhere: another film / unmatched / same film) | fresh (unseen) | keys in corpus | fold-hidden listings |" +:
         "|---|---|---|---|---|---|---|---|---|---|---|" +: summary.sorted.toSeq).mkString("\n")
       Files.writeString(out.resolve("seeding-summary.md"), table + "\n")
       println(table)

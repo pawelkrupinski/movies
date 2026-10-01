@@ -120,6 +120,8 @@ metrics at 2026-09-30 ~23:00 UTC.
 | labelled accuracy, resolver / pipeline | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 99.6% | 100.0 / 100.0% |
 | gate 5 accuracy + labelled recall (−0.5 pt) | met | met | met | met | met |
 | gate 5: 0 order variants, 0 cannot-link violations (run 36823471686, robustness on) | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met |
+| gate 5 seeding review: split + fresh-elsewhere, of films (recording 36807940234 × prod films 10-01 08:16) | 6 = 2.5% — NOT met | 24 = 1.3% — NOT met | 55 = 3.6% — NOT met | 64 = 2.9% — NOT met | 189 = 16.3% — NOT met |
+| … of which a listing leaves its film for NO film or the same film (proposed gate, below) | 0 = 0.0% | 2 = 0.1% | 7 = 0.5% | 2 = 0.1% | 104 = 9.0% |
 | report verdict strict / weak (not a gate; see below) | yes / yes | no / yes | no / yes | no / yes | no / no |
 | all-listing coverage, resolver / pipeline (not a gate) | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
 | shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
@@ -139,6 +141,20 @@ DE/UK/US/PL is the small residue the identity progress notes itemise — double 
 the K-pop tour records, bare one-listing titles below the evidence bar. PL's WEAK NO is one cell: Simona
 Risi's documentary on the "degenerate art" trial, held twice by TMDB (an English 2026 record and the
 Italian 2025 original); the resolver follows the Italian record a venue names by its original title.
+
+The seeding review (`IdentitySeedingIntegrationSpec`, 10-01) now says WHY each fresh cluster leaves the film
+it overlaps: the resolver names ANOTHER film for it, NO film, or the SAME film under a second cluster. Most
+"split + fresh" outside PL is the first kind — the old film had merged two: Suspiria 1977 + 2018, Scream +
+Scream 2/3, Halloween 1978 + 2018, Psycho 1960 + 1998, Mockingjay Part 2 + De Gaulle Part 2, the SEVENTEEN
+and TXT tours, The Dark Knight + Rises. A fresh id there is the fix, and the 0-new-wrong judges already
+stand behind those decisions. The second and third kinds are the real cost: a listing that leaves its film's
+card for a card of its own. PL's 101 are mostly one-venue decorated spellings ("Resident evil 2d sub",
+"MISTYCZKA /film polski/", bare "Lalka" ×5, "Vincent. Legenda Oceanu" ×10) — the coverage gap — with some
+the old pipeline had wrong (Kino Diana's concerts onto André Rieu, horror marathons onto a film).
+
+**PROPOSED, awaiting a decision (seeding gate):** count only the listings that leave their film for no film
+or the same film, ≤ 1% of films. Met by ES, DE, UK, US; PL (9.0%) not, which its place last in the order
+already assumes.
 
 **PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
 pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
