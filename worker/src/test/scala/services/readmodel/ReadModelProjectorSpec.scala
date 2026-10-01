@@ -1506,4 +1506,27 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+
+  // A wide US release plays in hundreds of venues: one write per screening document was most of
+  // a country's first projection, a round trip each.
+  "a card's screenings" should "reach the writer together, as one write" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val singles    = new java.util.concurrent.atomic.AtomicInteger(0)
+    val batches    = scala.collection.mutable.ListBuffer.empty[Int]
+    val rm = new InMemoryReadModelRepository() {
+      override def upsertScreening(s: CityScreening): Unit = { singles.incrementAndGet(); super.upsertScreening(s) }
+      override def upsertScreenings(screenings: Seq[CityScreening]): Unit = {
+        batches += screenings.size; screenings.foreach(super.upsertScreening)
+      }
+    }
+    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val showing   = Seq(at("2026-10-02T18:00"))
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino -> slot(showing), Helios -> slot(showing).copy(filmUrl = Some("https://helios/foo")),
+      KinoMuza -> slot(showing).copy(filmUrl = Some("https://muza/foo")))))
+    projector.reconcile()
+    rm.findAllScreenings() should have size 3
+    singles.get shouldBe 0
+    batches.toList shouldBe List(3)
+  }
 }

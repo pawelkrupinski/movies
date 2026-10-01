@@ -7,7 +7,7 @@ import models.{CityScreening, ResolvedMovie}
 import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{Filters, Projections, Sorts}
+import org.mongodb.scala.model.{Filters, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{KeysetScan, RepositoryWrite}
@@ -251,6 +251,11 @@ class MongoReadModelRepository(
 
   def upsertScreening(s: CityScreening): Unit =
     replace(screenings, s._id, s, "upsertScreening")
+
+  override def upsertScreenings(batch: Seq[CityScreening]): Unit =
+    if (batch.sizeIs == 1) upsertScreening(batch.head)
+    else if (batch.nonEmpty) screenings.foreach(c => write("upsertScreenings", s"${batch.size} screening(s) from ${batch.head._id}")(
+      c.bulkWrite(batch.map(s => ReplaceOneModel(Filters.eq("_id", s._id), s, new ReplaceOptions().upsert(true)))).toFuture()))
 
   def deleteMovie(id: String): Unit     = removeById(movies, id, "deleteMovie")
   def deleteScreening(id: String): Unit = removeById(screenings, id, "deleteScreening")

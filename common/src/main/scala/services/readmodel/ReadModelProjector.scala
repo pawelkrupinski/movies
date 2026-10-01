@@ -515,18 +515,21 @@ class ReadModelProjector(
   /** Returns the number of screening documents written (upserts + deletes). */
   private def diffScreenings(filmId: String, next: Seq[PlannedScreening]): Int = {
     val previous = lastScreenings.of(filmId)
-    var upserted = 0
+    val upserts  = Seq.newBuilder[CityScreening]
     val nextById = next.map { planned =>
       val output = planned.built match {
         case Some(s) =>
           val hash = s.##
-          if (!previous.get(planned._id).exists(_.output == hash)) { writer.upsertScreening(s); upserted += 1 }
+          if (!previous.get(planned._id).exists(_.output == hash)) upserts += s
           hash
         // Not rebuilt: `planScreenings` only skips a venue whose entry vouches for its row.
         case None => previous(planned._id).output
       }
       planned._id -> WrittenScreening(output, Some(planned.input))
     }.toMap
+    val written  = upserts.result()
+    writer.upsertScreenings(written)
+    val upserted = written.size
     val deletes = previous.keysIterator.filterNot(nextById.contains).toSeq
     deletes.foreach(writer.deleteScreening)
     if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)

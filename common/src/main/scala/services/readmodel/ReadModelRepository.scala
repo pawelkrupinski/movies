@@ -141,6 +141,10 @@ trait ReadModelWriter {
   def upsertMovie(m: ResolvedMovie): Unit
   def deleteMovie(id: String): Unit
   def upsertScreening(s: CityScreening): Unit
+  /** Each of `screenings` upserted — in one write where the store can make it one: a card's
+   *  screenings are written together (a wide US release has one per city), and a round trip
+   *  apiece was most of a country's first projection. Throws as [[upsertScreening]] does. */
+  def upsertScreenings(screenings: Seq[CityScreening]): Unit = screenings.foreach(upsertScreening)
   def deleteScreening(id: String): Unit
   def close(): Unit
 }
