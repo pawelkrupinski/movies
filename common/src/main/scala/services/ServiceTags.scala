@@ -1,7 +1,7 @@
 package services
 
 import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
-import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
 import services.movies.KeysetScan
@@ -38,13 +38,13 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
    *  `keysExamined: 0`, in all five databases.
    *
    *  UNIQUE, because `service` IS the key: there are no duplicates today, and the constraint
-   *  also closes the upsert-under-concurrency race that could create one. Isolated in its own
-   *  `Try` like the bucket indexes — an existing non-unique index would make this throw, and a
-   *  collection that cannot be indexed must not stop the monitor from running. */
-  def ensureIndex(c: MongoCollection[Document]): Unit =
-    Try {
-      Await.result(c.createIndex(Indexes.ascending("service"), new JIndexOptions().unique(true)).toFuture(), 10.seconds)
-    }.recover { case exception => logger.warn(s"Uptime tag index creation failed: ${exception.getMessage}") }
+   *  also closes the upsert-under-concurrency race that could create one. Through
+   *  [[MongoIndex]], which never throws — an existing non-unique index is converted in place,
+   *  and a collection that cannot be indexed must not stop the monitor from running. */
+  def ensureIndex(database: MongoDatabase): Unit = {
+    MongoIndex.ensure(database, ServiceTags.Collection, Indexes.ascending("service"), new JIndexOptions().unique(true), "uptimeServiceTags")
+    ()
+  }
 
   /** Attach `tags` to `service`, replacing any existing set. Updates the in-memory map and,
    *  WHEN THE VALUE ACTUALLY CHANGED, best-effort upserts the one tag document for the
@@ -145,4 +145,8 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
     }
     ()
   }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
+}
+
+object ServiceTags {
+  val Collection = "uptimeServiceTags"
 }

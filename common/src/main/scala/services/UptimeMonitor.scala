@@ -64,7 +64,7 @@ class UptimeMonitor(
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
-  private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeServiceTags"))
+  private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection(ServiceTags.Collection))
 
   // The cross-process reads (boot hydrate + serving-app poll) share this
   // process's bucket map and listener fan-out; see `UptimeSync`. Package-private
@@ -84,7 +84,7 @@ class UptimeMonitor(
   coll.foreach { c =>
     val thread = new Thread(() => {
       ensureIndexes(c)
-      tagColl.foreach(serviceTags.ensureIndex)
+      db.foreach(serviceTags.ensureIndex)
       sync.hydrate(c)
       tagColl.foreach(serviceTags.load)
       // Schedule background work only AFTER hydrate: flushing absolute cumulative

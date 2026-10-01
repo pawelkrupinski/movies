@@ -63,17 +63,15 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   /** The effective write concern of the `tasks` collection — for diagnostics/tests. */
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
-  coll.foreach { c =>
-    val thread = new Thread(() => createIndexes(c), "tasks-init")
+  for (database <- db; c <- coll) {
+    val thread = new Thread(() => createIndexes(database, c), "tasks-init")
     thread.setDaemon(true)
     thread.start()
   }
 
-  private def createIndexes(c: MongoCollection[Document]): Unit = Try {
-    Await.result(c.createIndex(
-      Indexes.ascending("dedupKey"),
-      new JIndexOptions().unique(true).partialFilterExpression(Filters.eq("active", true))
-    ).toFuture(), 10.seconds)
+  private def createIndexes(database: MongoDatabase, c: MongoCollection[Document]): Unit = Try {
+    services.MongoIndex.ensure(database, collectionName, Indexes.ascending("dedupKey"),
+      new JIndexOptions().unique(true).partialFilterExpression(Filters.eq("active", true)), "Task queue")
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("submittedAt"))).toFuture(), 10.seconds)
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("leaseExpiresAt"))).toFuture(), 10.seconds)
   }.recover { case exception => logger.warn(s"Task queue index creation failed: ${exception.getMessage}") }

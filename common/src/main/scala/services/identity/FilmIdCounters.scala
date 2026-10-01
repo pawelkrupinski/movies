@@ -109,10 +109,13 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
   private val coll: MongoCollection[Document] = database.getCollection[Document](MongoFilmIdCounterStore.Collection)
 
   // Built by the first INSERT, never by a read, so a dry run against production writes nothing.
-  private lazy val counterIndex: Unit = {
-    Await.result(coll.createIndex(Indexes.ascending("counter"), IndexOptions().unique(true)).toFuture(), 30.seconds)
-    ()
-  }
+  private lazy val counterIndex: Unit =
+    services.MongoIndex.ensure(database, MongoFilmIdCounterStore.Collection, Indexes.ascending("counter"),
+      IndexOptions().unique(true), "identity_film_ids") match {
+      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+        throw new IllegalStateException(s"identity_film_ids has no unique counter index: $reason")
+      case _ => ()
+    }
 
   def allChecked(): (Seq[FilmIdCounter], Boolean) =
     Try(Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {

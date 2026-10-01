@@ -117,8 +117,8 @@ class MongoUserStateRepository(
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 
   private lazy val coll: Option[MongoCollection[UserState]] = database.map { db =>
-    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
-    uniqueUserIdIndexOrReport(c)
+    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState](UserStateRepository.Collection)
+    uniqueUserIdIndexOrReport(db)
     c
   }
 
@@ -128,36 +128,31 @@ class MongoUserStateRepository(
   // historic write race (found + cleaned up 2026-09-20), after which `find`
   // and a write could silently disagree on WHICH duplicate is "the" row.
   //
-  // BUILD, NEVER REBUILD. Every web pod runs this on every boot, and a rolling
-  // deploy boots the new pod while the old one writes. This used to drop a
+  // BUILD OR CONVERT, NEVER DROP. Every web pod runs this on every boot, and a
+  // rolling deploy boots the new pod while the old one writes. This used to drop a
   // legacy plain `userId_1` to make room for the unique one, and two pods
   // booting together both read "legacy" and both dropped it: the second drop
   // either found nothing (that pod reported the index missing although the
   // first had built it) or removed the unique index the first had just built
-  // (`UserStateAcrossPodsIntegrationSpec`). Every country's database has
-  // carried the unique index since (the gauge read 1 in all five on
-  // 2026-09-24), so a plain one is now something to REPORT: `createIndex`
-  // refuses it (IndexKeySpecsConflict), the gauge below goes to 0, and an
-  // operator dedupes and rebuilds it by hand, once.
-  private def ensureUniqueUserIdIndex(coll: MongoCollection[UserState]): Unit = {
-    Await.result(
-      coll.createIndex(
-        org.mongodb.scala.model.Indexes.ascending("userId"),
-        new org.mongodb.scala.model.IndexOptions().unique(true)
-      ).toFuture(), 10.seconds)
-    ()
-  }
+  // (`UserStateAcrossPodsIntegrationSpec`). `MongoIndex` converts a plain index
+  // to unique IN PLACE instead — two `collMod`s that are no-ops once applied, so
+  // two pods converting together both succeed and the index is never absent.
+  //
   // LOUD, NOT FATAL. The store keeps serving without the index — failing the boot
   // would take every web pod (the whole read tier) down over a write-correctness
-  // risk to a few signed-in visitors' rows — but a failed build is logged at ERROR
-  // and reported to `indexHealth`, whose gauge `UserStateUniqueIndexMissing`
-  // (web-errors.rules) alerts on. It used to be a bare `Try`: no index, no trace.
-  private def uniqueUserIdIndexOrReport(coll: MongoCollection[UserState]): Unit = {
-    val built = Try(ensureUniqueUserIdIndex(coll))
-    built.failed.foreach(exception => logger.error(
-      s"userStates has NO unique userId index — building it failed (${exception.getMessage}). " +
-        "Duplicate rows for one userId are the usual cause; writes keyed on userId may pick either row.", exception))
-    indexHealth.uniqueUserIdIndex(built.isSuccess)
+  // risk to a few signed-in visitors' rows — but an index not in place (duplicate
+  // rows, a credential without `collMod`) is logged at ERROR and reported to
+  // `indexHealth`, whose gauge `UserStateUniqueIndexMissing` (web-errors.rules)
+  // alerts on.
+  private def uniqueUserIdIndexOrReport(db: MongoDatabase): Unit = {
+    val outcome = services.MongoIndex.ensure(db, UserStateRepository.Collection,
+      org.mongodb.scala.model.Indexes.ascending("userId"), new org.mongodb.scala.model.IndexOptions().unique(true), "userStates")
+    outcome match {
+      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+        logger.error(s"userStates has NO unique userId index ($reason). Writes keyed on userId may pick either of two rows.")
+      case _ => ()
+    }
+    indexHealth.uniqueUserIdIndex(outcome.inPlace)
   }
 
   def enabled: Boolean = coll.isDefined

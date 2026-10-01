@@ -117,10 +117,10 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
   // the other pod's boot: both read "legacy" and both dropped by name — the second drop either
   // found nothing (that pod then reported the index MISSING although the first had built it,
   // paging `UserStateUniqueIndexMissing`) or removed the unique index the first pod had just
-  // built. Every country's database carries the unique index now (the gauge reads 1 in all five),
-  // so a pod no longer rebuilds: it reports a non-unique index for an operator to fix, and never
-  // drops an index another pod may be writing behind.
-  "two web pods booting at once over a plain userId index" should "both report it, and neither drop it" in
+  // built. For a while after that a pod only REPORTED a plain index. It now converts it in place
+  // (`MongoIndex`: `collMod` prepareUnique, then unique), which is idempotent — so two pods doing
+  // it at once both end with the unique index, and neither drops anything.
+  "two web pods booting at once over a plain userId index" should "both convert it in place, and neither drop it" in
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-legacy") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
       rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
@@ -128,8 +128,26 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
         Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
         val (reported, drops) = bootTogether(instances, round)
         withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
-        withClue("the two pods must agree about the one index they share: ") { reported shouldBe Seq(List(false), List(false)) }
-        userIdIndex(instances.head.database).flatMap(_.get("unique")) shouldBe None
+        withClue("both pods must find the index unique once they are done: ") { reported shouldBe Seq(List(true), List(true)) }
+        userIdIndex(instances.head.database).flatMap(_.get("unique")).map(_.asBoolean().getValue) shouldBe Some(true)
+      }
+    }
+
+  // Duplicate rows make the conversion impossible: the plain index stays, untouched, and both
+  // pods report it missing for an operator to dedupe.
+  "two web pods booting at once over a plain userId index with duplicate rows" should "both report it, and keep the plain index" in
+    ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-duplicates") { instances =>
+      val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
+      rounds(2, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+        Await.result(coll.drop().toFuture(), 10.seconds)
+        Await.result(coll.insertMany(Seq(Document("userId" -> "twice"), Document("userId" -> "twice"))).toFuture(), 10.seconds)
+        Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
+        val (reported, drops) = bootTogether(instances, round)
+        withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
+        reported shouldBe Seq(List(false), List(false))
+        val index = userIdIndex(instances.head.database)
+        index.isDefined shouldBe true
+        index.flatMap(_.get("unique")) shouldBe None
       }
     }
 }

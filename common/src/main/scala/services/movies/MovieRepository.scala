@@ -676,7 +676,7 @@ class MongoMovieRepository(
         // write rate is what throttles it. Same trade `MongoTaskQueue` already makes.
         val coll = withRegistry.getCollection[StoredMovieDto](MovieRepository.Collection)
           .withWriteConcern(WriteConcern.W1.withJournal(false))
-        ensureIndexes(coll)
+        ensureIndexes(withRegistry, coll)
         (Some(withRegistry), Some(coll))
       case None => (None, None)
     }
@@ -1357,7 +1357,7 @@ class MongoMovieRepository(
    *  a no-op, a failure only logs. (The `(title, year)` index that used to serve
    *  `delete`'s column-matching fallback is not created any more — nothing queries
    *  those columns; the index left on prod is inert.) */
-  private def ensureIndexes(coll: MongoCollection[StoredMovieDto]): Unit = {
+  private def ensureIndexes(db: MongoDatabase, coll: MongoCollection[StoredMovieDto]): Unit = {
     // The lookup key lives in its own field now that `_id` is the permanent `FilmId`
     // (see [[FilmId]]). A document written before then has no `key` — its `_id` IS its
     // key — so backfill it once, here, before anything queries by key: the staging fold's
@@ -1381,9 +1381,9 @@ class MongoMovieRepository(
     // PARTIAL on `tmdbId` being a number, not SPARSE: the codec writes an absent option
     // as `tmdbId: null`, and a sparse index indexes null as a value — every unresolved
     // row would collide on it (found by the integration suite, not production).
-    // `createIndex` cannot alter an existing index's options, so a conflicting earlier
-    // definition is dropped and rebuilt — the same rule `MongoTtlIndex.reconcile` follows.
-    ensureIndex(coll, "tmdbId", new IndexOptions().unique(true).background(true)
+    // An earlier definition that differs in more than uniqueness is reported, not rebuilt:
+    // see `MongoIndex` for why nothing here drops an index.
+    ensureIndex(db, "tmdbId", new IndexOptions().unique(true).background(true)
       .partialFilterExpression(org.mongodb.scala.bson.collection.immutable.Document(
         "tmdbId" -> org.mongodb.scala.bson.collection.immutable.Document("$type" -> "number"))))
     // One document per stored key: the key is the lookup identity now, and the cache
@@ -1391,32 +1391,22 @@ class MongoMovieRepository(
     // is the store refusing the one a race lets through. Measured 2026-09-07: zero
     // duplicate keys in any country, so the index builds clean. Every document has
     // the field after the backfill above, so plain unique — no partial filter.
-    ensureIndex(coll, "key", new IndexOptions().unique(true).background(true))
+    ensureIndex(db, "key", new IndexOptions().unique(true).background(true))
     // `updatedAt` is bumped on every write and read by the change-stream catch-up
     // (`foreachRecordUpdatedSince`): "the rows written since the cursor last delivered" has
     // to be a range read on an index, or the 30-minute prune sweep that asks it would scan
     // the collection to find, in steady state, nothing.
-    ensureIndex(coll, "updatedAt", new IndexOptions().background(true))
+    ensureIndex(db, "updatedAt", new IndexOptions().background(true))
   }
 
-  /** Create a single-field index on `field`, rebuilding it when an earlier definition of
-   *  the same name carries different options: `createIndex` cannot alter an existing
-   *  index (IndexOptionsConflict, code 85), so the old one is dropped first — the
-   *  same rule `MongoTtlIndex.reconcile` follows. A failure is logged, never fatal:
-   *  the film store works without the index — a unique one merely stops refusing
-   *  duplicates, a plain one merely stops serving its range read. */
-  private def ensureIndex(coll: MongoCollection[StoredMovieDto], field: String, options: IndexOptions): Unit =
-    Try {
-      def create() = Await.result(coll.createIndex(Indexes.ascending(field), options).toFuture(), 30.seconds)
-      Try(create()).recover {
-        case exception: com.mongodb.MongoCommandException if exception.getErrorCode == 85 =>   // IndexOptionsConflict
-          Await.result(coll.dropIndex(s"${field}_1").toFuture(), 30.seconds)
-          create()
-      }.get
-      ()
-    }.recover {
-      case exception: Throwable => logger.warn(s"movies `$field` index creation failed: ${exception.getMessage}")
-    }
+  /** A single-field index on `field`, through [[services.MongoIndex]] — which converts
+   *  an earlier plain index to unique in place and never drops one. A failure is logged
+   *  there, never fatal: the film store works without the index — a unique one merely
+   *  stops refusing duplicates, a plain one merely stops serving its range read. */
+  private def ensureIndex(db: MongoDatabase, field: String, options: IndexOptions): Unit = {
+    services.MongoIndex.ensure(db, MovieRepository.Collection, Indexes.ascending(field), options, "movies")
+    ()
+  }
 
   /** Mongo's duplicate-key error — a second document claiming a tmdbId the unique index
    *  already holds. */
