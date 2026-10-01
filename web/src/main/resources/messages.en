@@ -79,8 +79,8 @@ browse.ogDescriptionNear=Films from the cinemas {0}: {1}. With current showtimes
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — cinema listings in your city
-landing.ogDescription=Every cinema''s listings in one place — with IMDb, Rotten Tomatoes and Metacritic ratings. Check today''s showtimes in your city.
-landing.apexTitle={0} — cinema listings in your country
+landing.ogDescription=Local cinemas'' listings in one place — with IMDb, Rotten Tomatoes and Metacritic ratings. Check today''s showtimes in your city.
+landing.apexTitle={0} — cinema listings in your city
 landing.chooseCountry=Choose your country
 landing.chooseCity=Choose your city
 landing.searchCity=Search for a city…

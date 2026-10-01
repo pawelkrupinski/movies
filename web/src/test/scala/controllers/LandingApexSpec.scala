@@ -110,6 +110,15 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     visibleBody(html) should not include ("Wybierz")
   }
 
+  // The title and description double as the og: fields a Facebook/link preview
+  // shows. The visitor is about to pick a city, so both promise local listings.
+  it should "title and describe the page, and its link preview, for the visitor's city" in {
+    val html = bodyOn("showtimes.cc")
+    html should include ("<title>Showtimes — cinema listings in your city</title>")
+    html should include regex """<meta property="og:title"\s+content="Showtimes — cinema listings in your city">"""
+    html should include regex """<meta property="og:description"\s+content="Local cinemas&#x27; listings in one place"""
+  }
+
   "a returning visitor's city bounce" should "stay inside the deployment's mount point" in {
     val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom)
     val res = uk.index().apply(FakeRequest("GET", "/")
