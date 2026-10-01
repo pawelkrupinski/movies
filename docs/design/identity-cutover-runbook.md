@@ -44,12 +44,15 @@ film, the web tier.
    no older than a week, on the country's full corpus:
    - 0 cannot-link violations, 0 order variants;
    - accuracy of matched ≥ the pipeline's, labelled recall ≥ the pipeline's − 0.5 points;
-   - the shadow run's `identical` ≥ 97% of films (`kinowo_worker_identity_shadow_films`) for 7 days;
+   - the shadow run's films AGREEING ≥ 97% for 7 days — `identical` (`kinowo_worker_identity_shadow_films`)
+     or, where they differ, ruled resolver-right by the offline adjudication (§17.3) (decided 2026-10-01);
    - `IdentityCutoverIntegrationSpec` green on the country's hard clusters (P1–P4, ids, rollback);
    - the country's cut-over convergence leg green: judged against production's SHADOW run
      (`ShadowCoverage` in `prod-coverage-<cc>.json`, since 88052dca8), the pipeline's coverage band
      reported only — a faithful new model is not failed for differing from the old one;
-   - the seeding review's "split" + "fresh (film went elsewhere)" ≤ 1% of films (§16.3).
+   - the seeding review's listings that leave their film for NO film or the SAME film under a second id
+     ≤ 1% of films (§16.3; decided 2026-10-01 — a fresh id the resolver gives a listing it moves to ANOTHER
+     film is the old pipeline's merge undone, not a cost).
 
 Order: **ES → DE → UK → US → PL**, each only after the previous one has held §10's phase-3
 acceptance for a week. What blocks each today is in §6.
@@ -120,8 +123,8 @@ metrics at 2026-09-30 ~23:00 UTC.
 | labelled accuracy, resolver / pipeline | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 99.6% | 100.0 / 100.0% |
 | gate 5 accuracy + labelled recall (−0.5 pt) | met | met | met | met | met |
 | gate 5: 0 order variants, 0 cannot-link violations (run 36823471686, robustness on) | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met |
-| gate 5 seeding review: split + fresh-elsewhere, of films (recording 36807940234 × prod films 10-01 08:16) | 6 = 2.5% — NOT met | 24 = 1.3% — NOT met | 55 = 3.6% — NOT met | 64 = 2.9% — NOT met | 189 = 16.3% — NOT met |
-| … of which a listing leaves its film for NO film or the same film (proposed gate, below) | 0 = 0.0% | 2 = 0.1% | 7 = 0.5% | 2 = 0.1% | 104 = 9.0% |
+| gate 5 seeding: listings leaving their film for no film / the same film (recording 36807940234 × prod films 10-01 08:16) | 0 = 0.0% — met | 2 = 0.1% — met | 7 = 0.5% — met | 2 = 0.1% — met | 104 = 9.0% — NOT met |
+| (seeding, all split + fresh-elsewhere, for reference — mostly the resolver's corrections) | 6 = 2.5% | 24 = 1.3% | 55 = 3.6% | 64 = 2.9% | 189 = 16.3% |
 | report verdict strict / weak (not a gate; see below) | yes / yes | no / yes | no / yes | no / yes | no / no |
 | all-listing coverage, resolver / pipeline (not a gate) | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
 | shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
@@ -152,18 +155,19 @@ card for a card of its own. PL's 101 are mostly one-venue decorated spellings ("
 "MISTYCZKA /film polski/", bare "Lalka" ×5, "Vincent. Legenda Oceanu" ×10) — the coverage gap — with some
 the old pipeline had wrong (Kino Diana's concerts onto André Rieu, horror marathons onto a film).
 
-**PROPOSED, awaiting a decision (seeding gate):** count only the listings that leave their film for no film
-or the same film, ≤ 1% of films. Met by ES, DE, UK, US; PL (9.0%) not, which its place last in the order
-already assumes.
+**DECIDED 2026-10-01 (seeding gate):** count only the listings that leave their film for no film or the same
+film, ≤ 1% of films. Met by ES, DE, UK, US; PL (9.0%) not, which its place last in the order already assumes.
 
-**PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
+**DECIDED 2026-10-01 — the `identical ≥ 97%` gate counts resolver-right films too.** It compares against the OLD
 pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
 holds at 94.6%: of its 13 non-identical films, the resolver is right on at least four (*The Dark
 Knight Rises* and *All We Imagine as Light*, which the pipeline filed as *The Dark Knight* and
 *La luz*; *Dune: Part Three* and *Cars* listings the pipeline left unmatched), and the pipeline on
 four coverage losses (Leonas, Carmen (OPERA LIVE), Manon (BALLET LIVE), Lumière). Proposal: count
 a film as agreeing when it is `identical` OR the offline adjudication (§17.3) rules it
-resolver-right; keep 97%. Until decided, the gate stands as written in §2.
+resolver-right; keep 97%. Adopted (§2). On the films adjudicated so far ES reaches 232 of 241 = 96.3%
+(228 identical + the 4 resolver-right above): its remaining non-identical films need adjudicating before
+the gate can be read as met.
 
 Relearning the weights on today's code is NOT yet a win: the listing↔listing cannot-link cut
 falls from 0.268 to 0.034 (it is certified below the single lowest same-film unit), merging
