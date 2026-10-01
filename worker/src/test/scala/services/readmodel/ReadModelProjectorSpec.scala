@@ -677,6 +677,51 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // THE BLAST-RADIUS CAP. A missed removal comes a few at a time; a sweep finding many more is
+  // likelier a disagreement between the slots-only view and the projection, and pruning on it
+  // would blank the served venues of a country. Up to the cap (20 here: 1% of 22 rows is less)
+  // every one is pruned; one more, and none is, loudly and metered.
+  private def sweepAfterSilentlyDropping(dropped: Int): (InMemoryReadModelRepository, RecordingReadModelProjectionMetrics, Seq[String], Seq[String]) = {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingReadModelProjectionMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val cinemas = Cinema.all.distinct.filter(City.forCinema(_).nonEmpty).take(22)
+    cinemas should have size 22
+    def foo(screening: Seq[Cinema]) = MovieRecord(tmdbId = Some(1), data = screening.map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
+    repository.upsert("Foo", Some(2024), foo(cinemas))
+    projector.onMovieUpsert(repository.findAll().head)
+    val before = rm.findAllScreenings().map(_._id)
+    before should have size 22
+    repository.upsert("Foo", Some(2024), foo(cinemas.drop(dropped)))     // removals the stream never delivered
+    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
+      .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
+    projector.stop()
+    (rm, m, before, lines)
+  }
+
+  it should "prune every unlisted venue row up to its cap" in {
+    val (rm, m, _, lines) = sweepAfterSilentlyDropping(20)
+    rm.findAllScreenings() should have size 2
+    m.unlistedVenues.toSeq shouldBe Seq(20 -> false)
+    lines.map(_.takeWhile(_ != ' ')) shouldBe Seq("WARN")
+  }
+
+  it should "prune none of them past its cap, and say so as an error" in {
+    val (rm, m, before, lines) = sweepAfterSilentlyDropping(21)
+    rm.findAllScreenings().map(_._id) should contain theSameElementsAs before
+    m.unlistedVenues.toSeq shouldBe Seq(21 -> true)
+    lines should have size 1
+    lines.head should startWith ("ERROR")
+    lines.head should include ("pruning NONE")
+  }
+
+  "the unlisted-venue cap" should "be 20, or 1% of the venue rows when that is more" in {
+    ReadModelProjector.unlistedPruneCap(0) shouldBe 20
+    ReadModelProjector.unlistedPruneCap(2_000) shouldBe 20
+    ReadModelProjector.unlistedPruneCap(150_000) shouldBe 1_500
+  }
+
   // THE SELF-HEAL FOR A SILENT CHANGE STREAM. A cursor that is open and delivering nothing
   // reopens nothing; the prune sweep healed a MISSING card or venue but never re-projected a
   // CHANGED row, so the site served stale ratings and showtimes until a restart. The sweep

@@ -21,6 +21,9 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   def recordCardRetired(reason: String): Unit                   = retired += reason
   val driftWrites = scala.collection.mutable.Buffer.empty[Int]
   def recordDriftWrites(documents: Int): Unit                    = driftWrites += documents
+  /** Each sweep's unlisted venue rows, and whether they were withheld as over the cap. */
+  val unlistedVenues = scala.collection.mutable.Buffer.empty[(Int, Boolean)]
+  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit   = unlistedVenues += (rows -> withheld)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = {
     projectTriggers   += trigger
     projectDurations  += wallSeconds

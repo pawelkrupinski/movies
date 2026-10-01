@@ -1607,6 +1607,15 @@
                 "type": "prometheus",
                 "uid": "local-prometheus"
               }
+            },
+            {
+              "refId": "E",
+              "expr": "sum by (country, outcome) (rate(kinowo_worker_readmodel_unlisted_venues_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "UNLISTED venue rows {{outcome}} {{country}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
             }
           ]
         },

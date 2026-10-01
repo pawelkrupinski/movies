@@ -731,8 +731,19 @@ class ReadModelProjector(
           prunedScreenings += 1
         }
       screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
-      if (unlisted.nonEmpty) {
+      // A stream misses a removal now and then; one sweep finding a great many is far likelier a
+      // comparison gone wrong — the slots-only view disagreeing with the projection about some shape
+      // of row — and pruning on it would blank the served venues of a country. So past the cap the
+      // sweep prunes none of them and says so loudly; the content check still rewrites each row.
+      val cap = ReadModelProjector.unlistedPruneCap(screeningRefsBefore.fold(0)(_.size))
+      if (unlisted.sizeIs > cap) {
+        metrics.recordUnlistedVenues(unlisted.size, withheld = true)
+        logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
+          s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
+          s"that many missed removals: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
+      } else if (unlisted.nonEmpty) {
         unlisted.foreach(pruneScreening)
+        metrics.recordUnlistedVenues(unlisted.size, withheld = false)
         logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
           s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
       }
@@ -1312,6 +1323,11 @@ object ReadModelProjector {
       val deadline  = System.nanoTime() + timeout.toNanos
       while (!liveness.appliedThrough(handedOff) && System.nanoTime() < deadline) Thread.sleep(50)
     }
+
+  /** The most unlisted venue rows one sweep prunes: 20, or 1% of the read model's venue rows when
+   *  that is more. A stream's missed removals come a few at a time (one on 2026-09-30); past this,
+   *  the comparison is the likelier fault, and the sweep prunes none. */
+  private[readmodel] def unlistedPruneCap(screeningRows: Int): Int = math.max(20, screeningRows / 100)
 
   /** How many row ids one heal line names before it summarises the rest. */
   private[readmodel] val LoggedIdsPerLine = 20

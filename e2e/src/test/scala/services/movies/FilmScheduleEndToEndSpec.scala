@@ -485,6 +485,21 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // showtimes — is verified via the split in the anchor test's dub section.)
   }
 
+  // ── The unlisted-venue prune is silent over a correct read model ──────────
+  // The prune sweep deletes a live card's venue row whenever the card's row lists no slot for the
+  // venue — a comparison of the slots-only view's screening ids against the projected ones. Over
+  // the whole recorded corpus, projected and unchanged since, every served row is listed: variant
+  // cards, split rows, programme prefixes, dubs, spent slots. If the two views ever disagree, this
+  // is where it shows, before a sweep in production deletes served rows.
+  it should "prune no venue row of the freshly projected corpus as unlisted" in {
+    val before = wiring.readModelRepository.findAllScreenings().map(_._id).toSet
+    before should not be empty
+    val lines = tools.LogCapture.capture(classOf[services.readmodel.ReadModelProjector].getName)(wiring.readModelProjector.pruneOrphans())
+      .map(_.getFormattedMessage).filter(_.contains("no longer lists the venue"))
+    withClue("the sweep called served venue rows unlisted: ")(lines shouldBe empty)
+    wiring.readModelRepository.findAllScreenings().map(_._id).toSet shouldBe before
+  }
+
   // ── The second pass is a no-op ────────────────────────────────────────────
   // The whole recorded corpus through one more FULL tick — landing, staging fold, settle,
   // projection sweep, TMDB re-try period, rating re-dispatch — over exactly the input the

@@ -38,6 +38,11 @@ trait ReadModelProjectionMetrics {
    *  from what its source row projects to. Zero is the healthy reading. */
   def recordDriftWrites(documents: Int): Unit
 
+  /** A prune sweep found `rows` venue rows whose film no longer lists the venue -- removals the
+   *  change stream did not apply -- and pruned them, or `withheld` them all as over the cap
+   *  (`ReadModelProjector.unlistedPruneCap`). Zero is the healthy reading. */
+  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit
+
   /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
    *  [[ReadModelProjector.project]]; `..._calls_total` is how many rows were projected.
    *
@@ -192,6 +197,7 @@ object ReadModelProjectionMetrics {
     def recordFilmPruned(reason: String, count: Int): Unit        = ()
     def recordCardRetired(reason: String): Unit                   = ()
     def recordDriftWrites(documents: Int): Unit                   = ()
+    def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = ()
     def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                       = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
