@@ -1,7 +1,9 @@
 package services.tasks
 
 import models.{CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
+import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
+import models.Cinema
+import services.cinemas.common.DetailEnricher
 import services.cinemas.FakeDetailEnricher
 import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, RecordingEventBus}
 import org.scalatest.matchers.should.Matchers
@@ -43,6 +45,31 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   private def reaper(cache: CaffeineMovieCache, queue: InMemoryTaskQueue, fresh: InMemoryFreshnessStore,
                      bus: EventBus = new InProcessEventBus()) =
     new DetailReaper(Seq(enricher), cache, queue, fresh, bus, clock = specClock)
+
+  // The tick asked every cached film for its detail pages every minute, re-deriving each film's
+  // venues (`cinemaData`) though almost none had changed — 2.6% of the UK worker's CPU (JFR
+  // 2026-10-01). A film the cache still holds as the same record keeps the pages it was asked.
+  "A detail tick" should "derive again only the films whose cached record changed" in {
+    var derived = 0
+    val counting = new DetailPages {
+      def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]) = {
+        derived += 1; DetailPages.PerVenue.of(key, record, enrichersByCinema)
+      }
+    }
+    val cache  = cacheWith(Some("http://kinoapollo/dune"))
+    val queue  = new InMemoryTaskQueue
+    val r      = new DetailReaper(Seq(enricher), cache, queue, new InMemoryFreshnessStore, new InProcessEventBus(),
+      pages = counting, clock = specClock)
+    r.tick() shouldBe 1
+    derived shouldBe 1
+    r.tick()
+    derived shouldBe 1                                   // the same record: its pages are remembered
+    cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
+      filmUrl = Some("http://kinoapollo/dune-2"), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))))
+    r.tick()
+    derived shouldBe 2                                   // the record moved: derived again
+  }
 
   /** The same seed as [[cacheWith]], but stored PRODUCTION's way: showtimes in
    *  `screenings`, slots in `movie_slots`. Every other fixture here wires a bare

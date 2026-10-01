@@ -131,7 +131,7 @@ class DetailReaper(
     // check would wrongly release detail-pending rows whose detail is in fact fresh.
     if (!freshness.isReady(FreshnessKind.DetailEnrich)) return 0
     val key = OccurrenceKey.at("detail", clock.millis(), tickInterval.value, 0.seconds)
-    if (runStore.claim(key)) { val n = tick(); reapStuckPending(); n } else 0
+    if (runStore.claim(key)) { val n = tick(); reapStuckPending(); forgetGone(); n } else 0
   }
 
   /** Enqueue every now-due `(deferred-cinema, film)` detail, keyed off the row's
@@ -147,9 +147,10 @@ class DetailReaper(
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
       // Drive off the row's OWN venues, not the whole enricher list — see
-      // `enrichersByCinema`. `cinemaData` is computed once here and reused, because
-      // it sorts + rebuilds a Map on every call.
-      val asks = pages.of(key, record, enrichersByCinema).iterator
+      // `enrichersByCinema` — remembered per row while the cache holds the same record: asking
+      // every film each tick re-derived its venues (`cinemaData`, a sort and a Map rebuild) though
+      // almost none had changed — 2.6% of the UK worker's CPU (JFR 2026-10-01).
+      val asks = asksOf(key, record).iterator
       while (asks.hasNext && enqueued < cap) {
         val (e, ref, dk) = asks.next()
         if (EnrichDetailsTasks.enqueueIfDueAs(queue, freshness, dueWindow, e, key, ref, dk, now)) enqueued += 1
@@ -157,6 +158,26 @@ class DetailReaper(
     }
     if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued due detail(s).")
     enqueued
+  }
+
+  // Each row's detail asks, with the record they were derived from; ticks run one at a time.
+  private val asksByRow = new java.util.concurrent.ConcurrentHashMap[CacheKey, (MovieRecord, Seq[(DetailEnricher, String, String)])]()
+
+  /** `pages.of` for `key`, reused while the cache still holds `record` itself — records are immutable,
+   *  a changed row is a new one. A row the cache no longer holds is forgotten when next replaced or
+   *  by [[forgetGone]]. */
+  private def asksOf(key: CacheKey, record: MovieRecord): Seq[(DetailEnricher, String, String)] =
+    Option(asksByRow.get(key)).collect { case (seen, asks) if seen eq record => asks }.getOrElse {
+      val asks = pages.of(key, record, enrichersByCinema)
+      asksByRow.put(key, record -> asks)
+      asks
+    }
+
+  /** Drop the remembered asks of rows the cache no longer holds (merged, re-keyed, removed). */
+  private def forgetGone(): Unit = {
+    val live = cache.entries.iterator.map(_._1).toSet
+    asksByRow.keySet.removeIf(key => !live.contains(key))
+    ()
   }
 
   /** Release any `detailPending` row that has no outstanding detail to fetch —
