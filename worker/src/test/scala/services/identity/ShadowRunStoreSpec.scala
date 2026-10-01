@@ -12,7 +12,7 @@ import scala.concurrent.duration._
  *  same behaviour over Mongo), and the document shape both collections store. */
 class ShadowRunStoreSpec extends AnyFlatSpec with Matchers with ShadowRunStoreBehaviour {
 
-  "the in-memory shadow run store" should behave like shadowRunStore(clock => ShadowRunStore.inMemory(clock))
+  "the in-memory shadow run store" should behave like shadowRunStore(ShadowRunStoreBehaviour.T0)(clock => ShadowRunStore.inMemory(clock))
 
   "a shadow cluster and family" should "survive their stored document shape whole" in {
     val (cluster, family) = ShadowRunStoreBehaviour.sample
@@ -23,22 +23,25 @@ class ShadowRunStoreSpec extends AnyFlatSpec with Matchers with ShadowRunStoreBe
 
 /** What every [[ShadowRunBackend]] must do under [[ShadowRunStore]]'s rules. */
 trait ShadowRunStoreBehaviour { this: AnyFlatSpec & Matchers =>
-  import ShadowRunStoreBehaviour._
+  import ShadowRunStoreBehaviour.{Retention, sample}
 
-  def shadowRunStore(make: java.time.Clock => ShadowRunStore): Unit = {
+  /** `t0` is when the first run is recorded: a backend whose store expires runs by its own clock (Mongo's
+   *  TTL monitor) needs runs that have not expired by it. */
+  def shadowRunStore(t0: => Instant)(make: java.time.Clock => ShadowRunStore): Unit = {
 
     it should "read nothing before a run is recorded" in {
-      val store = make(new MutableClock(T0))
+      val store = make(new MutableClock(t0))
       store.latestRun() shouldBe None
       store.latest() shouldBe Nil
       store.verdicts() shouldBe Nil
     }
 
     it should "serve the latest run's decisions and verdicts, a later run replacing the earlier whole" in {
-      val clock = new MutableClock(T0)
+      val start = t0
+      val clock = new MutableClock(start)
       val store = make(clock)
       val (cluster, family) = sample
-      store.record(ShadowRun(T0, Seq(cluster, cluster.copy(relation = Some(ShadowRelation.Split))), Seq(family)), Retention)
+      store.record(ShadowRun(start, Seq(cluster, cluster.copy(relation = Some(ShadowRelation.Split))), Seq(family)), Retention)
       store.latest() shouldBe Seq(cluster.decision, cluster.decision)
       store.verdicts() shouldBe Seq(ConfidenceCalibration.Sample(cluster.decision.confidence, correct = true))
       store.latestRun().map(_.families) shouldBe Some(Seq(family))
@@ -51,9 +54,10 @@ trait ShadowRunStoreBehaviour { this: AnyFlatSpec & Matchers =>
     }
 
     it should "stop serving a run once its retention has passed since it ran" in {
-      val clock = new MutableClock(T0)
+      val start = t0
+      val clock = new MutableClock(start)
       val store = make(clock)
-      store.record(ShadowRun(T0, Seq(sample._1), Nil), Retention)
+      store.record(ShadowRun(start, Seq(sample._1), Nil), Retention)
       clock.advance(java.time.Duration.ofMillis((Retention.value - 1.second).toMillis))
       store.latest() should have size 1
       clock.advance(java.time.Duration.ofSeconds(1))

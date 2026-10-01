@@ -126,7 +126,10 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       // 2. one production tick over what production reads
       Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection)
         .foreach(n => Await.result(database.getCollection(n).drop().toFuture(), 30.seconds))
-      val runs    = new ShadowRunStore(MongoShadowRunBackend.writer(database, new TtlIndexMismatches), clock)
+      // The run is stamped by the SERVER's clock, which its TTL index expires it by: stamped from the
+      // fixed June clock above, it landed already expired and lived only until the monitor's next pass.
+      val runClock = MongoTtlMonitor.serverClock(database)
+      val runs     = new ShadowRunStore(MongoShadowRunBackend.writer(database, new TtlIndexMismatches), runClock)
       val metrics = new Recorded
       val reaper  = new ShadowIdentityReaper(
         source        = ShadowIdentityReaper.resolving(
@@ -142,7 +145,7 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
         runs          = runs,
         retention     = ShadowRetention(modules.WorkerWiring.ShadowRetentionWindow),
         metrics       = metrics,
-        clock         = clock)
+        clock         = runClock)
 
       val threads      = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
       val thread       = Thread.currentThread().threadId()
@@ -151,6 +154,9 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val (tick, wall) = timed(reaper.tick())
       val (cpu, alloc) = ((threads.getThreadCpuTime(thread) - cpu0) / 1e9, threads.getThreadAllocatedBytes(thread) - mem0)
 
+      // The TTL monitor may pass at any moment after the write; one passes here, so the run is read back
+      // only if it outlives one — not by luck of the monitor's 60-second timing.
+      Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection).foreach(MongoTtlMonitor.sweep(database, _, "expireAt"))
       val run = runs.latestRun().getOrElse(fail("no run persisted"))
       val (decisionsSize, decisionsStorage) = sizeOf(database, ShadowRunStore.DecisionsCollection)
       val (diffSize, diffStorage)           = sizeOf(database, ShadowRunStore.DiffCollection)

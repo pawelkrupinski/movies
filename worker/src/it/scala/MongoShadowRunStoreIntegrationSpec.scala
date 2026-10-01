@@ -7,7 +7,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.TtlIndexMismatches
 import services.identity.{MongoShadowRunBackend, ShadowRun, ShadowRunStore, ShadowRunStoreBehaviour}
-import tools.{IntegrationCorpusDatabase, IntegrationMongoSuite, MutableClock}
+import tools.{IntegrationCorpusDatabase, IntegrationMongoSuite, MongoTtlMonitor, MutableClock}
+
+import java.time.Instant
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -28,19 +30,25 @@ class MongoShadowRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with 
     Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection)
       .foreach(c => Await.result(database.getCollection(c).drop().toFuture(), 30.seconds))
 
-  "the Mongo shadow run store" should behave like shadowRunStore { clock =>
+  // Runs are stamped from the SERVER's clock: its TTL monitor deletes a run once `expireAt` is past by that
+  // clock, so a run stamped from a fixed date over a retention ago lived only until the monitor's next pass.
+  private def serverNow: Instant = MongoTtlMonitor.serverClock(database).instant()
+
+  "the Mongo shadow run store" should behave like shadowRunStore(serverNow) { clock =>
     fresh()
     new ShadowRunStore(MongoShadowRunBackend.writer(database, mismatches), clock)
   }
 
   "the admin view's reader" should "read the run the worker's writer persisted, and the writer own the TTL index" in {
     fresh()
-    val clock  = new MutableClock(ShadowRunStoreBehaviour.T0)
+    val t0     = serverNow
+    val clock  = new MutableClock(t0)
     val writer = new ShadowRunStore(MongoShadowRunBackend.writer(database, mismatches), clock)
     val reader = new ShadowRunStore(MongoShadowRunBackend.reader(database), clock)
     val (cluster, family) = ShadowRunStoreBehaviour.sample
-    val run = ShadowRun(ShadowRunStoreBehaviour.T0, Seq(cluster), Seq(family))
+    val run = ShadowRun(t0, Seq(cluster), Seq(family))
     writer.record(run, ShadowRunStoreBehaviour.Retention)
+    Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection).foreach(MongoTtlMonitor.sweep(database, _, "expireAt"))
     reader.latestRun() shouldBe Some(run)
     reader.latest() shouldBe Seq(cluster.decision)
     mismatches.names shouldBe empty
