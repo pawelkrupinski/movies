@@ -649,6 +649,12 @@ class ReadModelProjector(
     val screeningRefsBefore: Option[Seq[ScreeningRef]] =
       if (reproject) None else Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs }
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
+    // The same rows by card, for the venues a live card holds that its row no longer lists at all
+    // (`unlisted`): a removal the stream never applied, which no id check of the CARD can see — the
+    // card stays, its row does too, and only the content check ever rewrote it, up to a day later
+    // (us/chicago served Dracula: A Love Tale at a venue it had left for 22 hours, 2026-09-30).
+    val screeningsByCard = screeningRefsBefore.map(_.groupBy(_.filmId))
+    val unlisted = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
     val healed = scala.collection.mutable.ArrayBuffer.empty[String]
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
@@ -666,6 +672,12 @@ class ReadModelProjector(
         liveRowKeys += row.id.value
         liveRowIds  += row.id
         if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
+        // The slots-only view lists every venue the row has a slot at, spent or not, so a venue
+        // outside it is one the row has left — never a phantom.
+        screeningsByCard.foreach { byCard =>
+          lazy val listed = partition.screeningIds.toSet
+          ids.foreach(card => byCard.getOrElse(card, Nil).foreach(ref => if (!listed(ref._id)) unlisted += ref))
+        }
         if (reproject)
           continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition, ProjectTrigger.Reproject))
         else if (cardsRead) {
@@ -711,13 +723,18 @@ class ReadModelProjector(
       lastMetadata.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       lastCardsByRow.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       healedClean.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
-      screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
+      def pruneScreening(ref: ScreeningRef): Unit =
         continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
           writer.deleteScreening(ref._id)
           metrics.recordWrite(Target.Screening, Op.Delete, 1)
           lastScreenings.forget(ref.filmId, ref._id)
           prunedScreenings += 1
         }
+      screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
+      if (unlisted.nonEmpty) {
+        unlisted.foreach(pruneScreening)
+        logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
+          s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
       }
     }
     // THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune only). A terminal cursor error reopens

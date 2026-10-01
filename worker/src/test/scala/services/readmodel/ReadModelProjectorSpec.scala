@@ -655,6 +655,28 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieDeletes should contain(fid)
   }
 
+  // A VENUE THE SOURCE DROPPED, UNDER A CARD THAT STAYS. The prune removed screenings only of a
+  // card whose row was gone, so a venue row the stream missed the removal of — its film still
+  // screening elsewhere — was served until the rolling content check reached the row: Dracula: A
+  // Love Tale at the Music Box, pruned at 2026-09-30 08:55:22 while the projector was not yet
+  // attached, kept us/chicago a card over its corpus for 22 hours (the check's slice 14, 10-01
+  // 07:17). A venue the source no longer lists at all is now pruned by the next sweep.
+  it should "prune a venue row the source no longer lists, under a card that stays" in {
+    val (projector, repository, rm) = fixture()
+    def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
+      cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
+    projector.onMovieUpsert(repository.findAll().head)
+    rm.findAllScreenings() should have size 2
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))   // a removal the stream never delivered
+
+    projector.pruneOrphans()
+
+    rm.findAllScreenings().map(_._id) shouldBe ReadModelProjection.screeningIds(repository.findAll().head, titleNormalizer)
+    rm.findAllMovies().map(_._id) shouldBe Seq(fid)
+    projector.stop()
+  }
+
   // THE SELF-HEAL FOR A SILENT CHANGE STREAM. A cursor that is open and delivering nothing
   // reopens nothing; the prune sweep healed a MISSING card or venue but never re-projected a
   // CHANGED row, so the site served stale ratings and showtimes until a restart. The sweep
