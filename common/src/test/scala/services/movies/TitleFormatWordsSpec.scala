@@ -18,6 +18,12 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Klasyka na TOPie: Absolwent (4K)")._2 shouldBe List("4K")
   }
 
+  they should "take the preposition a print format is billed with" in {
+    // US Alamo "TERROR TUESDAY: THE EXORCIST - ON 35MM": "35MM" alone left "… - ON", searched as "The exorcist - on".
+    FormatTags.extractFormatTags("TERROR TUESDAY: THE EXORCIST - ON 35MM") shouldBe ("TERROR TUESDAY: THE EXORCIST", List("35MM"))
+    FormatTags.extractFormatTags("Lawrence of Arabia in 70mm") shouldBe ("Lawrence of Arabia", List("70MM"))
+  }
+
   they should "leave a word inside the title its own" in {
     // "4K Restoration" names the edition, not the screen: the trailing word is no format.
     FormatTags.extractFormatTags("Horror Season 2026 Dracula 4K Restoration") shouldBe ("Horror Season 2026 Dracula 4K Restoration", Nil)

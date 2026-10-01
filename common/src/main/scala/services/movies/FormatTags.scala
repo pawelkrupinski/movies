@@ -51,6 +51,8 @@ object FormatTags {
     "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
     "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
+  // "… - ON 35MM", "… in 70mm": the print is billed with a preposition, which goes with it.
+  private val PrintPreposition = """(?i)\s+(?:on|in)\s+(\d{2}mm)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K)\b[^)]*)\)\s*$""".r
@@ -111,8 +113,8 @@ object FormatTags {
    *  left-to-right. Words with no version meaning (dolby, premiera, …) yield no
    *  token. A Ukrainian dub/lektor tag is kept whole (guard) and yields no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
-    var t    = GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " "), " ")
+    var t    = PrintPreposition.replaceAllIn(GluedFormatSlash.replaceAllIn(
+                 GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " "), " "), " $1")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined
