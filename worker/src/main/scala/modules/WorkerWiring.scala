@@ -165,7 +165,7 @@ class WorkerWiring(
         beforeDrain = () => venuePageIndex.settle(),
         // A cut-over country's new listing waits for its venue page, read into venue_pages by a
         // ReadVenuePage task, so its first resolve has the page's facts; the shadow run never waits.
-        pageWait   = if (identityCutover) new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue,
+        pageWait   = if (identityCutover) new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
                        WorkerWiring.VenuePageWaitLimit) else services.identity.PageWait.Never,
         clock      = clock)
       identityTmdbStore.foreach(_.onChanged(model.observed))

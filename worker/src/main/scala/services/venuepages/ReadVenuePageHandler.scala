@@ -19,7 +19,8 @@ object ReadVenuePageTasks {
 
 /** Reads one venue page into venue_pages (`VenuePageReader`) and records it on /uptime. A page that
  *  failed for now is left unread: the listing waiting for it is taken in at its wait's limit. */
-final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeMonitor)
+final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeMonitor,
+                                 freshness: services.freshness.FreshnessStore, clock: java.time.Clock)
     extends TaskHandler with Logging {
 
   override val taskType: TaskType = TaskType.ReadVenuePage
@@ -27,7 +28,9 @@ final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], 
   override def handle(task: Task): HandlerOutcome = {
     val page = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
     enrichersByGroup.get(task.payload.getOrElse(EnrichDetailsTasks.GroupKey, "")) match {
-      case Some(enricher) if page.nonEmpty => DetailUptime.record(uptime, enricher, page, reader.read(enricher, page))
+      case Some(enricher) if page.nonEmpty =>
+        DetailUptime.record(uptime, enricher, page, reader.read(enricher, page))
+        freshness.markFresh(EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page), services.freshness.FreshnessKind.DetailEnrich, clock.instant())
       case _                               => logger.warn(s"No detail enricher or page for task ${task.dedupKey}; dropping.")
     }
     HandlerOutcome.Done

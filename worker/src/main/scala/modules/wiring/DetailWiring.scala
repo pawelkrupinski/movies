@@ -52,7 +52,8 @@ trait DetailWiring { self: WorkerWiring =>
   /** Reads a venue page into venue_pages for a listing no film row holds yet (a cut-over country's wait). */
   lazy val readVenuePageHandler = new services.venuepages.ReadVenuePageHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap,
-    new services.venuepages.VenuePageReader(venuePageStore, freshnessStore, event => eventBus.publish(event), clock), uptimeMonitor)
+    new services.venuepages.VenuePageReader(venuePageStore, freshnessStore, event => eventBus.publish(event), clock), uptimeMonitor,
+    freshnessStore, clock)
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic
   // refresh/retry backstop (CinemaMovieAdded fires only on first appearance),

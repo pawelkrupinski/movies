@@ -43,6 +43,9 @@ object EnrichDetailsTasks {
   /** The dedup (and due) key of a detail task asked per PAGE (`DetailPages.PerPage`). */
   def pageDedupKey(group: String, page: String): String = s"detail-page|$group|$page"
   def pageGone(group: String, page: String): String = s"detail-page|$group|$page|gone"
+  /** `page` of `group` was tried by a `ReadVenuePage` task, whatever it said: all a display-only venue's
+   *  waiting listing needs (`VenuePageWait`). */
+  def pageAttempted(group: String, page: String): String = s"detail-page|$group|$page|attempted"
 
   /** Enqueue a detail task for `(enricher's group, film)` unless it's already
    *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's

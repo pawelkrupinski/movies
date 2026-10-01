@@ -28,7 +28,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     val freshness = new InMemoryFreshnessStore
     val bus       = new RecordingEventBus
     val uptime    = new UptimeMonitor()
-    val handler   = new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, freshness, e => bus.publish(e), clock), uptime)
+    val handler   = new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, freshness, e => bus.publish(e), clock), uptime, freshness, clock)
 
     handler.handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
     store.get(VenuePageKey("kino-apollo", Page)).map(_.outcome) shouldBe Some(VenuePage.Read(Detail))
@@ -41,9 +41,17 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
     val store    = new InMemoryVenuePageStore
     val uptime   = new UptimeMonitor()
-    new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, new InMemoryFreshnessStore, _ => (), clock), uptime)
+    new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, new InMemoryFreshnessStore, _ => (), clock), uptime, new InMemoryFreshnessStore, clock)
       .handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
     store.get(VenuePageKey("kino-apollo", Page)) shouldBe None
     uptime.history(UptimeMonitor.enrichmentService(KinoApollo.displayName)).map(_.failures).sum shouldBe 1
+  }
+
+  it should "stamp the page as tried, whatever the read said — a display-only venue's listing waits for no more" in {
+    val enricher  = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
+    val freshness = new InMemoryFreshnessStore
+    new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(new InMemoryVenuePageStore, freshness, _ => (), clock),
+      new UptimeMonitor(), freshness, clock).handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
+    freshness.lastFetchedAt(EnrichDetailsTasks.pageAttempted("kino-apollo", Page)) shouldBe Some(clock.instant())
   }
 }

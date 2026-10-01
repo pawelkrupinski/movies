@@ -21,9 +21,6 @@ import java.time.format.DateTimeFormatter
  * resort. `CinemaScraperCatalog` therefore leaves every Regal venue on flicks.us.
  *
  * Re-wire it the moment a US egress exists — that is the ONLY thing missing.
- * Note the `detailCache-regal` Mongo collection is now orphaned; it carries a TTL
- * and no reader, so it drains on its own.
- *
  * It was moved off the aggregator in the first place because every venue served
  * from its chain origin is a venue removed from the shared flicks.us budget.
  *
