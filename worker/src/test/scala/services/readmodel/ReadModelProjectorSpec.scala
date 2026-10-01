@@ -531,6 +531,61 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     lines.head should include ("(+5 more)")
   }
 
+  // THE BOOT'S BLIND SPOT. The worker's change stream is opened by the cache, and the projector
+  // used to attach to it only once its boot reads (state seed, missing-card heal) had finished —
+  // up to 100 s later. Every change the stream applied in between went to the cache alone, and
+  // its resume position moved past them, so the projector never saw them: a venue a scrape added
+  // stayed missing until the first prune sweep healed it (all four of 2026-09-30's first-sweep
+  // heals: US 09:00 Music Box Chicago x3, US 09:36 AMC Ahwatukee x2, DE 04:09 and 08:20, every
+  // write landing 1-4 s before "ReadModelProjector started"), and a venue a scrape REMOVED
+  // stayed served, which no sweep heals: Dracula: A Love Tale at the Music Box, pruned at
+  // 08:55:22, kept us/chicago one card over its corpus for 22 hours until the content check's
+  // slice reached it. So the projector attaches as its boot reads begin, holds what arrives
+  // while they run, and projects it as soon as they are done.
+  "the boot reads" should "leave the projector attached to the stream, so a change landing after them is projected" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
+      cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = new CapturingScheduler, clock = specClock)
+    projector.prepare()
+    // A scrape lands Foo at a second venue after the boot reads, while the cache's hydrate runs.
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
+    projector.watch()
+
+    rm.findAllScreenings().map(_._id) should contain allElementsOf
+      ReadModelProjection.screeningIds(repository.findAll().head, titleNormalizer)
+    projector.stop()
+  }
+
+  it should "project what the stream delivered while they ran, once they finish" in {
+    def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
+      cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
+    // The scrape lands just after the heal's scan has read Foo — as on the US, a second before the watch.
+    val landed = new java.util.concurrent.atomic.AtomicBoolean(false)
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+        slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+        val complete = super.foreachRecordWithSlots(f)
+        if (landed.compareAndSet(false, true))
+          repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
+        complete
+      }
+    }
+    val rm = new InMemoryReadModelRepository()
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))
+    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = new CapturingScheduler, clock = specClock)
+    projector.prepare()
+
+    landed.get shouldBe true
+    rm.findAllScreenings().map(_._id) should contain allElementsOf
+      ReadModelProjection.screeningIds(repository.findAll().head, titleNormalizer)
+    projector.stop()
+  }
+
   // Every heal is a row the change-stream path failed to write, and on 2026-09-22 they ran
   // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line
   // to show for it. The count is what an alert can watch: each pass meters the rows it WROTE

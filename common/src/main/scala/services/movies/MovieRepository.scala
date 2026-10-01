@@ -380,6 +380,22 @@ trait MovieRepository {
     onVenues: (VenueSlots, Long) => VenueVerdict
   ): Option[AutoCloseable] = watchChangesFenced(onUpsert, onDelete)
 
+  /** [[watchChangesWithVenues]] attached WITHOUT opening the stream: the consumer is dispatched
+   *  every change from the stream's first, whenever another consumer's watch — or [[openChanges]] —
+   *  opens it. For a consumer that must not miss what the stream applies before it is ready to
+   *  apply changes itself (the read-model projector, attached as its boot reads begin, while the
+   *  cache opens the stream). Default: [[watchChangesWithVenues]] — right for a store that notifies
+   *  synchronously with the write, which has no stream to open. */
+  def attachChangesWithVenues(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: VenueSlots => VenueVerdict
+  ): Option[AutoCloseable] = watchChangesWithVenues(onUpsert, onDelete, onVenues)
+
+  /** Open the change stream for the consumers [[attachChangesWithVenues]] attached, if it is not
+   *  running. Default: nothing to open. */
+  def openChanges(): Unit = ()
+
   /** Where a consumer of [[watchChangesFenced]] fences its own writes of a film. */
   lazy val writeFence: FilmWriteFence = new FilmWriteFence()
 
@@ -1317,6 +1333,14 @@ class MongoMovieRepository(
     onDelete: FilmId => Unit,
     onVenues: (VenueSlots, Long) => VenueVerdict
   ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id)), onVenues))
+
+  override def attachChangesWithVenues(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: FilmId => Unit,
+    onVenues: VenueSlots => VenueVerdict
+  ): Option[AutoCloseable] = changeStream.map(_.attachFenced((film, _) => onUpsert(film), id => onDelete(FilmId(id)), (venues, _) => onVenues(venues)))
+
+  override def openChanges(): Unit = changeStream.foreach(_.open())
 
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */

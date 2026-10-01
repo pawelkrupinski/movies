@@ -150,6 +150,39 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     under.isWatching shouldBe false // last listener gone — cursor stopped
   }
 
+  // A listener attached before the cursor opens sees every event from its first — what the worker's
+  // read-model projector needs from a cursor the cache opens: attached only once its boot reads
+  // were done, it missed every event applied in between, and the resume position moved past them
+  // (2026-09-30's first-sweep heals, and a Chicago venue served for 22 hours after it closed).
+  it should "let a listener attach without opening the cursor, and give it every event once another opens it" in {
+    val source   = new HandFedSource
+    val under    = stream(source)
+    val attached = new java.util.concurrent.LinkedBlockingQueue[FilmId]()
+    val early    = under.attachFenced((r, _) => attached.add(r.id), _ => ())
+    try {
+      source.opens shouldBe empty      // attaching alone opens nothing
+      under.isWatching shouldBe false
+      val opener = under.watch(_ => (), _ => ())
+      try {
+        source.opens shouldBe Seq(None)
+        source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+        attached.poll(5, TimeUnit.SECONDS) shouldBe FilmId("film|2024")
+      } finally opener.close()
+      under.isWatching shouldBe true   // the attached listener still holds it open
+    } finally { early.close(); under.close() }
+    under.isWatching shouldBe false
+  }
+
+  it should "open the cursor for its attached listeners when asked, and only once" in {
+    val source = new HandFedSource
+    val under  = stream(source)
+    val early  = under.attachFenced((_, _) => (), _ => ())
+    try {
+      under.open(); under.open()
+      source.opens shouldBe Seq(None)
+    } finally { early.close(); under.close() }
+  }
+
   // One document the codec refuses used to END the cursor: the driver decoded post-images, and
   // a stream resuming from a persisted token met the same document on every reopen. Now it is
   // one skipped event — counted, its demand released, and acknowledged at once: there is nothing

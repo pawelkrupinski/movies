@@ -490,10 +490,24 @@ final class MovieChangeStream(
   /** [[watch]] handing each upsert the [[FilmWriteFence]] mark its re-read was taken under. */
   def watchFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit,
                   onVenues: (VenueSlots, Long) => VenueVerdict = (_, _) => VenueVerdict.Declined(ChangeStreamFanout.NoPartHandler)): AutoCloseable = {
-    val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete, d => onVenues(d.venues, d.mark))
+    val handle = attachFenced(onUpsert, onDelete, onVenues)
     ensureWatching()
+    handle
+  }
+
+  /** [[watchFenced]] without opening the cursor: the consumer is attached now and dispatched every
+   *  event from the cursor's first, whenever another consumer's watch — or [[open]] — opens it. For a
+   *  consumer that must see everything a cursor another one opens applies: attached any later, it
+   *  misses every event applied before it, and the resume position moves past them. */
+  def attachFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit,
+                   onVenues: (VenueSlots, Long) => VenueVerdict = (_, _) => VenueVerdict.Declined(ChangeStreamFanout.NoPartHandler)): AutoCloseable = {
+    val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete, d => onVenues(d.venues, d.mark))
     new AutoCloseable { override def close(): Unit = { handle.close(); stopWatchingIfIdle() } }
   }
+
+  /** Open the shared cursor for the consumers [[attachFenced]] attached, if it is not running; with
+   *  none attached, an idle repository stays idle. */
+  def open(): Unit = if (!movieChanges.isEmpty) ensureWatching()
 
   /** Start the single shared cursor if it isn't already running. Each event is
    *  decoded once and fanned out to every listener; a delete (no post-image) is

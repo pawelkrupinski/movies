@@ -444,8 +444,12 @@ class WorkerWiring(
     boot.step("identity model")(identityModel.foreach(_.start()))
     // The read-model projector's boot reads (its state seed and missing-card heal: 28–57 s of a US
     // boot) read the read model and the `movies` store, never the cache, so they start NOW, beside
-    // the cache hydrate, instead of after it with everything else waiting behind them. Its change-
-    // stream watch still starts only once the cache has, as it always did.
+    // the cache hydrate, instead of after it with everything else waiting behind them. It attaches
+    // to the change stream HERE, before the cache opens it: attached only once its reads were done,
+    // it missed every change the stream applied to the cache first (2026-09-30: four first-sweep
+    // heals, and a closed Chicago venue served for 22 hours). What arrives while its reads run is
+    // held and projected after them; its sweeps still start only once the cache has.
+    readModelProjector.attach()
     val cacheStarted = new java.util.concurrent.CountDownLatch(1)
     boot.inBackground("read-model projector") {
       try readModelProjector.prepare() finally projectorPrepared = true

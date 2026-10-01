@@ -984,10 +984,70 @@ class ReadModelProjector(
   /** The boot's reads — the state seed and the missing-card heal — which read the read model and
    *  the `movies` store directly, never the in-memory cache, so a worker runs them from the first
    *  moment of its boot, beside the cache hydrate (28–57 s of a US boot, run before anything else
-   *  started until 2026-09-30). */
+   *  started until 2026-09-30). Attached to the stream first ([[attach]]); what it delivers
+   *  meanwhile is projected once they are done. */
   def prepare(): Unit = if (enabled) {
-    seedFromReadModel()
-    healMissingCards()
+    attach()
+    try {
+      seedFromReadModel()
+      healMissingCards()
+    } finally releaseBootHold()
+  }
+
+  /** Attach to the change stream without opening it, holding every change it delivers until the
+   *  boot reads are done ([[prepare]]). [[prepare]] calls it; a worker calls it first, before the
+   *  cache opens the stream, since its [[prepare]] runs in the background beside the cache hydrate.
+   *  Attached any later, the projector missed every change the stream applied to the cache before
+   *  it, and the resume position moved past them for good: a venue a scrape added stayed missing
+   *  until the first prune sweep healed it — all four of 2026-09-30's first-sweep heals, each write
+   *  landing 1-4 s before the watch — and one a scrape removed stayed served until the content check
+   *  reached its row: us/chicago a card over its corpus for 22 hours from 2026-09-30 08:55.
+   *  Idempotent. */
+  def attach(): Unit = if (enabled) bootHold.synchronized {
+    if (watchHandle.isEmpty)
+      watchHandle = movieRepository.attachChangesWithVenues(
+        stored => if (!heldForBoot(stored.id.value)) onMovieUpsert(stored),
+        id     => if (!heldForBoot(id.value)) onMovieDelete(id),
+        venues => if (heldForBoot(venues.filmId.value)) services.movies.VenueVerdict.Applied else onVenueSlots(venues))
+  }
+
+  // The rows the stream changed while the boot reads ran — read again and projected once they are
+  // done, never applied mid-seed or mid-heal. `booting` and `heldAtBoot` are guarded by `bootHold`.
+  private val bootHold   = new AnyRef
+  private var booting    = true
+  private val heldAtBoot = scala.collection.mutable.LinkedHashSet.empty[String]
+
+  /** Whether a change to `rowId` is held for the end of the boot reads (and, if so, recorded). */
+  private def heldForBoot(rowId: String): Boolean = bootHold.synchronized {
+    if (booting) heldAtBoot += rowId
+    booting
+  }
+
+  /** End the boot hold: project every row the stream changed meanwhile, as it stands now, until
+   *  none is left — only then does the stream apply its changes directly, so none lands between the
+   *  last read and the switch. A row gone is retired; one that cannot be read is left to the next
+   *  prune sweep's heal. Idempotent. */
+  private def releaseBootHold(): Unit = {
+    def take(): Seq[String] = bootHold.synchronized {
+      val rows = heldAtBoot.toList
+      heldAtBoot.clear()
+      if (rows.isEmpty) booting = false
+      rows
+    }
+    var rows = take()
+    while (rows.nonEmpty) {
+      rows.foreach { rowId =>
+        val id = services.movies.FilmId(rowId)
+        continuing(s"read model: applying the change to $rowId held through the boot reads failed") {
+          movieRepository.findByIdChecked(id) match {
+            case (Some(row), _) => onMovieUpsert(row)
+            case (None, true)   => onMovieDelete(id)
+            case (None, false)  => logger.warn(s"read model: $rowId changed during the boot reads and could not be read — the prune sweep heals it.")
+          }
+        }
+      }
+      rows = take()
+    }
   }
 
   /** The live half: the change-stream watch and the paced sweeps. After [[prepare]]. */
@@ -996,7 +1056,10 @@ class ReadModelProjector(
     // resume token, replays every upsert missed while the worker was down); the seeded
     // state above means incremental writes are no-ops for already-correct documents. Only
     // the cheap orphan prune is scheduled — the full reproject was retired (see class doc).
-    watchHandle = movieRepository.watchChangesWithVenues(onMovieUpsert, onMovieDelete, onVenueSlots)
+    // Attached since `prepare`; opened here in case nothing else has opened the stream.
+    attach()
+    releaseBootHold()
+    movieRepository.openChanges()
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(

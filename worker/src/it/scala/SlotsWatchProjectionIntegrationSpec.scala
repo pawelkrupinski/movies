@@ -126,6 +126,33 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
     }
   }
 
+  // THE BOOT'S BLIND SPOT, on the real cursor. The worker's cache opens the shared cursor; the
+  // projector attached only once its boot reads were done, and every change the cursor applied
+  // in between went to the cache alone while the resume position moved past it. The projector
+  // now attaches as its boot reads begin, without opening the cursor, and applies what the cache's
+  // cursor delivers from its first event (2026-09-30: four first-sweep heals, a Chicago venue
+  // served 22 hours). No `watch()` below: in the worker that comes only once the cache has started.
+  "the projector's boot reads" should "leave it on the cursor the cache opens, before its watch starts" in {
+    ProjectedMongoCorpus.withCorpus(mongoTarget, "boot_attach") { corpus =>
+      import corpus.{projector, readModel, repository}
+      val id   = StoredMovieRecord.keyFor(bootTitle, year, titleNormalizer)
+      val when = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
+      projector.prepare()
+      repository.isWatchingChangeStream shouldBe false      // attached, but it opened nothing
+      val cache = repository.watchChanges(_ => (), _ => ())  // the cache's watch opens the cursor
+      try {
+        repository.upsert(bootTitle, year, MovieRecord(tmdbId = Some(BootTmdb), data = Map[Source, SourceData](
+          KinoMuranow -> SourceData(title = Some(bootTitle), showtimes = Seq(Showtime(when, None))))))
+        withClue("a film the cache's cursor delivered after the projector's boot reads never reached the read model: ") {
+          Eventually.poll(30000)(readModel.findAllScreenings().exists(s => s.filmId == id && s.cinema == KinoMuranow.displayName)) shouldBe true
+        }
+      } finally { cache.foreach(_.close()); projector.stop() }
+    }
+  }
+
+  private val bootTitle = "__boot-attach-sentinel__"
+  private val BootTmdb  = 424244
+
   private val fixpointTitle = "__projection-fixpoint-sentinel__"
   private val FixpointTmdb  = 424243
   // Fixed rather than read off the wall clock, and far enough out to stay upcoming.
