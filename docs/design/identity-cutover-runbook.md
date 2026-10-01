@@ -19,7 +19,7 @@ composition root (`modules.wiring.IdentityCutoverWiring`). For a named country:
 | `EnrichDetails` (a venue's detail page) | runs, then resolves on `MovieDetailsComplete` | runs — the page is source data the model reads — without that resolve |
 | unresolved-TMDB and staging reapers | started | not started (the detail reaper runs on both paths) |
 | TMDB / IMDb lookups the resolver asks | — | the normalized store first (`StoredTmdbLookups` over `TmdbStore`), the live service only for what it lacks (`StoredFirstLookups`), filed back into the store — so a take-up reads the store rather than asking every question again |
-| a listing's venue details (director, runtime, original title) | — | `venue_pages`, the one place every page read is written (`VenuePageReader`, by both paths), read through `VenueDetailSlots`; the film slots answer only a page read before that store existed |
+| a listing's venue details (director, runtime, original title) | — | `venue_pages`, the one place every page read is written (`VenuePageReader`, by both paths), read through `VenuePageIndex`; the film slots answer only a page read before that store existed |
 | a NEW listing at a venue with a detail page | staged until its page is read (`StagingDetail`), then resolved | waits in the model until its page is in `venue_pages` (a `ReadVenuePage` task, keyed by the page, reads it), at most `VenuePageWaitLimit` (1 hour) — so its first resolve has the page's facts and does not move when the page lands |
 
 Unchanged either way: `movies` / `movie_slots` / `screenings` keep their shape (slots still carry
@@ -39,7 +39,7 @@ film, the web tier.
    until its gaps settle — `kinowo_worker_identity_shadow_lookups{outcome="deferred"}` at 0 and the
    round's `asked` small — so the cut-over projection's lookups are answered from the normalized store
    (`TmdbStore`) and it asks TMDB live only on a gap. Venue details need no gate of their own: the
-   detail reaper fills `VenueDetailSlots` on both paths, and the shadow run already reads them.
+   detail reaper fills `VenuePageIndex` on both paths, and the shadow run already reads them.
 5. **The no-worse gate** from the combined measurement (§15.5, §15.7, §17.3), re-run on a recording
    no older than a week, on the country's full corpus:
    - 0 cannot-link violations, 0 order variants;
@@ -171,7 +171,7 @@ Then no wiring reaches any of the following, and each goes with its specs:
   `TmdbAttempt`'s fingerprints (a no-match is the TMDB store's answer), `ResolveDispatcher`s.
 - **Deferred detail as an identity trigger**: `EnrichDetailsHandler`'s TMDB trigger,
   `MovieDetailsComplete` and `detailPending` (the resolver reads venue details as lookups). NOT the
-  `DetailReaper` / `DetailTaskEnqueuer` / `EnrichDetails` fetch itself: it fills `VenueDetailSlots`,
+  `DetailReaper` / `DetailTaskEnqueuer` / `EnrichDetails` fetch itself: it fills `VenuePageIndex`,
   the model's venue-detail input, and stays.
 - **The shadow run**: `ShadowIdentityReaper`, `ShadowRunStore`, `identity_shadow_*` (the canary
   replaces it), and `ListingKeyShadowRead` / `UnstampedListingCensus` once every row is stamped by

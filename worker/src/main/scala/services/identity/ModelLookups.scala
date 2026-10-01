@@ -3,14 +3,13 @@ package services.identity
 import services.cinemas.common.DetailEnricher
 
 /**
- * The identity model's venue detail and nothing else: a listing's page as the pipeline's own
- * enrichment left it ([[VenueDetailSlots]]) — a gap until the enrichment asked it, re-asked when it
- * announces the page. TMDB and IMDb are the store's ([[StoredTmdbLookups]], whose `details` this is).
+ * The identity model's venue detail and nothing else: a listing's page as venue_pages holds it
+ * ([[VenuePageIndex]]) — a gap until the page is read, re-asked when its read is announced. TMDB and IMDb are the store's ([[StoredTmdbLookups]], whose `details` this is).
  */
-final class VenueDetailLookups(enrichers: Seq[DetailEnricher], slots: VenueDetailSlots,
+final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageIndex,
                                reads: ObservationReads = ObservationReads.Untracked) extends IdentityLookups {
   private val gaps    = new LookupGaps
-  private val details = new VenueDetails(enrichers.map(new SourceDataDetailEnricher(_, slots, gaps, reads)), gaps)
+  private val details = new VenueDetails(enrichers.map(new VenuePageDetailEnricher(_, index, gaps, reads)), gaps)
 
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)

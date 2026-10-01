@@ -70,10 +70,7 @@ final class IdentityProjection(
   slots:       CinemaSlotBuilder,
   tokens:      ScreeningTokens,
   metrics:     IdentityProjectionMetrics,
-  clock:       Clock,
-  // After films are written: a slot moved onto another film may make its venue page answerable, and
-  // the model reads venue pages from the slots (`VenueDetailSlots.refresh`).
-  wrote:       () => Unit = () => ()
+  clock:       Clock
 ) extends Logging {
 
   private val mapping = new FilmIdMapping(filmIds)
@@ -134,7 +131,6 @@ final class IdentityProjection(
       before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
     }
     val declined = writeAll(changed, plan.retired)
-    if (changed.nonEmpty || plan.retired.nonEmpty) wrote()
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))
     }

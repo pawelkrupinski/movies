@@ -637,7 +637,7 @@ own shadow run, which reads what this phase stores) turns the evidence into data
 > (`KINOWO_OBSERVATION_CAPTURE`), the observed lookups, the backfill from it and its purge tool are
 > gone. The identity model's TMDB and IMDb answers live only in its normalized TMDB store (`TmdbStore`,
 > filled through `identityLookupFetch`); venue detail pages are read from the pipeline's own enriched
-> slots (`VenueDetailSlots`), re-asked when the enrichment announces a page (`VenueDetailRead`); a
+> slots (`VenuePageIndex`), re-asked when the enrichment announces a page (`VenueDetailRead`); a
 > cut-over model answers from the store first and asks TMDB live only for what it lacks
 > (`StoredFirstLookups`). What follows is the record of what phase 1 was.
 
@@ -2195,7 +2195,7 @@ on its own daemon thread, one round at a time:
 - the first overload (429, 5xx, open breaker, network failure) ends the round, and the next runs
   at half the rate, doubling back after each clean round;
 - venue detail pages are NOT asked: the pipeline's detail refresh fetches every listing's page on
-  its own cadence and the model reads the enriched slots (`VenueDetailSlots`), while a shadow fetch
+  its own cadence and the model reads the enriched slots (`VenuePageIndex`), while a shadow fetch
   would write the pipeline's `detailCache-*`.
 
 Gauge: `kinowo_worker_identity_shadow_lookups{country,outcome=asked|answered|failed|deferred|rate}`,

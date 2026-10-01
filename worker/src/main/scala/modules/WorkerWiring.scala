@@ -93,7 +93,7 @@ class WorkerWiring(
   // (docs/design/identity-resolver.md §8): `KINOWO_IDENTITY_SHADOW`, a staged-migration switch, off by
   // default. It writes only `identity_shadow_decisions` / `identity_shadow_diff` and the
   // `kinowo_worker_identity_*` gauges. It reads TMDB and IMDb from the model's normalized store (filled
-  // by `shadowLookupFill`) and venue details from the pipeline's own enrichment (`venueDetailSlots`).
+  // by `shadowLookupFill`) and venue details from venue_pages (`venuePageIndex`).
   /** Where the shadow run persists its runs: this country's shadow collections (in memory
    *  without a database). */
   lazy val shadowRuns: services.identity.ShadowRunStore = new services.identity.ShadowRunStore(
@@ -162,22 +162,21 @@ class WorkerWiring(
         scheduler  = identityModelScheduler,
         metrics    = workerMetrics.identityModel.forCountry(country.code),
         reading    = () => tracked.fold("")(_.render),
-        beforeDrain = () => venueDetailSlots.settle(),
+        beforeDrain = () => venuePageIndex.settle(),
         // A cut-over country's new listing waits for its venue page, read into venue_pages by a
         // ReadVenuePage task, so its first resolve has the page's facts; the shadow run never waits.
-        pageWait   = if (identityCutover) new services.identity.VenuePageWait(detailEnrichers, venueDetailSlots, taskQueue,
+        pageWait   = if (identityCutover) new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue,
                        WorkerWiring.VenuePageWaitLimit) else services.identity.PageWait.Never,
         clock      = clock)
       identityTmdbStore.foreach(_.onChanged(model.observed))
       model
     }
   }
-  /** The model's TMDB and IMDb answers from its normalized store, and venue details from the pipeline's
-   *  own enrichment ([[venueDetailSlots]]) — what the shadow model reads, and what a cut-over one reads
-   *  first. */
+  /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
+   *  ([[venuePageIndex]]) — what the shadow model reads, and what a cut-over one reads first. */
   def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
     new services.identity.StoredTmdbLookups(identityTmdbStore.getOrElse(new services.identity.TmdbStore(new services.identity.InMemoryTmdbDocuments, clock)),
-      country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venueDetailSlots, reads), reads)
+      country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads)
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
@@ -190,10 +189,9 @@ class WorkerWiring(
     mongoConnection.database.fold[services.venuepages.VenuePageStore](new services.venuepages.InMemoryVenuePageStore)(
       new services.venuepages.MongoVenuePageStore(_))
 
-  /** The venue detail pages the pipeline's enrichment asked, as the identity model reads them. */
-  lazy val venueDetailSlots: services.identity.VenueDetailSlots =
-    new services.identity.VenueDetailSlots(movieCache, stagingRepository, freshnessStore, detailEnrichers,
-      changed = key => identityModel.foreach(_.observed(key)), pages = venuePageStore)
+  /** The venue detail pages read into venue_pages, as the identity model reads them. */
+  lazy val venuePageIndex: services.identity.VenuePageIndex =
+    new services.identity.VenuePageIndex(venuePageStore, changed = key => identityModel.foreach(_.observed(key)))
 
   /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
    *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
@@ -226,9 +224,6 @@ class WorkerWiring(
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
   def identityShadowTick(): Unit = shadowIdentityReaper.foreach { reaper =>
-    // The pipeline moves slots between its rows on its own schedule (staging, which the cache's
-    // version does not see); marked stale, the tick's drain re-indexes them before the model reads.
-    venueDetailSlots.refresh()
     reaper.tickQuietly()
     shadowLookupFill.foreach(_.start())
   }
@@ -398,7 +393,7 @@ class WorkerWiring(
   if (!identityCutover) eventBus.subscribe(movieService.onMovieDetailsComplete)
   // A venue page read into venue_pages: its answer is the model's now, and the next settle tells the
   // model of every page whose answer that changed.
-  eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venueDetailSlots.pageRead(group, page) }
+  eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page) }
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))

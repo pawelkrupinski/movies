@@ -107,7 +107,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A cut-over model reads venue pages from the pipeline's own detail enrichment and waits for it
-   *  (`VenueDetailSlots`), so a cut-over tick must run that enrichment, as production's detail reaper
+   *  (`VenuePageIndex`), so a cut-over tick must run that enrichment, as production's detail reaper
    *  does: Identity model convergence (run 36756016590) had Poland's sample at 50% matched against
    *  production's 71% with every page an unanswered gap. */
   "A cut-over Poland's model" should "have its listings' venue pages answered by the pipeline's detail enrichment" in {
@@ -120,7 +120,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     // left unstamped for the reaper's next tick, as production leaves it, and stays a gap. So does a
     // page on a film naming one enricher group several pages: the detail reaper asks one page per
     // group and film (its dedup key), and a chain's one network slot cannot say which page its facts
-    // are (`VenueDetailSlots`). And a page no stored slot names at all — the venue's same-title fold
+    // are (`VenuePageIndex`). And a page no stored slot names at all — the venue's same-title fold
     // kept another listing's slot for that title — is no page the enrichment can reach.
     val slotted: Set[String] = w.movieCache.entries.flatMap { case (_, r) =>
       r.data.values.flatMap(services.cinemas.common.DetailEnricher.nativeRefOf) }.toSet
@@ -133,7 +133,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     }.toSet
     val readable   = paged.distinct.filter { case (e, page) =>
       slotted(page) && !sharedPages(page) && e.fetchDetail(page) != services.cinemas.common.DetailFetchOutcome.Failed }
-    val unanswered = readable.filterNot { case (e, page) => w.venueDetailSlots.answer(e, page).isDefined }
+    val unanswered = readable.filterNot { case (e, page) => w.venuePageIndex.answer(e, page).isDefined }
     info(s"${readable.size} readable venue pages; ${sharedPages.size} pages sharing a film's enricher group left unanswered")
     readable should not be empty
     withClue(s"${unanswered.size} of ${readable.size} readable venue pages unanswered, e.g. ${unanswered.take(5).map(_._2).mkString(", ")}: ") {

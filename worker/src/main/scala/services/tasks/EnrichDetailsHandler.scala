@@ -37,10 +37,8 @@ object EnrichDetailsTasks {
    *  fetch is a RE-read, and therefore authoritative over the listing. */
   def readMarker(dedupKey: String): String = s"$dedupKey|read"
 
-  /** The PAGE's own stamps: `page` of `group` was read (merged into its slot), or found gone. Keyed by
-   *  the page, never by the film row it was on — a listing's slot moves with it when the identity
-   *  model regroups rows, and whether its page was asked must move with it too
-   *  (`services.identity.VenueDetailSlots`). */
+  /** The PAGE's own stamps: `page` of `group` was read into venue_pages, or found gone. Keyed by the
+   *  page, never by the film row it was on: a page's answer is the page's, wherever its listing goes. */
   def pageRead(group: String, page: String): String = readMarker(pageDedupKey(group, page))
   /** The dedup (and due) key of a detail task asked per PAGE (`DetailPages.PerPage`). */
   def pageDedupKey(group: String, page: String): String = s"detail-page|$group|$page"

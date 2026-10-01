@@ -54,7 +54,7 @@ final class IdentityModelService(
   // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
   reading:    () => String = () => "",
   /** Run on the model's thread before each drain: what turns queued announcements into observed keys
-   *  (`VenueDetailSlots.settle`), so the drain that follows takes them in. */
+   *  (`VenuePageIndex.settle`), so the drain that follows takes them in. */
   beforeDrain: () => Unit = () => (),
   /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,

@@ -97,18 +97,21 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
   }
 
   corpora.foreach { c =>
-    "the production shadow run" should s"decide exactly as the offline resolver, from the model's store and the enriched slots, with no request, on ${c.label}" in {
+    "the production shadow run" should s"decide exactly as the offline resolver, from the model's store and venue_pages, with no request, on ${c.label}" in {
       val database = databaseFor(c)
       val w = wiring(mongoTarget, c, storages, fixtureRoot, configuration.env)
       bootPipeline(w)
+      // Take in every venue page the boot read, as production does before each drain: left to the model's
+      // own drain thread, the index could settle between the two reads below and hand them different pages.
+      w.venuePageIndex.settle()
       val listings = listingsOf(w, c.normalizer)
 
       // 1. the offline resolve, its TMDB and IMDb answers filed into the model's store by the production
-      // normalizer; venue details, on both sides, the pipeline's own enriched slots (`VenueDetailSlots`),
+      // normalizer; venue details, on both sides, venue_pages (`VenuePageIndex`),
       // so the claim is the store's: a tick over it decides as a resolve over the answers it holds.
       val tmdbStore     = new TmdbStore(new InMemoryTmdbDocuments, clock)
       val offlineFetch  = new NormalizingHttpFetch(new GapsFail(c.fetch, c.misses), new TmdbNormalizer(tmdbStore))
-      val venueDetails  = new VenueDetailLookups(w.detailEnrichers, w.venueDetailSlots)
+      val venueDetails  = new VenueDetailLookups(w.detailEnrichers, w.venuePageIndex)
       val offlineTmdb   = new TmdbIdentityLookups(
         new TmdbClient(offlineFetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
         new services.enrichment.ImdbClient(offlineFetch), Nil, new TmdbIdentityLookups.CountedGaps(c.misses))

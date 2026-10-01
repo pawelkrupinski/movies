@@ -114,8 +114,8 @@ object ShadowLookupMetrics {
  * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick
  * reads them. Nothing here writes a pipeline cache or row.
  *
- * Venue details are NOT asked: the pipeline's own detail enrichment fetches every listing's page on
- * its own cadence, and the model reads it from there (`VenueDetailSlots`).
+ * Venue details are NOT asked: the pipeline's own detail enrichment reads every listing's page into
+ * venue_pages on its own cadence, and the model reads it from there (`VenuePageIndex`).
  *
  * Back-off: an overload (429, 5xx, open breaker, timeout) ends the round at once, and the next
  * round runs at half the rate; each clean round doubles it back, up to the configured rate. One

@@ -14,7 +14,7 @@ import java.time.Instant
  * it existed left behind: each page's own stamp in `freshness` (`detail-page|<group>|<page>|read` or
  * `|gone`) and the slot its facts were merged into. A venue's own page answers from the slot that names
  * it; a chain's page from the film's chain slot (keyed by the chain's name, e.g. `Cinema City`), only
- * where the film names that chain no other page — the rule `VenueDetailSlots` reads them by. A page the
+ * where the film names that chain no other page — the rule `VenuePageIndex` reads them by. A page the
  * store already holds is left alone: a real read beats a seeded one. The seeded facts are the slot's,
  * the listing's own values merged in, exactly what the slots answered until now; each page's next read
  * replaces them with what the page itself says.
