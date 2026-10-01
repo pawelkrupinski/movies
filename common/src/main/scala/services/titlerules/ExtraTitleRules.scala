@@ -316,9 +316,9 @@ object ExtraTitleRules {
     searchStrip("xtra-dkf-suffix-pipe-underscore", """(?i)\s*[|_]\s*DKF\b.*$""",                      "'| DKF' / '_DKF' suffix"),
     searchStrip("xtra-dkf-suffix-dash",            """(?i)\s*[-–—]\s*DKF\b.*$""",                     "'- DKF KOT' / '- DKF III W' suffix"),
     searchStrip("xtra-dkf-suffix-period",          """(?i)\.\s*DKF\b.*$""",                          "'Róża. DKF' full-stop DKF suffix"),
-    // A premiere is an event of the screening: "Lalka | PREMIERA", "(PREMIERA)", "- uroczysta premiera",
-    // "PREMIERA" trailing after the format strip. Never the whole title (the lookahead needs a title before it).
-    searchStrip("xtra-premiera-suffix",            """(?i)(?<=\S)\s*(?:[|\-–—]\s*)?[(\[]?\b(?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]?\s*$""", "premiere suffix"),
+    // A premiere is an event of the screening, bracketed "(PREMIERA)" (separated ones: the announcement strip
+    // below). Never the whole title, and never after a bare space: "Ostatnia Premiera" is a title.
+    searchStrip("xtra-premiera-bracketed",         """(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$""", "'(PREMIERA)' bracketed premiere tag"),
     searchStrip("xtra-kino-sensoryczne-suffix",    """(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$""", "'- Kino sensoryczne' sensory-friendly screening suffix"),
     searchStrip("xtra-dyskusyjny-suffix",          """(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$""", "'- dyskusyjny klub filmowy' suffix"),
     searchStrip("xtra-przedpremiera-suffix",       """(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*$""", "przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)"),
@@ -706,7 +706,35 @@ object ExtraTitleRules {
     // ('4K RESTORATION') or name the format outright ('ON 35MM'), so neither the
     // seed nor that rule reaches them (Cemetery Man, The Exorcist).
     searchStrip("xtra-4k-restoration-suffix", """(?iu)\s*[-–—]\s*4K\s+RESTORATION\s*$""", "'<film> - 4K RESTORATION' Alamo Drafthouse restoration-print suffix, sibling of xtra-4k-suffix's bare '4K' form"),
-    searchStrip("xtra-on-35mm-suffix", """(?iu)\s*[-–—]\s*ON\s+35MM\s*$""", "'<film> - ON 35MM' Alamo Drafthouse print-format suffix")
+    searchStrip("xtra-on-35mm-suffix", """(?iu)\s*[-–—]\s*ON\s+35MM\s*$""", "'<film> - ON 35MM' Alamo Drafthouse print-format suffix"),
+    // Last of the strips: the quoted-film rules above read the premiere tail as their banner.
+    // Trailing '– Premiera' release-announcement suffix, in every separator/case
+    // shape ('– Premiera', '- Wielka Premiera', '| Polska Premiera', ': śląska
+    // premiera', '– premiera filmu', '- Premiera Krajowa'). Until 2026-10-01 this was
+    // CANONICAL and folded the premiere onto the base film's row; a premiere is now
+    // shown as its own screening, like a przedpremiera, and the strip shapes the
+    // LOOKUP only. Anchored on a separator so a bare-space 'Ostatnia Premiera' title
+    // survives, and `\bpremiera` (word boundary) so the przed-PREMIERA prefix inside
+    // 'przedpremiera' is never caught. Up to two optional adjective words absorb a
+    // LEADING qualifier ('Wielka', 'Polska', 'Uroczysta', the regional
+    // 'śląska/poznańska'), and one optional word absorbs a TRAILING qualifier
+    // ('Premiera Krajowa/Ogólnopolska/Światowa', the older 'premiera filmu').
+    //
+    // A screen-format segment glued between the film and the premiere marker
+    // ('ODYSEJA - 2D napisy - Premiera Krajowa', Kino Hel Konin) is consumed by the
+    // optional format group: `FormatTags` peels format only from the very END of the
+    // title (its trailing loop stops at the first non-format word), so a format tag
+    // sitting BEHIND a non-format premiere marker is unreachable there and would
+    // otherwise strand the row on its own 'odyseja2dnapisy…' key. Matching it here —
+    // only when it directly precedes a premiere marker — folds that shape onto the
+    // base without turning canonical into a general format stripper (that stays
+    // FormatTags' job). Ordered before the trailing year/format strips so
+    // 'Film (2025) – Premiera' still folds its year.
+    searchStrip("xtra-premiera-announcement-suffix",
+      """(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)""" +
+        """(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?""" +
+        """{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$""",
+      "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
@@ -755,35 +783,6 @@ object ExtraTitleRules {
     canon("xtra-canonical-gwiezdne-wojny-ci",
       """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),
-    // Trailing '– Premiera' release-announcement suffix, in every separator/case
-    // shape ('– Premiera', '- Wielka Premiera', '| Polska Premiera', ': śląska
-    // premiera', '– premiera filmu', '- Premiera Krajowa'). A premiere IS the film,
-    // so unlike the przedpremiera strip — a distinct EARLIER screening deliberately
-    // kept as its own row (query-only `xtra-przedpremiera-suffix`) — this is
-    // CANONICAL: it rewrites the DISPLAY title AND the merge key, folding the
-    // premiere screening onto the base film's rated row (not just the enrichment
-    // query). Anchored on a separator so a bare-space 'Ostatnia Premiera' title
-    // survives, and `\bpremiera` (word boundary) so the przed-PREMIERA prefix inside
-    // 'przedpremiera' is never caught. Up to two optional adjective words absorb a
-    // LEADING qualifier ('Wielka', 'Polska', 'Uroczysta', the regional
-    // 'śląska/poznańska'), and one optional word absorbs a TRAILING qualifier
-    // ('Premiera Krajowa/Ogólnopolska/Światowa', the older 'premiera filmu').
-    //
-    // A screen-format segment glued between the film and the premiere marker
-    // ('ODYSEJA - 2D napisy - Premiera Krajowa', Kino Hel Konin) is consumed by the
-    // optional format group: `FormatTags` peels format only from the very END of the
-    // title (its trailing loop stops at the first non-format word), so a format tag
-    // sitting BEHIND a non-format premiere marker is unreachable there and would
-    // otherwise strand the row on its own 'odyseja2dnapisy…' key. Matching it here —
-    // only when it directly precedes a premiere marker — folds that shape onto the
-    // base without turning canonical into a general format stripper (that stays
-    // FormatTags' job). Ordered before the trailing year/format strips so
-    // 'Film (2025) – Premiera' still folds its year.
-    canon("xtra-canonical-premiera-suffix",
-      """(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)""" +
-        """(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?""" +
-        """{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$""", "",
-      "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — CANONICAL fold of the premiere screening onto the base film (display + merge key), not just the query. Also absorbs a format tag glued between the film and the premiere marker, which FormatTags (END-only peel) can't reach. Excludes 'przedpremiera' (kept a separate row by the query-only suffix strip)."),
     // The seed's 'structural-anniversary-suffix' and the extras'
     // 'xtra-rocznica-premiery-suffix' are both GlobalStructural — they shape the
     // TMDB query but leave the decorated title as the row's display AND its merge

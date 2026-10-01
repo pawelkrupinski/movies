@@ -787,44 +787,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The '– Premiera' release-announcement suffix is CANONICAL: unlike the
-  // query-only przedpremiera strip (which keeps the earlier screening its own
-  // row), a premiere IS the film, so it rewrites the DISPLAY title and folds onto
-  // the base film's key. Covers every separator/case/qualifier shape.
-  it should "strip the '– Premiera' suffix from the display title and fold onto the base film" in {
+  // The '– Premiera' release-announcement suffix is stripped for the LOOKUP only (since 2026-10-01): a
+  // premiere screening keeps its own title and row, as a przedpremiera does. Every separator/case/qualifier shape.
+  it should "look the film up without the '– Premiera' suffix, keeping the premiere its own row" in {
     val cases = Seq(
-      "Zbrodnie przyszłości – Premiera"        -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości - Premiera"        -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości — PREMIERA"        -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości | Premiera"        -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości: premiera"         -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości – Wielka Premiera" -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości | Polska premiera" -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości - śląska premiera" -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości – premiera filmu"  -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości – Premiera", "Zbrodnie przyszłości - Premiera", "Zbrodnie przyszłości — PREMIERA",
+      "Zbrodnie przyszłości | Premiera", "Zbrodnie przyszłości: premiera", "Zbrodnie przyszłości – Wielka Premiera",
+      "Zbrodnie przyszłości | Polska premiera", "Zbrodnie przyszłości - śląska premiera", "Zbrodnie przyszłości – premiera filmu",
       // Qualifier AFTER 'Premiera' (national/world premiere), not just before it.
-      "Zbrodnie przyszłości - Premiera Krajowa"    -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości | Premiera Ogólnopolska" -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości – premiera światowa"   -> "Zbrodnie przyszłości"
-    )
-    cases.foreach { case (variant, base) =>
-      // The display title (canonical) drops the suffix …
-      withClue(s"canonical('$variant') → '$base': ")(
-        withExtras.canonical(variant) shouldBe base)
-      // … and the row folds onto the bare film's merge key.
-      withClue(s"foldKey('$variant') vs '$base': ")(
-        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+      "Zbrodnie przyszłości - Premiera Krajowa", "Zbrodnie przyszłości | Premiera Ogólnopolska", "Zbrodnie przyszłości – premiera światowa")
+    cases.foreach { variant =>
+      withClue(s"apiQuery('$variant'): ")(withExtras.search(variant) shouldBe "Zbrodnie przyszłości")
+      withClue(s"canonical('$variant') keeps it: ")(withExtras.canonical(variant) shouldBe variant)
+      withClue(s"foldKey('$variant') stays its own: ")(foldKey(withExtras, variant) should not be foldKey(withExtras, "Zbrodnie przyszłości"))
     }
   }
 
-  it should "be load-bearing — the seed rules leave the '– Premiera' suffix on the display title" in {
-    Seq(
-      "Zbrodnie przyszłości – Premiera",
-      "Zbrodnie przyszłości – Wielka Premiera"
-    ).foreach { v =>
-      withClue(s"seedOnly.canonical('$v') should still carry the suffix: ")(
-        seedOnly.canonical(v) shouldBe v)
-    }
+  it should "be load-bearing — the seed rules search the '– Premiera' suffix along" in {
+    seedOnly.search("Zbrodnie przyszłości – Wielka Premiera") should not be "Zbrodnie przyszłości"
   }
 
   it should "not strip a bare 'Premiera' / 'przedpremiera' — no separator, or the przed- prefix" in {
@@ -901,28 +881,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // A screen-format tag glued BETWEEN the film and a premiere marker — the real
-  // "ODYSEJA - 2D napisy - Premiera Krajowa" (Kino Hel, Konin), which split off as
-  // its own `odyseja2dnapisypremierakrajowa` record because `FormatTags` peels
-  // format only from the END (it stops at the non-format "Krajowa") and canonical
-  // had no reach behind the premiere marker. The extended premiera rule now folds
-  // the whole tail so the row merges onto the base film.
-  it should "fold a format tag glued before a premiere marker onto the base film" in {
-    val cases = Seq(
-      "ODYSEJA - 2D napisy - Premiera Krajowa"           -> "Odyseja",
-      "Odyseja - 2D dubbing - Premiera"                 -> "Odyseja",
-      "Toy Story 5 | 3D napisy | Premiera Ogólnopolska" -> "Toy Story 5"
-    )
-    cases.foreach { case (variant, base) =>
-      withClue(s"foldKey('$variant') vs '$base': ")(
-        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+  // A screen-format tag glued BETWEEN the film and a premiere marker — the real "ODYSEJA - 2D napisy -
+  // Premiera Krajowa" (Kino Hel, Konin): `FormatTags` peels format only from the END, so the premiere strip
+  // takes the format with it — for the lookup; the screening keeps its row.
+  it should "look the film up without a format tag glued before a premiere marker" in {
+    Seq("ODYSEJA - 2D napisy - Premiera Krajowa" -> "ODYSEJA", "Odyseja - 2D dubbing - Premiera" -> "Odyseja",
+      "Toy Story 5 | 3D napisy | Premiera Ogólnopolska" -> "Toy Story 5").foreach { case (variant, base) =>
+      withClue(s"apiQuery('$variant'): ")(withExtras.search(variant) shouldBe base)
     }
-  }
-
-  it should "be load-bearing — the seed rules leave the format+premiere tail unmerged" in {
-    withClue("seedOnly.foldKey should NOT yet fold the buried-format premiere row: ")(
-      foldKey(seedOnly, "ODYSEJA - 2D napisy - Premiera Krajowa") should not be
-        foldKey(seedOnly, "Odyseja"))
   }
 
   // "Niesamowite przygody skarpetek 3. Ale kosmos!" is TMDB-no-match, so nothing
