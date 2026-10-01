@@ -43,4 +43,18 @@ class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
     ReadModelProjector.awaitStreamApplied(liveness, grace = Duration.Zero, timeout = 200.millis)
     (System.nanoTime() - started).nanos should (be >= 200.millis and be < 5.seconds)
   }
+
+  it should "wait past the longest a debounce holds a film's re-read, so a held film is not called a miss" in {
+    ReadModelProjector.InFlightApplyTimeout should be > MovieChangeStream.Debounce.Worker.cap
+  }
+
+  "appliedThrough" should "hold for a re-read opened up to the mark until it is over, held by a debounce or not" in {
+    val liveness = new ChangeStreamLiveness()
+    val held     = liveness.reread()
+    val mark     = liveness.lastTicket
+    liveness.appliedThrough(mark) shouldBe false
+    liveness.pendingApplies(ChangeStreamLiveness.Slots) shouldBe 0          // a hold is not apply lag
+    liveness.finished(held)
+    liveness.appliedThrough(mark) shouldBe true
+  }
 }

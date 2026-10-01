@@ -110,12 +110,31 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   /** The apply behind `ticket` has run (or failed — either way it is no longer waiting). */
   def applied(collection: String, ticket: Long): Unit = { waitingOn(collection).remove(ticket); () }
 
-  /** The ticket of the last event handed to the apply thread, from any cursor — 0 before the first. */
+  // Every re-read opened for a delivered event and not yet finished — held by a debounce, queued, or
+  // waiting on a listener — by a ticket from the SAME sequence as the hand-offs above, so
+  // `appliedThrough` waits on a re-read the debounce still holds. Kept apart from `waiting`: the hold
+  // is deliberate delay, not apply LAG, and the lag gauge and its alerts start at the hand-off.
+  private val opened = new ConcurrentSkipListMap[Long, Instant]()
+
+  /** A re-read was opened for a delivered event. Returns the ticket to give back to [[finished]]
+   *  once it has been applied, or given up on. */
+  def reread(): Long = {
+    val ticket = tickets.incrementAndGet()
+    opened.put(ticket, clock.instant())
+    ticket
+  }
+
+  /** The re-read behind `ticket` is over — applied, or failed and left to its retry. */
+  def finished(ticket: Long): Unit = { opened.remove(ticket); () }
+
+  /** The ticket of the last event handed to the apply thread or re-read opened, from any cursor — 0 before the first. */
   def lastTicket: Long = tickets.get()
 
-  /** Whether every event handed to the apply thread up to `ticket`, from any cursor, has been applied. */
+  /** Whether every event handed to the apply thread, and every re-read opened, up to `ticket`, from
+   *  any cursor, has been applied. */
   def appliedThrough(ticket: Long): Boolean =
-    waiting.values().iterator().asScala.forall(onCursor => Option(onCursor.firstEntry()).forall(_.getKey > ticket))
+    (waiting.values().iterator().asScala ++ Iterator.single(opened))
+      .forall(onCursor => Option(onCursor.firstEntry()).forall(_.getKey > ticket))
 
   /** Events from `collection`'s cursor handed to the apply thread and not yet applied. */
   def pendingApplies(collection: String): Int = waitingOn(collection).size

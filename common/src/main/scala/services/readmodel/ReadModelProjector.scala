@@ -1209,8 +1209,12 @@ object ReadModelProjector {
   /** How long a write that landed while a sweep held the lock may take to be DELIVERED by its
    *  cursor, before the wait below can see it queued. */
   private val InFlightDeliveryGrace = scala.concurrent.duration.Duration(2000L, TimeUnit.MILLISECONDS)
-  /** The longest a sweep's heal verdict waits for the stream's apply thread to catch up. */
-  private val InFlightApplyTimeout = scala.concurrent.duration.Duration(30L, TimeUnit.SECONDS)
+  /** The longest a sweep's heal verdict waits for the stream's apply thread to catch up: past the
+   *  longest a debounce holds a film's re-read (its cap), plus the re-read itself. At 30 s, under a
+   *  2-minute cap, a film the debounce was holding was counted a miss whenever its burst outlasted
+   *  the wait — `ReadModelHealsRecurring` in the US, UK and Germany from 2026-09-30. */
+  private[services] val InFlightApplyTimeout: scala.concurrent.duration.FiniteDuration =
+    services.movies.MovieChangeStream.Debounce.Worker.cap + scala.concurrent.duration.Duration(60L, TimeUnit.SECONDS)
 
   /** Let the change stream apply what it had in flight when a sweep let go of the lock: wait out
    *  the delivery of a write that landed during the sweep, then until every event handed to the

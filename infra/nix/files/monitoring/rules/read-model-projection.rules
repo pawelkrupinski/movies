@@ -772,6 +772,14 @@ groups:
       # failed re-read. The worker now waits for the stream to apply what was in flight before it
       # counts: a row the stream then applied is logged at INFO ("had in flight ... not heals") and
       # not metered, so what this counts is a row the stream really left missing.
+      #
+      # …INCLUDING WHAT THE DEBOUNCE WAS HOLDING. From 2026-09-30 the US, UK and Germany hold a
+      # film's side-collection re-read up to 2 minutes for the rest of its burst, and that wait
+      # neither saw a held re-read (it took no liveness ticket until its hand-off) nor waited long
+      # enough for one (30 s). Every sweep heal in those three countries 09-30 21:22Z .. 10-01 was
+      # such a film, the same wide releases healed again sweep after sweep (clayface|2026 x4,
+      # whalefall|2026 x3) with no card retirement behind any of them, and PL/ES -- undebounced --
+      # healed nothing. A held re-read now holds the wait, which outlasts the debounce's cap.
       - alert: ReadModelHealsRecurring
         expr: >-
           (sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="sweep"}[1h])) > 0)

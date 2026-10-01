@@ -350,6 +350,29 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handle.close(); under.close() }
   }
 
+  // A prune sweep's heal verdict (`ReadModelProjector.awaitStreamApplied`) waits until the stream has
+  // applied everything up to `liveness.lastTicket`. A re-read the debounce still holds was delivered
+  // and is not applied, so it must hold that wait open: when it took no ticket until its hand-off, a
+  // sweep healing a film whose burst the debounce was holding called the heal a stream miss, and
+  // `ReadModelHealsRecurring` fired in exactly the three debounced countries from the day the
+  // debounce shipped (2026-09-30). The hold is not apply LAG, though: that gauge still starts at the
+  // hand-off, so its alerts keep their thresholds.
+  it should "count a re-read its debounce still holds as not yet applied, until it runs" in {
+    val slots  = new InMemorySlotsRepository
+    val hour   = scala.concurrent.duration.Duration(1, "hour")
+    val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)))
+    val handle = under.watch(_ => (), _ => ())
+    try {
+      slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
+      eventually(under.held shouldBe 1)
+      val inFlight = under.liveness.lastTicket
+      under.liveness.appliedThrough(inFlight) shouldBe false
+      under.liveness.pendingApplies(ChangeStreamLiveness.Slots) shouldBe 0
+      under.releaseHeld()
+      eventually(under.liveness.appliedThrough(inFlight) shouldBe true)
+    } finally { handle.close(); under.close() }
+  }
+
   it should "debounce where a country's films' changes cluster — the US, the UK and Germany — and nowhere else" in {
     import models.Country.*
     Seq(UnitedStates, UnitedKingdom, Germany).map(MovieChangeStream.Debounce.forCountry).distinct shouldBe

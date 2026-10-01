@@ -150,6 +150,9 @@ final class MovieChangeStream(
   private final class Pending(val openedAt: Long, val cursor: String, val demand: ChangeStreamDemand, val hold: CursorHold) {
     val acks            = new java.util.concurrent.ConcurrentLinkedQueue[() => Unit]()
     @volatile var dueAt = openedAt
+    // Open in the liveness record from now until the re-read is over — held by the debounce
+    // included — so a prune sweep's heal verdict waits for it ([[ChangeStreamLiveness.reread]]).
+    val ticket          = liveness.reread()
     // The venues every event riding this re-read changed showtimes at — or None once one rode it
     // that was not a `screenings` row at a known venue, and only the whole film will do.
     @volatile var venues: Option[Set[models.Cinema]] = Some(Set.empty)
@@ -212,7 +215,7 @@ final class MovieChangeStream(
   private def queue(filmId: String, entry: Pending): Unit = if (entry.handOff()) {
     applyOffLoop(entry.cursor, entry.demand) {
       pending.remove(filmId, entry)
-      applyOrWait(filmId, entry.venues, entry.hold, drain(entry), clock.millis())
+      applyOrWait(filmId, entry.venues, entry.hold, drain(entry), clock.millis(), () => liveness.finished(entry.ticket))
     }
   }
 
@@ -369,24 +372,29 @@ final class MovieChangeStream(
    *  a restart replays them; the wait counts as held ([[held]]), so a caller settling the stream waits
    *  for it too. A later change to the film queues its own apply meanwhile, as always. */
   private def applyOrWait(filmId: String, venues: Option[Set[models.Cinema]], hold: CursorHold,
-                          acks: Seq[() => Unit], firstAsked: Long): Unit =
-    applyVenues(filmId, venues) match {
-      case MovieChangeStream.VenueOutcome.Applied => acks.foreach(_())
+                          acks: Seq[() => Unit], firstAsked: Long, finished: () => Unit): Unit = {
+    // Once the film is applied, or its re-read has failed and is left to `rereadLater` — not while
+    // it waits for a listener.
+    def over(apply: => Unit): Unit = try apply finally finished()
+    val outcome = try applyVenues(filmId, venues) catch { case thrown: Throwable => finished(); throw thrown }
+    outcome match {
+      case MovieChangeStream.VenueOutcome.Applied => over(acks.foreach(_()))
       case MovieChangeStream.VenueOutcome.NotYet if clock.millis() - firstAsked < venueWaitMillis =>
         waiting.incrementAndGet()
         scala.util.Try(rereadRetry.schedule((() => {
           backlog.incrementAndGet()
           changeApply.execute { () =>
-            try applyOrWait(filmId, venues, hold, acks, firstAsked)
+            try applyOrWait(filmId, venues, hold, acks, firstAsked, finished)
             finally { waiting.decrementAndGet(); backlog.decrementAndGet() }
           }
         }): Runnable, venueRetryMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
-          .failed.foreach { _ => waiting.decrementAndGet(); applyReread(filmId, hold)(acks) } // shutting down: apply it whole now
+          .failed.foreach { _ => waiting.decrementAndGet(); over(applyReread(filmId, hold)(acks)) } // shutting down: apply it whole now
       case MovieChangeStream.VenueOutcome.NotYet =>
         changeStreamMetrics.recordApply(ChangeStreamMetrics.Apply.Film, ChangeStreamMetrics.Apply.Reason.WaitExpired)
-        applyReread(filmId, hold)(acks)
-      case MovieChangeStream.VenueOutcome.Whole => applyReread(filmId, hold)(acks)
+        over(applyReread(filmId, hold)(acks))
+      case MovieChangeStream.VenueOutcome.Whole => over(applyReread(filmId, hold)(acks))
     }
+  }
 
   // Venue applies waiting for a listener to be ready for them — see `applyOrWait`.
   private val waiting = new AtomicInteger(0)
