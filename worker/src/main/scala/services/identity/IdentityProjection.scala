@@ -130,7 +130,7 @@ final class IdentityProjection(
     val changed = plan.films.filter { f =>
       before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
     }
-    val declined = writeAll(changed, plan.retired)
+    val declined = writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer))
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))
     }
@@ -148,11 +148,18 @@ final class IdentityProjection(
    *  allow: a film whose key or TMDB id another document still holds waits until the retirements
    *  and the other writes have freed it; a cycle between two kept films (each holding the other's
    *  key) is broken by parking one under a key and id of its own first. Returns how many films
-   *  could not be written; the next projection tries them again. */
-  private def writeAll(films: Seq[ProjectedFilm], retired: Seq[FilmId]): Int = {
-    def attempt(fs: Seq[ProjectedFilm]): Seq[ProjectedFilm] =
-      fs.filter(f => cache.writeProjected(f.id, CacheKey.stored(f.title, f.key), f.record) != WriteOutcome.Written)
-    val first = attempt(films)
+   *  could not be written; the next projection tries them again.
+   *
+   *  The `independent` films — new ones whose key and TMDB id nothing else holds or takes — are
+   *  written side by side first: no order among them, or with the rest, can decide anything, and
+   *  one at a time a country's first projection waited on ~2,250 films' round-trips in a row (a US
+   *  boot). The rest keep the plan's order. */
+  private def writeAll(films: Seq[ProjectedFilm], retired: Seq[FilmId], independent: Set[FilmId]): Int = {
+    def write(f: ProjectedFilm): Boolean = cache.writeProjected(f.id, CacheKey.stored(f.title, f.key), f.record) == WriteOutcome.Written
+    def attempt(fs: Seq[ProjectedFilm]): Seq[ProjectedFilm] = fs.filterNot(write)
+    val (apart, ordered) = films.partition(f => independent(f.id))
+    val unwritten = tools.BoundedParallel.map("identity-projection-writes", apart, IdentityProjection.WriteConcurrency)(f => Option.unless(write(f))(f))
+    val first = unwritten.flatten ++ attempt(ordered)
     retired.foreach { id =>
       val outcome = cache.retireProjected(id)
       if (outcome != WriteOutcome.Written) logger.warn(s"identity projection: retiring $id: $outcome")
@@ -181,6 +188,23 @@ object IdentityProjection {
       d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
         d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
     }
+
+  /** How many independent films a projection writes at once. */
+  private[identity] val WriteConcurrency = 8
+
+  /** The films of `changed` whose write no other write can stand in the way of, nor be stood in the way
+   *  of by: new to the store, under a key and a TMDB id no stored film holds and no other planned film
+   *  takes. Written in any order, they land exactly as in the plan's. */
+  private[identity] def independent(changed: Seq[ProjectedFilm], planned: Seq[ProjectedFilm], stored: Seq[StoredMovieRecord],
+                                    normalizer: TitleNormalizer): Set[FilmId] = {
+    val storedIds  = stored.map(_.id).toSet
+    val heldKeys   = stored.map(_.key(normalizer)).toSet
+    val heldTmdb   = stored.flatMap(_.record.tmdbId).toSet
+    val keyTakers  = planned.groupMapReduce(_.key)(_ => 1)(_ + _)
+    val tmdbTakers = planned.flatMap(_.record.tmdbId).groupMapReduce(identity)(_ => 1)(_ + _)
+    changed.filter(f => !storedIds(f.id) && !heldKeys(f.key) && keyTakers(f.key) == 1 &&
+      f.record.tmdbId.forall(id => !heldTmdb(id) && tmdbTakers(id) == 1)).map(_.id).toSet
+  }
 
   /** A resolution and the listings it decided. */
   final case class Resolved(resolution: Resolution, listings: Set[ListingKey])

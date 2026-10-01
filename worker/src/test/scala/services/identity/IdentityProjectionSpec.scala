@@ -39,8 +39,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     Rialto     -> Seq(film(Rialto, "Obcy", Some(1979), 6)),
     KinoMuza   -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8)))
 
-  private final class World {
-    val repository = new InMemoryMovieRepository(normalizer = normalizer)
+  private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer)) {
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = clock)
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
@@ -82,6 +81,39 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.cache.snapshot().map(_.id).toSet shouldBe w.repository.findAll().map(_.id).toSet
     w.announced.map(_.cleanTitle).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
     w.filmIds.allChecked()._1.map(_.filmId).toSet shouldBe w.repository.findAll().map(_.id.value).toSet
+  }
+
+  // One at a time, a US boot's first projection waited on ~2,250 films' round-trips in a row.
+  it should "write films nothing else holds or takes side by side" in {
+    val inFlight = new java.util.concurrent.atomic.AtomicInteger
+    val most     = new java.util.concurrent.atomic.AtomicInteger
+    val slow = new InMemoryMovieRepository(normalizer = normalizer) {
+      override def upsert(film: services.movies.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome = {
+        most.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+        try { Thread.sleep(50); super.upsert(film, key, e) } finally { inFlight.decrementAndGet(); () }
+      }
+    }
+    val w = new World(slow)
+    w.scrape(programme)
+    w.projection.tick().written shouldBe 3
+    w.repository.findAll().map(_.title).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
+    w.showtimes shouldBe allShowtimes
+    most.get should be > 1
+  }
+
+  "The films a projection writes side by side" should "be only those no other film holds or takes" in {
+    val w = new World
+    w.scrape(programme)
+    val first   = w.projection.tick().plan.get
+    val stored  = w.repository.findAll()
+    val renamed = first.films.map(f => if (f.title == "Obcy") f.copy(id = services.movies.FilmId("new-obcy")) else f)
+    // Every film already stored: none is new. A fresh id under a key a stored film holds is not free either.
+    IdentityProjection.independent(first.films, first.films, stored, normalizer) shouldBe empty
+    IdentityProjection.independent(renamed, renamed, stored, normalizer) shouldBe empty
+    // New to an empty store, each under its own key: all of them — unless two of them take one key.
+    IdentityProjection.independent(first.films, first.films, Nil, normalizer) shouldBe first.films.map(_.id).toSet
+    val twice = first.films :+ first.films.head.copy(id = services.movies.FilmId("twin"))
+    IdentityProjection.independent(twice, twice, Nil, normalizer) shouldBe first.films.tail.map(_.id).toSet
   }
 
   "A second projection over the same listings" should "write nothing (P2)" in {
