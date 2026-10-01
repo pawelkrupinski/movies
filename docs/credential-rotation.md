@@ -28,8 +28,8 @@ credentials no runbook named. Both took something down, and both were recreated 
 
 **State since 2026-10-01** (movies-gitops b4841a1). No Deployment names an `imagePullSecrets` any
 more: both packages (`ghcr.io/pawelkrupinski/movies-web`, `movies-worker`) are public and pull
-anonymously, so revoking a GitHub token can no longer stop a pod starting. The old Secret may still
-sit in namespace `kinowo`; nothing reads it, and deleting it is safe.
+anonymously, so revoking a GitHub token can no longer stop a pod starting. The old Secret was
+deleted from namespace `kinowo` the same day.
 
 **If a package is ever made private again**, re-add `imagePullSecrets: [{name: ghcr-pull}]` to the
 movies-gitops `web/` and `worker/` bases in the SAME change that recreates the Secret, or every new
