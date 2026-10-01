@@ -76,10 +76,14 @@ object FilterDescription {
   /** Default (no-filter) `<title>` for a city listing — keyword-first so the tab
    *  and the Google result lead with what people search ("repertuar kin
    *  <miasto>", "godziny seansów" / "cinema listings <city>", "showtimes")
-   *  rather than the bare brand. */
+   *  rather than the bare brand. The brand is appended only when it fits
+   *  [[MaxTitle]]: the phrase is never cut to make room for it. */
   def defaultTitle(city: City): String = {
-    val tail = tr(city)("godziny seansów na dziś", "today's showtimes", "sesiones de hoy", "Spielzeiten heute")
-    truncate(s"${cityHeading(city)} – $tail | ${brand(city)}", MaxTitle)
+    val heading = tr(city)(s"Repertuar wszystkich kin ${city.locativePhrase}", cityHeading(city), cityHeading(city), cityHeading(city))
+    val tail    = tr(city)("program, godziny seansów, oceny", "today's showtimes", "sesiones de hoy", "Spielzeiten heute")
+    val title   = s"$heading – $tail"
+    val branded = s"$title | ${brand(city)}"
+    if (branded.length <= MaxTitle) branded else title
   }
 
   /** Default OG/meta description, parameterized by the city's genitive-plural

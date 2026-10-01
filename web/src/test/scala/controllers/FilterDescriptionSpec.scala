@@ -98,9 +98,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   "FilterDescription.forIndex with an empty query" should "produce the keyword-rich default city title" in {
     val meta = FilterDescription.forIndex(Poznan,Map.empty, schedules)
     meta.title       shouldBe FilterDescription.defaultTitle(Poznan)
-    meta.title       should include("Repertuar kin w Poznaniu")
-    meta.title       should include("godziny seansów")
-    meta.title       should endWith("| Kinowo")
+    meta.title       shouldBe "Repertuar wszystkich kin w Poznaniu – program, godziny seansów, oceny"
     meta.description shouldBe FilterDescription.defaultDescription(Poznan)
     meta.description should include("poznańskich")
     meta.description should include("godziny seansów")
@@ -265,6 +263,13 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   // ── English deployment (UK city → en-GB language) ──────────────────────────
   // `London.country` is `UnitedKingdom` (en-GB), so every phrase renders in
   // English while `Poznan` (above) stays byte-identical Polish.
+
+  // The phrase is what the title is for; the brand rides along only when there
+  // is room, rather than the phrase being cut mid-word to make room for it.
+  "defaultTitle" should "keep the whole Polish phrase and drop the brand that does not fit" in {
+    FilterDescription.defaultTitle(Sosnowiec) shouldBe "Repertuar wszystkich kin w Sosnowcu – program, godziny seansów, oceny"
+    FilterDescription.defaultTitle(Sosnowiec) should not include "…"
+  }
 
   "cityHeading" should "read the declined Polish locative / the English 'in {city}'" in {
     FilterDescription.cityHeading(Poznan) shouldBe "Repertuar kin w Poznaniu"
