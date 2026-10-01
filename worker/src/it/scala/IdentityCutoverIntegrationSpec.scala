@@ -104,23 +104,58 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     tick
   }
 
-  /** Every country's three passes, each in its own database and wiring, so they share nothing but
-   *  the read-only corpus and the (concurrent) recorded answers: run on a small pool rather than one
-   *  after another. Serially the fifteen were ~3.5 min — the tail of the whole `itAll` run. */
-  private lazy val passes: Map[Country, Seq[Pass]] = {
-    val plan = for {
-      c                   <- countries
-      (label, seed, half) <- Seq(("p0", OrderSeed, false), ("p1", OrderSeed + 1, false), ("half", OrderSeed + 2, true))
-    } yield (c, label, seed, half)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(PassParallelism)
-    try {
-      val pending = plan.map { case (c, label, seed, half) => c -> pool.submit(() => cutPass(c, label, seed, half)) }
-      pending.map { case (c, f) => c -> f.get() }.groupMap(_._1)(_._2)
-    } finally pool.shutdownNow(): Unit
+  /** Switching a country OVER from the old path: its films before, the cut-over wiring, the tick, after. */
+  private final case class Over(before: Seq[services.movies.StoredMovieRecord], cut: ArchiveReplayWiring, tick: ProjectionTick, after: Seq[services.movies.StoredMovieRecord])
+
+  private def switchOver(country: Country): Over = {
+    val store = storage(country, "over")
+    val old   = wiring(country, store, cutOver = false)
+    bootOldPath(old, arrivals(old, new Random(OrderSeed)))
+    val before = old.movieRepository.findAll()
+    val cut    = wiring(country, store, cutOver = true)
+    val tick   = cut.projectIdentity()
+    Over(before, cut, tick, cut.movieRepository.findAll())
   }
 
+  /** Switching it BACK: what the projection stored and published, then the old path's wiring and films. */
+  private final case class Back(projected: Seq[services.identity.ProjectedFilm], shown: Seq[(Cinema, Seq[CinemaMovie])],
+                                old: ArchiveReplayWiring, after: Seq[services.movies.StoredMovieRecord])
+
+  private def switchBack(country: Country): Back = {
+    val store = storage(country, "back")
+    val cut   = wiring(country, store, cutOver = true)
+    publish(cut, arrivals(cut, new Random(OrderSeed)))
+    val projected = cut.projectIdentity().plan.get.films
+    val shown     = published(cut)
+    val old       = wiring(country, store, cutOver = false)
+    bootOldPath(old, arrivals(old, new Random(OrderSeed + 7)))
+    Back(projected, shown, old, old.movieRepository.findAll())
+  }
+
+  private final case class Booted(passes: Map[Country, Seq[Pass]], over: Map[Country, Over], back: Map[Country, Back])
+
+  /** EVERY boot this spec asserts on — each country's three passes and its two switches, each in its
+   *  own database and wiring, sharing nothing but the read-only corpus and the (concurrent) recorded
+   *  answers — run up front on a small pool rather than one after another inside the tests. Serially
+   *  the twenty-five were ~5 min, the tail of the whole `itAll` run; the tests below only assert. */
+  private lazy val booted: Booted = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(BootParallelism)
+    try {
+      def run[A](body: => A): java.util.concurrent.Future[A] = pool.submit(() => body)
+      val passes = countries.map { c =>
+        c -> Seq(run(cutPass(c, "p0", OrderSeed, halfFirst = false)), run(cutPass(c, "p1", OrderSeed + 1, halfFirst = false)),
+          run(cutPass(c, "half", OrderSeed + 2, halfFirst = true)))
+      }
+      val over = countries.map(c => c -> run(switchOver(c)))
+      val back = countries.map(c => c -> run(switchBack(c)))
+      Booted(passes.map { case (c, fs) => c -> fs.map(_.get()) }.toMap, over.map { case (c, f) => c -> f.get() }.toMap,
+        back.map { case (c, f) => c -> f.get() }.toMap)
+    } finally pool.shutdownNow(): Unit
+  }
+  private def passes: Map[Country, Seq[Pass]] = booted.passes
+
   /** A CI runner's four vCPUs; `itAll` runs other suites beside this one, so no more. */
-  private val PassParallelism = 4
+  private val BootParallelism = 4
 
   countries.foreach { country =>
     val cc = country.code
@@ -151,14 +186,8 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
 
     it should "keep, switching OVER from the old path, the ids IdAssigner gives the old films, and every showtime" in {
-      val store = storage(country, "over")
-      val old   = wiring(country, store, cutOver = false)
-      bootOldPath(old, arrivals(old, new Random(OrderSeed)))
-      val before = old.movieRepository.findAll()
-      val cut    = wiring(country, store, cutOver = true)
-      val tick   = cut.projectIdentity()
+      val Over(before, cut, tick, after) = booted.over(country)
       tick.refused shouldBe None
-      val after = cut.movieRepository.findAll()
       val plan  = tick.plan.get
       info(s"[$cc] old path ${before.size} films → projection ${after.size}: kept ${plan.films.count(f => before.exists(_.id == f.id))} ids, " +
         s"${plan.regroupings}; canary ${plan.canary.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}")
@@ -169,14 +198,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     it should "leave, switching BACK, rows the old path re-lands onto, serving every published showtime" in {
       val p = passes(country).head
-      val store = storage(country, "back")
-      val cut   = wiring(country, store, cutOver = true)
-      publish(cut, arrivals(cut, new Random(OrderSeed)))
-      val projected = cut.projectIdentity().plan.get.films
-      val shown     = published(cut)
-      val old       = wiring(country, store, cutOver = false)
-      bootOldPath(old, arrivals(old, new Random(OrderSeed + 7)))
-      val after = old.movieRepository.findAll()
+      val Back(projected, shown, old, after) = booted.back(country)
       info(s"[$cc] projection ${projected.size} films → old path ${after.size}; " +
         s"${projected.count(f => after.exists(_.id == f.id))} projected ids still stored")
       CutoverProperties.unservedShowtimes(shown, after) shouldBe empty
