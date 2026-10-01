@@ -132,20 +132,16 @@ class EnrichDetailsHandler(
         logger.warn(s"No detail enricher for task $key; dropping.")
         Done
       case Some(enricher) =>
-        // Record enrichment health on /uptime: a resolved detail is a success, an
-        // absent/failed fetch a failure (red/yellow). A 1:1 cinema records under
-        // its own "<cinema>|enrichment" sub-row; a chain overrides this to a
-        // single network-level service (e.g. "Cinema City Enrichment").
-        val service = enricher.enrichmentServiceOverride
-          .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
         val label = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)
         val ref = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
-        // The page is read into venue_pages, stamped and announced there; this handler lands it on the row.
-        reader.read(enricher, ref) match {
+        // The page is read into venue_pages, stamped and announced there, and recorded on /uptime;
+        // this handler lands it on the row.
+        val outcome = reader.read(enricher, ref)
+        services.venuepages.DetailUptime.record(uptime, enricher, label, outcome)
+        outcome match {
           case DetailFetchOutcome.Failed =>
-            uptime.recordFailure(service, s"detail fetch returned nothing for $label")
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
-          case DetailFetchOutcome.Gone(code) =>
+          case DetailFetchOutcome.Gone(_) =>
             // The page is gone (404/410), not failing. Leaving it stale is a
             // livelock: with no stamp `DueWindow.isDue` is unconditionally true, so
             // DetailReaper re-enqueues this film every tick — once a minute, forever
@@ -167,7 +163,6 @@ class EnrichDetailsHandler(
             // row held `detailPending` on a detail that 404s from the start never
             // cleared, so it stayed out of the read model — invisible on the site —
             // permanently. `reapStuckPending` can now let it through.
-            uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
           case DetailFetchOutcome.Fetched(detail) =>
@@ -248,7 +243,6 @@ class EnrichDetailsHandler(
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
-            uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))
             Done

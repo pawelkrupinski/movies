@@ -10,6 +10,8 @@ sealed trait TaskType { def name: String }
 object TaskType {
   case object ScrapeCinema  extends TaskType { val name = "ScrapeCinema"  }
   case object EnrichDetails extends TaskType { val name = "EnrichDetails" }
+  // A venue detail page read into venue_pages for a listing no film row holds yet (a cut-over country).
+  case object ReadVenuePage extends TaskType { val name = "ReadVenuePage" }
   case object ResolveTmdb   extends TaskType { val name = "ResolveTmdb"   }
   case object ResolveImdbId extends TaskType { val name = "ResolveImdbId" }
   case object ImdbRating    extends TaskType { val name = "ImdbRating"    }
@@ -68,7 +70,7 @@ object TaskType {
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
 
   val all: Seq[TaskType] =
-    Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
+    Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
         RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold,
         ScrapeChunk, ScrapeChunkReduce,

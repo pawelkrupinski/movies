@@ -55,8 +55,15 @@ final class IdentityModelService(
   reading:    () => String = () => "",
   /** Run on the model's thread before each drain: what turns queued announcements into observed keys
    *  (`VenueDetailSlots.settle`), so the drain that follows takes them in. */
-  beforeDrain: () => Unit = () => ()
+  beforeDrain: () => Unit = () => (),
+  /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
+  pageWait:   PageWait = PageWait.Never,
+  clock:      java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging {
+
+  // New listings waiting for their venue page, by venue, with when each began to wait. Touched only on
+  // the model's thread (`drain`).
+  private val waiting = scala.collection.mutable.HashMap.empty[String, Map[services.movies.ListingKey, (Listing, java.time.Instant)]]
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
   private val observations = ConcurrentHashMap.newKeySet[String]()
@@ -112,10 +119,11 @@ final class IdentityModelService(
     beforeDrain()
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val keys    = observations.asScala.toSeq.filter(observations.remove)
-    Option.when(scraped.nonEmpty || keys.nonEmpty) {
+    val (admitted, released) = admit(engine, scraped)
+    Option.when(scraped.nonEmpty || keys.nonEmpty || released.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
-      val seen    = scraped.flatMap(_._2)
+      val seen    = admitted.flatMap(_._2) ++ released
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       engine.batch(seen, gone, reads.changedBy(keys))
       val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
@@ -123,6 +131,29 @@ final class IdentityModelService(
       metrics.batch(batch)
       batch
     }
+  }
+
+  /** Each scraped venue's listings the model takes in now — all but a NEW one whose venue page is unread
+   *  (`pageWait`), which waits, its page asked for once — and the waiting listings released this drain:
+   *  their page answered, or `pageWait.limit` passed. A waiting listing its venue no longer lists is
+   *  forgotten; one the model already holds never waits. */
+  private def admit(engine: IncrementalResolver, scraped: Seq[(String, Seq[Listing])]): (Seq[(String, Seq[Listing])], Seq[Listing]) = {
+    val now = clock.instant()
+    val admitted = scraped.map { case (venue, listings) =>
+      val before        = waiting.getOrElse(venue, Map.empty)
+      val (wait, take)  = listings.partition(l => !engine.heldAt(venue).contains(l.key) && pageWait.awaiting(l))
+      val stillWaiting  = wait.map(l => l.key -> (l, before.get(l.key).fold(now)(_._2))).toMap
+      wait.filterNot(l => before.contains(l.key)).foreach(pageWait.request)
+      if (stillWaiting.isEmpty) waiting.remove(venue) else waiting(venue) = stillWaiting
+      venue -> take
+    }
+    val deadline = now.minusMillis(pageWait.limit.toMillis)
+    val released = waiting.toSeq.flatMap { case (venue, held) =>
+      val (go, stay) = held.partition { case (_, (l, since)) => !pageWait.awaiting(l) || !since.isAfter(deadline) }
+      if (stay.isEmpty) waiting.remove(venue) else waiting(venue) = stay
+      go.values.map(_._1)
+    }
+    (admitted, released)
   }
 
   /** Take up the model the store kept, over the archive's listings; what queued meanwhile follows. */

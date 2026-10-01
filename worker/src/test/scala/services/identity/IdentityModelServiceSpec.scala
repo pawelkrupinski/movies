@@ -172,4 +172,82 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       service.takeUpSettled shouldBe true
     } finally scheduler.shutdownNow()
   }
+
+  // ── a new listing waits for its venue page (a cut-over country) ─────────────────────────────
+
+  /** Which listings' pages are unread, and the pages asked for: what a cut-over country's VenuePageWait
+   *  answers from venue_pages and the task queue. */
+  private final class Pages extends PageWait {
+    var unread    = Set.empty[ListingKey]
+    val requested = scala.collection.mutable.ArrayBuffer.empty[ListingKey]
+    def awaiting(listing: Listing): Boolean = unread(listing.key)
+    def request(listing: Listing): Unit = { requested += listing.key; () }
+    val limit: FiniteDuration = 1.hour
+  }
+  private final class Ticking extends java.time.Clock {
+    var now: java.time.Instant = java.time.Instant.parse("2026-10-01T10:00:00Z")
+    def getZone: java.time.ZoneId = java.time.ZoneOffset.UTC
+    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+    override def instant(): java.time.Instant = now
+  }
+  private def waiting(world: World, pages: Pages, clock: Ticking) = new IdentityModelService(
+    () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
+    world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
+    pageWait = pages, clock = clock)
+  private def held(service: IdentityModelService) = service.peek(10.seconds).get.resolution.decisions.flatMap(_.listings).toSet
+
+  "a new listing whose venue page is unread" should "wait for the page, asked for once, and be taken in once it is read" in {
+    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val service = waiting(world, pages, clock)
+    service.takeUp()
+    val lalka = movie(Multikino, "Lalka", Some(2025))
+    pages.unread = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
+    world.scrape(service, Multikino, Seq(lalka))
+    service.drain()
+    held(service) shouldBe empty
+    pages.requested.toSeq shouldBe pages.unread.toSeq
+    service.drain()
+    pages.requested.size shouldBe 1                                      // asked once, not every drain
+
+    pages.unread = Set.empty                                             // the page was read
+    service.drain()
+    held(service) shouldBe pages.requested.toSet
+  }
+
+  it should "be taken in after the limit even if its page is never read" in {
+    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val service = waiting(world, pages, clock)
+    service.takeUp()
+    val lalka = movie(Multikino, "Lalka", Some(2025))
+    pages.unread = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
+    world.scrape(service, Multikino, Seq(lalka))
+    service.drain()
+    held(service) shouldBe empty
+    clock.now = clock.now.plusSeconds(61 * 60)
+    service.drain()
+    held(service) shouldBe pages.unread
+  }
+
+  it should "never hold back a listing the model already holds, and be forgotten when its venue stops listing it" in {
+    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val service = waiting(world, pages, clock)
+    service.takeUp()
+    val lalka   = movie(Multikino, "Lalka", Some(2025))
+    val matilda = movie(Multikino, "Matilda")
+    world.scrape(service, Multikino, Seq(lalka))
+    service.drain()
+    val lalkaKey = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
+    held(service) shouldBe lalkaKey
+    // Its page is re-asked later (a refresh): the model keeps it, and holds back only the newcomer.
+    pages.unread = listingsOf(Map(Multikino -> Seq(lalka, matilda))).map(_.key).toSet
+    world.scrape(service, Multikino, Seq(lalka, matilda))
+    service.drain()
+    held(service) shouldBe lalkaKey
+    // Matilda leaves before its page is read: nothing of it is ever taken in.
+    world.scrape(service, Multikino, Seq(lalka))
+    service.drain()
+    pages.unread = Set.empty
+    service.drain()
+    held(service) shouldBe lalkaKey
+  }
 }

@@ -23,7 +23,9 @@ class CutoverTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   "Every other task type" should "keep its own handler" in {
-    val kept = Seq(TaskType.ScrapeCinema, TaskType.ResolveImdbId, TaskType.ImdbRating, TaskType.SettleNow).map(new Recording(_))
+    // ReadVenuePage is the cut-over model's own: it reads a new listing's venue page before the model takes it in.
+    val kept = Seq(TaskType.ScrapeCinema, TaskType.EnrichDetails, TaskType.ReadVenuePage, TaskType.ResolveImdbId, TaskType.ImdbRating,
+      TaskType.SettleNow).map(new Recording(_))
     CutoverTaskHandlers.of(kept) shouldBe kept
   }
 }

@@ -516,8 +516,11 @@ trait TestWiring extends WorkerWiring {
     Iterator.continually(taskQueue.claim(workerId, 5.minutes))
       .takeWhile(_.isDefined).flatten
       .foreach { task =>
+        // The page reads a cut-over model asked for its waiting listings run beside the film rows'.
         if (task.taskType == TaskType.EnrichDetails)
           try enrichDetailsHandler.handle(task) catch { case _: Exception => () }
+        else if (task.taskType == TaskType.ReadVenuePage)
+          try readVenuePageHandler.handle(task) catch { case _: Exception => () }
         taskQueue.complete(task.id, workerId)
       }
     // Every detail has merged + cleared `detailPending`; now re-trigger TMDB for
