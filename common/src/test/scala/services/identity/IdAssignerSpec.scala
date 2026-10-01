@@ -72,3 +72,20 @@ class IdAssignerSpec extends AnyFlatSpec with Matchers {
     }
   }
 }
+
+/** A projection assigns ids to every cluster of the country at once (US: ~2,250 clusters over
+ *  ~108,000 listings, 62 of them over 500 listings): keyed by the clusters themselves, each lookup
+ *  re-hashed a whole cluster, and the sort of the overlap pairs did that on every comparison —
+ *  seconds of every US projection. */
+class IdAssignerCostSpec extends AnyFlatSpec with Matchers {
+  "IdAssigner over a country's clusters" should "cost time in the listings, not in re-hashing the clusters" in {
+    def cluster(c: Int, size: Int) = (0 until size).map(i => ListingKey.Native("Kino", s"page-$c-$i", s"title $c"): ListingKey).toSet
+    // A steady day: the same films as before, 150 of them shown at 3,000 venues each — every
+    // listing of a film was counted against its cluster, each count hashing the whole cluster.
+    val clusters = (0 until 150).map(cluster(_, 3000)) ++ (150 until 2150).map(cluster(_, 20))
+    val started  = System.nanoTime()
+    val assigned = IdAssigner.assign(clusters.zipWithIndex.map { case (ls, i) => (i + 1).toLong -> ls }, clusters, clusters.size + 1L)
+    (System.nanoTime() - started) / 1e9 should be < 3.0
+    assigned.ids.map(_._1) shouldBe (1L to 2150L)
+  }
+}

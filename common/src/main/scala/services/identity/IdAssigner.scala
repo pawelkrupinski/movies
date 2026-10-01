@@ -38,25 +38,26 @@ object IdAssigner {
 
   private[identity] def assignWith(previous: Seq[(Long, Set[ListingKey])], next: Seq[Set[ListingKey]], nextFresh: Long,
                                    tieBreak: TieBreak): Assignment = {
-    val nexts    = next.filter(_.nonEmpty).distinct
-    val smallest = nexts.map(n => n -> n.min).toMap
-    val position = nexts.zipWithIndex.toMap
-    val owner    = nexts.iterator.flatMap(n => n.iterator.map(_ -> n)).toMap
+    // Each cluster by its position, never by the set itself: a set's hash walks every member, and
+    // keying maps by the clusters hashed each one again per lookup — most of a US projection's draft.
+    val nexts    = next.filter(_.nonEmpty).distinct.toVector
+    val smallest = nexts.map(_.min)
+    val owner    = nexts.iterator.zipWithIndex.flatMap { case (n, i) => n.iterator.map(_ -> i) }.toMap
     val pairs = previous.flatMap { case (id, members) =>
       members.toSeq.flatMap(owner.get).groupMapReduce(identity)(_ => 1)(_ + _).map { case (n, overlap) => (id, n, overlap) }
     }
     val ordered = tieBreak match {
       case TieBreak.Canonical  => pairs.sortBy { case (id, n, overlap) => (id, -overlap, smallest(n)) }
-      case TieBreak.InputOrder => pairs.sortBy { case (id, n, overlap) => (id, -overlap, position(n)) }
+      case TieBreak.InputOrder => pairs.sortBy { case (id, n, overlap) => (id, -overlap, n) }
     }
-    val takenIds   = scala.collection.mutable.Set.empty[Long]
-    val takenNexts = scala.collection.mutable.Map.empty[Set[ListingKey], Long]
+    val takenIds = scala.collection.mutable.Set.empty[Long]
+    val idOf     = Array.fill(nexts.size)(-1L)
     ordered.foreach { case (id, n, _) =>
-      if (!takenIds(id) && !takenNexts.contains(n)) { takenIds += id; takenNexts(n) = id }
+      if (!takenIds(id) && idOf(n) < 0) { takenIds += id; idOf(n) = id }
     }
     var counter = nextFresh
-    nexts.filterNot(takenNexts.contains).sortBy(smallest).foreach { n => takenNexts(n) = counter; counter += 1 }
-    Assignment(nexts.map(n => takenNexts(n) -> n).sortBy(_._1), counter)
+    nexts.indices.filter(idOf(_) < 0).sortBy(smallest).foreach { n => idOf(n) = counter; counter += 1 }
+    Assignment(nexts.indices.map(n => idOf(n) -> nexts(n)).sortBy(_._1), counter)
   }
 
   /** How many listings present in both assignments changed film id — the churn P2 bounds at 0. */
