@@ -1,8 +1,8 @@
 # Everything a convergence leg owes the NEXT one: the enrichment tree it just
 # recorded, tarred and pushed back to the rolling release it was restored from.
 #
-# Extracted for the same reason `convergence-setup` was — two jobs need it, and a
-# drifted copy is silent. It is the exact mirror of that action: setup restores the
+# Extracted for the same reason `convergence-setup` was — a drifted copy is silent.
+# It is the exact mirror of that action: setup restores the
 # tree, this publishes it, and a leg that does one without the other is a leg that
 # consumes a shared resource without replenishing it.
 #
@@ -16,7 +16,9 @@
 # HTTP at 1-8 seconds a call, and the leg could no longer finish inside any budget —
 # which kept the full leg from running, which kept the tree from being refreshed. Ten
 # consecutive red runs, and the one thing that would have broken the loop was the
-# gate writing down what it had already paid to fetch.
+# gate writing down what it had already paid to fetch. (Recording is now the recorder's
+# alone, and a recording runs its sample as the first step of the full leg's job, so this
+# one publish carries what both recorded — see country-convergence-leg.yml.)
 name: Publish a convergence leg's enrichment capture
 description: Tar the enrichment tree this leg recorded and replace the country's asset in the rolling release.
 
@@ -30,7 +32,7 @@ inputs:
   green:
     description: >-
       'true' when this is a FULL leg whose suite passed — it then records which corpus it
-      replayed as the country's last green one. The sample gate never passes it.
+      replayed as the country's last green one.
     required: false
     default: 'false'
   mode:
@@ -83,7 +85,7 @@ runs:
     # and never a history — the newest capture is the only one anyone reads, and
     # keeping the rest was pure storage.
     #
-    # Called under `always()` by both jobs, because a leg that failed or was cancelled
+    # Called under `always()`, because a leg that failed or was cancelled
     # has usually still enriched most of the corpus, and that capture is exactly what
     # stops the next run repeating the work. Today's two largest captures (301 MB and
     # 434 MB) both came from CANCELLED legs.
@@ -91,10 +93,6 @@ runs:
     # `create ... || true` because the country legs race to create the release on the
     # very first run and exactly one of them can win; the others find it already there,
     # which is the outcome they wanted anyway.
-    #
-    # A country's sample and its full leg are chained by `needs:`, never concurrent, so
-    # the two `--clobber`s of one asset are ordered: the sample publishes what it
-    # recorded, the full leg restores that and republishes the superset.
     #
     # MAIN ONLY. A branch dispatched to verify a fix still packs (so the log shows what
     # it recorded) but never overwrites the tree every main run restores with a capture
@@ -152,8 +150,8 @@ runs:
     # leaves the previous pin alone — a hermetic leg must never replay a half-recorded pair.
     #
     # A COPY under a name carrying the corpus run, never the working asset: the recorder
-    # keeps extending `enrichment-<code>.tar.gz` (the sample publishes it before the full leg
-    # has recorded anything), and a hermetic leg reading that mid-recording would replay a
+    # keeps extending `enrichment-<code>.tar.gz` (a leg that ran out of time publishes it
+    # half-recorded), and a hermetic leg reading that mid-recording would replay a
     # tree the other half of its pair was never recorded into. The pin is written LAST, so a
     # reader sees either the old pair or the new one, and the previous pair's tree is kept
     # so a leg (or a bisect) that read the old pin a moment ago can still download it.

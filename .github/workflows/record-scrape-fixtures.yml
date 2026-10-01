@@ -219,6 +219,13 @@ jobs:
     #
     # The United States runs without its split-out order-independence row: a recording
     # needs the boot, which is where every request is made; the replays re-ask nothing.
+    #
+    # Each country's sample runs as the FIRST STEP of its full leg's job here (the leg skips
+    # its separate sample job in `record` mode), so `job` is that one job's ceiling over both
+    # suite steps: the full leg's `suite` plus the sample's `sampleSuite` plus ten minutes for
+    # setup and the publish (HermeticConvergenceWiringSpec). The United States' sample gets 30
+    # rather than a verdict leg's 60 so the sum stays under GitHub's 360: whatever a cold
+    # sample leaves unfetched, the full leg behind it fetches over the same tree anyway.
     enrichment:
         name: enrichment (${{ matrix.country }})
         needs: [preflight, record]
@@ -230,11 +237,11 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 355, suite: 315, sampleSuite: 30, heap: 10g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -253,7 +260,6 @@ jobs:
             command:        ${{ matrix.cmd }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
             heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY for the live fills, and the GITHUB_TOKEN the setup reads.

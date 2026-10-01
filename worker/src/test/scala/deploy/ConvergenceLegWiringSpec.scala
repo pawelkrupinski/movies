@@ -95,8 +95,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val legDirectives: String =
     leg.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
 
-  /** Both jobs publish through the same composite action, so neither can drift from the
-   *  other on what "publish the tree" means. */
+  /** The one composite action that publishes the tree. */
   private val PublishAction = "uses: ./.github/actions/convergence-publish"
 
   /** And every job that RUNS a suite renders its findings through one, for the same
@@ -104,10 +103,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  second copy that fell behind would quietly stop rendering the phase timings that are
    *  the only way to read a leg while it is still running. */
   private val FindingsAction = "uses: ./.github/actions/convergence-findings"
-
-  /** The jobs that publish the tree. The full run's replay ROW is deliberately not one
-   *  of them — see the rule below that pins it. */
-  private val Jobs = Seq("sample", "convergence")
 
   /** The countries that run their order-independence replay as a row of its own rather
    *  than inside the full leg, as country → that row's sbt alias. */
@@ -300,17 +295,22 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "publish the tree it recorded from BOTH jobs, not just the full one" in {
-    // The gate REPLAYS a fixture tree it is not allowed to extend, and every recorded
-    // response in that tree expires after `EnrichmentFreshness.Ttl` (5 days). Only the
-    // full leg republished it, and the full leg is `needs: sample` — so a country whose
-    // sample failed for five days had its tree pruned to nothing, which made the sample
-    // slower still, which kept the full leg from ever running again. Germany sat in
-    // exactly that loop for ten runs from 2026-08-09: an asset that could only be
-    // refreshed by a job that could only run once the asset was fresh.
-    Jobs.foreach { job =>
-      withClue(s"$job: ") { RepoFile.block(leg, job) should include(PublishAction) }
-    }
+  it should "publish what a recording's sample recorded, not just what the full leg did" in {
+    // The gate REPLAYS a fixture tree, and every recorded response in that tree expires
+    // after `EnrichmentFreshness.Ttl` (5 days). Only the full leg republished it, and the
+    // full leg is `needs: sample` — so a country whose sample failed for five days had its
+    // tree pruned to nothing, which made the sample slower still, which kept the full leg
+    // from ever running again. Germany sat in exactly that loop for ten runs from
+    // 2026-08-09: an asset that could only be refreshed by a job that could only run once
+    // the asset was fresh.
+    //
+    // Recording is the recorder's alone now, and a recording runs its sample as the first
+    // step of the full leg's job — so that job's publish, under `always()`, is what carries
+    // the sample's recordings, red sample or green, and the sample JOB never records.
+    RepoFile.block(leg, "sample") should include("if: inputs.mode != 'record'")
+    val convergence = RepoFile.block(leg, "convergence")
+    convergence should include("- name: Run the ${{ inputs.country }} sample over the tree this leg records")
+    convergence should include(s"$PublishAction\n              if: always()")
   }
 
   it should "keep the capture when tar reports the tree changing under it" in {

@@ -226,8 +226,15 @@ jobs:
     # A separate JOB rather than a first step inside the full leg, so the full leg
     # never starts when the sample already knows the answer — the UK's is 73 minutes
     # and the one most likely to be cancelled on a budget.
+    #
+    # Except in a RECORDING, where the full leg runs whatever the sample says, so a gate has
+    # nothing to stop: there the sample is a first step of the full leg's job (see
+    # "Run … sample over the tree this leg records" below). As a job of its own it cost ~4
+    # minutes of every recording's critical path — a second checkout and setup, a pack and upload
+    # of the whole working tree, and the full leg's setup downloading that same upload again.
     sample:
         name: sample
+        if: inputs.mode != 'record'
         runs-on: ubuntu-latest
         # Thirty-two, against the full leg's 135 — and the twenty below is the number
         # that matters. Ten was measured on a WARM tree and quietly assumed the tree
@@ -245,8 +252,8 @@ jobs:
         # eight minutes and gates the 73-minute leg behind it exactly as before.
         timeout-minutes: ${{ inputs.sample-job-timeout-minutes }}
         permissions:
-            # `contents: write` since the gate publishes the tree it records — see the
-            # publish step below for why it has to.
+            # `contents: write` since an OVERLAY gate publishes what it records — see the
+            # overlay publish step below.
             contents: write
             checks: write
             actions: read
@@ -290,21 +297,6 @@ jobs:
                   KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
-
-            # The gate REPLAYS the tree and — until now — extended it only in the
-            # runner's filesystem, which is discarded with the runner. Every recorded
-            # response expires after `EnrichmentFreshness.Ttl`, so a tree only the full
-            # leg refreshes is a tree that goes empty five days after that leg last ran;
-            # and the full leg runs only behind this one. Publishing here is what stops
-            # a red sample from being self-perpetuating.
-            #
-            # RECORDING legs only: a hermetic leg fills nothing, so it has nothing to publish.
-            - uses: ./.github/actions/convergence-publish
-              if: always() && inputs.mode == 'record'
-              with:
-                  code:  ${{ inputs.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  mode:  ${{ inputs.mode }}
 
             # OVERLAY legs only: what the identity model needed and the pipeline's tree lacked,
             # fetched live and recorded, published beside the pair — never into it.
@@ -377,7 +369,9 @@ jobs:
         needs: sample
         # Behind a GREEN sample for a verdict. A RECORDING leg runs whatever the sample said:
         # its job is to refresh the whole corpus's tree, and a red sample is no reason to
-        # leave the fixtures every hermetic leg replays a night staler.
+        # leave the fixtures every hermetic leg replays a night staler. (In a recording the
+        # sample JOB is skipped and runs as this job's first step instead; `!cancelled()` is
+        # what lets a job start behind a skipped one.)
         if: ${{ !cancelled() && (needs.sample.result == 'success' || inputs.mode == 'record') }}
         strategy:
             fail-fast: false
@@ -415,6 +409,38 @@ jobs:
                   corpus-run:    ${{ inputs.corpus-run }}
                   hermetic-pair: ${{ needs.sample.outputs.pair }}
 
+            # A RECORDING leg's sample, first, over the tree this job then records the whole
+            # corpus into — the order the two jobs ran in, without the release in between: the
+            # sample records into the tree on disk, the full suite replays and extends it, and
+            # the one publish below carries both (and the identity lookups' marker keeps both
+            # legs' names, `IdentityLookupSweep.markRecorded`). Hermetic sample legs replay the
+            # pair this job pins, so the sample's requests have to be in it.
+            #
+            # `continue-on-error`, because a recording records the full corpus whatever the
+            # sample said; the leg still goes red on a red sample, after the publish ("Fail the
+            # leg on the sample's verdict"). Its own step ceiling, inside the job's — the
+            # recorder sizes the job over both (HermeticConvergenceWiringSpec).
+            - name: Run the ${{ inputs.country }} sample over the tree this leg records
+              id: sample
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              continue-on-error: true
+              shell: bash
+              timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
+              run: |
+                  set -o pipefail
+                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
+              env:
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
+                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
+                  KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
+                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
+
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
             # 62/75) when every collection went onto a real database: the UK replays alone
@@ -444,6 +470,8 @@ jobs:
               timeout-minutes: ${{ matrix.phase == 'convergence' && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
                   set -o pipefail
+                  # A recording's sample, above, wrote its JUnit XML here; the report below is this suite's.
+                  rm -rf target/test-reports/unit
                   sbt -J-Xmx${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
               env:
                   # The spec builds this country's TitleNormalizer itself; naming the
@@ -531,9 +559,8 @@ jobs:
               with:
                   title: ${{ matrix.phase }} (${{ inputs.country }})
 
-            # The capture this leg just spent an hour building, back to the release it
-            # was restored from. Shared with the sample gate above — the two must agree
-            # on what publishing means, and a drifted copy would be silent.
+            # The capture this leg just spent an hour building — a recording's sample's
+            # included, which ran first in this job — back to the release it was restored from.
             #
             # ONE writing row, and the phase test is what makes it one. Both rows finish
             # into the same `enrichment-<code>.tar.gz`, and `gh release upload --clobber`
@@ -588,6 +615,24 @@ jobs:
                   code:  ${{ inputs.code }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
                   token: ${{ secrets.GITHUB_TOKEN }}
+
+            # A recording's red sample, as the sample job's own ratchet read it.
+            - uses: ./.github/actions/hard-clusters-ratchet
+              if: always() && steps.sample.outcome == 'failure'
+              with:
+                  code:  ${{ inputs.code }}
+                  log:   convergence-sample.log
+                  name:  ${{ inputs.code }}-sample
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            # The sample step carries `continue-on-error` so the full corpus is recorded past it;
+            # this is where its red comes back, once both recordings are published.
+            - name: Fail the leg on the sample's verdict
+              if: always() && steps.sample.outcome == 'failure'
+              shell: bash
+              run: |
+                  echo "::error::the ${{ inputs.country }} sample failed — see its step above"
+                  exit 1
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
             - uses: ./.github/actions/leg-verdict

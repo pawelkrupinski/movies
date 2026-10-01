@@ -37,7 +37,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "never publish a tree — only a recording leg has anything to add" in {
-    RepoFile.block(leg, "sample") should include("if: always() && inputs.mode == 'record'")
+    // The sample JOB runs only hermetic or overlay legs; a recording's sample runs inside the
+    // full leg's job and is published by its one publish.
+    RepoFile.block(leg, "sample") should not include "uses: ./.github/actions/convergence-publish"
     RepoFile.step(publish, "Pack the enrichment fixtures this leg recorded") should include("inputs.mode == 'record'")
     RepoFile.step(publish, "Publish the tree to the rolling release") should include("inputs.mode == 'record'")
   }
@@ -79,6 +81,52 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     enrichment should include("corpus-run:     ${{ github.run_id }}")
     val codes = """code:\s*(\w+)""".r.findAllMatchIn(RepoFile.block(enrichment, "matrix")).map(_.group(1)).toSet
     codes shouldBe Country.all.map(_.code).toSet
+  }
+
+  // A recording's sample used to be a job of its own AHEAD of the full leg: its own checkout and
+  // setup (~70 s), its own pack and upload of the whole working tree (90 s for the US), and only
+  // then the full leg's setup restoring that same upload — ~4 minutes of every recording's
+  // critical path (run 36909637796) to hand a tree from one runner to the next. Run in the full
+  // leg's job, first, over the tree on disk, the full leg replays exactly what the sample recorded,
+  // as it did through the release, and one publish carries both.
+  private val SampleStep = "Run the ${{ inputs.country }} sample over the tree this leg records"
+
+  it should "run each country's sample in the full leg's job, ahead of its suite, not as a job ahead of it" in {
+    RepoFile.block(leg, "sample") should include("if: inputs.mode != 'record'")
+    val convergence = RepoFile.block(leg, "convergence")
+    val sample = RepoFile.step(convergence, SampleStep)
+    sample should include("if: inputs.mode == 'record' && matrix.phase == 'convergence'")
+    sample should include("sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log")
+    sample should include("timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}")
+    sample should include(s"${tools.ArchiveReplayWiring.HermeticVar}: $${{ inputs.mode == 'hermetic' }}")
+    sample should include("KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}")
+    sample should include("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}")
+    convergence.indexOf(SampleStep) should be < convergence.indexOf("- name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
+  }
+
+  // A recording runs its full leg whatever the sample said — but a red sample must still turn the
+  // leg red, AFTER the publish has kept what both recorded, and its findings still feed the ratchet.
+  it should "record the full corpus past a red sample, then report the sample red" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    RepoFile.step(convergence, SampleStep) should include("continue-on-error: true")
+    val verdict = RepoFile.step(convergence, "Fail the leg on the sample's verdict")
+    verdict should include("if: always() && steps.sample.outcome == 'failure'")
+    convergence.indexOf("uses: ./.github/actions/convergence-publish") should be < convergence.indexOf("- name: Fail the leg on the sample's verdict")
+    convergence should include("log:   convergence-sample.log")
+    withClue("the full suite's report must name only the full suite's tests: ") {
+      RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("rm -rf target/test-reports/unit")
+    }
+  }
+
+  // The full job now holds the sample's budget too, so its ceiling must clear both step ceilings —
+  // a cancelled job runs its publish only inside a short grace window — and GitHub's 360.
+  it should "give each recording job a ceiling over its sample and its suite together" in {
+    RepoFile.matrixRows(RepoFile.block(recorder, "enrichment")).foreach { row =>
+      withClue(s"${row("country")}: ") {
+        row("job").toInt - row("suite").toInt - row("sampleSuite").toInt should be >= 10
+        row("job").toInt should be <= 360
+      }
+    }
   }
 
   // Hours of paid-for live fills: a manual re-record must queue behind a nightly one.
