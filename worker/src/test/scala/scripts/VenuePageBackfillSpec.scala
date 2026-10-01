@@ -54,4 +54,17 @@ class VenuePageBackfillSpec extends AnyFlatSpec with Matchers {
     p.writes shouldBe empty
     p.readWithoutSlot shouldBe Seq(muranow)
   }
+
+  // Pages read before pages had stamps of their own carry only the FILM's marker. The group's page-stamped
+  // pages say which venues it reads; the film's slot at one of those venues names the page.
+  "a per-film read marker" should "name the film's page at the group's venue, learned from the group's stamped pages" in {
+    val stamped = Seq(Stamp(muranow, gone = false))                                  // Muranów's group reads Kino Muranów
+    val older   = Slot("lalka|2026", "Kino Muranów␟lalka", SourceData(director = Seq("Maciej Kawalski"), filmUrl = Some("https://kinomuranow.pl/film/lalka")))
+    val elsewhere = Slot("lalka|2026", "Kino Iluzjon␟lalka", SourceData(filmUrl = Some("https://iluzjon.fn.org.pl/lalka")))
+    val (marked, unplaced) = VenuePageBackfill.markerStamps(
+      Seq(VenuePageBackfill.FilmMarker("muranow", "lalka|2026"), VenuePageBackfill.FilmMarker("never-stamped", "lalka|2026")),
+      stamped, Seq(Slot("dune|2021", "Kino Muranów␟dune", read), older, elsewhere))
+    marked shouldBe Seq(Stamp(VenuePageKey("muranow", "https://kinomuranow.pl/film/lalka"), gone = false))
+    unplaced shouldBe 1                                                                // its venues are unknown: never guessed
+  }
 }

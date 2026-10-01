@@ -31,6 +31,29 @@ object VenuePageBackfill {
   final case class Slot(filmId: String, slotKey: String, data: SourceData)
 
   final case class Plan(writes: Seq[VenuePage], alreadyStored: Int, readWithoutSlot: Seq[VenuePageKey], chainAmbiguous: Seq[VenuePageKey])
+  /** A read stamped on the FILM, before pages had stamps of their own: `detail|<group>|<film>|read`. */
+  final case class FilmMarker(detailGroup: String, filmId: String)
+
+  /** The pages per-film markers name, as page stamps: the film's venue slots at the group's cinemas —
+   *  learned from the group's page-stamped pages, the only place a group says which venues it reads.
+   *  A marker whose group stamped no page, so whose venues are unknown, names nothing: never a guess.
+   *  Answers the stamps and how many markers could not be placed. */
+  def markerStamps(markers: Seq[FilmMarker], stamps: Seq[Stamp], slots: Seq[Slot]): (Seq[Stamp], Int) = {
+    def cinemaOf(slot: Slot) = slot.slotKey.takeWhile(_ != SlotSep)
+    val venueSlots = slots.filter(_.slotKey.contains(SlotSep))
+    val byPage     = venueSlots.flatMap(sl => services.cinemas.common.DetailEnricher.nativeRefOf(sl.data).map(_ -> sl)).groupMap(_._1)(_._2)
+    val cinemasOf  = stamps.groupMap(_.key.detailGroup)(st => byPage.getOrElse(st.key.page, Nil).map(cinemaOf)).view
+      .mapValues(_.flatten.toSet).toMap
+    val byFilm     = venueSlots.groupBy(_.filmId)
+    val placed = markers.distinct.map { m =>
+      val venues = cinemasOf.getOrElse(m.detailGroup, Set.empty)
+      byFilm.getOrElse(m.filmId, Nil).filter(sl => venues(cinemaOf(sl)))
+        .flatMap(sl => services.cinemas.common.DetailEnricher.nativeRefOf(sl.data))
+        .distinct.map(page => Stamp(VenuePageKey(m.detailGroup, page), gone = false))
+    }
+    (placed.flatten.distinctBy(_.key.id), placed.count(_.isEmpty))
+  }
+
 
   private val SlotSep = '␟'
 
@@ -101,12 +124,14 @@ object VenuePageBackfill {
   private def seed(country: Country, apply: Boolean): Unit = {
     val (connection, database) = ListingKeyBackfill.openCountry(country)
     val started = System.nanoTime()
-    val stamps  = stampsOf(database)
     val slots   = slotsOf(database)
+    val paged   = stampsOf(database)
+    val (marked, unplaced) = markerStamps(markersOf(database, services.movies.TitleNormalizer.forCountry(country)), paged, slots)
+    val stamps  = paged ++ marked.filterNot(m => paged.exists(_.key.id == m.key.id))
     val stored  = ListingKeyBackfill.ids(database, MongoVenuePageStore.Collection).toSet
     val p       = plan(stamps, slots, stored, Instant.now())
     val reads   = p.writes.count(_.outcome.isInstanceOf[VenuePage.Read])
-    println(f"${country.displayName}%-15s ${stamps.size} page stamps, ${slots.size} slots · ${p.alreadyStored} already in venue_pages · " +
+    println(f"${country.displayName}%-15s ${paged.size} page stamps + ${marked.size} pages from per-film markers ($unplaced markers unplaced), ${slots.size} slots · ${p.alreadyStored} already in venue_pages · " +
       s"to write ${p.writes.size} ($reads read, ${p.writes.size - reads} gone) · ${p.readWithoutSlot.size} read with no slot left · " +
       s"${p.chainAmbiguous.size} chain pages ambiguous")
     p.readWithoutSlot.take(5).foreach(k => println(s"    no slot names: ${k.id}"))
@@ -120,6 +145,17 @@ object VenuePageBackfill {
     println(f"    in ${(System.nanoTime() - started) / 1e9}%.1fs")
     connection.close()
   }
+
+  private val FilmReadMarker = """^detail\|([^|]+)\|(.+)\|read$""".r
+
+  /** The marker names the film by its display title and year (`Marsupilami|2026`); a film's id is that
+   *  title sanitized by the country's rules (`marsupilami|2026`). */
+  private def markersOf(database: MongoDatabase, normalizer: services.movies.TitleNormalizer): Seq[FilmMarker] =
+    ListingKeyBackfill.scan(database.getCollection[Document]("freshness"), Projections.include("_id"))(d => ListingKeyBackfill.text(d, "_id"))
+      .collect { case FilmReadMarker(group, film) =>
+        val (title, year) = (film.take(film.lastIndexOf('|')), film.drop(film.lastIndexOf('|') + 1))
+        FilmMarker(group, s"${normalizer.sanitize(title)}|$year")
+      }
 
   private val PageStamp = """^detail-page\|([^|]+)\|(.+)\|(read|gone)$""".r
 
