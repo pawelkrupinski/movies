@@ -21,17 +21,33 @@ import scala.util.{Failure, Success, Try}
  * failure (no volume, disk full, a non-HotSpot JVM with no MXBean) is logged and
  * swallowed so it never blocks the restart that actually recovers the worker.
  *
+ * The worker's `POST /heapdump` uses it too, for a heap that is merely suspicious. The
+ * [[HeapDumper.Reason]] names the file, and that name is all the node's heap-dump timer
+ * sees: its report (infra/nix/files/heap-dumps.sh) keeps `requested-*` out of the
+ * newest-death time HeapDumpWritten alerts on, so looking at a heap never pages as a
+ * worker dying.
+ *
  * `dumpHeap` won't overwrite an existing file, so the filename carries a
- * caller-supplied millis stamp; `directory` is created if absent (the Fly volume mount).
+ * caller-supplied millis stamp; `directory` is created if absent.
  */
 object HeapDumper extends Logging {
 
-  /** Write a live-objects HPROF dump to `directory/wedge-<millis>.hprof`. Returns the
+  /** Why a dump is taken. The prefix is a contract with heap-dumps.sh's `report`. */
+  sealed abstract class Reason(val filePrefix: String, val description: String)
+  /** The liveness watchdog caught a wedged JVM and is about to exit: a death. */
+  case object Wedged    extends Reason("wedge", "wedged-heap")
+  /** Somebody asked (`POST /heapdump`): the JVM goes on running. */
+  case object Requested extends Reason("requested", "requested")
+
+  private[tools] def fileName(reason: Reason, millis: Long): String = s"${reason.filePrefix}-$millis.hprof"
+
+  /** Write a live-objects HPROF dump to `directory/<reason>-<millis>.hprof`. Returns the
    *  path on success, None on any failure. */
-  def dump(directory: settings.HeapDumpDirectory, now: () => Long = () => System.currentTimeMillis()): Option[String] =
+  def dump(directory: settings.HeapDumpDirectory, reason: Reason,
+           now: () => Long = () => System.currentTimeMillis()): Option[String] =
     Try {
       Files.createDirectories(directory.value)
-      val path = directory.value.resolve(s"wedge-${now()}.hprof").toString
+      val path = directory.value.resolve(fileName(reason, now())).toString
       val bean = ManagementFactory.newPlatformMXBeanProxy(
         ManagementFactory.getPlatformMBeanServer,
         "com.sun.management:type=HotSpotDiagnostic",
@@ -41,7 +57,7 @@ object HeapDumper extends Logging {
       path
     } match {
       case Success(path) =>
-        logger.error(s"HeapDumper: wrote wedged-heap dump to $path")
+        logger.error(s"HeapDumper: wrote ${reason.description} dump to $path")
         Some(path)
       case Failure(e) =>
         logger.error(s"HeapDumper: heap dump to ${directory.value} failed (${e.getClass.getSimpleName}: ${e.getMessage}) — continuing to restart without it.")

@@ -151,6 +151,21 @@ check "an empty directory reports zero, not nothing" "kinowo_heapdumps_files{dir
 check "the budget is published beside what it bounds" "kinowo_heapdumps_budget_bytes 12345" "$(grep '^kinowo_heapdumps_budget_bytes' <<< "$out")"
 check "a missing root still yields a parseable file with the budget" "1" \
   "$(run report "$tmp/nope" | grep -c '^kinowo_heapdumps_budget_bytes')"
+# A dump someone ASKED for (POST /heapdump, named requested-*) is evidence, not a death: it counts
+# toward the budget like any other but does not move the newest-death time HeapDumpWritten reads.
+# On 2026-09-29 two such dumps, taken while measuring the heap, paged as worker deaths.
+r="$tmp/rep-requested"
+dump "$r/worker-uk/worker-uk_pod_20260101T000000Z.hprof.gz" 100 202601010000
+dump "$r/worker-uk/requested-1790687125837.hprof.gz" 100 202601020000
+dump "$r/worker-us/requested-1790703766304.hprof" 100 202601020000
+out="$(run report "$r")"
+check "a requested dump still counts toward what is kept" "kinowo_heapdumps_files{dir=\"worker-uk\"} 2" \
+  "$(grep '^kinowo_heapdumps_files{dir="worker-uk"}' <<< "$out")"
+check "but the newest-dump time stays the newest death's" \
+  "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-uk\"} $(mtime "$r/worker-uk/worker-uk_pod_20260101T000000Z.hprof.gz")" \
+  "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-uk"}' <<< "$out")"
+check "a directory holding only requested dumps reports no death" "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-us\"} 0" \
+  "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-us"}' <<< "$out")"
 
 echo "dump-file"
 check "names pod, country and start time for the web (KINOWO_COUNTRY)" "1" \

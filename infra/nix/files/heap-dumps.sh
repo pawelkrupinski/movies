@@ -208,7 +208,11 @@ case "$cmd" in
     echo "# TYPE kinowo_heapdumps_files gauge"
     echo "# HELP kinowo_heapdumps_bytes Bytes of heap dumps kept on the node, per app-country directory."
     echo "# TYPE kinowo_heapdumps_bytes gauge"
-    echo "# HELP kinowo_heapdumps_newest_timestamp_seconds Write time of the newest heap dump per directory (0 = none)."
+    # THE NEWEST DEATH, NOT THE NEWEST FILE: a dump somebody asked for (the worker's POST /heapdump
+    # writes requested-<millis>.hprof) is kept and counted like any other, but it is not a JVM dying,
+    # and HeapDumpWritten reads this gauge. Two such dumps, taken while measuring the heap on
+    # 2026-09-29, paged as worker deaths.
+    echo "# HELP kinowo_heapdumps_newest_timestamp_seconds Write time of the newest heap dump a JVM wrote as it died (OOM or wedged watchdog) per directory; requested dumps are excluded (0 = none)."
     echo "# TYPE kinowo_heapdumps_newest_timestamp_seconds gauge"
     if [ -d "$root" ]; then
       for d in "$root"/*/; do
@@ -219,6 +223,7 @@ case "$cmd" in
         if [ -n "$listing" ]; then
           while read -r m s p; do
             files=$((files + 1)); bytes=$((bytes + s))
+            case "${p##*/}" in requested-*) continue ;; esac
             if [ "$m" -gt "$newest" ]; then newest=$m; fi
           done <<< "$listing"
         fi

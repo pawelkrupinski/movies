@@ -90,7 +90,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   lazy val livenessWatchdog = new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
     stalenessThreshold = livenessStaleAfter,
-    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory); sys.exit(70) })
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged); sys.exit(70) })
 }
 
 object TaskQueueWiring {

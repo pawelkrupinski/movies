@@ -16,7 +16,7 @@ import java.net.{HttpURLConnection, InetSocketAddress, URI}
  */
 class HeapDumpEndpointSpec extends AnyFlatSpec with Matchers {
 
-  private def withEndpoint(dump: settings.HeapDumpDirectory => Option[String])(body: String => Unit): Unit = {
+  private def withEndpoint(dump: (settings.HeapDumpDirectory, tools.HeapDumper.Reason) => Option[String])(body: String => Unit): Unit = {
     val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
     WorkerMain.addHeapDumpEndpoint(server, settings.HeapDumpDirectory(java.nio.file.Path.of("/tmp/does-not-matter")), dump)
     server.start()
@@ -36,19 +36,28 @@ class HeapDumpEndpointSpec extends AnyFlatSpec with Matchers {
 
   "POST /heapdump" should "take a dump and report where it landed" in {
     var askedFor: Option[String] = None
-    withEndpoint({ directory => askedFor = Some(directory.value.toString); Some(s"${directory.value}/wedge-1.hprof") }) { url =>
+    withEndpoint({ (directory, _) => askedFor = Some(directory.value.toString); Some(s"${directory.value}/requested-1.hprof") }) { url =>
       val (status, body) = call(url, "POST")
       status shouldBe 200
-      body   should include ("wedge-1.hprof")
+      body   should include ("requested-1.hprof")
     }
     askedFor shouldBe Some("/tmp/does-not-matter")
+  }
+
+  // The reason names the file, and the node's heap-dump report leaves requested-* out of the
+  // newest-death time HeapDumpWritten reads. Two dumps taken this way on 2026-09-29, while the
+  // heap was being measured, were written as wedge-* and paged as worker deaths.
+  it should "ask for a requested dump, not a wedged one" in {
+    var reason: Option[tools.HeapDumper.Reason] = None
+    withEndpoint({ (_, why) => reason = Some(why); Some("/x.hprof") }) { url => call(url, "POST") }
+    reason shouldBe Some(tools.HeapDumper.Requested)
   }
 
   // A dump stops the world for a full GC and writes hundreds of MB. A health-checker,
   // a crawler or a link-prefetch must not be able to trigger that by accident.
   it should "refuse a GET rather than dumping" in {
     var dumped = false
-    withEndpoint({ _ => dumped = true; Some("/x.hprof") }) { url =>
+    withEndpoint({ (_, _) => dumped = true; Some("/x.hprof") }) { url =>
       val (status, _) = call(url, "GET")
       status shouldBe 405
     }
@@ -56,7 +65,7 @@ class HeapDumpEndpointSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "report a failed dump as a server error, not a success" in {
-    withEndpoint(_ => None) { url =>
+    withEndpoint((_, _) => None) { url =>
       val (status, body) = call(url, "POST")
       status shouldBe 500
       body   should include ("failed")

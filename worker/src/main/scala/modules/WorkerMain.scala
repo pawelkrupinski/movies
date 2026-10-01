@@ -234,11 +234,11 @@ object WorkerMain extends Logging {
    *  health-checker or a link-prefetch. `dump` is injected so the endpoint is testable
    *  without dumping the test JVM's own heap. */
   private[modules] def addHeapDumpEndpoint(server: HttpServer, dir: HeapDumpDirectory,
-                                           dump: HeapDumpDirectory => Option[String] = tools.HeapDumper.dump(_)): Unit = {
+                                           dump: (HeapDumpDirectory, tools.HeapDumper.Reason) => Option[String] = tools.HeapDumper.dump(_, _)): Unit = {
     server.createContext("/heapdump", exchange => {
       val (status, text) =
         if (exchange.getRequestMethod != "POST") (405, "POST to take a heap dump (it stops the world)")
-        else dump(dir).fold((500, "heap dump failed — see the worker log"))(p => (200, s"wrote $p"))
+        else dump(dir, tools.HeapDumper.Requested).fold((500, "heap dump failed — see the worker log"))(p => (200, s"wrote $p"))
       val body = text.getBytes("UTF-8")
       exchange.sendResponseHeaders(status, body.length.toLong)
       val os = exchange.getResponseBody

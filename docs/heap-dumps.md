@@ -12,7 +12,7 @@ being replaced.
 | Host path | `/var/lib/kinowo/heapdumps/<app>-<country>/`, e.g. `web-pl/`, `worker-us/` |
 | In the pod | `/data/heapdumps` (a hostPath, mounted through a per-app-country `subPathExpr`) |
 | File name | `<app>-<country>_<pod>_<JVM start, UTC>.hprof`, e.g. `web-pl_web-pl-7c9f8d-x2k4_20260923T190112Z.hprof` |
-| Also | `wedge-<millis>.hprof` from the worker's liveness watchdog; `oom-<stamp>-pid1.hprof` is a renamed legacy `java_pid1.hprof` |
+| Also | `wedge-<millis>.hprof` from the worker's liveness watchdog; `requested-<millis>.hprof` from the worker's `POST /heapdump` (kept and counted, but never moves `kinowo_heapdumps_newest_timestamp_seconds`, so it does not fire `HeapDumpWritten`); `oom-<stamp>-pid1.hprof` is a renamed legacy `java_pid1.hprof` |
 
 The timestamp is when that JVM **started**, not when it died. The file's mtime is when it died.
 After about 10 minutes the node timer gzips a dump in place (`.hprof.gz`, keeping the mtime).
@@ -73,7 +73,7 @@ Prometheus (node_exporter textfile, from the timer):
 ```
 kinowo_heapdumps_files{dir="web-pl"}                  # dumps kept
 kinowo_heapdumps_bytes{dir="web-pl"}                  # bytes kept
-kinowo_heapdumps_newest_timestamp_seconds{dir=...}    # changes when a new dump lands
+kinowo_heapdumps_newest_timestamp_seconds{dir=...}    # changes when a JVM dies with a dump (not requested-*)
 kinowo_heapdumps_budget_bytes                         # the total cap
 kinowo_heapdumps_prune_last_success_timestamp_seconds # the timer is alive
 ```
