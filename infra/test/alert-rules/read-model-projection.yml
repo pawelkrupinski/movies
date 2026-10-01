@@ -401,7 +401,7 @@ tests:
               description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country's corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"pl\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert stands down only when the difference BEGAN within 15 minutes of a worker/web restart and that counter is zero -- the boot re-sync race -- and then for at most two hours, so if it fired, the difference started on a pair that had already settled, outlived any re-sync, or the counter is genuinely nonzero: treat it as real.)"
 
   # AGREEMENT IS SILENCE, and a difference SHORTER than the census skew never speaks: the worker
-  # census is recomputed every 5 minutes while the web is live, so the pair is legitimately out
+  # census is recomputed every 15 minutes while the web is live, so the pair is legitimately out
   # of step between refreshes. Ten minutes of disagreement inside a `for: 20m` window is exactly
   # that, and a rule that fired on it would page every scrape tick.
   - interval: 1m
@@ -412,6 +412,44 @@ tests:
         values: '190x30 187x10 190x80'
     alert_rule_test:
       - eval_time: 45m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+
+  # A RELAY OF SHORT CITY DIFFERENCES IS NOT ONE LONG ONE. 2026-09-30 13:55Z .. 10-01 07:10Z the US
+  # paged 14 times on this shape: after each 15-minute census pass a different handful of its 468
+  # cities read 4-6 minutes out of step, so the COUNTRY's difference never touched zero while no
+  # single city's lasted 20 minutes -- over 09-29..10-01 only us/chicago (22h, real) and pl/wroclaw
+  # (once) did. Replayed: four cities in turn, each 8 minutes out of step, overlapping by a minute,
+  # for an hour, on a settled pair with the prune counter moving (prunes are routine). Silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="us",city="austin",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '50x120'
+      - series: 'kinowo_web_movies_served{country="us",city="austin",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '50x29 49x7 50x20 49x7 50x56'
+      - series: 'kinowo_worker_movies_served{country="us",city="boston",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '60x120'
+      - series: 'kinowo_web_movies_served{country="us",city="boston",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '60x36 61x7 60x21 61x7 60x48'
+      - series: 'kinowo_worker_movies_served{country="us",city="denver",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '70x120'
+      - series: 'kinowo_web_movies_served{country="us",city="denver",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '70x43 69x7 70x21 69x7 70x41'
+      - series: 'kinowo_worker_movies_served{country="us",city="fresno",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '80x120'
+      - series: 'kinowo_web_movies_served{country="us",city="fresno",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '80x50 79x7 80x21 79x7 80x34'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '-86400x120'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-web-us",job="kinowo-web"}'
+        values: '-86400x120'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="us",reason="row-gone"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+      - eval_time: 85m
         alertname: ReadModelServingDiffersFromCorpus
         exp_alerts: []
 

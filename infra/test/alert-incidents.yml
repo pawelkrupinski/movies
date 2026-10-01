@@ -147,3 +147,29 @@ incidents:
     end: 2026-09-24T21:25:00Z
     grace: 0m
     expect_firing: [ReadModelContentMismatch]
+
+  - id: readmodel-heals-debounce-held-2026-09-30
+    description: >-
+      From the debounce deploy (2b94ad700, every country, ~21:13Z; narrowed to US/UK/DE by
+      ab90cf8e4) a film's side-collection re-read could be held up to 2 minutes, and the prune
+      sweep's heal verdict neither saw a held re-read nor waited that long, so a sweep healing a
+      film whose burst was held counted a stream miss. The same wide releases healed sweep after
+      sweep (clayface|2026 x4, whalefall|2026 x3) with no card retirement behind any; PL and ES
+      healed nothing once undebounced. Fixed by 94694426e; the window ends before it can deploy.
+    source: worker WARN "projected N ready row(s) missing a card or a venue before the prune" 2026-09-30 21:22Z .. 10-01 15:12Z (us/uk/de only after 23:36Z); ALERTS{alertname="ReadModelHealsRecurring"} firing us/uk/de
+    start: 2026-09-30T21:13:00Z
+    end: 2026-10-01T15:30:00Z
+    expect_firing: [ReadModelHealsRecurring]
+
+  - id: readmodel-chicago-served-ahead-2026-09-30
+    description: >-
+      us/chicago's site served one film-in-a-city more than the corpus counted for 22 hours (worker
+      minus web = -1 from ~09:20Z, back to 0 by ~07:45Z on 10-01), the only US city difference over
+      09-29 .. 10-01 to last 20 minutes. ReadModelServingDiffersFromCorpus must fire on it; the rest
+      of that window's US pages were a relay of 4-6 minute census-skew differences in other cities,
+      which the rule no longer counts.
+    source: max(last_over_time(kinowo_worker_movies_served{scope="all",country="us",city="chicago"}[10m])) - max(kinowo_web_movies_served{scope="all",country="us",city="chicago"}) == -1 09-30 ~09:20Z .. 10-01 ~07:45Z
+    start: 2026-09-30T09:20:00Z
+    end: 2026-10-01T07:45:00Z
+    grace: 30m
+    expect_firing: [ReadModelServingDiffersFromCorpus]

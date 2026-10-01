@@ -365,10 +365,10 @@ groups:
       # a worker whose census could not be read would show every served film as a difference and
       # page for a monitoring gap. So this rule refuses to speak unless BOTH sides are reporting.
       #
-      # WHAT `for:` MEANS HERE IS "NEVER REACHED ZERO", not "was large on average". The rule is
-      # evaluated every 15s (the group's pinned interval) and a single evaluation that finds the
-      # two sides equal resets the pending state, so this fires only when the difference failed
-      # to touch zero even once across the whole window. That is the standing expectation stated
+      # THE HOLD MEANS "NEVER REACHED ZERO", not "was large on average" -- per CITY, read off the
+      # city's latched onset (see the alert). The rule is evaluated every 15s (the group's pinned
+      # interval) and the onset re-latches once a city's two sides agree for 90s, so this fires
+      # only when one city's difference failed to return to zero across the whole window. That is the standing expectation stated
       # as a rule: a converged read model returns to zero between every census refresh, and a
       # system that oscillates 0 -> 5 -> 0 is converging and stays silent, while a floor that
       # never reaches zero -- however small -- is what pages.
@@ -378,7 +378,7 @@ groups:
       # (`WorkerCorpusScan.DefaultSampleInterval`, 5 until 2026-09-30) while the web side is live
       # off its change streams, so the pair is legitimately out of step for up to one scan plus the
       # pass itself (under a minute) -- and a film whose last showtime passes between the two
-      # evaluations flips on one side first. `for: 20m` is past that and still less than half the
+      # evaluations flips on one side first. 20 minutes (per city -- see below) is past that and still less than half the
       # 45 minutes the page below waits. WARNING, not critical: a handful of cards is a defect worth a
       # working day, not a night. The page below is what fires when the site is visibly short.
       #
@@ -476,23 +476,39 @@ groups:
           )
           and on (country, city) country_city:readmodel_serving_differs:film_cities
 
+      # THE 20 MINUTES ARE ONE CITY'S, NOT THE COUNTRY'S (2026-10-01). Held as a country-level
+      # `for:`, "never reached zero" was asked of the SUM over every city -- and with the census
+      # every 15 minutes, each pass leaves a different handful of cities 4-6 minutes out of step
+      # (468 in the US). The country never touched zero while no city stayed apart for long: the
+      # US paged 14 times 09-30 13:55Z .. 10-01 07:10Z, DE 3 and PL 2 on 10-01, and over
+      # 09-29 .. 10-01 only two (country, city) differences ever lasted 20 minutes -- us/chicago
+      # (one card the site served and the corpus did not, 22 hours, real) and pl/wroclaw once.
+      # So a city counts once ITS OWN difference is 20 minutes old (its latched onset), and `for:`
+      # only rides out a single evaluation. That is the same statement -- a difference that does
+      # not return to zero -- asked of each city, where it means something.
       - alert: ReadModelServingDiffersFromCorpus
         expr: >-
           country:readmodel_serving_differs:film_cities
           and on (country) (
-            # Some city's difference is not excused: it began on a pair up 15+ minutes, or
-            # (the carve-out's CAP: 1h40m plus the 20m `for:`) it has been open two hours.
+            # Some city has differed for 20 minutes on its own, and is not excused: it began on
+            # a pair up 15+ minutes, or (the carve-out's CAP) it has been open two hours.
             count by (country) (
-              (country_city:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
-              or on (country, city)
-              (time() - country_city:readmodel_serving_differs:onset_timestamp_seconds >= 6000)
+              (time() - country_city:readmodel_serving_differs:onset_timestamp_seconds >= 1200)
+              and on (country, city)
+              (
+                (country_city:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
+                or on (country, city)
+                (time() - country_city:readmodel_serving_differs:onset_timestamp_seconds >= 7200)
+              )
             )
             or
             (
+              count by (country) (time() - country_city:readmodel_serving_differs:onset_timestamp_seconds >= 1200)
+              and on (country)
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[20m])) > 0
             )
           )
-        for: 20m
+        for: 1m
         labels:
           severity: warning
         annotations:
