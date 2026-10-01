@@ -70,4 +70,12 @@ class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
     action should include("restore-keys: |\n          sbt-deps-${{ runner.os }}-")
     action should not include "cache: ${{ inputs.cache }}"
   }
+
+  /** hashFiles walks every file a `**` reaches, and a convergence leg's workspace is a ~127,000-file
+   *  fixture tree: a workspace-wide glob in this key cost ~39 s twice a leg (restore and post step). */
+  it should "key the sbt dependency cache on the build's own files, not a workspace-wide glob" in {
+    val key = RepoFile.read(sharedAction).linesIterator.map(_.trim).filter(_.startsWith("key: sbt-deps-")).toSeq
+    key should have size 1
+    key.head should not include "'**/"
+  }
 }

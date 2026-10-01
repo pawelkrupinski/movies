@@ -42,7 +42,10 @@ runs:
           ~/.sbt
           ~/.cache/coursier
           !~/.sbt/*.lock
-        key: sbt-deps-${{ runner.os }}-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
+        # The build's own files by NAME, never `**/*.sbt`: hashFiles walks every file a `**` can reach,
+        # and a convergence leg's workspace holds a ~127,000-file restored fixture tree — the walk cost
+        # ~39 s at restore and again in the post step, on every leg.
+        key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
         restore-keys: |
           sbt-deps-${{ runner.os }}-
     - name: Set up JDK (attempt 1)
