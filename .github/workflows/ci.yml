@@ -17,29 +17,33 @@ on:
 
 # Pipeline shape:
 #
-#   test (unit + eslint + stage) ─┐
-#   integration-test ─────────────┤
-#   e2e × 3 shards ───────────────┤  (all independent; every shipping job in
-#   mobile-local-server (iOS+And) ┤   main.yml `needs` this whole workflow)
-#   page-tests × 13 ──────────────┘
+#   test (unit) ────────────────────┐
+#   integration-test ───────────────┤
+#   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
+#   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
+#   page-tests × 9 ─────────────────┘
 #
-# RUNNER BUDGET — 19 here, and it must stay there. GitHub Free allows 20
-# concurrent jobs ACROSS THE ACCOUNT, and on a push to main `main.yml` adds a
-# 20th (`build-image`, which runs alongside these rather than after them; its
-# other jobs all `needs: ci`, so they take slots these have given back). Every
-# job over that budget queues, and a queued job is pure added wall-clock: it
-# starts when something else finishes. So a new job here has to take its slot
-# from an existing one — that is why ReScrapeIdempotencySpec gave up its e2e
-# shard to a seventh WebKit page-test row, and why two cheap page-test slices
-# share a runner rather than each having one. (CiRunnerBudgetSpec)
+# RUNNER BUDGET — 15 here, and no more. GitHub Free allows 20 concurrent jobs
+# ACROSS THE ACCOUNT. On a push to main, `main.yml` adds one more at t=0 (its
+# `preflight`; everything else there `needs: ci` and takes slots these have given
+# back), and the other FOUR are headroom, deliberately: Main is never alone on the
+# account. Country convergence (which Main itself kicks off), dispatched identity
+# runs, and the mobile workflows hold runners for 20-40 min, and with ci filling 19
+# slots every one of their jobs pushed one of these rows into a queue — measured
+# over 12 Main runs to 2026-10-01, ci rows started a median 1.2-2.0 min late, and
+# a queued row is pure added wall-clock. The four came from the Playwright phone
+# shards (WebKit 7 → 4, Chromium 3 → 2), which after the `@agnostic` sweeps moved
+# out ran ~40 s of tests behind ~1.5 min of setup each. A new job here takes its
+# slot from an existing one or eats into that headroom on purpose
+# (CiRunnerBudgetSpec).
 #
-# Current split: 1 test + 1 integration + 3 e2e + 1 mobile + 13 page-tests.
-# eslint rides `test` (was its own job), and iOS + Android LocalServer share
-# one `mobile-local-server` job (one FixtureServerMain boot for both). The
-# original ~13-min long pole was the single `e2e` job (two serial whole-corpus
-# determinism specs); it's now (a) fanned out across parallel shards and
-# (b) each heavy spec runs its replays CONCURRENTLY (see ParallelReplays), so
-# e2e drops well under the page-tests tier.
+# Current split: 1 test + 1 integration + 3 e2e + 1 mobile + 9 page-tests.
+# Staging and eslint ride the `e2e (staging)` row (the lightest), and iOS +
+# Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
+# boot for both). The original ~13-min long pole was the single `e2e` job (two
+# serial whole-corpus determinism specs); it's now (a) fanned out across parallel
+# shards and (b) each heavy spec runs its replays CONCURRENTLY (see
+# ParallelReplays), so e2e drops well under the page-tests tier.
 #
 # Every page-test row carries the same fixed cost before it runs a single spec:
 # checkout, the JDK, the zinc cache, and the FixtureServerMain boot. That boot is
@@ -734,7 +738,7 @@ jobs:
                     - { variant: stable, kind: chrome, version: stable }
 
                     # The three Chromium phones run as ONE project set, sharded
-                    # three ways, rather than one runner per phone. Three reasons.
+                    # two ways, rather than one runner per phone. Three reasons.
                     #
                     # Balance: per-phone rows drifted badly apart (109s vs 207s
                     # for the identical test count on the same run), and the
@@ -742,12 +746,11 @@ jobs:
                     # list — measured 552/552 at two ways, dead even — so the
                     # rows finish together.
                     #
-                    # Three rather than two because the split has to EQUALISE the
-                    # two tiers, not favour the faster one. Measured per test:
-                    # Chromium 0.33s, WebKit 0.83s. At two Chromium shards the
-                    # Chromium rows ran 180s of tests against WebKit's 141s and
-                    # became the build's long pole — the runner does more good
-                    # here than as an eighth WebKit shard.
+                    # Two, not the three it once was: the split has to EQUALISE the
+                    # two tiers, and since the `@agnostic` sweeps left the phone
+                    # rows a three-way row ran only ~35-50 s of tests behind its
+                    # ~1.5 min of setup. Two rows (216 listed each, 2026-10-01)
+                    # stay under the WebKit rows and give a runner back.
                     #
                     # And they no longer re-run the `@agnostic` set. Those ~13
                     # viewport-INDEPENDENT spec files were being executed at all
@@ -760,21 +763,16 @@ jobs:
                     # galaxy-s10, redundant for catching layout breaks. The
                     # project stays in playwright.config.ts so a local
                     # `npx playwright test --project chromium-pixel-9` still runs.
-                    - variant: pw phones 1/3
+                    - variant: pw phones 1/2
                       kind: playwright
                       browsers: chromium
-                      label: chromium-phones-1-3
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 1/3'
-                    - variant: pw phones 2/3
+                      label: chromium-phones-1-2
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 1/2'
+                    - variant: pw phones 2/2
                       kind: playwright
                       browsers: chromium
-                      label: chromium-phones-2-3
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 2/3'
-                    - variant: pw phones 3/3
-                      kind: playwright
-                      browsers: chromium
-                      label: chromium-phones-3-3
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 3/3'
+                      label: chromium-phones-2-2
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 2/2'
 
                     # Two cheap slices sharing one runner: the viewport-independent
                     # specs once on mobile Chromium (touch emulation — `card-tap`
@@ -821,29 +819,28 @@ jobs:
                     # WebKit is ~3× slower per test than Chromium, so here the
                     # test run — not the ~100s boot — is the bulk, and this tier
                     # is the tier that gets the runners. All three phones run as
-                    # ONE project set sharded SEVEN ways rather than per-phone: the
+                    # ONE project set sharded FOUR ways rather than per-phone: the
                     # per-phone 2-way shards ranged 306-363s on a single run, and
                     # sharding the combined list evens that out.
                     #
                     # Shard COUNT is not free to pick — Playwright splits by spec
-                    # file, so some counts divide the 1104 tests far better than
-                    # others. Measured sizes: 5 → 198-236, 6 → 184 exactly six
-                    # times, 7 → 135-184, 8 → an alternating 106/170, 9 → 106-132.
-                    # What matters is the LARGEST shard, since the build waits on
-                    # it, and 6 and 7 tie at 184 — so seven is not better than six
-                    # here, it is just where the Chromium/WebKit balance landed.
-                    # Nine would be the real improvement if a runner ever frees up.
-                    # Re-measure with `--list` before changing this rather than
+                    # file, and every row pays ~1.5 min of fixed setup before its
+                    # first test. Since the `@agnostic` sweeps moved to the
+                    # behaviour row, the phone set is small: `--list` sizes
+                    # (2026-10-01, runtime skips included — about half run) are
+                    # 3 → 144-170, 4 → 109-124, 5 → 82-103, 7 → 56-72. At seven,
+                    # each row ran ~45 s of tests behind its ~1.5 min of setup; four
+                    # keeps the largest row near ~90 s of tests, under the unit and
+                    # integration rows, and gives three runners back to the account
+                    # (see RUNNER BUDGET at the top). Re-measure with `--list` before
+                    # changing this rather than
                     # assuming more shards is faster. Coverage of every width is
                     # unchanged. Firefox stays dropped from CI (the firefox-desktop
                     # project remains in playwright.config.ts for local runs).
-                    - { variant: pw phones 1/7, kind: playwright, browsers: webkit, label: webkit-phones-1-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/7' }
-                    - { variant: pw phones 2/7, kind: playwright, browsers: webkit, label: webkit-phones-2-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/7' }
-                    - { variant: pw phones 3/7, kind: playwright, browsers: webkit, label: webkit-phones-3-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 3/7' }
-                    - { variant: pw phones 4/7, kind: playwright, browsers: webkit, label: webkit-phones-4-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 4/7' }
-                    - { variant: pw phones 5/7, kind: playwright, browsers: webkit, label: webkit-phones-5-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 5/7' }
-                    - { variant: pw phones 6/7, kind: playwright, browsers: webkit, label: webkit-phones-6-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 6/7' }
-                    - { variant: pw phones 7/7, kind: playwright, browsers: webkit, label: webkit-phones-7-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 7/7' }
+                    - { variant: pw phones 1/4, kind: playwright, browsers: webkit, label: webkit-phones-1-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/4' }
+                    - { variant: pw phones 2/4, kind: playwright, browsers: webkit, label: webkit-phones-2-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/4' }
+                    - { variant: pw phones 3/4, kind: playwright, browsers: webkit, label: webkit-phones-3-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 3/4' }
+                    - { variant: pw phones 4/4, kind: playwright, browsers: webkit, label: webkit-phones-4-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 4/4' }
                     # The viewport-independent specs once, on the representative
                     # 390px portrait (matches the `iPhone 13` base in webkitUse).
                     #

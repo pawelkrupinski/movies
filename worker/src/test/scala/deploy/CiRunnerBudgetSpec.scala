@@ -75,16 +75,19 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Used to be an EXACT-fill assertion — under-filling the allowance was as real
-   * a regression as over-filling, because the account's 20th slot was always
-   * `free-runners`, a job with nothing else it could be spending it on. That job
-   * was retired 2026-09-08 (`DeployImageReuseSpec`), and ci.yml now runs one
-   * slot under the allowance deliberately: filling it means giving ci.yml's own
-   * sharding another row, which is a call about THAT suite's shard sizes. The
-   * slot is main.yml's `preflight` now, for the seconds it takes (below).
+   * The slots ci.yml does NOT take are deliberate. One is main.yml's `preflight` (below).
+   * The other `Headroom` are for the workflows that overlap a push — Country convergence
+   * (which Main kicks off itself), dispatched identity runs, the mobile workflows — which
+   * hold runners for 20-40 min: with ci filling 19 slots each of their jobs queued one of
+   * these rows, and 12 Main runs to 2026-10-01 had ci rows starting a median 1.2-2.0 min
+   * late. This was an EXACT-fill assertion while the 20th slot was `free-runners`
+   * (retired 2026-09-08, `DeployImageReuseSpec`); it is an upper bound now, so a new row
+   * has to take a slot from an existing one or consciously spend the headroom.
    */
-  it should "leave ci.yml one slot under the allowance, for main.yml's preflight" in {
-    withClue(s"ci.yml=$ciRunners: ")(ciRunners shouldBe (Allowance - 1))
+  private val Headroom = 4
+
+  it should "leave the preflight's slot and a headroom for overlapping workflows free" in {
+    withClue(s"ci.yml=$ciRunners: ")(ciRunners should be <= (Allowance - 1 - Headroom))
   }
 
   /**

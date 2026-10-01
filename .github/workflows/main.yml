@@ -11,8 +11,8 @@ on:
 # Workflow-level concurrency: a newer push cancels the older workflow
 # mid-flight, freeing its runners so the latest commit's jobs don't queue
 # behind stale work. GitHub Free allows 20 concurrent jobs across the
-# account and a push wants all 20 (see the RUNNER BUDGET note in ci.yml),
-# so two overlapping pushes would otherwise halve each other.
+# account and a push wants 16 of them at once (see the RUNNER BUDGET note in
+# ci.yml), so two overlapping pushes would otherwise starve each other.
 #
 # WHAT THAT COSTS NOW THAT THE k3s DEPLOY NO LONGER HAPPENS HERE AT ALL, stated
 # rather than left to be rediscovered: a superseding push cancels an in-flight
@@ -95,13 +95,13 @@ jobs:
     # destroy real progress rather than merely accelerate a supersede that was
     # coming anyway. See `country-convergence.yml`'s `concurrency:` block.
     #
-    # This job used to occupy the account's 20th concurrent slot at t=0. That
-    # slot now goes to `preflight` below, for the few seconds it takes to check
+    # This job used to occupy a concurrent slot at t=0. That slot now goes to
+    # `preflight` below, for the few seconds it takes to check
     # the deploy's secret (`CiRunnerBudgetSpec`).
 
     # Seconds, at t=0: the deploy's secret is set, so a missing one fails the run now rather than
-    # after ci's ten minutes. It takes the account's 20th slot, the headroom ci.yml leaves, for
-    # the few seconds it runs (CiRunnerBudgetSpec). The Grafana marker's secrets are optional
+    # after ci's minutes. It takes the one slot ci.yml leaves it (beside the headroom kept for
+    # overlapping workflows) for the few seconds it runs (CiRunnerBudgetSpec). The Grafana marker's secrets are optional
     # by design (mark-grafana-deploy skips without them), so they are not required here.
     # (PreflightWiringSpec)
     preflight:
@@ -339,7 +339,7 @@ jobs:
     #
     # BOTH TIERS `needs: ci`, which the standalone workflows did not. They deployed to the cluster
     # the moment their image built, tests or no tests — a push that failed ci still rolled a broken
-    # web image onto kinowo.net. It also keeps the runner budget intact: ci's 19 jobs are the only
+    # web image onto kinowo.net. It also keeps the runner budget intact: ci's jobs are the only
     # ones spoken for at t=0 now that `free-runners` is retired, and a job that waits for ci takes a
     # slot ci has already given back (`CiRunnerBudgetSpec`).
     build-web:
