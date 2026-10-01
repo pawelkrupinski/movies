@@ -243,6 +243,47 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
     }
   }
 
+  /** A commit SLOWER than the fold's wait for it — a Mongo server, or a worker JVM, stalled past
+   *  the 10 s `commitTransaction` waits. The command lands after the wait gave up, and after the
+   *  landed check above had looked and found nothing: the fold called itself failed and rescheduled,
+   *  the retry found the group drained, and the graduated film never got its showtimes (the hard
+   *  clusters' "every showtime unserved" under load, one film a pass, 2026-10-01). Here the commit
+   *  reaches the server only once the fold asks for it again: a fold that gives up never asks. */
+  it should "finish the graduated film when its commit lands only after its wait ran out" in {
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
+      import fold.{movies, staging, screenings, db}
+      val repository = new services.movies.MongoMovieRepository(Some(db),
+        normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
+      seedConcludedNewcomer(staging)
+      val asked    = new java.util.concurrent.CountDownLatch(1)
+      val inFlight = new java.util.concurrent.atomic.AtomicReference[Thread]()
+      val slowCommit: org.mongodb.scala.ClientSession => Unit = session =>
+        Option(inFlight.get) match {
+          case None =>
+            val commit = new Thread(() => { asked.await(); scala.util.Try(services.staging.MongoStagingFolder.commitTransaction(session)); () })
+            inFlight.set(commit)
+            commit.start()
+            throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]")
+          case Some(commit) =>
+            asked.countDown()
+            commit.join()                                                   // the slow commit lands…
+            services.staging.MongoStagingFolder.commitTransaction(session) // …and asking again answers its result
+        }
+
+      try {
+        noException should be thrownBy fold.folder(commit = slowCommit).foldGroup(newcomerTitle)
+        val folded = Await.result(movies.find(Filters.regex("key",
+          s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+          .flatMap(_.get("_id").map(_.asString().getValue))
+        folded should not be empty
+        folded.foreach { id =>
+          repository.findByIdChecked(FilmId(id))._1.map(_.record.cinemaData.values.map(_.showtimes.size).sum)
+            .getOrElse(0) should be > 0
+        }
+      } finally { asked.countDown(); Option(inFlight.get).foreach(_.join()) }
+    }
+  }
+
   /** And the other half of that check: a commit that did NOT land still fails the fold, so the
    *  task reschedules rather than reporting a fold that never happened. */
   it should "still fail the fold when a commit whose result is unknown never landed" in {

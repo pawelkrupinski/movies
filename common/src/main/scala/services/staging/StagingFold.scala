@@ -80,9 +80,10 @@ object StagingFold {
    *  [[nextAfterAttempt]], and pure for the same reason. */
   sealed trait AfterCommitFailure
   object AfterCommitFailure {
-    /** The reply was lost (`UnknownTransactionCommitResult`): the server may have
-     *  committed, so re-issue the COMMIT — never re-run the body, whose staging rows
-     *  may already be gone. */
+    /** The result is unknown — the reply was lost (`UnknownTransactionCommitResult`), or the
+     *  wait for it ran out with the command still in flight: the server may have committed,
+     *  or may yet, so re-issue the COMMIT — never re-run the body, whose staging rows may
+     *  already be gone. */
     case object RetryCommit extends AfterCommitFailure
     /** The commit failed transiently and did not land: re-run the whole transaction. */
     case class RetryTransaction(cause: Throwable) extends AfterCommitFailure
@@ -93,6 +94,14 @@ object StagingFold {
   def afterCommitFailure(e: Throwable, commitAttempt: Int, attempt: Int, maxRetries: Int): AfterCommitFailure = e match {
     case m: com.mongodb.MongoException
       if m.hasErrorLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL) && commitAttempt < maxRetries =>
+      AfterCommitFailure.RetryCommit
+    // The commit's WAIT ran out (`MongoStagingFolder.commitTransaction` awaits it for 10 s): the
+    // command is still in flight and may land after it. Abandoned, the fold looked for its writes
+    // at once — before a slow commit had landed — reported it failed, and rescheduled it; the
+    // retry found the group drained, so the graduated film never got its showtimes (the hard
+    // clusters' "every showtime unserved" under load, 2026-10-01). Re-issuing the commit waits for
+    // the one in flight: idempotent once it has committed.
+    case _: java.util.concurrent.TimeoutException if commitAttempt < maxRetries =>
       AfterCommitFailure.RetryCommit
     case m: com.mongodb.MongoException
       if m.hasErrorLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>

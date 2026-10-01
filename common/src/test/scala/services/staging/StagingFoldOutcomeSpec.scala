@@ -106,6 +106,14 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
       a[StagingFold.AfterCommitFailure.Abandon]
   }
 
+  "a commit whose wait ran out" should "retry the COMMIT, as unknown as a lost reply, while commit retries remain" in {
+    val waitRanOut = new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]")
+    StagingFold.afterCommitFailure(waitRanOut, commitAttempt = 1, attempt = 1, maxRetries) shouldBe
+      StagingFold.AfterCommitFailure.RetryCommit
+    StagingFold.afterCommitFailure(waitRanOut, commitAttempt = maxRetries, attempt = 1, maxRetries) shouldBe
+      a[StagingFold.AfterCommitFailure.Abandon]
+  }
+
   "a commit that failed transiently" should "re-run the transaction while attempts remain" in {
     val transientCommit = labelled(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)
     StagingFold.afterCommitFailure(transientCommit, commitAttempt = 1, attempt = 1, maxRetries) shouldBe
