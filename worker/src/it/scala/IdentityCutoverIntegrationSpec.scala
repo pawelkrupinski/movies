@@ -36,7 +36,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val OrderSeed = 0x2026_09_26L
   private val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
 
-  override def afterAll(): Unit = { storages.foreach(s => Try(s.close())); super.afterAll() }
+  override def afterAll(): Unit = { storages.synchronized(storages.toList).foreach(s => Try(s.close())); super.afterAll() }
 
   private val countries: Seq[Country] = Country.all.filter(c => CorpusFixture.exists(HardClusters.corpusKey(c)))
   private lazy val responses: Map[Country, RecordedResponses] =
@@ -45,7 +45,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def storage(country: Country, label: String): ConvergenceStorage = {
     val s = ConvergenceStorage.mongo(mongoTarget, s"cut-${country.code}-$label", TitleNormalizer.forCountry(country),
       services.movies.MovieChangeStream.Debounce.forCountry(country))
-    storages += s
+    storages.synchronized(storages += s)
     s
   }
 
@@ -104,10 +104,23 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     tick
   }
 
-  private lazy val passes: Map[Country, Seq[Pass]] = countries.map { c =>
-    c -> Seq(cutPass(c, "p0", OrderSeed, halfFirst = false), cutPass(c, "p1", OrderSeed + 1, halfFirst = false),
-      cutPass(c, "half", OrderSeed + 2, halfFirst = true))
-  }.toMap
+  /** Every country's three passes, each in its own database and wiring, so they share nothing but
+   *  the read-only corpus and the (concurrent) recorded answers: run on a small pool rather than one
+   *  after another. Serially the fifteen were ~3.5 min — the tail of the whole `itAll` run. */
+  private lazy val passes: Map[Country, Seq[Pass]] = {
+    val plan = for {
+      c                   <- countries
+      (label, seed, half) <- Seq(("p0", OrderSeed, false), ("p1", OrderSeed + 1, false), ("half", OrderSeed + 2, true))
+    } yield (c, label, seed, half)
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(PassParallelism)
+    try {
+      val pending = plan.map { case (c, label, seed, half) => c -> pool.submit(() => cutPass(c, label, seed, half)) }
+      pending.map { case (c, f) => c -> f.get() }.groupMap(_._1)(_._2)
+    } finally pool.shutdownNow(): Unit
+  }
+
+  /** A CI runner's four vCPUs; `itAll` runs other suites beside this one, so no more. */
+  private val PassParallelism = 4
 
   countries.foreach { country =>
     val cc = country.code
