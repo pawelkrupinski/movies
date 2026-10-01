@@ -83,14 +83,39 @@ jobs:
 
     ui-tests:
         runs-on: macos-latest
-        # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
+        # Build ~1 min + SPM ~1 min + XCUITest step (bounded below).
         timeout-minutes: 75
         steps:
+            # Only what this job reads: the Xcode project and SwiftPM package, the CI helpers, and the
+            # one file outside ios/ a test loads (RetryClassificationTable). The full tree is 20k files
+            # and ~1.2 GB, almost all of it test/resources fixtures; checking it out cost 18 s a run.
             - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      /ios/
+                      /scripts/ci/
+                      /test/resources/retry-classification.json
+                  sparse-checkout-cone-mode: false
 
             - uses: maxim-lobanov/setup-xcode@v1
               with:
                   xcode-version: latest-stable
+
+            # The destination every simulator step below uses: an iPhone this image HAS, never a
+            # hard-coded model (an Xcode 26 image dropped "iPhone 15", and the continue-on-error
+            # XCUITest step silently stopped running). Its spec runs first.
+            #
+            # Booted here, before the build and the SPM tests, so the cold boot overlaps them instead
+            # of following them: the XCUITest step used to spend 1-8 minutes between its build
+            # finishing and the test runner starting. `simctl boot` returns once the boot is under
+            # way; the XCUITest step waits for it to finish.
+            - name: Pick and boot the simulator
+              run: |
+                  scripts/ci/ios-sim-destination-test.sh
+                  destination="$(scripts/ci/ios-sim-destination.sh)"
+                  echo "DESTINATION=$destination" >> "$GITHUB_ENV"
+                  echo "SIM_UDID=${destination##*id=}" >> "$GITHUB_ENV"
+                  xcrun simctl boot "${destination##*id=}"
 
             # COMPILING the app is a separate step from RUNNING the UI tests,
             # and only this one blocks. `swift test` builds the SPM view of the
@@ -98,21 +123,37 @@ jobs:
             # KinowoApp — see Package.swift), so nothing else in CI type-checks
             # them: a `Views/*.swift` that does not compile shipped to main green
             # on 2026-09-04 and was caught only by a build to a real device.
-            - name: Build the app target
+            #
+            # build-for-testing builds the app AND the UI-test bundle once, for the simulator the
+            # tests run on (arm64 only: `generic/platform=iOS Simulator` compiled every file twice,
+            # arm64 and x86_64), and the XCUITest step runs those products without building again.
+            - name: Build the app and its UI tests
+              id: build
               run: |
-                  xcodebuild build \
+                  xcodebuild build-for-testing \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
-                      -destination 'generic/platform=iOS Simulator' \
+                      -destination "$DESTINATION" \
                       CODE_SIGNING_ALLOWED=NO
 
-            # The destination every simulator step below uses: an iPhone this image HAS, never a
-            # hard-coded model (an Xcode 26 image dropped "iPhone 15", and the continue-on-error
-            # XCUITest step silently stopped running). Its spec runs first.
-            - name: Pick the simulator
-              run: |
-                  scripts/ci/ios-sim-destination-test.sh
-                  echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
+            # Parity check — catches Foundation/Darwin vs Linux drift in
+            # the model / decoder layer that Linux swift-corelibs-foundation
+            # wouldn't surface.
+            #
+            # Before the XCUITest step, not after: the simulator is still booting here, and a cold
+            # boot on this runner has taken anywhere from 1 to 8 minutes before the first test could
+            # run (runs 36899664976, 36298642377). Work done now hides inside that wait.
+            - name: Run SPM tests on macOS
+              run: swift test --package-path ios --xunit-output ios-macos.xml
+
+            - name: Publish SPM macOS report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'ios-macos*.xml'
+                  check_name: iOS SPM (macOS)
+                  detailed_summary: true
+                  include_passed: false
 
             # One simulator, serially: ~28 min (green run 36117454325). Two clones were slower on
             # this 3-core runner, not faster: run 36157983964 took 38 min and clone 2 ran 3 of the
@@ -123,16 +164,26 @@ jobs:
             #
             # Still continue-on-error until two main runs are green with the city-gate flake fixed
             # (only the gate's own suites still tap it, see FixtureLaunch.intoCity); then drop it.
+            # Runs whatever the SPM tests above concluded, as it did when it ran first.
+            #
+            # `-collect-test-diagnostics never`: on any test-run issue — even a passing run's
+            # runtime warning, like the ATS one a live http:// cinema URL raises — xcodebuild runs
+            # `simctl diagnose` after the last test: locally that added ~35 s to a green run and,
+            # once, hung the step for its full 600 s timeout. The result bundle still carries each
+            # failure's message, screenshots and the app/runner logs; only the sysdiagnose is gone.
             - name: Run XCUITest
               id: xcuitest
+              if: ${{ !cancelled() && steps.build.outcome == 'success' }}
               continue-on-error: true
               timeout-minutes: 50
               run: |
-                  xcodebuild test \
+                  xcrun simctl bootstatus "$SIM_UDID" -b
+                  xcodebuild test-without-building \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
                       -destination "$DESTINATION" \
                       -resultBundlePath build/Kinowo.xcresult \
+                      -collect-test-diagnostics never \
                       -test-timeouts-enabled YES \
                       -default-test-execution-time-allowance 180 \
                       -maximum-test-execution-time-allowance 300 \
@@ -175,21 +226,6 @@ jobs:
                       text = str(failure.get("failureText")).replace("%", "%25").replace("\n", "%0A")
                       print(f"::warning title={failure.get('testName')}::{text}")
                   PY
-
-            # Parity check — catches Foundation/Darwin vs Linux drift in
-            # the model / decoder layer that Linux swift-corelibs-foundation
-            # wouldn't surface.
-            - name: Run SPM tests on macOS
-              run: swift test --package-path ios --xunit-output ios-macos.xml
-
-            - name: Publish SPM macOS report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  report_paths: 'ios-macos*.xml'
-                  check_name: iOS SPM (macOS)
-                  detailed_summary: true
-                  include_passed: false
 
             # `failure()` alone never fires for the XCUITest step: continue-on-error keeps the job
             # green, so its result bundle was never kept. Its own outcome decides.
