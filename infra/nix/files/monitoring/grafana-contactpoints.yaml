@@ -56,6 +56,13 @@ contactPoints:
           # The non-secret half. QUOTED LITERAL. Read the block at the top of this file before
           # touching this line.
           chatid: "1771340065"
+          # PLAIN TEXT, as every Alertmanager receiver already is (alertmanager.yaml says why).
+          # Grafana defaults to HTML, and Telegram rejects a message holding anything it reads as a
+          # malformed tag with `400 Bad Request`, which Grafana logs and drops. "Worker
+          # crash-looping" -- whose description says `describe pod <pod>` -- failed all 14 times
+          # it fired from 09-06 to 09-30, and DatasourceError on 09-04. `None` is Grafana's
+          # spelling of "off"; Alertmanager's is the empty string.
+          parse_mode: None
         # Send a follow-up when an alert clears, so that a quiet channel means "all good" rather
         # than "did that ever recover?".
         disableResolveMessage: false

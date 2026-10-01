@@ -488,5 +488,33 @@ class PanelsReadTheSameAtEveryZoom(unittest.TestCase):
         self.assertTrue(checked, "no $__interval window found -- the detection above has gone blind")
 
 
+class TelegramMessagesArePlainText(unittest.TestCase):
+    """Every Telegram receiver, Grafana's and Alertmanager's, sends with entity parsing OFF.
+
+    Both default to HTML, and Telegram answers a message holding anything it reads as a malformed
+    tag with `400 Bad Request` -- the alert is dropped at delivery with one log line. Grafana's
+    "Worker crash-looping" never reached Telegram once in September 2026 (14 failures, 09-06 to
+    09-30), because its description says `kubectl -n kinowo describe pod <pod>`; DatasourceError
+    failed the same way on 09-04. Alertmanager's receivers were already plain text for that reason;
+    Grafana's contact point was not. The two schemas spell "off" differently: Alertmanager takes an
+    empty string, Grafana the word `None`.
+    """
+
+    def test_grafana_telegram_receivers_parse_nothing(self):
+        text = open(os.path.join(MONITORING_FILES, "grafana-contactpoints.yaml")).read()
+        receivers = re.findall(r"type: telegram\n(.*?)(?=\n\s*- uid:|\n\S|\Z)", text, re.S)
+        self.assertTrue(receivers, "no Telegram receiver found in grafana-contactpoints.yaml")
+        for receiver in receivers:
+            self.assertRegex(receiver, r"\n\s+parse_mode: None\n",
+                             "a Grafana Telegram receiver without `parse_mode: None` sends HTML")
+
+    def test_alertmanager_telegram_receivers_parse_nothing(self):
+        text = open(os.path.join(MONITORING_FILES, "alertmanager.yaml")).read()
+        configs = re.findall(r"telegram_configs:\n(.*?)(?=\n  - name:|\Z)", text, re.S)
+        self.assertTrue(configs, "no telegram_configs found in alertmanager.yaml")
+        for config in configs:
+            self.assertIn('parse_mode: ""', config)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
