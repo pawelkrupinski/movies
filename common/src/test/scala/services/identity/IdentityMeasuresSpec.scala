@@ -639,6 +639,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val ozon = Seq(Listing("Obcy", year = Some(2026), directors = Seq("François Ozon")))
     IdentityMeasures.titlesByFacts(ozon, Seq(1 -> Film("Obcy", year = Some(2025), directors = Some(Seq("François Ozon"))),
       2 -> Film("La Catastrophe", year = Some(2027), directors = Some(Seq("François Ozon"))))) shouldBe empty
+    // A title pointing at another record its years do not rule out names that one, whoever its credit picks.
+    IdentityMeasures.titlesByFacts(Seq(Listing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), directors = Seq("Jungjae Ha"))),
+      Seq(1 -> Film("BTS World Tour 'Arirang' In São Paulo: Live Viewing", year = Some(2026), directors = Some(Seq("Ha Jung-jae"))),
+        2 -> Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", year = Some(2026)))) shouldBe empty
+    // A piece of the record's own title names the work it belongs to, never the record.
+    IdentityMeasures.titlesByFacts(Seq(Listing("BTS World Tour 'ARIRANG'", year = Some(2026), directors = Seq("Jungjae Ha"))),
+      Seq(1 -> Film("BTS World Tour 'Arirang' In São Paulo: Live Viewing", year = Some(2026), directors = Some(Seq("Ha Jung-jae"))))) shouldBe empty
     // A double bill's facts may single out one of its films; its title is neither's.
     IdentityMeasures.titlesByFacts(Seq(Listing("Słonik w lesie + Tańczący przyjaciel", year = Some(2025), directors = Seq("Jane Doe"))),
       Seq(1 -> Film("Olifantje in het bos", year = Some(2025), directors = Some(Seq("Jane Doe"))))) shouldBe empty

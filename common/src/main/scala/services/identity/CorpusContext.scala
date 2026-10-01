@@ -94,9 +94,17 @@ private[identity] object CorpusContext {
   def titleOf(node: EvidenceNode): String = IdentityMeasures.key(node.evidence.title)
 
   /** `IdentityMeasures.titlesByFacts` of ONE title key's nodes (their measured listings, by node id), over
-   *  the records they reached: the same inputs whether a whole resolve asks or the live corpus re-titles the key. */
-  def titlesByFacts(listings: Seq[IdentityMeasures.Listing], reached: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
-    IdentityMeasures.titlesByFacts(listings, reached.toSeq.distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
+   *  the records their own title SEARCHES found — never a director's filmography alone: a director makes
+   *  more than one work a year ("SEVENTEEN World Tour 'New_'" {Taehwan Yum} is not his TXT tour film,
+   *  "It (1990)" {Tommy Lee Wallace} not his 1991 "And the Sea Will Tell"), while a title search finds a
+   *  record by any of its translations. The same inputs whether a whole resolve asks or the live corpus
+   *  re-titles the key. */
+  /** The records a listing's own title searches found. */
+  def searchFound(listing: IdentityMeasures.Listing, answers: CandidateQuery => Option[Seq[Int]]): Seq[Int] =
+    IdentityMeasures.searchQueries(listing).flatMap(query => answers(CandidateQuery.Title(query)).getOrElse(Nil))
+
+  def titlesByFacts(listings: Seq[IdentityMeasures.Listing], found: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
+    IdentityMeasures.titlesByFacts(listings, found.toSeq.distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
 
   /** A segment carried by this many distinct whole titles, and by none as its own whole title, is a
    *  banner ([[CorpusContext.bannerSegment]]): PL's gluing programme and festival banners span 11–60
@@ -179,7 +187,8 @@ private[identity] object CorpusContext {
     val byOriginal  = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
     val byFacts     = nodes.groupBy(titleOf).toSeq.flatMap { case (_, keyed) =>
       val sorted = keyed.sortBy(_.id)
-      titlesByFacts(sorted.map(_.evidence.measured), sorted.flatMap(reached), recorded.get) }
+      val found  = sorted.flatMap(node => searchFound(node.evidence.measured, answers))
+      titlesByFacts(sorted.map(_.evidence.measured), found, recorded.get) }
     val venueTitles = (byOriginal.toSeq.flatMap { case (id, titles) => titles.map(id -> _) } ++ byFacts)
       .groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val candidates  = recorded.map { case (id, candidate) =>

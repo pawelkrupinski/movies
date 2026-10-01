@@ -764,7 +764,8 @@ object IdentityMeasures {
    *  so a sibling listing billing that title bare reads it as the record's alternative title, not an
    *  overlap. Read so only when every listing of the title whose facts single out a record single out the
    *  same one, no record of `films` carries the title whole already (as its title, original or
-   *  alternative title — this one or another), and it is no double bill's. */
+   *  alternative title — this one or another), the title is no piece of the record's own (a tour's name is
+   *  not its São Paulo film's), contains no OTHER record its years do not rule out, and is no double bill's. */
   def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
     // A bill's title names two works: its facts may single out one, but the title is no record's own.
@@ -772,16 +773,26 @@ object IdentityMeasures {
       val year = l.statedYear.get
       val ids  = pool.collect { case (id, f) if f.year.exists(y => math.abs(y - year) <= 1) &&
         f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person")) => id }.distinct
-      (key(l.title), l.title, ids)
+      (key(l.title), l.title, ids, l.statedYear)
     }.filter(_._1.nonEmpty).toSeq
     singled.groupBy(_._1).toSeq.flatMap { case (_, ls) =>
       // A listing whose facts single out no record here, or several, says nothing; one singling out another denies.
       ls.map(_._3).filter(_.sizeIs == 1).distinct match {
         // A title some record of the pool carries already is that record's to answer for ("Obcy" is Ozon's
         // 2025 film however a 2026 listing's facts lean): only a title NO record names is learned.
+        // Nor a title pointing at ANOTHER record its facts do not rule out: "BTS World Tour 'ARIRANG' In Buenos
+        // Aires: Live" credits the tour's director, whom only the São Paulo record carries, while its title
+        // names the Buenos Aires one ("…: Live Viewing").
         case Seq(Seq(id)) =>
           val spelling = ls.map(_._2).min
-          Option.when(!pool.exists { case (_, f) => Rivalling(titleRelation(Listing(spelling), f).value) })(id -> spelling)
+          val years    = ls.flatMap(_._4).distinct
+          def relation(f: Film) = titleRelation(Listing(spelling), f).value
+          def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => math.abs(l - y) > 1))
+          // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
+          // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
+          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) }.getOrElse(false) &&
+            !pool.exists { case (_, f) => Rivalling(relation(f)) } &&
+            !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOut(f) })(id -> spelling)
         case _ => None
       }
     }

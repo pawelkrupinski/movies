@@ -324,11 +324,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     origins.foreach(origin => keysOfOrigin.updateWith(origin)(held => Some(held.getOrElse(Set.empty) + key)))
     if (origins.isEmpty) originsOfKey.remove(key) else originsOfKey(key) = origins
     val films  = origins.flatMap(filmsByKey.getOrElse(_, Set.empty)).toSeq.sorted.flatMap(id => base.get(id).map(candidate => id -> fresh(candidate).film))
-    // The title key's own nodes and reach, as `groups` and `reachedByKey` already hold them by node id.
+    // The title key's own nodes (as `groups` holds them, by node id) and what their title searches found.
     val keyed  = groups.get(key).toSeq.flatMap(_.valuesIterator.flatMap(_.headOption.map(_._2)))
-    val reach  = reachedByKey.get(key).toSeq.flatMap(_.valuesIterator.flatten)
+    val found  = keyed.flatMap(CorpusContext.searchFound(_, query => named.get(query).flatten))
     val next   = (IdentityMeasures.venueTitles(translated, films).toSeq.flatMap { case (id, titles) => titles.map(id -> _) } ++
-      CorpusContext.titlesByFacts(keyed, reach, base.get)).groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
+      CorpusContext.titlesByFacts(keyed, found, base.get)).groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val before = titledBy.getOrElse(key, Set.empty)
     if (next.isEmpty) titledBy.remove(key) else titledBy(key) = next.keySet
     (before ++ next.keys).filter { id =>
