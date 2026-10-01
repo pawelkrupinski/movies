@@ -50,7 +50,7 @@ class FlicksClient(
   override val cinema: Cinema,
   market:     FlicksMarket,
   today:      Option[LocalDate] = None
-) extends ChunkedCinemaScraper {
+) extends PagedChunkScraper {
 
   import FlicksClient._
 
@@ -114,10 +114,15 @@ class FlicksClient(
    *  THROWS on failure so ONLY that day's chunk task reschedules (the per-day
    *  retry); the other days are unaffected. A day that ANSWERS with an empty
    *  fragment (no programme) is a valid empty result, not a failure. */
-  def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
+  def fetchChunkPage(dateKey: String): String =
+    http.get(sessionsUrl(market, cinemaSlug, LocalDate.parse(dateKey)), AjaxHeaders)
+
+  def parseChunkPage(dateKey: String, page: String): Seq[CinemaMovie] = {
     val date = LocalDate.parse(dateKey)
-    moviesFor(parseDay(http.get(sessionsUrl(market, cinemaSlug, date), AjaxHeaders), date, market))
+    moviesFor(parseDay(page, date, market))
   }
+
+  def pageParserVersion: Int = PageParserVersion
 
   /** Merge every day's films into the venue's listing: one row per film (grouped
    *  by its stable `/movie/<slug>` `filmUrl`), showtimes unioned, deduped by
@@ -365,6 +370,10 @@ object FlicksClient {
     }
     override def close(): Unit = ()
   }
+
+  /** What [[parseChunkPage]] makes of a day page — pinned against the recorded pages by
+   *  `FlicksPageParserVersionSpec`, which fails when the parse changes and this does not. */
+  val PageParserVersion = 1
 
   /** The path of the image Flicks shows for a film it has no poster for. */
   private val PlaceholderPoster = "/images/others/not_available/"

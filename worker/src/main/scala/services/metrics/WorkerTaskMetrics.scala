@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -109,6 +109,9 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── RepositoryWriteMetrics ──────────────────────────────────────────────────
   def recordWriteFailed(collection: String, op: String, exception: String): Unit =
     series.recordRepositoryWriteFailed(countryCode, collection, op, exception)
+
+  // ── ChunkPageMemoMetrics ────────────────────────────────────────────────────
+  def recordPage(outcome: String): Unit = series.recordChunkPage(countryCode, outcome)
 
   // ── DecodeFailureMetrics ────────────────────────────────────────────────────
   def recordDecodeFailure(collection: String): Unit = series.recordDecodeFailure(countryCode, collection)
@@ -451,6 +454,12 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val chunkPages = Counter.builder()
+      .name("kinowo_worker_chunk_page_memo")
+      .help("Page-at-a-time scrape chunks (Flicks day pages) since boot, by country and outcome: hit = the page was byte-identical to the one this chunk last parsed, so that parse was reused and the page not parsed; changed = the page differed and was parsed; new = no earlier parse was remembered; parser = the page was the same but the parser has changed since. hit/(all) is the share of page parsing spared.")
+      .labelNames("country", "outcome")
+      .register(registry)
+
     private val changeApplies = Counter.builder()
       .name("kinowo_worker_change_apply")
       .help("Film applies the change stream made since boot, by country, path and reason. path=venues: a burst of showtime changes at a few venues applied from those venues' rows alone (reason=applied) — the other venues of the film neither read nor re-projected. path=film: the whole film re-read, because a movies or movie_slots change rode the burst (not_showtimes), it touched too many venues (too_many_venues), the film is failing a re-read (failing), the venues could not be read alone (venue_read_failed), a listener could not take them alone — a venue appearing or vanishing, a card unpublished or held (declined) — or the store cannot read venues alone (unsupported). A rising declined share is the projector or cache refusing what it should take: each is a whole re-read of a film that changed at one venue.")
@@ -578,6 +587,7 @@ object WorkerTaskMetrics {
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         movieCoalesced.labelValues(c)
         ChangeStreamMetrics.Apply.Series.foreach { case (path, reason) => changeApplies.labelValues(c, path, reason) }
+        services.tasks.ChunkPageMemoMetrics.Outcomes.foreach(o => chunkPages.labelValues(c, o))
         ChangeStreamMetrics.VenueDecline.All.foreach(reason => venueDeclines.labelValues(c, reason))
         ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
         ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
@@ -691,6 +701,7 @@ object WorkerTaskMetrics {
     def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
     def recordMovieCoalesced(country: String): Unit          = movieCoalesced.labelValues(country).inc()
     def recordChangeApply(country: String, path: String, reason: String): Unit = changeApplies.labelValues(country, path, reason).inc()
+    def recordChunkPage(country: String, outcome: String): Unit               = chunkPages.labelValues(country, outcome).inc()
     def recordVenueDecline(country: String, reason: String): Unit            = venueDeclines.labelValues(country, reason).inc()
 
     // ── ScreeningsMetrics ──────────────────────────────────────────────────────

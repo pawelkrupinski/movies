@@ -38,6 +38,19 @@ trait ChunkedCinemaScraper extends CinemaScraper {
     reduceChunks(planChunks().map(k => k -> fetchChunk(k)).toMap)
 }
 
+/** A chunked scraper whose chunk is ONE fetched page, so fetching and parsing come apart: a page
+ *  identical to the one it parsed last time need not be parsed again (`ScrapeChunkHandler`, through
+ *  [[services.tasks.ChunkPageMemo]]). `pageParserVersion` names what [[parseChunkPage]] makes of a
+ *  page — bump it with any change to that, or a remembered parse outlives the code that made it. */
+trait PagedChunkScraper extends ChunkedCinemaScraper {
+  /** The chunk's page. Throws as [[fetchChunk]] does. */
+  def fetchChunkPage(key: String): String
+  /** What a page of chunk `key` holds. */
+  def parseChunkPage(key: String, page: String): Seq[CinemaMovie]
+  def pageParserVersion: Int
+  final def fetchChunk(key: String): Seq[CinemaMovie] = parseChunkPage(key, fetchChunkPage(key))
+}
+
 object ChunkedCinemaScraper {
   /** Group films by `filmUrl` (falling back to title), union + dedupe + sort
    *  their showtimes, keep the first occurrence's film metadata. Deterministic

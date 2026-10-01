@@ -9625,6 +9625,7 @@ services.cinemas.common.ListingPages$
 services.cinemas.common.MultiListingScraper
 services.cinemas.common.NearTermProgramme
 services.cinemas.common.NearTermProgramme$
+services.cinemas.common.PagedChunkScraper
 services.cinemas.common.PreScrapedCinemaScraper
 services.cinemas.common.PreScrapedCinemaScraper$
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous

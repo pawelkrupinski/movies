@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, PagedChunkScraper}
 import tools.{CircuitOpenException, EnrichmentRead}
 
 import java.time.Clock
@@ -25,7 +25,10 @@ import java.time.Clock
 class ScrapeChunkHandler(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
-  clock:         Clock = Clock.systemUTC()
+  clock:         Clock = Clock.systemUTC(),
+  // A chunk page's last parse, so an identical page is not parsed again — see `sliceOf`.
+  pageMemo:      ChunkPageMemo = ChunkPageMemo.none,
+  memoMetrics:   ChunkPageMemoMetrics = ChunkPageMemoMetrics.noop
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -41,8 +44,7 @@ class ScrapeChunkHandler(
       case None => Done // cinema dropped from the catalogue
       case Some(scraper) =>
         try {
-          val slice = scraper.fetchChunk(key)
-          store.storeChunk(cinema, runId, key, CinemaMovieJson.encode(slice), clock.instant())
+          store.storeChunk(cinema, runId, key, sliceOf(cinema, key, scraper), clock.instant())
           Done
         } catch {
           // The host's breaker is open, so this chunk never reached the wire. Give
@@ -67,4 +69,37 @@ class ScrapeChunkHandler(
         }
     }
   }
+
+  /** The chunk's slice, encoded. A page-at-a-time scraper's page is parsed only when it differs
+   *  from the page this chunk last parsed, or when the parser has changed since: most day pages are
+   *  byte-identical from one scrape to the next (75 of 80 UK and US Flicks pages two hours apart,
+   *  2026-10-01), and parsing them was 7% of the US worker's CPU (JFR, same day). */
+  private def sliceOf(cinema: String, key: String, scraper: ChunkedCinemaScraper): String = scraper match {
+    case paged: PagedChunkScraper =>
+      val page   = paged.fetchChunkPage(key)
+      val digest = ChunkPageMemo.digest(page)
+      val known  = pageMemo.recall(cinema, key)
+      known match {
+        case Some(entry) if entry.page == digest && entry.parser == paged.pageParserVersion =>
+          memoMetrics.recordPage(ChunkPageMemoMetrics.Hit)
+          entry.slice
+        case _ =>
+          memoMetrics.recordPage(known.fold(ChunkPageMemoMetrics.New)(e =>
+            if (e.page != digest) ChunkPageMemoMetrics.Changed else ChunkPageMemoMetrics.Parser))
+          val slice = CinemaMovieJson.encode(paged.parseChunkPage(key, page))
+          pageMemo.remember(cinema, key, ChunkPageMemo.Entry(digest, paged.pageParserVersion, slice))
+          slice
+      }
+    case other => CinemaMovieJson.encode(other.fetchChunk(key))
+  }
+}
+
+/** How each page-at-a-time chunk went: its last parse reused (`hit`), or parsed because the page
+ *  changed, the memo had none for it, or the parser changed since. */
+trait ChunkPageMemoMetrics { def recordPage(outcome: String): Unit }
+
+object ChunkPageMemoMetrics {
+  val Hit = "hit"; val Changed = "changed"; val New = "new"; val Parser = "parser"
+  val Outcomes: Seq[String] = Seq(Hit, Changed, New, Parser)
+  val noop: ChunkPageMemoMetrics = (_: String) => ()
 }
