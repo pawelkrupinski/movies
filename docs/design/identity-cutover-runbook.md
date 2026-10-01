@@ -125,6 +125,7 @@ metrics at 2026-09-30 ~23:00 UTC.
 | gate 5: 0 order variants, 0 cannot-link violations (run 36823471686, robustness on) | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met |
 | gate 5 seeding: listings leaving their film for no film / the same film (recording 36807940234 × prod films 10-01 08:16) | 0 = 0.0% — met | 2 = 0.1% — met | 7 = 0.5% — met | 2 = 0.1% — met | 104 = 9.0% — NOT met |
 | (seeding, all split + fresh-elsewhere, for reference — mostly the resolver's corrections) | 6 = 2.5% | 24 = 1.3% | 55 = 3.6% | 64 = 2.9% | 189 = 16.3% |
+| gate 5 agreement, offline (measure 36913090912, recording 36909637796): identical + adjudicated resolver-right / same film; undecidable counted against | 98.4% — met | 98.5% — met | 96.2% — not yet (42 undecidable) | 96.8% — not yet (59 undecidable) | 82.2% — NOT met |
 | report verdict strict / weak (not a gate; see below) | yes / yes | no / yes | no / yes | no / yes | no / no |
 | all-listing coverage, resolver / pipeline (not a gate) | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
 | shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
