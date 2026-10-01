@@ -288,6 +288,19 @@ object SequelMarker {
    *  tie-break — pinning "Mockingjay - Part 2" to "Part 1"'s (older, lower-id)
    *  film whenever no candidate title matched either spelling exactly. */
   def differentInstalments(a: Seq[String], b: Seq[String]): Boolean =
+    differentUnstamped(withoutYearStamp(a), withoutYearStamp(b))
+
+  /** `t` without the screening year a venue stamps after a title ("The Hunger Games
+   *  (2026)"), which otherwise stops the shorter title being a token-run of the longer:
+   *  the base check below then read the 2012 film's rerelease and "The Hunger Games:
+   *  Sunrise on the Reaping" as one film (UK prod, 2026-10-01). A title that IS a year
+   *  ("1917") keeps it. */
+  private def withoutYearStamp(t: Seq[String]): Seq[String] = {
+    val stripped = t.reverse.dropWhile(isYear).reverse
+    if (stripped.isEmpty) t else stripped
+  }
+
+  private def differentUnstamped(a: Seq[String], b: Seq[String]): Boolean =
     if (a.isEmpty || b.isEmpty) false
     else if (curatedSiblings(a, b) || numberedDifferently(a, b)) true
     else if (a.length == b.length)

@@ -156,6 +156,20 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Sunrise on the Reaping") shouldBe true
   }
 
+  // UK prod, 2026-10-01: a rerelease of the ORIGINAL film stamped with its screening
+  // year, "The Hunger Games (2026)", sat on a row beside the Mockingjay rerelease. Its
+  // year token stopped the shorter title being a token-run of Sunrise's, so the two read
+  // as one film, and the director walk matched it to Sunrise's main title "The Hunger
+  // Games" (`RereleaseYearResolveSpec`). A trailing year is a stamp, not part of the title.
+  it should "read a franchise base stamped with a rerelease year as the base" in {
+    different("The Hunger Games (2026)", "The Hunger Games: Sunrise on the Reaping") shouldBe true
+    different("The Hunger Games: Sunrise on the Reaping", "The Hunger Games (2026)") shouldBe true
+    different("Toy Story (2026)", "Toy Story 5")                                    shouldBe true
+    // ...and is still the same film as itself, and a year-only title is not emptied.
+    different("The Hunger Games (2026)", "The Hunger Games")                         shouldBe false
+    different("1917 (2026)", "1917")                                                 shouldBe false
+  }
+
   // UK convergence run 35948292875 (2026-09-24): the Flicks listings name ONE film
   // "The Hunger Games: Mockingjay - Part 1 (2026)" at 64 venues and plain "... - Part 1"
   // at 14. Both qualify as an entry against the curated base and their extras differ —
