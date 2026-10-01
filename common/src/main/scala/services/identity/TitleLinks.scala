@@ -43,13 +43,17 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
    *  while its quoted segment is the title other venues list the film by: the form is then the
    *  festival's, not the film's, and says nothing about which film the spelling is. Not "names a
    *  film beside it": a spelling whose original title reaches its OWN film ("Pieśni lasu | Pokaz
-   *  …", "Whispers in the Woods") would then lose the plain listings it is the only bridge for. */
+   *  …", "Whispers in the Woods") would then lose the plain listings it is the only bridge for.
+   *  A double bill's second work counts too when it is another listing's whole title: "Toddler Club:
+   *  Tabby McTat + Room on the Broom" searches as "Tabby McTat", and joined to the bare "Tabby McTat"
+   *  its "Various Directors" vetoed that film; "Wajda. Bez znieczulenia + prelekcja" bills a talk. */
   def titlesBeside(node: EvidenceNode, form: String): Boolean = {
     val words = services.movies.TitleContainment.tokens(form).toSet
     // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
     // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
     val formKey = sanitized(form)
-    segmentsOf(node.id).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
+    val billed = IdentityMeasures.billedSecondTitle(node.evidence.published).map(sanitized).filter(_.nonEmpty)
+    (segmentsOf(node.id) ++ billed).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
       (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
   }
 }

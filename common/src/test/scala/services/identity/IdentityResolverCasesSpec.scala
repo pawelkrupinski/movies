@@ -716,6 +716,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
     IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
 
+  "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
+    // UK, 2026-10-01: "Toddler Club: Tabby McTat + Room on the Broom" {Various Directors} searches as "Tabby McTat";
+    // joined to the bare "Tabby McTat" ×23, its directors vetoed the film for all of them. A bill whose second
+    // part is a talk ("Wajda. Bez znieczulenia + prelekcja") still joins the film's own listings.
+    val films = Seq(F(1205520, "Tabby McTat", 2024, "Jac Hamman", 27, 2), F(82390, "Room on the Broom", 2012, "Jan Lachauer", 27, 6),
+      F(42199, "Bez znieczulenia", 1978, "Andrzej Wajda", 131, 3))
+    val tabby = Seq(listing(Rialto, "Tabby McTat"), listing(KinoApollo, "Tabby McTat"))
+    val bill  = listing(Multikino, "Toddler Club: Tabby McTat + Room on the Broom", director = Some("Various Directors"))
+    val broom = listing(Rialto, "Room on the Broom")
+    val wajda = Seq(listing(Rialto, "Bez znieczulenia", director = Some("Andrzej Wajda")), listing(KinoApollo, "Bez znieczulenia"),
+      listing(Multikino, "Wajda. Bez znieczulenia + prelekcja"))
+    val all = tabby ++ Seq(bill, broom) ++ wajda
+    val r = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      tabby.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(1205520), Some(1205520))
+      wajda.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(3)(Some(42199))
+    }
+  }
+
   "The pooled vote" should "not take the film TMDB's ranking favours when the cluster's own facts favour another" in {
     // PL, "Camino dla opornych" at four venues: one publishes the original title "Santiago" and
     // 113 minutes, one only the runtime, two nothing. "Santiago" returns Gordon Douglas's 93-minute

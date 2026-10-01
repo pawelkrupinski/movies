@@ -31,8 +31,24 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** What [[alone]] takes, with the rule that took it. */
   private def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
+    if (billsBothItsWorks(ranked)) None
+    else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
+
+  /** A DOUBLE BILL whose title names two eligible films, its facts ruling out neither: it is neither film.
+   *  UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133 credits
+   *  both films' directors, each piece found its own film first, and the two scored 91–93% — which one it
+   *  took was popularity's coin. A bill whose facts rule one out still takes the other, and a film whose
+   *  own whole title it is ("Romeo + Juliet") is no bill. */
+  def billsBothItsWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
+    val eligible = eligibleOf(ranked)
+    val works    = eligible.filter(c => c.titleNamesIt && !contradicted(c) && !c.category("director").contains("different"))
+      .map(c => IdentityMeasures.yearlessTokens(c.candidate.film.title)).distinct
+    // the billed second work is a whole film title, not a talk ("+ prelekcja", "+ spotkanie z reżyserem …")
+    val billed   = IdentityMeasures.billedSecondWork(any.listing)
+    IdentityMeasures.billsTwoWorks(any.listing) && !eligible.exists(_.category("title").contains("exact")) &&
+      works.sizeIs >= 2 && billed.exists(works.contains)
+  }
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
    *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
@@ -49,7 +65,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibrated]]).
    *  Each the edition of it the listing names, if any ([[editionNamed]]). */
   def pooled(ranked: Seq[Scored]): Option[Accepted] =
-    seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit))).map(_._1))
+    if (billsBothItsWorks(ranked)) None else seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit))).map(_._1))
       .map(editionNamed(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale

@@ -1013,6 +1013,12 @@ object IdentityMeasures {
     }
   }
 
+  /** What a double bill joins LAST with a spaced "+" ("… + The Tiger Who Came to Tea") — a film, or a talk. */
+  def billedSecondTitle(l: Listing): Option[String] = BillJoin.split(l.title).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
+
+  /** The yearless words of [[billedSecondTitle]]. */
+  def billedSecondWork(l: Listing): Option[Seq[String]] = billedSecondTitle(l).map(yearlessTokens).filter(_.nonEmpty)
+
   /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? */
   def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(t).isDefined)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),

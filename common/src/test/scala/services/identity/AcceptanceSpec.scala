@@ -72,6 +72,28 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     segment(Listing("Przepraszam, czy tu biją?"), film) shouldBe None
   }
 
+  "a double bill" should "take neither film when its facts back both" in {
+    // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133: each piece found
+    // its own film first and both directors were credited — the two scored 91–93%, and popularity picked one.
+    val bill  = Listing("We're Going on a Bear Hunt + The Tiger Who Came to Tea", directors = Seq("Joanna Harrison", "Robin Shaw"))
+    val bear  = (431591, Film("We're Going on a Bear Hunt", year = Some(2016), directors = Some(Seq("Joanna Harrison"))), Some(1))
+    val tiger = (644120, Film("The Tiger Who Came to Tea", year = Some(2019), directors = Some(Seq("Robin Shaw"))), Some(1))
+    // as the corpus scored them: 101–134 venues corroborating each lifted both to ~92%
+    def corroborated(scored: Seq[Scored]) = scored.map { sc =>
+      val tiger = sc.candidate.tmdbId == 644120
+      sc.copy(probability = if (tiger) 0.925 else 0.913,
+        measures = sc.measures + ("venues.corroborating" -> IdentityMeasures.Number(if (tiger) 101 else 134)))
+    }
+      .sortBy(sc => (-sc.probability, sc.candidate.tmdbId))
+    acceptance.billsBothItsWorks(corroborated(ranked(bill, bear, tiger))) shouldBe true
+    taken(corroborated(ranked(bill, bear, tiger))) shouldBe None
+    acceptance.pooled(corroborated(ranked(bill, bear, tiger))) shouldBe None
+    // its facts picking ONE of the two still take it
+    acceptance.billsBothItsWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe false
+    // a single film is no bill
+    acceptance.billsBothItsWorks(ranked(Listing("We're Going on a Bear Hunt"), bear)) shouldBe false
+  }
+
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {
     // US "Troll (1986)": TMDB ranks "Troll 2" and the 2022 "Troll" above the 1986 film.
     val troll = Listing("Troll (1986)")
