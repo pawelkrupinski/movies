@@ -326,7 +326,8 @@ object StagingFold {
     val decided  = byKey.map { case (key, record) =>
       key -> MovieRecordMerge.unionAll(record +: idsByKey.getOrElse(key, Nil).flatMap(evidence.get))
     }
-    val (plannedRev, _) = FilmCanonicalizer.groupByFilm(decided, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+    val clusters = FilmCanonicalizer.groupByFilm(decided, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+    val (plannedRev, _) = oneClusterPerTmdbId(clusters)
       .map(_.map { case (key, _) => key -> rawByKey(key) })
       .foldLeft((Vector.empty[((FilmId, CacheKey, MovieRecord), Boolean, Seq[(FilmId, FilmId)])], Set.empty[FilmId])) {
         case ((acc, mintedSoFar), cluster) =>
@@ -359,5 +360,42 @@ object StagingFold {
     val retiredSet    = moviesDeletes.toSet
     val retirements   = planned.flatMap(_._3).filter { case (loser, _) => retiredSet.contains(loser) }.distinct
     Plan(upserts, moviesDeletes, stagingRows, newPromotions, retirements)
+  }
+
+  /** Join every cluster that shares a tmdbId with another into one, so the plan writes at most
+   *  ONE `movies` document per tmdbId.
+   *
+   *  `clusterByFilm` may split one tmdbId's rows where their cinemas publish different films (a
+   *  row holding an id that is not its film's — "Mistyczka", the curated Hunger Games siblings).
+   *  That split is a DISPLAY truth, and the read model honours it with a card per shown title.
+   *  Storage cannot: `movies` holds one document per tmdbId (the partial unique `tmdbId_1`
+   *  index; `MovieCache.put`'s identity gate folds any second writer onto the holder). Planned as
+   *  two documents, the second insert died on E11000 inside the fold's transaction on every
+   *  attempt, identically — UK prod's Kendal "Sunrise on the Reaping" beside Odeon's mis-resolved
+   *  "Mockingjay - Part 1 (2026)", ~17k failed folds from 2026-09-25 until this landed — and the
+   *  newcomer never graduated. Joining them here is what the identity gate would do to the
+   *  second write anyway; the wrong id stays visible as two titles on one film, for a re-resolve
+   *  to correct, rather than as a fold that can never commit.
+   *
+   *  Order-stable: a joined cluster stands where its first member did, members in their order. */
+  private[staging] def oneClusterPerTmdbId(clusters: Seq[Seq[(CacheKey, MovieRecord)]]): Seq[Seq[(CacheKey, MovieRecord)]] = {
+    val holder = scala.collection.mutable.Map.empty[Int, Int]            // tmdbId → index of the joined cluster
+    val joined = scala.collection.mutable.ArrayBuffer.empty[Seq[(CacheKey, MovieRecord)]]
+    clusters.foreach { cluster =>
+      val ids     = cluster.flatMap(_._2.tmdbId).distinct
+      val targets = ids.flatMap(holder.get).distinct.sorted
+      targets match {
+        case Seq() =>
+          joined += cluster
+          ids.foreach(holder(_) = joined.size - 1)
+        case first +: rest =>
+          // A cluster bridging two earlier ones joins all three; the later ones empty out.
+          joined(first) = (joined(first) ++ rest.flatMap(joined(_))) ++ cluster
+          rest.foreach(i => joined(i) = Seq.empty)
+          holder.keys.toSeq.foreach(id => if (rest.contains(holder(id))) holder(id) = first)
+          ids.foreach(holder(_) = first)
+      }
+    }
+    joined.toSeq.filter(_.nonEmpty)
   }
 }

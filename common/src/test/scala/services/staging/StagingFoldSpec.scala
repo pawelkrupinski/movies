@@ -306,6 +306,46 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       Set(Some(29993) -> Set.empty[Source], None -> Set[Source](Helios))
   }
 
+  it should "write ONE document per tmdbId even where the films' cinemas publish different films" in {
+    // UK prod, 2026-09-25 → 10-01, ~17k failed folds: Odeon's "The Hunger Games: Mockingjay -
+    // Part 1 (2026)" rerelease had been resolved to Sunrise on the Reaping (1300968) and stored as
+    // `hungergamesballadofsongbirdssnakes|2026`. Brewery Arts Centre Kendal's own "Sunrise on the
+    // Reaping" then resolved to the same id. Once the fold decided on the stored film's stitched
+    // evidence (c155fd983), `clusterByFilm` saw two curated Hunger Games siblings and split them —
+    // and planned BOTH as documents carrying tmdbId 1300968. `movies` holds one document per tmdbId
+    // (the partial unique `tmdbId_1` index, the cache's write-time identity gate), so every attempt
+    // died on E11000 and the Kendal listing never graduated. The shapes are the prod rows': the
+    // stored document is a migrated one (no slots of its own), its cinemas come in as evidence.
+    val uk       = services.movies.TitleNormalizer.forCountry(models.Country.UnitedKingdom)
+    val sunrise  = "The Hunger Games: Sunrise on the Reaping"
+    val rerelease = "The Hunger Games: Mockingjay - Part 1 (2026)"
+    val tmdbSlot = SourceData(title = Some(sunrise), originalTitle = Some(sunrise), releaseYear = Some(2026),
+      director = Seq("Francis Lawrence"), runtimeMinutes = Some(150))
+    val bridgend      = models.CinemaShowing(models.OdeonCinemaBridgend, "thehungergamesmockingjaypart1")
+    val eastKilbride  = models.CinemaShowing(models.OdeonLuxeEastKilbride, "thehungergamesmockingjaypart1")
+    val kendal        = models.CinemaShowing(models.BreweryArtsCentreKendal, "thehungergamessunriseonthereaping")
+    val storedId = FilmId("hungergamesballadofsongbirdssnakes|2026")
+    val storedRaw = MovieRecord(tmdbId = Some(1300968), imdbId = Some("tt32558705"))
+    val storedEvidence = storedRaw.copy(data = Map[Source, SourceData](
+      Tmdb         -> tmdbSlot,
+      bridgend     -> SourceData(title = Some(rerelease), rawTitle = Some(rerelease)),
+      eastKilbride -> SourceData(title = Some(rerelease), rawTitle = Some(rerelease))))
+    val stored = StoredMovieRecord("The Hunger Games: Mockingjay - Part 1", Some(2026), storedRaw, storedId)
+    val kendalRow = StagingRecord(kendal, sunrise, None, MovieRecord(tmdbId = Some(1300968), imdbId = Some("tt32558705"),
+      data = Map[Source, SourceData](kendal -> SourceData(title = Some(sunrise)), Tmdb -> tmdbSlot)), uk)
+
+    val plan = StagingFold.planGroup(Seq(kendalRow), Seq(stored), uk, evidence = Map(storedId -> storedEvidence))
+
+    val documentsPerTmdbId = plan.moviesUpserts.flatMap(_._3.tmdbId).groupBy(identity).view.mapValues(_.size).toMap
+    withClue(s"the fold planned two `movies` documents for one tmdbId: ${plan.moviesUpserts.map(u => u._1 -> u._2)}\n")(
+      documentsPerTmdbId shouldBe Map(1300968 -> 1))
+    // …and that document is the one the store already holds — the newcomer joins it, nothing retires.
+    plan.moviesUpserts.map(_._1) shouldBe Seq(storedId)
+    plan.moviesUpserts.head._3.data.keySet should contain (kendal)
+    plan.moviesDeletes shouldBe empty
+    plan.newPromotions shouldBe empty
+  }
+
   it should "not file an UNANSWERED group at its brackets — TMDB never said nothing resolves" in {
     // UK hard cluster, replayed through a TMDB outage past the six-hour ceiling: Odeon lists
     // "The Hunger Games: Mockingjay - Part 2 (2026)" (the re-release year), other venues the
