@@ -73,7 +73,10 @@ object ReadModelCodecs extends PersistedCodecs {
   val registry: CodecRegistry = fromRegistries(
     fromCodecs(
       DefaultingCodec(withDefaultedLeaves.get(classOf[ResolvedMovie]),  emptyMovie),
-      DefaultingCodec(withDefaultedLeaves.get(classOf[CityScreening]), emptyScreening)
+      // A screening row reads as `DefaultingCodec` over its macro would, streamed: rows are many and
+      // each carries every showtime (`StreamingCityScreeningCodec`).
+      new StreamingCityScreeningCodec(withDefaultedLeaves.get(classOf[CityScreening]),
+        new services.movies.StreamingShowtimeCodec(macroRegistry.get(classOf[Showtime])))
     ),
     withDefaultedLeaves
   )

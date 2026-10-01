@@ -75,4 +75,40 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
     )
     roundTrip(codec, screening) shouldBe screening
   }
+
+  /** How a screening row read before it was streamed: the macro codec over a document whose missing
+   *  fields the empty screening filled. */
+  private val defaulting = {
+    import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
+    val macros = fromRegistries(fromCodecs(services.movies.JavaTimeCodecs.localDateTime),
+      fromProviders(services.PersistedCodecs.omittingNone[ReadModelCodecs.OmittingNone]*),
+      org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY)
+    DefaultingCodec(macros.get(classOf[CityScreening]), CityScreening("", "", "", "", None, Seq.empty))
+  }
+
+  private val at = """{ "$date": "2026-12-17T13:00:00Z" }"""
+  private val screeningRows = Seq(
+    s"""{ "_id": "x|1994|poznan|Helios", "filmId": "x|1994", "city": "poznan", "cinema": "Helios", "filmUrl": "https://h/1",
+       |  "showtimes": [{ "dateTime": $at, "bookingUrl": "https://b", "room": "1", "format": ["2D"] }, { "dateTime": $at, "room": null }],
+       |  "listingKeys": ["k1", "k2"] }""".stripMargin,
+    s"""{ "_id": "a", "filmId": "a", "city": "poznan", "cinema": "Helios", "showtimes": [] }""",
+    s"""{ "_id": "a", "filmUrl": null, "extra": { "x": 1 } }""",
+    s"""{ "showtimes": [{ "dateTime": $at }], "cinema": "Helios", "_id": "a" }""",
+    s"""{ "_id": "a", "showtimes": [{ "bookingUrl": "https://b" }] }""",
+    s"""{ "_id": "a", "listingKeys": [] }""",
+    s"""{ "_id": "a", "cinema": null, "listingKeys": null }""",
+    s"""{ "_id": null, "filmId": null, "city": null, "showtimes": null }""")
+
+  "a web_screenings row" should "read every stored shape exactly as the defaulting macro codec read it" in {
+    ReadModelCodecs.registry.get(classOf[CityScreening]).getClass.getName should include("StreamingCityScreeningCodec")
+    screeningRows.foreach { json =>
+      def read(codec: Codec[CityScreening]) =
+        scala.util.Try(codec.decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build()))
+      val (before, streamed) = (read(defaulting), read(ReadModelCodecs.registry.get(classOf[CityScreening])))
+      withClue(json) {
+        streamed.isSuccess shouldBe before.isSuccess
+        streamed.toOption shouldBe before.toOption
+      }
+    }
+  }
 }
