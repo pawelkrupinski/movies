@@ -309,7 +309,7 @@ object WorkerMain extends Logging {
         Instant.now()))
     snapshot.start()
     server.createContext("/metrics", exchange => {
-      val body = snapshot.current()
+      val body = snapshot.serve()
       if (body.isEmpty) {
         exchange.sendResponseHeaders(503, -1) // only before the first refresh completes
         exchange.close()

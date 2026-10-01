@@ -65,4 +65,60 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
     slow.join()
     new String(cache.current(), "UTF-8") shouldBe "second"
   }
+
+  /** A scheduler that runs what it is handed on the calling thread, and a clock a spec moves. */
+  private final class Inline extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
+    override def execute(command: Runnable): Unit = command.run()
+  }
+  private final class Clock(var at: Long) extends java.time.Clock {
+    def getZone = java.time.ZoneOffset.UTC
+    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+    def instant = java.time.Instant.ofEpochMilli(at)
+  }
+
+  // It re-rendered every 10 s under a 30 s scrape interval: two renders in three — each a thousand
+  // active tasks read from Mongo — were never served.
+  "serve()" should "render once per scrape, for the next one, and never on a timer" in {
+    val renders = new AtomicInteger(0)
+    val clock   = new Clock(0L)
+    val cache   = new MetricsSnapshotCache(render = () => s"v${renders.incrementAndGet()}",
+      minRefresh = scala.concurrent.duration.Duration(10, "seconds"), scheduler = new Inline, clock = clock)
+    cache.start()
+    renders.get() shouldBe 1
+    clock.at += 60000                                       // a minute with nobody scraping: no render
+    renders.get() shouldBe 1
+    new String(cache.serve(), "UTF-8") shouldBe "v1"        // served the last render, and asks for the next
+    renders.get() shouldBe 2
+    clock.at += 30000
+    new String(cache.serve(), "UTF-8") shouldBe "v2"
+    renders.get() shouldBe 3
+  }
+
+  it should "not render again within its floor however often it is read" in {
+    val renders = new AtomicInteger(0)
+    val clock   = new Clock(0L)
+    val cache   = new MetricsSnapshotCache(render = () => s"v${renders.incrementAndGet()}",
+      minRefresh = scala.concurrent.duration.Duration(10, "seconds"), scheduler = new Inline, clock = clock)
+    cache.start()
+    clock.at += 10000
+    (1 to 5).foreach(_ => cache.serve())
+    renders.get() shouldBe 2
+  }
+
+  it should "not start a second render while one is in flight" in {
+    val release  = new CountDownLatch(1)
+    val inRender = new CountDownLatch(1)
+    val renders  = new AtomicInteger(0)
+    val clock    = new Clock(0L)
+    val cache    = new MetricsSnapshotCache(render = () =>
+      if (renders.incrementAndGet() == 1) "first" else { inRender.countDown(); release.await(); "slow" },
+      minRefresh = scala.concurrent.duration.Duration.Zero, scheduler = java.util.concurrent.Executors.newScheduledThreadPool(2), clock = clock)
+    cache.start()
+    cache.serve()
+    inRender.await()
+    (1 to 5).foreach(_ => cache.serve())
+    renders.get() shouldBe 2
+    release.countDown()
+    cache.stop()
+  }
 }
