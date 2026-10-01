@@ -92,11 +92,15 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
   /** cinema → its slots, with the row each belongs to. The old `heldSlotsOf` scan,
    *  and the prune's stale-slot sweep. */
-  private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[Source, mutable.Map[CacheKey, SourceData]]]
+  private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[Source, Map[CacheKey, SourceData]]]
   // Nested by source, not keyed by (row, source): a venue has one or two sources, so a slot costs
   // one map node rather than a node and a Tuple2 (~3 MB of tuples on the US worker's live dump).
-  private def slotOf(cinema: Cinema, source: Source): mutable.Map[CacheKey, SourceData] =
-    slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).getOrElseUpdate(source, mutable.Map.empty)
+  // The rows of a source are an IMMUTABLE map: a per-title source almost always belongs to one row,
+  // which an immutable Map holds in one small object, where a mutable HashMap was an object, a
+  // 16-bucket table and a node — ~112k of them, ~20 MB on the US worker's live heap (2026-10-01).
+  private def putSlotRow(cinema: Cinema, source: Source, key: CacheKey, sd: SourceData): Unit =
+    slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty)
+      .updateWith(source)(rows => Some(rows.getOrElse(Map.empty[CacheKey, SourceData]).updated(key, sd)))
 
   /** (row, cinema) → the sources on that row belonging to the cinema. A venue's slots on
    *  ONE row without walking the row's every slot: the landing's duplicate-slot drop asks
@@ -149,7 +153,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     }
     record.data.foreach { case (source, sd) =>
       Source.cinemaOf(source).foreach { cinema =>
-        slotOf(cinema, source).update(key, sd)
+        putSlotRow(cinema, source, key, sd)
         sourcesByRowCinema.add(key, cinema, source)
       }
     }
@@ -214,7 +218,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     val cinema = Source.cinemaOf(source).getOrElse(
       throw new IllegalArgumentException(s"putSlot is for cinema slots, not $source"))
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
-    slotOf(cinema, source).update(key, slot)
+    putSlotRow(cinema, source, key, slot)
     sourcesByRowCinema.add(key, cinema, source)
     val siblings = sourcesByRowCinema.get(key, cinema)
     val before = prior.flatMap(_.title).map(normalizer.sanitize)
@@ -316,10 +320,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       record.data.foreach { case (source, _) =>
         Source.cinemaOf(source).foreach { cinema =>
           slotsByCinema.get(cinema).foreach { bySource =>
-            bySource.get(source).foreach { rows =>
-              rows -= key
-              if (rows.isEmpty) bySource -= source
-            }
+            bySource.updateWith(source)(_.map(_ - key).filter(_.nonEmpty))
             if (bySource.isEmpty) slotsByCinema -= cinema
           }
           sourcesByRowCinema.removeAll(key, cinema)

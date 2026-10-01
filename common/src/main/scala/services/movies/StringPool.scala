@@ -34,6 +34,13 @@ final class StringPool {
     .recordStats()
     .build[String, Some[String]]()
 
+  // A film's cast, genres, directors and countries are one list at every venue that shows it, but
+  // each venue's slot held its own copy: ~985k list cells on the US worker (~24 MB of `::`, live
+  // heap 2026-10-01). Equal lists of interned strings share one instance through this.
+  private val lists = Caffeine.newBuilder()
+    .maximumSize(StringPool.MaxEntries)
+    .build[Seq[String], Seq[String]]()
+
   /** The canonical instance for a string: the first equal value interned wins, so all
    *  byte-identical values across the corpus share one object. */
   def canonical(s: String): String = canonicalSome(s).value
@@ -48,7 +55,8 @@ final class StringPool {
   }
 
   /** Intern every element of a list (cast, genres, …), preserving order. */
-  def canonicalAll(xs: Seq[String]): Seq[String] = if (xs.isEmpty) xs else xs.map(canonical)
+  def canonicalAll(xs: Seq[String]): Seq[String] =
+    if (xs.isEmpty) xs else { val canon = xs.map(canonical); lists.get(canon, (k: Seq[String]) => k) }
 
   /** A slot with its low-cardinality text interned — how a slot read back from the store (boot
    *  hydrate, the change stream, a rehydrate) joins the scrape path's instances. Without it nearly

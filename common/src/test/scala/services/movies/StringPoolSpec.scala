@@ -100,4 +100,15 @@ class StringPoolSpec extends AnyFlatSpec with Matchers {
     StringPool.small(Some(-1)) shouldBe Some(-1)
     StringPool.small(Some(100000)) shouldBe Some(100000)
   }
+
+  // A film's cast is one list at every venue that shows it; each venue's slot held its own copy
+  // (~985k list cells on the US worker).
+  "canonicalAll" should "hand equal lists back as one instance" in {
+    val pool = new StringPool
+    val a = pool.canonicalAll(List(new String("Zendaya"), new String("Tom Holland")))
+    val b = pool.canonicalAll(List(new String("Zendaya"), new String("Tom Holland")))
+    a shouldBe b
+    (a eq b) shouldBe true
+    pool.canonicalAll(Nil) shouldBe empty
+  }
 }
