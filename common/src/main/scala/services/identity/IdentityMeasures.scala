@@ -747,12 +747,44 @@ object IdentityMeasures {
     val spelling  = translated.groupMapReduce(_._1)(_._3)((a, b) => if (a <= b) a else b)
     val filmsByKey = films.toSeq.flatMap { case (id, f) => (Seq(f.title) ++ f.originalTitle).map(key).filter(_.nonEmpty).distinct.map(_ -> (id, f)) }
       .groupMap(_._1)(_._2)
-    unanimous.toSeq.flatMap { case (t, o) =>
+    val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
         case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) => Some(id -> spelling(t))
         case _                                                                               => None
       }
-    }.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
+    }
+    byOriginal.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
+  }
+
+  /** The second way a venue publishes a record's title in its language — asked per title key, of that key's
+   *  listings and the records their own searches and walks reached (so it is local to the key, as the live
+   *  corpus keeps it): listings of one title whose own
+   *  director and year single out ONE record of `films` (the director the same person, the year within
+   *  one) — "Vincent. Legenda oceanu" [2025] {Reza Memari} is TMDB's English-only "The Last Whale Singer",
+   *  so a sibling listing billing that title bare reads it as the record's alternative title, not an
+   *  overlap. Read so only when every listing of the title whose facts single out a record single out the
+   *  same one, no record of `films` carries the title whole already (as its title, original or
+   *  alternative title — this one or another), and it is no double bill's. */
+  def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
+    val pool = films.toSeq
+    // A bill's title names two works: its facts may single out one, but the title is no record's own.
+    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && BillJoin.findFirstIn(l.title).isEmpty).map { l =>
+      val year = l.statedYear.get
+      val ids  = pool.collect { case (id, f) if f.year.exists(y => math.abs(y - year) <= 1) &&
+        f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person")) => id }.distinct
+      (key(l.title), l.title, ids)
+    }.filter(_._1.nonEmpty).toSeq
+    singled.groupBy(_._1).toSeq.flatMap { case (_, ls) =>
+      // A listing whose facts single out no record here, or several, says nothing; one singling out another denies.
+      ls.map(_._3).filter(_.sizeIs == 1).distinct match {
+        // A title some record of the pool carries already is that record's to answer for ("Obcy" is Ozon's
+        // 2025 film however a 2026 listing's facts lean): only a title NO record names is learned.
+        case Seq(Seq(id)) =>
+          val spelling = ls.map(_._2).min
+          Option.when(!pool.exists { case (_, f) => Rivalling(titleRelation(Listing(spelling), f).value) })(id -> spelling)
+        case _ => None
+      }
+    }
   }
 
   /** `f` with the titles venues publish for it ([[venueTitles]]) among its alternative titles. */

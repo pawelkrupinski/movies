@@ -625,6 +625,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.venueTitles(Seq(Listing("Diabły", originalTitle = Some("The Devils"))),
       Seq(31767 -> Film("Diabły", Some("The Devils")), 1491681 -> Film("The Devils"))) shouldBe Map.empty
   }
+  they should "also be a title whose listings' own director and year single out one record" in {
+    // PL "Vincent. Legenda oceanu" [2025] {Reza Memari}: TMDB titles it "The Last Whale Singer" only, so its
+    // bare spellings at other venues only overlapped the record the facts had already named.
+    val whale = Film("The Last Whale Singer", year = Some(2026), directors = Some(Seq("Reza Memari")))
+    val vincent = Seq(Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari")),
+      // credits singling out two records here say nothing; credits singling out none say nothing either
+      Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari", "Steven Majaury")),
+      Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Someone Else")))
+    IdentityMeasures.titlesByFacts(vincent, Seq(677558 -> whale, 9 -> Film("Other", year = Some(2025), directors = Some(Seq("Steven Majaury"))))) shouldBe
+      Seq(677558 -> "Vincent. Legenda oceanu")
+    // A title some record carries whole stays that record's: a 2026 "Obcy" by Ozon is not his "La Catastrophe".
+    val ozon = Seq(Listing("Obcy", year = Some(2026), directors = Seq("François Ozon")))
+    IdentityMeasures.titlesByFacts(ozon, Seq(1 -> Film("Obcy", year = Some(2025), directors = Some(Seq("François Ozon"))),
+      2 -> Film("La Catastrophe", year = Some(2027), directors = Some(Seq("François Ozon"))))) shouldBe empty
+    // A double bill's facts may single out one of its films; its title is neither's.
+    IdentityMeasures.titlesByFacts(Seq(Listing("Słonik w lesie + Tańczący przyjaciel", year = Some(2025), directors = Seq("Jane Doe"))),
+      Seq(1 -> Film("Olifantje in het bos", year = Some(2025), directors = Some(Seq("Jane Doe"))))) shouldBe empty
+    // Two listings of one title singling out two different records: the title names neither.
+    IdentityMeasures.titlesByFacts(Seq(Listing("Nowy film", year = Some(2025), directors = Seq("Anna Nowak")),
+      Listing("Nowy film", year = Some(2024), directors = Seq("Jan Kowalski"))),
+      Seq(1 -> Film("A", year = Some(2025), directors = Some(Seq("Anna Nowak"))), 2 -> Film("B", year = Some(2024), directors = Some(Seq("Jan Kowalski"))))) shouldBe empty
+  }
+
 
   "a venue's one-letter typo in a long word" should "still name the film's title exactly" in {
     // US: "Shaun the Sheep: The Beast of Mossy Botton" (×6) and "Pradhama Drishtiya Kuttakkar" (×16)
