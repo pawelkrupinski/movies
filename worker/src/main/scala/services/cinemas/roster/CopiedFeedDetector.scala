@@ -149,25 +149,64 @@ object CopiedFeedDetector {
       .register(registry)
 
   /** Each listing's fingerprint — the smallest hash among its distinct booking sessions — for the
-   *  listings with at least [[MinSessions]] of them. */
-  private[roster] def fingerprintsOf(films: Seq[CinemaMovie]): Array[Long] =
-    films.iterator.flatMap { film =>
-      val sessions = film.showtimes.iterator.flatMap(_.bookingUrl).map(sessionOf).toSet
-      Option.when(sessions.size >= MinSessions)(sessions.iterator.map(hash64).min)
-    }.toArray.distinct
+   *  listings with at least [[MinSessions]] of them.
+   *
+   *  Every venue landing fingerprints every showtime it lists (a US scrape walk: 4,462 venues, every
+   *  few hours), so each session is hashed where it lies in its link — no substring, no set of
+   *  strings, both halves of the hash in one pass — and a listing's sessions told apart by hash: two
+   *  sessions are one only if their 64-bit hashes agree. */
+  private[roster] def fingerprintsOf(films: Seq[CinemaMovie]): Array[Long] = {
+    val fingerprints = Array.newBuilder[Long]
+    var hashes = new Array[Long](32)
+    films.foreach { film =>
+      var n = 0
+      film.showtimes.foreach(_.bookingUrl.foreach { url =>
+        if (n == hashes.length) hashes = java.util.Arrays.copyOf(hashes, n * 2)
+        hashes(n) = sessionHash(url)
+        n += 1
+      })
+      if (n >= MinSessions) {
+        java.util.Arrays.sort(hashes, 0, n)
+        var distinct = 1
+        var i = 1
+        while (i < n) { if (hashes(i) != hashes(i - 1)) distinct += 1; i += 1 }
+        if (distinct >= MinSessions) fingerprints += hashes(0)
+      }
+    }
+    fingerprints.result().distinct
+  }
 
   /** The part of a booking link naming the venue and the session: its path and query. Scheme and
    *  host are dropped — one ticketing backend serves one session from regional mirrors (Veezi's
    *  ticketing.us. and ticketing.useast.). */
-  private[roster] def sessionOf(url: String): String = {
+  private[roster] def sessionOf(url: String): String = url.substring(sessionStart(url))
+
+  private def sessionStart(url: String): Int = {
     val afterScheme = url.indexOf("://")
-    if (afterScheme < 0) url
+    if (afterScheme < 0) 0
     else url.indexOf('/', afterScheme + 3) match {
-      case -1 => ""
-      case i  => url.substring(i)
+      case -1 => url.length
+      case i  => i
     }
   }
 
-  private def hash64(session: String): Long =
-    (MurmurHash3.stringHash(session, 0x9747b28c).toLong << 32) | (MurmurHash3.stringHash(session, 0x5bd1e995) & 0xffffffffL)
+  /** `hash64(sessionOf(url))`: two MurmurHash3 string hashes of the session, read in place. */
+  private[roster] def sessionHash(url: String): Long = {
+    val start  = sessionStart(url)
+    val length = url.length - start
+    var high   = HighSeed
+    var low    = LowSeed
+    var i      = start
+    while (i + 1 < url.length) {
+      val data = (url.charAt(i) << 16) + url.charAt(i + 1)
+      high = MurmurHash3.mix(high, data)
+      low  = MurmurHash3.mix(low, data)
+      i += 2
+    }
+    if (i < url.length) { high = MurmurHash3.mixLast(high, url.charAt(i).toInt); low = MurmurHash3.mixLast(low, url.charAt(i).toInt) }
+    (MurmurHash3.finalizeHash(high, length).toLong << 32) | (MurmurHash3.finalizeHash(low, length) & 0xffffffffL)
+  }
+
+  private val HighSeed = 0x9747b28c
+  private val LowSeed  = 0x5bd1e995
 }

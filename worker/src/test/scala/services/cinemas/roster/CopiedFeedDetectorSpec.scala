@@ -150,4 +150,35 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
   "DistinctVenuePairs" should "name only venues some roster still holds" in {
     DistinctVenuePairs.unresolved shouldBe empty
   }
+
+  /** The fingerprints as they were first computed — each listing's sessions cut out of their links,
+   *  told apart as strings, each hashed by two `MurmurHash3.stringHash` passes — kept here as the
+   *  reference the in-place computation must equal. */
+  private def referenceFingerprints(films: Seq[CinemaMovie]): Array[Long] = {
+    def hash64(session: String): Long =
+      (scala.util.hashing.MurmurHash3.stringHash(session, 0x9747b28c).toLong << 32) |
+        (scala.util.hashing.MurmurHash3.stringHash(session, 0x5bd1e995) & 0xffffffffL)
+    films.iterator.flatMap { film =>
+      val sessions = film.showtimes.iterator.flatMap(_.bookingUrl).map(CopiedFeedDetector.sessionOf).toSet
+      Option.when(sessions.size >= CopiedFeedDetector.MinSessions)(sessions.iterator.map(hash64).min)
+    }.toArray.distinct
+  }
+
+  "a venue's fingerprints" should "be exactly what cutting each session out of its link and hashing it gives" in {
+    val rnd   = new scala.util.Random(20261001)
+    val links = Seq("https://ticketing.us.veezi.com/purchase/", "http://useast.veezi.com/p/", "veezi-session-", "https://host.only",
+      "https://host.only/", "https://h/a?b=c&d=", "ftp://x/y")
+    val films = (1 to 400).map { f =>
+      val showtimes = (0 until rnd.nextInt(9)).map { s =>
+        val url = Option.when(rnd.nextInt(8) > 0)(links(rnd.nextInt(links.size)) + (if (rnd.nextBoolean()) s"$f-${rnd.nextInt(4)}" else "x" * rnd.nextInt(3)))
+        Showtime(start.plusMinutes(s.toLong), url)
+      }
+      CinemaMovie(Movie(s"Film $f"), pickwick, None, None, None, Nil, Nil, showtimes)
+    }
+    films.grouped(7).foreach { venue =>
+      CopiedFeedDetector.fingerprintsOf(venue).toSeq shouldBe referenceFingerprints(venue).toSeq
+    }
+    CopiedFeedDetector.fingerprintsOf(films).toSeq shouldBe referenceFingerprints(films).toSeq
+    referenceFingerprints(films) should not be empty
+  }
 }
