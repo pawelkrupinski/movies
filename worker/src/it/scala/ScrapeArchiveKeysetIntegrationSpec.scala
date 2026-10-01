@@ -60,4 +60,36 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
       client.close()
     }
   }
+
+  // A row is a venue's whole listing, so a page is several round trips and a decode: read one page
+  // after another, the US archive was ~6 s of every identity projection.
+  "scan" should "read its pages side by side, every row once" in {
+    val outstanding = new java.util.concurrent.atomic.AtomicInteger(0)
+    val most        = new java.util.concurrent.atomic.AtomicInteger(0)
+    val listening = org.mongodb.scala.MongoClient(com.mongodb.MongoClientSettings.builder()
+      .applyConnectionString(new com.mongodb.ConnectionString(mongoTarget.uri.value))
+      .addCommandListener(new com.mongodb.event.CommandListener {
+        private def page(name: String) = name == "find" || name == "getMore"
+        override def commandStarted(event: com.mongodb.event.CommandStartedEvent): Unit =
+          if (page(event.getCommandName)) { most.accumulateAndGet(outstanding.incrementAndGet(), math.max); () }
+        override def commandSucceeded(event: com.mongodb.event.CommandSucceededEvent): Unit =
+          if (page(event.getCommandName)) { outstanding.decrementAndGet(); () }
+      }).build())
+    val db         = listening.getDatabase(s"kinowo_isolated_archivescan_${ProcessHandle.current().pid()}_${System.nanoTime()}")
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    val cinemas    = Cinema.all.take(MongoScrapeArchiveRepository.FindAllBatchSize * 6)
+    try {
+      cinemas.foreach(cinema => repository.record(ScrapeAttempt(
+        cinema = cinema, city = Cinema.cityOf(cinema), at = Instant.parse("2026-07-28T06:00:00Z"),
+        listingComplete = true, films = Seq(film(s"Film at ${cinema.displayName}")))))
+      most.set(0)
+      val read = Vector.newBuilder[Cinema]
+      repository.scan(_.foreach(row => read += row.cinema)) shouldBe true
+      read.result().sortBy(_.displayName) shouldBe cinemas.sortBy(_.displayName)
+      most.get should be > 1
+    } finally {
+      Await.result(db.drop().toFuture(), 60.seconds)
+      listening.close()
+    }
+  }
 }

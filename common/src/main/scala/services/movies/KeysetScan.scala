@@ -81,4 +81,41 @@ object KeysetScan {
     }
     complete
   }
+
+  /** The rows of `keys`, a `batchSize` page at a time — `inFlight` pages fetched side by side and
+   *  handed to `onBatch` in `keys`' order, on the calling thread. For a collection whose pages are
+   *  each several round trips and a decode of large documents (a scrape archive row is a venue's
+   *  whole listing): read one after another, the US archive's 179 pages were ~6 s of every identity
+   *  projection, the CPU idle. Each page is retried as [[scan]] retries one, and the outcome is
+   *  [[scan]]'s: `false` once a page still failed, the batches before it already handed on, and a
+   *  failure of `onBatch` propagates. A key whose row is gone by its page's read is simply absent. */
+  def byKeys[A](
+    label:          String,
+    keys:           Seq[String],
+    batchSize:      Int,
+    inFlight:       Int,
+    maxAttempts:    Int,
+    initialBackoff: FiniteDuration,
+    fetchKeys:      Seq[String] => Seq[A],
+    onIncomplete:   Throwable => Unit = _ => ()
+  )(onBatch: Seq[A] => Unit): Boolean = {
+    val pages = keys.grouped(batchSize).toVector
+    def read(page: Seq[String]): Future[Seq[A]] = Future(blocking {
+      RetryWithBackoff(label = label, maxAttempts = maxAttempts, initialBackoff = initialBackoff)(fetchKeys(page))
+    })(using ExecutionContext.global)
+    val reading = scala.collection.mutable.Queue.from(pages.take(inFlight).map(read))
+    var next     = inFlight
+    var complete = true
+    while (complete && reading.nonEmpty) {
+      Try(Await.result(reading.dequeue(), Duration.Inf)) match {
+        case Success(batch) =>
+          if (next < pages.size) { reading.enqueue(read(pages(next))); next += 1 }
+          onBatch(batch)   // outside the Try: a consumer failure is not a read failure
+        case Failure(exception) =>
+          onIncomplete(exception)
+          complete = false
+      }
+    }
+    complete
+  }
 }

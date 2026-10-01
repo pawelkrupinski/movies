@@ -282,25 +282,42 @@ class MongoScrapeArchiveRepository(
    * `false`, which `findAll` turns into an empty archive.
    */
   def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
-    services.movies.KeysetScan.scan[StoredScrapeDto](
-      label          = "ScrapeArchiveRepository keyset batch",
-      batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
-      // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run
-      // and its supervisor brings it back within a couple of seconds; 3 attempts at
-      // 1s backoff could expire inside that window, turning a blip into an empty
-      // corpus. 5 attempts backing off 2s→32s covers it with room to spare.
+    // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run and its supervisor
+    // brings it back within a couple of seconds; 3 attempts at 1s backoff could expire inside that
+    // window, turning a blip into an empty corpus. 5 attempts backing off 2s→32s covers it with room
+    // to spare.
+    def failed(exception: Throwable): Unit =
+      logger.warn(s"ScrapeArchiveRepository.scan incomplete after retries — the rows read so far are a partial " +
+        s"archive, not a smaller one: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    // Every venue's id first — a keyset read of ids alone, a few small pages — then the rows a page
+    // of FindAllBatchSize at a time, several pages side by side (`KeysetScan.byKeys`): a row is a
+    // venue's whole listing, so a page is several round trips and a decode, and the US archive read
+    // page after page was ~6 s of every identity projection.
+    val ids      = Vector.newBuilder[String]
+    val idsWhole = services.movies.KeysetScan.scan[org.bson.BsonDocument](
+      label          = "ScrapeArchiveRepository id batch",
+      batchSize      = MongoScrapeArchiveRepository.IdBatchSize,
       maxAttempts    = 5,
       initialBackoff = 2.seconds,
-      keyOf          = _._id,
-      fetchPage      = (afterId, limit) => {
-        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-        Await.result(
-          c.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
-          60.seconds)
-      },
-      onIncomplete   = exception =>
-        logger.warn(s"ScrapeArchiveRepository.scan incomplete after retries — the rows read so far are a partial " +
-          s"archive, not a smaller one: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+      keyOf          = _.getString("_id").getValue,
+      fetchPage      = (afterId, limit) => Await.result(
+        c.withDocumentClass[org.bson.BsonDocument]().find(afterId.fold(Filters.empty())(Filters.gt("_id", _)))
+          .projection(Projections.include("_id")).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(),
+        60.seconds),
+      onIncomplete   = failed
+    )(page => ids ++= page.map(_.getString("_id").getValue))
+    idsWhole && services.movies.KeysetScan.byKeys[StoredScrapeDto](
+      label          = "ScrapeArchiveRepository keyset batch",
+      keys           = ids.result(),
+      batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
+      inFlight       = MongoScrapeArchiveRepository.ScanPagesInFlight,
+      maxAttempts    = 5,
+      initialBackoff = 2.seconds,
+      fetchKeys      = page => Await.result(
+        c.find(Filters.in("_id", page*)).sort(org.mongodb.scala.model.Sorts.ascending("_id"))
+          .batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
+        60.seconds),
+      onIncomplete   = failed
     )(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
   }
 
@@ -332,4 +349,10 @@ object MongoScrapeArchiveRepository {
    * strictly elegant on a LAN, and irrelevant next to a read that does not complete.
    */
   val FindAllBatchSize = 25
+
+  /** How many of [[FindAllBatchSize]]'s pages a scan reads side by side — ~1 MB each. */
+  val ScanPagesInFlight = 4
+
+  /** Ids per page of the id read that opens a scan: an id is a venue's name, so a page is small. */
+  val IdBatchSize = 1000
 }

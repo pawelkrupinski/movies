@@ -151,4 +151,34 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     complete   shouldBe true
     overlapped shouldBe true
   }
+
+  private def byKeys(keys: Seq[String], inFlight: Int, fetchKeys: Seq[String] => Seq[String]): (Boolean, Vector[Seq[String]]) = {
+    val pages = Vector.newBuilder[Seq[String]]
+    val complete = KeysetScan.byKeys[String]("test", keys, batchSize = 2, inFlight = inFlight, maxAttempts = 1,
+      initialBackoff = 1.milli, fetchKeys = fetchKeys)(pages += _)
+    (complete, pages.result())
+  }
+
+  "byKeys" should "read its pages side by side and hand them on in key order" in {
+    // Each of the first two pages waits for the other's read to be under way: read one at a time,
+    // the first never returns.
+    val together = new java.util.concurrent.CyclicBarrier(2)
+    val (complete, pages) = byKeys(Seq("a", "b", "c", "d", "e"), inFlight = 2, page => {
+      if (page.head < "e") together.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      page.filterNot(_ == "c")   // a row gone by its page's read is simply absent
+    })
+    complete shouldBe true
+    pages shouldBe Vector(Seq("a", "b"), Seq("d"), Seq("e"))
+  }
+
+  it should "stop at a page that still fails, the pages before it handed on" in {
+    var failure = Option.empty[Throwable]
+    val pages   = Vector.newBuilder[Seq[String]]
+    val complete = KeysetScan.byKeys[String]("test", Seq("a", "b", "c", "d", "e"), batchSize = 2, inFlight = 1, maxAttempts = 1,
+      initialBackoff = 1.milli, fetchKeys = page => if (page.contains("c")) throw new RuntimeException("down") else page,
+      onIncomplete = e => failure = Some(e))(pages += _)
+    complete shouldBe false
+    pages.result() shouldBe Vector(Seq("a", "b"))
+    failure.map(_.getMessage) shouldBe Some("down")
+  }
 }
