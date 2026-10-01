@@ -124,10 +124,47 @@ groups:
       # OOM KILLS. The event the rules above are trying to get ahead of, alerted on separately
       # because getting ahead of it does not always work.
       # -----------------------------------------------------------------------------------------
+      #
+      # A CONTAINER'S OWN LIMIT IS NOT THE HOST RUNNING OUT, and `K3sContainerOOMKilled` (k3s.rules)
+      # already names that pod. The kernel's counter counts both kinds, so until 2026-10-01 every
+      # cgroup kill on k3s-worker-1 paged twice: in the 30 days to then, seven of the eight
+      # `HostOomKilled` episodes there had a `K3sContainerOOMKilled` beside them (web-pl 09-17 x2,
+      # 09-21 x3, 09-23; worker-us 09-30, `constraint=CONSTRAINT_MEMCG` with ~6 GB available). The
+      # `unless` withdraws the host alert when, on the same node, a container was OOMKilled and
+      # restarted inside the window AND the node never dropped below a tenth of its memory
+      # available -- k3s-worker-1 never went below 16.8% in that month, kills included. A node-wide
+      # OOM drives MemAvailable toward zero, so it still pages here even when the victim it picked
+      # was a container, which kube-state-metrics also reports as OOMKilled. On mongo-1, or on any
+      # host whose kill involved no pod, the right-hand side is empty and nothing is withdrawn.
+      # Replayed over those 30 days: eight episodes to one -- 09-17 16:42Z, a web-pl kill whose pod
+      # a rollout deleted two minutes later, before `K3sContainerOOMKilled`'s five minutes had
+      # passed, so the host alert is the one message that kill got.
+      #
+      # `kube_pod_info`'s `node` IS THE `host` LABEL: k3s registers each node under its hostname,
+      # the same name the node scrape stamps as `host`.
       - alert: HostOomKilled
-        expr: increase(node_vmstat_oom_kill[10m]) > 0
-        # NO `for:`. This is a COUNTER OF A PAST EVENT, not a condition -- by the time it is
-        # visible the kill has already happened, and waiting to confirm it only delays the message.
+        expr: >-
+          increase(node_vmstat_oom_kill[10m]) > 0
+          unless on (host)
+            (
+              label_replace(
+                max by (node) (
+                  (
+                    kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+                      and on (namespace, pod, container)
+                        increase(kube_pod_container_status_restarts_total[15m]) > 0
+                  )
+                  * on (namespace, pod) group_left (node) max by (namespace, pod, node) (kube_pod_info)
+                ),
+                "host", "$1", "node", "(.*)")
+              and on (host)
+                min_over_time(node_memory_MemAvailable_bytes[10m]) / node_memory_MemTotal_bytes > 0.10
+            )
+        # ONE MINUTE, AND ONLY FOR THE `unless`. This is a counter of a past event, so waiting
+        # confirms nothing about the kill; it gives kube-state-metrics a few scrapes to report the
+        # container's restart, so a cgroup kill is withdrawn before it pages rather than paging and
+        # then resolving. Every replayed kill had both sides inside the same minute.
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -138,11 +175,10 @@ groups:
             mongod and on monitoring-1 is Prometheus, whatever actually consumed the memory. If the
             victim is mongod, note that the web tier will keep serving its in-memory read model and
             look healthy while it stops updating -- the same silent shape the Fly tunnel's rules
-            describes. The counter also counts kills by a CONTAINER's memory limit, which is
-            nearly every kill on k3s-worker-1: if dmesg says `constraint=CONSTRAINT_MEMCG`, the
-            node had memory to spare, the victim is the container that outgrew its own limit, and
-            `K3sContainerOOMKilled` names its pod (worker-us 2026-09-30, three kills in ten
-            minutes, with ~6 GB of the node available).
+            describes. A kill by a CONTAINER's own memory limit on a node with memory to spare does
+            not fire this -- `K3sContainerOOMKilled` names that pod -- so on k3s-worker-1 it means
+            the node itself ran short, or a kill no live pod accounts for (a pod deleted right
+            after its kill): if dmesg says `constraint=CONSTRAINT_MEMCG`, it was the latter.
 
       - alert: OomKillMetricAbsent
         expr: absent(node_vmstat_oom_kill)

@@ -238,7 +238,7 @@ tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # AN OOM KILL. The counter steps from 0 to 1 at the fifth minute and stays there -- it is a
   # count of past events, so it never goes back down. The rule fires within the ten-minute
-  # `increase()` window with no `for:`, and stops on its own once the step falls out of the
+  # `increase()` window after its one-minute hold, and stops on its own once the step falls out of the
   # window: a kill twelve minutes ago is not a kill now, and the counter sitting at 1 for ever
   # is not one either.
   # ────────────────────────────────────────────────────────────────────────────────────────────
@@ -264,15 +264,134 @@ tests:
                 IS NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is mongod and on
                 monitoring-1 is Prometheus, whatever actually consumed the memory. If the victim is mongod,
                 note that the web tier will keep serving its in-memory read model and look healthy while it
-                stops updating -- the same silent shape the Fly tunnel's rules describes. The counter also
-                counts kills by a CONTAINER's memory limit, which is nearly every kill on k3s-worker-1: if
-                dmesg says `constraint=CONSTRAINT_MEMCG`, the node had memory to spare, the victim is the
-                container that outgrew its own limit, and `K3sContainerOOMKilled` names its pod (worker-us
-                2026-09-30, three kills in ten minutes, with ~6 GB of the node available).
+                stops updating -- the same silent shape the Fly tunnel's rules describes. A kill by a
+                CONTAINER's own memory limit on a node with memory to spare does not fire this --
+                `K3sContainerOOMKilled` names that pod -- so on k3s-worker-1 it means the node itself ran
+                short, or a kill no live pod accounts for (a pod deleted right after its kill): if dmesg says
+                `constraint=CONSTRAINT_MEMCG`, it was the latter.
       # The step is out of the window. A counter that stays at 1 is not a fresh kill.
       - eval_time: 20m
         alertname: HostOomKilled
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CONTAINER'S OWN LIMIT KILLED IT, AND THE NODE HAD MEMORY TO SPARE -- worker-us on
+  # k3s-worker-1, 2026-09-30, `constraint=CONSTRAINT_MEMCG` with ~6 GB of 16 available. The
+  # kernel's counter steps exactly as for a node-wide OOM, and kube-state-metrics reports the
+  # same minute's restart with reason OOMKilled on a pod scheduled to that node. That is
+  # `K3sContainerOOMKilled`'s page, naming the pod; this one paged beside it on every such kill
+  # until 2026-10-01 and must now stay quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_vmstat_oom_kill{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'node_memory_MemTotal_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '16000000000+0x35'
+      - series: 'node_memory_MemAvailable_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '6000000000+0x35'
+      - series: 'kube_pod_info{namespace="kinowo",pod="worker-us-646cc786db-66q89",node="k3s-worker-1",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '1+0x35'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-us-646cc786db-66q89",container="worker",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="kinowo",pod="worker-us-646cc786db-66q89",container="worker",reason="OOMKilled",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: HostOomKilled
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: HostOomKilled
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ...BUT THE SAME CONTAINER KILL WITH THE NODE OUT OF MEMORY IS A NODE-WIDE OOM, AND PAGES. A
+  # global OOM that picks a container's process is reported by kube-state-metrics as OOMKilled
+  # too, so the pod evidence alone cannot tell the two apart; the node's own MemAvailable can.
+  # Here it falls to 2% around the kill.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_vmstat_oom_kill{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'node_memory_MemTotal_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '16000000000+0x35'
+      - series: 'node_memory_MemAvailable_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '6000000000 6000000000 2000000000 800000000 320000000 4000000000+0x30'
+      - series: 'kube_pod_info{namespace="kinowo",pod="worker-us-646cc786db-66q89",node="k3s-worker-1",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '1+0x35'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-us-646cc786db-66q89",container="worker",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="kinowo",pod="worker-us-646cc786db-66q89",container="worker",reason="OOMKilled",uid="04158494",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: HostOomKilled
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              role: k3s-worker
+              instance: 10.20.0.12:9100
+              job: node
+              severity: critical
+            exp_annotations:
+              summary: "The kernel OOM-killed a process on k3s-worker-1"
+              description: >-
+                `dmesg -T | grep -i 'killed process'` names the victim and its RSS at the time. THE VICTIM IS
+                NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is mongod and on
+                monitoring-1 is Prometheus, whatever actually consumed the memory. If the victim is mongod,
+                note that the web tier will keep serving its in-memory read model and look healthy while it
+                stops updating -- the same silent shape the Fly tunnel's rules describes. A kill by a
+                CONTAINER's own memory limit on a node with memory to spare does not fire this --
+                `K3sContainerOOMKilled` names that pod -- so on k3s-worker-1 it means the node itself ran
+                short, or a kill no live pod accounts for (a pod deleted right after its kill): if dmesg says
+                `constraint=CONSTRAINT_MEMCG`, it was the latter.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CONTAINER KILL ON ANOTHER NODE DOES NOT EXCUSE THIS ONE. The same OOMKilled restart, but
+  # its pod is scheduled to monitoring-1 while the kernel counter steps on k3s-worker-1: the
+  # `node` -> `host` join has to keep them apart.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_vmstat_oom_kill{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'node_memory_MemTotal_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '16000000000+0x35'
+      - series: 'node_memory_MemAvailable_bytes{host="k3s-worker-1",role="k3s-worker",instance="10.20.0.12:9100",job="node"}'
+        values: '6000000000+0x35'
+      - series: 'node_memory_MemTotal_bytes{host="monitoring-1",role="monitoring",instance="10.20.0.11:9100",job="node"}'
+        values: '8000000000+0x35'
+      - series: 'node_memory_MemAvailable_bytes{host="monitoring-1",role="monitoring",instance="10.20.0.11:9100",job="node"}'
+        values: '4000000000+0x35'
+      - series: 'kube_pod_info{namespace="flux-system",pod="source-controller-7d9f",node="monitoring-1",uid="1",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '1+0x35'
+      - series: 'kube_pod_container_status_restarts_total{namespace="flux-system",pod="source-controller-7d9f",container="manager",uid="1",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="flux-system",pod="source-controller-7d9f",container="manager",reason="OOMKilled",uid="1",instance="10.20.0.12:30080",job="kube-state-metrics"}'
+        values: '0 0 0 0 0 1+0x30'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: HostOomKilled
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              role: k3s-worker
+              instance: 10.20.0.12:9100
+              job: node
+              severity: critical
+            exp_annotations:
+              summary: "The kernel OOM-killed a process on k3s-worker-1"
+              description: >-
+                `dmesg -T | grep -i 'killed process'` names the victim and its RSS at the time. THE VICTIM IS
+                NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is mongod and on
+                monitoring-1 is Prometheus, whatever actually consumed the memory. If the victim is mongod,
+                note that the web tier will keep serving its in-memory read model and look healthy while it
+                stops updating -- the same silent shape the Fly tunnel's rules describes. A kill by a
+                CONTAINER's own memory limit on a node with memory to spare does not fire this --
+                `K3sContainerOOMKilled` names that pod -- so on k3s-worker-1 it means the node itself ran
+                short, or a kill no live pod accounts for (a pod deleted right after its kill): if dmesg says
+                `constraint=CONSTRAINT_MEMCG`, it was the latter.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE OOM COUNTER IS MISSING FROM EVERY HOST -- a vmstat collector without the field, or no

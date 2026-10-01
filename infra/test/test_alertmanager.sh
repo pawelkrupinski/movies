@@ -248,6 +248,10 @@ route_is telegram alertname=MongodNotRunning severity=critical host=mongo-1
 route_is telegram alertname=CinemaScrapeOldestAgeHigh severity=warning country=de
 route_is telegram alertname=ReadModelProjectionTriggerUnaccounted severity=warning country=us
 route_is telegram alertname=JvmHeapHigh severity=warning host=k3s-worker-1
+# A container-limit kill's ONE message names the pod (HostOomKilled steps aside for it in
+# host-health.rules, not here); a node-wide OOM still pages as the host's.
+route_is telegram alertname=K3sContainerOOMKilled severity=warning namespace=kinowo pod=worker-us-646cc786db-66q89 container=worker
+route_is telegram alertname=HostOomKilled severity=critical host=k3s-worker-1
 
 # The dead-man's handle keeps its own receiver: it must not acquire `send_resolved`, and it must
 # not start arriving by email every day.

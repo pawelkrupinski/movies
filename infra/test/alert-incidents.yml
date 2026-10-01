@@ -89,7 +89,24 @@ incidents:
     source: ALERTS K3sContainerOOMKilled{pod=~"web-pl.*"} 09-17T11:00Z and 14:50Z
     start: 2026-09-17T10:30:00Z
     end: 2026-09-17T15:00:00Z
-    expect_firing: [K3sContainerOOMKilled, HostOomKilled]
+    # ONE PAGE PER KILL, NAMING THE POD. Both kills were the container's own limit on a node with
+    # memory to spare, so the host-level alert stays quiet (host-health.rules); it used to fire
+    # beside K3sContainerOOMKilled for every one.
+    expect_firing: [K3sContainerOOMKilled]
+    expect_quiet: [HostOomKilled]
+
+  - id: worker-us-oom-2026-09-30
+    description: >-
+      worker-us's container was OOM-killed by its own memory limit three times in ten minutes on
+      k3s-worker-1 (dmesg `constraint=CONSTRAINT_MEMCG`, ~6 GB of the node available). It paged
+      twice per kill window -- HostOomKilled and K3sContainerOOMKilled -- until HostOomKilled
+      learned to step aside for a container-limit kill on a node with memory to spare.
+    source: replayed HostOomKilled 07:52-08:10Z and K3sContainerOOMKilled{pod="worker-us-646cc786db-66q89"} 07:57-08:14Z; node_memory_MemAvailable_bytes on k3s-worker-1
+    start: 2026-09-30T07:45:00Z
+    end: 2026-09-30T08:20:00Z
+    grace: 10m
+    expect_firing: [K3sContainerOOMKilled]
+    expect_quiet: [HostOomKilled]
 
   - id: healthy-2026-09-22
     description: >-
