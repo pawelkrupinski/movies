@@ -27,9 +27,12 @@ import scala.concurrent.{Await, Future}
  */
 object BoundedParallel extends Logging {
 
-  def foreach[A](label: String, items: Iterable[A], maxConcurrent: Int)(f: A => Unit): Unit = {
+  def foreach[A](label: String, items: Iterable[A], maxConcurrent: Int)(f: A => Unit): Unit = { map(label, items, maxConcurrent)(f); () }
+
+  /** `f` of each item, in the items' order, at most `maxConcurrent` at a time. */
+  def map[A, B](label: String, items: Iterable[A], maxConcurrent: Int)(f: A => B): Seq[B] = {
     val seq = items.toSeq
-    if (seq.isEmpty) return
+    if (seq.isEmpty) return Seq.empty
     val executionContext = DaemonExecutors.boundedEC(label, maxConcurrent)
     try {
       val futures = seq.map(a => Future(f(a))(using executionContext))

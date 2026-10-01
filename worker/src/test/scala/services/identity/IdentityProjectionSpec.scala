@@ -128,4 +128,19 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.showtimes shouldBe allShowtimes
     w.cache.keyCollisions.get() shouldBe 0
   }
+
+  /** A country's first projection fetches the TMDB details of every film it matched (~2,250 on a US
+   *  boot): one at a time, it waited on each in a row. */
+  "A projection's TMDB details" should "be fetched side by side, each onto its own draft" in {
+    val drafts = (1 to 4).map(i => FilmDraft(i.toLong, None, Nil, models.MovieRecord(tmdbId = Some(100 + i)), s"Film $i")) :+
+      FilmDraft(5L, None, Nil, models.MovieRecord(), "Unmatched")
+    // Each fetch waits for another to be under way: fetched one at a time, the first never returns.
+    val together = new java.util.concurrent.CyclicBarrier(2)
+    val fetched  = IdentityProjection.detailed(drafts, (record, film) => {
+      if (film <= 102) together.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      Some(record.copy(imdbId = Some(s"tt$film")))
+    })
+    fetched.map(_.record.imdbId) shouldBe Seq(Some("tt101"), Some("tt102"), Some("tt103"), Some("tt104"), None)
+    fetched.map(_.anchor) shouldBe drafts.map(_.anchor)
+  }
 }

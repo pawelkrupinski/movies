@@ -124,11 +124,7 @@ final class IdentityProjection(
     catch { case NonFatal(e) => logger.warn(s"identity projection failed; the stored films keep serving: $e") }
 
   private def write(resolution: Resolution, draft: ProjectionDraft, stored: Seq[StoredMovieRecord], listings: Int, started: tools.Stopwatch.Started): ProjectionTick = {
-    val detailed = draft.copy(drafts = draft.drafts.map { d =>
-      // The details builder owns the TMDB side; what the projection derived stays the projection's.
-      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
-        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
-    })
+    val detailed = draft.copy(drafts = IdentityProjection.detailed(draft.drafts, details))
     val storedIds = stored.map(_.id).toSet
     val plan      = IdentityProjectionPlan.finish(detailed, normalizer, storedIds)
     val before    = stored.map(r => r.id -> r).toMap
@@ -176,6 +172,20 @@ final class IdentityProjection(
 }
 
 object IdentityProjection {
+  /** How many films' TMDB details a projection fetches at once — within what TMDB tolerates (see the
+   *  external-api-rate-limits budgets). */
+  private[identity] val DetailsConcurrency = 8
+
+  /** Each draft whose film is new to its record, with that film's TMDB details — fetched side by
+   *  side, since each is its own film's: one at a time, a country's first projection waited on
+   *  ~2,250 of them in a row (a US boot). The details builder owns the TMDB side; what the projection
+   *  derived stays the projection's, and a fetch that fails leaves its draft as it was. */
+  private[identity] def detailed(drafts: Seq[FilmDraft], details: (MovieRecord, Int) => Option[MovieRecord]): Seq[FilmDraft] =
+    tools.BoundedParallel.map("identity-projection-details", drafts, DetailsConcurrency) { d =>
+      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
+        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
+    }
+
   /** A resolution and the listings it decided. */
   final case class Resolved(resolution: Resolution, listings: Set[ListingKey])
 
