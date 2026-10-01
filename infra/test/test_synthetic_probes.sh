@@ -151,6 +151,18 @@ check "the film page and the share card, both through the edge" \
   "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
 check "...and the origin is never asked when the edge answers" "0" "$(grep -c -- '--resolve' "$tmp/curl.log")"
 
+echo "discovery: a kept film whose carried targets lack its film page gets the film page back"
+# The 2026-09-24 discovery dropped a challenged film page and kept only its card. Carried over
+# as-is, that document left de/es/uk/us with no film probe for a week after the edge began
+# answering 200 again: the film stayed listed, so nothing ever rebuilt its targets.
+jq -n '[{targets: ["https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"],
+         labels: {country: "us", kind: "share-card", __param_module: "http_asset",
+                  __film: "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"}}]' > "$tmp/targets.json"
+run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
+check "the film page is probed again beside the card it was carried with" \
+  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
+  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
+
 echo "discovery: a film page the edge challenges is read from the origin, and STILL probed"
 # The exemption lost: the film page 403s again. Its card is found on the origin; the film page keeps
 # its probe, which now reads 403 -- the signal ProbeBlockedByEdge fires on.

@@ -13,7 +13,8 @@
 # film a city page lists changes many times a day (Warsaw's changed five times in three hours on
 # 2026-09-24), and every change is a new `instance` -- a new series whose `for:` holds start from
 # zero, so a ProbeSlow that needs twenty minutes on one URL could never complete. A kept film whose
-# share card is already known is not fetched again: its targets are carried over as they were. The
+# film page and share card are both already targets is not fetched again: they are carried over as
+# they were. The
 # film page was the costliest fetch a run made (a London film page is ~870 KB, read from the origin
 # every two minutes per country); a film with no card yet is still re-read, so a card rendered
 # later is picked up.
@@ -97,11 +98,15 @@ previous_film() {
     "$out" 2>/dev/null
 }
 
-# This country's targets from last time, when they include a share card -- printed as a JSON array
-# for the caller to carry over. Fails when there is no card to carry.
-previous_targets_with_card() {
+# This country's targets from last time, when they are complete -- its film page AND a share card --
+# printed as a JSON array for the caller to carry over. Fails otherwise: a film with no card yet is
+# re-read so a card rendered later is found, and a card carried without its film page is rebuilt so
+# the film page is probed again (the 2026-09-24 discovery dropped a challenged film page and kept
+# its card; carrying that left four countries' film pages unprobed for a week).
+previous_complete_targets() {
   [ -f "$out" ] || return 1
-  jq -ec --arg c "$1" '[.[] | select(.labels.country == $c)] | select(any(.labels.kind == "share-card"))' \
+  jq -ec --arg c "$1" '[.[] | select(.labels.country == $c)]
+    | select(any(.labels.kind == "share-card") and any(.labels.kind == "film"))' \
     "$out" 2>/dev/null
 }
 
@@ -126,7 +131,7 @@ for pair in "$@"; do
   film="$(previous_film "$country")"
   if [ -z "$film" ] || ! grep -qxF "$film" "$work/films"; then
     film="$(sed -n 1p "$work/films")"
-  elif kept="$(previous_targets_with_card "$country")"; then
+  elif kept="$(previous_complete_targets "$country")"; then
     targets="$(jq -c --argjson kept "$kept" '. + $kept' <<<"$targets")"
     continue
   fi
