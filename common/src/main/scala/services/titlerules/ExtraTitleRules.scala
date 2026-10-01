@@ -94,6 +94,9 @@ object ExtraTitleRules {
     prog("xtra-pp-pora-dla-seniora",  """(?i)^Pora\s+dla\s+Seniora:\s+""",                "Pora dla Seniora cycle"),
     prog("xtra-pp-wtorki-seniora",    """(?i)^Wtorki\s+dla\s+Seniora:\s+""",              "Wtorki dla Seniora cycle"),
     prog("xtra-pp-kino-dla-seniora",  """(?i)^Kino\s+dla\s+Seniora:\s+""",                "Kino dla Seniora cycle"),
+    // Sensory-friendly and toddler screenings: an audience programme, never the film (2026-10 corpus audit).
+    prog("xtra-pp-kino-przyjazne-sensorycznie", """(?i)^Kino\s+przyjazne\s+sensorycznie:\s+""", "Kino przyjazne sensorycznie: sensory-friendly screening"),
+    prog("xtra-pp-toddler-club",       """(?i)^Toddler\s+Club:\s+""",                     "Toddler Club: UK toddler screenings (Showcase/Odeon)"),
     // Polish summer/holiday and family cycles. Every one of these was found on a row
     // that reached TMDB with the banner still attached and therefore matched nothing —
     // "Big Festivalowski: …" alone accounted for 22 unresolved rows in the real corpus.
@@ -312,6 +315,11 @@ object ExtraTitleRules {
       note = Some("Polish low-9 double quote „ → plain ASCII \"")),
     searchStrip("xtra-dkf-suffix-pipe-underscore", """(?i)\s*[|_]\s*DKF\b.*$""",                      "'| DKF' / '_DKF' suffix"),
     searchStrip("xtra-dkf-suffix-dash",            """(?i)\s*[-–—]\s*DKF\b.*$""",                     "'- DKF KOT' / '- DKF III W' suffix"),
+    searchStrip("xtra-dkf-suffix-period",          """(?i)\.\s*DKF\b.*$""",                          "'Róża. DKF' full-stop DKF suffix"),
+    // A premiere is an event of the screening: "Lalka | PREMIERA", "(PREMIERA)", "- uroczysta premiera",
+    // "PREMIERA" trailing after the format strip. Never the whole title (the lookahead needs a title before it).
+    searchStrip("xtra-premiera-suffix",            """(?i)(?<=\S)\s*(?:[|\-–—]\s*)?[(\[]?\b(?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]?\s*$""", "premiere suffix"),
+    searchStrip("xtra-kino-sensoryczne-suffix",    """(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$""", "'- Kino sensoryczne' sensory-friendly screening suffix"),
     searchStrip("xtra-dyskusyjny-suffix",          """(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$""", "'- dyskusyjny klub filmowy' suffix"),
     searchStrip("xtra-przedpremiera-suffix",       """(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*$""", "przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)"),
     searchStrip("xtra-przedpremiera-prefix",       """(?i)^(?:przedpremiera|seans\s+przedpremierowy)\s*[.|:]\s*""", "przedpremiera prefix"),

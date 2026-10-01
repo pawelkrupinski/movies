@@ -1249,7 +1249,7 @@ cinemaScrapes:
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
   Kino Luna / Zawieście czerwone latarnie / —
-  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / —
+  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991
@@ -1693,7 +1693,7 @@ cinemaScrapes:
   Helios Ostrów Wlkp. / Drama / 2026
   Kino IKM / Drama / —
   Kino Kika / DRAMA / —
-  Kino MCSW Elektrownia / DRAMA / —
+  Kino MCSW Elektrownia / DRAMA / 2026
   Kino Malta Charlie Monroe / Drama / —
   Kino Muza / Drama / 2026
   Kino Nowe Horyzonty / Drama / 2026
@@ -1815,7 +1815,7 @@ cinemaScrapes:
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
-  Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
+  Kino MCSW Elektrownia / DRUGIE ŻYCIE / 2025
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -1953,7 +1953,7 @@ cinemaScrapes:
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
-  Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
+  Kino MCSW Elektrownia / DRUGIE ŻYCIE / 2025
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -2111,7 +2111,7 @@ cinemaScrapes:
   Kino Kreska / Drzewo magii / —
   Kino Kryterium / Kino przyjazne sensorycznie: drzewo magii / —
   Kino Lewart / Drzewo magii / —
-  Kino MCSW Elektrownia / DRZEWO MAGII / —
+  Kino MCSW Elektrownia / DRZEWO MAGII / 2026
   Kino MDK / DRZEWO MAGII / —
   Kino MOK / Drzewo magii / —
   Kino Malta Charlie Monroe / Drzewo magii / —
@@ -2304,7 +2304,7 @@ cinemaScrapes:
   Kino Kultura / Dzień objawienia / —
   Kino Lewart / Dzień Objawienia / —
   Kino Lot / Dzień objawienia / —
-  Kino MCSW Elektrownia / DZIEŃ OBJAWIENIA / —
+  Kino MCSW Elektrownia / DZIEŃ OBJAWIENIA / 2026
   Kino MDK / DZIEŃ OBJAWIENIA / —
   Kino MOK Centrum / DZIEŃ OBJAWIENIA / —
   Kino MOKiS / Dzień Objawienia / —
@@ -2477,7 +2477,7 @@ cinemaScrapes:
   Kino Kultura / Dzień objawienia / —
   Kino Lewart / Dzień Objawienia / —
   Kino Lot / Dzień objawienia / —
-  Kino MCSW Elektrownia / DZIEŃ OBJAWIENIA / —
+  Kino MCSW Elektrownia / DZIEŃ OBJAWIENIA / 2026
   Kino MDK / DZIEŃ OBJAWIENIA / —
   Kino MOK Centrum / DZIEŃ OBJAWIENIA / —
   Kino MOKiS / Dzień Objawienia / —
@@ -2872,7 +2872,7 @@ cinemaScrapes:
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
-  Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
+  Kino MCSW Elektrownia / DRUGIE ŻYCIE / 2025
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -3543,7 +3543,7 @@ cinemaScrapes:
   Kino Amok / K-popowe łowczynie demonów | w wersji karaoke / —
   Kino Iluzjon / K-popowe łowczynie demonów / 2025
   Kino Lewart / K-popowe łowczynie demonów / —
-  Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / —
+  Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Muranów / K-popowe łowczynie demonów / 2025
   Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
@@ -3773,7 +3773,7 @@ cinemaScrapes:
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
-  Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
+  Kino MCSW Elektrownia / DRUGIE ŻYCIE / 2025
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -3903,7 +3903,7 @@ cinemaScrapes:
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
-  Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
+  Kino MCSW Elektrownia / DRUGIE ŻYCIE / 2025
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -6326,7 +6326,7 @@ cinemaScrapes:
   Kino Kultura / Orły republiki / —
   Kino Lot / Orły Republiki / —
   Kino Luna / Orły Republiki / —
-  Kino MCSW Elektrownia / ORŁY REPUBLIKI / —
+  Kino MCSW Elektrownia / ORŁY REPUBLIKI / 2025
   Kino Malta Charlie Monroe / Orły republiki / —
   Kino Meduza / Orły republiki / —
   Kino Muza / Orły republiki / 2025
@@ -10108,7 +10108,7 @@ cinemaScrapes:
   Janosik / FEDERICO FELLINI: ciao a tutti!: Wałkonie / —
   Kino 60 Krzeseł / Wałkonie / —
   Kino Awangarda 2 / Wałkonie / —
-  Kino MCSW Elektrownia / DKF - WAŁKONIE / —
+  Kino MCSW Elektrownia / DKF - WAŁKONIE / 1953
   Kino Muza / Wałkonie / 1953
   Kino Nowe Horyzonty / Wałkonie / 1953
   Kino Oskard / FEDERICO FELLINI: ciao a tutti!: Wałkonie / —
@@ -10606,7 +10606,7 @@ cinemaScrapes:
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
   Kino Luna / Zawieście czerwone latarnie / —
-  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / —
+  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991

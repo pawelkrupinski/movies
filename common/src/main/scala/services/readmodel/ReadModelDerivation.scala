@@ -45,7 +45,9 @@ object ReadModelDerivation {
   val History: Seq[Derivation] = Seq(
     Derivation(DerivationVersion("2b3aef8d690fea26"), DerivationScope.Full),
     // web_screenings rows carry the listing keys of the slots they union (identity phase 4, §16).
-    Derivation(DerivationVersion("e90186e6b0473c75"), DerivationScope.Full))
+    Derivation(DerivationVersion("e90186e6b0473c75"), DerivationScope.Full),
+    // The card title reads a programme's lookup form with sensory / toddler / premiere tags off.
+    Derivation(DerivationVersion("ae41b3a79c8e5a6b"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 
