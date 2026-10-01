@@ -18,7 +18,7 @@ check "the iOS City list runs the drift check and the iOS compile" "drift ios" "
 check "a recorded fixture runs the snapshot stamp check" "snapshot" \
   "$(plan test/resources/fixtures/08-06-2026/www.bilety24.pl/kino/organizator/x)"
 check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
-check "a Grafana dashboard runs the metric-coverage lint" "sbt" \
+check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs actionlint" "actionlint" "$(plan .github/workflows/ci.yml)"
 check "a shell script runs shellcheck" "shellcheck" "$(plan scripts/ci/order-seed.sh)"
