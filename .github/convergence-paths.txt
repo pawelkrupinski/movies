@@ -28,6 +28,7 @@ test/resources/fixtures/corpus/**
 .github/actions/convergence-publish/**
 .github/actions/convergence-overlay-publish/**
 .github/actions/convergence-findings/**
+.github/scripts/carry-overlay.sh
 .github/scripts/pack-enrichment-tree.sh
 .github/scripts/convergence-bisect.sh
 # The CI plumbing a leg runs: its preflight, the release reads and writes behind its pinned
