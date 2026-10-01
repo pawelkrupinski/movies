@@ -135,7 +135,7 @@ URI="mongodb://${USERINFO}@127.0.0.1:${PORT}/?authSource=admin&directConnection=
 if ! command -v socat >/dev/null 2>&1; then
   echo "[tunnel] socat missing — installing"
   "$(dirname "${BASH_SOURCE[0]}")/drop-microsoft-apt-sources.sh"
-  sudo apt-get update -qq && sudo apt-get install -y -qq socat
+  "$(dirname "${BASH_SOURCE[0]}")/install-apt-package.sh" socat
 fi
 
 LOG="${TUNNEL_LOG:-/tmp/mongo-tunnel.log}"
