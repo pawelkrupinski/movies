@@ -1537,7 +1537,7 @@
             "uid": "local-prometheus"
           },
           "refId": "A",
-          "expr": "sum by (path, reason) (increase(kinowo_worker_change_apply_total{country=~\"$country\"}[5m]))",
+          "expr": "sum by (path, reason) (increase(kinowo_worker_change_apply_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{path}} / {{reason}}"
         }
       ]
