@@ -119,6 +119,8 @@ metrics at 2026-09-30 ~23:00 UTC.
 | labelled: LOSS (coverage + wrong) / WIN, of | 0 / 0 of 1,114 | 2 / 2 of 5,631 | 0 / 0 of 3,460 | 0 / 105 of 20,698 | 0 / 0 of 1,136 |
 | labelled accuracy, resolver / pipeline | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 99.6% | 100.0 / 100.0% |
 | gate 5 accuracy + labelled recall (−0.5 pt) | met | met | met | met | met |
+| gate 5: 0 order variants, 0 cannot-link violations (run 36823471686, robustness on) | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met | 0 / 0 — met |
+| report verdict strict / weak (not a gate; see below) | yes / yes | no / yes | no / yes | no / yes | no / no |
 | all-listing coverage, resolver / pipeline (not a gate) | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
 | shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
 | TMDB store filled (4): fill `deferred` | 0 — met | 0 — met | 0 — met | 0 — met | 0 — met |
@@ -131,6 +133,12 @@ the pipeline's by 1.7 points, on listings no label reaches: double bills (54, un
 and titles TMDB holds no Polish title for (Lalka/Dolly, Superfutrzak, Róża) — itemised in the identity
 progress notes. Its 344 unlabelled disagreement cells adjudicate pipeline-right 35, resolver-right 26,
 same-film 71, undecidable 201.
+
+The report's own STRICT verdict requires no disagreement adjudicated pipeline-right; what keeps it NO in
+DE/UK/US/PL is the small residue the identity progress notes itemise — double bills (unmatched by decision),
+the K-pop tour records, bare one-listing titles below the evidence bar. PL's WEAK NO is one cell: Simona
+Risi's documentary on the "degenerate art" trial, held twice by TMDB (an English 2026 record and the
+Italian 2025 original); the resolver follows the Italian record a venue names by its original title.
 
 **PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
 pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
