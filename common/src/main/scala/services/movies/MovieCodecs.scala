@@ -245,7 +245,7 @@ private[movies] final class BackwardCompatibleSourceDataCodec(
  *  read exactly as the macro reads (`ShowtimeDecodeSpec` pins every stored shape against it):
  *  an absent or null optional field is `None`, a missing `room`/`format` takes its default, an
  *  unknown field is skipped, a missing `dateTime` fails. */
-private[movies] final class StreamingShowtimeCodec(macroCodec: Codec[Showtime]) extends Codec[Showtime] {
+private[services] final class StreamingShowtimeCodec(macroCodec: Codec[Showtime]) extends Codec[Showtime] {
   override def getEncoderClass: Class[Showtime] = classOf[Showtime]
   override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
   override def decode(r: BsonReader, c: DecoderContext): Showtime = {
