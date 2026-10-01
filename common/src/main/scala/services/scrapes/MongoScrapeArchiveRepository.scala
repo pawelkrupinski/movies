@@ -302,7 +302,8 @@ class MongoScrapeArchiveRepository(
       keyOf          = _.getString("_id").getValue,
       fetchPage      = (afterId, limit) => Await.result(
         c.withDocumentClass[org.bson.BsonDocument]().find(afterId.fold(Filters.empty())(Filters.gt("_id", _)))
-          .projection(Projections.include("_id")).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(),
+          .projection(Projections.include("_id")).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit)
+          .batchSize(tools.MongoReplies.Default).toFuture(),
         60.seconds),
       onIncomplete   = failed
     )(page => ids ++= page.map(_.getString("_id").getValue))
