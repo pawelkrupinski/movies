@@ -306,7 +306,10 @@ lazy val web = (project in file("web"))
     inConfig(PageTest)(Defaults.testSettings),
     PageTest / scalaSource              := baseDirectory.value / "src" / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "src" / "page" / "resources",
-    PageTest / parallelExecution        := false,
+    // Suites in parallel: each starts its own Chrome (fresh temp profile, debugging port 0) and its
+    // own server on a free port, so they share no browser state or origin. Serially the two big ones
+    // (PageJsBehaviourSpec, HiddenFilmsSyncModelSpec, ~100 s each on CI) ran back to back.
+    PageTest / parallelExecution        := true,
     // Run PageTest UNFORKED so the JVM's working directory is the repo root, not
     // this submodule's dir. The page specs + FixtureServerMain load fixtures and
     // diff snapshots via repo-root-relative paths (`test/resources/fixtures/…`);
