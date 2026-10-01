@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.{ILoggingEvent, LoggingEvent}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.slf4j.LoggerFactory
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 
@@ -79,7 +78,10 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
   }
 
   "a capture" should "keep only this thread's events when asked, so a parallel suite cannot break an exact-match assertion" in {
-    val logger  = LoggerFactory.getLogger(Logger)
+    // Logback's own logger, not the factory's: while SLF4J is still initialising (a suite next door
+    // starting it) the factory hands out a SubstituteLogger, which QUEUES "mine" for replay after
+    // initialisation instead of reaching the capture's appender now (Main run 36812183340: List() vs "mine").
+    val logger  = LogCapture.logbackLogger(Logger)
     val emitted = new AtomicBoolean(false)
 
     val events = LogCapture.thisThread(Logger, Some(Level.DEBUG)) {
