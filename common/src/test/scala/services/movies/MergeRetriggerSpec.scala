@@ -126,9 +126,18 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     decide(before, k("Poprzednie życie"), after, k("Poprzednie życie")) should contain (ResolveImdbId)
   }
 
-  it should "NOT re-kick IMDb-id resolution for a tmdbNoMatch row that already has an imdbId" in {
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = Some("tt13238346"))
-    val after  = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = Some("tt13238346"), original = Some("Past Lives"))
-    decide(before, k("Poprzednie życie"), after, k("Poprzednie życie")) should not contain ResolveImdbId
+  it should "re-kick IMDb-id resolution for a tmdbNoMatch row that already has an imdbId when a fact it searches by arrives" in {
+    // US "Volcanoes" (no TMDB record): looked up before "Volcanoes 3D" {Michael Dalton-Smith, 2018} merged, it
+    // took IMDb's first "Volcanoes" (2009); after, the 2018 film — whichever listing arrived first won, and
+    // Identity model convergence's order-independence leg saw both. With no TMDB id the IMDb id is only as
+    // good as the facts it was searched by, so it is searched again when they grow.
+    val noMatch = Some(services.resolution.TmdbAttempt.Legacy)
+    val before  = rec(tmdbId = None, tmdbAttempt = noMatch, imdbId = Some("tt1477111"))
+    decide(before, k("Volcanoes", None), before.copy(data = before.data + (Tmdb -> SourceData(director = Seq("Michael Dalton-Smith")))),
+      k("Volcanoes", None)) should contain (ResolveImdbId)
+    decide(before, k("Volcanoes", None), rec(tmdbId = None, tmdbAttempt = noMatch, imdbId = Some("tt1477111"), original = Some("Volcanoes: The Fires of Creation")),
+      k("Volcanoes", None)) should contain (ResolveImdbId)
+    // the same facts: nothing to search again
+    decide(before, k("Volcanoes", None), before, k("Volcanoes", None)) should not contain ResolveImdbId
   }
 }

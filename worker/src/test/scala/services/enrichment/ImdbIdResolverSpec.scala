@@ -63,6 +63,25 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "replace the id of a row with no TMDB id when its facts now find another, and leave a TMDB-linked row's" in {
+    // US "Volcanoes" took IMDb's first "Volcanoes" before its sibling's year merged in; searched again with the
+    // year (`MergeRetrigger`), the answer it finds now is the row's. A TMDB-linked id is TMDB's, not a search's.
+    def run(tmdbId: Option[Int]): Option[String] = {
+      val bus   = new InProcessEventBus()
+      val row   = MovieRecord(tmdbId = tmdbId, imdbId = Some("tt1477111"),
+        data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
+        normalizer = titleNormalizer)
+      val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))))
+      bus.subscribe(resolver.onImdbIdMissing)
+      bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
+      resolver.drain()
+      cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).flatMap(_.imdbId)
+    }
+    run(tmdbId = None) shouldBe Some("tt17490712")
+    run(tmdbId = Some(1024)) shouldBe Some("tt1477111")
+  }
+
   /**
    * A cinema's programme banner is part of the row's title, and IMDb has never heard
    * of it. TMDB was always asked both ways — `resolveTmdbId` runs its candidates

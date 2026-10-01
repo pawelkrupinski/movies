@@ -98,9 +98,10 @@ class ImdbIdResolver(
    *  (`ImdbClient.findId`) and write it back to the cached row — the
    *  `EnrichmentReaper` then enqueues its IMDb rating on the next pass.
    *
-   *  No-op when the row already carries an imdbId (a stale event raced with
-   *  another resolver) or when the search returns nothing — we'd rather leave
-   *  the row imdbId-less than guess a wrong id. */
+   *  No-op when a TMDB-linked row already carries an imdbId (a stale event raced with
+   *  another resolver) or when the search returns nothing — we'd rather leave the row
+   *  imdbId-less than guess a wrong id. A row with no TMDB id is searched again as its
+   *  facts grow, and takes a different answer (see `resolve`). */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) => pool.submit(resolve(title, year, searchTitle))
   }
@@ -209,7 +210,9 @@ class ImdbIdResolver(
 
   private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
     val key = cache.keyOf(title, year)
-    cache.get(key).filter(_.imdbId.isEmpty).foreach { record =>
+    // A row with no TMDB id is searched again as its facts grow (`MergeRetrigger`); its id is replaced only
+    // by a different answer, and kept when the search now finds nothing.
+    cache.get(key).filter(record => record.imdbId.isEmpty || record.tmdbId.isEmpty).foreach { record =>
       logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
       // Try every year the film's cinemas report (plus the key year), sorted — the
       // mirror of the staging recovery. IMDb's release year can sit at any cinema's
@@ -224,7 +227,7 @@ class ImdbIdResolver(
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` between the lookup and
           // the write-back can't resurrect the row.
-          cache.putIfPresent(key, _.copy(imdbId = Some(id)))
+          if (!record.imdbId.contains(id)) cache.putIfPresent(key, _.copy(imdbId = Some(id)))
         case None =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match [search='$searchTitle']")
       }

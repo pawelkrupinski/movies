@@ -102,6 +102,13 @@ object MergeRetrigger {
     if ((tmdbIdChanged || tmdbNoMatchChanged || searchTitleChanged || titleOrYearChanged || directorChanged || originalTitleChanged)
         && (after.tmdbId.isDefined || after.tmdbNoMatch) && after.imdbId.isEmpty)
       builder += RetriggerKind.ResolveImdbId
+    // A row with NO TMDB id holds an IMDb id only as good as the facts it was searched by: looked up before
+    // a sibling's year or director merged in, US "Volcanoes" took IMDb's first "Volcanoes" (2009), after
+    // it the 2018 film — the order the listings arrived in decided. So such a row searches again when a
+    // fact the search reads grows (`ImdbIdResolver` writes only a different answer).
+    val reportedYearsChanged = before.cinemaData.values.flatMap(_.releaseYear).toSet != after.cinemaData.values.flatMap(_.releaseYear).toSet
+    if (after.tmdbId.isEmpty && after.tmdbNoMatch && after.imdbId.isDefined && (directorChanged || originalTitleChanged || reportedYearsChanged))
+      builder += RetriggerKind.ResolveImdbId
     if (imdbIdChanged && after.imdbId.isDefined)
       builder += RetriggerKind.ImdbRating
     // Search-title ratings only for a TMDB-CONCLUDED row (resolved), matching the
