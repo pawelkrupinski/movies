@@ -103,6 +103,7 @@ that the build can tell them apart.
 from __future__ import annotations
 import argparse
 import fcntl
+import filecmp
 import fnmatch
 import hashlib
 import json
@@ -463,6 +464,32 @@ class DryActivate(typing.NamedTuple):
     forgiven: tuple = ()         # disturbances a host declared acceptable; reported, never decisive
 
 
+def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
+                         system_conf="/etc/systemd/system.conf") -> bool:
+    """True when re-executing PID 1 into the candidate's systemd would change nothing at all.
+
+    switch-to-configuration-ng prints `would restart systemd` when `canonicalize("/proc/1/exe")`
+    differs from the candidate's `lib/systemd/systemd`, or `/etc/systemd/system.conf` resolves
+    elsewhere. The first half has a FALSE POSITIVE this fleet hit: the nightly `nix-store --optimise`
+    (fleet/nix-gc.nix) hard-links a duplicate over the running binary's store path, the kernel then
+    reports PID 1's exe as "<path> (deleted)", the canonicalize fails, and the switch compares
+    against the literal "/unknown" -- so every closure after it "restarts systemd" and the unit tree,
+    which rightly sees nothing, disagrees. Measured 2026-09-28/29 on all three hosts: 4.5h and 18h of
+    `classifier_disagreement`, cleared only by a hand switch re-executing the identical binary.
+
+    BYTES, NOT PATHS, because the path is exactly what the optimiser broke. `open("/proc/1/exe")`
+    still reaches the inode PID 1 runs, deleted name or not. Anything unreadable answers False, so
+    this can only ever forgive the one line, never block more than before.
+    """
+    try:
+        if os.path.realpath(system_conf) != os.path.realpath(candidate / "etc" / "systemd" / "system.conf"):
+            return False
+        return filecmp.cmp(pid1_exe, candidate / "systemd" / "lib" / "systemd" / "systemd",
+                           shallow=False)
+    except OSError:
+        return False
+
+
 def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=()) -> DryActivate:
     """Run the dry activation and classify EVERY line it prints.
 
@@ -483,10 +510,11 @@ def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=()
         if "could not acquire lock" in output.lower():
             raise LockContended(f"dry-activate exited {completed.returncode}: {output[:400]}")
         raise Undetermined(f"dry-activate exited {completed.returncode}: {output[:400]}")
-    return classify_output(completed.stderr + "\n" + completed.stdout, restartable, never)
+    return classify_output(completed.stderr + "\n" + completed.stdout, restartable, never,
+                           pid1_unchanged=pid1_reexec_is_inert(candidate))
 
 
-def classify_output(text: str, restartable=(), never=()) -> DryActivate:
+def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False) -> DryActivate:
     """Sort every line into disturbs-something, merely-reloads, or not-recognised.
 
     SPLIT OUT FROM THE SUBPROCESS ON PURPOSE, so that bin/prove-nixos-auto-apply can drive it with
@@ -494,6 +522,10 @@ def classify_output(text: str, restartable=(), never=()) -> DryActivate:
     machine and a genuine pending change to find out whether the table below still matches. A
     classifier nobody can exercise is a classifier nobody knows the state of, and this one fails
     open into "nothing would happen" if its patterns ever stop matching.
+
+    `pid1_unchanged` is `pid1_reexec_is_inert` for the candidate, passed in rather than computed so
+    the recorded-output cases can state it: when true, `would restart systemd` re-executes the very
+    binary and config PID 1 already runs, and is benign.
     """
     disruptive: list[str] = []
     reloads: list[str] = []
@@ -505,6 +537,8 @@ def classify_output(text: str, restartable=(), never=()) -> DryActivate:
         if not line:
             continue
         if any(pattern.match(line) for pattern in BENIGN_LINES):
+            continue
+        if pid1_unchanged and line == "would restart systemd":
             continue
         for pattern, kind in HARD_LINES:
             match = pattern.match(line)

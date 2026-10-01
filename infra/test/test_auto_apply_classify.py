@@ -25,6 +25,8 @@ import importlib.util
 import io
 import os
 import pathlib
+import shutil
+import tempfile
 import unittest
 
 HERE = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
@@ -214,6 +216,75 @@ class SwitchExitingFour(unittest.TestCase):
         failure = self.switch(self.HEAD_2026_09_25 + self.USER_ACTIVATION_RACE,
                                  failed_after={"prometheus.service"})
         self.assertIn("prometheus.service", failure)
+
+
+class SystemdReexecAfterStoreOptimise(unittest.TestCase):
+    """`would restart systemd` when PID 1 already runs the candidate's systemd, byte for byte.
+
+    THE INCIDENT. 2026-09-28/29: k3s-worker-1 (4.5h) then mongo-1 and monitoring-1 (18h) refused
+    every closure as `classifier_disagreement`, structural test inert, dry-activate saying
+    `restart-systemd`. Nothing had changed systemd: every generation on every host carried the same
+    systemd-260.4 and the same system.conf. switch-to-configuration-ng decides on a re-exec by
+    comparing `canonicalize("/proc/1/exe")` with the candidate's binary, and falls back to the path
+    "/unknown" when that canonicalize FAILS -- which it does once the nightly `nix-store --optimise`
+    has hard-linked a duplicate over the running binary's path: the kernel then reports PID 1's exe
+    as "<path> (deleted)". The first optimise after the 09-27 nixpkgs bump (1.1-1.3 GiB freed) did
+    exactly that, and only a hand switch (re-exec, 09-28 09:23 and 09-29 10:10) cleared it.
+    """
+
+    # VERBATIM from the blocked hosts' journals, re-joined into the dry-activate lines it summarised.
+    RECORDED = ("Not checking switch inhibitors (action = dry-activate)\n"
+                "would activate the configuration...\n"
+                "would restart systemd\n"
+                "would reload the following units: dbus-broker.service")
+
+    def test_a_reexec_of_the_identical_systemd_is_not_disruptive(self):
+        got = applier.classify_output(self.RECORDED, pid1_unchanged=True)
+        self.assertEqual(got.disruptive, [],
+                         "PID 1 runs the candidate's systemd byte for byte; re-exec changes nothing")
+        self.assertEqual(got.reloads, ["dbus-broker.service"])
+
+    def test_a_reexec_into_a_different_systemd_still_blocks(self):
+        got = applier.classify_output(self.RECORDED)
+        self.assertEqual(got.disruptive, ["restart-systemd"])
+
+    def _tree(self, binary: bytes, conf: str):
+        root = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root)
+        (root / "systemd" / "lib" / "systemd").mkdir(parents=True)
+        (root / "systemd" / "lib" / "systemd" / "systemd").write_bytes(binary)
+        (root / "etc" / "systemd").mkdir(parents=True)
+        (root / "etc" / "systemd" / "system.conf").symlink_to(conf)
+        return root
+
+    def _files(self, binary: bytes, conf_text: str):
+        d = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d)
+        (d / "pid1").write_bytes(binary)
+        (d / "system.conf").write_text(conf_text)
+        return d / "pid1", d / "system.conf"
+
+    def test_identical_bytes_at_another_path_and_the_same_config_is_inert(self):
+        pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
+        candidate = self._tree(b"systemd-260.4", str(conf))
+        self.assertTrue(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+
+    def test_a_different_binary_is_not_inert(self):
+        pid1, conf = self._files(b"systemd-260.3", "[Manager]\n")
+        candidate = self._tree(b"systemd-260.4", str(conf))
+        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+
+    def test_a_changed_system_conf_is_not_inert(self):
+        pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
+        other = conf.parent / "other.conf"
+        other.write_text("[Manager]\nDefaultTimeoutStopSec=5s\n")
+        candidate = self._tree(b"systemd-260.4", str(other))
+        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+
+    def test_an_unreadable_pid1_is_not_inert(self):
+        pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
+        candidate = self._tree(b"systemd-260.4", str(conf))
+        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1.parent / "absent", conf))
 
 
 if __name__ == "__main__":
