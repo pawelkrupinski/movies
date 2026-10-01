@@ -18,7 +18,7 @@ trait ChunkPageMemo {
 }
 
 object ChunkPageMemo {
-  /** `page` is the page's digest, `parser` the version that parsed it, `slice` the parse, encoded. */
+  /** `page` is the page's fingerprint ([[digest]]), `parser` the version that parsed it, `slice` the parse, encoded. */
   final case class Entry(page: String, parser: Int, slice: String)
 
   /** No memo: every page parsed. */
@@ -27,8 +27,11 @@ object ChunkPageMemo {
     def remember(cinema: String, key: String, entry: Entry): Unit = ()
   }
 
-  /** A page's digest: SHA-256, hex. */
-  def digest(page: String): String = tools.Digest.sha256Hex(page)
+  /** A page's fingerprint: its length and `String.hashCode`, which the JVM computes vectorized. SHA-256
+   *  over the page's UTF-8 bytes cost about as much as the parse it spared (2.4% + 2.0% of the US
+   *  worker's CPU, JFR 2026-10-01). A collision — one in 2^32 for a changed page of the same length —
+   *  reuses the old parse until the page changes again. */
+  def digest(page: String): String = s"${page.length}:${page.hashCode}"
 }
 
 /** The memo in Mongo (`scrape_chunk_pages`), because a worker restarts on every deploy, many times
