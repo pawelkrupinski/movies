@@ -978,6 +978,13 @@ groups:
       # (`readmodel_project_duration_seconds`) is deliberately NOT alerted on -- it did not move with
       # the fix (US p99 0.9-2.5s both sides, pinned against its 2.5s top bucket) so a threshold on
       # it would catch nothing this rule does not.
+      #
+      # NOT WHILE A DERIVATION PASS IS IN THE WINDOW. A new derivation re-projects the whole corpus
+      # once per worker, rewriting every document (2026-09-26 13:05-13:13Z: US 55,627 in 8 minutes,
+      # ES 4,477), and those 8 minutes held the US and ES 3h means over 20 ms until 16:05Z. That is the
+      # write burst the code means to make, so a 3h window holding any `trigger="derivation"`
+      # projection is not read; a regression shipped with the derivation change pages an hour after
+      # the pass leaves the window.
       - alert: ReadModelProjectionWritePerCallHigh
         expr: >-
           (
@@ -985,6 +992,7 @@ groups:
             / sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count[3h]))
           ) > 0.020
           and on (country) sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count[3h])) > 0.02
+          unless on (country) sum by (country) (increase(kinowo_worker_readmodel_project_calls_total{trigger="derivation"}[3h])) > 0
         for: 1h
         labels:
           severity: warning

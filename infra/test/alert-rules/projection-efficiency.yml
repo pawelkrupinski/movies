@@ -183,6 +183,52 @@ tests:
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts: []
 
+  # A DERIVATION PASS IS NOT A REGRESSION. 2026-09-26 13:05-13:13Z every worker re-projected its
+  # whole corpus under a new derivation (US: 2,276 rows, 55,627 documents rewritten in 8 minutes),
+  # which is the one write burst the code means to make, and its 8 minutes held the US and ES 3h
+  # means over 20 ms until 16:05Z. Replayed: 7 ms per call at 60 calls/min, then an 8-minute pass at
+  # 284 calls/min and 100 ms each from 1h, then 7 ms again. Silent while the pass is in the window.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker"}'
+        values: '0+0.42x60 53.6+28.4x7 252.82+0.42x331'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker"}'
+        values: '0+60x60 3884+284x7 5932+60x331'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker",trigger="derivation"}'
+        values: '0x60 284+284x7 2272x331'
+    alert_rule_test:
+      - eval_time: 2h30m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+      - eval_time: 4h30m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+
+  # …NOR DOES ONE HIDE A REGRESSION FOR LONGER THAN ITS WINDOW. The same pass, but the writes stay at
+  # the pre-fix 40 ms after it: silent while the pass is inside the 3h window, paging an hour after
+  # it leaves.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker"}'
+        values: '0+0.42x60 53.6+28.4x7 254.8+2.4x331'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker"}'
+        values: '0+60x60 3884+284x7 5932+60x331'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker",trigger="derivation"}'
+        values: '0x60 284+284x7 2272x331'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+      - eval_time: 5h30m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's read-model projections spend 40ms writing per call"
+              description: "The write half of a read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+
   # THROUGH A RESTART. The pre-fix shape, with the worker restarting at 2h: 2 minutes absent and
   # both counters back to zero. The 3h window absorbs it and the page does not drop.
   - interval: 1m
