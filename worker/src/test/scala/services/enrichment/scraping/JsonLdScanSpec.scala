@@ -11,8 +11,9 @@ import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
 /** The JSON-LD scan reads a page's `<script type="application/ld+json">` blocks without building
- *  its DOM. It must find exactly what a real HTML parser does, so it is held to Jsoup on every
- *  recorded Metacritic and Rotten Tomatoes page — the only pages it reads. */
+ *  its DOM, and Rotten Tomatoes' scorecard its `<script id="media-scorecard-json">` island. Each must
+ *  find exactly what a real HTML parser does, so both are held to Jsoup on every recorded Metacritic
+ *  and Rotten Tomatoes page — the only pages they read. */
 class JsonLdScanSpec extends AnyFlatSpec with Matchers {
 
   private val Fixtures = Paths.get("test/resources/fixtures")
@@ -30,6 +31,9 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
   private def byJsoup(html: String): Seq[String] =
     Jsoup.parse(html).select("script[type=application/ld+json]").asScala.toSeq.map(_.data())
 
+  private def scorecardByJsoup(html: String): Seq[String] =
+    Jsoup.parse(html).select("script#media-scorecard-json").asScala.toSeq.map(_.data())
+
   /** The pages whose scan disagrees with Jsoup. Each page is independent and Jsoup-parsing 400+
    *  full rating pages one after another was most of this suite's time, so they are compared on a
    *  small bounded pool. */
@@ -39,14 +43,15 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
       val checks = pages.map { page =>
         Future {
           val html = new String(Files.readAllBytes(page), StandardCharsets.UTF_8)
-          Option.when(JsonLdAggregateRating.scripts(html) != byJsoup(html))(page.toString)
+          Option.when(JsonLdAggregateRating.scripts(html) != byJsoup(html) ||
+            RottenTomatoesScorecard.blocks(html) != scorecardByJsoup(html))(page.toString)
         }(using pool)
       }
       Await.result(Future.sequence(checks)(using implicitly, pool), 2.minutes).flatten
     } finally pool.shutdown()
   }
 
-  "the JSON-LD scan" should "find the same blocks as Jsoup on every recorded rating-site page" in {
+  "the JSON-LD and scorecard scans" should "find the same blocks as Jsoup on every recorded rating-site page" in {
     withClue(s"$Fixtures must exist (run from the repo root)")(Files.isDirectory(Fixtures) shouldBe true)
     val pages = ratingPages
     pages.size should be > 400
@@ -64,5 +69,17 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
         |<script type="text/javascript">{"e":5}</script>""".stripMargin
     JsonLdAggregateRating.scripts(html) shouldBe byJsoup(html)
     JsonLdAggregateRating.scripts(html) shouldBe Seq("""{"a":1}""", """{"b":2}""", """{"c":3}""")
+  }
+
+  "the scorecard scan" should "match the id however its name is cased or its value quoted, and nothing else" in {
+    val html =
+      """<script id="media-scorecard-json" type="application/json">{"a":1}</script>
+        |<script ID='media-scorecard-json'>{"b":2}</script>
+        |<script type="application/json" id=media-scorecard-json>{"c":3}</script>
+        |<script data-id="media-scorecard-json">{"d":4}</script>
+        |<script id="media-scorecard-jsonx">{"e":5}</script>
+        |<script id="Media-Scorecard-Json">{"f":6}</script>""".stripMargin
+    RottenTomatoesScorecard.blocks(html) shouldBe scorecardByJsoup(html)
+    RottenTomatoesScorecard.blocks(html) shouldBe Seq("""{"a":1}""", """{"b":2}""", """{"c":3}""")
   }
 }
