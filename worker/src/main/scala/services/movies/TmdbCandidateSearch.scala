@@ -131,6 +131,9 @@ class TmdbCandidateSearch(
     // all (`MovieServiceTmdbHintsSpec`). `cinemaOriginalTitle`, the other half of
     // this hint pair, is cinema-only for exactly the same reason.
     val rowDirectors = evidence.withDirectors(director.toSeq.flatMap(_.split(","))).directors
+    // The row's own titles as the cinemas published them, unsplit — what a director-bearing
+    // hit must not name another instalment of (`namesAnotherPublishedInstalment`).
+    val publishedTitles = SearchTitles.wholeCandidates(title, originalTitle, cinemaTitles.toSeq.sorted)
 
     // Cache the id resolution per hint-combination: two cinema rows (or two
     // scrape cycles) with the same title + year + director set + original-title
@@ -312,7 +315,8 @@ class TmdbCandidateSearch(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(d, effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight).map(d -> _))
+            .flatMap(d => directorWalk(d, effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight,
+              publishedTitles).map(d -> _))
             .nextOption()
             .map { case (d, hit) => searchBasis = Some(TmdbBasis.DirectorWalk); walkedBy = Some(d); hit }
             // Fallback, once EVERY reported director's walk has come back with
@@ -349,7 +353,11 @@ class TmdbCandidateSearch(
             // DirectorWalk basis would misrepresent what this hit is evidence of.
             // (Always YearScoped, never TitleOnly: `searchYearExactTop` is a
             // no-op without a year, so this branch only ever fires with one.)
+            // The walk's instalment veto holds here too: an exact hit for ONE venue's
+            // title that another published title names a different entry of is a
+            // merged row's wrong half, not the film.
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption()
+              .filterNot(TmdbCandidateSearch.namesAnotherPublishedInstalment(publishedTitles, _))
               .map(hit => { searchBasis = Some(TmdbBasis.YearScoped); hit }))
         }
       freshHit = hit
@@ -493,7 +501,8 @@ class TmdbCandidateSearch(
     cinemaRuntimes:   Seq[Int] = Nil,
     cinemaCast:       Seq[String] = Nil,
     cinemaCandidates: Seq[String] = Nil,
-    cinemaTitleWeight: Map[String, Int] = Map.empty
+    cinemaTitleWeight: Map[String, Int] = Map.empty,
+    publishedTitles:  Seq[String] = Nil
   ): Option[TmdbClient.SearchResult] = {
     {
       personFilmographies(director).flatMap { case (personId, credits) =>
@@ -673,7 +682,14 @@ class TmdbCandidateSearch(
             case _         => None
           }
         }
-        byTitle.orElse(byYear).orElse(byAdjacentYear).map { film =>
+        // Whichever tier picked it (`namesAnotherPublishedInstalment`).
+        byTitle.orElse(byYear).orElse(byAdjacentYear).filter { film =>
+          val refused = TmdbCandidateSearch.namesAnotherPublishedInstalment(publishedTitles, film)
+          if (refused) logger.info(s"Director-walk: '$director' (person $personId) year=${year.getOrElse("?")} — refusing " +
+            s"tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}': a published title names another instalment " +
+            s"(${publishedTitles.mkString(" / ")})")
+          !refused
+        }.map { film =>
           logger.info(s"Director-walk: '$director' (person $personId) year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }
@@ -722,6 +738,18 @@ class TmdbCandidateSearch(
 }
 
 object TmdbCandidateSearch {
+  /** Does `hit` name a DIFFERENT entry of a curated franchise from a title the row or one
+   *  of its venues published WHOLE? Then it is another film, however it was found: the row
+   *  merges two entries, or the pick came off a sibling's title. UK prod, 2026-10-01: the
+   *  forced re-resolve of a merged Hunger Games rerelease row titled "Mockingjay - Part 1
+   *  (2026)" walked to "Sunrise on the Reaping" on a sibling listing's title
+   *  (`RereleaseYearResolveSpec`). The CURATED check only, as `FilmCanonicalizer` and
+   *  `MixedFilmDetector` ask it of cinema text: the general ordinal reading misfires on a
+   *  venue's banner — Kinoteka's "Prawo pożądania | 6 razy Pedro" is not instalment 6 of
+   *  "Prawo pożądania". Unresolved beats wrong. */
+  private[movies] def namesAnotherPublishedInstalment(publishedTitles: Seq[String], hit: TmdbClient.SearchResult): Boolean =
+    SequelMarker.curatedSiblingTitles(publishedTitles, hit.titles)
+
   /** How far a cinema's published runtime may sit from TMDB's and still count as
    *  the same film in the walk's year-pinned branch. Two minutes is what the corpus
    *  shows genuine pairs differing by (rounding, and whether the credits roll is
