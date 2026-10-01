@@ -305,8 +305,11 @@ tests:
               namespace: "kinowo"
               severity: "warning"
             exp_annotations:
-              description: "A rollout that has not converged. `kubectl -n kinowo describe deployment web` and then `describe pod` on the pending replica; the three causes worth ruling out in order are an image that cannot be pulled (the `ghcr-pull` secret is a read:packages token created out of band and is not in git -- see movies-gitops/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one schedulable node, and a pod holding a local-path PVC cannot move off it."
+              description: "A rollout that has not converged. `kubectl -n kinowo describe deployment web` and then `describe pod` on the pending replica; the three causes worth ruling out in order are an image that cannot be pulled (`K3sImagePullFailing` fires first and names the registry's answer), a PersistentVolumeClaim that cannot bind, and a pod that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one schedulable node, and a pod holding a local-path PVC cannot move off it."
               summary: "Deployment kinowo/web has 1 replica(s) short"
+      - eval_time: 45m
+        alertname: K3sImagePullFailing
+        exp_alerts: []
       - eval_time: 10m
         alertname: K3sPodCrashLooping
         exp_alerts: []
@@ -322,6 +325,37 @@ tests:
             exp_annotations:
               description: "The container starts, exits, and is restarted with increasing backoff. `kubectl -n kinowo logs worker-pl-5d8f -c worker --previous` is the command that shows WHY -- the current logs are from the attempt that has not failed yet. IF THIS IS THE WORKER, note that its own startup path is slow by design (a generous startupProbe covers a Mongo hydrate that can take minutes) and that `-XX:+ExitOnOutOfMemoryError` is set, so a heap problem presents as a clean exit and a restart loop rather than as an OOM kill. Check `K3sContainerOOMKilled` below to tell the two apart."
               summary: "kinowo/worker-pl-5d8f container worker is in CrashLoopBackOff"
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # AN IMAGE THE NODE CANNOT PULL, the 2026-09-27 shape: the kubelet alternates ErrImagePull and
+  # ImagePullBackOff every cycle, so neither reason series is 1 for five minutes straight -- only
+  # their max is. A rule on either reason alone would never reach its `for:`, which is exactly what
+  # this case pins. The pod waiting on a slow but successful pull (ContainerCreating) stays silent.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: an image pull refused for five minutes fires, flapping reasons and all
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{reason="ErrImagePull",namespace="kinowo",pod="worker-us-6cc6",container="worker"}'
+        values: '0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0'
+      - series: 'kube_pod_container_status_waiting_reason{reason="ImagePullBackOff",namespace="kinowo",pod="worker-us-6cc6",container="worker"}'
+        values: '0 0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1'
+      - series: 'kube_pod_container_status_waiting_reason{reason="ContainerCreating",namespace="kinowo",pod="web-us-5757",container="web"}'
+        values: '1x19'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: K3sImagePullFailing
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: K3sImagePullFailing
+        exp_alerts:
+          - exp_labels:
+              container: "worker"
+              namespace: "kinowo"
+              pod: "worker-us-6cc6"
+              severity: "warning"
+            exp_annotations:
+              summary: "kinowo/worker-us-6cc6 cannot pull the image for worker"
+              description: "The kubelet has failed to pull this container's image for five minutes. `kubectl -n kinowo describe pod worker-us-6cc6` prints the registry's answer, and the answer names the cause. `failed to fetch oauth token ... 403 Forbidden` from ghcr.io/token means containerd SENT A CREDENTIAL AND GHCR REFUSED IT -- an imagePullSecret holding a revoked or expired token, as on 2026-09-27; both packages are public, so a pull without one works. `not found` means the tag does not exist (image automation wrote a tag CI never pushed). `denied` or `unauthorized` with no credential means a package went private. A worker Deployment is `Recreate`, so for a worker this is an outage until it is fixed; a web Deployment surges and keeps its old pod serving."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # AN OOM KILL THAT RESTARTS THE CONTAINER. The last-terminated reason has read OOMKilled all

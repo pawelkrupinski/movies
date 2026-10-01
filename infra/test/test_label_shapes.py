@@ -47,6 +47,8 @@ EVENT_ONLY_VALUES = {
     ("kinowo_web_http_requests_total", "status", "5xx"),
     # kube-state-metrics publishes a reason series only while a container is in that state.
     ("kube_pod_container_status_waiting_reason", "reason", "CrashLoopBackOff"),
+    ("kube_pod_container_status_waiting_reason", "reason", "ErrImagePull"),
+    ("kube_pod_container_status_waiting_reason", "reason", "ImagePullBackOff"),
     ("kube_pod_container_status_last_terminated_reason", "reason", "OOMKilled"),
     # NOT PUBLISHED YET, rather than event-only: `flux:resource_info` is recorded from the
     # `gotk_<kind>_info` series kube-state-metrics publishes once movies-gitops gives it the

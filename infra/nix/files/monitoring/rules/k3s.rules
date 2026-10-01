@@ -223,7 +223,7 @@ groups:
         # FIFTEEN MINUTES, and it is the `for:` that makes this rule usable rather than the
         # expression. Every ordinary deploy passes through this state: a `Recreate` strategy (which
         # is what kinowo/worker-pl uses) is briefly at zero ready by design, and an image pull from
-        # a private GHCR on a cold node is minutes on its own. Fifteen minutes is past all of that
+        # GHCR on a cold node is minutes on its own. Fifteen minutes is past all of that
         # and still names a rollout that is genuinely stuck within the hour. A GUESS, sized off the
         # slowest normal case rather than measured.
         for: 15m
@@ -234,9 +234,9 @@ groups:
           description: >-
             A rollout that has not converged. `kubectl -n {{ $labels.namespace }} describe
             deployment {{ $labels.deployment }}` and then `describe pod` on the pending replica; the
-            three causes worth ruling out in order are an image that cannot be pulled (the
-            `ghcr-pull` secret is a read:packages token created out of band and is not in git -- see
-            movies-gitops/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod
+            three causes worth ruling out in order are an image that cannot be pulled
+            (`K3sImagePullFailing` fires first and names the registry's answer), a
+            PersistentVolumeClaim that cannot bind, and a pod
             that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not
             a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one
             schedulable node, and a pod holding a local-path PVC cannot move off it.
@@ -274,6 +274,41 @@ groups:
             `-XX:+ExitOnOutOfMemoryError` is set, so a heap problem presents as a clean exit and a
             restart loop rather than as an OOM kill. Check `K3sContainerOOMKilled` below to tell the
             two apart.
+
+      # AN IMAGE THE NODE CANNOT PULL, NAMED AS THAT. On 2026-09-27 13:32-14:07 every pod of a rollout
+      # sat in ImagePullBackOff for 35 minutes: the token in the `ghcr-pull` imagePullSecret had been
+      # revoked in the post-incident credential sweep, and ghcr.io answers `/token` with 403 to a
+      # credential it rejects -- even for a public package, which both of ours are. What paged was
+      # `WorkerDown` and `TargetDown`, which say the worker is gone and nothing about why; the cause
+      # was one `kubectl describe pod` away, and this rule is that command.
+      #
+      # BOTH REASONS. The kubelet alternates `ErrImagePull` (an attempt just failed) and
+      # `ImagePullBackOff` (waiting to retry), so a rule on either alone flaps on and off with its
+      # `for:` restarting every cycle.
+      #
+      # FIVE MINUTES. A pull on this node takes seconds to a minute; a container still waiting on
+      # one after five has been refused, not delayed. Shorter than `K3sDeploymentReplicasMissing`'s
+      # fifteen on purpose: this is the cause, and it should arrive before the symptom does.
+      - alert: K3sImagePullFailing
+        expr: >-
+          max by (namespace, pod, container) (
+            kube_pod_container_status_waiting_reason{reason=~"ErrImagePull|ImagePullBackOff"}
+          ) == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} cannot pull the image for {{ $labels.container }}"
+          description: >-
+            The kubelet has failed to pull this container's image for five minutes. `kubectl -n
+            {{ $labels.namespace }} describe pod {{ $labels.pod }}` prints the registry's answer,
+            and the answer names the cause. `failed to fetch oauth token ... 403 Forbidden` from
+            ghcr.io/token means containerd SENT A CREDENTIAL AND GHCR REFUSED IT -- an
+            imagePullSecret holding a revoked or expired token, as on 2026-09-27; both packages are
+            public, so a pull without one works. `not found` means the tag does not exist (image
+            automation wrote a tag CI never pushed). `denied` or `unauthorized` with no credential
+            means a package went private. A worker Deployment is `Recreate`, so for a worker this
+            is an outage until it is fixed; a web Deployment surges and keeps its old pod serving.
 
       - alert: K3sContainerOOMKilled
         # TWO CONDITIONS, AND THE SECOND ONE IS WHAT MAKES THIS RULE HONEST.
