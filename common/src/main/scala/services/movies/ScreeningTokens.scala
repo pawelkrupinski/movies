@@ -59,9 +59,12 @@ class ScreeningTokens(
    *  voice-over label from a source in such a country is dropped like any other
    *  label the country has no badge for. Every OTHER token in the vocabulary is
    *  the same in every country (a source either says IMAX or it doesn't), so this
-   *  one parameter is the whole reason the vocabulary is instantiated per country
-   *  instead of being a shared table. */
-  val voiceover: Option[String]
+   *  one parameter, with the version pair below, is the whole reason the vocabulary
+   *  is instantiated per country instead of being a shared table. */
+  val voiceover: Option[String],
+  /** The country's subtitled / dubbed pair ([[models.Country.versionTokens]]), the spelling a generic
+   *  SUB / DUB takes. */
+  versions: Option[models.VersionTokens] = None
 ) extends Logging {
   import ScreeningTokens._
 
@@ -85,13 +88,21 @@ class ScreeningTokens(
   /** Normalise one screening's tokens: each mapped to the shared vocabulary,
    *  unrecognised ones dropped, duplicates collapsed, source order kept. */
   def normalize(tokens: Seq[String]): List[String] =
-    tokens.iterator.flatMap(canonical).distinct.toList
+    tokens.iterator.flatMap(canonical).map(spelled).distinct.toList
+
+  /** A generic subtitled / dubbed token in the country's own spelling ([[models.Country.versionTokens]]):
+   *  a title's "2d sub" in Poland is NAP, the token its filter reads; a country naming no pair keeps SUB/DUB. */
+  private def spelled(token: String): String = (token, versions) match {
+    case ("SUB", Some(v)) => v.subtitled
+    case ("DUB", Some(v)) => v.dubbed
+    case _                => token
+  }
 }
 
 object ScreeningTokens extends Logging {
 
   /** This vocabulary as `country` spells it. */
-  def of(country: models.Country): ScreeningTokens = new ScreeningTokens(country.voiceoverToken)
+  def of(country: models.Country): ScreeningTokens = new ScreeningTokens(country.voiceoverToken, country.versionTokens)
 
   /** The default country's spelling, for the single-country constructions that
    *  predate the country split — the same default `MovieCache`'s

@@ -31,7 +31,12 @@ object FormatTags {
   val FormatToken: Map[String, String] = Map(
     "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
     "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX",
-    "atmos" -> "ATMOS"
+    "atmos" -> "ATMOS",
+    // English-language venues' version words, and the print/projection a repertory screening names
+    // ("Spirited Away (Dubbed)", "Collateral (35mm)"); SUB/DUB take the country's own spelling in
+    // `ScreeningTokens` ("2d sub" in Poland is NAP).
+    "sub" -> "SUB", "subs" -> "SUB", "subtitled" -> "SUB", "subtitles" -> "SUB", "dubbed" -> "DUB",
+    "35mm" -> "35MM", "70mm" -> "70MM", "4k" -> "4K"
   )
 
   // FORMAT/version words only — screen format (2D/3D/IMAX/4DX/Dolby/Atmos) and
@@ -43,11 +48,12 @@ object FormatTags {
   // ("UROCZYSTA POLSKA PREMIERA" would otherwise lose only its last word).
   private val FormatVersionWords = Set(
     "2d", "3d", "imax", "4dx", "dolby", "atmos",
-    "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek")
+    "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
+    "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K)\b[^)]*)\)\s*$""".r
   // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
   // join the version word straight to the title with an underscore:
   // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a

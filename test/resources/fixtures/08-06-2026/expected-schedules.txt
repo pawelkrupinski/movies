@@ -304,7 +304,7 @@ showings:
 
 === Backrooms. Bez wyjścia ===
 displayTitle:      Backrooms. Bez wyjścia
-cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms bez wyjścia | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia
+cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms bez wyjścia | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia | „Backrooms. Bez wyjścia” - UROCZYSTA POLSKA PREMIERA
 runtimeMinutes:    111
 releaseYear:       2026
 countries:         USA, Kanada
@@ -7396,7 +7396,7 @@ showings:
 
 === Podziemny krąg ===
 displayTitle:      Podziemny krąg
-cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg - zrekonstruowana wersja 4K | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
+cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg - zrekonstruowana wersja | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
 runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
@@ -7512,7 +7512,7 @@ cinemaScrapes:
   Kino Pod Baranami / Podziemny krąg / —
   Kino Sfinks / PODZIEMNY KRĄG / —
   Kino Spektrum / Podziemny krąg / —
-  Kino Wisła / Podziemny krąg - zrekonstruowana wersja 4K / 1999
+  Kino Wisła / Podziemny krąg - zrekonstruowana wersja / 1999
   KinoGram / Classy Monday - Podziemny krąg / 1999
   Kinoteka / Podziemny krąg / 2026
   OKF Iluzja / Podziemny krąg / —
@@ -8778,7 +8778,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -8927,7 +8927,7 @@ showings:
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
-cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -10633,7 +10633,7 @@ showings:
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
-cinemaTitles:      ZAWODOWCY | ZAWODOWCY - 2D napisy - Premiera Krajowa | Zawodowcy
+cinemaTitles:      ZAWODOWCY | Zawodowcy
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
@@ -10745,7 +10745,6 @@ cinemaScrapes:
   Kino Echo / ZAWODOWCY / —
   Kino Goplana / Zawodowcy / —
   Kino Głębocka 66 / Zawodowcy / —
-  Kino Hel / ZAWODOWCY - 2D napisy - Premiera Krajowa / —
   Kino Ignacy / Zawodowcy / —
   Kino Iluzjon / Zawodowcy / 2026
   Kino KDK / ZAWODOWCY / —

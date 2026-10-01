@@ -47,7 +47,9 @@ object ReadModelDerivation {
     // web_screenings rows carry the listing keys of the slots they union (identity phase 4, §16).
     Derivation(DerivationVersion("e90186e6b0473c75"), DerivationScope.Full),
     // The card title reads a programme's lookup form with sensory / toddler / premiere tags off.
-    Derivation(DerivationVersion("ae41b3a79c8e5a6b"), DerivationScope.Cards))
+    Derivation(DerivationVersion("ae41b3a79c8e5a6b"), DerivationScope.Cards),
+    // A premiere keeps its own row (split from its film), and a title's format words become chips.
+    Derivation(DerivationVersion("793bbccad0b72e98"), DerivationScope.Full))
 
   def current: DerivationVersion = History.last.version
 
