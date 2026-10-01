@@ -177,6 +177,48 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       today = Some(LocalDate.of(2026, 7, 27))).planChunks() shouldBe empty
   }
 
+  /** A real Flicks programme page for a US drive-in CLOSED FOR THE SEASON (Jericho
+   *  Drive-In, Glenmont NY, captured 2026-10-01). No day tab anywhere; inside the
+   *  timetable block, Flicks' own notice: "Sorry, we haven't received movie times for
+   *  this cinema yet." Source: https://www.flicks.us/cinema/jericho-drive-in/ */
+  private def closedDriveInPage: String =
+    FixtureFile.read("test/resources/fixtures/flicks/jericho-drive-in-programme-closed-for-season.html")
+
+  private def planOf(page: String, slug: String = "jericho-drive-in") =
+    new FlicksClient(new ScriptedByUrlHttpFetch(_ => page), slug, OdeonNorwich, FlicksMarket.UnitedStates,
+      today = Some(LocalDate.of(2026, 10, 1))).planSchedule()
+
+  // 2026-09-27..29: 17 such drive-ins held CinemaContentStaleVenuesGrowing (us) firing for 44
+  // hours, because an empty plan read the same as a parser that stopped matching. The page says
+  // the venue has nothing on; the plan has to carry that to the archive.
+  "planSchedule" should "say the source listed no schedule for a closed drive-in's page" in {
+    val plan = planOf(closedDriveInPage)
+    plan.keys shouldBe empty
+    plan.noScheduleListed shouldBe true
+  }
+
+  it should "vouch for nothing when the timetable block is bare — no tabs, but no notice either" in {
+    val bare = closedDriveInPage.replaceAll("""(?s)<div class="no-streaming-sessions.*?</p></div></div>""", "")
+    FlicksClient.hasTimetable(bare) shouldBe true
+    val plan = planOf(bare)
+    plan.keys shouldBe empty
+    plan.noScheduleListed shouldBe false
+  }
+
+  // A parser break must still be caught: a page that is not the programme page still throws,
+  // whatever text it carries.
+  it should "still throw for a page with no timetable block, notice or not" in {
+    val drifted = closedDriveInPage.replace("timetable timetable--cinema", "schedule-v7")
+    an[IllegalStateException] should be thrownBy planOf(drifted)
+  }
+
+  it should "not claim no schedule for a venue with day tabs" in {
+    val withDays = new FlicksClient(new ScriptedByUrlHttpFetch(_ => programmePage),
+      "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(LocalDate.of(2026, 7, 11))).planSchedule()
+    withDays.keys should not be empty
+    withDays.noScheduleListed shouldBe false
+  }
+
   // ── chunked scrape: one chunk per day, one AJAX call each ─────────────────
   // fetchChunk hits only the per-day sessions URL (the recorded 2026-07-11
   // fragment); fetch() also needs a programme page, so it runs over a scripted

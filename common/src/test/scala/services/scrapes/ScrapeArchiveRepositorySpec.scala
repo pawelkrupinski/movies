@@ -150,6 +150,35 @@ class ScrapeArchiveRepositorySpec extends AnyFlatSpec with Matchers {
     BarrenAttempt.continuing(Some(legacy), next).failedRuns shouldBe None
   }
 
+  // A venue closed for the season says so on its own page; the census must be able to tell that
+  // from an empty nothing vouches for, and from a failure — on the newest attempt only.
+  it should "stamp an empty attempt whose source listed no schedule, and drop the stamp on the next unvouched attempt" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(scraped(Multikino, Morning, Seq(film("Dune"))))
+    repository.record(blank(Multikino, Noon).copy(noScheduleListed = true))
+
+    repository.find(Multikino).value.lastBarren.value.noScheduleListed shouldBe true
+    repository.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(Some(Morning), noScheduleListed = true))
+
+    repository.record(threw(Multikino, Evening, "parse error"))
+    repository.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(Some(Morning), noScheduleListed = false))
+  }
+
+  it should "never stamp a failed attempt as no schedule listed, whatever the scraper claimed" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Noon, "boom").copy(noScheduleListed = true))
+    repository.find(Multikino).value.lastBarren.value.noScheduleListed shouldBe false
+  }
+
+  // The archives that watch scrapes go by re-file each attempt into the real one; dropping the
+  // flag there would leave every production row unstamped.
+  it should "carry the stamp through a forwarding archive" in {
+    val underlying = new InMemoryScrapeArchiveRepository
+    val forwarding = new ForwardingScrapeArchive(underlying) {}
+    forwarding.record(blank(Multikino, Noon).copy(noScheduleListed = true))
+    forwarding.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(None, noScheduleListed = true))
+  }
+
   it should "start a new run after a success, not resume the old one" in {
     val repository = new InMemoryScrapeArchiveRepository
     repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))

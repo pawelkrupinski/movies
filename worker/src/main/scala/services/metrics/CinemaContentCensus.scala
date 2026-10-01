@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.cinemas.common.CinemaScraper
-import services.scrapes.ScrapeArchiveRepository
+import services.scrapes.{ContentStamp, ScrapeArchiveRepository}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._
@@ -38,7 +38,13 @@ import scala.concurrent.duration._
  *     ONE venue, the roster's worst, so it cannot say whether that venue is alone:
  *     DE sat at 1,383h and the US at 600h on 2026-09-24 with nothing reading either.
  *     A count is what shows a SECOND venue falling silent, which is the shape a
- *     client-wide parser break takes (one skin change, every venue on it).
+ *     client-wide parser break takes (one skin change, every venue on it). A venue
+ *     whose newest scrape was its own source AFFIRMATIVELY listing no schedule (a
+ *     page that parsed and says it has nothing on — see
+ *     `CinemaScraper.noScheduleListed`) is left out: 17 US drive-ins closing for
+ *     the season held `CinemaContentStaleVenuesGrowing` firing for 44 hours
+ *     (2026-09-27..29). A parser break still counts, because it throws or comes
+ *     back empty with nothing vouching for it.
  *
  * Deliberately the same shape as [[CinemaScrapeCensus]]'s pair, and split for the
  * same reason: a cinema with no content has no age, so folding it into the age
@@ -85,7 +91,7 @@ class CinemaContentCensus(
   // `start()` takes the first reading at once, so the series appears within the boot.
 
   def sample(): Unit = {
-    val stamps = archive.lastContentAt()
+    val stamps = archive.contentStamps()
     // Empty means the read failed (or there is no archive at all) — NOT that every
     // cinema has gone quiet. Publishing that would turn a Mongo blip into a
     // roster-wide outage on the panel, which is the exact inversion this metric
@@ -107,26 +113,28 @@ object CinemaContentCensus {
   /** A venue quiet this long is STALE. A week, because a repertory venue can legitimately go
    *  a few days between programmes (a Monday-to-Wednesday dark run, a festival gap), and every
    *  horizon a scraper looks ahead covers at least a week — so a week with nothing at all is
-   *  past anything a working parser of an open cinema produces. Nothing here knows a cinema is
-   *  closed for the season (there is no such flag on `Cinema`), which is why the alert on this
-   *  gauge watches it GROW rather than its level. */
+   *  past anything a working parser of an open cinema produces. Only a source that SAYS it has
+   *  no schedule marks a cinema closed (`ContentStamp.noScheduleListed`); most cannot, which is
+   *  why the alert on this gauge watches it GROW rather than its level. */
   val StaleAfter: FiniteDuration = 7.days
 
   /** How long the quietest cinema has gone without content, how many have never had any, and
    *  how many last had some more than [[StaleAfter]] ago (never-content venues are NOT among
-   *  them — they have no age, and their own gauge counts them). */
+   *  them — they have no age, and their own gauge counts them — and neither is a venue whose
+   *  source last said it has no schedule). */
   case class ContentCensus(oldestAgeSeconds: Double, neverContent: Int, staleVenues: Int)
 
   /** Pure: fold the roster against its archive stamps. A cinema missing from the
    *  archive counts the same as one archived with no content — in both cases we
    *  have never seen it produce a film. */
-  def quiet(roster: Seq[String], stamps: Map[String, Option[Instant]], now: Instant): ContentCensus = {
-    val ages    = roster.map(cinema => stamps.getOrElse(cinema, None))
-    val seconds = ages.flatten.map(at => (now.toEpochMilli - at.toEpochMilli) / 1000.0)
+  def quiet(roster: Seq[String], stamps: Map[String, ContentStamp], now: Instant): ContentCensus = {
+    val rows = roster.map(cinema => stamps.getOrElse(cinema, ContentStamp(None)))
+    def agesSeconds(of: Seq[ContentStamp]): Seq[Double] =
+      of.flatMap(_.lastContentAt).map(at => (now.toEpochMilli - at.toEpochMilli) / 1000.0)
     ContentCensus(
-      oldestAgeSeconds = seconds.maxOption.getOrElse(0.0),
-      neverContent     = ages.count(_.isEmpty),
-      staleVenues      = seconds.count(_ > StaleAfter.toSeconds)
+      oldestAgeSeconds = agesSeconds(rows).maxOption.getOrElse(0.0),
+      neverContent     = rows.count(_.lastContentAt.isEmpty),
+      staleVenues      = agesSeconds(rows.filterNot(_.noScheduleListed)).count(_ > StaleAfter.toSeconds)
     )
   }
 
@@ -146,7 +154,7 @@ object CinemaContentCensus {
 
   def staleVenuesGauge(registry: PrometheusRegistry): Gauge = Gauge.builder()
     .name(StaleVenuesName)
-    .help("Cinemas in this country's roster whose last content-bearing scrape is more than 7 days old (never-content venues excluded: kinowo_worker_cinema_never_content counts those). Closures are not modelled, so a season's dormant venues sit here too: watch it GROW day over day, which is what a parser break across a client's venues looks like.")
+    .help("Cinemas in this country's roster whose last content-bearing scrape is more than 7 days old (never-content venues excluded: kinowo_worker_cinema_never_content counts those; so are venues whose own page last said they have no schedule). Most sources cannot say a venue is closed, so a season's dormant venues still sit here: watch it GROW day over day, which is what a parser break across a client's venues looks like.")
     .labelNames("country")
     .register(registry)
 

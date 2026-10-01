@@ -68,6 +68,18 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
       .lastSuccess.map(_.listingComplete) shouldBe Some(false)
   }
 
+  // The planner's empty plan, as `publishScrape` wraps it, is what the runner reads the flag off —
+  // the same seam `listingIsComplete` once fell through.
+  it should "archive an empty plan the source vouched for as no schedule listed, through the decorators" in {
+    val archive = new InMemoryScrapeArchiveRepository
+    val runner  = runnerWith(archive)
+    runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune"))))
+    val vouched = PreScrapedCinemaScraper.of(new StubCinemaScraper(Multikino), () => Seq.empty, noScheduleListed = true)
+    runner.run(new UptimeRecordingScraper(vouched, new services.UptimeMonitor()))
+
+    archive.find(Multikino).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)
+  }
+
   it should "keep the last listing and flag it white when a scrape comes back empty" in {
     val archive = new InMemoryScrapeArchiveRepository
     val runner  = runnerWith(archive)

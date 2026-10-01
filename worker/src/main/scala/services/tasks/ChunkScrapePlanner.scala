@@ -69,11 +69,12 @@ class ChunkScrapePlanner(
       // such no-ops an hour on the UK worker, each paying that fetch.
       if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter.value))) return 0
 
-      val keys =
-        try scraper.planChunks()
+      val plan =
+        try scraper.planSchedule()
         catch { case e: Exception => publishFailure(scraper, e); return 0 }
+      val keys = plan.keys
 
-      if (keys.isEmpty) { publishEmpty(scraper); return 0 }
+      if (keys.isEmpty) { publishEmpty(scraper, plan.noScheduleListed); return 0 }
 
       val now = clock.instant()
       store.startRun(cinema, keys, now, staleAfter.value) match {
@@ -108,9 +109,10 @@ class ChunkScrapePlanner(
 
   /** A venue that advertised no days in the horizon: a clean parse of an empty
    *  repertoire, so it counts as a SUCCESSFUL scrape and advances the due schedule.
-   *  (Uptime still records it white — empty is visible, just not overdue.) */
-  private def publishEmpty(scraper: ChunkedCinemaScraper): Unit = {
-    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty))
+   *  (Uptime still records it white — empty is visible, just not overdue.) Whether the
+   *  page SAID it has nothing on travels with it to the archive (`noScheduleListed`). */
+  private def publishEmpty(scraper: ChunkedCinemaScraper, noScheduleListed: Boolean): Unit = {
+    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, noScheduleListed = noScheduleListed))
     catch { case _: Exception => () }
     // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
     // with SOME showtimes about to run dry, not one advertising nothing at all.

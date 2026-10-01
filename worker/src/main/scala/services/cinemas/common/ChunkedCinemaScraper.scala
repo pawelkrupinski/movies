@@ -14,12 +14,31 @@ import models.CinemaMovie
  * A conversion is therefore behaviour-preserving iff
  * `reduceChunks ∘ fetchChunk ∘ planChunks` equals the old monolithic `fetch()`.
  */
+/** One chunked scrape's plan: the chunk keys, and — only when there are none — whether the
+ *  source said so itself. Built through [[ChunkPlan.of]] or [[ChunkPlan.NoScheduleListed]], so
+ *  a plan with keys can never claim the venue has nothing on. */
+final case class ChunkPlan private (keys: Seq[String], noScheduleListed: Boolean)
+
+object ChunkPlan {
+  /** Keys, empty or not, that vouch for nothing beyond themselves. */
+  def of(keys: Seq[String]): ChunkPlan = ChunkPlan(keys, noScheduleListed = false)
+
+  /** The venue's page parsed and says it has no schedule. */
+  val NoScheduleListed: ChunkPlan = ChunkPlan(Seq.empty, noScheduleListed = true)
+}
+
 trait ChunkedCinemaScraper extends CinemaScraper {
 
   /** Enumerate the chunk keys for one scrape, known upfront. May fetch a nav /
    *  index page (whose failure fails the whole scrape, recorded as a normal
    *  outcome). Each key must map to an independently-fetchable unit. */
   def planChunks(): Seq[String]
+
+  /** [[planChunks]], and whether an empty plan is the source affirmatively listing no
+   *  schedule (see `CinemaScraper.noScheduleListed`). What the production planner calls.
+   *  The default vouches for nothing; override only where the page itself says it has
+   *  nothing on, so a drifted page cannot pass for a closed venue. */
+  def planSchedule(): ChunkPlan = ChunkPlan.of(planChunks())
 
   /** Fetch + parse ONE chunk into its slice of the listing. Must be independent
    *  of the other chunks — any cross-chunk merge belongs in `reduceChunks`. A

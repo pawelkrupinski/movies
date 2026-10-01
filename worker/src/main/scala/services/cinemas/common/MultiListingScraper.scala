@@ -20,6 +20,7 @@ class MultiListingScraper(override val cinema: Cinema, val listings: Seq[CinemaS
   override def maxFetchAttempts: Int = listings.map(_.maxFetchAttempts).max
   override def chain: Boolean = listings.exists(_.chain)
   override def listingIsComplete: Boolean = listings.forall(_.listingIsComplete)
+  override def noScheduleListed: Boolean  = listings.forall(_.noScheduleListed)
   override def sourceUrl: Option[String] = listings.flatMap(_.sourceUrl).headOption
   /** The listings' keys together. The roster audit reads [[listings]] to hold
    *  each one unique on its own. */

@@ -79,12 +79,13 @@ class CinemaScrapeRunner(
    *  drives the scrape itself (`TestWiring.runOneScrapeTick`) archives exactly as `run` does. */
   def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], error: Option[String]): Unit =
     scrapeArchive.record(ScrapeAttempt(
-      cinema          = scraper.cinema,
-      city            = Cinema.cityOf(scraper.cinema),
-      at              = Instant.now(),
-      listingComplete = scraper.listingIsComplete,
-      films           = movies,
-      error           = error
+      cinema           = scraper.cinema,
+      city             = Cinema.cityOf(scraper.cinema),
+      at               = Instant.now(),
+      listingComplete  = scraper.listingIsComplete,
+      films            = movies,
+      error            = error,
+      noScheduleListed = scraper.noScheduleListed
     ))
 
   /** Exception messages are often null (NPE, some driver errors); fall back to

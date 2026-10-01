@@ -100,14 +100,22 @@ class FlicksClient(
    *     `MovieCache.recordCinemaScrape` bails on an empty result so the venue
    *     keeps its last-known listing regardless. Throwing here instead left five
    *     UK venues permanently red on /uptime (2026-07-26). */
-  def planChunks(): Seq[String] = {
+  def planChunks(): Seq[String] = planSchedule().keys
+
+  /** [[planChunks]], plus whether an empty plan is the PAGE saying the venue has no
+   *  schedule: no day tab anywhere on it, and Flicks' own "no times" notice
+   *  (`no-streaming-sessions`) inside the timetable block — what a drive-in closed for
+   *  the season renders. An empty plan without that notice (only far-out tabs, or a
+   *  bare block) vouches for nothing and stays a plain empty. */
+  override def planSchedule(): ChunkPlan = {
     val html  = http.get(programmeUrl)
-    val dates = parseProgrammeDates(html)
-      .filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
+    val all   = parseProgrammeDates(html)
+    val dates = all.filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
     if (dates.isEmpty && !hasTimetable(html))
       throw new IllegalStateException(
         s"Flicks programme page for '$cinemaSlug' carried no timetable block")
-    dates.map(_.toString)
+    if (all.isEmpty && saysNoSessions(html)) ChunkPlan.NoScheduleListed
+    else ChunkPlan.of(dates.map(_.toString))
   }
 
   /** Fetch + parse ONE day's sessions fragment into that day's films. The fetch
@@ -201,6 +209,14 @@ object FlicksClient {
   /** Whether the page carries the venue day-tab container — i.e. it really is a
    *  Flicks programme page, whether or not the venue has anything on. */
   def hasTimetable(html: String): Boolean = TimetableBlock.findFirstIn(html).isDefined
+
+  // Flicks' notice inside the timetable block for a venue it holds no times for ("Sorry, we
+  // haven't received movie times for this cinema yet"), seen on closed-for-season US drive-ins
+  // and dormant UK venues alike.
+  private val NoSessionsNotice = """class="no-streaming-sessions\b""".r
+
+  /** Whether the page carries Flicks' own "no times for this cinema" notice. */
+  def saysNoSessions(html: String): Boolean = NoSessionsNotice.findFirstIn(html).isDefined
 
   // Flicks 403s a non-browser fetch and only serves the sessions fragment (rather
   // than the full page) when this header is set; RealHttpFetch already sends a

@@ -72,8 +72,9 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
       fallback = () => None, fallbackName = "Flicks", fallbackRef = () => None,
       new UptimeMonitor(), new InMemoryFallbackStore()), Set.empty[String]),
     // The chunked reduce publishes its listing as a stand-in for the live scraper; only
-    // whether that listing is whole is its own (checked on its own below).
-    classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingIsComplete")),
+    // whether that listing is whole, and whether its emptiness is the source saying so, are
+    // its own (checked on their own below).
+    classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingIsComplete", "noScheduleListed")),
     // A composite rather than a decorator, but over ONE listing it is that listing.
     classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set.empty[String])
   )
@@ -104,6 +105,11 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
   "PreScrapedCinemaScraper" should "answer for its own listing's completeness" in {
     PreScrapedCinemaScraper.of(delegate, () => Seq.empty, listingComplete = false).listingIsComplete shouldBe false
     PreScrapedCinemaScraper.of(delegate, () => Seq.empty).listingIsComplete shouldBe true
+  }
+
+  it should "answer for whether its empty listing is the source listing no schedule" in {
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, noScheduleListed = true).noScheduleListed shouldBe true
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty).noScheduleListed shouldBe false
   }
 
   it should "reach MovieCache as a short listing once the reduce says so" in {

@@ -11,8 +11,9 @@ import scala.concurrent.duration._
 
 /** A fake chunked cinema: each chunk key maps to its slice; keys in `failOnce` throw
  *  on their first `fetchChunk` then succeed, keys in `failAlways` always throw, keys in
- *  `circuitOpen` fast-fail as a breaker-blocked host would, keys in `gone` 404, and
- *  `planThrows` fails enumeration. */
+ *  `circuitOpen` fast-fail as a breaker-blocked host would, keys in `gone` 404,
+ *  `planThrows` fails enumeration, and `planSaysNoSchedule` answers an empty plan as the
+ *  source listing no schedule. */
 class FakeChunkedScraper(
   slices:      Map[String, Seq[CinemaMovie]],
   failOnce:    Set[String] = Set.empty,
@@ -20,12 +21,15 @@ class FakeChunkedScraper(
   planThrows:  Boolean = false,
   circuitOpen: Set[String] = Set.empty,
   gone:        Set[String] = Set.empty,
-  val cinema:  Cinema = Multikino
+  val cinema:  Cinema = Multikino,
+  planSaysNoSchedule: Boolean = false
 ) extends ChunkedCinemaScraper {
   import FakeChunkedScraper.{CircuitBlockMs, Host}
   private val failed = mutable.Set.empty[String]
   def scrapeHosts: Set[String] = Set(Host)
   def planChunks(): Seq[String] = if (planThrows) throw new RuntimeException("nav down") else slices.keys.toSeq.sorted
+  override def planSchedule(): services.cinemas.common.ChunkPlan =
+    if (planSaysNoSchedule) services.cinemas.common.ChunkPlan.NoScheduleListed else super.planSchedule()
   def fetchChunk(k: String): Seq[CinemaMovie] =
     if (circuitOpen.contains(k)) throw new tools.CircuitOpenException(Host, CircuitBlockMs)
     else if (gone.contains(k)) throw new tools.HttpStatusException(404, "GET", s"https://$Host/$k", None)

@@ -58,7 +58,13 @@ case class BarrenAttempt(
   // How many separate scrape runs in a row, ending with this one, have FAILED — 0
   // for an empty. Retries of one run are one run ([[SeparateRuns]]). `None` for a run that began before the count existed, which stays
   // uncounted until it ends (see [[BarrenAttempt.continuing]]).
-  failedRuns: Option[Int] = None
+  failedRuns: Option[Int] = None,
+  // The source itself affirmatively listed NO schedule — the venue's page parsed and said it has
+  // nothing on (a drive-in closed for the season), rather than an empty result nothing vouches
+  // for. Only ever true on an [[ScrapeOutcome.Empty]]: a throw vouches for nothing. Not carried
+  // forward by [[BarrenAttempt.continuing]] — each attempt answers for itself, so a later failure
+  // or an unvouched empty clears it. See [[ScrapeAttempt.noScheduleListed]].
+  noScheduleListed: Boolean = false
 ) {
   /** When this barren run started — `since` once one has been carried, else this
    *  attempt itself. */
@@ -156,7 +162,8 @@ trait ScrapeArchiveRepository {
       storeSuccess(attempt.cinema, attempt.city,
         SuccessfulScrape(attempt.at, attempt.listingComplete, attempt.films))
     case barren =>
-      storeBarren(attempt.cinema, attempt.city, BarrenAttempt(attempt.at, barren, attempt.error))
+      storeBarren(attempt.cinema, attempt.city, BarrenAttempt(attempt.at, barren, attempt.error,
+        noScheduleListed = barren == ScrapeOutcome.Empty && attempt.noScheduleListed))
   }
 
   /** Persist a scrape that HAS content: replace the row's listing and drop any
@@ -189,9 +196,10 @@ trait ScrapeArchiveRepository {
     if (scan(rows ++= _)) rows.result() else Seq.empty
   }
 
-  /** When each archived cinema last produced ANY films, keyed by display name.
-   *  Absent from the map, or `None`, both mean the same thing: no content-bearing
-   *  scrape has ever been recorded for it.
+  /** When each archived cinema last produced ANY films, and whether its newest
+   *  attempt since was its source affirmatively listing no schedule, keyed by
+   *  display name. Absent from the map, or a `None` stamp, both mean the same
+   *  thing: no content-bearing scrape has ever been recorded for it.
    *
    *  Deliberately not `findAll().map(...)`. An `ArchivedScrape` carries its entire
    *  parsed listing, so decoding every row to read one timestamp each hauls the
@@ -202,9 +210,20 @@ trait ScrapeArchiveRepository {
    *  Empty on a read that could not be completed, NOT a partial map: the caller is
    *  measuring which cinemas have gone quiet, and a short read would hand it a
    *  pile of cinemas that merely weren't fetched. A failed read is not data. */
-  def lastContentAt(): Map[String, Option[Instant]]
+  def contentStamps(): Map[String, ContentStamp]
 
   def close(): Unit = ()
+}
+
+/** One cinema's row as the content census reads it: when it last produced films
+ *  (`None`: never), and whether the newest attempt since then was its source
+ *  affirmatively listing no schedule — a venue closed for the season, as opposed to
+ *  one whose parser may have stopped matching. */
+final case class ContentStamp(lastContentAt: Option[Instant], noScheduleListed: Boolean = false)
+
+object ContentStamp {
+  def of(row: ArchivedScrape): ContentStamp =
+    ContentStamp(row.contentAt, row.lastBarren.exists(_.noScheduleListed))
 }
 
 /** One scrape attempt as the runner observed it — the archive's input. Its
@@ -216,7 +235,10 @@ case class ScrapeAttempt(
   at:              Instant,
   listingComplete: Boolean,
   films:           Seq[CinemaMovie],
-  error:           Option[String] = None
+  error:           Option[String] = None,
+  // The scraper's source affirmatively said there is no schedule (see
+  // `CinemaScraper.noScheduleListed`). Read only when the attempt is EMPTY.
+  noScheduleListed: Boolean = false
 ) {
   def outcome: ScrapeOutcome =
     if (error.isDefined) ScrapeOutcome.Failed
@@ -236,7 +258,7 @@ object ScrapeArchiveRepository {
     protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit    = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
     def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = true
-    def lastContentAt(): Map[String, Option[Instant]] = Map.empty
+    def contentStamps(): Map[String, ContentStamp]   = Map.empty
   }
 }
 
@@ -271,6 +293,6 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
 
   // No projection to make here — the rows are already in memory, so reading the
   // stamp off each is the whole job. The Mongo one earns its own query.
-  def lastContentAt(): Map[String, Option[Instant]] =
-    byCinema.synchronized(byCinema.view.mapValues(_.contentAt).toMap)
+  def contentStamps(): Map[String, ContentStamp] =
+    byCinema.synchronized(byCinema.view.mapValues(ContentStamp.of).toMap)
 }

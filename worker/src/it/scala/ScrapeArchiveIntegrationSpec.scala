@@ -7,7 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ScrapeGuardState
-import services.scrapes.{MongoScrapeArchiveRepository, MongoScrapeGuardLedger, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
+import services.scrapes.{ContentStamp, MongoScrapeArchiveRepository, MongoScrapeGuardLedger, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await
@@ -131,7 +131,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
-      repository.lastContentAt().get(Multikino.displayName).flatten shouldBe Some(Noon)
+      repository.contentStamps().get(Multikino.displayName).flatMap(_.lastContentAt) shouldBe Some(Noon)
     } finally purge()
   }
 
@@ -143,7 +143,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
       repository.record(scraped(Morning, Seq(minimal)))
       repository.record(blank(Noon))
       repository.record(blank(Evening))
-      repository.lastContentAt().get(Multikino.displayName).flatten shouldBe Some(Morning)
+      repository.contentStamps().get(Multikino.displayName).flatMap(_.lastContentAt) shouldBe Some(Morning)
     } finally purge()
   }
 
@@ -151,7 +151,22 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {
       repository.record(blank(Noon))
-      repository.lastContentAt().get(Multikino.displayName) shouldBe Some(None)
+      repository.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(None))
+    } finally purge()
+  }
+
+  // Real BSON again: the flag is read through a NESTED projection, and a mis-spelled path would
+  // decode as false — every closed-for-season venue back in the stale count.
+  it should "project the no-schedule stamp of the newest barren attempt, and clear it on the next" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Morning, Seq(minimal)))
+      repository.record(blank(Noon).copy(noScheduleListed = true))
+      repository.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(Some(Morning), noScheduleListed = true))
+      repository.find(Multikino).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)
+
+      repository.record(blank(Evening))
+      repository.contentStamps().get(Multikino.displayName) shouldBe Some(ContentStamp(Some(Morning), noScheduleListed = false))
     } finally purge()
   }
 

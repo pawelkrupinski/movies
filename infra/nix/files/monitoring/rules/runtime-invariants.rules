@@ -91,9 +91,13 @@ groups:
       # MORE VENUES GO QUIET EVERY DAY.
       #
       # kinowo_worker_cinema_content_stale_venues counts roster venues whose last content-bearing
-      # scrape is over a week old (CinemaContentCensus). Its LEVEL means little: closures are not
-      # modelled (no flag on Cinema says "shut for the season"), so dormant venues sit in it all
-      # winter, and DE's quietest venue alone was 1,383h on 2026-09-24. Its GROWTH is the signal: a
+      # scrape is over a week old (CinemaContentCensus). Its LEVEL means little: most sources cannot
+      # say a venue is shut for the season, so dormant venues sit in it all winter, and DE's
+      # quietest venue alone was 1,383h on 2026-09-24. A venue whose OWN PAGE says it has no
+      # schedule is left out at the source (`noScheduleListed`, so far Flicks' "no times" notice):
+      # 17 US drive-ins closing for the season held this firing for 44h on 2026-09-27..29. The fix
+      # is in the gauge, not here, so the backtest cannot replay it -- the stored series still
+      # carries the drive-ins. Its GROWTH is the signal: a
       # client-wide parser break (one skin change, every venue on it) adds venues day after day,
       # while every scrape keeps succeeding and the scrape-staleness rules stay green.
       #

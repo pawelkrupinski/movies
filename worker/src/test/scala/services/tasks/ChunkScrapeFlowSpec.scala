@@ -39,7 +39,9 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
                          fallbackServes: Boolean = false) {
     val venueCadence = new VenueCadenceStore(settings.ScrapeFreshness(venueCadenceDefault))
     val published    = mutable.ListBuffer.empty[Seq[CinemaMovie]]
+    val noSchedule   = mutable.ListBuffer.empty[Boolean]
     private val stack = new ChunkScrapeHarness(scraper, s => {
+      noSchedule += s.noScheduleListed
       val scraped = scala.util.Try(s.fetch())
       published += scraped.getOrElse(Seq.empty)
       if (!fallbackServes) scraped.get
@@ -260,6 +262,18 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.published should have size 1     // still published (and recorded white on /uptime)
     h.published.head shouldBe empty
     h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
+  // The page saying the venue has nothing on (a drive-in closed for the season) must reach the
+  // archive as such, so the content census does not count it as a silent parser break.
+  it should "publish an empty plan the source vouched for as no schedule listed, and an unvouched one as not" in {
+    val vouched = new Harness(new FakeChunkedScraper(Map.empty, planSaysNoSchedule = true))
+    vouched.planner.plan(cinemaName) shouldBe 0
+    vouched.noSchedule.toList shouldBe List(true)
+
+    val unvouched = new Harness(new FakeChunkedScraper(Map.empty))
+    unvouched.planner.plan(cinemaName) shouldBe 0
+    unvouched.noSchedule.toList shouldBe List(false)
   }
 
   // A plan that THROWS keeps the fast-retry behaviour a transient 5xx needs — but

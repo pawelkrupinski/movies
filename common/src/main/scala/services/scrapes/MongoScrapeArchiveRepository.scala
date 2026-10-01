@@ -49,15 +49,18 @@ case class BarrenAttemptDto(
   since:   Option[Instant] = None,
   // Consecutive failed runs; absent on rows written before the count existed,
   // which decode as an uncounted run.
-  failedRuns: Option[Int] = None
+  failedRuns: Option[Int] = None,
+  // Written only when true, so a row from before the field existed — and every
+  // unvouched empty or failure — decodes as false.
+  noScheduleListed: Option[Boolean] = None
 ) {
   def toDomain: Option[BarrenAttempt] =
-    ScrapeOutcome.byLabel(outcome).map(o => BarrenAttempt(at, o, error, since, failedRuns))
+    ScrapeOutcome.byLabel(outcome).map(o => BarrenAttempt(at, o, error, since, failedRuns, noScheduleListed.contains(true)))
 }
 
 object BarrenAttemptDto {
   def from(b: BarrenAttempt): BarrenAttemptDto =
-    BarrenAttemptDto(b.at, b.outcome.label, b.error, b.since, b.failedRuns)
+    BarrenAttemptDto(b.at, b.outcome.label, b.error, b.since, b.failedRuns, Option.when(b.noScheduleListed)(true))
 }
 
 /** Storage DTO for one cinema's archive row — the macro codec target for the
@@ -77,10 +80,16 @@ case class StoredScrapeDto(
   lastBarren:      Option[BarrenAttemptDto]
 )
 
-/** The projection the barren census reads: a cinema and when it last produced
- *  films. Its own DTO because decoding `StoredScrapeDto` would pull every archived
- *  film along with the one timestamp wanted. */
-case class ContentStampDto(_id: String, scrapedAt: Option[Instant])
+/** The projection the content census reads: a cinema, when it last produced films,
+ *  and its barren marker's no-schedule flag. Its own DTO because decoding
+ *  `StoredScrapeDto` would pull every archived film along with the one timestamp
+ *  wanted. */
+case class ContentStampDto(_id: String, scrapedAt: Option[Instant], lastBarren: Option[NoScheduleFlagDto]) {
+  def toDomain: ContentStamp = ContentStamp(scrapedAt, lastBarren.exists(_.noScheduleListed.contains(true)))
+}
+
+/** `lastBarren` projected down to its one flag. */
+case class NoScheduleFlagDto(noScheduleListed: Option[Boolean])
 
 object StoredScrapeDto {
 
@@ -124,7 +133,7 @@ object StoredScrapeDto {
  *  `synopsis`/`room`/`ageRating` costs nothing on the wire and decodes back to
  *  `None` — the same trade `MovieCodecs` makes for `Showtime`. */
 object ScrapeArchiveCodecs extends PersistedCodecs {
-  type OmittingNone = (ContentStampDto, Showtime, Movie, ArchivedFilmDto, BarrenAttemptDto, StoredScrapeDto)
+  type OmittingNone = (ContentStampDto, NoScheduleFlagDto, Showtime, Movie, ArchivedFilmDto, BarrenAttemptDto, StoredScrapeDto)
   type WritingNone  = EmptyTuple
 
   /** Every showtime READ through the movies' streaming decoder, written through its macro codec: a
@@ -232,14 +241,15 @@ class MongoScrapeArchiveRepository(
 
   /** Paged exactly like `scan` and for the same reason — the row COUNT, not
    *  the row size, is what recurses the driver's completion chain into a
-   *  StackOverflowError — but projected down to `_id` + `scrapedAt` so a reading
-   *  that only wants timestamps doesn't drag every archived film across with it.
+   *  StackOverflowError — but projected down to `_id`, `scrapedAt` and
+   *  `lastBarren.noScheduleListed` so a reading that only wants timestamps doesn't
+   *  drag every archived film across with it.
    *
    *  An incomplete scan yields an EMPTY map, never the rows it managed to get.
    *  The caller counts cinemas that have produced nothing; a short read would
    *  hand it a list of cinemas that merely weren't fetched, and it would publish
    *  that as an outage. */
-  def lastContentAt(): Map[String, Option[Instant]] = coll.toSeq.flatMap { c =>
+  def contentStamps(): Map[String, ContentStamp] = coll.toSeq.flatMap { c =>
     val stamps    = c.withDocumentClass[ContentStampDto]()
     val collected = Seq.newBuilder[ContentStampDto]
     val complete  = services.movies.KeysetScan.scan[ContentStampDto](
@@ -252,19 +262,19 @@ class MongoScrapeArchiveRepository(
         val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
         Await.result(
           stamps.find(filter)
-            .projection(Projections.include("scrapedAt"))
+            .projection(Projections.include("scrapedAt", "lastBarren.noScheduleListed"))
             .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
             .limit(limit).batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
           60.seconds)
       },
       onIncomplete   = exception =>
-        logger.warn(s"ScrapeArchiveRepository.lastContentAt incomplete after retries: " +
+        logger.warn(s"ScrapeArchiveRepository.contentStamps incomplete after retries: " +
           s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
     )(batch => collected ++= batch)
 
-    if (complete) collected.result().map(d => d._id -> d.scrapedAt)
+    if (complete) collected.result().map(d => d._id -> d.toDomain)
     else {
-      logger.warn(s"ScrapeArchiveRepository.lastContentAt discarding ${collected.result().size} row(s) from an " +
+      logger.warn(s"ScrapeArchiveRepository.contentStamps discarding ${collected.result().size} row(s) from an " +
         "incomplete scan — returning empty so unfetched cinemas are never counted as barren")
       Seq.empty
     }

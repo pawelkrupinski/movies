@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.StubCinemaScraper
 import services.cinemas.common.CinemaScraper
-import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository}
+import services.scrapes.{ArchivedScrape, ContentStamp, ScrapeArchiveRepository}
 
 import java.time.{Clock, Instant, ZoneOffset}
 
@@ -33,19 +33,19 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
 
   /** An archive that answers with exactly `stamps` — including, when empty, the
    *  read that could not be completed. */
-  private class StubArchive(var stamps: Map[String, Option[Instant]]) extends ScrapeArchiveRepository {
+  private class StubArchive(var stamps: Map[String, ContentStamp]) extends ScrapeArchiveRepository {
     def enabled: Boolean = true
     protected def storeSuccess(c: Cinema, city: Option[String], s: services.scrapes.SuccessfulScrape): Unit = ()
     protected def storeBarren(c: Cinema, city: Option[String], a: services.scrapes.BarrenAttempt): Unit     = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
     def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = true
-    def lastContentAt(): Map[String, Option[Instant]] = stamps
+    def contentStamps(): Map[String, ContentStamp] = stamps
   }
 
   private val healthyStamps = Map(
-    producing.displayName -> Some(now.minusSeconds(3600)),
-    quiet.displayName     -> Some(now.minusSeconds(40 * 86400)),
-    never.displayName     -> Option.empty[Instant]
+    producing.displayName -> ContentStamp(Some(now.minusSeconds(3600))),
+    quiet.displayName     -> ContentStamp(Some(now.minusSeconds(40 * 86400))),
+    never.displayName     -> ContentStamp(Option.empty[Instant])
   )
 
   private def census(archive: ScrapeArchiveRepository) = {
@@ -76,19 +76,19 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   // content has no age, so folding it in would either read as 0s — hiding the worst
   // case behind a healthy maximum — or need a sentinel that flattens the chart.
   it should "keep a never-produced cinema out of the age gauge rather than calling it 0s old" in {
-    val (c, oldestAge, neverContent) = census(new StubArchive(Map(never.displayName -> None)))
+    val (c, oldestAge, neverContent) = census(new StubArchive(Map(never.displayName -> ContentStamp(None))))
     c.sample()
     valueOf(oldestAge) shouldBe 0.0    // no age to report, not "brand new"
     valueOf(neverContent) shouldBe 3.0 // the two absent from the archive count too
   }
 
   it should "count a cinema absent from the archive as never having produced" in {
-    val (c, _, neverContent) = census(new StubArchive(Map(producing.displayName -> Some(now))))
+    val (c, _, neverContent) = census(new StubArchive(Map(producing.displayName -> ContentStamp(Some(now)))))
     c.sample()
     valueOf(neverContent) shouldBe 2.0
   }
 
-  // THE case this metric would otherwise invert. `lastContentAt` returns an empty
+  // THE case this metric would otherwise invert. `contentStamps` returns an empty
   // map when its scan could not complete, precisely so a partial read is never
   // mistaken for data — publishing it here would turn a Mongo blip into "every
   // cinema in the country has gone silent".
@@ -122,9 +122,9 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   "the stale-venue count" should "count every venue quiet past a week, not only the quietest" in {
     val justQuiet = CinemaCityArkadia                                // a week and an hour
     val stamps = Map(
-      producing.displayName -> Some(now.minusSeconds(3600)),
-      quiet.displayName     -> Some(now.minusSeconds(40 * 86400)),
-      justQuiet.displayName -> Some(now.minusSeconds(7 * 86400 + 3600)))
+      producing.displayName -> ContentStamp(Some(now.minusSeconds(3600))),
+      quiet.displayName     -> ContentStamp(Some(now.minusSeconds(40 * 86400))),
+      justQuiet.displayName -> ContentStamp(Some(now.minusSeconds(7 * 86400 + 3600))))
     val (c, oldestAge, _, stale) = censusWithStale(new StubArchive(stamps))
     c.sample()
     valueOf(oldestAge) shouldBe (40 * 86400).toDouble                // unchanged: still the worst one
@@ -140,10 +140,24 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
 
   it should "not count a venue quiet for less than a week — a repertory programme gap" in {
     val (c, _, _, stale) = censusWithStale(new StubArchive(Map(
-      producing.displayName -> Some(now.minusSeconds(6 * 86400)),
-      quiet.displayName     -> Some(now.minusSeconds(7 * 86400)))))  // exactly a week: not past it
+      producing.displayName -> ContentStamp(Some(now.minusSeconds(6 * 86400))),
+      quiet.displayName     -> ContentStamp(Some(now.minusSeconds(7 * 86400))))))  // exactly a week: not past it
     c.sample()
     valueOf(stale) shouldBe 0.0
+  }
+
+  // 2026-09-27..29: 17 US drive-ins closed for the season held CinemaContentStaleVenuesGrowing
+  // firing for 44 hours. Their Flicks pages parse and SAY there are no times — that is the venue
+  // talking, not a parser that stopped matching. One quiet for as long with nothing vouching for
+  // its silence still counts.
+  it should "leave out a venue whose source last said it has no schedule, but keep one nothing vouches for" in {
+    val (c, oldestAge, _, stale) = censusWithStale(new StubArchive(Map(
+      producing.displayName -> ContentStamp(Some(now.minusSeconds(3600))),
+      quiet.displayName     -> ContentStamp(Some(now.minusSeconds(40 * 86400)), noScheduleListed = true),
+      never.displayName     -> ContentStamp(Some(now.minusSeconds(30 * 86400))))))
+    c.sample()
+    valueOf(stale) shouldBe 1.0                                      // the unvouched 30-day one only
+    valueOf(oldestAge) shouldBe (40 * 86400).toDouble                // still visible as the quietest
   }
 
   // Its alert compares today with yesterday's LOWEST reading, so a zero published at boot would

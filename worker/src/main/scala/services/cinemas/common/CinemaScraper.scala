@@ -61,6 +61,15 @@ trait CinemaScraper {
    *  mistaken for one that stopped screening. */
   def listingIsComplete: Boolean = true
 
+  /** Whether an EMPTY `fetch()` is the venue's own source affirmatively listing no
+   *  schedule — its page parsed, and says it has nothing on (a drive-in closed for the
+   *  season) — rather than an empty result nothing vouches for, which is just as often
+   *  a parser that stopped matching. True only where the client can tell the two apart
+   *  (a chunked plan answering [[ChunkPlan.NoScheduleListed]]). Archived with the
+   *  attempt, so the content census can leave a closed venue out of its stale count
+   *  while still counting a silent parser break. */
+  def noScheduleListed: Boolean = false
+
   /** A public, human-facing page for the venue we scrape — its own repertoire
    *  page for a bespoke own-site client, the Filmweb showtimes page for a
    *  Filmweb-backed venue, the chain's venue page for a multiplex. Surfaced on
