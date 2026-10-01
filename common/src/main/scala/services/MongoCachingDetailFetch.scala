@@ -10,8 +10,8 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * [[HttpFetch]] decorator that caches successful GET bodies in a Mongo
- * collection (keyed by URL, expired by a TTL index) — the cross-server analogue
+ * [[HttpFetch]] decorator that caches successful GET bodies in the ONE Mongo collection every chain
+ * shares (`detail_cache`, keyed `<chain>|<url>`, each document expiring at its own `expireAt`) — the cross-server analogue
  * of [[tools.CachingDetailFetch]]. Several worker servers share one cache, so a
  * cinema chain's per-film detail page is fetched once per TTL across the WHOLE
  * fleet rather than once per process. Used for the national chains' detail fetch
@@ -28,21 +28,16 @@ class MongoCachingDetailFetch(
   underlying:     HttpFetch,
   db:             Option[MongoDatabase],
   ttl:            FiniteDuration,
-  // No default. Two chains once shared this collection with different TTLs (Helios 2h,
-  // Cinema City 6h), so the second `createIndex` was rejected for redefining
-  // `fetchedAt_1` and one chain silently ran on the other's expiry — logged as a warning
-  // and otherwise invisible. A cache keyed by a TTL has to be named by whoever owns that
-  // TTL; there is no sensible shared default. ONE OWNER PER COLLECTION IS STILL THE RULE:
-  // `MongoTtlIndex.reconcile` below now applies whatever expiry it is handed, so two
-  // owners sharing a collection would take turns rewriting the index instead of one
-  // silently losing — visible rather than invisible, but no more correct.
-  collectionName: String,
+  // Whose cache a document is: the key's prefix. Every chain shares the one collection, its own TTL
+  // riding on each document (`expireAt`) rather than on a per-collection index — which is what once
+  // made two chains sharing a collection silently run on one's expiry (Helios 2h, Cinema City 6h).
+  chain:          DetailCacheChain,
   // Where a TTL index this cache could not bring into line is recorded — the process's
   // one set, which the worker's gauge reads.
   ttlMismatches:  TtlIndexMismatches
 ) extends HttpFetch with Logging {
 
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(MongoCachingDetailFetch.Collection))
 
   // TTL index reconciled in a daemon thread so construction never blocks on Mongo.
   //
@@ -54,7 +49,9 @@ class MongoCachingDetailFetch(
   // to show for it. See that helper's comment for the same defect in two other places.
   coll.foreach { c =>
     val thread = new Thread(() => {
-      MongoTtlIndex.reconcile(c, "fetchedAt", ttl.toSeconds, "Detail-cache", ttlMismatches)
+      // One index for every chain, expiring each document AT its `expireAt`: whatever TTL a chain asks
+      // for is written on the documents, so no two owners ever disagree about the index.
+      MongoTtlIndex.reconcile(c, "expireAt", 0L, "Detail-cache", ttlMismatches)
     }, "detail-cache-init")
     thread.setDaemon(true)
     thread.start()
@@ -94,14 +91,12 @@ class MongoCachingDetailFetch(
   override def post(url: String, body: String, contentType: String): String =
     underlying.post(url, body, contentType)
 
-  /** A document only survives in the collection while within the TTL (the TTL index
-   *  reaps it after `fetchedAt + ttl`, modulo Mongo's ~60s reaper cadence), so
-   *  any document found is fresh enough to reuse. */
   /** `Right(body)` for a cached success, `Left(status)` for a remembered permanent
    *  failure, `None` for a URL this cache has nothing to say about. A document with
    *  neither field reads as `None` — the safe direction, since it just re-fetches. */
   private def cached(c: MongoCollection[Document], url: String): Option[Either[Int, String]] =
-    Try(Await.result(c.find(Filters.eq("_id", url)).headOption(), 10.seconds))
+    // Not past its own expiry, whatever the TTL reaper (a ~60s sweep) has got round to.
+    Try(Await.result(c.find(Filters.and(Filters.eq("_id", idOf(url)), Filters.gt("expireAt", new java.util.Date()))).headOption(), 10.seconds))
       .toOption.flatten
       .flatMap { document =>
         Option(document.getString("body")).map(Right(_))
@@ -113,11 +108,13 @@ class MongoCachingDetailFetch(
       val payload = outcome.fold(
         status => Updates.combine(Updates.set("goneStatus", status), Updates.unset("body")),
         body   => Updates.combine(Updates.set("body", body), Updates.unset("goneStatus")))
+      val now = System.currentTimeMillis()
       c.updateOne(
-        Filters.eq("_id", url),
+        Filters.eq("_id", idOf(url)),
         Updates.combine(
           payload,
-          Updates.set("fetchedAt", new java.util.Date(System.currentTimeMillis()))
+          Updates.set("fetchedAt", new java.util.Date(now)),
+          Updates.set("expireAt", new java.util.Date(now + ttl.toMillis))
         ),
         new com.mongodb.client.model.UpdateOptions().upsert(true)
       ).subscribe(
@@ -125,4 +122,14 @@ class MongoCachingDetailFetch(
         (exception: Throwable) => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}")
       )
     }.recover { case exception => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}") }
+
+  private def idOf(url: String): String = s"${chain.name}|$url"
+}
+
+/** A chain whose detail pages [[MongoCachingDetailFetch]] caches: the prefix of its documents' keys. */
+final case class DetailCacheChain(name: String)
+
+object MongoCachingDetailFetch {
+  /** The one collection every chain's detail cache shares. */
+  val Collection = "detail_cache"
 }

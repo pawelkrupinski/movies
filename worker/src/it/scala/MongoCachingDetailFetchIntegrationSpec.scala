@@ -23,7 +23,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
   private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "caching-detail-fetch")
   private val db       = isolated.database
-  private val collName = "__integration_test_detail_cache"
+  private val collName = services.MongoCachingDetailFetch.Collection
+  private val Chain    = services.DetailCacheChain("test-chain")
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
@@ -39,15 +40,15 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   private def awaitStored(url: String): Unit = {
     val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
     while (System.nanoTime() / 1000000 < deadline &&
-           Await.result(db.getCollection(collName).find(Filters.eq("_id", url)).headOption(), 5.seconds).isEmpty)
+           Await.result(db.getCollection(collName).find(Filters.eq("_id", s"${Chain.name}|$url")).headOption(), 5.seconds).isEmpty)
       Thread.sleep(25)
   }
 
   "Two MongoCachingDetailFetch instances sharing a collection" should "fetch the underlying only once for the same URL" in {
     val url   = s"https://chain/film/${System.nanoTime()}"
     val under = new CountingFetch
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
 
     serverA.get(url) shouldBe s"<html>$url</html>" // fetches + stores
     awaitStored(url)                               // wait out the fire-and-forget store (no race)
@@ -58,7 +59,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   it should "re-fetch a different URL (cache is per-URL)" in {
     val under = new CountingFetch
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
     server.get(s"https://chain/a/${System.nanoTime()}")
     server.get(s"https://chain/b/${System.nanoTime()}")
     under.gets shouldBe 2
@@ -73,8 +74,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(404, "GET", u, None) }
     }
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
 
     a [tools.HttpStatusException] should be thrownBy serverA.get(url)
     awaitStored(url)
@@ -88,48 +89,51 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(410, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     awaitStored(url)
     the [tools.HttpStatusException] thrownBy server.get(url) should have (Symbol("code") (410))
   }
 
-  /** THE TTL IS A CONSTRUCTOR ARGUMENT AND HAS TO MEAN SOMETHING. `createIndex` cannot
-   *  alter an existing expiry — it is rejected `IndexOptionsConflict` — so before
-   *  `MongoTtlIndex` this collection went on reaping at whatever duration it was FIRST
-   *  indexed with, no matter what the caller asked for afterwards, with one warning line
-   *  as the only trace. Every change to one of these durations was silently ignored. */
-  "A detail cache whose TTL has changed" should "reap on the NEW duration, not the one it was first indexed with" in {
-    val name = s"__integration_test_detail_ttl_${System.nanoTime()}"
-    try {
-      // The collection exists before its first owner, as every production one does after its
-      // first boot. On a MISSING collection the first owner's `createIndex` also creates it, and
-      // the index shows in `listIndexes` while that command is still in flight: the second owner
-      // then drops against a collection `dropIndexes` cannot see yet (NamespaceNotFound, which the
-      // driver swallows), and its create hits the 6h index — IndexOptionsConflict. Measured with
-      // this exact sequence in a loop: 8 of 60 on a missing collection, 0 of 150 on an existing one.
-      // It is the two owners overlapping, which production never does: one worker owns each cache.
-      Await.result(db.createCollection(name).toFuture(), 10.seconds)
-      new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, name, ttlMismatches = new services.TtlIndexMismatches)
-      awaitExpiry(name, 6.hours.toSeconds)
-
-      // A second owner-lifetime with a different duration — a redeploy after the constant moved.
-      new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, name, ttlMismatches = new services.TtlIndexMismatches)
-      awaitExpiry(name, 2.hours.toSeconds)
-    } finally Await.ready(db.getCollection(name).drop().toFuture(), 10.seconds)
+  /** ONE collection holds every chain's cache, each chain with its own TTL. A TTL index's expiry is the
+   *  collection's, so the TTL rides on each DOCUMENT instead (`expireAt`, under one index expiring at that
+   *  instant): Helios's 2h and Cinema City's 6h can share it, which per-collection indexes could not —
+   *  two chains asking for one meant one expiry silently losing. */
+  "Chains with different TTLs" should "share the one collection, each document expiring on its own chain's TTL" in {
+    val helios      = new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, services.DetailCacheChain("helios"), new services.TtlIndexMismatches)
+    val cinemaCity  = new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, services.DetailCacheChain("cinema-city"), new services.TtlIndexMismatches)
+    val (h, c)      = (s"https://helios.pl/api/movie/${System.nanoTime()}", s"https://www.cinema-city.pl/filmy/${System.nanoTime()}")
+    helios.get(h); cinemaCity.get(c)
+    def lifetime(id: String): Long = {
+      val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
+      def doc = Await.result(db.getCollection(collName).find(Filters.eq("_id", id)).headOption(), 5.seconds)
+      while (System.nanoTime() / 1000000 < deadline && doc.isEmpty) Thread.sleep(25)
+      val d = doc.getOrElse(fail(s"$id never stored"))
+      (d("expireAt").asDateTime.getValue - d("fetchedAt").asDateTime.getValue) / 1000
+    }
+    lifetime(s"helios|$h") shouldBe 2.hours.toSeconds
+    lifetime(s"cinema-city|$c") shouldBe 6.hours.toSeconds
+    awaitExpireAtIndex()
   }
 
-  /** The index is built on a daemon thread, so poll for it rather than race a sleep — the
-   *  same reason `awaitStored` exists. Fails with the expiry it actually found, so a
-   *  regression here says WHICH duration won. */
-  private def awaitExpiry(collection: String, wantedSeconds: Long): Unit = {
+  it should "not serve a document past its expireAt, though the TTL reaper has not removed it yet" in {
+    val url   = s"https://chain/film/stale-${System.nanoTime()}"
+    val under = new CountingFetch
+    Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>stale</html>",
+      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> new java.util.Date(1000L))).toFuture(), 5.seconds)
+    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe s"<html>$url</html>"
+    under.gets shouldBe 1
+  }
+
+  /** The index is built on a daemon thread, so poll for it rather than race a sleep. */
+  private def awaitExpireAtIndex(): Unit = {
     val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
     def current: Option[Long] =
-      Await.result(db.getCollection(collection).listIndexes().toFuture(), 5.seconds)
-        .find(_.get("key").exists(_.asDocument().containsKey("fetchedAt")))
+      Await.result(db.getCollection(collName).listIndexes().toFuture(), 5.seconds)
+        .find(_.get("key").exists(_.asDocument().containsKey("expireAt")))
         .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
-    while (System.nanoTime() / 1000000 < deadline && !current.contains(wantedSeconds)) Thread.sleep(25)
-    current shouldBe Some(wantedSeconds)
+    while (System.nanoTime() / 1000000 < deadline && !current.contains(0L)) Thread.sleep(25)
+    current shouldBe Some(0L)
   }
 
   it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {
@@ -137,7 +141,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(503, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     under.gets shouldBe 2

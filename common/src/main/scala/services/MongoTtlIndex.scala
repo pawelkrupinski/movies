@@ -64,7 +64,7 @@ object MongoTtlIndex extends Logging {
     val name = collection.namespace.getCollectionName
     // THE KEY IS THE NAMESPACE, NOT THE COLLECTION NAME. A worker JVM builds one wiring per
     // country in `KINOWO_COUNTRIES`, and every country has its own `uptimeBuckets`,
-    // `resolve_*` and `detailCache-*` in its own database. Keyed by the bare name, Germany
+    // `resolve_*` and `detail_cache` in its own database. Keyed by the bare name, Germany
     // reconciling its `uptimeBuckets` would clear the entry Poland recorded for a broken one
     // of the same name — the gauge would fall to zero and the alert clear itself while the
     // index was still wrong. That is the exact false negative this metric exists to prevent.

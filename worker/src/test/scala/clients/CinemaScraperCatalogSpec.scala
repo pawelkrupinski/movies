@@ -776,12 +776,6 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  /** Each chain's detail cache carries its own TTL, and under
-   *  the worker that cache is a Mongo collection whose TTL index is named for the
-   *  collection. Two chains asking for one store therefore means one expiry silently
-   *  loses — Mongo rejects the second `createIndex` with `IndexOptionsConflict` and
-   *  `MongoCachingDetailFetch` logs it and carries on. Whatever the chains are, distinct
-   *  TTLs must come with distinct cache names. */
   /** EVERY chain detail TTL must expire before the refresh window it sits in
    *  front of. Detail is re-fetched once per `FreshnessKind.DetailEnrich` window;
    *  a cache that outlives that window answers the refresh from its own copy, so
