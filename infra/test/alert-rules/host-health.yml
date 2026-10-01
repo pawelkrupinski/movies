@@ -264,7 +264,11 @@ tests:
                 IS NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is mongod and on
                 monitoring-1 is Prometheus, whatever actually consumed the memory. If the victim is mongod,
                 note that the web tier will keep serving its in-memory read model and look healthy while it
-                stops updating -- the same silent shape the Fly tunnel's rules describes.
+                stops updating -- the same silent shape the Fly tunnel's rules describes. The counter also
+                counts kills by a CONTAINER's memory limit, which is nearly every kill on k3s-worker-1: if
+                dmesg says `constraint=CONSTRAINT_MEMCG`, the node had memory to spare, the victim is the
+                container that outgrew its own limit, and `K3sContainerOOMKilled` names its pod (worker-us
+                2026-09-30, three kills in ten minutes, with ~6 GB of the node available).
       # The step is out of the window. A counter that stays at 1 is not a fresh kill.
       - eval_time: 20m
         alertname: HostOomKilled
