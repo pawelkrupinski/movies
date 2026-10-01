@@ -62,14 +62,16 @@ final case class ShareCardInputs(
 
   /** Five hex characters of SHA-256 over the drawn parts but the ratings, field names included and
    *  NUL-separated, so no two input sets serialise alike. */
-  def layoutHash: String =
+  // Lazy, once per inputs: the backfill checks every screening film's card against its versions
+  // each tick, and re-hashing them per check was 2.9% of the US worker's CPU (JFR 2026-10-01).
+  lazy val layoutHash: String =
     Digest.sha256Hex(layout.toSeq.sortBy(_._1).map { case (name, value) => s"$name=$value" }.mkString("\u0000")).take(5)
 
   /** Five hex characters of SHA-256 over the rating badges' text. */
-  def ratingsHash: String = Digest.sha256Hex(ratingsText).take(5)
+  lazy val ratingsHash: String = Digest.sha256Hex(ratingsText).take(5)
 
   /** Everything drawn but the poster: [[layoutHash]] then [[ratingsHash]]. */
-  def drawnHash: String = layoutHash + ratingsHash
+  lazy val drawnHash: String = layoutHash + ratingsHash
 
   /** The card's version when drawn from `poster` (None: a film with no poster at all). */
   def version(poster: Option[String]): String = drawnHash + ShareCardFile.posterHash(poster)
@@ -79,13 +81,13 @@ final case class ShareCardInputs(
 
   /** Every version a current card of these inputs could have — one per candidate poster, in the
    *  order the renderer tries them. */
-  def candidateVersions: Seq[String] =
+  lazy val candidateVersions: Seq[String] =
     if (posterUrls.isEmpty) Seq(version(None)) else posterUrls.map(url => version(Some(url)))
 
   /** Every version that serves as these inputs' card: one drawn from any candidate poster, or —
    *  when none of them worked — the card drawn without one ([[version]] of None, which a later
    *  working poster replaces, being a different version). */
-  def acceptableVersions: Seq[String] = (candidateVersions :+ version(None)).distinct
+  lazy val acceptableVersions: Seq[String] = (candidateVersions :+ version(None)).distinct
 
   /** True when `version` is these inputs' card drawn WITHOUT the poster the film does have. */
   def isPosterless(version: String): Boolean = posterUrls.nonEmpty && version == this.version(None)
