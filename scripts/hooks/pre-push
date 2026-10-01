@@ -13,6 +13,8 @@
 #                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
+#   `hooktest`    scripts/hooks/pre-push-test.sh, when the hook or its test changes — a new
+#                 check changes what the hook plans, which that test pins
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
 #                 file that was already noisy can still be edited
@@ -44,7 +46,7 @@ Zero=0000000000000000000000000000000000000000
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 actionlint=0 shellcheck=0 ios=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 hooktest=0 actionlint=0 shellcheck=0 ios=0 path
     while IFS= read -r path; do
         case "$path" in
             web/src/main/assets/js/*.js|eslint.config.js|package.json|package-lock.json) eslint=1 ;;
@@ -62,6 +64,9 @@ plan() {
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
         case "$path" in
+            scripts/hooks/pre-push|scripts/hooks/pre-push-test.sh) hooktest=1 ;;
+        esac
+        case "$path" in
             .github/workflows/*.yml|.github/workflows/*.yaml) actionlint=1 ;;
         esac
         case "$path" in
@@ -75,6 +80,7 @@ plan() {
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
     [ $dashboards = 1 ] && echo dashboards
+    [ $hooktest = 1 ] && echo hooktest
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
@@ -161,6 +167,11 @@ check_snapshot() {
 check_dashboards() {
     python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
         || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
+}
+
+check_hooktest() {
+    bash scripts/hooks/pre-push-test.sh > "$tmp/hooktest.log" 2>&1 \
+        || { grep -v '✓' "$tmp/hooktest.log" | head -40 >&2; return 1; }
 }
 
 check_actionlint() {

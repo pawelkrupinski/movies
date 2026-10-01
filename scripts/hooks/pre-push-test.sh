@@ -22,7 +22,7 @@ check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs actionlint" "actionlint" "$(plan .github/workflows/ci.yml)"
 check "a shell script runs shellcheck" "shellcheck" "$(plan scripts/ci/order-seed.sh)"
-check "the hook itself runs shellcheck" "shellcheck" "$(plan scripts/hooks/pre-push)"
+check "the hook itself runs shellcheck and its own test" "hooktest shellcheck" "$(plan scripts/hooks/pre-push)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
