@@ -115,7 +115,8 @@ class WorkerWiring(
   // runs, in the country's database.
   lazy val identityTmdbDocuments: Option[services.identity.TmdbDocuments] =
     Option.when(configuration.identityShadow.value || identityCutover)(
-      mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_)))
+      mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
+        new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db))))
   lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
   lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
@@ -195,8 +196,8 @@ class WorkerWiring(
 
   /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
    *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
-   *  their reads into one `$in` per batch (`CoalescedObservationBackend`), so they share one
-   *  connection of the pool instead of each holding one. */
+   *  the reads and writes they file answers with into one round-trip per batch
+   *  (`CoalescedTmdbDocuments`), so they share connections of the pool instead of each holding one. */
   protected lazy val identityPrefetchPool: java.util.concurrent.ExecutorService =
     java.util.concurrent.Executors.newFixedThreadPool(WorkerWiring.IdentityPrefetchThreads,
       Thread.ofVirtual().name(s"identity-prefetch-${country.code}-", 0).factory())

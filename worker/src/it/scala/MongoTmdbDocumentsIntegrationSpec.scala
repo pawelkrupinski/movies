@@ -39,4 +39,33 @@ class MongoTmdbDocumentsIntegrationSpec extends TmdbDocumentsBehaviour with Inte
       projection.head.keySet.asScala.toSet shouldBe Set("record", "hit")
     } finally watched.close()
   }
+
+  // A take-up of an empty store files every film its questions name from 64 prefetch threads, a read
+  // and a write each: coalesced, those are a few commands, not one per film (`CoalescedTmdbDocuments`).
+  "coalesced filings" should "land every caller's document in far fewer commands than callers" in {
+    val commands = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val watched = MongoClient(MongoClientSettings.builder().applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(new com.mongodb.event.CommandListener {
+        override def commandStarted(event: com.mongodb.event.CommandStartedEvent): Unit = commands.add(event.getCommandName)
+      }).build())
+    try {
+      newDocuments()
+      val documents = new services.identity.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "tmdb"))))
+      val pool  = java.util.concurrent.Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory())
+      val start = new java.util.concurrent.CountDownLatch(1)
+      val filed = (0 until 64).map(i => pool.submit((() => {
+        start.await()
+        documents.get(TmdbKind.Film, Seq(i.toString))
+        documents.put(TmdbKind.Film, Seq(i.toString -> new org.bson.BsonDocument("n", new org.bson.BsonInt32(i))))
+      }): java.util.concurrent.Callable[Unit]))
+      start.countDown()
+      try filed.foreach(_.get(30, java.util.concurrent.TimeUnit.SECONDS)) finally pool.shutdown()
+      import scala.jdk.CollectionConverters._
+      val sent = commands.asScala.toSeq
+      sent.count(_ == "find") should be < 32
+      sent.count(_ == "update") should be < 32
+      documents.get(TmdbKind.Film, (0 until 64).map(_.toString)).view.mapValues(_.getInt32("n").getValue).toMap shouldBe
+        (0 until 64).map(i => i.toString -> i).toMap
+    } finally watched.close()
+  }
 }
