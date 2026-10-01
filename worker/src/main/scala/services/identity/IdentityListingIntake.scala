@@ -44,8 +44,12 @@ final class IdentityListingIntake(
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).map(c -> _)).filter(_._2.nonEmpty)
   }
 
+  // A venue's guard state and accepted listing are its own, so one venue's scrape waits only for
+  // another of the SAME venue — never for the whole country's: a US scrape walk lands 4,462 venues.
+  private val venueLocks = new StripedLocks()
+
   override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie], listingIsComplete: Boolean, sourceKey: Option[String],
-                                  viaFallback: Boolean): Seq[(CinemaMovie, CacheKey, Boolean)] = synchronized {
+                                  viaFallback: Boolean): Seq[(CinemaMovie, CacheKey, Boolean)] = venueLocks.locking(Seq(cinema.displayName)) {
     val stored = guards.get(cinema)
     val guard  = stored.getOrElse(ScrapeGuardState.Fresh)
     val known  = listingOf(cinema)
@@ -53,11 +57,13 @@ final class IdentityListingIntake(
       City.localNow(cinema, clock), maxRejections, normalizer)
     // An unreadable ledger is judged as fresh, and its state is never written back over it.
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)
-    if (verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known)
+    val recorded = verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known
+    if (recorded)
       accepted.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), clock.instant(), listingComplete = true, verdict.accepted, error = None))
     // What the venue is taken to publish now — its accepted listing, or the archive's when the intake
-    // kept none of its own — to whoever keeps a model of it (the identity model).
-    published(cinema, listingOf(cinema))
+    // kept none of its own — to whoever keeps a model of it (the identity model). Unrecorded, that is
+    // still the listing just read: read again only when the archive's own rules decided what landed.
+    published(cinema, if (recorded) listingOf(cinema) else known)
     Seq.empty
   }
 }

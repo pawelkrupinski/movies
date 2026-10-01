@@ -145,14 +145,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   // interleave (a film's two partials would lose one) — but writes of different documents need not
   // wait for each other: a take-up of an empty store files every film it names from the prefetch's
   // threads, and one store-wide lock made those round-trips serial. So a lock per document, striped.
-  private val stripes = Array.fill(LockStripes)(new java.util.concurrent.locks.ReentrantLock())
-
-  /** `body` holding the locks of `ids`' documents, taken in one order so two writes never deadlock. */
-  private def locking[A](kind: TmdbKind, ids: Seq[String])(body: => A): A = {
-    val held = ids.map(id => Math.floorMod(keyOf(kind, id).hashCode, LockStripes)).distinct.sorted.map(stripes)
-    held.foreach(_.lock())
-    try body finally held.reverseIterator.foreach(_.unlock())
-  }
+  private val locks = new StripedLocks()
 
   /** `change` each of `ids`' documents; write, and announce, only those whose value moved — in one
    *  read and one write however many there are. One whose value did not move is only re-stamped
@@ -160,7 +153,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
    *  written and unlocked, so a listener never runs holding a document's lock. */
   private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = {
     val distinct = ids.distinct
-    val moved = locking(kind, distinct) {
+    val moved = locks.locking(distinct.map(keyOf(kind, _))) {
       val now     = clock.millis()
       val before  = docs.get(kind, distinct)
       val written = distinct.flatMap { id =>
@@ -241,8 +234,6 @@ object TmdbStore {
   val FetchedAt = "fetchedAt"
   /** How often an unchanged answer is re-stamped at most — each re-stamp is a write. */
   val RenewEvery: FiniteDuration = 1.day
-  /** How many locks a store's documents share: enough that the prefetch's threads rarely meet. */
-  private val LockStripes = 1024
   private val Stamps = Seq(ChangedAt, FetchedAt)
   def fetchedAt(d: BsonDocument): Option[Long] = Option(d.get(FetchedAt)).filter(_.isInt64).map(_.asInt64.getValue)
 
