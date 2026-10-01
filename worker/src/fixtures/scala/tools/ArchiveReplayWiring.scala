@@ -155,7 +155,8 @@ class ArchiveReplayWiring(
    *  ever reaching the fetch: a leg with 6,906 recorded fixtures and no cache resolved 0
    *  of 892 films in 55 seconds, all three specs GREEN over a corpus with no metadata in
    *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
-  override def tmdbClientOver(http: HttpFetch): TmdbClient = new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language)
+  override def tmdbClientOver(http: HttpFetch): TmdbClient =
+    new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything

@@ -56,6 +56,21 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     stored.toJson should not include "overview"
   }
 
+  // The normalizer parses each response to file it, then the client parses the very same body: shared,
+  // a film record's two responses are parsed once each, and what is filed and answered is unchanged.
+  it should "read back the same when the normalizer and the client share their parses" in {
+    def read(shared: Boolean) = {
+      val w        = new World
+      val bodies   = new tools.JsonBodies
+      val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true),
+                                              if (shared) new TmdbNormalizer(w.store, bodies) else w.normalizer)
+      val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => (),
+                                    bodies = if (shared) bodies else new tools.JsonBodies)
+      (client.identityRecord(film), w.lookups.film(film), w.docs.get(TmdbKind.Film, Seq(film.toString)))
+    }
+    read(shared = true) shouldBe read(shared = false)
+  }
+
   it should "not move, nor wake anyone, when a re-fetch changes only popularity within its bucket" in {
     val w = new World
     w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))

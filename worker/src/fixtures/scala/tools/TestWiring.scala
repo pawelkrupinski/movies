@@ -116,7 +116,8 @@ trait TestWiring extends WorkerWiring {
   // The fixture replay doesn't need a real key (the URL's
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
-  override def tmdbClientOver(http: tools.HttpFetch): TmdbClient = new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-api-key")))
+  override def tmdbClientOver(http: tools.HttpFetch): TmdbClient =
+    new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-api-key")), bodies = tmdbJsonBodies)
 
   // Resolve TMDB INLINE in fixture replay. Production dispatches single-movie
   // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the

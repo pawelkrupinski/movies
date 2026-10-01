@@ -98,7 +98,10 @@ trait HttpWiring { self: WorkerWiring =>
   lazy val tmdbClient: TmdbClient = tmdbClientOver(identityLookupFetch)
   /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `identityLookupFetch`,
    *  and the identity shadow run's over the observation store, so the two ask the same requests. */
-  def tmdbClientOver(http: HttpFetch): TmdbClient = new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language)
+  def tmdbClientOver(http: HttpFetch): TmdbClient =
+    new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
+  /** The TMDB bodies the identity store's normalizer and the clients over its fetch parse once between them. */
+  lazy val tmdbJsonBodies: tools.JsonBodies = new tools.JsonBodies
   lazy val filmwebClient = new FilmwebClient(enrichmentFetch)
   lazy val imdbClient = new ImdbClient(enrichmentFetch)
   lazy val metacriticClient = new MetacriticClient(enrichmentFetch)

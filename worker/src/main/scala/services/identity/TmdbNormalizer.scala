@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
  * search or a find, and any transient failure, is no answer — nothing is written, and what the
  * store held stands.
  */
-final class TmdbNormalizer(store: TmdbStore) extends Logging {
+final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tools.JsonBodies) extends Logging {
   import TmdbStore.Partial
 
   def filed(method: String, url: String, outcome: Try[String]): Unit =
@@ -60,7 +60,7 @@ final class TmdbNormalizer(store: TmdbStore) extends Logging {
           if (append.split(',').contains("credits")) Some(Partial.Local)
           else if (append == "alternative_titles" && params.get("language").contains("en-US")) Some(Partial.English)
           else None
-        partial.foreach(p => store.filmPartial(id.toInt, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(Json.parse(b)))))
+        partial.foreach(p => store.filmPartial(id.toInt, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
       case ("api.themoviedb.org", Seq("3", "find", imdbId), Some(Right(b))) if params.get("external_source").contains("imdb_id") =>
         store.question(TmdbStore.findId(imdbId), TmdbClient.parseFindMovieResults(b).map(TmdbIdentityLookups.hitOf))
       case (host, _, Some(answer)) if url.startsWith(ImdbClient.SuggestionBase) =>

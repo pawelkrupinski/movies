@@ -39,7 +39,8 @@ object FetchReplayWiring {
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.
       override def tmdbClientOver(http: HttpFetch): TmdbClient =
-        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language, retrySleep = retrySleep)
+        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language, retrySleep = retrySleep,
+          bodies = tmdbJsonBodies)
     }
   }
 }

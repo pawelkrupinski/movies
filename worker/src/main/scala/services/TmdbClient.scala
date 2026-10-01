@@ -48,6 +48,9 @@ class TmdbClient(
   // How a transient failure waits before its retry. Real time in production; a harness
   // that replays an outage passes a no-op, or every refused request costs it ~1s asleep.
   retrySleep: Long => Unit = Thread.sleep,
+  // How a film record's responses are parsed: shared with the identity store's normalizer, which
+  // parsed the same bodies a moment before on this thread (`tools.JsonBodies`).
+  bodies: tools.JsonBodies = new tools.JsonBodies,
 ) {
 
   import TmdbClient.{ApiBase, urlEncode}
@@ -220,7 +223,7 @@ class TmdbClient(
    *  the identity resolver's lookups can tell "no film" from "not answered". */
   def identityRecord(tmdbId: Int): Option[services.identity.IdentityMeasures.Film] = authHeader.flatMap { auth =>
     services.identity.TmdbFilmRecord.parse(Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId))
-      .map(url => Json.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
+      .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
   }
 
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>

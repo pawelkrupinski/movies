@@ -118,7 +118,7 @@ class WorkerWiring(
       mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
         new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db))))
   lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
-  lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_))
+  lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_, tmdbJsonBodies))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
    *  round, whenever the last complete sweep is from before today. */
   lazy val identityTmdbChanges: Option[services.identity.TmdbChangesSweep] =
