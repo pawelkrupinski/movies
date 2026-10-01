@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{CinemaShowing, Country, MovieRecord, OdeonCinemaBridgend, OdeonLuxeEastKilbride, Source, SourceData, Tmdb}
+import models.{BreweryArtsCentreKendal, CinemaShowing, Country, Imdb, MovieRecord, OdeonCinemaBridgend, OdeonLuxeEastKilbride, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -9,7 +9,8 @@ import services.tasks.ResolveMode
 import tools.{GetOnlyHttpFetch, HttpFetch, RecordedResponses}
 
 /**
- * A rerelease listed at its SCREENING year must not resolve to the director's film OF that year.
+ * A rerelease listed at its SCREENING year must not resolve to the director's film OF that year,
+ * even when the row it sits on also holds a venue showing that film.
  *
  * UK prod, 2026-10-01 17:32 UTC, an operator's forced re-resolve of the row whose permanent id is
  * `hungergamesballadofsongbirdssnakes|2026`:
@@ -18,14 +19,18 @@ import tools.{GetOnlyHttpFetch, HttpFetch, RecordedResponses}
  * TMDB: resolving 'The Hunger Games: Mockingjay - Part 1 (2026)' (?) [director hint: Francis Lawrence]
  * Director-walk: 'Francis Lawrence' (person 10943) year=2026 → tmdbId=1300968 'The Hunger Games: Sunrise on the Reaping'
  * }}}
- * The guards an earlier version of this spec pinned (`SequelMarker.differentInstalments` on the
- * year-pinned tier, `titleNamesAnotherCredit`) do hold for a row carrying only the Mockingjay
- * listing. The prod row carried MORE: the fold had merged every Hunger Games rerelease that
- * resolved to 1300968 into it, and the forced reset keeps every cinema slot. One of those is the
- * 2012 film's rerelease, "The Hunger Games (2026)". The walk's TITLE tier compares a credit's
- * main title too, and Sunrise's is "The Hunger Games"; the sequel guard there saw the venue's
- * year token, not a franchise base, and let the pair through — so the row re-resolved onto the
- * very film that had merged it, every time.
+ * The row as prod stores it (read 2026-10-01): Odeon Bridgend and Odeon Luxe East Kilbride list
+ * "The Hunger Games: Mockingjay - Part 1 (2026)", Brewery Arts Centre Kendal lists "The Hunger
+ * Games: Sunrise on the Reaping", and the TMDB/IMDb slots are Sunrise's. A MIXED row: Odeon's
+ * rerelease had been mis-resolved to 1300968 and the fold joined Kendal's correct listing onto it
+ * (d0f30dd10). The forced reset keeps every cinema slot, so the walk's title tier found Kendal's
+ * exact title and bound all three venues to Sunrise again. The guards an earlier version of this
+ * spec pinned only saw a row carrying the Mockingjay listing alone, which they already refuse.
+ *
+ * The right end state is Odeon off 1300968 and Kendal on it. One row cannot be both, so the
+ * resolve leaves it unresolved and the settle's split sends Kendal back to staging, where it
+ * resolves on its own title and the fold gives it its own document (`StagingFoldSpec`,
+ * `StagingFoldIntegrationSpec`).
  *
  * Driven through the real entry point, `MovieService.resolveTmdbOnce` with `ResolveMode.Force`,
  * against the UK hard cluster's RECORDED TMDB answers
@@ -35,37 +40,36 @@ class RereleaseYearResolveSpec extends AnyFlatSpec with Matchers {
 
   private val uk        = TitleNormalizer.forCountry(Country.UnitedKingdom)
   private val Title     = "The Hunger Games: Mockingjay - Part 1 (2026)"
+  private val SunriseTitle = "The Hunger Games: Sunrise on the Reaping"
   private val Sunrise   = 1300968
+  private val kendal    = CinemaShowing(BreweryArtsCentreKendal, "thehungergamessunriseonthereaping")
 
-  private def odeon(title: String) = SourceData(title = Some(title), rawTitle = Some(title),
+  private val odeon = SourceData(title = Some(Title), rawTitle = Some(Title),
     synopsis = Some("Katniss Everdeen (Jennifer Lawrence) is rescued by the rebels and brought to District 13 after " +
       "she shatters the Hunger Games forever. Each Hunger Games re-release will also include a different exclusive " +
       "theatrical sneak peek at The Hunger Games: Sunrise on the Reaping, releasing 20/11/2026."),
     cast = Seq("Jennifer Lawrence", "Donald Sutherland", "Liam Hemsworth", "Josh Hutcherson"),
     director = Seq("Francis Lawrence"), runtimeMinutes = Some(123))
 
-  /** The stored row as the fold left it: resolved to Sunrise, keyed at the screening year, and
-   *  holding the venues of every rerelease that resolved there. */
-  private def mergedRow(otherListing: String): MovieRecord = MovieRecord(
+  /** The stored row exactly as prod holds it. */
+  private val mixedRow: MovieRecord = MovieRecord(
     tmdbId = Some(Sunrise), imdbId = Some("tt32558705"),
     data = Map[Source, SourceData](
-      Tmdb -> SourceData(title = Some("The Hunger Games: Sunrise on the Reaping"), releaseYear = Some(2026),
+      Tmdb -> SourceData(title = Some(SunriseTitle), originalTitle = Some(SunriseTitle), releaseYear = Some(2026),
         director = Seq("Francis Lawrence")),
-      CinemaShowing(OdeonCinemaBridgend, "thehungergamesmockingjaypart1")   -> odeon(Title),
-      CinemaShowing(OdeonLuxeEastKilbride, "thehungergamesmockingjaypart1") -> odeon(Title),
-      CinemaShowing(OdeonLuxeEastKilbride, "thehungergames")                -> odeon(otherListing)))
+      Imdb -> SourceData(title = Some(SunriseTitle)),
+      CinemaShowing(OdeonCinemaBridgend, "thehungergamesmockingjaypart1")   -> odeon,
+      CinemaShowing(OdeonLuxeEastKilbride, "thehungergamesmockingjaypart1") -> odeon,
+      kendal -> SourceData(title = Some(SunriseTitle), rawTitle = Some(SunriseTitle))))
 
   /** Answers the recording lacks, captured from TMDB (en-GB) on 2026-10-01: the year-scoped
-   *  searches the director-bearing branch's exact-title fallback asks once the walk refuses.
-   *  The rerelease spellings find nothing or no exact title; Sunrise's own title finds Sunrise.
-   *  Plus Sunrise's external ids and images, which the WRONG resolution fetches — without them
-   *  the pre-fix walk's pick would die as a "dead id" and this spec would pass on the bug. */
+   *  exact-title search the director-bearing fallback asks for Kendal's title (it finds Sunrise),
+   *  and Sunrise's external ids and images, which the WRONG resolution fetches — without them
+   *  the pre-fix pick would die as a "dead id" and this spec would pass on the bug. */
   private val captured = Map(
-    "query=The+Hunger+Games+%282026%29&year=2026"                 -> "fixtures/tmdb/search_the_hunger_games_2026_rerelease.json",
-    "query=The+Hunger+Games&year=2026"                             -> "fixtures/tmdb/search_the_hunger_games_year_2026.json",
-    "query=The+Hunger+Games%3A+Sunrise+on+the+Reaping&year=2026"   -> "fixtures/tmdb/search_sunrise_on_the_reaping_2026.json",
-    "/movie/1300968/external_ids"                                  -> "fixtures/tmdb/movie_1300968_external_ids.json",
-    "/movie/1300968/images"                                        -> "fixtures/tmdb/movie_1300968_images.json")
+    "query=The+Hunger+Games%3A+Sunrise+on+the+Reaping&year=2026" -> "fixtures/tmdb/search_sunrise_on_the_reaping_2026.json",
+    "/movie/1300968/external_ids"                                -> "fixtures/tmdb/movie_1300968_external_ids.json",
+    "/movie/1300968/images"                                      -> "fixtures/tmdb/movie_1300968_images.json")
 
   private def withCaptured(recorded: RecordedResponses): HttpFetch = new GetOnlyHttpFetch {
     override def get(url: String): String = captured.collectFirst { case (fragment, path) if url.contains(fragment) =>
@@ -73,30 +77,22 @@ class RereleaseYearResolveSpec extends AnyFlatSpec with Matchers {
     }.getOrElse(recorded.get(url))
   }
 
-  private def forceResolve(row: MovieRecord): (Option[Int], RecordedResponses) = {
-    val recorded   = RecordedResponses.replaying(RecordedResponses.pathFor(Country.UnitedKingdom.code))
-    val tmdb       = new TmdbClient(withCaptured(recorded), apiKey = Some(settings.TmdbApiKey("replay")), language = Country.UnitedKingdom.language)
-    val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Some(2026), row)), normalizer = uk), normalizer = uk)
-    val service    = new MovieService(cache, new InProcessEventBus(), tmdb)
+  "a forced re-resolve of the mixed Hunger Games rerelease row" should
+    "not bind the Mockingjay rerelease venues to Sunrise on the Reaping" in {
+    val recorded = RecordedResponses.replaying(RecordedResponses.pathFor(Country.UnitedKingdom.code))
+    val tmdb     = new TmdbClient(withCaptured(recorded), apiKey = Some(settings.TmdbApiKey("replay")), language = Country.UnitedKingdom.language)
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Some(2026), mixedRow)), normalizer = uk), normalizer = uk)
+    val service  = new MovieService(cache, new InProcessEventBus(), tmdb)
+
     service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, mode = ResolveMode.Force)
-    (cache.entries.flatMap(_._2.tmdbId).headOption, recorded)
-  }
 
-  "a forced re-resolve of a merged rerelease row" should
-    "not walk the original film's rerelease onto the director's film of the screening year" in {
-    val (resolved, recorded) = forceResolve(mergedRow("The Hunger Games (2026)"))
-
-    resolved should not contain Sunrise
-    // A rerelease row is left unresolved rather than guessed; the fold reclaims it onto the
-    // 2014 film (`expected-hard-clusters-uk.txt`: Odeon Birmingham on 131631).
-    resolved shouldBe None
+    val rows = cache.entries.map(_._2)
+    rows should have size 1
+    // Unresolved beats wrong: the walk finds Kendal's exact title, but the row is named for
+    // another entry of the same franchise, and two of its three venues show that one.
+    rows.flatMap(_.tmdbId) shouldBe empty
     withClue(s"requests the recording does not hold: ${recorded.missedKeys}\n")(recorded.misses shouldBe 0)
-  }
-
-  it should "not bind a row named for one instalment to another instalment a different venue names" in {
-    val (resolved, recorded) = forceResolve(mergedRow("The Hunger Games: Sunrise on the Reaping"))
-
-    resolved should not contain Sunrise
-    withClue(s"requests the recording does not hold: ${recorded.missedKeys}\n")(recorded.misses shouldBe 0)
+    // …and Kendal is what the settle's split sends back to staging, to resolve on its own title.
+    MixedFilmDetector.strays(rows.head, uk).map(_._1) shouldBe Seq(kendal)
   }
 }
