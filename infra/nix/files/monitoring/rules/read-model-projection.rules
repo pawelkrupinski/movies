@@ -796,6 +796,13 @@ groups:
       # such a film, the same wide releases healed again sweep after sweep (clayface|2026 x4,
       # whalefall|2026 x3) with no card retirement behind any of them, and PL/ES -- undebounced --
       # healed nothing. A held re-read now holds the wait, which outlasts the debounce's cap.
+      #
+      # …AND WHAT THE STREAM APPLIED BEFORE THE PROJECTOR ATTACHED. The first sweep after a boot
+      # (US 09-30 09:00 + 09:36, DE 04:09 + 08:20) healed venues written 1-4 s before
+      # "ReadModelProjector started": the cache opens the shared cursor, and the projector
+      # attached only once its boot reads were done, so those events went to the cache alone and
+      # the resume position moved past them. Real misses, not delivery lag (apply backlog was 0).
+      # The projector now attaches before the cache opens the cursor.
       - alert: ReadModelHealsRecurring
         expr: >-
           (sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="sweep"}[1h])) > 0)
