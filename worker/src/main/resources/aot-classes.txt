@@ -9555,6 +9555,8 @@ services.cinemas.common.AdaptiveTimeoutScraper
 services.cinemas.common.AdaptiveTimeoutScraper$$anon$1
 services.cinemas.common.AgeRating
 services.cinemas.common.AgeRating$
+services.cinemas.common.ChunkPlan
+services.cinemas.common.ChunkPlan$
 services.cinemas.common.ChunkedCinemaScraper
 services.cinemas.common.ChunkedCinemaScraper$
 services.cinemas.common.CinemaClientMarkers
