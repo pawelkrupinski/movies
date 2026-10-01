@@ -50,7 +50,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers with tools.Integ
   }
 
   /** Reads succeed for the transaction body and fail afterwards, which is what separates the
-   *  two read guards: `stitchedCinemaTitles` reads once per group row INSIDE the transaction,
+   *  two read guards: `stitchedRecords` reads once per group row INSIDE the transaction,
    *  `completeSideCollections` reads again per upsert AFTER the commit. Counts `upsert` so the
    *  assertion can be on the write that must not happen, rather than on a downstream shape
    *  that a no-op would satisfy anyway.

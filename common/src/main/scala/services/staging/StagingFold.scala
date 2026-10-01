@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{ListingConstraints, CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{ListingConstraints, CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, SequelMarker, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -156,7 +156,10 @@ object StagingFold {
      *  `StagingFoldConcurrentTmdbRaceIntegrationSpec`). */
     def applyTo(writes: PlanWrites): Unit = {
       moviesDeletes.foreach(writes.deleteMovie)
-      moviesUpserts.foreach { case (id, key, record) => writes.writeMovie(id, key, record) }
+      // Survivors that hold no tmdbId first, for the same reason: a document RELEASING an id
+      // (`clustersNamingAnotherEntry`) has to give it up before the one taking it is written.
+      val (releasing, holding) = moviesUpserts.partition(_._3.tmdbId.isEmpty)
+      (releasing ++ holding).foreach { case (id, key, record) => writes.writeMovie(id, key, record) }
       stagingDeletes.foreach(writes.deleteStaging)
     }
   }
@@ -206,7 +209,7 @@ object StagingFold {
    *  shared tmdbId — the same partition the cache `canonicalizeBySanitize` settle
    *  runs over the whole corpus, applied here to the fold's neighbourhood. */
   def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord],
-                normalizer: TitleNormalizer, extraCinemaTitles: Seq[String] = Nil,
+                normalizer: TitleNormalizer,
                 // The id for a BRAND-NEW film, given every id THIS SAME `planGroup` call has
                 // already minted. That exclusion set matters: `FilmId.fresh` is a pure
                 // function of the key alone, so two DIFFERENT clusters that conclude the
@@ -225,7 +228,7 @@ object StagingFold {
                 // its cinema slots and its Tmdb slot. For the DECISIONS only (which rows are one
                 // film): the records written stay the raw ones, because a stitched slot carries
                 // no showtimes digest and writing it would read as "this cinema screens
-                // nothing" (see `MongoStagingFolder.stitchedCinemaTitles`). Without it every
+                // nothing" (see `MongoStagingFolder.stitchedRecords`). Without it every
                 // veto `clusterByFilm` applies is blind to a stored film: a migrated document
                 // holds no slots at all, so a venue whose own year and director deny the film
                 // (the Met's 2026 "Samson i Dalila" beside DeMille's 1949 one) had nothing to
@@ -327,11 +330,18 @@ object StagingFold {
       key -> MovieRecordMerge.unionAll(record +: idsByKey.getOrElse(key, Nil).flatMap(evidence.get))
     }
     val clusters = FilmCanonicalizer.groupByFilm(decided, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
-    val (plannedRev, _) = oneClusterPerTmdbId(clusters)
-      .map(_.map { case (key, _) => key -> rawByKey(key) })
+    val released = clustersNamingAnotherEntry(clusters).flatten.map(_._1).toSet
+    val (plannedRev, _) = oneClusterPerTmdbId(clusters.map(_.map { case (key, record) =>
+        key -> (if (released.contains(key)) record.scrapedOnly else record) }))
+      .map(_.map { case (key, _) => key -> (if (released.contains(key)) rawByKey(key).scrapedOnly else rawByKey(key)) })
       .foldLeft((Vector.empty[((FilmId, CacheKey, MovieRecord), Boolean, Seq[(FilmId, FilmId)])], Set.empty[FilmId])) {
         case ((acc, mintedSoFar), cluster) =>
-          val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, extraCinemaTitles)
+          // The stored films' own cinemas vote on the title too (a migrated document carries
+          // none of its slots) — but only THIS cluster's: a cluster released from a stored
+          // film (`clustersNamingAnotherEntry`) must not be named after that film's venues.
+          val storedTitles = cluster.flatMap { case (k, _) => idsByKey.getOrElse(k, Nil) }.distinct.sortBy(_.value)
+            .flatMap(evidence.get).flatMap(_.cinemaData.values.flatMap(_.title))
+          val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, storedTitles)
           // A cluster is a brand-new promotion iff no existing `movies` row joined it
           // (all members came from staging) — a merge into an existing row, or a
           // re-key of one, does NOT count: that row already owns its ratings.
@@ -360,6 +370,31 @@ object StagingFold {
     val retiredSet    = moviesDeletes.toSet
     val retirements   = planned.flatMap(_._3).filter { case (loser, _) => retiredSet.contains(loser) }.distinct
     Plan(upserts, moviesDeletes, stagingRows, newPromotions, retirements)
+  }
+
+  /** The clusters that must GIVE UP the tmdbId they share with another cluster, because their
+   *  own cinemas name a different entry of a curated franchise than the film that id is.
+   *
+   *  UK prod, 2026-09-25 → 10-01: Odeon's "The Hunger Games: Mockingjay - Part 1 (2026)" had
+   *  been resolved to Sunrise on the Reaping (1300968); Brewery Arts Centre Kendal's own "Sunrise
+   *  on the Reaping" then resolved there correctly. Joining the two ([[oneClusterPerTmdbId]])
+   *  kept one document per tmdbId but spread the wrong match: the joined row was mixed, the
+   *  settle's split sent Kendal back to staging, Kendal resolved to 1300968 again, and the fold
+   *  joined it back. The id belongs to the cluster whose cinemas name its film; the others are
+   *  released to re-resolve on their own titles (`scrapedOnly`), so the plan still writes one
+   *  document per id. Only when the clusters sharing an id split cleanly that way — at least one
+   *  names the film, at least one names its sibling — does anything move; otherwise they join
+   *  as before. The film's titles are TMDB's own (its slot), the clusters' are their cinemas'. */
+  private[staging] def clustersNamingAnotherEntry(clusters: Seq[Seq[(CacheKey, MovieRecord)]]): Seq[Seq[(CacheKey, MovieRecord)]] = {
+    def cinemaTitles(cluster: Seq[(CacheKey, MovieRecord)]): Seq[String] =
+      cluster.flatMap(_._2.cinemaSlots.flatMap(_._2.title)).distinct
+    clusters.flatMap(_.flatMap(_._2.tmdbId)).distinct.flatMap { id =>
+      val sharing = clusters.filter(_.exists(_._2.tmdbId.contains(id)))
+      val film = sharing.flatten.collect { case (_, r) if r.tmdbId.contains(id) => r.data.get(models.Tmdb) }.flatten
+        .flatMap(sd => sd.title.toSeq ++ sd.originalTitle).distinct
+      val (sibling, naming) = sharing.partition(c => SequelMarker.curatedSiblingTitles(cinemaTitles(c), film))
+      if (sharing.sizeIs < 2 || film.isEmpty || naming.isEmpty || sibling.isEmpty) Nil else sibling
+    }.distinct
   }
 
   /** Join every cluster that shares a tmdbId with another into one, so the plan writes at most

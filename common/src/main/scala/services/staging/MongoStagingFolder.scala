@@ -363,8 +363,9 @@ class MongoStagingFolder(
       }
     }
 
-  /** The cinema-reported titles the group's films keep in `movie_slots` — the ones their
-   *  `movies` documents do not carry.
+  /** The group's films read back through the storage split, for the cinema-reported titles
+   *  they keep in `movie_slots` — the ones their `movies` documents do not carry.
+   *  `planGroup` votes each cluster's key on its OWN stored films' titles.
    *
    *  The transactional reads above see RAW documents, and a MIGRATED film's `sourceData` is
    *  empty: its cinemas are side rows. `StagingFold.planGroup` picks the surviving key
@@ -400,9 +401,6 @@ class MongoStagingFolder(
         "re-key the film on a view that reports none of its cinemas.")
       id -> stitched.fold(row.record)(_.record)
     }.toMap
-
-  private def stitchedCinemaTitles(stitched: Map[FilmId, MovieRecord]): Seq[String] =
-    stitched.toSeq.sortBy(_._1.value).flatMap(_._2.cinemaData.values.flatMap(_.title))
 
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
    *  movies rows (every year-variant), compute the settled plan, and apply the
@@ -463,7 +461,7 @@ class MongoStagingFolder(
       // A brand-new film's id must not be a live document's — checked in THIS session, so
       // the write below cannot replace a film the fold never read.
       val stitched = stitchedRecords(group)
-      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(stitched),
+      val plan  = StagingFold.planGroup(stagingRows, group, normalizer,
         // taken = a LIVE id in the store, in THIS session, OR one this very plan already
         // minted for an earlier cluster — see `planGroup`'s `fresh` doc comment.
         fresh = (key, mintedSoFar) => FilmId.fresh(key,

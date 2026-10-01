@@ -109,6 +109,17 @@ object FoldFixture {
       Await.result(movies.find(Filters.regex("key", s"^$sanitize\\|")).toFuture(), Timeout)
         .flatMap(_.get("_id").map(_.asString().getValue))
 
+    /** The repository builds the partial unique `tmdbId` index asynchronously at construction;
+     *  a collision is only real once it exists. */
+    def awaitTmdbIdIndex(): Unit = {
+      splitAwareRepository
+      val present = tools.Eventually.poll(timeoutMs = 10000, pollMs = 20) {
+        Await.result(movies.listIndexes().toFuture(), Timeout)
+          .exists(_.get("name").exists(_.asString().getValue == "tmdbId_1"))
+      }
+      if (!present) throw new AssertionError("the tmdbId unique index never appeared")
+    }
+
     /** Is this staging row still there? An assertion about what a fold decided means nothing
      *  unless the fold actually consumed its input. */
     def stagingRowExists(id: String): Boolean =

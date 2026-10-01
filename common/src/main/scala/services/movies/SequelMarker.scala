@@ -224,7 +224,7 @@ object SequelMarker {
    *  side name a different curated-franchise entry from any title on the other?
    *  The shape both `FilmCanonicalizer`'s id-sharing fold guard and
    *  `MixedFilmDetector.conflicting` ask of cinema-published titles. */
-  private[movies] def curatedSiblingTitles(a: Iterable[String], b: Iterable[String]): Boolean = {
+  private[services] def curatedSiblingTitles(a: Iterable[String], b: Iterable[String]): Boolean = {
     val bTokens = b.iterator.map(TitleContainment.tokens).toSeq
     a.iterator.map(TitleContainment.tokens).exists(at => bTokens.exists(curatedSiblings(at, _)))
   }

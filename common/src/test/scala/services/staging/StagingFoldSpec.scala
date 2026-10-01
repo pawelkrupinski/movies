@@ -339,11 +339,24 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val documentsPerTmdbId = plan.moviesUpserts.flatMap(_._3.tmdbId).groupBy(identity).view.mapValues(_.size).toMap
     withClue(s"the fold planned two `movies` documents for one tmdbId: ${plan.moviesUpserts.map(u => u._1 -> u._2)}\n")(
       documentsPerTmdbId shouldBe Map(1300968 -> 1))
-    // …and that document is the one the store already holds — the newcomer joins it, nothing retires.
-    plan.moviesUpserts.map(_._1) shouldBe Seq(storedId)
-    plan.moviesUpserts.head._3.data.keySet should contain (kendal)
+    // …and it is Kendal's, the cinema that names that film. Joining the two (d0f30dd10) spread
+    // the wrong match instead: the settle split Kendal off the mixed row, it resolved to 1300968
+    // again, and the fold joined it back. The Odeon document keeps its id and GIVES UP the film's,
+    // to re-resolve on its own titles (`RereleaseYearResolveSpec`). Nothing retires.
+    val byTmdb = plan.moviesUpserts.map { case (id, _, r) => r.tmdbId -> id }.toMap
+    plan.moviesUpserts.find(_._3.tmdbId.contains(1300968)).map(_._3.cinemaSlots.map(_._1).toSet) shouldBe Some(Set(kendal))
+    byTmdb.get(None) shouldBe Some(storedId)
+    plan.moviesUpserts.find(_._1 == storedId).map(r => (r._3.imdbId, r._3.data.contains(Tmdb))) shouldBe Some((None, false))
     plan.moviesDeletes shouldBe empty
-    plan.newPromotions shouldBe empty
+    // The document giving the id up is written BEFORE the one taking it, or the unique
+    // `tmdbId_1` index refuses the second write inside the fold's transaction.
+    val order = scala.collection.mutable.ArrayBuffer.empty[Option[Int]]
+    plan.applyTo(new StagingFold.PlanWrites {
+      def deleteMovie(id: FilmId): Unit = ()
+      def writeMovie(id: FilmId, key: services.movies.CacheKey, record: MovieRecord): Unit = order += record.tmdbId
+      def deleteStaging(row: StagingRecord): Unit = ()
+    })
+    order.toSeq shouldBe Seq(None, Some(1300968))
   }
 
   it should "not file an UNANSWERED group at its brackets — TMDB never said nothing resolves" in {

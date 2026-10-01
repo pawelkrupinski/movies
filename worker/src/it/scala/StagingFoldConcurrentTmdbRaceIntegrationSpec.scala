@@ -126,7 +126,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
     import services.movies.SingleCountryNormalizer.titleNormalizer
     val winnerTitle = s"Lalka reż. $word"
     val loserTitle  = s"Ladies Night - ${word.capitalize}"
-    awaitTmdbIdIndex(fold)
+    fold.awaitTmdbIdIndex()
     fold.seedStagingRow(Multikino.displayName, winnerTitle, Some(2026), tmdbId)
     fold.seedStagingRow(Helios.displayName, loserTitle, Some(2026), tmdbId)
     val loserId = services.movies.StoredMovieRecord.keyFor(loserTitle, Some(2026), titleNormalizer)
@@ -185,7 +185,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
       val winnerRepo = fold.splitAwareRepository
 
       // The loser reads its own unresolved row back through the repository mid-plan
-      // (`stitchedCinemaTitles`) — after its snapshot, before its write: that is where the
+      // (`stitchedRecords`) — after its snapshot, before its write: that is where the
       // winner gets to commit.
       @volatile var armed = true
       val loserRepo = new services.movies.MongoMovieRepository(Some(fold.db),
@@ -206,16 +206,5 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
       withClue("the winner never got to commit mid-plan, so this asserted nothing: ") { armed shouldBe false }
       assertOneFilmWithBothCinemas(fold, tmdbId)
     }
-  }
-
-  /** The repository builds the partial unique `tmdbId` index asynchronously at construction;
-   *  a collision is only real once it exists. */
-  private def awaitTmdbIdIndex(fold: FoldFixture.Handles): Unit = {
-    fold.splitAwareRepository
-    val present = tools.Eventually.poll(timeoutMs = 10000, pollMs = 20) {
-      Await.result(fold.movies.listIndexes().toFuture(), 10.seconds)
-        .exists(_.get("name").exists(_.asString().getValue == "tmdbId_1"))
-    }
-    if (!present) fail("the tmdbId unique index never appeared")
   }
 }

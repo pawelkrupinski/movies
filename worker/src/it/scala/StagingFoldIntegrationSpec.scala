@@ -632,4 +632,46 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
       withClue("an over-broad hint must not widen the group: ") { tooWide shouldBe unhinted }
       }
   }
+
+  // UK prod, 2026-09-25 → 10-01: Odeon's "Mockingjay - Part 1 (2026)" rerelease was stored on
+  // Sunrise on the Reaping's tmdbId; Brewery Arts Centre Kendal's own Sunrise listing then
+  // concluded on the same id. Planned as two documents it died on E11000 every attempt; joined
+  // (d0f30dd10) it became the mixed row the settle split again and again. The id goes to the
+  // venue that names the film, and the rerelease gives it up to re-resolve — in ONE transaction
+  // the real `tmdbId_1` index accepts.
+  it should "give a shared tmdbId to the cinema naming its film, and release it from a sibling entry's row" in {
+    import org.mongodb.scala.bson.collection.immutable.Document
+    val sunrise   = "The Hunger Games: Sunrise on the Reaping"
+    val rerelease = "The Hunger Games: Mockingjay - Part 1 (2026)"
+    val tmdbId    = 1300968
+    val kendal    = models.BreweryArtsCentreKendal.displayName
+    def tmdbSlot  = Document("title" -> sunrise, "originalTitle" -> sunrise, "releaseYear" -> 2026)
+    FoldFixture.withFold(mongoTarget, "staging-fold-sibling-release") { fold =>
+      fold.awaitTmdbIdIndex()
+      val storedId = "hungergamesballadofsongbirdssnakes|2026"
+      Await.result(fold.movies.insertOne(Document("_id" -> storedId,
+        "key" -> StoredMovieRecord.keyFor(rerelease, Some(2026), titleNormalizer),
+        "title" -> "The Hunger Games: Mockingjay - Part 1", "year" -> 2026,
+        "tmdbId" -> tmdbId, "imdbId" -> "tt32558705", "sourceData" -> Document("TMDB" -> tmdbSlot),
+        "updatedAt" -> java.util.Date.from(java.time.Instant.now()))).toFuture(), 10.seconds)
+      fold.slots.replaceFilm(storedId, Seq(models.OdeonCinemaBridgend, models.OdeonLuxeEastKilbride)
+        .map(_.displayName -> SourceData(title = Some(rerelease), rawTitle = Some(rerelease))).toMap)
+      val stagingId = s"$kendal|${titleNormalizer.sanitize(sunrise)}|"
+      Await.result(fold.staging.insertOne(Document("_id" -> stagingId, "tmdbId" -> tmdbId, "imdbId" -> "tt32558705",
+        "sourceData" -> Document(kendal -> Document("title" -> sunrise), "TMDB" -> tmdbSlot),
+        "updatedAt" -> java.util.Date.from(java.time.Instant.now()))).toFuture(), 10.seconds)
+
+      noException should be thrownBy fold.folder().foldGroup(sunrise)
+
+      fold.stagingRowExists(stagingId) shouldBe false   // premise: the fold committed
+      val docs = Await.result(fold.movies.find().toFuture(), 10.seconds)
+      def tmdbOf(d: org.mongodb.scala.Document) = d.get("tmdbId").filter(_.isNumber).map(_.asNumber().intValue())
+      val holders = docs.filter(tmdbOf(_).contains(tmdbId)).flatMap(_.get("_id").map(_.asString().getValue))
+      holders should have size 1
+      fold.slots.findForFilm(holders.head).keySet - "TMDB" shouldBe Set(kendal)
+      docs.find(_.get("_id").exists(_.asString().getValue == storedId)).flatMap(tmdbOf) shouldBe None
+      fold.slots.findForFilm(storedId).keySet - "TMDB" shouldBe
+        Set(models.OdeonCinemaBridgend.displayName, models.OdeonLuxeEastKilbride.displayName)
+    }
+  }
 }
