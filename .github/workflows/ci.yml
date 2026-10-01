@@ -447,6 +447,12 @@ jobs:
 
             - name: Start MongoDB (single-node replica set, for change streams)
               run: scripts/ci/start-mongo-replset.sh
+              # A majority write acknowledged once applied, not once synced to the journal: every
+              # write the app makes is `w: majority`, and on a database that dies with the runner a
+              # disk sync per write (~7 ms against ~0.2 ms) buys nothing. Same as the convergence
+              # legs (convergence-setup); see the script.
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
 
             - uses: ./.github/actions/setup-jdk
               with:
