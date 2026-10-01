@@ -1472,6 +1472,77 @@
       ]
     },
     {
+      "id": 54,
+      "title": "Change-stream applies — from the changed venues alone vs the whole film re-read, by reason",
+      "interval": "1m",
+      "description": "Each film apply the change stream made. venues/applied: a burst of showtime changes applied from the changed venues' rows alone. film/*: the whole film re-read — not_showtimes (a movies or movie_slots change rode the burst), too_many_venues, failing (a failing re-read must read it whole), venue_read_failed, declined (the projector or cache could not take the venues alone: a venue appearing or vanishing, a card unpublished or held), unsupported. A growing declined share means whole re-reads of films that changed at one venue.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 137
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*rebuilt.*"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "sum by (path, reason) (increase(kinowo_worker_change_apply_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{path}} / {{reason}}"
+        }
+      ]
+    },
+    {
       "id": 29,
       "title": "TMDB re-try resolves that landed on a queued resolve — upgraded or not",
       "description": "`kinowo_worker_resolve_retry_duplicates_total`: a re-try resolve (mode=retry-miss, the scheduled unresolved re-try; mode=force, the operator's re-enrich) whose film already had a ResolveTmdb task queued under the same dedupKey. upgraded = the WAITING task now searches in the re-try's mode or above (raised to it, or already there); not-upgraded = the queued task was already being worked on with its old mode, so this re-try's search did not happen.\n\nWhy it exists: until 2026-09-23 every one of these was DROPPED by the queue's dedup, visible only as `tasks_enqueued{result=deduped}` — indistinguishable from a harmless duplicate plain resolve — and the plain resolve then stopped at the remembered miss the re-try existed to look past, for another 24h. A sustained not-upgraded rate means re-tries keep arriving while their film is mid-resolve. Panel only; no alert.",
@@ -1484,7 +1555,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 137
+        "y": 145
       },
       "fieldConfig": {
         "defaults": {
@@ -1535,7 +1606,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 145
+        "y": 153
       },
       "fieldConfig": {
         "defaults": {
@@ -1612,7 +1683,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 153
+        "y": 161
       },
       "fieldConfig": {
         "defaults": {
@@ -1663,7 +1734,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 161
+        "y": 169
       },
       "fieldConfig": {
         "defaults": {
@@ -1715,7 +1786,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 169
+        "y": 177
       },
       "fieldConfig": {
         "defaults": {
@@ -1781,7 +1852,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 177
+        "y": 185
       },
       "fieldConfig": {
         "defaults": {
@@ -1863,7 +1934,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 185
+        "y": 193
       },
       "fieldConfig": {
         "defaults": {
@@ -1914,7 +1985,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 193
+        "y": 201
       },
       "fieldConfig": {
         "defaults": {
@@ -2027,7 +2098,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 201
+        "y": 209
       },
       "fieldConfig": {
         "defaults": {
@@ -2078,7 +2149,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 209
+        "y": 217
       },
       "fieldConfig": {
         "defaults": {
@@ -2161,7 +2232,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 217
+        "y": 225
       },
       "fieldConfig": {
         "defaults": {
@@ -2212,7 +2283,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 225
+        "y": 233
       },
       "fieldConfig": {
         "defaults": {
@@ -2295,7 +2366,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 233
+        "y": 241
       },
       "fieldConfig": {
         "defaults": {
@@ -2346,7 +2417,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 233
+        "y": 241
       },
       "targets": [
         {
@@ -2386,7 +2457,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 241
+        "y": 249
       },
       "fieldConfig": {
         "defaults": {
@@ -2446,7 +2517,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 249
+        "y": 257
       },
       "fieldConfig": {
         "defaults": {
@@ -2512,7 +2583,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 257
+        "y": 265
       },
       "fieldConfig": {
         "defaults": {
@@ -2563,7 +2634,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 257
+        "y": 265
       },
       "fieldConfig": {
         "defaults": {
@@ -2623,7 +2694,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 265
+        "y": 273
       },
       "fieldConfig": {
         "defaults": {
@@ -2700,7 +2771,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 273
+        "y": 281
       },
       "fieldConfig": {
         "defaults": {
@@ -2769,7 +2840,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 273
+        "y": 281
       },
       "fieldConfig": {
         "defaults": {
@@ -2838,7 +2909,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 281
+        "y": 289
       },
       "fieldConfig": {
         "defaults": {
@@ -2889,7 +2960,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 289
+        "y": 297
       },
       "fieldConfig": {
         "defaults": {
@@ -2958,7 +3029,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 289
+        "y": 297
       },
       "fieldConfig": {
         "defaults": {
@@ -3018,7 +3089,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 297
+        "y": 305
       },
       "fieldConfig": {
         "defaults": {

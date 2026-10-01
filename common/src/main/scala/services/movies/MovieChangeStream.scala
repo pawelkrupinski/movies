@@ -334,13 +334,26 @@ final class MovieChangeStream(
    *  apply is harmless: it is a superset of every part. A US wide release carries thousands of
    *  venues' showtimes, and a change at one of them re-read every one: most of a busy US worker's
    *  change-apply CPU (JFR, 2026-10-01). */
-  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): Boolean =
-    (readVenues, venues) match {
-      case (Some(read), Some(at)) if at.nonEmpty && at.sizeIs <= MovieChangeStream.MaxVenuesApplied && !holds.exists(_.isFailing(filmId)) =>
-        val mark = fence.mark(filmId)
-        read(filmId, at).exists(slots => movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark)))
-      case _ => false
+  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): Boolean = {
+    import ChangeStreamMetrics.Apply.Reason
+    val reason = readVenues match {
+      case None       => Reason.Unsupported
+      case Some(read) => venues.filter(_.nonEmpty) match {
+        case None                                                    => Reason.NotShowtimes
+        case Some(at) if at.sizeIs > MovieChangeStream.MaxVenuesApplied => Reason.TooManyVenues
+        case Some(_) if holds.exists(_.isFailing(filmId))            => Reason.Failing
+        case Some(at) =>
+          val mark = fence.mark(filmId)
+          read(filmId, at) match {
+            case None        => Reason.VenueReadFailed
+            case Some(slots) => if (movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))) Reason.Applied else Reason.Declined
+          }
+      }
     }
+    val applied = reason == Reason.Applied
+    changeStreamMetrics.recordApply(if (applied) ChangeStreamMetrics.Apply.Venues else ChangeStreamMetrics.Apply.Film, reason)
+    applied
+  }
 
   /** One apply's re-read and fan-out, then the `acks` of every event it covers — a cursor's resume
    *  position moves only once an event is fully APPLIED, listeners included, so a shutdown

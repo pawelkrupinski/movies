@@ -34,9 +34,37 @@ trait ChangeStreamMetrics {
   def recordEvent(op: String): Unit
   def recordUpdateKind(kind: String): Unit
   def recordCoalescedChange(): Unit
+  /** One film's apply: from the changed venues alone, or by re-reading the whole film, and why
+   *  ([[ChangeStreamMetrics.Apply]]). */
+  def recordApply(path: String, reason: String): Unit = ()
 }
 
 object ChangeStreamMetrics {
+  /** How a film's apply went — `MovieChangeStream.applyVenues`. A `venues` apply read only the
+   *  changed venues' rows; a `film` apply re-read the whole film, for the `reason` given. */
+  object Apply {
+    val Venues = "venues"; val Film = "film"
+    object Reason {
+      /** Read from the changed venues alone. */
+      val Applied        = "applied"
+      /** A `movies` or `movie_slots` change rode the burst (or a showtime change at an unknown venue). */
+      val NotShowtimes   = "not_showtimes"
+      /** The burst touched more venues than one apply reads alone. */
+      val TooManyVenues  = "too_many_venues"
+      /** The film is failing a re-read, whose retry must read it whole. */
+      val Failing        = "failing"
+      /** The venues' rows could not be read alone (a failed read, or a row the venue read cannot place). */
+      val VenueReadFailed = "venue_read_failed"
+      /** A listener could not take the venues alone (see `ReadModelProjector.onVenueSlots`). */
+      val Declined       = "declined"
+      /** The store cannot read venues alone. */
+      val Unsupported    = "unsupported"
+    }
+    /** Every (path, reason) pair, for pre-registering the series. */
+    val Series: Seq[(String, String)] = Seq(Venues -> Reason.Applied) ++
+      Seq(Reason.NotShowtimes, Reason.TooManyVenues, Reason.Failing, Reason.VenueReadFailed, Reason.Declined, Reason.Unsupported).map(Film -> _)
+  }
+
   object Op {
     val Insert = "insert"; val Update = "update"; val Replace = "replace"; val Delete = "delete"; val Other = "other"
   }

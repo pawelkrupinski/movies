@@ -122,6 +122,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
     def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
     def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
     def recordCoalescedChange(): Unit        = series.recordMovieCoalesced(countryCode)
+    override def recordApply(path: String, reason: String): Unit = series.recordChangeApply(countryCode, path, reason)
   }
 
   // ── ScreeningsMetrics ───────────────────────────────────────────────────────
@@ -449,6 +450,12 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val changeApplies = Counter.builder()
+      .name("kinowo_worker_change_apply")
+      .help("Film applies the change stream made since boot, by country, path and reason. path=venues: a burst of showtime changes at a few venues applied from those venues' rows alone (reason=applied) — the other venues of the film neither read nor re-projected. path=film: the whole film re-read, because a movies or movie_slots change rode the burst (not_showtimes), it touched too many venues (too_many_venues), the film is failing a re-read (failing), the venues could not be read alone (venue_read_failed), a listener could not take them alone — a venue appearing or vanishing, a card unpublished or held (declined) — or the store cannot read venues alone (unsupported). A rising declined share is the projector or cache refusing what it should take: each is a whole re-read of a film that changed at one venue.")
+      .labelNames("country", "path", "reason")
+      .register(registry)
+
     private val screeningsChangeEvents = Counter.builder()
       .name("kinowo_worker_screenings_change_events")
       .help("Screenings change-stream events the SECOND cursor consumed since boot, by country and op (insert|update|replace|delete). The read-model projection's larger trigger: this cursor rings once per changed screenings DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection. Read readmodel_project_calls_total against the SUM of this and movie_change_events; against movie_change_events alone it reads as an unexplained 55:1, which is what a 2026-09-04 projection climb looked like while this half of the input had no counter.")
@@ -563,6 +570,7 @@ object WorkerTaskMetrics {
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         movieCoalesced.labelValues(c)
+        ChangeStreamMetrics.Apply.Series.foreach { case (path, reason) => changeApplies.labelValues(c, path, reason) }
         ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
         ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
         screeningsCoalesced.labelValues(c)
@@ -674,6 +682,7 @@ object WorkerTaskMetrics {
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
     def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
     def recordMovieCoalesced(country: String): Unit          = movieCoalesced.labelValues(country).inc()
+    def recordChangeApply(country: String, path: String, reason: String): Unit = changeApplies.labelValues(country, path, reason).inc()
 
     // ── ScreeningsMetrics ──────────────────────────────────────────────────────
     def recordScreeningsChangeEvent(country: String, op: String): Unit = screeningsChangeEvents.labelValues(country, op).inc()

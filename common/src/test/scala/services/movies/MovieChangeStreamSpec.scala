@@ -369,8 +369,13 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
         slotRing = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
     }
     val rereads, venueReads, venueApplies, upserts = new AtomicInteger(0)
+    val applies = new java.util.concurrent.ConcurrentLinkedQueue[(String, String)]()
+    val metrics = new ChangeStreamMetrics {
+      def recordEvent(op: String): Unit = (); def recordUpdateKind(kind: String): Unit = (); def recordCoalescedChange(): Unit = ()
+      override def recordApply(path: String, reason: String): Unit = { applies.add(path -> reason); () }
+    }
     val acks   = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-    val under  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots),
+    val under  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots), changeStreamMetrics = metrics,
       reread     = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
       readVenues = Some((id, at) => { venueReads.incrementAndGet(); Option.when(venueRead)(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
     val handle = under.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (),
@@ -388,6 +393,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       eventually(acks.size shouldBe 2)
       venueReads.get() should be >= 1; venueApplies.get() shouldBe venueReads.get()
       rereads.get() shouldBe 0;        upserts.get() shouldBe 0
+      import scala.jdk.CollectionConverters.*
+      applies.asScala.toSet shouldBe Set("venues" -> "applied")
     } finally { handle.close(); under.close() }
   }
 
@@ -398,6 +405,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       ring(row("film|2024", venue), () => acks.add("a"))
       eventually(acks.size shouldBe 1)
       venueApplies.get() shouldBe 1; rereads.get() shouldBe 1; upserts.get() shouldBe 1
+      import scala.jdk.CollectionConverters.*
+      applies.asScala.toSeq shouldBe Seq("film" -> "declined")
     } finally { handle.close(); under.close() }
   }
 
@@ -408,6 +417,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       ring(row("film|2024", venue), () => acks.add("a"))
       eventually(acks.size shouldBe 1)
       venueApplies.get() shouldBe 0; rereads.get() shouldBe 1; upserts.get() shouldBe 1
+      import scala.jdk.CollectionConverters.*
+      applies.asScala.toSeq shouldBe Seq("film" -> "venue_read_failed")
     } finally { handle.close(); under.close() }
   }
 
