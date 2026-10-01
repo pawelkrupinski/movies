@@ -28,7 +28,7 @@ object IdentityMeasures {
   final case class Listing(title: String, rawTitle: Option[String] = None, originalTitle: Option[String] = None,
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                            countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
-                           decorations: TitleDecorations = TitleDecorations.None) {
+                           decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
@@ -533,7 +533,7 @@ object IdentityMeasures {
   def titleShapes(l: Listing): Seq[String] = l.shapes
 
   private def shapesOf(l: Listing): Seq[String] = {
-    shapes(Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
+    shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)), l.decorations)
   }
 
@@ -549,16 +549,20 @@ object IdentityMeasures {
           .map(_.trim).filter(_.nonEmpty).distinct)
       .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 
-  /** The pieces two more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
-   *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne") and a code of up to
+  /** The pieces more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
+   *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne"), a dash with a
+   *  space on one side ("Fregata dla seniorów- 500 Mil") and a code of up to
    *  three letters before a colon with no space ("MS:HOT SPOT"). A slash or colon inside a word is the
    *  title's own ("Face/Off", "AC/DC"). Here, not in `SearchTitles`, which the old pipeline also reads. */
   private def delimitedPieces(title: String): Seq[String] = {
-    val slashed = if (SpacedSlash.findFirstIn(title).isDefined) SpacedSlash.split(title).toSeq.map(_.trim) else Nil
+    val slashed = Seq(SpacedSlash, HalfSpacedDash).flatMap(separator =>
+      if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
     val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
     (slashed ++ coded).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
   private val SpacedSlash     = """\s+/\s*|\s*/\s+""".r
+  /** A dash with a space on ONE side ("Fregata dla seniorów- 500 Mil"); both sides is `SearchTitles`'s. */
+  private val HalfSpacedDash  = """(?<=\S)[-–—]\s+|\s+[-–—](?=\S)""".r
   private val CodeBeforeColon = """^\p{L}{1,3}:(?=\S)""".r
 
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of

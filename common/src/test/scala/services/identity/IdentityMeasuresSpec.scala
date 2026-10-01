@@ -375,6 +375,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleShapes(Listing("MISTYCZKA /film polski/")) should contain ("MISTYCZKA")
     IdentityMeasures.titleShapes(Listing("Róża / Spotkanie Filozoficzne")) should contain allOf ("Róża", "Spotkanie Filozoficzne")
     IdentityMeasures.titleShapes(Listing("MS:HOT SPOT")) should contain ("HOT SPOT")
+    // Fregata's "Fregata dla seniorów- 500 Mil": a dash spaced on one side only separates too.
+    IdentityMeasures.titleShapes(Listing("Fregata dla seniorów- 500 Mil")) should contain ("500 Mil")
+    IdentityMeasures.titleShapes(Listing("Spider-Man")) shouldBe Seq("Spider-Man")
     // A slash or colon inside a word is the title's own: "Face/Off", "AC/DC", "Star Wars:Episode".
     IdentityMeasures.titleShapes(Listing("Face/Off")) shouldBe Seq("Face/Off")
     IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")

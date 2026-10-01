@@ -28,7 +28,11 @@ final case class Listing(
   page:          Option[String],
   originalTitle: Option[String],
   countries:     Seq[String] = Nil,
-  catalogueIds:  Seq[CatalogueId] = Nil
+  catalogueIds:  Seq[CatalogueId] = Nil,
+  /** The title as the venue's rules ask external lookups for it (`TitleNormalizer.apiQuery`: programme
+   *  prefixes, accessibility tags, "+ event" suffixes and premiere words off), when that differs from
+   *  `title` — what the old pipeline searched. The card keeps the venue's own title. */
+  searchTitle:   Option[String] = None
 ) {
   def venue: String = key.venue
 
@@ -70,7 +74,8 @@ object Listing {
     page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
-    catalogueIds  = CatalogueId.of(cm))
+    catalogueIds  = CatalogueId.of(cm),
+    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim))
 
   /** [[Listing.sortKey]]'s fields, in its order. */
   private val SortFields: IndexedSeq[Listing => String] = IndexedSeq(
@@ -110,7 +115,7 @@ final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime:
  *  question, and the resolver treats them as one node. */
 final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
                           runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil,
-                          decorations: TitleDecorations = TitleDecorations.None) {
+                          decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000")
@@ -119,13 +124,13 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations)
+      decorations = decorations, searchTitles = searchTitle.toSeq)
 
-  /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration
+  /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
-  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None)
+  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None, searchTitles = Nil)
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
@@ -141,7 +146,8 @@ object Evidence {
     runtime       = listing.runtime.orElse(detail.flatMap(_.runtime).filter(_ > 0)),
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
-    decorations   = decorations)
+    decorations   = decorations,
+    searchTitle   = listing.searchTitle)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
