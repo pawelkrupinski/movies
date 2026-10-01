@@ -208,6 +208,12 @@ groups:
       # seven and keeps the three Mongo episodes (08-29, 09-01). filesystem-capacity.yml replays
       # the real 09-23/24 series minute by minute.
       #
+      # THE AGREEMENT ONLY HOLDS WHILE A DAY SPANS SEVERAL COLLECTIONS. When the merge rate tripled
+      # from 09-24 (~54G a day), one nightly collection put the whole fall inside the 24-hour fit
+      # and this warned again on 09-29 and 09-30 at 54% free. The collection is four-hourly since
+      # 2026-10-01 (container-image-gc.nix) rather than this rule loosened; filesystem-capacity.yml
+      # replays the 09-29 series under the old cadence and the same rate under the new one.
+      #
       # THE DAY-LONG FIT COSTS LATENCY, AND THE SECOND CLAUSE BUYS THE FAST END BACK. A runaway
       # that starts after a quiet day is diluted in the 24-hour fit: modelled, 3 GB an hour warns
       # ~13h in with ~32h left, where the six-hour fit alone gave ~40h. A writer fast enough that
@@ -244,7 +250,7 @@ groups:
           description: >-
             A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty
             this filesystem within three days (or the six hours' alone within one), so it is not
-            the deploy-day image pulls the nightly container-image collection takes back.
+            the deploy-day image pulls the four-hourly container-image collection takes back.
             `du -xh --max-depth=3 {{ $labels.mountpoint }} | sort -h | tail -20` names it. On
             k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check
             `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is

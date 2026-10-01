@@ -48,7 +48,7 @@ tests:
   # THE COLLECTOR STOPPED, WHICH IS THE WHOLE POINT. The textfile is still there and node_exporter
   # still reports it -- a textfile is not a heartbeat, it is served as current for ever -- so the
   # only thing that says anything is wrong is the timestamp inside it going old. Frozen at epoch 0
-  # and read four days later: past the three-day threshold, silent before it.
+  # and read two days later: past the one-day threshold, silent before it.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
@@ -57,18 +57,18 @@ tests:
       - series: 'fleet_container_image_gc_last_success_timestamp_seconds{host="k3s-worker-1"}'
         values: '0+0x8000'
     alert_rule_test:
-      # Two days in, one missed run: deliberately still quiet.
-      - eval_time: 2d
+      # Half a day in, a couple of missed four-hourly runs: deliberately still quiet.
+      - eval_time: 12h
         alertname: ContainerImageGarbageCollectionStale
         exp_alerts: []
-      - eval_time: 4d
+      - eval_time: 2d
         alertname: ContainerImageGarbageCollectionStale
         exp_alerts:
           - exp_labels:
               severity: warning
               host: k3s-worker-1
             exp_annotations:
-              summary: "k3s-worker-1 has not collected its container images for over 3 days"
+              summary: "k3s-worker-1 has not collected its container images for over a day"
               description: >-
                 Left alone this ends as a full root filesystem: the images are one per merge and
                 nothing else deletes them, which is what put k3s-worker-1 at 84G of 150G with 200
@@ -79,7 +79,7 @@ tests:
                 --prune`, which is what the timer runs.
       # The comparison cannot fire without the series, so the companion must stay quiet here: this
       # host IS publishing, it is publishing something old.
-      - eval_time: 4d
+      - eval_time: 2d
         alertname: ContainerImageGarbageCollectionMetricAbsent
         exp_alerts: []
 

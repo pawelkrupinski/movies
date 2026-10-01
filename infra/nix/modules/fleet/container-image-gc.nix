@@ -35,7 +35,8 @@
 # `kubectl logs --previous` reads. What it does NOT protect is an image pulled seconds ago that has
 # no container yet -- a deploy landing inside the collection's window loses its layers and the
 # kubelet pulls them again. That costs one re-pull and cannot lose anything, which is why the timer
-# is daily and jittered rather than frequent and precise.
+# is jittered rather than precise -- and why running it every few hours rather than nightly is
+# cheap: the window is the seconds between a pull finishing and its container being created.
 #
 # AND IT PUBLISHES WHETHER IT RAN, for ./nix-gc.nix's reason exactly: a collector that silently
 # stopped is indistinguishable from a node with room to spare, and the alert that says otherwise
@@ -114,21 +115,26 @@ in
 
     dates = lib.mkOption {
       type = lib.types.str;
-      default = "daily";
+      default = "00/4:00";
       description = ''
         systemd calendar expression for the collection.
 
-        DAILY AGAINST ROUGHLY 5 GB A DAY OF NEW IMAGES on the busiest node, so a single missed run
-        is a rounding error against a 150G disk rather than the beginning of a problem. More often
-        would buy nothing and would widen the one window in which this can cost anything -- a
-        deploy whose image is pulled but not yet running (see the header).
+        EVERY FOUR HOURS, NOT DAILY, since 2026-10-01. Daily was right at ~5 GB of new images a
+        day. From 2026-09-24 the merge rate tripled -- 47-58 images collected a night against 11-17
+        before -- and k3s-worker-1's root fell ~54 GB a day (137G -> 84G free) before the nightly
+        run returned it. That bounded sawtooth is harmless as a level, but a once-a-night collection
+        put a whole day's fall inside the 24-hour fit `FilesystemWillFillWithin3Days` uses to tell
+        image churn from a runaway, so the warning (email + Telegram) fired on 09-24, 09-29 and
+        09-30 for a disk that never went under 54% free. Six collections a day keep the swing to
+        ~9 GB, the day-long fit reads a sawtooth again, and the disk tracks the workload as this
+        module's header intends. test/alert-rules/filesystem-capacity.yml replays both cadences.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
     # THE ONE FORGIVENESS THIS MODULE ASKS OF ./auto-apply.nix, and it is worth writing the
-    # sentence that option's documentation asks for: a nightly, idle-scheduled collection being
+    # sentence that option's documentation asks for: a periodic, idle-scheduled collection being
     # stopped and started at an arbitrary moment costs nothing at all. There is no session to
     # interrupt and no state to lose -- the next timer firing does the same work.
     #
@@ -177,10 +183,11 @@ in
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnCalendar = cfg.dates;
-        # JITTER, and an hour of it, for ./nix-gc.nix's reason -- both k3s hosts are in fsn1 and may
-        # share a hypervisor -- plus one of this module's own: the window this can cost a re-pull in
-        # is the window it overlaps a deploy, and a fixed minute would overlap the same one daily.
-        RandomizedDelaySec = "1h";
+        # JITTER, for ./nix-gc.nix's reason -- both k3s hosts are in fsn1 and may share a
+        # hypervisor -- plus one of this module's own: the window this can cost a re-pull in is the
+        # window it overlaps a deploy, and a fixed minute would overlap the same one every day.
+        # Half an hour, so the runs stay roughly four hours apart rather than bunching.
+        RandomizedDelaySec = "30m";
         # PERSISTENT, so a node that missed its window collects at boot and a node that has never
         # collected does so shortly after taking this module. On k3s-worker-1 that first run IS the
         # repair rather than merely the schedule starting.

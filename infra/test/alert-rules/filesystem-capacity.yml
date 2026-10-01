@@ -288,7 +288,7 @@ tests:
               job: node
             exp_annotations:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
-              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the nightly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
       - eval_time: 90m
         alertname: FilesystemWillFillWithin7Days
         exp_alerts: []
@@ -319,7 +319,7 @@ tests:
               job: node
             exp_annotations:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
-              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the nightly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
 
   # AN ORDINARY DAY'S GROWTH STAYS QUIET: 1 GB an hour of logs and cards off the same 135G is 24G a
   # day, a fraction of what is free. The rule has no level gate, so this is the case that proves the
@@ -355,7 +355,7 @@ tests:
               job: node
             exp_annotations:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
-              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the nightly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
 
   # A DEPLOY DAY IS NOT A RUNAWAY -- REPLAYED FROM THE REAL SERIES. k3s-worker-1's `/`, every minute
   # from 2026-09-23T00:00Z to 2026-09-24T22:00Z (rounded to the MB, runs compressed as `vxN`): each day the disk descends as
@@ -376,6 +376,54 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts: []
       - eval_time: 45h20m
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts: []
+
+  # A BUSY DEPLOY DAY OUTGREW THE NIGHTLY COLLECTION -- REPLAYED FROM THE REAL SERIES. k3s-worker-1's
+  # `/` every ten minutes from 2026-09-28T19:00Z to 09-30T01:00Z (rounded to 100 MB). From 09-24 the
+  # merge rate roughly tripled (fleet_container_image_gc_images_deleted: 11-17 a night before, 47-58
+  # after), so the disk fell ~54G a day, 137G -> 84G free, and a once-a-night collection put the
+  # whole fall inside one 24-hour fit: the day-long fit no longer spanned a sawtooth, it WAS one
+  # tooth. This warned 09-29 22:45Z-00:50Z and 09-30 23:55Z-00:25Z with the disk never under 54%
+  # free. It is pinned FIRING on purpose: it is why fleet.containerImageGc.dates is four-hourly
+  # rather than daily, and the case below is the same pull rate under that cadence.
+  - interval: 10m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '106100000000x4 105600000000 104100000000 104500000000x9 104200000000x1 102600000000x7 102300000000x1 102500000000x3 135900000000 138000000000x1 137700000000x1 137900000000 138000000000 137200000000x8 137000000000 137200000000x2 136000000000 136100000000x1 134900000000 134300000000 133600000000x1 133500000000x1 131700000000x9 129300000000x1 129400000000 127600000000x4 125100000000x6 123300000000x2 121400000000x2 119600000000x3 118600000000x1 118500000000 116700000000x2 114300000000 113800000000x3 113700000000 113300000000 111500000000x5 109200000000x2 109100000000x1 106800000000x1 106300000000 105200000000 105100000000 102800000000x8 100800000000x1 100100000000x1 100600000000x3 98300000000x2 95900000000x1 94400000000 93500000000 92500000000 91800000000x1 89500000000 89400000000x3 87700000000x4 86800000000x3 86900000000x1 84600000000x2 84000000000x2 82700000000 81800000000x2 137300000000x1'
+    alert_rule_test:
+      - eval_time: 28h50m
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda2
+              instance: 10.20.0.12:9100
+              job: node
+            exp_annotations:
+              summary: "/ on k3s-worker-1 is on course to fill within 3 days"
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+
+  # ...AND THE SAME PULL RATE UNDER A FOUR-HOURLY COLLECTION IS QUIET. 2.3 GB an hour -- the 09-29
+  # rate, held round the clock, which is worse than any real day -- with fleet-container-image-gc
+  # returning the disk to 137G every four hours. The day-long fit now spans six teeth and reads
+  # them as the bounded sawtooth they are; the six-hour fit alone never empties the disk inside a
+  # day. Evaluated at the same minute as the replay above, and either side of it.
+  - interval: 10m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23 137000000000-383000000x23'
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts: []
+      - eval_time: 28h50m
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts: []
+      - eval_time: 31h50m
         alertname: FilesystemWillFillWithin3Days
         exp_alerts: []
 
@@ -404,7 +452,7 @@ tests:
               job: node
             exp_annotations:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
-              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the nightly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
 
   # A FAST RUNAWAY DOES NOT WAIT FOR THE DAY-LONG FIT: 5 GB an hour after the same quiet day projects
   # to empty within ONE day on the six-hour fit alone, which warns on its own clause long before the
@@ -427,7 +475,7 @@ tests:
               job: node
             exp_annotations:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
-              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the nightly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
 
   # THE LEVEL, ON THE DISK THAT HOLDS THE SHARE CARDS. 14% free on k3s-worker-1's root -- under the
   # 15% the share-card plan asked for -- is already past `FilesystemSpaceLow`'s 20%, so the existing
