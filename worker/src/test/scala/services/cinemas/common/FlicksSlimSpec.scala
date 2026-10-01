@@ -32,4 +32,16 @@ class FlicksSlimSpec extends AnyFlatSpec with Matchers {
     slim should not include "<svg"
     "data-eventjson".r.findAllMatchIn(slim).size shouldBe FlicksClient.parseDay(busy, dateOf(Days.head), Uk).map(_.slug).distinct.size
   }
+
+  // A film Flicks has no poster for shows a placeholder whose URL carries a cache-busting `?t=` that
+  // changes on every request: kept as the poster, every scrape rewrote the slot row for nothing — and
+  // dragged a whole-film re-read along each time (8 UK slots in 10 minutes, 2026-10-01).
+  "FlicksClient.parseDay" should "read a placeholder poster as no poster" in {
+    val day   = "picturehouse-greenwich/2026-10-06"
+    val slots = FlicksClient.parseDay(page(day), dateOf(day), Uk)
+    page(day) should include ("not_available/poster")
+    slots.flatMap(_.posterUrl).filter(_.contains("not_available")) shouldBe empty
+    slots.exists(_.posterUrl.isEmpty) shouldBe true
+    slots.exists(_.posterUrl.isDefined) shouldBe true          // real posters are kept
+  }
 }

@@ -256,7 +256,10 @@ object FlicksClient {
         case (Some(sl), Some(t)) =>
           val runtime   = Option(article.selectFirst(".cinema__movie-duration"))
             .map(_.text).flatMap(s => DigitsPat.findFirstIn(s)).map(_.toInt).filter(_ > 0)
-          val poster    = Option(article.selectFirst(".cinema-times__image img")).map(_.attr("src")).filter(_.nonEmpty)
+          // Flicks shows a placeholder for a film it has no poster for, under a URL whose `?t=` changes
+          // on every request: kept, every scrape rewrote the slot for nothing. It is no poster.
+          val poster    = Option(article.selectFirst(".cinema-times__image img")).map(_.attr("src"))
+            .filter(src => src.nonEmpty && !src.contains(PlaceholderPoster))
           val director  = Option(article.selectFirst(".cinema__director span")).map(_.text.trim).filter(_.nonEmpty)
           // Every session button in a film's card carries the same `data-eventjson`
           // blob; read the first non-empty one once and lift id/cast/genre from it.
@@ -363,6 +366,8 @@ object FlicksClient {
     override def close(): Unit = ()
   }
 
+  /** The path of the image Flicks shows for a film it has no poster for. */
+  private val PlaceholderPoster = "/images/others/not_available/"
   private val ArticleOpen   = "<article"
   private val SvgOpen       = "<svg"
   private val SvgClose      = "</svg>"
