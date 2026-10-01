@@ -157,9 +157,16 @@ jobs:
                   # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
                   # is the whole point: a web-only push must not reach this job's build, let alone
                   # its image, because a new worker image restarts it into a scrape storm.
+                  # NOT the test sources: tests run in ci on every push, and a push that changed only
+                  # them ships an image running the same code — 11 of 71 worker restarts in the 24 h to
+                  # 2026-10-01, each ~350 CPU-seconds of JIT and boot re-seeding per worker.
                   patterns: |
                       worker/**
+                      !worker/src/test/**
+                      !worker/src/it/**
+                      !worker/src/fixtures/**
                       common/**
+                      !common/src/test/**
                       build.sbt
                       project/**
                       Dockerfile

@@ -14,6 +14,11 @@
 #   `dir/**`  — anything under `dir/`
 #   `path`    — that exact file
 #
+# Either may be prefixed `!` to EXCLUDE what it names: a path counts when some plain pattern takes it
+# in and no `!` pattern takes it out, whatever the order. The worker's set uses it to leave out its
+# test sources — a test-only push ships an image running the same code, and restarting five workers
+# for that costs ~350 CPU-seconds each.
+#
 # Both the pattern list and the changed list are normalised the same way, so a YAML list can be
 # handed over nearly verbatim: leading `- `, surrounding quotes, blank lines and `#` comments are
 # all dropped.
@@ -32,27 +37,33 @@ normalise() {
 patterns=$(normalise <"$patterns_file")
 changed=$(normalise)
 
+# Does `$1` fall under pattern `$2` (without its `!`)?
+under() {
+    case "$2" in
+        */'**')
+            # `web/**` → prefix `web/`. A file named `webhook.md` must not match `web/**`,
+            # which is why the trailing slash stays in the prefix.
+            [ "${1#"${2%\*\*}"}" != "$1" ] ;;
+        *)
+            [ "$1" = "$2" ] ;;
+    esac
+}
+
 while IFS= read -r path; do
     [ -n "$path" ] || continue
+    included=false
+    excluded=false
     while IFS= read -r pattern; do
         [ -n "$pattern" ] || continue
         case "$pattern" in
-            */'**')
-                # `web/**` → prefix `web/`. A file named `webhook.md` must not match `web/**`,
-                # which is why the trailing slash stays in the prefix.
-                if [ "${path#"${pattern%\*\*}"}" != "$path" ]; then
-                    echo true
-                    exit 0
-                fi
-                ;;
-            *)
-                if [ "$path" = "$pattern" ]; then
-                    echo true
-                    exit 0
-                fi
-                ;;
+            '!'*) if under "$path" "${pattern#!}"; then excluded=true; fi ;;
+            *)    if under "$path" "$pattern"; then included=true; fi ;;
         esac
     done <<<"$patterns"
+    if [ "$included" = true ] && [ "$excluded" = false ]; then
+        echo true
+        exit 0
+    fi
 done <<<"$changed"
 
 echo false

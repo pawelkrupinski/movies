@@ -134,6 +134,36 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * while every assertion above still passed on the day it was made — the
    * fabricated pushes are a sample, this is the invariant.
    */
+  // A worker restart costs ~350 CPU-seconds of JIT and boot re-seeding, and 11 of the 71 pushes that
+  // restarted the workers in the 24 h to 2026-10-01 20:50 changed only tests: the image they shipped
+  // ran the same code. Tests still run in ci on every push; only the image's publish is gated here.
+  "a push that only changes worker or common tests" should "not rebuild or restart the worker" in {
+    matches(workerFilter, Seq(
+      "worker/src/test/scala/deploy/K8sTierPathGatingSpec.scala",
+      "worker/src/it/scala/services/movies/VenueReadIntegrationSpec.scala",
+      "worker/src/fixtures/scala/tools/FixturePipeline.scala",
+      "common/src/test/scala/services/movies/StringPoolSpec.scala",
+      "worker/src/test/resources/fixtures/flicks/page.html",
+    )) shouldBe false
+  }
+
+  it should "still restart it when the same push also changes the worker's own code" in {
+    matches(workerFilter, Seq(
+      "worker/src/test/scala/services/tasks/ChunkPageMemoSpec.scala",
+      "worker/src/main/scala/services/tasks/ChunkPageMemo.scala",
+    )) shouldBe true
+    matches(workerFilter, Seq("common/src/main/scala/services/movies/StringPool.scala")) shouldBe true
+    matches(workerFilter, Seq("worker/src/main/resources/aot-classes.txt")) shouldBe true
+  }
+
+  "the matcher" should "let a `!dir/**` pattern exclude what an include pattern took in, in either order" in {
+    matches(Seq("a/**", "!a/b/**"), Seq("a/b/c.txt")) shouldBe false
+    matches(Seq("!a/b/**", "a/**"), Seq("a/b/c.txt")) shouldBe false
+    matches(Seq("a/**", "!a/b/**"), Seq("a/b/c.txt", "a/d.txt")) shouldBe true
+    matches(Seq("a/**", "!a/b.txt"), Seq("a/b.txt")) shouldBe false
+    matches(Seq("!a/b/**"), Seq("x.txt")) shouldBe false
+  }
+
   "the two filter sets" should "keep each tier's own sources to itself" in {
     webFilter should contain("web/**")
     webFilter should not contain "worker/**"
