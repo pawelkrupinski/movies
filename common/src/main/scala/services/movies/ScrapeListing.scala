@@ -1,7 +1,6 @@
 package services.movies
 
 import models.{Cinema, CinemaMovie, SourceData}
-import services.titlerules.TitleRuleKey
 
 /**
  * A venue's listing as the cache will record it: each title cleaned by the
@@ -30,12 +29,9 @@ object ScrapeListing {
     // so a programme prefix, a "+ event" suffix, or a Ukrainian screening keep their
     // title and stay their own card.
     //
-    // Each title cleaned once: its rows are asked for it again by the fold below and by every
-    // caller of `cleaned`, and a cleaning runs every title rule of the venue — ~2 s of each US
-    // identity projection when every ask cleaned anew.
-    val cleanings = new java.util.concurrent.ConcurrentHashMap[String, (String, List[String])]()
-    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
-      cleanings.computeIfAbsent(cm.movie.title, title => cleanTitle(cinema, title, normalizer))
+    // Asked of a title again by the fold below and by every caller of `cleaned`: the normalizer
+    // memoises the cleaning (`TitleNormalizer.listingTitle`).
+    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) = cleanTitle(cinema, cm.movie.title, normalizer)
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
     // Badge each screening with its film's format tokens (unless the client already
     // set one), BEFORE the same-title fold below unions them — then put EVERY token
@@ -121,7 +117,7 @@ object ScrapeListing {
   /** A listed title as the venue's slot will carry it — cleaned by the venue's rules, its
    *  format tags peeled off — with those tags. The one definition [[prepare]] folds on. */
   def cleanTitle(cinema: Cinema, title: String, normalizer: TitleNormalizer): (String, List[String]) =
-    FormatTags.extractFormatTags(normalizer.cinemaClean(TitleRuleKey.of(cinema), title))
+    normalizer.listingTitle(cinema, title)
 
   /** The cinema slot a listing under `title` lands in: `CinemaShowing(cinema, slotKey)`. */
   def slotKey(cinema: Cinema, title: String, normalizer: TitleNormalizer): String =

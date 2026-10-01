@@ -1,7 +1,7 @@
 package services.movies
 
-import models.Country
-import services.titlerules.TitleRuleSet
+import models.{Cinema, Country}
+import services.titlerules.{TitleRuleKey, TitleRuleSet}
 
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -30,10 +30,31 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class TitleNormalizer(val rules: TitleRuleSet) {
 
+  // The memos behind [[cinemaClean]] and [[listingTitle]].
+  private val tidied       = new ConcurrentHashMap[String, String]()
+  private val formatPeeled = new ConcurrentHashMap[String, (String, List[String])]()
+  private val ruleKeys     = new ConcurrentHashMap[String, String]()
+
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title, after the
    *  shared tidy-up every scraped title needs (see [[TitleText.tidy]]). */
   def cinemaClean(cinemaId: String, raw: String): String =
-    rules.perCinema(cinemaId, TitleText.tidy(raw))
+    rules.perCinema(cinemaId, tidied.computeIfAbsent(raw, TitleText.tidy(_)))
+
+  /** A venue's listed title as its slot carries it — [[cinemaClean]]ed by the venue's rules, its
+   *  format tags peeled off (`FormatTags.extractFormatTags`) — with those tags.
+   *
+   *  Asked of every listing several times a scrape tick (the intake's slot count, the model's
+   *  listing, the projection's fold), and the same titles at venue after venue: cleaned anew each
+   *  time it was ~9% of a US convergence leg's CPU (JFR). So each step is memoised on exactly what
+   *  it depends on — the tidy-up and the format strip on the TITLE (a venue without rules of its
+   *  own folds nothing, `TitleRuleSet.perCinema`), the rule key on the venue's name — never on the
+   *  (venue, title) pair, which would hold an entry per listing. */
+  def listingTitle(cinema: Cinema, raw: String): (String, List[String]) =
+    formatPeeled.computeIfAbsent(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw),
+      FormatTags.extractFormatTags(_))
+
+  /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
+  private[movies] def listingTitlesCached: Int = formatPeeled.size
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //

@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaMovie, Helios, Movie, Showtime}
+import models.{CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -40,16 +40,19 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     prepare(a, b, c).movies shouldBe prepare(c, b, a).movies
   }
 
-  // A cleaning runs every title rule of the venue; an identity projection prepares every venue's
-  // listings and asks each film for its cleaned title again and again.
-  it should "clean each of a venue's titles once, however often its rows are asked for it" in {
-    val cleanings  = new java.util.concurrent.atomic.AtomicInteger(0)
-    val counting   = new TitleNormalizer(titleNormalizer.rules) {
-      override def cinemaClean(cinemaId: String, raw: String): String = { cleanings.incrementAndGet(); super.cinemaClean(cinemaId, raw) }
-    }
-    val p = ScrapeListing.prepare(Helios, Seq(listing("Ojczyzna", Seq(at(18))), listing("Ojczyzna", Seq(at(20))),
-      listing("Diuna", Seq(at(19)))), counting, ScreeningTokens.forDefaultCountry())
-    p.movies.map(p.cleaned).sorted shouldBe Seq("Diuna", "Ojczyzna")
-    cleanings.get shouldBe 2
+  // A cleaning runs every title rule of the venue and peels its format tags; a scrape tick asks it of
+  // every listing several times over, and the same titles at venue after venue.
+  it should "clean each title once, however many venues list it and however often its rows are asked for it" in {
+    val normalizer = new TitleNormalizer(titleNormalizer.rules)
+    val venues     = Seq(Helios, KinoMuza, Multikino, Rialto, KinoApollo)
+    val titles     = Seq("Ojczyzna (Napisy PL)", "Ojczyzna (Napisy PL)", "Diuna")
+    val prepared   = venues.map(venue => ScrapeListing.prepare(venue, titles.zipWithIndex.map { case (t, i) =>
+      listing(t, Seq(at(18 + i))).copy(cinema = venue) }, normalizer, ScreeningTokens.forDefaultCountry()))
+    prepared.foreach(p => p.movies.map(p.cleaned).sorted shouldBe Seq("Diuna", "Ojczyzna"))
+    venues.foreach(venue => titles.foreach { title =>
+      ScrapeListing.cleanTitle(venue, title, normalizer) shouldBe
+        FormatTags.extractFormatTags(normalizer.cinemaClean(services.titlerules.TitleRuleKey.of(venue), title))
+    })
+    normalizer.listingTitlesCached shouldBe 2
   }
 }
