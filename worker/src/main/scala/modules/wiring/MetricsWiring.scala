@@ -56,12 +56,14 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val copiedFeedDetector: Option[services.cinemas.roster.CopiedFeedDetector] =
     Some(services.cinemas.roster.CopiedFeedDetector.watchedVenues(countryScrapers)).filter(_.nonEmpty)
       .map(new services.cinemas.roster.CopiedFeedDetector(workerMetrics.copiedFeedPairsGauge, country, _))
-  // ONE 15-minute corpus scan feeding every census above. The first three each used to run
+  // ONE 15-minute corpus scan feeding every census above, and the projector's learning (`ProjectorLearning`). The first three each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan =
     new WorkerCorpusScan(movieRepository,
-      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics),
+      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics,
+        // …and teaches the read-model projector the rows it has not projected since boot.
+        new services.metrics.ProjectorLearning(readModelProjector, titleNormalizer)),
       metrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).

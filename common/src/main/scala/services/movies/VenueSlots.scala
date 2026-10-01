@@ -15,5 +15,8 @@ final case class VenueSlots(filmId: FilmId, atCinemas: Map[models.Cinema, Seq[(C
  *  owed the whole film. */
 enum VenueVerdict {
   case Applied
+  /** Not ready for these venues YET — the listener is still learning the film (after a boot) —
+   *  and will be shortly: ask again, rather than re-read the whole film. */
+  case NotYet
   case Declined(reason: String)
 }

@@ -77,7 +77,10 @@ final class MovieChangeStream(
   // Reads a film's slots at some venues as a whole-film read stitches them — what lets a change
   // confined to a few venues' showtimes skip the whole-film re-read ([[applyVenues]]). None (every
   // repository but the worker's) re-reads every change whole.
-  readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None
+  readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
+  // How often a venue apply a listener was not ready for asks again, and how long it waits at most.
+  venueRetryMillis:    Long = MovieChangeStream.VenueRetryMillis,
+  venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -185,7 +188,7 @@ final class MovieChangeStream(
   }
 
   /** Re-reads the debounce is holding for the rest of their film's burst. */
-  def held: Int = pending.values().asScala.count(!_.queued)
+  def held: Int = pending.values().asScala.count(!_.queued) + waiting.get()
 
   /** Queue every re-read the debounce holds, now — at close, so their events are applied before
    *  the final positions are saved, and wherever a caller must see the stream settled. */
@@ -209,9 +212,7 @@ final class MovieChangeStream(
   private def queue(filmId: String, entry: Pending): Unit = if (entry.handOff()) {
     applyOffLoop(entry.cursor, entry.demand) {
       pending.remove(filmId, entry)
-      val acks = drain(entry)
-      if (applyVenues(filmId, entry.venues)) acks.foreach(_())
-      else applyReread(filmId, entry.hold)(acks)
+      applyOrWait(filmId, entry.venues, entry.hold, drain(entry), clock.millis())
     }
   }
 
@@ -334,8 +335,9 @@ final class MovieChangeStream(
    *  apply is harmless: it is a superset of every part. A US wide release carries thousands of
    *  venues' showtimes, and a change at one of them re-read every one: most of a busy US worker's
    *  change-apply CPU (JFR, 2026-10-01). */
-  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): Boolean = {
+  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): MovieChangeStream.VenueOutcome = {
     import ChangeStreamMetrics.Apply.Reason
+    import MovieChangeStream.VenueOutcome
     val reason = readVenues match {
       case None       => Reason.Unsupported
       case Some(read) => venues.filter(_.nonEmpty) match {
@@ -347,16 +349,47 @@ final class MovieChangeStream(
           read(filmId, at) match {
             case None        => Reason.VenueReadFailed
             case Some(slots) =>
-              val declined = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
+              val unapplied = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
+              val declined  = unapplied.collect { case VenueVerdict.Declined(why) => why }
               declined.foreach(changeStreamMetrics.recordVenueDecline)
-              if (declined.isEmpty) Reason.Applied else Reason.Declined
+              if (unapplied.isEmpty) Reason.Applied
+              else if (declined.isEmpty) return VenueOutcome.NotYet
+              else Reason.Declined
           }
       }
     }
     val applied = reason == Reason.Applied
     changeStreamMetrics.recordApply(if (applied) ChangeStreamMetrics.Apply.Venues else ChangeStreamMetrics.Apply.Film, reason)
-    applied
+    if (applied) VenueOutcome.Applied else VenueOutcome.Whole
   }
+
+  /** Apply a film's venues — or, when a listener is not ready for them yet, ask again every
+   *  `venueRetryMillis` until it is, or until `venueWaitMillis` after the first ask, and then re-read
+   *  it whole. The events stay unacknowledged the whole time, so
+   *  a restart replays them; the wait counts as held ([[held]]), so a caller settling the stream waits
+   *  for it too. A later change to the film queues its own apply meanwhile, as always. */
+  private def applyOrWait(filmId: String, venues: Option[Set[models.Cinema]], hold: CursorHold,
+                          acks: Seq[() => Unit], firstAsked: Long): Unit =
+    applyVenues(filmId, venues) match {
+      case MovieChangeStream.VenueOutcome.Applied => acks.foreach(_())
+      case MovieChangeStream.VenueOutcome.NotYet if clock.millis() - firstAsked < venueWaitMillis =>
+        waiting.incrementAndGet()
+        scala.util.Try(rereadRetry.schedule((() => {
+          backlog.incrementAndGet()
+          changeApply.execute { () =>
+            try applyOrWait(filmId, venues, hold, acks, firstAsked)
+            finally { waiting.decrementAndGet(); backlog.decrementAndGet() }
+          }
+        }): Runnable, venueRetryMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
+          .failed.foreach { _ => waiting.decrementAndGet(); applyReread(filmId, hold)(acks) } // shutting down: apply it whole now
+      case MovieChangeStream.VenueOutcome.NotYet =>
+        changeStreamMetrics.recordApply(ChangeStreamMetrics.Apply.Film, ChangeStreamMetrics.Apply.Reason.WaitExpired)
+        applyReread(filmId, hold)(acks)
+      case MovieChangeStream.VenueOutcome.Whole => applyReread(filmId, hold)(acks)
+    }
+
+  // Venue applies waiting for a listener to be ready for them — see `applyOrWait`.
+  private val waiting = new AtomicInteger(0)
 
   /** One apply's re-read and fan-out, then the `acks` of every event it covers — a cursor's resume
    *  position moves only once an event is fully APPLIED, listeners included, so a shutdown
@@ -624,6 +657,15 @@ object MovieChangeStream {
 
   /** Some of a film's venues on their way to the listeners, with the fence mark taken before the read. */
   private final case class VenueDelivery(venues: VenueSlots, mark: Long)
+
+  /** How a film's venue apply went: applied, a listener not ready for it yet, or the film owed whole. */
+  private enum VenueOutcome { case Applied, NotYet, Whole }
+
+  /** How often a venue apply a listener was not ready for asks again, and for how long at most —
+   *  the projector learns a booted worker's rows from the first corpus census pass, two minutes after
+   *  boot and a few seconds long, then every 15 minutes; past this, the film is re-read whole. */
+  private[movies] val VenueRetryMillis = 5000L
+  private[movies] val VenueWaitMillis  = 30 * 60 * 1000L
 
   /** The most venues one apply reads alone; a burst across more re-reads the film whole. */
   private[movies] val MaxVenuesApplied = 16

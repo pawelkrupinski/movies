@@ -53,11 +53,10 @@ object ChangeStreamMetrics {
     val ProjectorUnionedVenue   = "projector_unioned_venue"
     val ProjectorCardHeld       = "projector_card_held"
     val ProjectorCardUnpublished = "projector_card_unpublished"
-    val ProjectorMemoUnvouched  = "projector_memo_unvouched"
     val CacheNotResident        = "cache_not_resident"
     val CacheSlotsDiffer        = "cache_slots_differ"
     val All: Seq[String] = Seq(ProjectorRowUnprojected, ProjectorTitleGroup, ProjectorTwoSlots, ProjectorVenueAppears,
-      ProjectorVenueVanishes, ProjectorUnionedVenue, ProjectorCardHeld, ProjectorCardUnpublished, ProjectorMemoUnvouched,
+      ProjectorVenueVanishes, ProjectorUnionedVenue, ProjectorCardHeld, ProjectorCardUnpublished,
       CacheNotResident, CacheSlotsDiffer, ChangeStreamFanout.NoPartHandler, ChangeStreamFanout.PartFailed)
   }
 
@@ -80,10 +79,13 @@ object ChangeStreamMetrics {
       val Declined       = "declined"
       /** The store cannot read venues alone. */
       val Unsupported    = "unsupported"
+      /** A listener was still not ready for the venues when the wait for it ran out. */
+      val WaitExpired    = "wait_expired"
     }
     /** Every (path, reason) pair, for pre-registering the series. */
     val Series: Seq[(String, String)] = Seq(Venues -> Reason.Applied) ++
-      Seq(Reason.NotShowtimes, Reason.TooManyVenues, Reason.Failing, Reason.VenueReadFailed, Reason.Declined, Reason.Unsupported).map(Film -> _)
+      Seq(Reason.NotShowtimes, Reason.TooManyVenues, Reason.Failing, Reason.VenueReadFailed, Reason.Declined, Reason.Unsupported,
+        Reason.WaitExpired).map(Film -> _)
   }
 
   object Op {

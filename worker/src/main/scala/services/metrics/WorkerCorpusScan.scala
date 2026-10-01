@@ -165,17 +165,24 @@ trait CorpusRowSampler {
  *  city and showtime SET only, so the row's ordering, listing keys and link are never built.
  *  `None` for a row not ready to project, or one that fails to — the rows the projector skips. */
 final class CorpusRow(val stored: StoredMovieRecord) {
-  private var partitioned: Option[(services.movies.TitleNormalizer, Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]])] = None
+  private var partitioned: Option[(services.movies.TitleNormalizer, Option[services.readmodel.ReadModelProjection.Partition], Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]])] = None
+
+  private def derived(normalizer: services.movies.TitleNormalizer) = partitioned match {
+    case Some((by, partition, cards)) if by eq normalizer => (partition, cards)
+    case _ =>
+      val partition = Option.when(stored.record.readyToProject)(
+        scala.util.Try(services.readmodel.ReadModelProjection.partition(stored, normalizer)).toOption).flatten
+      val cards = partition.flatMap(p => scala.util.Try(p.venuesAll).toOption)
+      partitioned = Some((normalizer, partition, cards))
+      (partition, cards)
+  }
+
+  /** The row's display-title partition, as `normalizer` folds its titles — `None` where [[venues]] is. */
+  def partition(normalizer: services.movies.TitleNormalizer): Option[services.readmodel.ReadModelProjection.Partition] =
+    derived(normalizer)._1
 
   /** The row's cards, each as its venues, as `normalizer` folds its titles. Shared only with a
    *  collector asking through the SAME normalizer — the wiring hands every collector of a country its one. */
   def venues(normalizer: services.movies.TitleNormalizer): Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]] =
-    partitioned match {
-      case Some((by, cards)) if by eq normalizer => cards
-      case _ =>
-        val cards = Option.when(stored.record.readyToProject)(
-          scala.util.Try(services.readmodel.ReadModelProjection.partition(stored, normalizer).venuesAll).toOption).flatten
-        partitioned = Some((normalizer, cards))
-        cards
-    }
+    derived(normalizer)._2
 }

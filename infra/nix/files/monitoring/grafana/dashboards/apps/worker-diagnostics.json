@@ -1546,7 +1546,7 @@
       "id": 55,
       "title": "Venue applies declined — which listener, and why",
       "interval": "1m",
-      "description": "Why a film's changed venues could not be applied alone and the film was re-read whole. projector_venue_appears/vanishes: a venue gaining its first or losing its last showtime. projector_row_unprojected: the row was not projected by this worker since boot. projector_unioned_venue: a venue whose row unions two slots. projector_card_held/unpublished: the first-publish gate. projector_memo_unvouched: rows seeded from the read model at boot. cache_not_resident / cache_slots_differ: the movie cache does not hold the film, or holds other slots at the venue.",
+      "description": "Why a film's changed venues could not be applied alone and the film was re-read whole. projector_venue_appears/vanishes: a venue gaining its first or losing its last showtime. projector_row_unprojected: a row neither the stream nor the corpus census has taught this worker since boot (until the census's first pass, a change waits for it instead). projector_unioned_venue: a venue whose row unions two slots. projector_card_held/unpublished: the first-publish gate. cache_not_resident / cache_slots_differ: the movie cache does not hold the film, or holds other slots at the venue.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

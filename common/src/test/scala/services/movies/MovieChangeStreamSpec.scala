@@ -106,7 +106,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     rereadRetryMillis:   Long                        = 20L,
     fence:               FilmWriteFence              = new FilmWriteFence(),
     debounce:            Option[MovieChangeStream.Debounce] = None,
-    readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None
+    readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
+    venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -122,7 +123,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     rereadRetryMillis   = rereadRetryMillis,
     decodeFailures      = decodeFailures,
     debounce            = debounce,
-    readVenues          = readVenues)
+    readVenues          = readVenues,
+    venueRetryMillis    = 20L,
+    venueWaitMillis     = venueWaitMillis)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -357,7 +360,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
 
   // A change confined to some venues' showtimes is applied from those venues alone when every
   // listener can take it — a wide film's other venues are never read — and whole otherwise.
-  private final class VenueWorld(declines: Boolean = false, venueRead: Boolean = true) {
+  private final class VenueWorld(declines: Boolean = false, venueRead: Boolean = true,
+                                 notYetFor: Int = 0, venueWaitMillis: Long = MovieChangeStream.VenueWaitMillis) {
     @volatile var ring: (String, () => Unit) => Unit = null
     val screenings = new InMemoryScreeningsRepository {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) = {
@@ -378,10 +382,12 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     }
     val acks   = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val under  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots), changeStreamMetrics = metrics,
+      venueWaitMillis = venueWaitMillis,
       reread     = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
       readVenues = Some((id, at) => { venueReads.incrementAndGet(); Option.when(venueRead)(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
     val handle = under.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (),
-      (_, _) => { venueApplies.incrementAndGet(); if (declines) VenueVerdict.Declined("spec") else VenueVerdict.Applied })
+      (_, _) => { val asked = venueApplies.incrementAndGet()
+        if (declines) VenueVerdict.Declined("spec") else if (asked <= notYetFor) VenueVerdict.NotYet else VenueVerdict.Applied })
     val venue  = models.KinoApollo
     def row(film: String, at: models.Cinema) = SlotKeyed.idOf(film, s"${at.displayName}${models.CinemaShowing.Separator}film")
     def settle(): Unit = eventually(under.applyBacklog shouldBe 0)
@@ -397,6 +403,43 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       rereads.get() shouldBe 0;        upserts.get() shouldBe 0
       import scala.jdk.CollectionConverters.*
       applies.asScala.toSet shouldBe Set("venues" -> "applied")
+    } finally { handle.close(); under.close() }
+  }
+
+  // After a boot the projector has still to learn each film; a change at its venues WAITS for it
+  // rather than re-reading the whole film.
+  it should "ask a listener not ready for the venues again, and apply them from the venues alone once it is" in {
+    val world = new VenueWorld(notYetFor = 3)
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a"))
+      eventually(acks.size shouldBe 1)
+      venueApplies.get() shouldBe 4; rereads.get() shouldBe 0; upserts.get() shouldBe 0
+      import scala.jdk.CollectionConverters.*
+      applies.asScala.toSeq shouldBe Seq("venues" -> "applied")
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "hold the change unacknowledged, and the stream unsettled, while it waits" in {
+    val world = new VenueWorld(notYetFor = Int.MaxValue)
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a"))
+      eventually(org.scalatest.concurrent.PatienceConfiguration.Timeout(org.scalatest.time.Span(5, org.scalatest.time.Seconds)))(venueApplies.get() should be >= 3)
+      acks.size shouldBe 0
+      under.held should be >= 1
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "re-read the film whole once the wait for a listener runs out" in {
+    val world = new VenueWorld(notYetFor = Int.MaxValue, venueWaitMillis = 200L)
+    import world.*
+    try {
+      ring(row("film|2024", venue), () => acks.add("a"))
+      eventually(org.scalatest.concurrent.PatienceConfiguration.Timeout(org.scalatest.time.Span(5, org.scalatest.time.Seconds)))(acks.size shouldBe 1)
+      rereads.get() shouldBe 1; upserts.get() shouldBe 1
+      import scala.jdk.CollectionConverters.*
+      applies.asScala.toSeq should contain("film" -> "wait_expired")
     } finally { handle.close(); under.close() }
   }
 

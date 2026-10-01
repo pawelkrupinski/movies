@@ -47,22 +47,23 @@ final class ChangeStreamFanout[A, V](name: String) extends Logging {
     catch { case exception: Throwable => logger.warn(s"$name change-stream apply failed: ${exception.getMessage}") }
   }
 
-  /** Offer every listener a part of the record; the reasons of those that declined it — empty only
-   *  when EVERY one applied it. A declined part obliges the caller to [[dispatchUpsert]] the whole
-   *  record — to every listener, the ones that applied the part included: a whole record is a
-   *  superset of any part of it. A listener that throws declines it. */
-  def dispatchPart(part: V): Seq[String] = {
-    val declined = Seq.newBuilder[String]
+  /** Offer every listener a part of the record; the verdicts of those that did not apply it — empty
+   *  only when EVERY one applied it. A declined part obliges the caller to [[dispatchUpsert]] the
+   *  whole record — to every listener, the ones that applied the part included: a whole record is
+   *  a superset of any part of it. One not ready for it yet ([[VenueVerdict.NotYet]]) is asked
+   *  again later. A listener that throws declines it. */
+  def dispatchPart(part: V): Seq[VenueVerdict] = {
+    val unapplied = Seq.newBuilder[VenueVerdict]
     listeners.forEach { l =>
       try l.onPart(part) match {
-        case VenueVerdict.Applied          => ()
-        case VenueVerdict.Declined(reason) => declined += reason
+        case VenueVerdict.Applied => ()
+        case other                => unapplied += other
       }
       catch { case exception: Throwable =>
-        declined += ChangeStreamFanout.PartFailed
+        unapplied += VenueVerdict.Declined(ChangeStreamFanout.PartFailed)
         logger.warn(s"$name change-stream part apply failed: ${exception.getMessage}") }
     }
-    declined.result()
+    unapplied.result()
   }
 
   def dispatchDelete(id: String): Unit = listeners.forEach { l =>

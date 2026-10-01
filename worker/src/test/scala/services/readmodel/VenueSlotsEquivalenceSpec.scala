@@ -73,6 +73,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         venue.onVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas)) match {
           case services.movies.VenueVerdict.Applied          => accepted += 1
           case services.movies.VenueVerdict.Declined(reason) => declined += 1; reasons += reason; venue.onMovieUpsert(now)
+          case services.movies.VenueVerdict.NotYet           => fail("a row projected above cannot be one still to learn")
         }
         withClue(s"round $round step $step: ") {
           venueRm.findAllMovies().toSet shouldBe wholeRm.findAllMovies().toSet
@@ -118,5 +119,70 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     }
     accepted shouldBe 1200
     declined shouldBe 0
+  }
+
+  // After a boot the projector knows only the read model's contents, not the rows they came from: it
+  // learns them from the corpus census's read, and a change at a film's venues waits until it has.
+  private final class Restart(seed: Long) {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val (beforeRm, afterRm) = (new InMemoryReadModelRepository(), new InMemoryReadModelRepository())
+    val rng    = new Random(seed)
+    var record = film(rng)
+    while (!record.data.exists { case (CinemaShowing(_, _), slot) => slot.showtimes.nonEmpty; case _ => false }) record = film(rng)
+    repository.upsert("Foo", Some(2024), record)
+    def row = repository.findAll().head
+    // the process before the restart projected it, into both read models
+    Seq(beforeRm, afterRm).foreach { rm => val p = projector(rm); p.onMovieUpsert(row); p.stop() }
+    val whole = projector(beforeRm)                          // a projector that keeps projecting whole
+    whole.onMovieUpsert(row)
+    val booted = projector(afterRm)                          // the restarted worker's
+    def cinema = record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty => c }.get
+    def change(at: models.Cinema): VenueSlots = {
+      record = record.copy(data = record.data.map {
+        case (s @ CinemaShowing(`at`, _), slot) => s -> slot.copy(showtimes = slot.showtimes.take(1) :+ times.last)
+        case other => other
+      })
+      repository.upsert("Foo", Some(2024), record)
+      whole.onMovieUpsert(row)
+      VenueSlots(row.id, Map(at -> record.data.toSeq.collect { case (s @ CinemaShowing(`at`, _), slot) => s -> slot }))
+    }
+  }
+
+  "The projector" should "learn a row from a census read, wait for it until then, and apply its venues alone after" in {
+    val world = new Restart(7)
+    import world.*
+    booted.learn(ReadModelProjection.partition(row, titleNormalizer)) shouldBe false   // before its seed: refused
+    booted.seedFromReadModel()
+    val venues = change(cinema)
+    booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.NotYet           // not learned yet: wait
+    // The census reads the source — already changed at this venue — so that venue's stored row stays
+    // unvouched; it is the one the change rewrites, so the apply needs nothing from it.
+    booted.learn(ReadModelProjection.partition(row, titleNormalizer)) shouldBe true
+    booted.learnedAll()
+    booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
+    afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
+    afterRm.findAllScreenings().toSet shouldBe beforeRm.findAllScreenings().toSet
+    booted.onVenueSlots(VenueSlots(FilmId("absent|2024"), venues.atCinemas)) shouldBe
+      services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
+    whole.stop(); booted.stop()
+  }
+
+  it should "apply a change at one venue of a card whose other row drifted, leaving that row to the content check" in {
+    val world = new Restart(11)
+    import world.*
+    val drifted = afterRm.findAllScreenings().head
+    val stale   = drifted.copy(showtimes = Seq(times.head))
+    afterRm.upsertScreening(stale)                                                       // the read model drifted
+    booted.seedFromReadModel()
+    booted.learn(ReadModelProjection.partition(row, titleNormalizer))
+    booted.learnedAll()
+    record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty && c.displayName != drifted.cinema => c }
+      .foreach { at =>
+        booted.onVenueSlots(change(at)) shouldBe services.movies.VenueVerdict.Applied
+        afterRm.findAllScreenings().find(_._id == drifted._id) shouldBe Some(stale)        // untouched: the content check's
+        afterRm.findAllScreenings().filter(_.cinema == at.displayName).toSet shouldBe
+          beforeRm.findAllScreenings().filter(_.cinema == at.displayName).toSet
+      }
+    whole.stop(); booted.stop()
   }
 }

@@ -137,6 +137,11 @@ class ReadModelProjector(
   // Each projected row's display-title groups and the card each files its venues under, from its last
   // projection: what lets [[onVenueSlots]] place a venue without the rest of the film. A few entries a row.
   private val lastGroups     = scala.collection.mutable.Map.empty[String, RowGroups]
+  // Whether a census pass has offered every row to [[learn]]: before it, a row not projected yet is one
+  // it has still to reach, and a change at its venues waits for it rather than re-reading it.
+  @volatile private var learned = false
+  // Whether the boot seed has run: [[learn]] vouches venue rows against it.
+  @volatile private var seeded  = false
   // Cards published by an expired hold that still have no share card: `shareCardPending` on their
   // documents, and seeded from them at boot, so a later projection keeps the mark until the card lands.
   private val pendingCards   = scala.collection.mutable.Set.empty[String]
@@ -185,29 +190,37 @@ class ReadModelProjector(
    *    - a venue holds two slots of the film (its row unions them in the record's own slot order);
    *    - a venue would appear or vanish (a card's first screening gates its publication, and a card's
    *      screenings decide whether it is served at all);
-   *    - a card is held or unpublished, or its rows are remembered without the inputs they were built
-   *      from (seeded from the read model at boot).
+   *    - a card is held or unpublished.
    *  Card metadata never reads showtimes ([[ReadModelProjection.metadataHash]]), so a showtime-only
    *  change leaves every card as it is. */
   def onVenueSlots(venues: services.movies.VenueSlots): services.movies.VenueVerdict = lock.synchronized {
     val rowId = venues.filmId.value
     planVenues(rowId, venues) match {
+      case Left(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected) if !learned =>
+        services.movies.VenueVerdict.NotYet
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
         appliedSinceSweep.foreach(_ += rowId)
         byCard.foreach { case (card, changed) =>
-          val replaced = changed.map(venue => venue._id -> venue).toMap
-          val next = lastScreenings.of(card).toSeq.map { case (id, written) =>
-            // Every remembered row carries its input — `planVenues` declines a card with one that does not.
-            val input = written.input.get
-            replaced.get(id).fold(PlannedScreening(id, input, None)) { venue =>
-              val moved = venue.inputHash
-              PlannedScreening(id, moved, if (moved == input) None else Some(venue.screening))
+          // Only the changed venues' rows: every other row of the card is carried as written — the
+          // whole-film projection would plan it unbuilt from the same inputs (and a row whose stored
+          // content drifted is the content check's, as it is under any venue apply).
+          val written  = lastScreenings.of(card)
+          var upserted = 0
+          val updated  = changed.map { venue =>
+            val input = venue.inputHash
+            val prior = written(venue._id) // present: `planVenues` declines a venue appearing
+            if (prior.input.contains(input)) venue._id -> prior
+            else {
+              val screening = venue.screening
+              val output    = screening.##
+              if (output != prior.output) { writer.upsertScreening(screening); upserted += 1 }
+              venue._id -> WrittenScreening(output, Some(input))
             }
           }
-          val rebuilt = next.count(_.built.isDefined)
-          metrics.recordVenueProjection(rebuilt = rebuilt, reused = next.size - rebuilt)
-          diffScreenings(card, next)
+          if (upserted > 0) metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
+          metrics.recordVenueProjection(rebuilt = changed.size, reused = written.size - changed.size)
+          lastScreenings.update(card, written ++ updated)
         }
         if (held.nonEmpty) releaseExpired()
         services.movies.VenueVerdict.Applied
@@ -246,7 +259,6 @@ class ReadModelProjector(
       byCard.keys.foreach { card =>
         if (held.contains(card)) refuse(Why.ProjectorCardHeld)
         if (!lastMovie.contains(card)) refuse(Why.ProjectorCardUnpublished)
-        if (written(card).valuesIterator.exists(_.input.isEmpty)) refuse(Why.ProjectorMemoUnvouched)
       }
       Right(byCard)
     }
@@ -964,6 +976,7 @@ class ReadModelProjector(
       val byFilm = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.Builder[(String, WrittenScreening), Map[String, WrittenScreening]]]
       val complete = reader.foreachScreening(s => byFilm.getOrElseUpdate(s.filmId, Map.newBuilder) += s._id -> WrittenScreening(s.##, input = None))
       if (complete) byFilm.foreach { case (fid, rows) => lastScreenings.update(fid, rows.result()) }
+      seeded = true
     }
 
   def start(): Unit = { prepare(); watch() }
@@ -997,6 +1010,39 @@ class ReadModelProjector(
       s"no periodic reproject (retired); change-stream watch " +
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
+
+  /** Learn a row the change stream has not projected since this worker booted, from a read some
+   *  other pass already made — the corpus census, every film with its showtimes — without writing:
+   *  its title groups, and the inputs of each venue row whose stored content is exactly what the row
+   *  projects to. That is what [[onVenueSlots]] needs to apply a change at a few of its venues from
+   *  those venues alone; the boot seed knows only the rows' contents. Without it each film's first
+   *  change after every deploy re-read the whole film (`projector_row_unprojected`: 78 of the US's 78
+   *  declines in half an hour, 2026-10-01). A venue row whose content differs is drift and stays
+   *  unvouched — a change at its card is re-read whole, and the content check rewrites it. A row the
+   *  stream has projected meanwhile is left alone: it knows better. */
+  def learn(partition: ReadModelProjection.Partition): Boolean = lock.synchronized {
+    val rowId = partition.stored.id.value
+    // Before the seed, the memo has no row to vouch: learning now would mark the row known with every
+    // venue unvouched. Refused, so the caller does not count the pass as having offered every row.
+    if (seeded && partition.stored.record.readyToProject && !lastGroups.contains(rowId)) {
+      val cards = partition.filmIds.zip(partition.venuesAll)
+      cards.foreach { case (card, venues) =>
+        val written = lastScreenings.of(card)
+        val vouched = venues.flatMap { venue =>
+          written.get(venue._id).filter(row => row.input.isEmpty && row.output == venue.screening.##)
+            .map(row => venue._id -> row.copy(input = Some(venue.inputHash)))
+        }
+        if (vouched.nonEmpty) lastScreenings.update(card, written ++ vouched)
+      }
+      lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
+        cards.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
+    }
+    seeded
+  }
+
+  /** A census pass has offered [[learn]] every row: one the projector still does not know is
+   *  declined from now on, not waited for. */
+  def learnedAll(): Unit = learned = true
 
   /** Project, at boot, every ready row one of whose cards is missing — before the
    *  first prune can delete the card it has under an old id.
