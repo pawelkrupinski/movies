@@ -994,6 +994,8 @@ object IdentityMeasures {
   private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
 
   private val BillJoin = """\s\+\s""".r
+  /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? */
+  def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(t).isDefined)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
    *  each searched on its own: the database has no record of the bill, so without them the only
    *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill

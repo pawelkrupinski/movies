@@ -23,7 +23,16 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   // The two listings' own evidence apart: the seasons their titles name, or the learned
   // "listing-listing" scope when they compare a fact both published.
   private def listingsApart(first: EvidenceNode, second: EvidenceNode): Option[String] = {
-    val (firstListing, secondListing) = (first.evidence.published, second.evidence.published)
+    // Two spellings the same-search-form must-link joins ("Kino Konesera: Róża", "FILMOWY KLUB SENIORA I
+    // SENIORKI: RÓŻA") name their film by that form; their programmes are not what the learned scope
+    // weighs — compared as decorated titles they only overlapped, and the cut kept them apart on that
+    // alone. Their facts are compared as ever.
+    val form = searchForm(first.evidence.cleanTitle)
+    // A double bill shares its first film's form and is neither film ("The Gruffalo + The Gruffalo's Child").
+    val sameForm = form.nonEmpty && form == searchForm(second.evidence.cleanTitle) && !titlesBeside(first, form) && !titlesBeside(second, form) &&
+      !IdentityMeasures.billsTwoWorks(first.evidence.published) && !IdentityMeasures.billsTwoWorks(second.evidence.published)
+    def titled(l: IdentityMeasures.Listing) = if (sameForm) l.copy(title = form, rawTitle = None) else l
+    val (firstListing, secondListing) = (titled(first.evidence.published), titled(second.evidence.published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
     ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
       .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
