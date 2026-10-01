@@ -4,15 +4,16 @@
 # The verdicts are the `github-release` rows of test/resources/retry-classification.json;
 # scripts/ci/gh-release-test.sh holds this script to that table row by row.
 #
-# RETRIED (transient): 409 (a concurrent write to the same release/asset), 5xx, and a 403 that
-# is GitHub's secondary rate limit. FAILS FAST (permanent): `HTTP 403: Resource not accessible
+# RETRIED (transient): 409 (a concurrent write to the same release/asset), 5xx, a 404 on an
+# asset's own URL (`upload --clobber` racing another upload of it), and a 403 that is GitHub's
+# secondary rate limit. FAILS FAST (permanent): `HTTP 403: Resource not accessible
 # by integration` — the token was refused this request. It used to be retried as "transient",
 # and on 2026-09-24 (run 36018126285, commit 9eee5d666) four attempts over 40s met the identical
 # 403 on `release edit` of 382906859: within a run it never cleared, so retrying only delayed a
 # red build. That run was not racing another (the workflow's concurrency group serialises them;
 # the previous run's publish ended 11 min earlier), the release was neither draft nor immutable,
 # and its token showed `Contents: write` exactly like the next run's, which published fine.
-# Everything else (404 / `release not found`, 422) is an answer; retrying it would only delay the
+# Everything else (a 404 on the release / `release not found`, 422) is an answer; retrying it would only delay the
 # caller acting on it.
 #
 # Usage: gh-release.sh <view|edit|create|upload|...> <args...>
@@ -29,6 +30,9 @@ trap 'rm -f "$err"' EXIT
 # transient | permanent, for gh's stderr in "$err".
 classify() {
   if grep -Eq 'HTTP (409|5[0-9][0-9])' "$err"; then echo transient
+  # `upload --clobber` deletes the asset it replaces; another upload deleting it first answers 404
+  # on that asset's URL — a race, unlike a 404 on the release itself (run 36895904359).
+  elif grep -Eq 'HTTP 404.*/releases/assets/[0-9]+' "$err"; then echo transient
   elif grep -q 'HTTP 403' "$err" && grep -qi 'secondary rate limit' "$err"; then echo transient
   else echo permanent
   fi

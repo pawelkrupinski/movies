@@ -43,6 +43,7 @@ stderr_for() {
       echo 'HTTP 403: Resource not accessible by integration (https://api.github.com/repos/o/r/releases/1)' ;;
     secondary-rate-limit) echo 'HTTP 403: You have exceeded a secondary rate limit. Please wait a few minutes before you try again.' ;;
     release-not-found)    echo 'release not found' ;;
+    asset-vanished)       echo 'HTTP 404: Not Found (https://api.github.com/repos/o/r/releases/assets/603694820)' ;;
     http:*)               echo "HTTP ${1#http:}: Something (https://api.github.com/repos/o/r/releases/1)" ;;
     *)                    echo "no sample stderr for '$1'" >&2; return 1 ;;
   esac
