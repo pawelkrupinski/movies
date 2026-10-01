@@ -109,23 +109,27 @@ the projection's own state. No manual reseed is needed in either direction.
 ## 6. What blocks each country today (2026-10-01)
 
 Offline: CI measurement `Identity measure` run 36759100370 (main c90f2363e + 78b6f082c, recording
-36691290304), the full corpora; labelled coverage and accuracy as each corpus's report gives them
-for every accepted decision. Production: the workers' metrics at 2026-09-30 ~23:00 UTC.
+36691290304), the full corpora: each report's labelled cells (accuracy and recall on the labelled
+listings, gate 5) and, apart from them, its coverage of ALL listings. Production: the workers'
+metrics at 2026-09-30 ~23:00 UTC.
 
 | | ES | DE | UK | US | PL |
 |---|---|---|---|---|---|
+| labelled: LOSS (coverage + wrong) / WIN, of | 0 / 0 of 1,114 | 2 / 2 of 5,631 | 0 / 0 of 3,460 | 0 / 105 of 20,698 | 0 / 0 of 1,136 |
 | labelled accuracy, resolver / pipeline | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 99.6% | 100.0 / 100.0% |
-| labelled coverage, resolver / pipeline | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
-| gate 5 accuracy + coverage (−0.5 pt) | met | met | met | met | **not met** (−1.7 pt) |
+| gate 5 accuracy + labelled recall (−0.5 pt) | met | met | met | met | met |
+| all-listing coverage, resolver / pipeline (not a gate) | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
 | shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
 | TMDB store filled (4): fill `deferred` | 0 — met | 0 — met | 0 — met | 0 — met | 0 — met |
 | shadow `identical` (prod) | 226/241 = 93.8% | 1,725/1,797 = 96.0% | 1,429/1,542 = 92.7% | 2,117/2,255 = 93.9% | 889/1,252 = 71.0% |
 
 The earliest 7-day shadow-read windows close ~Oct 3 (ES/DE) and ~Oct 4 (PL/UK), ~Oct 6 (US). Every
 country's lookup fill has caught up (`deferred` 0, the last round asking 0–278), so `identical` now
-moves with the resolver's rules and the corpus, not with the fill. PL's coverage gap is mostly
-listings the referee cannot verify either way — double bills (54, unmatched by decision), titles TMDB
-holds no Polish title for (Lalka/Dolly, Superfutrzak, Róża) — itemised in the identity progress notes.
+moves with the resolver's rules and the corpus, not with the fill. PL's all-listing coverage trails
+the pipeline's by 1.7 points, on listings no label reaches: double bills (54, unmatched by decision)
+and titles TMDB holds no Polish title for (Lalka/Dolly, Superfutrzak, Róża) — itemised in the identity
+progress notes. Its 344 unlabelled disagreement cells adjudicate pipeline-right 35, resolver-right 26,
+same-film 71, undecidable 201.
 
 **PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
 pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
