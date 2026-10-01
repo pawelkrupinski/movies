@@ -477,6 +477,24 @@ tests:
               summary: "/ on k3s-worker-1 is on course to fill within 3 days"
               description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty this filesystem within three days (or the six hours' alone within one), so it is not the deploy-day image pulls the four-hourly container-image collection takes back. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale` firing? -- and pod logs)."
 
+  # ONE NIX-STORE STEP IS NOT A RUNAWAY -- REPLAYED FROM THE REAL SERIES. monitoring-1's `/` every
+  # ten minutes from 2026-09-26T08:00Z to 09-27T13:00Z (rounded to 10 MB): a day of near-flat drift
+  # at ~30G free on a 40G root, then a nixpkgs bump that put 4.6 GB into the store at 09-27
+  # 07:40-08:00Z, then flat again at ~25.4G. The six-hour fit through that step emptied the disk
+  # within one day, and the rule warned 10:41-12:21Z. The eval times are inside that episode
+  # (10:50Z and 12:00Z); each three-hour half of the six hours is flat on one side of the step.
+  - interval: 10m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.11:9100",job="node"}'
+        values: '30430000000x1 30390000000x1 30350000000x1 30310000000 30300000000x5 30250000000x1 30210000000x4 30350000000 30310000000x1 30300000000 30260000000x2 30220000000x1 30180000000x10 30140000000x4 30130000000x3 30120000000x19 30080000000x2 30070000000x12 30060000000x1 30070000000x10 30060000000x3 30290000000x8 30280000000x6 30270000000 30300000000 30640000000x8 30630000000x9 30610000000 30630000000 30620000000 30610000000 27240000000 26000000000 25650000000 25540000000 25530000000 25490000000 25450000000x4 25440000000x3 25430000000x1 25390000000x4 25350000000x3 25340000000x5'
+    alert_rule_test:
+      - eval_time: 26h50m
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts: []
+      - eval_time: 28h
+        alertname: FilesystemWillFillWithin3Days
+        exp_alerts: []
+
   # THE LEVEL, ON THE DISK THAT HOLDS THE SHARE CARDS. 14% free on k3s-worker-1's root -- under the
   # 15% the share-card plan asked for -- is already past `FilesystemSpaceLow`'s 20%, so the existing
   # rule is that alert and no second level rule was added. Pinned here for this mount so a later

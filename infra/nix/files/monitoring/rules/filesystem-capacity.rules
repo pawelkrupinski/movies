@@ -221,6 +221,23 @@ groups:
       # as before; no deploy day has come near that (same replay: one ten-minute episode, Mongo,
       # 08-29).
       #
+      # A SINGLE STEP IS NOT A SLOPE, which is what the two `unless` clauses say. On 2026-09-27 a
+      # nixpkgs bump put 4.6 GB into monitoring-1's nix store inside twenty minutes (07:40-08:00Z,
+      # 30.6G -> 26.0G free on a 40G root) and nothing after it. A least-squares line through any
+      # window holding that step is steep: the six-hour fit projected 25-31G gone within ONE day
+      # against 25G free, so the fast clause warned 10:41-12:21Z about a disk that was not moving,
+      # without needing the day-long fit (which read 5-10G in three days). That is why the guard
+      # wraps both clauses. A trend falls in BOTH halves of the six hours; a step falls in one, and
+      # the other half is flat. So each three-hour half's slope must be at least a quarter of the
+      # six-hour slope, or the projection is a step and is withdrawn. On the step those halves read
+      # 0.002-0.07 of the six-hour slope; on the real falls they read 0.5-1.6 (k3s-worker-1's image
+      # pulls on 09-29/30) and 0.3-1.8 (mongo-1's data growth on 09-28). Replayed over the 60 days
+      # to 2026-10-01 the step is the only episode removed (six to five); mongo-1 09-28 is kept but
+      # shortened from 3h to 1h30m, because Mongo's own preallocation swings make one half read
+      # flat at either end of it. `unless` rather than `and` so a half with no samples -- a
+      # filesystem younger than six hours, like mongo-1's new data volume on 08-29 -- withdraws
+      # nothing.
+      #
       # RESTART-SAFE BY CONSTRUCTION: `predict_linear` fits whatever samples the window holds, so a
       # node_exporter restart's few missing scrapes leave both fits, and the one-hour hold, intact
       # (filesystem-capacity.yml has the case).
@@ -228,6 +245,7 @@ groups:
       - alert: FilesystemWillFillWithin3Days
         expr: >-
           (
+            (
               predict_linear(
                 node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
                 3 * 24 * 3600) < 0
@@ -240,6 +258,13 @@ groups:
             predict_linear(
               node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
               24 * 3600) < 0
+          )
+          unless
+            deriv(node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[3h])
+              >= 0.25 * deriv(node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h])
+          unless
+            deriv(node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[3h] offset 3h)
+              >= 0.25 * deriv(node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h])
         # AN HOUR, so a single bulk write -- an image pull, a restore -- has to keep going at that
         # rate for an hour before it warns, while a real runaway still leaves most of three days.
         for: 1h
