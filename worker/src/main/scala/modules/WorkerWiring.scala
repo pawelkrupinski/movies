@@ -161,7 +161,8 @@ class WorkerWiring(
         settle     = WorkerWiring.IdentityModelSettle,
         scheduler  = identityModelScheduler,
         metrics    = workerMetrics.identityModel.forCountry(country.code),
-        reading    = () => tracked.fold("")(_.render))
+        reading    = () => tracked.fold("")(_.render),
+        beforeDrain = () => venueDetailSlots.settle())
       identityTmdbStore.foreach(_.onChanged(model.observed))
       model
     }
@@ -215,8 +216,8 @@ class WorkerWiring(
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
   def identityShadowTick(): Unit = shadowIdentityReaper.foreach { reaper =>
-    // The pipeline moves slots between its rows on its own schedule; a page that became answerable
-    // that way is the model's to re-ask before the tick reads it.
+    // The pipeline moves slots between its rows on its own schedule (staging, which the cache's
+    // version does not see); marked stale, the tick's drain re-indexes them before the model reads.
     venueDetailSlots.refresh()
     reaper.tickQuietly()
     shadowLookupFill.foreach(_.start())

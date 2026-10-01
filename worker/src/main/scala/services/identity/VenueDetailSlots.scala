@@ -23,7 +23,8 @@ import services.tasks.{EnrichDetailsTasks, StagingTaskKeys}
  *
  * The slot answers with the listing's values merged with the page's (listing values win, the page
  * fills gaps) — exactly the evidence the model merges from a listing and its page, so the two agree.
- * Indexed by (enricher group, page) over every row, rebuilt when the cache or an announced page moved.
+ * Indexed by (enricher group, page) over every row, rebuilt at the model's settle when the cache or an
+ * announced page moved since.
  */
 final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository, freshness: FreshnessStore,
                              enrichers: Seq[DetailEnricher], changed: String => Unit = _ => ()) {
@@ -34,18 +35,27 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
   /** What the enrichment said about `page` for `enricher`'s group: `None` while it has not asked;
    *  `Some(None)` when it asked and the page had nothing (gone); `Some(Some(facts))` otherwise. */
   def answer(enricher: DetailEnricher, page: String): Option[Option[FilmDetail]] =
-    answerOf(index.getOrElse((enricher.detailGroup, page), Nil))
+    answerOf(current.getOrElse((enricher.detailGroup, page), Nil))
 
-  /** Rebuild now, and report (`changed`, the page's [[keyOf]]) every page whose answer differs from the
-   *  last build's — fetched, found gone, or put on a row the slots read by a projection: the model
-   *  re-asks exactly those. The enrichment's announcements, each projection's writes and each shadow
-   *  tick call it. The first build is the baseline and reports nothing. */
-  def refresh(): Unit = synchronized { dirty = true; index; () }
+  /** Mark the index stale: a page was read, or a projection moved rows. Cheap by design — the
+   *  enrichment announces every page it reads, on every worker, and a rebuild scans every cached film
+   *  and every staged row — so the rebuild waits for [[settle]]. */
+  def refresh(): Unit = { dirty = true }
+
+  /** Rebuild if anything moved since the last build, and report (`changed`, the page's [[keyOf]])
+   *  every page whose answer differs from it — fetched, found gone, or put on a row the slots read by a
+   *  projection: the model re-asks exactly those. The model calls it before each drain, so what was
+   *  announced reaches the batch that re-resolves it. The first build is the baseline and reports
+   *  nothing. */
+  def settle(): Unit = { index; () }
 
   @volatile private var dirty                     = true
   @volatile private var builtAt: Option[java.time.Instant] = None
   @volatile private var built: Map[(String, String), Seq[Entry]] = Map.empty
   private var answered: Option[Map[(String, String), Option[Option[FilmDetail]]]] = None
+
+  /** The last build — answers between settles stay those the model was last told of — or the first. */
+  private def current: Map[(String, String), Seq[Entry]] = if (answered.isEmpty) index else built
 
   private def index: Map[(String, String), Seq[Entry]] = synchronized {
     val version = cache.lastModified

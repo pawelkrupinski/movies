@@ -52,7 +52,10 @@ final class IdentityModelService(
   scheduler:  ScheduledExecutorService,
   metrics:    IdentityModelMetrics = IdentityModelMetrics.Silent,
   // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
-  reading:    () => String = () => ""
+  reading:    () => String = () => "",
+  /** Run on the model's thread before each drain: what turns queued announcements into observed keys
+   *  (`VenueDetailSlots.settle`), so the drain that follows takes them in. */
+  beforeDrain: () => Unit = () => ()
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -106,6 +109,7 @@ final class IdentityModelService(
 
   /** Drain what has queued, on the calling thread — the scheduler's, or a test's. */
   def drain(): Option[ModelBatch] = model.flatMap { engine =>
+    beforeDrain()
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val keys    = observations.asScala.toSeq.filter(observations.remove)
     Option.when(scraped.nonEmpty || keys.nonEmpty) {

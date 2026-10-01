@@ -35,7 +35,10 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
   private final class World(enricher: FakeDetailEnricher, others: FakeDetailEnricher*) {
     val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
       normalizer = titleNormalizer, clock = clock)
-    val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    var scans     = 0
+    val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer) {
+      override def findAll() = { scans += 1; super.findAll() }
+    }
     val freshness = new InMemoryFreshnessStore
     val bus       = new RecordingEventBus
     val reported  = scala.collection.mutable.ArrayBuffer.empty[String]
@@ -52,7 +55,21 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       handler.handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
         EnrichDetailsTasks.payload(enricher, key, Page), attempts = 1))
       slots.refresh()
+      slots.settle()
     }
+  }
+
+  // Every page the enrichment reads is announced, on every worker; a rebuild per announcement scanned
+  // the whole cache and staging each time, and stretched a UK recording's boot from 5 to 62 minutes
+  // (Record scrape fixtures, run 36782995416). An announcement only marks the slots stale.
+  "Announced pages" should "be indexed once, at the model's next settle, not once per announcement" in {
+    val world = new World(new FakeDetailEnricher(KinoApollo, Group))
+    world.slots.settle()
+    val before = world.scans
+    (1 to 50).foreach(_ => world.slots.refresh())
+    world.scans shouldBe before
+    world.slots.settle()
+    world.scans shouldBe before + 1
   }
 
   "A venue's detail" should "be a gap until the pipeline's enrichment has asked its page" in {
@@ -83,7 +100,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     val world    = new World(enricher)
     val slot     = SourceData(title = Some("Arco"), filmUrl = Some("http://arco"), director = Seq("Ugo Bienvenu"), releaseYear = Some(2025))
     world.staging.upsert(KinoApollo, "Arco", None, MovieRecord(data = Map(KinoApollo -> slot)))
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.slots.answer(enricher, "http://arco") shouldBe None
     world.freshness.markFresh(StagingTaskKeys.detailKey(titleNormalizer.sanitize("Arco"), KinoApollo.displayName),
       FreshnessKind.DetailEnrich, clock.instant())
@@ -99,7 +116,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     val merged = world.cache.get(world.cache.keyOf("Dune", None)).get
     world.cache.put(world.cache.keyOf("Dune: Part One", Some(2021)), merged)
     world.cache.invalidate(world.cache.keyOf("Dune", None))
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.slots.answer(enricher, Page).flatten.map(_.director) shouldBe Some(Seq("Denis Villeneuve"))
   }
 
@@ -110,12 +127,12 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
     val world    = new World(enricher)
     world.freshness.markFresh(EnrichDetailsTasks.pageRead(Group, "http://arco"), FreshnessKind.DetailEnrich, clock.instant())
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.reported shouldBe empty                                          // the first build is the baseline
     world.slots.answer(enricher, "http://arco") shouldBe None               // stamped, but on no row the slots read
     world.cache.put(world.cache.keyOf("Arco", None), MovieRecord(data = Map(KinoApollo -> SourceData(filmUrl = Some("http://arco"),
       director = Seq("Ugo Bienvenu")))))
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.reported.toSeq shouldBe Seq(VenueDetailSlots.keyOf(Group, "http://arco"))
     world.slots.answer(enricher, "http://arco").flatten.map(_.director) shouldBe Some(Seq("Ugo Bienvenu"))
   }
@@ -130,7 +147,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       CinemaCityChain       -> SourceData(director = Seq("Maciej Kawalski")))))
     world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
       FreshnessKind.DetailEnrich, clock.instant())
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.slots.answer(chain, "http://cc/lalka").flatten.map(_.director) shouldBe Some(Seq("Maciej Kawalski"))
   }
 
@@ -144,7 +161,7 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       CinemaCityChain       -> SourceData(director = Seq("Rod Blackhurst")))))
     world.freshness.markFresh(EnrichDetailsTasks.readMarker(EnrichDetailsTasks.dedupKey("cinema-city", key)),
       FreshnessKind.DetailEnrich, clock.instant())
-    world.slots.refresh()
+    world.slots.refresh(); world.slots.settle()
     world.slots.answer(chain, "http://cc/lalka") shouldBe None
     world.slots.answer(chain, "http://cc/ladies-night-lalka") shouldBe None
   }
