@@ -15,9 +15,11 @@ composition root (`modules.wiring.IdentityCutoverWiring`). For a named country:
 | a finished scrape | `MovieCache.recordCinemaScrape` → `ScrapeLanding` (divert, redirect, re-key, prune) | `IdentityListingIntake`: the scrape-health guards decide the venue's ACCEPTED listing (`identity_listings`) |
 | identity | staging fold, settle (`FilmCanonicalizer`, `MixedFilmSplitter`, `collapseCluster`, `settleResolved`), `UnresolvedTmdbReaper` concluding | `IdentityProjection` every `KINOWO_IDENTITY_PROJECTION_SECONDS` (300): resolve all families, ids by overlap through `identity_film_ids`, write the films that changed, retire the ids nothing overlaps |
 | TMDB details of a film | the resolve writes them | fetched BY ID (`MovieService.withFilmDetails`) for a film new to its record |
-| queued `EnrichDetails` / `ResolveTmdb` / `RefreshAllTmdb` / `Staging*` tasks | run | completed unrun (`CutoverTaskHandlers`) |
-| detail, unresolved-TMDB and staging reapers | started | not started |
-| lookups the resolver asks | — | observation store first, the live service for a gap (filed by the capture, so asked once per observation lifetime) |
+| queued `ResolveTmdb` / `RefreshAllTmdb` / `Staging*` tasks | run | completed unrun (`CutoverTaskHandlers`) |
+| `EnrichDetails` (a venue's detail page) | runs, then resolves on `MovieDetailsComplete` | runs — the page is source data the model reads — without that resolve |
+| unresolved-TMDB and staging reapers | started | not started (the detail reaper runs on both paths) |
+| TMDB / IMDb lookups the resolver asks | — | the normalized store first (`StoredTmdbLookups` over `TmdbStore`), the live service only for what it lacks (`StoredFirstLookups`), filed back into the store — so a take-up reads the store rather than asking every question again |
+| a listing's venue details (director, runtime, original title) | — | the pipeline's enriched slots (`VenueDetailLookups` over `VenueDetailSlots`); a chain's shared slot answers a page only when its row names one |
 
 Unchanged either way: `movies` / `movie_slots` / `screenings` keep their shape (slots still carry
 `listingKey`), `ReadModelProjector`, every rating / IMDb-id / share-card enrichment keyed by the
@@ -33,14 +35,19 @@ film, the web tier.
    fold-hidden listings of §16.5 excepted; they are the projection's to fix, one slot per listing).
 3. **The FilmId map is seeded** (`scripts.FilmIdCounterSeed --apply`; done 2026-09-26 for all five).
 4. **The model's TMDB store is filled**: `KINOWO_IDENTITY_SHADOW_LOOKUPS=true` with the shadow run
-   until its gaps settle (`ShadowLookupFill`'s deferred count near 0), so the cut-over projection's
-   lookups are answered from the normalized store (`TmdbStore`) and it asks TMDB live only on a gap.
+   until its gaps settle — `kinowo_worker_identity_shadow_lookups{outcome="deferred"}` at 0 and the
+   round's `asked` small — so the cut-over projection's lookups are answered from the normalized store
+   (`TmdbStore`) and it asks TMDB live only on a gap. Venue details need no gate of their own: the
+   detail reaper fills `VenueDetailSlots` on both paths, and the shadow run already reads them.
 5. **The no-worse gate** from the combined measurement (§15.5, §15.7, §17.3), re-run on a recording
    no older than a week, on the country's full corpus:
    - 0 cannot-link violations, 0 order variants;
    - accuracy of matched ≥ the pipeline's, labelled recall ≥ the pipeline's − 0.5 points;
    - the shadow run's `identical` ≥ 97% of films (`kinowo_worker_identity_shadow_films`) for 7 days;
    - `IdentityCutoverIntegrationSpec` green on the country's hard clusters (P1–P4, ids, rollback);
+   - the country's cut-over convergence leg green: judged against production's SHADOW run
+     (`ShadowCoverage` in `prod-coverage-<cc>.json`, since 88052dca8), the pipeline's coverage band
+     reported only — a faithful new model is not failed for differing from the old one;
    - the seeding review's "split" + "fresh (film went elsewhere)" ≤ 1% of films (§16.3).
 
 Order: **ES → DE → UK → US → PL**, each only after the previous one has held §10's phase-3
@@ -99,23 +106,26 @@ old path again, over the projection's rows:
 Rollback is data-safe at any time: showtimes are re-derived from the scrapes, never stored only in
 the projection's own state. No manual reseed is needed in either direction.
 
-## 6. What blocks each country today (2026-09-28)
+## 6. What blocks each country today (2026-10-01)
 
-Offline: CI measurement `Identity measure` run 36352075806 (main 5525862f2, the pinned recordings
-the convergence legs replay). Production: the workers' shadow at 2026-09-28 ~00:00 UTC.
+Offline: CI measurement `Identity measure` run 36759100370 (main c90f2363e + 78b6f082c, recording
+36691290304), the full corpora; labelled coverage and accuracy as each corpus's report gives them
+for every accepted decision. Production: the workers' metrics at 2026-09-30 ~23:00 UTC.
 
 | | ES | DE | UK | US | PL |
 |---|---|---|---|---|---|
-| labelled: wrong / coverage loss / win (vs pipeline) | 0 / 0 / 0 of 1,176 | 0 / 2 / 2 of 6,153 | 0 / 0 / 0 of 3,398 | 0 / 16 / 91 of 21,497 | **9** / 1 / 0 of 1,409 (Lalka) |
-| gate 5 accuracy + recall (−0.5 pt) | met | met | met | met | **not met** (−0.64 pt) |
-| shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 499/499 | 500/500 |
-| capture (4) | on | on | on | on | on |
-| shadow `identical` (prod) | 227/240 = 94.6% | 1,581/1,725 = 91.7% | 1,240/1,509 = 82.2% | 1,914/2,237 = 85.6% | 759/1,204 = 63.0% |
-| unobserved lookups (prod) | 2 | 32,850 | 33,519 | 39,004 | 11,283 |
+| labelled accuracy, resolver / pipeline | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 100.0% | 100.0 / 99.6% | 100.0 / 100.0% |
+| labelled coverage, resolver / pipeline | 99.6 / 99.3% | 99.3 / 98.0% | 97.5 / 87.9% | 98.0 / 93.6% | 91.1 / 92.8% |
+| gate 5 accuracy + coverage (−0.5 pt) | met | met | met | met | **not met** (−1.7 pt) |
+| shadow read (1–2) | 500/500 agree | 500/500 | 500/500 | 500/500 | 500/500 |
+| TMDB store filled (4): fill `deferred` | 0 — met | 0 — met | 0 — met | 0 — met | 0 — met |
+| shadow `identical` (prod) | 226/241 = 93.8% | 1,725/1,797 = 96.0% | 1,429/1,542 = 92.7% | 2,117/2,255 = 93.9% | 889/1,252 = 71.0% |
 
-The earliest 7-day shadow-read windows close ~Oct 3 (ES/DE/US) and ~Oct 4 (PL/UK); 8 days of
-capture ~Oct 4–5. The lookup fill (300/min since gitops fdf9418; per-host back-off since
-af024dd8d) is still draining DE/UK/US/PL; their `identical` rises as it does.
+The earliest 7-day shadow-read windows close ~Oct 3 (ES/DE) and ~Oct 4 (PL/UK), ~Oct 6 (US). Every
+country's lookup fill has caught up (`deferred` 0, the last round asking 0–278), so `identical` now
+moves with the resolver's rules and the corpus, not with the fill. PL's coverage gap is mostly
+listings the referee cannot verify either way — double bills (54, unmatched by decision), titles TMDB
+holds no Polish title for (Lalka/Dolly, Superfutrzak, Róża) — itemised in the identity progress notes.
 
 **PROPOSED, awaiting a decision — the `identical ≥ 97%` gate.** It compares against the OLD
 pipeline, so the resolver's corrections count as failures. ES has no lookups left to fill and
@@ -153,10 +163,11 @@ Then no wiring reaches any of the following, and each goes with its specs:
   `retryUnresolvedTmdb`, `retryResolve`, `forceResolve`, `reexamineResolution`, `resolveStagingRecord`,
   `ResolveTmdbHandler`, `TmdbCandidateSearch` (the resolver's `CandidateQueries` replaces it; its
   `ImdbDisambiguatorSuffix`, which `TmdbIdentityLookups` reads, moves there),
-  `TmdbAttempt`'s fingerprints (a no-match is an observation's TTL), `ResolveDispatcher`s.
-- **Deferred detail as an identity input**: `EnrichDetailsHandler`'s TMDB trigger, `DetailReaper`,
-  `DetailTaskEnqueuer`, `MovieDetailsComplete` and `detailPending` (the resolver reads details as
-  lookups; display details come with the listing or the observation).
+  `TmdbAttempt`'s fingerprints (a no-match is the TMDB store's answer), `ResolveDispatcher`s.
+- **Deferred detail as an identity trigger**: `EnrichDetailsHandler`'s TMDB trigger,
+  `MovieDetailsComplete` and `detailPending` (the resolver reads venue details as lookups). NOT the
+  `DetailReaper` / `DetailTaskEnqueuer` / `EnrichDetails` fetch itself: it fills `VenueDetailSlots`,
+  the model's venue-detail input, and stays.
 - **The shadow run**: `ShadowIdentityReaper`, `ShadowRunStore`, `identity_shadow_*` (the canary
   replaces it), and `ListingKeyShadowRead` / `UnstampedListingCensus` once every row is stamped by
   construction.
