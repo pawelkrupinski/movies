@@ -271,12 +271,21 @@ trait TestWiring extends WorkerWiring {
   /** One production tick of a CUT-OVER country — the boot is its first: every venue scraped into the
    *  listing intake through the production runner, then one identity projection and its enrichment. */
   def cutoverTick(): services.identity.ProjectionTick = {
-    cinemaScrapers.foreach { scraper =>
-      try { cinemaScrapeRunner.run(scraper); () }
-      catch { case e: Exception => scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); () }
-    }
+    landCutover(cinemaScrapers)(failure => { scrapeFailures.add(failure); () })
     projectIdentity()
   }
+
+  /** Land each of `scrapers`' listings through the production runner into a CUT-OVER country's
+   *  intake, `CutoverLandingThreads` venues at a time, as production's scrape pool lands them side by
+   *  side; a venue whose scrape throws is handed to `failed` (`"<venue>: <exception>"`). A venue's
+   *  landing reads and writes only that venue's intake state, and the projection after it reads the
+   *  whole set, so the order they land in decides nothing — serially, a US walk was 4,462 venues of
+   *  round-trips one after another, ~47 s of every tick. Submitted in `scrapers`' order. */
+  def landCutover(scrapers: Seq[services.cinemas.common.CinemaScraper])(failed: String => Unit): Unit =
+    BoundedParallel.foreach(s"cutover-landing-${country.code}", scrapers, TestWiring.CutoverLandingThreads) { scraper =>
+      try { cinemaScrapeRunner.run(scraper); () }
+      catch { case e: Exception => failed(s"${scraper.cinema.displayName}: $e") }
+    }
 
   /** One identity projection of a cut-over country, then the enrichment it kicked (venue detail pages,
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
@@ -750,4 +759,9 @@ trait TestWiring extends WorkerWiring {
 object TestWiring {
   /** The instant every harness clock starts at. */
   val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
+
+  /** How many venues a cut-over scrape walk lands at once ([[TestWiring.landCutover]]): each landing
+   *  waits on a few Mongo round-trips, so the walk is bound by how many are in flight, not by a
+   *  runner's four cores. */
+  val CutoverLandingThreads = 8
 }

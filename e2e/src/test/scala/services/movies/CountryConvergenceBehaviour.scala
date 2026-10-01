@@ -656,12 +656,10 @@ abstract class CountryConvergenceBehaviour(
    *  `Identity model convergence` build) lands every scrape through the production runner into the
    *  identity model's listing intake and decides its films by projection, so every claim below is
    *  asked of the new model: there is no staging, settle or reaper pass to run. Each venue is
-   *  re-scraped in `rnd`'s order, and a venue whose scrape throws is recorded in `failures`. */
+   *  re-scraped — submitted in `rnd`'s order, landed side by side as production lands them
+   *  (`landCutover`) — and a venue whose scrape throws is recorded in `failures`. */
   private def rescrapeCutover(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Unit = {
-    rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
-      try { w.cinemaScrapeRunner.run(scraper); () }
-      catch { case e: Exception => failures += s"${scraper.cinema.displayName}: $e"; () }
-    }
+    w.landCutover(rnd.shuffle(w.cinemaScrapers.toList))(failure => failures.synchronized { failures += failure; () })
     w.projectIdentity()
     ()
   }
@@ -1691,16 +1689,18 @@ abstract class CountryConvergenceBehaviour(
       clock.advance(java.time.Duration.between(clock.instant(),
         cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
       step("nextDay") {
-        w.cinemaScrapers.map(_.cinema).sortBy(_.displayName).foreach { c =>
-          val scraper =
-            if (throwing.contains(c)) new services.cinemas.common.CinemaScraper {
-              val cinema: Cinema = c
-              def fetch(): Seq[CinemaMovie] = throw new java.io.IOException(s"next day: ${c.displayName} is down")
-              def scrapeHosts: Set[String] = Set.empty
-            }
-            else services.cinemas.common.PreScrapedCinemaScraper.replaying(c, if (blank.contains(c)) Nil else reported.getOrElse(c, Nil))
-          Try(w.cinemaScrapeRunner.run(scraper))
+        val scrapers = w.cinemaScrapers.map(_.cinema).sortBy(_.displayName).map { c =>
+          if (throwing.contains(c)) new services.cinemas.common.CinemaScraper {
+            val cinema: Cinema = c
+            def fetch(): Seq[CinemaMovie] = throw new java.io.IOException(s"next day: ${c.displayName} is down")
+            def scrapeHosts: Set[String] = Set.empty
+          }
+          else services.cinemas.common.PreScrapedCinemaScraper.replaying(c, if (blank.contains(c)) Nil else reported.getOrElse(c, Nil))
         }
+        // A venue that goes down is meant to: its failure is the case under test, not a gap. A cut-over
+        // intake lands venues side by side; the pipeline's landing folds into shared rows, in order.
+        if (w.identityCutover) w.landCutover(scrapers)(_ => ())
+        else scrapers.foreach(scraper => Try(w.cinemaScrapeRunner.run(scraper)))
         // A cut-over country decides the day's films by projecting what its intake now holds;
         // the pipeline drains staging around its settle.
         if (w.identityCutover) settleOnce(w)
