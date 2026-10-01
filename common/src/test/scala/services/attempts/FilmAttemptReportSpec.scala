@@ -86,7 +86,13 @@ class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
       override def forKeys(keys: Seq[String]) = { gate(); Map("mc|tmdb:7" -> stats(5)) }
     }
 
-    val report = FilmAttemptReport.buildFrom(Some(7), attemptReader, cadenceReader)(using ExecutionContext.global)
+    // Its OWN two threads, not ExecutionContext.global: in a parallel unit run other suites' blocking
+    // work can occupy the global pool, and the second read then never gets a thread in time — a
+    // red that says nothing about whether buildFrom runs the reads concurrently.
+    val pool   = java.util.concurrent.Executors.newFixedThreadPool(2)
+    val report =
+      try FilmAttemptReport.buildFrom(Some(7), attemptReader, cadenceReader)(using ExecutionContext.fromExecutor(pool))
+      finally pool.shutdownNow(): Unit
 
     // Both reads' results still land on the right sources — concurrency didn't lose a half.
     report.find(_.source == FreshnessKind.ImdbRating).flatMap(_.attempt).map(_.outcome) shouldBe
