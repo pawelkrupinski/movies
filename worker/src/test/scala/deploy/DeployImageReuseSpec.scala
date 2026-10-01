@@ -50,7 +50,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still wait for a green build before releasing anything" in {
-    deployJob should include("needs: [ci, build-web")
+    deployJob should include("needs: [ci, preflight]")
   }
 
   it should "release a tag those builds actually push" in {
@@ -66,7 +66,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * green build red.
    */
   it should "skip a commit whose web build pushed no tag" in {
-    deployJob should include("needs.build-web.outputs.changed")
+    deployJob should include("needs.preflight.outputs.web-changed")
   }
 
   /**
@@ -192,7 +192,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
         image should not include "steps.tag.outputs.value"
         image should include("if: github.event_name != 'pull_request'")
-        publish should include("needs: ci")
+        publish should include("needs: [ci, preflight]")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
       }

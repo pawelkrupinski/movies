@@ -105,11 +105,68 @@ jobs:
     preflight:
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci: `deploy`
+        # (the Fly release) needs only this answer and ci, so it starts the moment ci is green instead
+        # of waiting for `build-web`. A marker that moves between t=0 and ci's end can only make a gate
+        # say "changed" more often, never skip a tier that did change.
+        outputs:
+            web-changed: ${{ steps.changed-web.outputs.changed }}
+            worker-changed: ${{ steps.changed-worker.outputs.changed }}
         steps:
+            # Full history, BLOBLESS — the tier gates below diff against each tier's last DEPLOYED
+            # commit, which a shallow checkout would not have; commits and trees only.
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
-                  sparse-checkout-cone-mode: false
+                  fetch-depth: 0
+                  filter: blob:none
+            - name: What is the web tier actually running?
+              id: base-web
+              uses: ./.github/actions/deployed-base
+              with:
+                  tier: web
+
+            - name: Has the web tier changed since then?
+              id: changed-web
+              uses: ./.github/actions/changed-paths
+              with:
+                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
+                  base: ${{ steps.base-web.outputs.base }}
+                  # THE WEB TIER'S FILTER SET. Deliberately NOT the worker's — see the note above.
+                  patterns: |
+                      web/**
+                      common/**
+                      build.sbt
+                      project/**
+                      Dockerfile
+                      infra/nix/files/heap-dumps.sh
+                      .github/workflows/main.yml
+                      .github/actions/changed-paths/**
+
+            - name: What is the worker tier actually running?
+              id: base-worker
+              uses: ./.github/actions/deployed-base
+              with:
+                  tier: worker
+
+            - name: Has the worker tier changed since then?
+              id: changed-worker
+              uses: ./.github/actions/changed-paths
+              with:
+                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
+                  base: ${{ steps.base-worker.outputs.base }}
+                  # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
+                  # is the whole point: a web-only push must not reach this job's build, let alone
+                  # its image, because a new worker image restarts it into a scrape storm.
+                  patterns: |
+                      worker/**
+                      common/**
+                      build.sbt
+                      project/**
+                      Dockerfile
+                      infra/nix/files/heap-dumps.sh
+                      .github/workflows/main.yml
+                      .github/actions/changed-paths/**
+
             - name: Deploy secrets present
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -139,8 +196,9 @@ jobs:
     # Each push therefore costs the retired host a rolling restart. That is the
     # accepted price of it not drifting away from `main` — the alternative was a
     # hand-rolled deploy nobody would remember to run. (`FlyDeployScopeSpec`)
+
     deploy:
-        needs: [ci, build-web, preflight]
+        needs: [ci, preflight]
         runs-on: ubuntu-latest
         # NO concurrency group. GitHub keeps one running plus one pending per group,
         # so back when this was a six-app matrix a per-tier group CANCELLED the third
@@ -182,7 +240,7 @@ jobs:
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
               run: |
-                  if [ "${{ needs.build-web.outputs.changed }}" != "true" ]; then
+                  if [ "${{ needs.preflight.outputs.web-changed }}" != "true" ]; then
                       echo "::notice::Skipping kinowo — the web tier did not change, so no image was built for this commit."
                       echo "skip=true" >> "$GITHUB_OUTPUT"
                       exit 0
@@ -343,7 +401,7 @@ jobs:
     # ones spoken for at t=0 now that `free-runners` is retired, and a job that waits for ci takes a
     # slot ci has already given back (`CiRunnerBudgetSpec`).
     build-web:
-        needs: ci
+        needs: [ci, preflight]
         runs-on: ubuntu-latest
 
         permissions:
@@ -353,53 +411,24 @@ jobs:
             packages: write
 
         outputs:
-            changed: ${{ steps.changed.outputs.changed }}
+            changed: ${{ needs.preflight.outputs.web-changed }}
 
         steps:
-            # Full history, BLOBLESS — the changed-paths gate below diffs against the last DEPLOYED
-            # commit, which a shallow checkout would not have. Same shape as the Fly deploy job's
-            # roll-back guard: commit topology and tree ids only, so no blob of history is fetched.
-            - uses: actions/checkout@v5
-              with:
-                  fetch-depth: 0
-                  filter: blob:none
-
-            - name: What is the web tier actually running?
-              id: base
-              uses: ./.github/actions/deployed-base
-              with:
-                  tier: web
-
-            - name: Has the web tier changed since then?
-              id: changed
-              uses: ./.github/actions/changed-paths
-              with:
-                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
-                  base: ${{ steps.base.outputs.base }}
-                  # THE WEB TIER'S FILTER SET. Deliberately NOT the worker's — see the note above.
-                  patterns: |
-                      web/**
-                      common/**
-                      build.sbt
-                      project/**
-                      Dockerfile
-                      infra/nix/files/heap-dumps.sh
-                      .github/workflows/main.yml
-                      .github/actions/changed-paths/**
-
+            # No checkout: the tier's gate is `preflight`'s, and publishing is a registry copy of the
+            # image ci built.
             - uses: docker/login-action@v3
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.web-changed == 'true'
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - uses: docker/setup-buildx-action@v3
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.web-changed == 'true'
 
             - name: Compute an orderable image tag
               id: tag
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.web-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -416,7 +445,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.web-changed == 'true'
               # ci's `image-web` job built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
@@ -508,7 +537,7 @@ jobs:
                   commit-message: ${{ github.event.head_commit.message }}
 
     build-worker:
-        needs: ci
+        needs: [ci, preflight]
         runs-on: ubuntu-latest
 
         permissions:
@@ -517,52 +546,22 @@ jobs:
             packages: write
 
         outputs:
-            changed: ${{ steps.changed.outputs.changed }}
+            changed: ${{ needs.preflight.outputs.worker-changed }}
 
         steps:
-            - uses: actions/checkout@v5
-              with:
-                  fetch-depth: 0
-                  filter: blob:none
-
-            - name: What is the worker tier actually running?
-              id: base
-              uses: ./.github/actions/deployed-base
-              with:
-                  tier: worker
-
-            - name: Has the worker tier changed since then?
-              id: changed
-              uses: ./.github/actions/changed-paths
-              with:
-                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
-                  base: ${{ steps.base.outputs.base }}
-                  # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
-                  # is the whole point: a web-only push must not reach this job's build, let alone
-                  # its image, because a new worker image restarts it into a scrape storm.
-                  patterns: |
-                      worker/**
-                      common/**
-                      build.sbt
-                      project/**
-                      Dockerfile
-                      infra/nix/files/heap-dumps.sh
-                      .github/workflows/main.yml
-                      .github/actions/changed-paths/**
-
             - uses: docker/login-action@v3
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.worker-changed == 'true'
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - uses: docker/setup-buildx-action@v3
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.worker-changed == 'true'
 
             - name: Compute an orderable image tag
               id: tag
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.worker-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -579,7 +578,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: steps.changed.outputs.changed == 'true'
+              if: needs.preflight.outputs.worker-changed == 'true'
               # ci's `image-worker` job built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image

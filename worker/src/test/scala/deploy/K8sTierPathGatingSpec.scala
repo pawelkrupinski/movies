@@ -38,11 +38,14 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
 
   private def job(name: String): String = RepoFile.block(mainYml, name)
 
-  /** The `patterns:` block a tier's build job hands to the `changed-paths` action. */
-  private def filterSet(jobName: String): Vector[String] = {
-    val lines = job(jobName).linesIterator.toVector
-    val start = lines.indexWhere(_.trim == "patterns: |")
-    withClue(s"`$jobName` hands no `patterns: |` block to the changed-paths action: ")(start should be >= 0)
+  /** The `patterns:` block a tier's gate (in `preflight`, step `changed-<tier>`) hands to the
+   *  `changed-paths` action. The gates run at t=0 so the Fly release need not wait for `build-web`. */
+  private def filterSet(tier: String): Vector[String] = {
+    val lines = job("preflight").linesIterator.toVector
+    val step  = lines.indexWhere(_.trim == s"id: changed-$tier")
+    withClue(s"`preflight` has no `changed-$tier` gate step: ")(step should be >= 0)
+    val start = lines.indexWhere(_.trim == "patterns: |", step)
+    withClue(s"`changed-$tier` hands no `patterns: |` block to the changed-paths action: ")(start should be >= 0)
     val indent = lines(start).takeWhile(_ == ' ').length
     lines
       .drop(start + 1)
@@ -51,8 +54,8 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
       .filter(_.nonEmpty)
   }
 
-  private lazy val webFilter    = filterSet("build-web")
-  private lazy val workerFilter = filterSet("build-worker")
+  private lazy val webFilter    = filterSet("web")
+  private lazy val workerFilter = filterSet("worker")
 
   /** The action's own matcher, over a fabricated push. `true` = this tier rebuilds and redeploys. */
   private def matches(patterns: Seq[String], changed: Seq[String]): Boolean = {
@@ -163,15 +166,18 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * has to come from the marker, and the marker has to be moved by the deploy.
    */
   "each tier's gate" should "diff from the commit that tier last deployed, not from the push's parent" in {
+    val gate = job("preflight")
     Seq("web", "worker").foreach { tier =>
-      val build = job(s"build-$tier")
-      withClue(s"build-$tier does not resolve a deployed base: ")(
-        build should include("uses: ./.github/actions/deployed-base"))
-      withClue(s"build-$tier resolves a base it then does not use: ")(
-        build should include("base: ${{ steps.base.outputs.base }}"))
-      withClue(s"build-$tier asks for the wrong tier's marker: ")(
-        build should include(s"tier: $tier"))
+      withClue(s"the $tier gate does not resolve a deployed base: ")(
+        gate should include(s"id: base-$tier"))
+      withClue(s"the $tier gate resolves a base it then does not use: ")(
+        gate should include(s"base: $${{ steps.base-$tier.outputs.base }}"))
+      withClue(s"the $tier gate asks for the wrong tier's marker: ")(
+        gate should include(s"tier: $tier"))
+      withClue(s"build-$tier publishes on a gate other than its own: ")(
+        job(s"build-$tier") should include(s"needs.preflight.outputs.$tier-changed"))
     }
+    gate should include("uses: ./.github/actions/deployed-base")
   }
 
   it should "be recorded only by a run whose build actually produced an image" in {
@@ -301,8 +307,8 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * (CiRunnerBudgetSpec), so dropping the `needs:` breaks two things at once.
    */
   "neither k3s build" should "start before ci is green" in {
-    job("build-web") should include("needs: ci")
-    job("build-worker") should include("needs: ci")
+    job("build-web") should include("needs: [ci, preflight]")
+    job("build-worker") should include("needs: [ci, preflight]")
   }
 
   /** The fold is only done once the workflows it replaced are gone. */
