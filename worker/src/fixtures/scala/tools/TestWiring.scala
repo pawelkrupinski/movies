@@ -236,9 +236,10 @@ trait TestWiring extends WorkerWiring {
     cinemaScrapers.foreach { scraper =>
       try {
         val movies  = scraper.fetch()
-        // Archived as the runner's `run` archives.
-        cinemaScrapeRunner.archive(scraper, movies, error = None)
-        val touched = movieCache.recordCinemaScrape(scraper.cinema, movies)
+        // Landed, then archived, as the runner's `run` does.
+        val touched =
+          try movieCache.recordCinemaScrape(scraper.cinema, movies)
+          finally cinemaScrapeRunner.archive(scraper, movies, error = None)
         // `classify` marks rows that await deferred detail `detailPending` (held
         // back, no event yet) and returns the ready-now MovieDetailsComplete.
         ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)

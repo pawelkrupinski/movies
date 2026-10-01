@@ -60,13 +60,18 @@ class CinemaScrapeRunner(
           archive(scraper, Seq.empty, Some(messageOf(failure)))
           throw failure
       }
-    // Archive BEFORE the cache fold, so what lands is the client's own output
-    // rather than anything the corpus merge did to it — that is what a replay
-    // needs. Both scrape paths reach here: a non-chunked `fetch()` is the live
-    // scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
-    // the already-reduced chunks.
-    archive(scraper, movies, error = None)
-    val touched = sink.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
+    // The sink decides FIRST, then the scrape is archived — in a `finally`, so a sink that throws
+    // still leaves the attempt archived. A cut-over country's intake reads the archive for a venue
+    // with no accepted listing of its own (its last scrape is what the old path last landed from):
+    // archived first, that "last scrape" was the very scrape being judged, so the depth/breadth
+    // guards compared a shrunken listing with itself and never held it back, and the first scrape
+    // was never recorded as accepted. What is archived is still the client's own output (`movies`
+    // as fetched, never the corpus merge's) — what a replay needs. Both scrape paths reach here: a
+    // non-chunked `fetch()` is the live scrape, and a chunked one arrives as a
+    // `PreScrapedCinemaScraper` wrapping the already-reduced chunks.
+    val touched =
+      try sink.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
+      finally archive(scraper, movies, error = None)
     val events   = classify(cinema, touched)
     val elapsed  = t0.millis
     val awaiting = touched.count(_._3) - events.size
