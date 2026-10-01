@@ -29,7 +29,13 @@ object ScrapeListing {
     // every cinema with no per-client code. `FormatTags` strips only format words,
     // so a programme prefix, a "+ event" suffix, or a Ukrainian screening keep their
     // title and stay their own card.
-    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) = cleanTitle(cinema, cm.movie.title, normalizer)
+    //
+    // Each title cleaned once: its rows are asked for it again by the fold below and by every
+    // caller of `cleaned`, and a cleaning runs every title rule of the venue — ~2 s of each US
+    // identity projection when every ask cleaned anew.
+    val cleanings = new java.util.concurrent.ConcurrentHashMap[String, (String, List[String])]()
+    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
+      cleanings.computeIfAbsent(cm.movie.title, title => cleanTitle(cinema, title, normalizer))
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
     // Badge each screening with its film's format tokens (unless the client already
     // set one), BEFORE the same-title fold below unions them — then put EVERY token

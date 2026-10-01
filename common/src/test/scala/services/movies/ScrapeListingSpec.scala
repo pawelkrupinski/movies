@@ -39,4 +39,17 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     val a = listing("Diuna", Seq(at(18))); val b = listing("Diuna", Seq(at(21))); val c = listing("Guru", Seq(at(19)))
     prepare(a, b, c).movies shouldBe prepare(c, b, a).movies
   }
+
+  // A cleaning runs every title rule of the venue; an identity projection prepares every venue's
+  // listings and asks each film for its cleaned title again and again.
+  it should "clean each of a venue's titles once, however often its rows are asked for it" in {
+    val cleanings  = new java.util.concurrent.atomic.AtomicInteger(0)
+    val counting   = new TitleNormalizer(titleNormalizer.rules) {
+      override def cinemaClean(cinemaId: String, raw: String): String = { cleanings.incrementAndGet(); super.cinemaClean(cinemaId, raw) }
+    }
+    val p = ScrapeListing.prepare(Helios, Seq(listing("Ojczyzna", Seq(at(18))), listing("Ojczyzna", Seq(at(20))),
+      listing("Diuna", Seq(at(19)))), counting, ScreeningTokens.forDefaultCountry())
+    p.movies.map(p.cleaned).sorted shouldBe Seq("Diuna", "Ojczyzna")
+    cleanings.get shouldBe 2
+  }
 }
