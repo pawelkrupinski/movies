@@ -38,8 +38,10 @@ final class FilmIdCounters private (val entries: Seq[FilmIdCounter]) {
   def filmIdOf(counter: Long): Option[String] = byCounter.get(counter)
   def size: Int = entries.size
 
-  /** The first counter no entry holds: one past the largest ever handed out. */
-  def nextCounter: Long = if (entries.isEmpty) 1L else entries.iterator.map(_.counter).max + 1L
+  /** The first counter no entry holds: one past the largest ever handed out. Computed once: a
+   *  projection asks it of every film it drafts, and a walk of the whole map each time was seconds
+   *  of every US projection. */
+  lazy val nextCounter: Long = if (entries.isEmpty) 1L else entries.iterator.map(_.counter).max + 1L
 
   /** The entries mapping each of `films` not mapped yet, numbered by the rule above. Films already
    *  mapped add nothing, whatever their size today. */

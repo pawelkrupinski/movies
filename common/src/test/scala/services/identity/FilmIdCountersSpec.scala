@@ -47,3 +47,15 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
     }).append(Seq(film("a", 1))).isLeft shouldBe true
   }
 }
+
+/** A projection asks `nextCounter` of every film it drafts (~2,250 US) over a map as large as the
+ *  country's history: answered by a walk of the map each time, that was seconds of every projection. */
+class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
+  "nextCounter" should "be answered without walking the whole map on every ask" in {
+    val counters = FilmIdCounters.of((1 to 200000).map(i => FilmIdCounter(s"f$i", i.toLong))).toOption.get
+    val started  = System.nanoTime()
+    (1 to 20000).foreach(_ => counters.nextCounter shouldBe 200001L)
+    // A walk per ask is 4e9 steps — tens of seconds; once, it is microseconds per ask.
+    (System.nanoTime() - started) / 1e9 should be < 5.0
+  }
+}
