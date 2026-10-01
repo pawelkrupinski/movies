@@ -150,27 +150,53 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The image builds take the dists ci's `e2e (staging)` row staged instead of restaging them: they `needs: ci`
-   * (the runner budget), so restaging was ~2 min of cold `sbt stage` on the post-CI critical
-   * path for bytes ci had already produced. The two halves must move together — an upload
-   * nothing downloads is a GB of storage per run that nothing complains about, and a download
-   * with no upload fails the build — and a build job that runs sbt again has put the 2 min back.
+   * The images are BUILT inside ci, from the dists its `e2e (staging)` row staged, while ci's slowest
+   * rows still run; main.yml's `build-web` / `build-worker` only PUBLISH them once ci is green.
+   * Restaging in main.yml was ~2 min of cold `sbt stage`, and building there ~1.7 min more, both on
+   * the post-ci critical path. The upload and the download move together: an upload nothing downloads
+   * is a GB of storage per run nobody complains about, and a download with no upload fails the build.
    */
-  it should "build both images from the dists ci staged, not restage them" in {
+  it should "build both images in ci from the dists ci staged, and only publish them after it" in {
     val ciYml = RepoFile.read(".github/workflows/ci.yml")
-    // On the COMMANDS: the download step's own comment names the `sbt stage` it replaces.
+    // On the COMMANDS: the steps' own comments name what they replaced.
     def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
-    for ((tier, build) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
+    for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
       withClue(s"$tier: ") {
+        val image = RepoFile.block(ciYml, s"image-$tier")
         ciYml should include(s"name: stage-$tier")
-        build should include("actions/download-artifact")
-        build should include(s"name: stage-$tier")
-        commands(build) should not include "sbt "
+        image should include("actions/download-artifact")
+        image should include(s"name: stage-$tier")
+        image should include("needs: e2e")
+        commands(publish) should not include "sbt "
+        commands(publish) should not include "build-push-action"
+        commands(publish) should include("docker buildx imagetools create")
       }
     }
     // …and the staging itself stays in ci: it is what proves the dists still link on a PR run.
     ciYml should include("""sbt "web/stage" "worker/stage"""")
     ciYml should include("Deploy artefacts carry no generated Scaladoc")
+  }
+
+  /**
+   * THE SAFETY OF BUILDING EARLY. ci's image jobs run before ci is green, so they may push the one
+   * tag nothing deploys — the commit SHA — and nothing else: Flux deploys `main-<utc>-<sha7>`, and a
+   * hand-applied manifest resolves `latest`. Those two are attached only by main.yml's `build-*`,
+   * which `needs: ci`; and never on a PR run.
+   */
+  it should "push only the SHA tag before ci is green, and ship tags only after it" in {
+    val ciYml = RepoFile.read(".github/workflows/ci.yml")
+    for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
+      withClue(s"$tier: ") {
+        val image = RepoFile.block(ciYml, s"image-$tier")
+        val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
+        tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
+        image should not include "steps.tag.outputs.value"
+        image should include("if: github.event_name != 'pull_request'")
+        publish should include("needs: ci")
+        publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
+        publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
+      }
+    }
   }
 
   /**

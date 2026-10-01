@@ -57,7 +57,10 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
       }
     }
 
-  private lazy val ciRunners = RepoFile.jobs(ciYml).values.map(runners).sum
+  // ci.yml's jobs that start at t=0. A job with `needs:` (the `image-*` builds wait for e2e) takes a
+  // slot its prerequisite has already given back, exactly as main.yml's post-ci jobs do below.
+  private def startsAtOnce(block: String): Boolean = !block.linesIterator.exists(_.trim.startsWith("needs:"))
+  private lazy val ciRunners = RepoFile.jobs(ciYml).values.filter(startsAtOnce).map(runners).sum
 
   // main.yml's own jobs that start immediately — i.e. no `needs:` at all. `ci`
   // is the reusable-workflow call itself and contributes no runner of its own;

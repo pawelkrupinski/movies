@@ -64,25 +64,23 @@ jobs:
     ci:
         uses: ./.github/workflows/ci.yml
         secrets: inherit
-        # ci.yml's jobs post JUnit check-runs; a called workflow can only
-        # narrow its caller's token, never widen it.
+        # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
+        # images; a called workflow can only narrow its caller's token, never widen it.
         permissions:
             contents: read
             checks: write
+            packages: write
 
-    # The image builds take their staged dist FROM ci (its `e2e (staging)` row) rather than
-    # staging their own. It has been both ways round: ci's `test` used to upload `stage-web` /
-    # `stage-worker` for a deploy leg, then stopped once the build ran alongside ci (waiting
-    # for `test` would have put the container build on the critical path). The runner budget (`CiRunnerBudgetSpec`) later
-    # hung the builds off `needs: ci` after all, and from then on each one recompiled from a
-    # cold zinc state — ~2 min of `sbt stage` on the post-CI critical path for bytes ci
-    # had already produced. So the upload is back, and `DeployImageReuseSpec` keeps the two
-    # halves together.
+    # The images are BUILT IN ci and only PUBLISHED here. ci's `image-web` / `image-worker` build them
+    # from the dists its `e2e (staging)` row staged, while ci's slowest rows still run, and push them
+    # under the commit SHA alone — a tag nothing deploys. `build-web` / `build-worker` below `needs: ci`,
+    # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
+    # of seconds where they used to restage (~2 min of cold `sbt stage`) and build (~1.7 min) on the
+    # post-ci critical path. (DeployImageReuseSpec)
     #
-    # Both images are built unconditionally, including the worker's on a push
-    # that will skip the worker deploy. Building is not restarting: the skip
-    # guard exists to protect the worker from a cold-boot scrape storm, and an
-    # unreleased image in the registry costs nothing but builder time.
+    # Both images are built on every main push, including a tier whose paths did not change: building
+    # is not shipping. An unpublished SHA-tagged image costs registry space and builder time on runners
+    # ci's e2e rows have already given back, nothing else.
     # ONLY THE WEB IMAGE IS EVER RELEASED, and only to `kinowo` — the one leg of the `deploy`
     # matrix below that is `enabled: true` (see the rule stated there). The worker image and the
     # other five legs' images are built and then sit in the registry unreleased, because both tiers
@@ -389,20 +387,6 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - name: Fetch the web distribution ci's e2e staging row staged
-              if: steps.changed.outputs.changed == 'true'
-              # NOT A SECOND `sbt "web/stage"`. ci's `e2e (staging)` row stages both apps anyway
-              # (it is what proves the dists link), and this job `needs: ci`, so that copy always
-              # exists by now — restaging it here was ~2 min of cold compile on the post-CI
-              # critical path, for bytes identical to the ones ci already had. Downloaded straight into `stage/`,
-              # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
-              # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
-              # that matters.
-              uses: actions/download-artifact@v6
-              with:
-                  name: stage-web
-                  path: stage
-
             - uses: docker/login-action@v3
               if: steps.changed.outputs.changed == 'true'
               with:
@@ -431,37 +415,21 @@ jobs:
                   sha='${{ github.sha }}'
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
-            - name: Build and push
+            - name: Publish the image ci built under the tags that ship it
               if: steps.changed.outputs.changed == 'true'
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build
-                  # for a platform nothing here runs, and the emulated leg is the slow one.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=web
-                      COMMIT_SHA=${{ github.sha }}
-                  # THREE TAGS, ALWAYS, each doing a different job. The SHA tag is provenance:
-                  # a pod that restarts comes back on the exact build, and a human can map it to a
-                  # commit. The `main-<utc>-<sha7>` tag is the one Flux actually DEPLOYS, because
-                  # image automation has to pick the newest by sorting and neither of the others
-                  # sorts. `latest` survives only so a hand-applied manifest resolves to something.
-                  # Never deploy `latest` — a pod that restarts under it can come back on a
-                  # different build with nothing recording which.
-                  tags: |
+              # ci's `image-web` job built this commit's image while the rest of ci ran, and pushed it
+              # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
+              # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
+              # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to
+              # something (never deploy `latest`: a restart under it can come back on another build). A
+              # manifest copy in the registry — seconds — instead of the ~1.7 min build it replaces on
+              # the post-ci critical path. The SHA tag stays the provenance tag.
+              run: |
+                  set -euo pipefail
+                  docker buildx imagetools create \
+                      -t ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }} \
+                      -t ghcr.io/${{ github.repository_owner }}/movies-web:latest \
                       ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
-                      ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }}
-                      ghcr.io/${{ github.repository_owner }}/movies-web:latest
-                  # INLINE cache, restored from the image this job last pushed — not `type=gha`. The
-                  # GHA exporter re-uploaded every layer after the push, the app layer (the staged
-                  # dist + its AOT cache) included, which differs on every commit and so is never a
-                  # hit: ~1 min on the post-CI critical path to store bytes nothing reads back. The
-                  # layers worth reusing (base OS, JRE) are all in `latest`, and inline
-                  # metadata rides the push itself at no extra cost.
-                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-web:latest
-                  cache-to: type=inline
 
     record-web:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-web`, and the reason is the TOKEN.
@@ -582,20 +550,6 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - name: Fetch the worker distribution ci's e2e staging row staged
-              if: steps.changed.outputs.changed == 'true'
-              # NOT A SECOND `sbt "worker/stage"`. ci's `e2e (staging)` row stages both apps anyway
-              # (it is what proves the dists link), and this job `needs: ci`, so that copy always
-              # exists by now — restaging it here was ~2 min of cold compile on the post-CI
-              # critical path, for bytes identical to the ones ci already had. Downloaded straight into `stage/`,
-              # the only path the Dockerfile's whitelisted context (.dockerignore) can see. The
-              # artifact drops file modes; the Dockerfile's `chmod +x bin/*` restores the one
-              # that matters.
-              uses: actions/download-artifact@v6
-              with:
-                  name: stage-worker
-                  path: stage
-
             - uses: docker/login-action@v3
               if: steps.changed.outputs.changed == 'true'
               with:
@@ -624,37 +578,21 @@ jobs:
                   sha='${{ github.sha }}'
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
-            - name: Build and push
+            - name: Publish the image ci built under the tags that ship it
               if: steps.changed.outputs.changed == 'true'
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build
-                  # for a platform nothing here runs, and the emulated leg is the slow one.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=worker
-                      COMMIT_SHA=${{ github.sha }}
-                  # THREE TAGS, ALWAYS, each doing a different job. The SHA tag is provenance:
-                  # a pod that restarts comes back on the exact build, and a human can map it to a
-                  # commit. The `main-<utc>-<sha7>` tag is the one Flux actually DEPLOYS, because
-                  # image automation has to pick the newest by sorting and neither of the others
-                  # sorts. `latest` survives only so a hand-applied manifest resolves to something.
-                  # Never deploy `latest` — a pod that restarts under it can come back on a
-                  # different build with nothing recording which.
-                  tags: |
+              # ci's `image-worker` job built this commit's image while the rest of ci ran, and pushed it
+              # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
+              # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
+              # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to
+              # something (never deploy `latest`: a restart under it can come back on another build). A
+              # manifest copy in the registry — seconds — instead of the ~1.7 min build it replaces on
+              # the post-ci critical path. The SHA tag stays the provenance tag.
+              run: |
+                  set -euo pipefail
+                  docker buildx imagetools create \
+                      -t ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }} \
+                      -t ghcr.io/${{ github.repository_owner }}/movies-worker:latest \
                       ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
-                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }}
-                      ghcr.io/${{ github.repository_owner }}/movies-worker:latest
-                  # INLINE cache, restored from the image this job last pushed — not `type=gha`. The
-                  # GHA exporter re-uploaded every layer after the push, the app layer (the staged
-                  # dist + its AOT cache) included, which differs on every commit and so is never a
-                  # hit: ~1 min on the post-CI critical path to store bytes nothing reads back. The
-                  # layers worth reusing (base OS, JRE, libvips) are all in `latest`, and inline
-                  # metadata rides the push itself at no extra cost.
-                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
-                  cache-to: type=inline
 
     record-worker:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-worker`, for the token: `build-worker`

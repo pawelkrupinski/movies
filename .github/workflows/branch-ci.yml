@@ -30,7 +30,10 @@ jobs:
         uses: ./.github/workflows/ci.yml
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs; a called workflow can only
-        # narrow its caller's token, never widen it.
+        # narrow its caller's token, never widen it. `packages: write` only so the
+        # workflow loads: its `image-*` jobs ask for it, and GitHub refuses a called
+        # job more than its caller grants even when, as on every PR run, it is skipped.
         permissions:
             contents: read
             checks: write
+            packages: write
