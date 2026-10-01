@@ -9600,6 +9600,7 @@ services.cinemas.common.FilmDetail
 services.cinemas.common.FilmDetail$
 services.cinemas.common.FlicksClient
 services.cinemas.common.FlicksClient$
+services.cinemas.common.FlicksClient$RangesReader
 services.cinemas.common.FlicksClient$RawFlicksSlot
 services.cinemas.common.FlicksClient$RawFlicksSlot$
 services.cinemas.common.FlicksMarket

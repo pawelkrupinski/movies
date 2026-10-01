@@ -2,7 +2,7 @@ package services.cinemas.common
 
 import tools.{HttpFetch, PersonName}
 import models._
-import org.jsoup.Jsoup
+import org.jsoup.parser.Parser
 import org.jsoup.nodes.Element
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -244,8 +244,11 @@ object FlicksClient {
 
   /** Parse one day's sessions fragment for the given calendar date. Pure +
    *  public so the spec feeds it the recorded HTML directly. */
-  def parseDay(html: String, date: LocalDate, market: FlicksMarket): Seq[RawFlicksSlot] = {
-    val doc = Jsoup.parse(html, market.baseUrl)
+  def parseDay(html: String, date: LocalDate, market: FlicksMarket): Seq[RawFlicksSlot] =
+    parseDocument(Parser.htmlParser().parseInput(slimmedReader(html), market.baseUrl), date, market)
+
+  /** [[parseDay]] over an already-parsed fragment — the spec parses the raw page with it too. */
+  private[common] def parseDocument(doc: org.jsoup.nodes.Document, date: LocalDate, market: FlicksMarket): Seq[RawFlicksSlot] = {
     doc.select("article.cinema-times__article").asScala.toSeq.flatMap { article =>
       val slug  = firstMovieSlug(article)
       val title = Option(article.selectFirst("h3.cinema-times__movie-title")).map(_.text.trim).filter(_.nonEmpty)
@@ -293,6 +296,77 @@ object FlicksClient {
       }
     }
   }
+
+  /** `html` without what [[parseDay]] never reads, so the parser does not tokenise it: every
+   *  `data-eventjson` of a film card after its first non-empty one (each session button carries
+   *  the same blob, entity-escaped — a third of a busy venue's day), and inline `<svg>` icons
+   *  (a fifth). Parsing was 7% of a US worker's CPU (JFR, 2026-10-01). Streamed to the parser
+   *  as kept ranges of `html`: building the slimmed string cost a third of what it saved. */
+  private[common] def slimmedReader(html: String): java.io.Reader = new RangesReader(html, keptRanges(html))
+
+  /** [[slimmedReader]]'s text as a string — for the spec. */
+  private[common] def slimmed(html: String): String = {
+    val out = new java.io.StringWriter(html.length); slimmedReader(html).transferTo(out); out.toString
+  }
+
+  /** The `[from, until)` ranges of `html` the parse keeps, in order, flattened. */
+  private def keptRanges(html: String): Array[Int] = {
+    val ranges        = Array.newBuilder[Int]
+    def keep(from: Int, until: Int): Unit = if (until > from) { ranges += from; ranges += until }
+    var at            = 0
+    var keptEventJson = false
+    def next(token: String) = { val i = html.indexOf(token, at); if (i < 0) Int.MaxValue else i }
+    var article = next(ArticleOpen); var svg = next(SvgOpen); var eventJson = next(EventJsonAttr)
+    while (at < html.length) {
+      val first = math.min(article, math.min(svg, eventJson))
+      if (first == Int.MaxValue) { keep(at, html.length); at = html.length }
+      else if (first == article) {
+        keep(at, article + ArticleOpen.length); at = article + ArticleOpen.length
+        keptEventJson = false
+        article = next(ArticleOpen)
+      } else if (first == svg) {
+        val close = html.indexOf(SvgClose, svg)
+        keep(at, if (close < 0) html.length else svg)
+        at = if (close < 0) html.length else close + SvgClose.length
+        // Re-found only when the icon swallowed them: a scan from here to a far `<article` per
+        // icon was most of this pass's cost.
+        if (article < at) article = next(ArticleOpen)
+        if (eventJson < at) eventJson = next(EventJsonAttr)
+        svg = next(SvgOpen)
+      } else {
+        val valueStart = eventJson + EventJsonAttr.length
+        val valueEnd   = html.indexOf('"', valueStart)
+        val end        = if (valueEnd < 0) html.length else valueEnd + 1
+        if (keptEventJson) keep(at, eventJson)
+        else { keep(at, end); keptEventJson = valueEnd > valueStart }
+        at = end
+        eventJson = next(EventJsonAttr)
+      }
+    }
+    ranges.result()
+  }
+
+  /** Reads `ranges` (flattened `[from, until)` pairs) of `text` back to back, copying in bulk. */
+  private final class RangesReader(text: String, ranges: Array[Int]) extends java.io.Reader {
+    private var range = 0
+    private var at    = if (ranges.isEmpty) 0 else ranges(0)
+    override def read(buffer: Array[Char], offset: Int, length: Int): Int = {
+      while (range < ranges.length && at >= ranges(range + 1)) { range += 2; if (range < ranges.length) at = ranges(range) }
+      if (range >= ranges.length) -1
+      else {
+        val count = math.min(length, ranges(range + 1) - at)
+        text.getChars(at, at + count, buffer, offset)
+        at += count
+        count
+      }
+    }
+    override def close(): Unit = ()
+  }
+
+  private val ArticleOpen   = "<article"
+  private val SvgOpen       = "<svg"
+  private val SvgClose      = "</svg>"
+  private val EventJsonAttr = " data-eventjson=\""
 
   private def firstMovieSlug(article: Element): Option[String] =
     article.select("""a[href*="/movie/"]""").asScala.iterator
