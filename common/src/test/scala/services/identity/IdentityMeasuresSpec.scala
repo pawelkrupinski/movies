@@ -329,6 +329,17 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleRelation(Listing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
   }
 
+  it should "not be a record's whole title trailing a banner that names no work" in {
+    // PL Kino Luna "KINO SENIORA | Primetime": TMDB bills "Primetime" after two works ("EliteXC: Primetime",
+    // "Dateline: Primetime"), so it read as an edition label and the listing's own film only overlapped it.
+    val q    = IdentityMeasures.Qualifiers.learn(Seq("Primetime", "EliteXC: Primetime", "Dateline: Primetime").map(Film(_)))
+    val luna = Listing("KINO SENIORA | Primetime", decorations = TitleDecorations(Set(Seq("kino", "seniora")), Set.empty))
+    q.of(luna) shouldBe empty
+    IdentityMeasures.titleRelation(luna, Film("Primetime"), Houses.Unknown, q) shouldBe Category("segment")
+    // Before anything not learned as a venue's, it stays an edition: "EliteXC: Primetime" is not the 2026 film.
+    q.of(Listing("EliteXC: Primetime")) shouldBe Set("primetime")
+  }
+
   it should "never be the piece a listing publishes as its original title" in {
     // UK Cineworld's "Cineworld 30: The Dark Knight" (x87), originally "The Dark Knight": TMDB bills
     // the work after two banners too, but the venue names it as the film.

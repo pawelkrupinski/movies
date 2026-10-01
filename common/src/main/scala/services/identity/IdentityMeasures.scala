@@ -253,12 +253,16 @@ object IdentityMeasures {
      *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). Nor is a
      *  LEADING piece some record is titled whole when the rest carries no record's whole title: a
      *  work leads its sequels, so "Dracula (4K Restoration)" is Dracula however many TMDB bills after
-     *  "Dracula". A trailing piece stays a cut or an edition ("Dark City: Director's Cut"), whatever
-     *  record carries it alone. */
+     *  "Dracula" — nor a TRAILING one after a learned venue decoration, for the same reason: "KINO SENIORA |
+     *  Primetime" is Primetime however many records bill "Primetime" after a work. Beside a work the piece stays a cut or an edition
+     *  ("Dark City: Director's Cut"), whatever record carries it alone. */
     def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, {
       val named = l.originalTitle.map(yearlessTokens(_).mkString)
+      // A trailing piece only when what leads it is a learned venue decoration ("KINO SENIORA"): a rest
+      // merely missing from these records may still be a work ("Dark City" of "Dark City: Director's Cut").
+      lazy val undecorated = (Seq(l.title) ++ l.rawTitle).flatMap(l.decorations.strip).map(yearlessTokens).toSet
       def leavesNoWork(piece: Seq[String], rest: Seq[String], trails: Boolean) =
-        !trails && works(piece) && !works.exists(work => rest.containsSlice(work))
+        works(piece) && !works.exists(work => rest.containsSlice(work)) && (!trails || undecorated(piece))
       (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split).collect {
         case (piece, rest, trails) if count(piece, trails) >= 2 && count(piece, trails) > count(rest, !trails) && !named.contains(piece.mkString) &&
             !leavesNoWork(piece, rest, trails) =>
