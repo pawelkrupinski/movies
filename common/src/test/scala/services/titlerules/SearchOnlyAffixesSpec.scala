@@ -26,6 +26,16 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
       .foreach(t => n.sanitize(t) should not be n.sanitize(n.apiQuery(t)))
   }
 
+  "A screening billed as a film's showing" should "be looked up as that film" in {
+    // PL Kino Orzeł, Kino Stary Młyn, Kino w Ratuszu, Kino Orzeł's Fonomo, Kino w Kadrze (2026-10 corpus).
+    n.apiQuery("Sytuacje Relacje. Pokaz filmu Hamnet") shouldBe "Hamnet"
+    n.apiQuery("Spotkanie z aktorką Kamilą Urzędowską. Pokaz filmu \"Lalka\"") shouldBe "Lalka"
+    n.apiQuery("Fonomo 26 - Tajemnica śpiewających ptaków reż. Antoine Lanciaux") shouldBe "Fonomo 26 - Tajemnica śpiewających ptaków"
+    n.apiQuery("Kandydaci śmierci: Kadr Non-Fiction (16+)") shouldBe "Kandydaci śmierci"
+    // the screening keeps its own row
+    n.sanitize("Sytuacje Relacje. Pokaz filmu Hamnet") should not be n.sanitize("Hamnet")
+  }
+
   "A distributor's \". Film\" suffix" should "come off the title it shows and the key it merges by" in {
     // https://kinowo.net/poznan/movie/rolling-loud-film — the Polish distributor bills "Rolling Loud. Film"
     // (and Jaworzyna "Rolling Loud. Film 2026"); the film is "Rolling Loud".

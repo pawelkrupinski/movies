@@ -558,12 +558,16 @@ object IdentityMeasures {
     val slashed = Seq(SpacedSlash, HalfSpacedDash).flatMap(separator =>
       if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
     val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
-    (slashed ++ coded).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+    val undated = ScreeningYearSuffix.findFirstMatchIn(title).map(_.group(1)).toSeq
+    (slashed ++ coded ++ undated).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
   private val SpacedSlash     = """\s+/\s*|\s*/\s+""".r
   /** A dash with a space on ONE side ("Fregata dla seniorów- 500 Mil"); both sides is `SearchTitles`'s. */
   private val HalfSpacedDash  = """(?<=\S)[-–—]\s+|\s+[-–—](?=\S)""".r
   private val CodeBeforeColon = """^\p{L}{1,3}:(?=\S)""".r
+  /** A screening year after a title, unbracketed ("Ma to sens 2026"): 2020–2039 only, so a title that IS a
+   *  number ("2046", "Blade Runner 2049") keeps it. A shape, never the old pipeline's lookup query. */
+  private val ScreeningYearSuffix = """^(.*\p{L}.*?)\s+20[23]\d$""".r
 
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
    *  Mossy Botton", "Pradhama Drishtiya Kuttakkar") — where both spellings of that word run to five

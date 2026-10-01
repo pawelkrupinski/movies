@@ -318,6 +318,12 @@ object ExtraTitleRules {
     searchStrip("xtra-dkf-suffix-period",          """(?i)\.\s*DKF\b.*$""",                          "'Róża. DKF' full-stop DKF suffix"),
     // A premiere is an event of the screening, bracketed "(PREMIERA)" (separated ones: the announcement strip
     // below). Never the whole title, and never after a bare space: "Ostatnia Premiera" is a title.
+    // A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
+    // Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; a director credit after the title
+    // ("… reż. Antoine Lanciaux") and Kino w Kadrze's ": Kadr Non-Fiction (16+)" are no part of it.
+    searchReplace("xtra-pokaz-filmu",              """(?iu)^.*?\bpokaz\s+filmu\s+["„]?([^"„”]+?)["”]?\s*$""", "$1", "'… pokaz filmu <film>' screening of a film"),
+    searchStrip("xtra-rez-credit-suffix",          """(?iu)\s*,?\s+reż\.\s+\p{Lu}[^|:]*$""",            "'<film> reż. <director>' credit suffix"),
+    searchStrip("xtra-kadr-non-fiction-suffix",    """(?iu)\s*:\s*Kadr\s+Non-?Fiction\b.*$""",     "'<film>: Kadr Non-Fiction (16+)' programme suffix"),
     searchStrip("xtra-premiera-bracketed",         """(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$""", "'(PREMIERA)' bracketed premiere tag"),
     searchStrip("xtra-kino-sensoryczne-suffix",    """(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$""", "'- Kino sensoryczne' sensory-friendly screening suffix"),
     searchStrip("xtra-dyskusyjny-suffix",          """(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$""", "'- dyskusyjny klub filmowy' suffix"),

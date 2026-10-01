@@ -378,6 +378,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Fregata's "Fregata dla seniorów- 500 Mil": a dash spaced on one side only separates too.
     IdentityMeasures.titleShapes(Listing("Fregata dla seniorów- 500 Mil")) should contain ("500 Mil")
     IdentityMeasures.titleShapes(Listing("Spider-Man")) shouldBe Seq("Spider-Man")
+    // Jaworzyna's "Ma to sens 2026": a screening year after the title is no part of it; "2046" and
+    // "Blade Runner 2049" are titles, not screening years.
+    IdentityMeasures.titleShapes(Listing("Ma to sens 2026")) should contain ("Ma to sens")
+    IdentityMeasures.titleShapes(Listing("Blade Runner 2049")) shouldNot contain ("Blade Runner")
+    IdentityMeasures.titleShapes(Listing("2046")) shouldBe Seq("2046")
     // A slash or colon inside a word is the title's own: "Face/Off", "AC/DC", "Star Wars:Episode".
     IdentityMeasures.titleShapes(Listing("Face/Off")) shouldBe Seq("Face/Off")
     IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
