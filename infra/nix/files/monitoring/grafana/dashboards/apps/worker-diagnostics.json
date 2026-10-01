@@ -3339,7 +3339,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "interval": "2m",
       "title": "In-app Telegram alerts — sent and failed per kind",
       "description": "`kinowo_worker_telegram_notifications_total{kind,outcome}`: every page the worker's own Telegram alerters tried to send (Filmweb fallback ENTER / RECOVERED / UNCOVERED, the gone-venue and venue-closure pages, Filmweb drops, staging stuck), by whether the Bot API took it. Each attempt also logs `Telegram notify sent` (INFO) or `Telegram notify failed` (WARN) with `kind=` and `country=`, so the messages behind a bar are one log query away. `WorkerTelegramAlertsFailing` (worker-pipeline.rules) fires when a kind keeps failing with nothing getting through.",
@@ -3352,7 +3352,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 321
+        "y": 329
       },
       "fieldConfig": {
         "defaults": {
