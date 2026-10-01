@@ -82,6 +82,7 @@ runs:
           project/target
           project/project/target
           */target/scala-*
+          !*/target/scala-*/*.jar
         # web/PageTest/test + FixtureServerMain → page scope (every module's
         # main + test + the web page sources). DEDICATED `sbt-target-page-` key
         # so page-tests PERSIST their own zinc state including the compiled

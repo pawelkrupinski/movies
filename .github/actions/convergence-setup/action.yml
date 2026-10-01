@@ -117,6 +117,7 @@ runs:
               project/target
               project/project/target
               */target/scala-*
+              !*/target/scala-*/*.jar
           key: ${{ steps.sbt-key.outputs.key }}
           restore-keys: |
               sbt-target-convergence-${{ runner.os }}-

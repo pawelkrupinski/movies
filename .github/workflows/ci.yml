@@ -186,6 +186,7 @@ jobs:
                       project/target
                       project/project/target
                       */target/scala-*
+                      !*/target/scala-*/*.jar
                   # Scope the exact key to the sources this job compiles
                   # (unit = every module's main + test). restore-keys still
                   # falls back to any recent sbt-target cache so zinc stays
@@ -285,6 +286,7 @@ jobs:
                       project/target
                       project/project/target
                       */target/scala-*
+                      !*/target/scala-*/*.jar
                   # JDK-21 zinc cache, kept on its own key so cross-JDK class
                   # artifacts don't mix with the JDK-25 jobs' cache. Boots
                   # web/PageTest FixtureServerMain → page scope (every module's
@@ -468,6 +470,7 @@ jobs:
                       project/target
                       project/project/target
                       */target/scala-*
+                      !*/target/scala-*/*.jar
                   # it scope (every module's main + test + it). restore-keys keeps zinc warm.
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
@@ -571,6 +574,7 @@ jobs:
                       project/target
                       project/project/target
                       */target/scala-*
+                      !*/target/scala-*/*.jar
                   # Dedicated key so these shards PERSIST the e2e/Test compile
                   # (the shared `sbt-target-` key is owned by `test`, which never
                   # compiles e2e — so on that key e2e recompiled cold every run,
