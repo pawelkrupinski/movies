@@ -70,11 +70,16 @@ runs:
     # to the journal (MONGO_MAJORITY_JOURNAL, see the script): every write the app makes is
     # `w: majority`, and a disk sync each — most of a US take-up's 160,000 store writes — buys
     # durability for a database that dies with the runner.
+    # IN THE BACKGROUND: pulling the image, booting mongod and electing the one-node replica set is
+    # ~20 s of waiting that nothing before the suite needs — the JDK, the caches and the fixture unpack
+    # below run meanwhile, and the last step of this action waits for it (and fails as it would have).
     - name: Start MongoDB (single-node replica set, for change streams)
       shell: bash
       env:
           MONGO_MAJORITY_JOURNAL: 'false'
-      run: '"$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
+      run: |
+          ( "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2; echo $? > "$RUNNER_TEMP/mongo-start.rc.part"; mv "$RUNNER_TEMP/mongo-start.rc.part" "$RUNNER_TEMP/mongo-start.rc" ) \
+              > "$RUNNER_TEMP/mongo-start.log" 2>&1 &
 
     # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
     # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
@@ -412,3 +417,14 @@ runs:
           fi
           echo "KINOWO_CONVERGENCE_OVERLAY_ASSET=$overlay" >> "$GITHUB_ENV"
           sleep 1; touch "$RUNNER_TEMP/overlay-stamp"
+
+    - name: Wait for MongoDB, started in the background above
+      shell: bash
+      run: |
+          deadline=$((SECONDS + 240))
+          until [ -f "$RUNNER_TEMP/mongo-start.rc" ]; do
+              [ "$SECONDS" -lt "$deadline" ] || { echo "::error::MongoDB start did not finish within 240 s"; cat "$RUNNER_TEMP/mongo-start.log"; exit 1; }
+              sleep 1
+          done
+          cat "$RUNNER_TEMP/mongo-start.log"
+          exit "$(cat "$RUNNER_TEMP/mongo-start.rc")"

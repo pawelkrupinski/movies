@@ -488,4 +488,16 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  /** The leg's MongoDB starts in the BACKGROUND (~20 s of image pull, boot and election that the JDK,
+   *  caches and fixture unpack overlap), so setup must end by waiting for it and failing as the start
+   *  would have — or the suite would run against a server that is not up yet. */
+  "the convergence setup" should "start MongoDB in the background and wait for it before it ends" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- name:")).toSeq
+    setup should include("start-mongo-replset.sh")
+    setup should include regex """mongo-start\.rc\" \) \\\n\s+> \"\$RUNNER_TEMP/mongo-start\.log\" 2>&1 &"""
+    steps.last shouldBe "- name: Wait for MongoDB, started in the background above"
+    setup should include("""exit "$(cat "$RUNNER_TEMP/mongo-start.rc")"""")
+  }
 }

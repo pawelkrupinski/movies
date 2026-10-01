@@ -29,10 +29,12 @@ runs:
       run: |
           set -euo pipefail
           [ -f "$RUNNER_TEMP/overlay-stamp" ] || { echo "no overlay stamp — setup ran no overlay step; nothing to publish"; exit 0; }
-          fresh=$(mktemp)
-          { cat "$RUNNER_TEMP/overlay-files.txt" 2>/dev/null || true
-            find "$TREE" -type f -newer "$RUNNER_TEMP/overlay-stamp" 2>/dev/null || true; } | sort -u > "$fresh"
-          recorded=$(find "$TREE" -type f -newer "$RUNNER_TEMP/overlay-stamp" 2>/dev/null | wc -l)
+          # ONE walk of the tree (up to ~127k files, ~19 s each): its files newer than the stamp are
+          # both the count and, with the restored overlay's list, what to pack.
+          newer=$(mktemp); fresh=$(mktemp)
+          find "$TREE" -type f -newer "$RUNNER_TEMP/overlay-stamp" 2>/dev/null > "$newer" || true
+          recorded=$(wc -l < "$newer")
+          { cat "$RUNNER_TEMP/overlay-files.txt" 2>/dev/null || true; cat "$newer"; } | sort -u > "$fresh"
           if [ "$recorded" -eq 0 ]; then
               echo "the leg recorded nothing new — ${KINOWO_CONVERGENCE_OVERLAY_ASSET} stays as it was"
               exit 0
