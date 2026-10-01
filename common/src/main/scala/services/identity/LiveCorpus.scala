@@ -53,8 +53,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val seasonFilms = mutable.HashMap.empty[(String, Int), Set[Int]]
   // venue titles: the translated nodes under each title key, their origins, the films under each key
   private val translatedBy  = mutable.HashMap.empty[String, Set[NodeKey]]
-  // and every node under each title key, for the titles its listings' facts give (`CorpusContext.titlesByFacts`)
-  private val keyedBy       = mutable.HashMap.empty[String, Set[NodeKey]]
   private val originsOfKey  = mutable.HashMap.empty[String, Set[String]]
   private val keysOfOrigin  = mutable.HashMap.empty[String, Set[String]]
   private val filmsByKey    = mutable.HashMap.empty[String, Set[Int]]
@@ -292,7 +290,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       byWhole.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0)); if (byWhole.isEmpty) spreads.remove(piece) })
     reachedByKey.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) reachedByKey.remove(old.titleKey) }
     if (old.translated) translatedBy.updateWith(old.titleKey)(_.map(_ - key).filter(_.nonEmpty))
-    keyedBy.updateWith(old.titleKey)(_.map(_ - key).filter(_.nonEmpty))
     films
   }
 
@@ -315,7 +312,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).updateWith(live.whole)(count => Some(count.getOrElse(0) + 1)))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet
     if (live.translated) translatedBy.updateWith(live.titleKey)(held => Some(held.getOrElse(Set.empty) + key))
-    keyedBy.updateWith(live.titleKey)(held => Some(held.getOrElse(Set.empty) + key))
     films
   }
 
@@ -328,10 +324,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     origins.foreach(origin => keysOfOrigin.updateWith(origin)(held => Some(held.getOrElse(Set.empty) + key)))
     if (origins.isEmpty) originsOfKey.remove(key) else originsOfKey(key) = origins
     val films  = origins.flatMap(filmsByKey.getOrElse(_, Set.empty)).toSeq.sorted.flatMap(id => base.get(id).map(candidate => id -> fresh(candidate).film))
-    val keyed  = keyedBy.getOrElse(key, Set.empty).toSeq.flatMap(nodes.get)
-    val reach  = keyed.map(live => live.node -> live.reached).toMap
+    // The title key's own nodes and reach, as `groups` and `reachedByKey` already hold them by node id.
+    val keyed  = groups.get(key).toSeq.flatMap(_.valuesIterator.flatMap(_.headOption.map(_._2)))
+    val reach  = reachedByKey.get(key).toSeq.flatMap(_.valuesIterator.flatten)
     val next   = (IdentityMeasures.venueTitles(translated, films).toSeq.flatMap { case (id, titles) => titles.map(id -> _) } ++
-      CorpusContext.titlesByFacts(keyed.map(_.node), reach, base.get)).groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
+      CorpusContext.titlesByFacts(keyed, reach, base.get)).groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val before = titledBy.getOrElse(key, Set.empty)
     if (next.isEmpty) titledBy.remove(key) else titledBy(key) = next.keySet
     (before ++ next.keys).filter { id =>

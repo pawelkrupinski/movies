@@ -93,11 +93,10 @@ private[identity] final class WholeCorpusContext(
 private[identity] object CorpusContext {
   def titleOf(node: EvidenceNode): String = IdentityMeasures.key(node.evidence.title)
 
-  /** `IdentityMeasures.titlesByFacts` of ONE title key's nodes, over the records they reached: the same
-   *  inputs whether a whole resolve asks or the live corpus re-titles the key. */
-  def titlesByFacts(keyed: Seq[EvidenceNode], reached: EvidenceNode => Seq[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
-    IdentityMeasures.titlesByFacts(keyed.sortBy(_.id).map(_.evidence.measured),
-      keyed.flatMap(reached).distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
+  /** `IdentityMeasures.titlesByFacts` of ONE title key's nodes (their measured listings, by node id), over
+   *  the records they reached: the same inputs whether a whole resolve asks or the live corpus re-titles the key. */
+  def titlesByFacts(listings: Seq[IdentityMeasures.Listing], reached: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
+    IdentityMeasures.titlesByFacts(listings, reached.toSeq.distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
 
   /** A segment carried by this many distinct whole titles, and by none as its own whole title, is a
    *  banner ([[CorpusContext.bannerSegment]]): PL's gluing programme and festival banners span 11–60
@@ -178,7 +177,9 @@ private[identity] object CorpusContext {
   def of(nodes: Seq[EvidenceNode], reached: EvidenceNode => Seq[Int], recorded: Map[Int, Candidate],
          answers: CandidateQuery => Option[Seq[Int]], sanitize: String => String): CorpusContext = {
     val byOriginal  = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
-    val byFacts     = nodes.groupBy(titleOf).toSeq.flatMap { case (_, keyed) => titlesByFacts(keyed, reached, recorded.get) }
+    val byFacts     = nodes.groupBy(titleOf).toSeq.flatMap { case (_, keyed) =>
+      val sorted = keyed.sortBy(_.id)
+      titlesByFacts(sorted.map(_.evidence.measured), sorted.flatMap(reached), recorded.get) }
     val venueTitles = (byOriginal.toSeq.flatMap { case (id, titles) => titles.map(id -> _) } ++ byFacts)
       .groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val candidates  = recorded.map { case (id, candidate) =>
