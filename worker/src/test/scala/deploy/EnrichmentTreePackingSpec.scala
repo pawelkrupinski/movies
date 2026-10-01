@@ -19,7 +19,7 @@ import scala.sys.process.*
  * `ConvergenceLegWiringSpec` asserts the publish is wired into both jobs and that
  * tar's warning status doesn't discard the capture; this spec runs the script.
  */
-class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers {
+class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
 
   private val Packer = ".github/scripts/pack-enrichment-tree.sh"
 
@@ -28,7 +28,8 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers {
   private def pack(tree: Path, archive: Path, bin: Option[Path] = None): (Int, String) = {
     val out    = new StringBuilder
     val logger = ProcessLogger(line => out.append(line).append('\n'))
-    val path   = bin.fold(sys.env("PATH"))(dir => s"$dir:${sys.env("PATH")}")
+    val search = configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)
+    val path   = bin.fold(search)(dir => s"$dir:$search")
     val status = Process(Seq("bash", Packer, tree.toString, archive.toString), None, "PATH" -> path).!(logger)
     (status, out.toString)
   }
