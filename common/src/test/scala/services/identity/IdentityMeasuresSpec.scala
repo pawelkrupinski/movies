@@ -88,6 +88,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // search is asked without a year, the year being measured apart.
     IdentityMeasures.searchQueries(Listing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K")) should contain ("Człowiek z żelaza")
     IdentityMeasures.searchQueries(Listing("Krzyżacy [1960]")) should contain ("Krzyżacy")
+    // …and that part is a whole piece of the title, naming the film as a banner segment does: the
+    // "4K" after the year left Wajda's film only an overlap (−3.95), rejected at 11.7%.
+    IdentityMeasures.titleRelation(Listing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K"), Film("Człowiek z żelaza")) shouldBe
+      Category("segment")
     // A bracket that is not a year stays the title's: "Kura (Mała Sala)" asks nothing new.
     IdentityMeasures.searchQueries(Listing("Kura (Mała Sala)")).exists(q => !q.contains("Kura")) shouldBe false
     // Nor does a year with nothing before it name a title.

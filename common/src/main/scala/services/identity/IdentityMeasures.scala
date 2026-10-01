@@ -535,11 +535,13 @@ object IdentityMeasures {
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
    *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"; "(4DX Rewind) Shrek"
-   *  → "Shrek" by a learned `decorations` run), to a fixpoint: every shape still a whole delimited
-   *  or decorated piece of one of the titles. */
+   *  → "Shrek" by a learned `decorations` run) and cut before a bracketed year ("Człowiek z żelaza
+   *  (1981) 4K" → "Człowiek z żelaza"), to a fixpoint: every shape still a whole delimited or
+   *  decorated piece of one of the titles. */
   private def shapes(titles: Seq[String], decorations: TitleDecorations = TitleDecorations.None): Seq[String] =
     Iterator.iterate(titles.map(_.trim).filter(_.nonEmpty).distinct)(s =>
-        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip)).map(_.trim).filter(_.nonEmpty).distinct)
+        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip) ++ s.flatMap(beforeItsYear))
+          .map(_.trim).filter(_.nonEmpty).distinct)
       .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 
   /** Two titles that are the same words but for ONE, a letter apart — a venue's typo ("The Beast of
