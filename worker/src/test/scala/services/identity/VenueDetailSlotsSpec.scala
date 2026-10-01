@@ -199,4 +199,24 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
       Answer.Known(Some(DetailFacts(Some(2021), Seq("Denis Villeneuve"), Some(155), Some("Dune"), Seq("US"))))
     reads.changedBy(Seq(VenueDetailSlots.keyOf(Group, Page))).details shouldBe Set(listing.key)
   }
+
+  // A cut-over country's new listing has no film row yet: its page, read into venue_pages, must answer
+  // all the same — as the page states it, the model merging the listing's own values itself.
+  "A page in venue_pages" should "answer though no film row or staged row holds it" in {
+    val enricher = new FakeDetailEnricher(KinoApollo, Group)
+    val pages    = new services.venuepages.InMemoryVenuePageStore
+    val slots    = new VenueDetailSlots(new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer),
+      new InProcessEventBus(), normalizer = titleNormalizer, clock = clock), new InMemoryStagingRepository(normalizer = titleNormalizer),
+      new InMemoryFreshnessStore, Seq(enricher), _ => (), pages)
+    val key = services.venuepages.VenuePageKey(Group, Page)
+    slots.answer(enricher, Page) shouldBe None
+    pages.put(services.venuepages.VenuePage(key, services.venuepages.VenuePage.Read(Full), clock.instant()))
+    slots.pageRead(Group, Page)
+    slots.settle()
+    slots.answer(enricher, Page) shouldBe Some(Some(Full))
+    pages.put(services.venuepages.VenuePage(key, services.venuepages.VenuePage.Gone(404), clock.instant()))
+    slots.pageRead(Group, Page)
+    slots.settle()
+    slots.answer(enricher, Page) shouldBe Some(None)
+  }
 }

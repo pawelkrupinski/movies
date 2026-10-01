@@ -110,8 +110,13 @@ class EnrichDetailsHandler(
   // Wired at the composition root beside the cache's own copy; defaulted like the
   // cache's, for the same reason — a wrong value mis-SPELLS a badge rather than
   // mis-keying a row.
-  screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry()
+  screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry(),
+  // `venue_pages`, where every page read is written once (`VenuePageReader`): wired to the country's
+  // collection at the composition root; in memory where a test does not look at it.
+  pages:            services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore
 ) extends TaskHandler with Logging {
+
+  private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
   import HandlerOutcome._
@@ -135,7 +140,8 @@ class EnrichDetailsHandler(
           .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
         val label = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)
         val ref = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
-        enricher.fetchDetail(ref) match {
+        // The page is read into venue_pages, stamped and announced there; this handler lands it on the row.
+        reader.read(enricher, ref) match {
           case DetailFetchOutcome.Failed =>
             uptime.recordFailure(service, s"detail fetch returned nothing for $label")
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
@@ -163,8 +169,6 @@ class EnrichDetailsHandler(
             // permanently. `reapStuckPending` can now let it through.
             uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
-            freshness.markFresh(EnrichDetailsTasks.pageGone(enricher.detailGroup, ref), FreshnessKind.DetailEnrich, clock.instant())
-            bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
             Done
           case DetailFetchOutcome.Fetched(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
@@ -243,12 +247,7 @@ class EnrichDetailsHandler(
                                   })),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
-            if (merged) {
-              freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
-              freshness.markFresh(EnrichDetailsTasks.pageRead(enricher.detailGroup, ref), FreshnessKind.DetailEnrich, clock.instant())
-            }
-            // After the stamps, so a reader of the slots sees the answer this announces.
-            bus.publish(services.events.VenueDetailRead(enricher.detailGroup, ref))
+            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))

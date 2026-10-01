@@ -44,8 +44,12 @@ class StagingSteps(
   clock:             java.time.Clock = java.time.Clock.systemUTC(),
   // Announces a staged row's page once its ask is stamped (`VenueDetailRead`): the identity model
   // reads a newcomer's venue detail from this row, and waits for the announcement to re-ask it.
-  detailRead:        services.events.VenueDetailRead => Unit = _ => ()
+  detailRead:        services.events.VenueDetailRead => Unit = _ => (),
+  // `venue_pages`, where every page read is written once (`VenuePageReader`); in memory where a test
+  // does not look at it.
+  pages:             services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore
 ) extends Logging {
+  private val reader = new services.venuepages.VenuePageReader(pages, freshness, detailRead, clock)
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
   /** The rules this staging pipeline anchors under — read by the task handlers
@@ -141,7 +145,7 @@ class StagingSteps(
         val target =
           if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, row.title, stagingRepository.normalizer)
           else enricher.detailTarget
-        enricher.fetchDetail(ref) match {
+        reader.read(enricher, ref) match {
           case DetailFetchOutcome.Fetched(detail) =>
             val before = row.record.data.getOrElse(target, SourceData())
             val after  = detail.mergeInto(before, screeningTokens)

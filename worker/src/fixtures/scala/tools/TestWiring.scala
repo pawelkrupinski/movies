@@ -94,7 +94,7 @@ trait TestWiring extends WorkerWiring {
   override lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, detailCaptureBus,
-    detailDueWindow, screeningTokens = screeningTokens
+    detailDueWindow, screeningTokens = screeningTokens, pages = venuePageStore
   )
   // The fixture pipeline drives ONE `detailReaper.tick()` per pass and expects it
   // to enqueue the whole deferred-detail corpus (the prod per-tick cap would

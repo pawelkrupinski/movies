@@ -15,6 +15,7 @@ import java.time.{Instant, LocalDateTime}
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
@@ -364,5 +365,34 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
     val slot = cache.get(cache.keyOf("Lalka", Some(2026))).flatMap(_.cinemaData.get(KinoApollo))
     withClue(s"slot=$slot: ")(slot.flatMap(_.releaseYear) shouldBe Some(2026))
+  }
+
+  // venue_pages is the ONE place a page's facts are written: the handler reads the page through it,
+  // so the identity model can read the page before any film row holds it.
+  it should "write the page it read to venue_pages, read or gone" in {
+    val read     = new InMemoryVenuePageStore
+    val detail   = FilmDetail(director = Seq("Denis Villeneuve"), runtimeMinutes = Some(155), releaseYear = Some(2021))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(detail))
+    val dune     = seededCache("Dune")
+    new EnrichDetailsHandler(Map("kino-apollo" -> enricher), dune, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow,
+      clock = specClock, pages = read).handle(taskFor("kino-apollo", dune, "Dune", enricher)) shouldBe Done
+    read.get(VenuePageKey("kino-apollo", "http://ref")) shouldBe
+      Some(VenuePage(VenuePageKey("kino-apollo", "http://ref"), VenuePage.Read(detail), specClock.instant()))
+
+    val goneStore = new InMemoryVenuePageStore
+    val gone      = new FakeDetailEnricher(KinoApollo, "kino-apollo", failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
+    val lalka     = seededCache("Lalka")
+    new EnrichDetailsHandler(Map("kino-apollo" -> gone), lalka, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow,
+      clock = specClock, pages = goneStore).handle(taskFor("kino-apollo", lalka, "Lalka", gone)) shouldBe Done
+    goneStore.get(VenuePageKey("kino-apollo", "http://ref")).map(_.outcome) shouldBe Some(VenuePage.Gone(404))
+  }
+
+  it should "write nothing to venue_pages for a fetch that failed for now" in {
+    val store    = new InMemoryVenuePageStore
+    val failing  = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
+    val cache    = seededCache("Dune")
+    new EnrichDetailsHandler(Map("kino-apollo" -> failing), cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow,
+      clock = specClock, pages = store).handle(taskFor("kino-apollo", cache, "Dune", failing)) shouldBe Done
+    store.get(VenuePageKey("kino-apollo", "http://ref")) shouldBe None
   }
 }

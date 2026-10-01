@@ -47,7 +47,7 @@ trait DetailWiring { self: WorkerWiring =>
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, eventBus, detailDueWindow, clock = clock,
-    screeningTokens = screeningTokens
+    screeningTokens = screeningTokens, pages = venuePageStore
   )
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic

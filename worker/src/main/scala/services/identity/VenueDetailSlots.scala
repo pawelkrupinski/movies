@@ -27,15 +27,54 @@ import services.tasks.{EnrichDetailsTasks, StagingTaskKeys}
  * announced page moved since.
  */
 final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository, freshness: FreshnessStore,
-                             enrichers: Seq[DetailEnricher], changed: String => Unit = _ => ()) {
+                             enrichers: Seq[DetailEnricher], changed: String => Unit = _ => (),
+                             pages: services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore) {
   import VenueDetailSlots._
 
   private val enricherOf = enrichers.map(e => e.cinema -> e).toMap
 
   /** What the enrichment said about `page` for `enricher`'s group: `None` while it has not asked;
    *  `Some(None)` when it asked and the page had nothing (gone); `Some(Some(facts))` otherwise. */
-  def answer(enricher: DetailEnricher, page: String): Option[Option[FilmDetail]] =
-    answerOf(current.getOrElse((enricher.detailGroup, page), Nil))
+  def answer(enricher: DetailEnricher, page: String): Option[Option[FilmDetail]] = {
+    val built = current
+    answerAt((enricher.detailGroup, page), built)
+  }
+
+  /** `page` of `detailGroup` was written to `venue_pages` (`VenueDetailRead`): re-read it at the next
+   *  [[settle]], with everything else that moved. */
+  def pageRead(detailGroup: String, page: String): Unit = { pendingPages.add((detailGroup, page)); dirty = true }
+
+  // venue_pages, as of the last settle: a page's own answer — its detail, or None when gone — which wins
+  // over the slots (a slot holds the listing's values merged in; the model merges those itself). Loaded
+  // whole at the first settle, then only the pages announced since.
+  @volatile private var pageAnswers: Map[(String, String), Option[FilmDetail]] = Map.empty
+  private var pagesLoaded = false
+  private val pendingPages = java.util.concurrent.ConcurrentHashMap.newKeySet[(String, String)]()
+
+  private def loadPages(): Unit = {
+    import scala.jdk.CollectionConverters._
+    if (!pagesLoaded) {
+      val all = Map.newBuilder[(String, String), Option[FilmDetail]]
+      pages.foreach(p => all += ((p.key.detailGroup, p.key.page) -> pageAnswerOf(p)))
+      pendingPages.clear()
+      pageAnswers = all.result()
+      pagesLoaded = true
+    } else if (!pendingPages.isEmpty) {
+      val moved = pendingPages.asScala.toSeq
+      moved.foreach(pendingPages.remove)
+      pageAnswers = moved.foldLeft(pageAnswers) { case (answers, (group, page)) =>
+        pages.get(services.venuepages.VenuePageKey(group, page)).fold(answers - ((group, page)))(p => answers + ((group, page) -> pageAnswerOf(p)))
+      }
+    }
+  }
+
+  private def pageAnswerOf(p: services.venuepages.VenuePage): Option[FilmDetail] = p.outcome match {
+    case services.venuepages.VenuePage.Read(detail) => Some(detail)
+    case services.venuepages.VenuePage.Gone(_)      => None
+  }
+
+  private def answerAt(key: (String, String), built: Map[(String, String), Seq[Entry]]): Option[Option[FilmDetail]] =
+    pageAnswers.get(key).orElse(answerOf(built.getOrElse(key, Nil)))
 
   /** Mark the index stale: a page was read, or a projection moved rows. Cheap by design — the
    *  enrichment announces every page it reads, on every worker, and a rebuild scans every cached film
@@ -64,8 +103,9 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
     if (dirty || !builtAt.contains(version)) {
       dirty   = false
       builtAt = Some(version)
+      loadPages()
       built   = build()
-      val now = built.view.mapValues(answerOf).toMap
+      val now = (built.keySet ++ pageAnswers.keySet).iterator.map(k => k -> answerAt(k, built)).collect { case (k, Some(a)) => k -> Some(a) }.toMap
       answered.foreach(before => (before.keySet ++ now.keySet).filter(k => before.get(k).flatten != now.get(k).flatten)
         .foreach { case (group, page) => changed(keyOf(group, page)) })
       answered = Some(now)
