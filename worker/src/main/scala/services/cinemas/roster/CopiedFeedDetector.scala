@@ -46,12 +46,18 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
   @volatile private var seeded = false
 
   /** A venue's scrape landed with `films`: its listings now. */
-  def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = synchronized(land(cinema, films))
+  def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = if (watched(cinema)) {
+    // Fingerprinted before the lock: it reads only `films`, and a scrape walk lands eight venues at
+    // once — under the lock it was a quarter of each landing thread's time, one venue after another.
+    val fingerprints = fingerprintsOf(films)
+    synchronized(land(cinema, fingerprints))
+  }
 
   /** Every venue's latest archived scrape, as it stands — each a landing, but never over a venue a
    *  fresher scrape already landed for since boot. Publishes the gauge from here on. */
   def seed(scrapes: Seq[ArchivedScrape]): Unit = synchronized {
-    scrapes.foreach(scrape => if (!held.contains(scrape.cinema)) scrape.lastSuccess.foreach(s => land(scrape.cinema, s.films)))
+    scrapes.foreach(scrape => if (watched(scrape.cinema) && !held.contains(scrape.cinema))
+      scrape.lastSuccess.foreach(s => land(scrape.cinema, fingerprintsOf(s.films))))
   }
 
   /** The archive has been read whole: from now on the gauge says what the roster holds. */
@@ -75,8 +81,7 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
   /** The pairs whose one venue lists the other's sessions, each once. */
   def copiedPairs: Set[(String, String)] = synchronized(pairsNow)
 
-  private def land(cinema: Cinema, films: Seq[CinemaMovie]): Unit = if (watched(cinema)) {
-    val fingerprints = fingerprintsOf(films)
+  private def land(cinema: Cinema, fingerprints: Array[Long]): Unit = {
     val shared       = fingerprints.iterator.flatMap(owners.get).filter(other => other != cinema && watched(other))
       .toSeq.groupMapReduce(identity)(_ => 1)(_ + _)
     val copied = shared.collect {

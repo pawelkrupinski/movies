@@ -96,6 +96,25 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
 
   // A copy that predates the restart must be found again, from the archive, without the seed's
   // older listing undoing a scrape that landed after boot.
+  // A US scrape walk lands eight venues at once; fingerprinting a listing reads only that listing.
+  it should "fingerprint a landing venue's listings without waiting for another venue's landing" in {
+    val w       = new World
+    val read    = new java.util.concurrent.CountDownLatch(1)
+    val films   = feed(pickwick, "pickwick")
+    val watched = new scala.collection.immutable.AbstractSeq[CinemaMovie] {
+      def iterator: Iterator[CinemaMovie] = { read.countDown(); films.iterator }
+      def apply(i: Int): CinemaMovie      = films(i)
+      def length: Int                     = films.length
+    }
+    val landing = new Thread(() => w.detector.venueScraped(pickwick, watched))
+    w.detector.synchronized {                           // another venue's landing holds the detector
+      landing.start()
+      read.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+    }
+    landing.join(10000)
+    w.detector.copiedPairs shouldBe empty
+  }
+
   "Its boot seed" should "find a copy already in the archive, and publish only once the archive was read whole" in {
     val archive = new InMemoryScrapeArchiveRepository
     val at      = Instant.parse("2026-09-30T10:00:00Z")
