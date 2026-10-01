@@ -35,13 +35,14 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Through the pipeline-path gate (ConvergenceDispatchGateSpec), which names each suite —
-   * and ONLY the country one: the United States ran from a workflow of its own, dispatched
-   * beside it, until its legs went hermetic; it is a row of the shared suite since 2026-09-30.
-   * A dispatch naming the retired build would fail the job on a workflow that is not there.
+   * Through the pipeline-path gate (ConvergenceDispatchGateSpec), which names each suite: the
+   * country suite and its identity-model twin (IdentityModelConvergenceWiringSpec). The United
+   * States ran from a workflow of its own, dispatched beside them, until its legs went hermetic;
+   * it is a row of the shared suites since 2026-09-30. A dispatch naming the retired build would
+   * fail the job on a workflow that is not there.
    */
-  it should "dispatch the one convergence build, which runs every country" in {
-    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"""")
+  it should "dispatch the convergence builds that run every country, and not the retired US one" in {
+    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"""")
     job("kick-convergence") should not include "US convergence"
   }
 

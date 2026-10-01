@@ -271,7 +271,9 @@ jobs:
               with:
                   fetch-depth: 0
                   filter: blob:none
-            # Only for a push that can change a verdict (`.github/convergence-paths.txt`).
+            # Both convergence suites — the pipeline's and the identity model's — on the same
+            # gate: only for a push that can change a verdict (`.github/convergence-paths.txt`),
+            # each diffed from the head of ITS OWN newest run.
             # Each lane keeps one run pending and every newer dispatch replaces it, so
             # dispatching for an app- or docs-only push used to evict the pending run of the
             # pipeline commit before it — see the script's header for the measurement.
@@ -279,7 +281,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
-              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"
+              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"
 
     # The flaky-test ledger. Every test job in ci.yml that FAILED reran its failed tests three
     # times and uploaded the ones that passed any rerun as `flaky-*` (scripts/ci/flake_verdict.py);

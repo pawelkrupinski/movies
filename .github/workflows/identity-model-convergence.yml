@@ -10,20 +10,24 @@
 # showtime and film emitted, coverage within 5% of production — is then a claim about the model a
 # country would be cut over to (docs/design/identity-cutover-runbook.md).
 #
-# TRIGGER-ONLY: dispatched by hand (Actions → Identity model convergence → Run workflow), never by Main
-# and never on a schedule. It is a measurement of a model no country serves yet, so a red leg is a
-# finding about that model: it requests no bisect (the leg gates the request on `identity-model`), files
-# no issue, and never writes the pipeline's recorded pair or its green marker. Its verdict statuses are
-# named after this workflow, so they never read as the pipeline suite's.
+# DISPATCHED BY MAIN, the same way and on the same gate as `Country convergence`: Main's
+# `kick-convergence` job starts both suites for a push that can change a verdict
+# (`.github/convergence-paths.txt`), and either can still be run by hand. It remains a measurement of a
+# model no country serves yet, so a red leg is a finding about that model: it requests no bisect (the
+# leg gates the request on `identity-model`), files no issue, and never writes the pipeline's recorded
+# pair or its green marker. Its verdict statuses are named after this workflow, so they never read as
+# the pipeline suite's.
 #
 # `mode: overlay`: the pipeline's pair was recorded by the PIPELINE, so a film the model matches and the
 # pipeline did not is enriched through requests the pair lacks. The legs fetch exactly those live, record
 # them, and publish them as `identity-overlay-<code>-<corpus run>.tar.gz` (convergence-overlay-publish);
 # the next dispatch replays pair + overlay, so each run needs fewer live fetches than the last.
 #
-# Its own lane, beside `Country convergence`'s: a manual run must not queue behind — or hold back —
-# the suite Main dispatches. A newer dispatch replaces the one in flight; only the latest question
-# about the model is worth an answer. (IdentityModelConvergenceWiringSpec)
+# Its own lane, beside `Country convergence`'s, so neither suite queues behind — or evicts the pending
+# run of — the other. The SAME superseding rules as that lane: the run in flight is never cancelled, at
+# most one newer run waits behind it, and each newer dispatch replaces the waiting one. A day of pushes
+# into a running leg produces exactly two runs: the one finishing, and the newest commit's.
+# (IdentityModelConvergenceWiringSpec, ConvergenceConcurrencyConfigSpec)
 #
 name: Identity model convergence
 
@@ -32,7 +36,7 @@ on:
 
 concurrency:
     group: identity-model-convergence
-    cancel-in-progress: true
+    cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
 # repository grants it at job level.

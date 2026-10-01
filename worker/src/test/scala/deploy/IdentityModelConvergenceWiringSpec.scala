@@ -5,8 +5,9 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * `identity-model-convergence.yml`: the pipeline suite's legs asked of the identity model — a
- * trigger-only measurement of a model no country serves yet, so it must never be mistaken for, or
- * get in the way of, the suite Main dispatches.
+ * measurement of a model no country serves yet, which Main dispatches beside the pipeline suite on
+ * the same gate and the same superseding rules, yet must never be mistaken for, or get in the way of,
+ * that suite.
  */
 class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/identity-model-convergence.yml")
@@ -15,11 +16,15 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val main     = RepoFile.read(".github/workflows/main.yml")
   private lazy val overlay  = RepoFile.read(".github/actions/convergence-overlay-publish/action.yml")
 
-  "the identity model convergence build" should "run only when dispatched by hand" in {
+  "the identity model convergence build" should "be dispatched by Main's convergence kick, on the pipeline suite's gate" in {
     val triggers = RepoFile.block(workflow, "on")
     triggers should include("workflow_dispatch:")
     Seq("schedule:", "push:", "pull_request:", "workflow_run:", "workflow_call:").foreach(triggers should not include _)
-    main should not include "Identity model convergence"
+    RepoFile.jobs(main)("kick-convergence") should include(
+      """kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"""")
+    // An edit to this workflow can change its verdict, so it is one of the paths the gate dispatches for.
+    RepoFile.read(".github/convergence-paths.txt").linesIterator.map(_.trim).toSeq should contain(
+      ".github/workflows/identity-model-convergence.yml")
   }
 
   it should "measure every country the pipeline suite does, on the same budgets and heap" in {
@@ -46,10 +51,14 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     conditions.foreach(cond => cond should (include("inputs.mode == 'record'") or include("inputs.mode != 'overlay'")))
   }
 
-  it should "hold a lane of its own, which a newer dispatch replaces" in {
+  /** Its own lane — neither suite queues behind, or evicts the pending run of, the other — under the
+   *  pipeline suite's superseding rules: finish the run in flight, keep one newer run pending, and let
+   *  each newer dispatch replace that pending one. */
+  it should "hold a lane of its own, superseded the way the pipeline suite's is" in {
     val concurrency = RepoFile.block(workflow, "concurrency")
     concurrency should include("group: identity-model-convergence")
-    concurrency should include("cancel-in-progress: true")
+    concurrency should include("cancel-in-progress: false")
+    RepoFile.block(suite, "concurrency") should include("cancel-in-progress: false")
     RepoFile.block(suite, "concurrency") should not include "identity-model-convergence"
   }
 
