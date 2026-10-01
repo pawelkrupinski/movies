@@ -13,9 +13,16 @@
 #
 # Usage: start-mongo-replset.sh [extra mongod args...]   e.g. --wiredTigerCacheSizeGB 2
 # Tested by scripts/ci/start-mongo-replset-test.sh against a stub `docker`.
+#
+# MONGO_MAJORITY_JOURNAL=false acknowledges a majority write once it is applied, not once it is
+# synced to the journal (the replica set's `writeConcernMajorityJournalDefault`). Every write the
+# app makes is `w: majority`, so on a database that dies with the runner it is a disk sync per write
+# bought for nothing: ~7 ms a write against ~0.2 ms, measured on a single-node set. A convergence leg
+# makes hundreds of thousands of them (the US take-up alone ~160,000).
 set -uo pipefail
 
 timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
+majority_journal="${MONGO_MAJORITY_JOURNAL:-true}"
 deadline=$((SECONDS + timeout_seconds))
 
 mongosh_eval() { docker exec mongo mongosh --quiet --eval "$1"; }
@@ -38,6 +45,6 @@ is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 
 docker run -d --name mongo -p 27017:27017 mongo:8.3.11 --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
-mongosh_eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})' || exit 1
+mongosh_eval "rs.initiate({_id:\"rs0\",writeConcernMajorityJournalDefault:$majority_journal,members:[{_id:0,host:\"127.0.0.1:27017\"}]})" || exit 1
 wait_for "PRIMARY" is_primary || exit 1
 echo "MongoDB replica set rs0 is PRIMARY on 127.0.0.1:27017"

@@ -40,6 +40,9 @@ check "a healthy mongod becomes PRIMARY and the script succeeds" "0" "$(start he
 check "...having initiated the replica set once" "1" "$(grep -c 'rs.initiate' "$STUB_LOG")"
 check "extra mongod args reach docker run" "1" \
   "$(start healthy --wiredTigerCacheSizeGB 2 >/dev/null; grep -c '^run .*--replSet rs0 --wiredTigerCacheSizeGB 2$' "$STUB_LOG")"
+check "majority writes wait for the journal by default" "1" "$(grep -c 'writeConcernMajorityJournalDefault:true' "$STUB_LOG")"
+check "...and only for the journal when asked not to" "1" \
+  "$(MONGO_MAJORITY_JOURNAL=false start healthy >/dev/null; grep -c 'writeConcernMajorityJournalDefault:false' "$STUB_LOG")"
 check "a mongod that never answers fails, bounded, instead of waiting forever" "1" "$(start down)"
 check "...and says why" "1" "$(grep -c 'did not become reachable' "$stub_dir/out")"
 check "a mongod that never becomes PRIMARY fails too" "1" "$(start secondary)"

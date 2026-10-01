@@ -65,8 +65,15 @@ runs:
     # leg's `-Xmx` could not be raised without capping this first. 2 GB is ample:
     # the databases here live for one job and are read back through a driver, not
     # served to anyone.
+    #
+    # And for the same reason a majority write is acknowledged once applied, not once synced
+    # to the journal (MONGO_MAJORITY_JOURNAL, see the script): every write the app makes is
+    # `w: majority`, and a disk sync each — most of a US take-up's 160,000 store writes — buys
+    # durability for a database that dies with the runner.
     - name: Start MongoDB (single-node replica set, for change streams)
       shell: bash
+      env:
+          MONGO_MAJORITY_JOURNAL: 'false'
       run: '"$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
 
     # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
