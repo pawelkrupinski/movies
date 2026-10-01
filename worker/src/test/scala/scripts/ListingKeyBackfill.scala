@@ -174,18 +174,18 @@ object ListingKeyBackfill {
   /** A key or row id as a person reads it: the NUL and unit separators shown as ` | `. */
   def readable(key: String): String = key.replace("\u0000", " | ").replace(services.movies.SlotKeyed.IdSep.toString, " | ")
 
-  private def text(d: BsonDocument, field: String): String = d.getString(field).getValue
+  private[scripts] def text(d: BsonDocument, field: String): String = d.getString(field).getValue
 
   private def stored(d: BsonDocument): Option[String] = Option(d.get("listingKey")).filter(_.isString).map(_.asString.getValue)
 
   private val slotCodec = MovieCodecs.registry.get(classOf[SourceData])
 
-  private def slotOf(d: BsonDocument): SourceData =
+  private[scripts] def slotOf(d: BsonDocument): SourceData =
     Option(d.get("slot")).filter(_.isDocument).fold(SourceData())(s =>
       slotCodec.decode(new BsonDocumentReader(s.asDocument), DecoderContext.builder().build()))
 
   /** Every document of `c`, `_id`-keyset paged, projected, decoded by `row`. */
-  private def scan[R](c: MongoCollection[Document], projection: org.bson.conversions.Bson)(row: BsonDocument => R): Vector[R] = {
+  private[scripts] def scan[R](c: MongoCollection[Document], projection: org.bson.conversions.Bson)(row: BsonDocument => R): Vector[R] = {
     val out = Vector.newBuilder[R]
     var after = Option.empty[String]
     var more  = true
