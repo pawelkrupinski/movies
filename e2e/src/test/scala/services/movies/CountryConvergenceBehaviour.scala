@@ -659,7 +659,7 @@ abstract class CountryConvergenceBehaviour(
    *  re-scraped — submitted in `rnd`'s order, landed side by side as production lands them
    *  (`landCutover`) — and a venue whose scrape throws is recorded in `failures`. */
   private def rescrapeCutover(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Unit = {
-    w.landCutover(rnd.shuffle(w.cinemaScrapers.toList))(failure => failures.synchronized { failures += failure; () })
+    step("  landing")(w.landCutover(rnd.shuffle(w.cinemaScrapers.toList))(failure => failures.synchronized { failures += failure; () }))
     w.projectIdentity()
     ()
   }
@@ -918,7 +918,7 @@ abstract class CountryConvergenceBehaviour(
         id => { emissions.incrementAndGet(); written.add(s"delete id=$id"); () })
 
       val splitsBefore = w.movieService.mixedFilmSplits
-      settleOnce(w)
+      step("settle")(settleOnce(w))
 
       // The settle also SPLITS a row found to hold two different films, and over a
       // real country's corpus it must find none. A handful of genuine title
@@ -1012,7 +1012,7 @@ abstract class CountryConvergenceBehaviour(
         // the only way to see a write whose stored record reads back unchanged.
         val tickWrites          = storage.corpusWrites()
         val failures     = mutable.ListBuffer.empty[String]
-        val diversions   = settleTick(w, rnd, failures)
+        val diversions   = step(s"tick $t")(settleTick(w, rnd, failures))
         if (failures.nonEmpty)
           churn += s"tick $t: ${failures.size} venue(s) FAILED to land their identical re-scrape, so the tick " +
                    s"proves nothing about them:\n  ${failures.take(6).mkString("\n  ")}"
@@ -1090,7 +1090,7 @@ abstract class CountryConvergenceBehaviour(
       // stream delivers too late to count — and for the same reason each pass waits for the
       // cursors to go quiet, or the first pass's projections land in the ledgered one.
       FixpointPass.attachProjector(w)
-      FixpointPass.run(w)
+      step("fixpoint pass")(FixpointPass.run(w))
       FixpointPass.awaitStreamsQuiet(w)
       //
       // A RECORDING leg (not hermetic) is the one exception, and only when the measured tick
@@ -1105,7 +1105,7 @@ abstract class CountryConvergenceBehaviour(
         val liveRequests = FixpointPass.liveRequests(w)
         val ledger = FixpointPass.ledger(w, corpusWrites)
         val before = liveRequests()
-        val moved  = ledger.churnOf { FixpointPass.run(w); FixpointPass.awaitStreamsQuiet(w) }
+        val moved  = ledger.churnOf { step("ledgered fixpoint pass")(FixpointPass.run(w)); FixpointPass.awaitStreamsQuiet(w) }
         val live   = liveRequests() - before
         if (moved.nonEmpty && missingFixtures.isEmpty && live > 0)
           info(s"$label moved while recording, after $live live request(s) — not a verdict here, " +
@@ -1709,7 +1709,7 @@ abstract class CountryConvergenceBehaviour(
         }
         // A venue that goes down is meant to: its failure is the case under test, not a gap. A cut-over
         // intake lands venues side by side; the pipeline's landing folds into shared rows, in order.
-        if (w.identityCutover) w.landCutover(scrapers)(_ => ())
+        if (w.identityCutover) step("  landing")(w.landCutover(scrapers)(_ => ()))
         else scrapers.foreach(scraper => Try(w.cinemaScrapeRunner.run(scraper)))
         // A cut-over country decides the day's films by projecting what its intake now holds;
         // the pipeline drains staging around its settle.
@@ -1730,7 +1730,7 @@ abstract class CountryConvergenceBehaviour(
         // the projection's), and a sweep here matched films the model had left unmatched — writing a
         // tmdbId onto a film whose listings had not changed (run 36720826476).
         if (!w.identityCutover) w.concludeEnrichment()
-        w.readModelProjector.reconcile()
+        step("  read model")(w.readModelProjector.reconcile())
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
       }

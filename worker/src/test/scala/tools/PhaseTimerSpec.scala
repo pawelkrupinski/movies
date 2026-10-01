@@ -35,4 +35,23 @@ class PhaseTimerSpec extends AnyFlatSpec with Matchers {
       case other            => fail(s"unreadable heap note: ${other.mkString(", ")}")
     }
   }
+
+  "a phase line" should "say how much CPU the process spent across the phase, beside its wall time" in {
+    val out = new java.io.ByteArrayOutputStream()
+    Console.withOut(out) {
+      PhaseTimer.timed("xx", "busy") {
+        val until = System.nanoTime() + 300_000_000L
+        var spins = 0L
+        while (System.nanoTime() < until) spins += 1
+        spins
+      }
+    }
+    val cpu = """, cpu ([0-9.]+)s""".r.findFirstMatchIn(out.toString).map(_.group(1).toDouble)
+    withClue(s"no CPU in the phase line: ${out.toString}") { cpu should not be empty }
+    cpu.get should be >= 0.2
+  }
+
+  "the CPU note" should "read in seconds to one place" in {
+    PhaseTimer.cpuNote(12_345_000_000L) shouldBe ", cpu 12.3s"
+  }
 }

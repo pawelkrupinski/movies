@@ -24,9 +24,10 @@ object PhaseTimer {
    *  behind. */
   def timed[A](scope: String, label: String)(body: => A): A = {
     val started = System.nanoTime()
+    val cpu     = processCpuNanos()
     println(s"[$scope] $label …")
     val result = body
-    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs${heapNote()}")
+    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs${cpuNote(processCpuNanos() - cpu)}${heapNote()}")
     result
   }
 
@@ -58,6 +59,17 @@ object PhaseTimer {
    *  develop, rare enough not to bury the log it is meant to make readable. */
   def shouldReport(done: Int, total: Int): Boolean =
     done == total || (done % math.max(1, total / 10) == 0)
+
+  /** The CPU the whole process spent across the phase — every thread, Mongo driver and GC
+   *  included. Beside the wall time it separates a phase that is slow because it WORKS from
+   *  one that is slow because it waits, and it is the number that holds still between a
+   *  shared developer machine and a 4-core runner, which wall time does not. */
+  private[tools] def cpuNote(cpuNanos: Long): String = f", cpu ${cpuNanos / 1e9}%.1fs"
+
+  private def processCpuNanos(): Long = java.lang.management.ManagementFactory.getOperatingSystemMXBean match {
+    case os: com.sun.management.OperatingSystemMXBean => os.getProcessCpuTime
+    case _                                             => 0L
+  }
 
   def elapsedSeconds(startedNanos: Long): Double = (System.nanoTime() - startedNanos) / 1e9
 }
