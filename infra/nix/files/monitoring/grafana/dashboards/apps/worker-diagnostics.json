@@ -1608,7 +1608,7 @@
             "uid": "local-prometheus"
           },
           "refId": "A",
-          "expr": "sum by (reason) (increase(kinowo_worker_venue_apply_declines_total{country=~\"$country\"}[5m]))",
+          "expr": "sum by (reason) (increase(kinowo_worker_venue_apply_declines_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{reason}}"
         }
       ]

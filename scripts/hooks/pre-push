@@ -11,6 +11,8 @@
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, and the two Grafana
 #                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change
+#   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
+#                 the CI check `Stage NixOS closures` runs (well under a second)
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
 #                 file that was already noisy can still be edited
@@ -42,7 +44,7 @@ Zero=0000000000000000000000000000000000000000
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 actionlint=0 shellcheck=0 ios=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 actionlint=0 shellcheck=0 ios=0 path
     while IFS= read -r path; do
         case "$path" in
             web/src/main/assets/js/*.js|eslint.config.js|package.json|package-lock.json) eslint=1 ;;
@@ -57,6 +59,9 @@ plan() {
             *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
         esac
         case "$path" in
+            infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
+        esac
+        case "$path" in
             .github/workflows/*.yml|.github/workflows/*.yaml) actionlint=1 ;;
         esac
         case "$path" in
@@ -69,6 +74,7 @@ plan() {
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
+    [ $dashboards = 1 ] && echo dashboards
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
@@ -150,6 +156,11 @@ check_drift() {
 
 check_snapshot() {
     scripts/read-model-snapshot-inputs.sh check "$head_sha"
+}
+
+check_dashboards() {
+    python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
+        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
 }
 
 check_actionlint() {
