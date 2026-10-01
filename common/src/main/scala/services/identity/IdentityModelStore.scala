@@ -2,7 +2,7 @@ package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString}
-import org.mongodb.scala.model.{Filters, ReplaceOptions}
+import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
@@ -53,10 +53,15 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
 
   def families(): Seq[StoredFamily] = Await.result(collection.find().batchSize(tools.MongoReplies.Families).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
 
+  /** One bulk write for `added`, not an awaited `replaceOne` each: a take-up writes every family of
+   *  the country (~2,200 US), and one round trip apiece was ~30 s of a US boot's projection. The
+   *  driver splits the batch to the server's message limits itself. */
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)
-    added.foreach(family =>
-      Await.result(collection.replaceOne(Filters.equal("_id", family.id), Document(encode(family)), ReplaceOptions().upsert(true)).toFuture(), Timeout))
+    if (added.nonEmpty)
+      Await.result(collection.bulkWrite(added.map(family =>
+        ReplaceOneModel(Filters.equal("_id", family.id), Document(encode(family)), ReplaceOptions().upsert(true)))).toFuture(), Timeout)
+    ()
   }
 
   def rulesVersion: Option[String] =
