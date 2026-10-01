@@ -14,8 +14,20 @@ package services.enrichment.scraping
  */
 object HtmlScripts {
 
-  /** One script element: the text between `<script` and its `>`, and its raw body. */
-  final case class Script(attributes: String, body: String)
+  /** One script element: the text between `<script` and its `>`, and its raw body — cut out of the
+   *  page only when asked for: a rating page inlines hundreds of kilobytes of script no reader wants. */
+  final class Script(val attributes: String, page: String, from: Int, until: Int) {
+    def body: String = page.substring(from, until)
+    override def equals(other: Any): Boolean = other match {
+      case that: Script => attributes == that.attributes && body == that.body
+      case _            => false
+    }
+    override def hashCode: Int = (attributes, body).##
+    override def toString: String = s"Script($attributes, $body)"
+  }
+  object Script {
+    def apply(attributes: String, body: String): Script = new Script(attributes, body, 0, body.length)
+  }
 
   private val Open  = "script"
   private val Close = "/script"
@@ -39,7 +51,7 @@ object HtmlScripts {
           if (end < 0) at = -1
           else closing(html, end + 1) match {
             case Some((bodyEnd, matchEnd)) =>
-              found = Some(Script(html.substring(name, end), html.substring(end + 1, bodyEnd)))
+              found = Some(new Script(html.substring(name, end), html, end + 1, bodyEnd))
               from = matchEnd
             case None => at = -1
           }
