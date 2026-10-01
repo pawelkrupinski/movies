@@ -1096,8 +1096,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, withTopHitClass(rivals)).decisionOf(l.key).film
     // A rival the class was not measured with.
     film(listing(Rialto, "Godzilla vs. Megalon"), Seq(megalon, remake), rivals = 0.5) shouldBe None
-    // A banner segment's first hit is not the listing's exact title.
-    film(listing(Rialto, "Kino Nocne: Godzilla vs. Megalon"), Seq(megalon), rivals = 0.5) shouldBe None
+    // A banner segment's first hit IS the bare title's exact top hit when the banner names no film
+    // (segment-top-hit, 2026-10-02) — but not past the class's other limits, below.
+    film(listing(Rialto, "Kino Nocne: Godzilla vs. Megalon"), Seq(megalon), rivals = 0.5) shouldBe Some(39264)
+    film(listing(Rialto, "Kino Nocne: Godzilla vs. Megalon"), Seq(megalon, remake), rivals = 0.5) shouldBe None
     // The venue's own runtime weighs against the top hit.
     film(listing(Rialto, "Godzilla vs. Megalon", runtime = Some(150)), Seq(megalon), rivals = 0.5) shouldBe None
     // The rival's facts fit the listing better than the top hit's: the top hit is not taken.

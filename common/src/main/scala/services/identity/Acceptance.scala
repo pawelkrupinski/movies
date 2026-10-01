@@ -25,6 +25,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     rules.iterator.flatMap(rule => rule.accepts(ranked).map(_ -> rule.name)).nextOption()
 
   private val aloneRules = Seq(Rule("sole-work", soleWork), Rule("favoured-calibrated", favouredCalibrated), Rule("exact-top-hit", topHit),
+    Rule("segment-top-hit", segmentTopHit),
     Rule("directors-work", directorsWork), Rule("directors-title", directorsTitle), Rule("dated-title", datedTitle),
     Rule("house-production", houseProduction))
 
@@ -85,6 +86,30 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         eligible.find(_.candidate.tmdbId == id)
           .filter(best => !speaksAgainst(best) && eligible.forall(rival => (rival eq best) || !fitsBetter(rival, best)))
           .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(classProbability => best -> math.max(best.probability, classProbability)))
+          .filter(accepted => calibration.showsRatings(accepted._2))
+      case _ => None
+    }
+  }
+
+  /** A programme listing's EXACT TOP HIT once its banner is off: the one candidate whose title is a whole
+   *  delimited piece of the listing's (`segment`) and which the listing's own search returned FIRST, when
+   *  the title names no other candidate at all (the rest is a banner, not a second film), it bills no two
+   *  works, and nothing it publishes speaks against it or fits a rival better. The piece IS a bare title,
+   *  so it is credited with what the exact-top-hit class measured for bare titles. PL's "DZIEŃ KINA POLSKIEGO:
+   *  Przepraszam, czy tu biją" and ~30 programme listings like it sat at 28.9% with no rule to take them. */
+  def segmentTopHit(ranked: Seq[Scored]): Option[Accepted] = ranked.headOption.flatMap { any =>
+    val eligible = eligibleOf(ranked)
+    val named    = ranked.filter(_.titleNamesIt)
+    named match {
+      case Seq(scored) if !scored.denied && scored.rank.contains(1) && scored.category("title").contains("segment") &&
+          !IdentityMeasures.billsTwoWorks(any.listing) && IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film) &&
+          // a year the title states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
+          scored.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency) =>
+        // Read as the bare title its piece is: the banner beside it is no evidence against the film.
+        val bare = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
+        Option.when(!speaksAgainst(bare) && eligible.forall(rival => (rival eq scored) || !fitsBetter(rival, bare)))(bare)
+          .flatMap(bare => calibration.classProbability(ListingFilm, bare.measures))
+          .map(classProbability => scored -> math.max(scored.probability, classProbability))
           .filter(accepted => calibration.showsRatings(accepted._2))
       case _ => None
     }

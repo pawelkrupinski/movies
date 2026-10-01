@@ -998,6 +998,21 @@ object IdentityMeasures {
   private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
 
   private val BillJoin = """\s\+\s""".r
+  /** May the piece of `l`'s title that names `f` stand for the whole, the rest a banner? Two words at least —
+   *  a one-word piece is many films' title ("Bhutan – Trails of Happiness" is not the 1928 "Bhutan") — and no
+   *  Roman numeral in the rest: a numbered set ("Bolek i Lolek – zestaw IV") is an instalment, not the film;
+   *  and a year the rest states agrees with the record's. */
+  def standsForTheWhole(l: Listing, f: Film): Boolean = {
+    val pieces = namingPieces(l, f).filter(_.sizeIs >= 2)
+    pieces.nonEmpty && {
+      val rest  = l.ownForms.flatMap(_.words).toSet -- pieces.flatten
+      // a year the rest states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
+      val years = rest.filter(_.matches("(?:19|20)\\d\\d")).map(_.toInt)
+      !rest.exists(w => w.length > 1 && RomanNumeral.pattern.matcher(w).matches()) &&
+        (years.isEmpty || f.year.forall(y => years.exists(t => math.abs(t - y) <= YearWindow.PublishedAdjacency)))
+    }
+  }
+
   /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? */
   def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(t).isDefined)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),

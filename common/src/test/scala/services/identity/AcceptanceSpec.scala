@@ -48,6 +48,30 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(listing.copy(runtime = Some(170)), wajda, cut)) shouldBe None
   }
 
+  "a programme listing whose title carries a film's whole title" should "take that film when it is the piece's top hit and nothing else is named" in {
+    // PL "DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją": the banner turned the exact top hit into a segment,
+    // which no rule took, and one venue's evidence stayed at 28.9%.
+    val day   = Listing("DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją")
+    val film  = (318545, Film("Przepraszam, czy tu biją?", year = Some(1976)), Some(1))
+    def segment(l: Listing, films: (Int, Film, Option[Int])*) = acceptance.segmentTopHit(ranked(l, films *)).map(_._1.candidate.tmdbId)
+    segment(day, film) shouldBe Some(318545)
+    // credited as the exact top hit it is once the banner is off, never less than its own probability
+    acceptance.segmentTopHit(ranked(day, film)).map(_._2).get should be >= 0.99
+    // not its search's FIRST hit: no answer
+    segment(day, film.copy(_3 = Some(2)), (9, Film("Inny film"), Some(1))) shouldBe None
+    // a programme naming two films: neither
+    segment(Listing("Akademia: Ostatni etap | Majdanek"), (121141, Film("Ostatni etap", year = Some(1948)), Some(1)),
+      (121142, Film("Majdanek", year = Some(1944)), Some(2))) shouldBe None
+    // a double bill: neither
+    segment(Listing("Basia. Humor w paski mam + Kocia Szajka"), (1747514, Film("Basia. Humor w paski mam"), Some(1))) shouldBe None
+    // the guards: a one-word piece, a title year another than the record's, a numbered set
+    segment(Listing("Bhutan - Trails of Happiness"), (5, Film("Bhutan", year = Some(1928)), Some(1))) shouldBe None
+    segment(Listing("Toddler Club: Disney Junior Cinema Club 2026"), (6, Film("Disney Junior Cinema Club", year = Some(2024)), Some(1))) shouldBe None
+    segment(Listing("Bolek i Lolek - zestaw IV"), (7, Film("Bolek i Lolek", year = Some(1936)), Some(1))) shouldBe None
+    // a whole title is the exact top hit's, not this rule's
+    segment(Listing("Przepraszam, czy tu biją?"), film) shouldBe None
+  }
+
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {
     // US "Troll (1986)": TMDB ranks "Troll 2" and the 2022 "Troll" above the 1986 film.
     val troll = Listing("Troll (1986)")
