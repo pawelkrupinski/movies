@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * two runs starting in the same millisecond, so a leaked database is traceable to
  * whatever left it behind.
  */
-final class IsolatedMongoDatabase private (client: MongoClient, val database: MongoDatabase) extends AutoCloseable {
+final class IsolatedMongoDatabase private (val client: MongoClient, val database: MongoDatabase) extends AutoCloseable {
 
   private var dropped = false
 

@@ -75,4 +75,20 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers with t
       }
     } finally storage.close()
   }
+
+  /** The storage's connection is the storage's own client, not a second one built from its URI. A
+   *  second one was built by `MongoConnection`'s rules, which compress every message with zlib on a
+   *  loopback URI (they take loopback for the ssh tunnel to prod) — and a convergence leg's MongoDB is
+   *  a loopback one: on the US leg that was ~6 GB of zlib a run on both sides of the socket, every
+   *  identity collection and the task queue read and written through it, an identical re-scrape tick
+   *  ~9 s instead of ~4.5 s. It was also never closed. Closed with the storage, it is the same client. */
+  it should "reach its database through its own client, closed with it" in {
+    val storage = ConvergenceStorage.mongo(mongoTarget, "storage-client-spec", titleNormalizer)
+    val database = storage.connection.database.get
+    storage.close()
+    withClue("the storage's connection still read after the storage closed — it holds a client of its own: ") {
+      a[IllegalStateException] should be thrownBy
+        { import org.mongodb.scala.ObservableFuture; scala.concurrent.Await.result(database.listCollectionNames().toFuture(), scala.concurrent.duration.DurationInt(10).seconds) }
+    }
+  }
 }

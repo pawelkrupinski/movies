@@ -139,7 +139,8 @@ object ConvergenceStorage {
     // to ride out a recovering replica-set node; nothing here has one.)
     override lazy val connection = new MongoConnection(
       uri = Some(settings.MongoUri(uri)), dbName = settings.MongoDatabaseName(name), required = services.MongoRequirement.Required,
-      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(ConvergenceStorage.LocalServerSelectionTimeout)))
+      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(ConvergenceStorage.LocalServerSelectionTimeout)),
+      sharedClient = Some(isolated.client))
 
     // Wired with `screenings`/`slots` exactly as `WorkerWiring` does, so a leg exercises
     // production's STORAGE SHAPE and not merely its logic: showtimes in `screenings`, the
