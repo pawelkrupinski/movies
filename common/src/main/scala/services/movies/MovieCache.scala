@@ -435,9 +435,9 @@ class CaffeineMovieCache(
    *  stopped updating the index would otherwise fail SILENTLY and far away — as a film
    *  re-diverting into staging every tick, which is the exact flap the widened divert
    *  gate was built to stop. */
-  private[movies] def indexSnapshot: CorpusIndex.Snapshot = corpusIndex.snapshot
+  private[services] def indexSnapshot: CorpusIndex.Snapshot = corpusIndex.snapshot
 
-  private[movies] def rowsRebuiltIndexSnapshot: CorpusIndex.Snapshot = {
+  private[services] def rowsRebuiltIndexSnapshot: CorpusIndex.Snapshot = {
     import scala.jdk.CollectionConverters._
     val rebuilt = new CorpusIndex(normalizer, isConcludedBareRow)
     positive.asMap().asScala.foreach { case (k, r) => rebuilt.put(k, r, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k))) }
@@ -1631,9 +1631,14 @@ class CaffeineMovieCache(
         }
         if (!fits) VenueVerdict.Declined(Why.CacheSlotsDiffer)
         else {
+          // The venues' slots re-indexed one by one (`putSlot`), not the whole row: `store` re-indexes
+          // every slot of the film, and a one-venue change to a wide film re-indexed thousands — 4% of
+          // the US worker's CPU (JFR 2026-10-01). The slot set is unchanged (checked above).
           val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
-            store(key, resident.copy(data = resident.data ++ venues.atCinemas.valuesIterator.flatten.map {
-              case (source, slot) => source -> forCacheSlot(slot) }), venues.filmId)
+            val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) => source -> forCacheSlot(slot) }.toSeq
+            val updated = resident.copy(data = resident.data ++ slots)
+            positive.put(key, updated)
+            slots.foreach { case (source, slot) => corpusIndex.putSlot(key, source, resident.data.get(source), slot, updated) }
           }
           if (applied) touch()
           VenueVerdict.Applied

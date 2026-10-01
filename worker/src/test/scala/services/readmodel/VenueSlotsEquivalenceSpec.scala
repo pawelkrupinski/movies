@@ -46,6 +46,17 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
       case other                 => other
     }.toList }.sortBy(_._1))
 
+  /** Every field of every case class reached, arrays by content and maps in a stable order — the
+   *  index's records and slots compare with the showtime-blind equalities otherwise. */
+  private def deep(value: Any): Any = value match {
+    case array: Array[?]                  => array.toSeq.map(deep)
+    case map: scala.collection.Map[?, ?]  => map.toSeq.map { case (k, v) => (deep(k), deep(v)) }.sortBy(_._1.toString)
+    case set: scala.collection.Set[?]     => set.toSeq.map(deep).sortBy(_.toString)
+    case seq: Iterable[?]                 => seq.toSeq.map(deep)
+    case product: Product                 => (product.productPrefix, product.productIterator.map(deep).toList)
+    case other                            => other
+  }
+
   private def stored(record: MovieRecord) = StoredMovieRecord.synthesised("Foo", Some(2024), record, titleNormalizer)
 
   private def projector(rm: InMemoryReadModelRepository) =
@@ -114,7 +125,12 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         if (venue.applyVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas), FilmWriteFence.Unfenced) == services.movies.VenueVerdict.Applied) accepted += 1
         else { declined += 1; venue.applyUpsert(now, FilmWriteFence.Unfenced) }
         val key = now.cacheKey(titleNormalizer)
-        withClue(s"round $round step $step: ")(venue.get(key).map(everyField) shouldBe whole.get(key).map(everyField))
+        withClue(s"round $round step $step: ") {
+          venue.get(key).map(everyField) shouldBe whole.get(key).map(everyField)
+          // …and its index is the one the cached rows rebuild — as the whole-row store's is.
+          deep(venue.indexSnapshot) shouldBe deep(venue.rowsRebuiltIndexSnapshot)
+          deep(venue.indexSnapshot) shouldBe deep(whole.indexSnapshot)
+        }
       }
     }
     accepted shouldBe 1200
