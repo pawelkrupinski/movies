@@ -72,6 +72,23 @@ class VenueDetailSlotsSpec extends AnyFlatSpec with Matchers {
     world.scans shouldBe before + 1
   }
 
+  // The index is rebuilt whenever the cache moves — on a busy worker, before nearly every drain — and
+  // re-deriving every cached film's slots was 2.4% of a US worker's CPU (JFR, 2026-10-01). A film the
+  // cache holds unchanged keeps the entries it was indexed with.
+  "A rebuild" should "derive again only the films whose cached record changed" in {
+    var derived = 0
+    val counting = new FakeDetailEnricher(KinoApollo, Group) {
+      override def detailTarget = { derived += 1; super.detailTarget }
+    }
+    val world = new World(counting)
+    world.slots.settle()
+    derived should be > 0
+    val before = derived
+    world.slots.refresh()
+    world.slots.settle()
+    derived shouldBe before
+  }
+
   "A venue's detail" should "be a gap until the pipeline's enrichment has asked its page" in {
     val world = new World(new FakeDetailEnricher(KinoApollo, Group, Some(Full)))
     world.slots.answer(new FakeDetailEnricher(KinoApollo, Group), Page) shouldBe None

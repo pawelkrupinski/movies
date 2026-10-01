@@ -53,6 +53,8 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
   @volatile private var builtAt: Option[java.time.Instant] = None
   @volatile private var built: Map[(String, String), Seq[Entry]] = Map.empty
   private var answered: Option[Map[(String, String), Option[Option[FilmDetail]]]] = None
+  // Each cached film's entries, by cache key, with the record they were derived from — see `build`.
+  private var filmEntries: Map[services.movies.CacheKey, (MovieRecord, Seq[((String, String), Entry)])] = Map.empty
 
   /** The last build — answers between settles stay those the model was last told of — or the first. */
   private def current: Map[(String, String), Seq[Entry]] = if (answered.isEmpty) index else built
@@ -78,14 +80,24 @@ final class VenueDetailSlots(cache: MovieCacheReader, staging: StagingRepository
   private def build(): Map[(String, String), Seq[Entry]] = {
     // The page's own stamps first; the film row's are what enrichment wrote before pages had their
     // own, and name the page only while it is still on the row that was enriched.
-    val films = cache.entries.flatMap { case (key, record) =>
-      entriesOf(record).map { case (e, page, slot) =>
-        val asked = EnrichDetailsTasks.dedupKey(e.detailGroup, key)
-        (e.detailGroup, page) -> Entry(slot,
-          read = Seq(EnrichDetailsTasks.pageRead(e.detailGroup, page), EnrichDetailsTasks.readMarker(asked)),
-          gone = Seq(EnrichDetailsTasks.pageGone(e.detailGroup, page), asked))
-      }
-    }
+    // A film the cache still holds as the same record keeps the entries it was indexed with: the
+    // cache moves on nearly every change it applies, and re-deriving every film's slots per rebuild
+    // was 2.4% of a busy US worker's CPU (JFR, 2026-10-01). Records are immutable — a changed film
+    // is a new record.
+    val previous = filmEntries
+    val current  = cache.entries.iterator.map { case (key, record) =>
+      key -> (previous.get(key) match {
+        case Some(kept) if kept._1 eq record => kept
+        case _ => record -> entriesOf(record).map { case (e, page, slot) =>
+          val asked = EnrichDetailsTasks.dedupKey(e.detailGroup, key)
+          (e.detailGroup, page) -> Entry(slot,
+            read = Seq(EnrichDetailsTasks.pageRead(e.detailGroup, page), EnrichDetailsTasks.readMarker(asked)),
+            gone = Seq(EnrichDetailsTasks.pageGone(e.detailGroup, page), asked))
+        }
+      })
+    }.toMap
+    filmEntries = current
+    val films = current.valuesIterator.flatMap(_._2).toSeq
     val staged = staging.findAll().flatMap { row =>
       entriesOf(row.record).map { case (e, page, slot) =>
         (e.detailGroup, page) -> Entry(slot,
