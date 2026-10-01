@@ -178,7 +178,7 @@ class ReadModelProjector(
 
   /** Apply a change confined to some venues' showtimes from those venues alone — the whole film
    *  unread — when that is exactly what projecting the whole film again would write: the venues' rows
-   *  rebuilt, nothing else touched. False, having written nothing, whenever it cannot vouch for that,
+   *  rebuilt, nothing else touched. Declined, having written nothing, whenever it cannot vouch for that,
    *  and the caller projects the whole film instead:
    *    - the row was not projected by this process, or a venue's slot reports a title outside the
    *      groups it was (a retitle would move venues between cards);
@@ -189,56 +189,68 @@ class ReadModelProjector(
    *      from (seeded from the read model at boot).
    *  Card metadata never reads showtimes ([[ReadModelProjection.metadataHash]]), so a showtime-only
    *  change leaves every card as it is. */
-  def onVenueSlots(venues: services.movies.VenueSlots): Boolean = lock.synchronized {
+  def onVenueSlots(venues: services.movies.VenueSlots): services.movies.VenueVerdict = lock.synchronized {
     val rowId = venues.filmId.value
-    planVenues(rowId, venues).exists { byCard =>
-      appliedSinceSweep.foreach(_ += rowId)
-      byCard.foreach { case (card, changed) =>
-        val replaced = changed.map(venue => venue._id -> venue).toMap
-        val next = lastScreenings.of(card).toSeq.map { case (id, written) =>
-          // Every remembered row carries its input — `planVenues` declines a card with one that does not.
-          val input = written.input.get
-          replaced.get(id).fold(PlannedScreening(id, input, None)) { venue =>
-            val moved = venue.inputHash
-            PlannedScreening(id, moved, if (moved == input) None else Some(venue.screening))
+    planVenues(rowId, venues) match {
+      case Left(reason) => services.movies.VenueVerdict.Declined(reason)
+      case Right(byCard) =>
+        appliedSinceSweep.foreach(_ += rowId)
+        byCard.foreach { case (card, changed) =>
+          val replaced = changed.map(venue => venue._id -> venue).toMap
+          val next = lastScreenings.of(card).toSeq.map { case (id, written) =>
+            // Every remembered row carries its input — `planVenues` declines a card with one that does not.
+            val input = written.input.get
+            replaced.get(id).fold(PlannedScreening(id, input, None)) { venue =>
+              val moved = venue.inputHash
+              PlannedScreening(id, moved, if (moved == input) None else Some(venue.screening))
+            }
           }
+          val rebuilt = next.count(_.built.isDefined)
+          metrics.recordVenueProjection(rebuilt = rebuilt, reused = next.size - rebuilt)
+          diffScreenings(card, next)
         }
-        val rebuilt = next.count(_.built.isDefined)
-        metrics.recordVenueProjection(rebuilt = rebuilt, reused = next.size - rebuilt)
-        diffScreenings(card, next)
-      }
-      if (held.nonEmpty) releaseExpired()
-      true
+        if (held.nonEmpty) releaseExpired()
+        services.movies.VenueVerdict.Applied
     }
   }
 
-  /** Caller holds `lock`. The venues [[onVenueSlots]] rebuilds, by card — None when it cannot vouch
-   *  that they are all a whole-film projection would change (see there). */
-  private def planVenues(rowId: String, venues: services.movies.VenueSlots): Option[Map[String, Seq[ReadModelProjection.VenueScreening]]] =
-    lastGroups.get(rowId).flatMap { case RowGroups(anchor, cardByGroup, multiSlot) =>
+  /** Caller holds `lock`. The venues [[onVenueSlots]] rebuilds, by card — or the first reason it
+   *  cannot vouch that they are all a whole-film projection would change (see there). */
+  private def planVenues(rowId: String, venues: services.movies.VenueSlots): Either[String, Map[String, Seq[ReadModelProjection.VenueScreening]]] = {
+    import services.movies.ChangeStreamMetrics.VenueDecline as Why
+    scala.util.boundary {
+      val RowGroups(anchor, cardByGroup, multiSlot) = lastGroups.getOrElse(rowId, scala.util.boundary.break(Left(Why.ProjectorRowUnprojected)))
+      def refuse(reason: String) = scala.util.boundary.break(Left(reason))
       val cards   = cardByGroup.values.toSeq.distinct
       val written = cards.map(card => card -> lastScreenings.of(card)).toMap
       val planned = scala.collection.mutable.ArrayBuffer.empty[(String, ReadModelProjection.VenueScreening)]
-      val vouched = venues.atCinemas.forall { case (cinema, slots) =>
-        val placed = slots.map { case (_, slot) => cardByGroup.get(slot.title.map(normalizer.sanitize).getOrElse(anchor)) -> slot }
-        placed.forall(_._1.isDefined) && {
-          val byCard = placed.collect { case (Some(card), slot) => card -> slot }.groupMap(_._1)(_._2)
-          byCard.forall(_._2.sizeIs == 1) && cards.forall { card =>
-            val before = models.City.forCinema(cinema).map(city => s"$card|${city.slug}|${cinema.displayName}")
-              .filter(written(card).contains)
-            val after  = byCard.get(card).flatMap(slots => ReadModelProjection.venueOf(cinema, slots.head, card))
-            (before, after) match {
-              case (None, None)                                         => true
-              case (Some(id), Some(venue)) if venue._id == id && !multiSlot(id) => planned += card -> venue; true
-              case _                                                    => false
-            }
+      venues.atCinemas.foreach { case (cinema, slots) =>
+        val byCard = slots.map { case (_, slot) =>
+          cardByGroup.getOrElse(slot.title.map(normalizer.sanitize).getOrElse(anchor), refuse(Why.ProjectorTitleGroup)) -> slot
+        }.groupMap(_._1)(_._2)
+        if (byCard.exists(_._2.sizeIs > 1)) refuse(Why.ProjectorTwoSlots)
+        cards.foreach { card =>
+          val before = models.City.forCinema(cinema).map(city => s"$card|${city.slug}|${cinema.displayName}")
+            .filter(written(card).contains)
+          val after  = byCard.get(card).flatMap(slots => ReadModelProjection.venueOf(cinema, slots.head, card))
+          (before, after) match {
+            case (None, None)                                  => ()
+            case (None, Some(_))                               => refuse(Why.ProjectorVenueAppears)
+            case (Some(_), None)                               => refuse(Why.ProjectorVenueVanishes)
+            case (Some(id), Some(venue)) if venue._id != id || multiSlot(id) => refuse(Why.ProjectorUnionedVenue)
+            case (Some(_), Some(venue))                        => planned += card -> venue
           }
         }
       }
       val byCard = planned.toSeq.groupMap(_._1)(_._2)
-      Option.when(vouched && byCard.keys.forall(card => !held.contains(card) && lastMovie.contains(card) &&
-        written(card).valuesIterator.forall(_.input.isDefined)))(byCard)
+      byCard.keys.foreach { card =>
+        if (held.contains(card)) refuse(Why.ProjectorCardHeld)
+        if (!lastMovie.contains(card)) refuse(Why.ProjectorCardUnpublished)
+        if (written(card).valuesIterator.exists(_.input.isEmpty)) refuse(Why.ProjectorMemoUnvouched)
+      }
+      Right(byCard)
     }
+  }
 
   /** A row deleted or merged away: every card it produced goes with it, now — not at the
    *  next prune. The cards are what this process remembers producing for the row, plus

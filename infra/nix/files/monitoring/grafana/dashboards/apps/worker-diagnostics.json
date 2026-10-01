@@ -1483,7 +1483,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 137
       },
@@ -1539,6 +1539,77 @@
           "refId": "A",
           "expr": "sum by (path, reason) (increase(kinowo_worker_change_apply_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{path}} / {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "title": "Venue applies declined — which listener, and why",
+      "interval": "1m",
+      "description": "Why a film's changed venues could not be applied alone and the film was re-read whole. projector_venue_appears/vanishes: a venue gaining its first or losing its last showtime. projector_row_unprojected: the row was not projected by this worker since boot. projector_unioned_venue: a venue whose row unions two slots. projector_card_held/unpublished: the first-publish gate. projector_memo_unvouched: rows seeded from the read model at boot. cache_not_resident / cache_slots_differ: the movie cache does not hold the film, or holds other slots at the venue.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 137
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*rebuilt.*"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "sum by (reason) (increase(kinowo_worker_venue_apply_declines_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{reason}}"
         }
       ]
     },

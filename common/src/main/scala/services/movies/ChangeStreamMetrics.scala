@@ -37,9 +37,30 @@ trait ChangeStreamMetrics {
   /** One film's apply: from the changed venues alone, or by re-reading the whole film, and why
    *  ([[ChangeStreamMetrics.Apply]]). */
   def recordApply(path: String, reason: String): Unit = ()
+  /** A listener declined a film's venues alone, and why ([[ChangeStreamMetrics.VenueDecline]]). */
+  def recordVenueDecline(reason: String): Unit = ()
 }
 
 object ChangeStreamMetrics {
+  /** Why a listener declined a film's venues alone — `ReadModelProjector.onVenueSlots` and
+   *  `MovieCache.applyVenueSlots`. Each is a whole-film re-read the venue path could not spare. */
+  object VenueDecline {
+    val ProjectorRowUnprojected = "projector_row_unprojected"
+    val ProjectorTitleGroup     = "projector_title_group"
+    val ProjectorTwoSlots       = "projector_two_slots"
+    val ProjectorVenueAppears   = "projector_venue_appears"
+    val ProjectorVenueVanishes  = "projector_venue_vanishes"
+    val ProjectorUnionedVenue   = "projector_unioned_venue"
+    val ProjectorCardHeld       = "projector_card_held"
+    val ProjectorCardUnpublished = "projector_card_unpublished"
+    val ProjectorMemoUnvouched  = "projector_memo_unvouched"
+    val CacheNotResident        = "cache_not_resident"
+    val CacheSlotsDiffer        = "cache_slots_differ"
+    val All: Seq[String] = Seq(ProjectorRowUnprojected, ProjectorTitleGroup, ProjectorTwoSlots, ProjectorVenueAppears,
+      ProjectorVenueVanishes, ProjectorUnionedVenue, ProjectorCardHeld, ProjectorCardUnpublished, ProjectorMemoUnvouched,
+      CacheNotResident, CacheSlotsDiffer, ChangeStreamFanout.NoPartHandler, ChangeStreamFanout.PartFailed)
+  }
+
   /** How a film's apply went — `MovieChangeStream.applyVenues`. A `venues` apply read only the
    *  changed venues' rows; a `film` apply re-read the whole film, for the `reason` given. */
   object Apply {

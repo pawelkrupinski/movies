@@ -346,7 +346,10 @@ final class MovieChangeStream(
           val mark = fence.mark(filmId)
           read(filmId, at) match {
             case None        => Reason.VenueReadFailed
-            case Some(slots) => if (movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))) Reason.Applied else Reason.Declined
+            case Some(slots) =>
+              val declined = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
+              declined.foreach(changeStreamMetrics.recordVenueDecline)
+              if (declined.isEmpty) Reason.Applied else Reason.Declined
           }
       }
     }
@@ -445,7 +448,7 @@ final class MovieChangeStream(
 
   /** [[watch]] handing each upsert the [[FilmWriteFence]] mark its re-read was taken under. */
   def watchFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit,
-                  onVenues: (VenueSlots, Long) => Boolean = (_, _) => false): AutoCloseable = {
+                  onVenues: (VenueSlots, Long) => VenueVerdict = (_, _) => VenueVerdict.Declined(ChangeStreamFanout.NoPartHandler)): AutoCloseable = {
     val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete, d => onVenues(d.venues, d.mark))
     ensureWatching()
     new AutoCloseable { override def close(): Unit = { handle.close(); stopWatchingIfIdle() } }

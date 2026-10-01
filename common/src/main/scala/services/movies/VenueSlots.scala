@@ -10,3 +10,10 @@ import models.{CinemaShowing, SourceData}
  * venue re-read. A listener that cannot take it whole answers false and is sent the whole film.
  */
 final case class VenueSlots(filmId: FilmId, atCinemas: Map[models.Cinema, Seq[(CinemaShowing, SourceData)]])
+
+/** What a listener did with a [[VenueSlots]]: applied it, or declined it — for `reason` — and is
+ *  owed the whole film. */
+enum VenueVerdict {
+  case Applied
+  case Declined(reason: String)
+}

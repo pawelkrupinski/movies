@@ -370,14 +370,14 @@ trait MovieRepository {
   def watchChangesWithVenues(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: FilmId => Unit,
-    onVenues: VenueSlots => Boolean
+    onVenues: VenueSlots => VenueVerdict
   ): Option[AutoCloseable] = watchChanges(onUpsert, onDelete)
 
   /** [[watchChangesWithVenues]] fenced as [[watchChangesFenced]] is. */
   def watchChangesFencedWithVenues(
     onUpsert: (StoredMovieRecord, Long) => Unit,
     onDelete: FilmId => Unit,
-    onVenues: (VenueSlots, Long) => Boolean
+    onVenues: (VenueSlots, Long) => VenueVerdict
   ): Option[AutoCloseable] = watchChangesFenced(onUpsert, onDelete)
 
   /** Where a consumer of [[watchChangesFenced]] fences its own writes of a film. */
@@ -1309,13 +1309,13 @@ class MongoMovieRepository(
   override def watchChangesWithVenues(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: FilmId => Unit,
-    onVenues: VenueSlots => Boolean
+    onVenues: VenueSlots => VenueVerdict
   ): Option[AutoCloseable] = changeStream.map(_.watchFenced((film, _) => onUpsert(film), id => onDelete(FilmId(id)), (venues, _) => onVenues(venues)))
 
   override def watchChangesFencedWithVenues(
     onUpsert: (StoredMovieRecord, Long) => Unit,
     onDelete: FilmId => Unit,
-    onVenues: (VenueSlots, Long) => Boolean
+    onVenues: (VenueSlots, Long) => VenueVerdict
   ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id)), onVenues))
 
   /** Whether the single shared change-stream cursor is currently running — for

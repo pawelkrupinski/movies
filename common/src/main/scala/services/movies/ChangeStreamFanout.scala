@@ -25,13 +25,14 @@ import java.util.concurrent.CopyOnWriteArrayList
  * so one throwing consumer can't starve the others.
  */
 final class ChangeStreamFanout[A, V](name: String) extends Logging {
-  private final case class Listener(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => Boolean)
+  private final case class Listener(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => VenueVerdict)
   private val listeners = new CopyOnWriteArrayList[Listener]()
 
   /** Attach a consumer; the returned handle detaches only that consumer. `onPart` takes a change
    *  delivered as a PART of the record (see [[dispatchPart]]) and answers whether it applied it —
    *  a consumer that cannot never does, and is handed the whole record instead. */
-  def register(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => Boolean = (_: V) => false): AutoCloseable = {
+  def register(onUpsert: A => Unit, onDelete: String => Unit,
+               onPart: V => VenueVerdict = (_: V) => VenueVerdict.Declined(ChangeStreamFanout.NoPartHandler)): AutoCloseable = {
     val entry = Listener(onUpsert, onDelete, onPart)
     listeners.add(entry)
     new AutoCloseable { override def close(): Unit = { listeners.remove(entry); () } }
@@ -46,21 +47,33 @@ final class ChangeStreamFanout[A, V](name: String) extends Logging {
     catch { case exception: Throwable => logger.warn(s"$name change-stream apply failed: ${exception.getMessage}") }
   }
 
-  /** Offer every listener a part of the record; true only when EVERY one applied it. A false
-   *  answer obliges the caller to [[dispatchUpsert]] the whole record — to every listener, the
-   *  ones that applied the part included: a whole record is a superset of any part of it. A
-   *  listener that throws counts as one that did not apply it. */
-  def dispatchPart(part: V): Boolean = {
-    var all = true
+  /** Offer every listener a part of the record; the reasons of those that declined it — empty only
+   *  when EVERY one applied it. A declined part obliges the caller to [[dispatchUpsert]] the whole
+   *  record — to every listener, the ones that applied the part included: a whole record is a
+   *  superset of any part of it. A listener that throws declines it. */
+  def dispatchPart(part: V): Seq[String] = {
+    val declined = Seq.newBuilder[String]
     listeners.forEach { l =>
-      try { if (!l.onPart(part)) all = false }
-      catch { case exception: Throwable => all = false; logger.warn(s"$name change-stream part apply failed: ${exception.getMessage}") }
+      try l.onPart(part) match {
+        case VenueVerdict.Applied          => ()
+        case VenueVerdict.Declined(reason) => declined += reason
+      }
+      catch { case exception: Throwable =>
+        declined += ChangeStreamFanout.PartFailed
+        logger.warn(s"$name change-stream part apply failed: ${exception.getMessage}") }
     }
-    all
+    declined.result()
   }
 
   def dispatchDelete(id: String): Unit = listeners.forEach { l =>
     try l.onDelete(id)
     catch { case exception: Throwable => logger.warn(s"$name change-stream delete apply failed: ${exception.getMessage}") }
   }
+}
+
+object ChangeStreamFanout {
+  /** A listener registered without a part handler declines every part. */
+  val NoPartHandler = "no_part_handler"
+  /** A listener's part handler threw. */
+  val PartFailed    = "part_failed"
 }

@@ -53,6 +53,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   "A change at some venues" should "write from those venues alone exactly what projecting the whole film writes" in {
     var accepted, declined = 0
+    val reasons = scala.collection.mutable.Set.empty[String]
     (0 until 300).foreach { round =>
       val rng = new Random(round)
       val (wholeRm, venueRm) = (new InMemoryReadModelRepository(), new InMemoryReadModelRepository())
@@ -69,8 +70,10 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         whole.onMovieUpsert(now)
         val atCinemas = touched.map(cinema => cinema -> record.data.toSeq.collect {
           case (s @ CinemaShowing(`cinema`, _), slot) => s -> slot }).toMap
-        if (venue.onVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas))) accepted += 1
-        else { declined += 1; venue.onMovieUpsert(now) }
+        venue.onVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas)) match {
+          case services.movies.VenueVerdict.Applied          => accepted += 1
+          case services.movies.VenueVerdict.Declined(reason) => declined += 1; reasons += reason; venue.onMovieUpsert(now)
+        }
         withClue(s"round $round step $step: ") {
           venueRm.findAllMovies().toSet shouldBe wholeRm.findAllMovies().toSet
           venueRm.findAllScreenings().toSet shouldBe wholeRm.findAllScreenings().toSet
@@ -81,6 +84,10 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     // Both paths must actually have run, or the agreement above proves nothing.
     accepted should be > 300
     declined should be > 100
+    // Every decline names why, and the random changes reach the reasons that are about presence.
+    import services.movies.ChangeStreamMetrics.VenueDecline as Why
+    reasons.toSet should contain allOf (Why.ProjectorVenueAppears, Why.ProjectorVenueVanishes)
+    reasons.toSet.subsetOf(Why.All.toSet) shouldBe true
   }
 
   "The cache" should "hold after a change at some venues, applied from them alone, exactly what the whole film's re-read leaves" in {
@@ -103,7 +110,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         whole.applyUpsert(now, FilmWriteFence.Unfenced)
         val atCinemas = touched.map(cinema => cinema -> record.data.toSeq.collect {
           case (s @ CinemaShowing(`cinema`, _), slot) => s -> slot }).toMap
-        if (venue.applyVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas), FilmWriteFence.Unfenced)) accepted += 1
+        if (venue.applyVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas), FilmWriteFence.Unfenced) == services.movies.VenueVerdict.Applied) accepted += 1
         else { declined += 1; venue.applyUpsert(now, FilmWriteFence.Unfenced) }
         val key = now.cacheKey(titleNormalizer)
         withClue(s"round $round step $step: ")(venue.get(key).map(everyField) shouldBe whole.get(key).map(everyField))

@@ -1616,25 +1616,30 @@ class CaffeineMovieCache(
 
   /** Apply a change confined to some venues' showtimes from those venues alone: their slots
    *  stripped again, the rest of the resident row untouched — exactly what [[applyUpsert]] of the
-   *  whole film would store. False, having stored nothing, when the film is not resident or a
+   *  whole film would store. Declined, having stored nothing, when the film is not resident or a
    *  venue holds other slots than the resident ones (a slot came or went), and the caller hands
    *  over the whole film instead. Fenced like [[applyUpsert]]. */
-  private[services] def applyVenueSlots(venues: VenueSlots, mark: Long): Boolean =
-    corpusIndex.keyOf(venues.filmId).flatMap(key => get(key).map(key -> _)).exists { case (key, resident) =>
-      // The venues' slots replace the resident ones whole, read as a whole-film read reads them, so
-      // the row stored is that read's exactly when the venues hold the same slots it does.
-      val fits = venues.atCinemas.forall { case (cinema, slots) =>
-        resident.data.keysIterator.collect { case s @ models.CinemaShowing(`cinema`, _) => s }.toSet == slots.map(_._1).toSet
-      }
-      fits && {
-        val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
-          store(key, resident.copy(data = resident.data ++ venues.atCinemas.valuesIterator.flatten.map {
-            case (source, slot) => source -> forCacheSlot(slot) }), venues.filmId)
+  private[services] def applyVenueSlots(venues: VenueSlots, mark: Long): VenueVerdict = {
+    import ChangeStreamMetrics.VenueDecline as Why
+    corpusIndex.keyOf(venues.filmId).flatMap(key => get(key).map(key -> _)) match {
+      case None => VenueVerdict.Declined(Why.CacheNotResident)
+      case Some((key, resident)) =>
+        // The venues' slots replace the resident ones whole, read as a whole-film read reads them, so
+        // the row stored is that read's exactly when the venues hold the same slots it does.
+        val fits = venues.atCinemas.forall { case (cinema, slots) =>
+          resident.data.keysIterator.collect { case s @ models.CinemaShowing(`cinema`, _) => s }.toSet == slots.map(_._1).toSet
         }
-        if (applied) touch()
-        true
-      }
+        if (!fits) VenueVerdict.Declined(Why.CacheSlotsDiffer)
+        else {
+          val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
+            store(key, resident.copy(data = resident.data ++ venues.atCinemas.valuesIterator.flatten.map {
+              case (source, slot) => source -> forCacheSlot(slot) }), venues.filmId)
+          }
+          if (applied) touch()
+          VenueVerdict.Applied
+        }
     }
+  }
 
   /** Apply an out-of-band DELETE from the change stream: drop the mirrored row whose
    *  source `_id` was removed (a fold/merge loser, an `UnscreenedCleanup` removal, a

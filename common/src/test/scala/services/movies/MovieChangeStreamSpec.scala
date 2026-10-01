@@ -369,17 +369,19 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
         slotRing = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
     }
     val rereads, venueReads, venueApplies, upserts = new AtomicInteger(0)
-    val applies = new java.util.concurrent.ConcurrentLinkedQueue[(String, String)]()
+    val applies  = new java.util.concurrent.ConcurrentLinkedQueue[(String, String)]()
+    val declinedFor = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val metrics = new ChangeStreamMetrics {
       def recordEvent(op: String): Unit = (); def recordUpdateKind(kind: String): Unit = (); def recordCoalescedChange(): Unit = ()
       override def recordApply(path: String, reason: String): Unit = { applies.add(path -> reason); () }
+      override def recordVenueDecline(reason: String): Unit       = { declinedFor.add(reason); () }
     }
     val acks   = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val under  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots), changeStreamMetrics = metrics,
       reread     = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
       readVenues = Some((id, at) => { venueReads.incrementAndGet(); Option.when(venueRead)(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
     val handle = under.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (),
-      (_, _) => { venueApplies.incrementAndGet(); !declines })
+      (_, _) => { venueApplies.incrementAndGet(); if (declines) VenueVerdict.Declined("spec") else VenueVerdict.Applied })
     val venue  = models.KinoApollo
     def row(film: String, at: models.Cinema) = SlotKeyed.idOf(film, s"${at.displayName}${models.CinemaShowing.Separator}film")
     def settle(): Unit = eventually(under.applyBacklog shouldBe 0)
@@ -407,6 +409,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       venueApplies.get() shouldBe 1; rereads.get() shouldBe 1; upserts.get() shouldBe 1
       import scala.jdk.CollectionConverters.*
       applies.asScala.toSeq shouldBe Seq("film" -> "declined")
+      declinedFor.asScala.toSeq shouldBe Seq("spec")
     } finally { handle.close(); under.close() }
   }
 
@@ -429,7 +432,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     val held  = stream(new HandFedSource, screenings = Some(screenings), slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
       reread = id => { rereads.incrementAndGet(); Some(recordOf(id)) },
       readVenues = Some((id, at) => { venueReads.incrementAndGet(); Some(VenueSlots(FilmId(id), at.map(_ -> Nil).toMap)) }))
-    val heldHandle = held.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (), (_, _) => { venueApplies.incrementAndGet(); true })
+    val heldHandle = held.watchFenced((_, _) => { upserts.incrementAndGet(); () }, _ => (), (_, _) => { venueApplies.incrementAndGet(); VenueVerdict.Applied })
     try {
       ring(row("film|2024", venue), () => acks.add("showtimes")); slotRing(row("film|2024", venue), () => acks.add("slot"))
       held.releaseHeld()
