@@ -55,7 +55,7 @@ object FormatTags {
   private val PrintPreposition = """(?i)\s+(?:on|in)\s+(\d{2}mm)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor))\b[^)]*)\)\s*$""".r
   // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
   // join the version word straight to the title with an underscore:
   // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a

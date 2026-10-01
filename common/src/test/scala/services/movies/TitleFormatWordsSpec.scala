@@ -28,6 +28,9 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     // "4K Restoration" names the edition, not the screen: the trailing word is no format.
     FormatTags.extractFormatTags("Horror Season 2026 Dracula 4K Restoration") shouldBe ("Horror Season 2026 Dracula 4K Restoration", Nil)
     FormatTags.extractFormatTags("Sub Rosa")._1 shouldBe "Sub Rosa"
+    // Bracketed too: Everyman's "Dracula (4K Restoration)" is the restoration's title, and the UK's ×81
+    // "Horror Season 2026 Dracula 4K Restoration" merges with it only while it keeps it.
+    FormatTags.extractFormatTags("Dracula (4K Restoration)") shouldBe ("Dracula (4K Restoration)", Nil)
   }
 
   "A generic version token" should "be the country's own spelling" in {
