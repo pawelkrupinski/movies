@@ -452,8 +452,14 @@ jobs:
                       ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
                       ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }}
                       ghcr.io/${{ github.repository_owner }}/movies-web:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  # INLINE cache, restored from the image this job last pushed — not `type=gha`. The
+                  # GHA exporter re-uploaded every layer after the push, the app layer (the staged
+                  # dist + its AOT cache) included, which differs on every commit and so is never a
+                  # hit: ~1 min on the post-CI critical path to store bytes nothing reads back. The
+                  # layers worth reusing (base OS, JRE) are all in `latest`, and inline
+                  # metadata rides the push itself at no extra cost.
+                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-web:latest
+                  cache-to: type=inline
 
     record-web:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-web`, and the reason is the TOKEN.
@@ -639,8 +645,14 @@ jobs:
                       ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
                       ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }}
                       ghcr.io/${{ github.repository_owner }}/movies-worker:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  # INLINE cache, restored from the image this job last pushed — not `type=gha`. The
+                  # GHA exporter re-uploaded every layer after the push, the app layer (the staged
+                  # dist + its AOT cache) included, which differs on every commit and so is never a
+                  # hit: ~1 min on the post-CI critical path to store bytes nothing reads back. The
+                  # layers worth reusing (base OS, JRE, libvips) are all in `latest`, and inline
+                  # metadata rides the push itself at no extra cost.
+                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+                  cache-to: type=inline
 
     record-worker:
         # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-worker`, for the token: `build-worker`

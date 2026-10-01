@@ -58,8 +58,6 @@ RUN set -eux; \
     ldconfig; \
     java -Xshare:dump; \
     java --version
-ARG COMMIT_SHA=unknown
-ENV COMMIT_SHA=$COMMIT_SHA
 ARG BIN=web
 ENV BIN=$BIN
 # libvips for the WORKER only: it shrinks share-card posters of any size in a capped subprocess
@@ -68,6 +66,10 @@ ENV BIN=$BIN
 RUN if [ "$BIN" = "worker" ]; then \
       apt-get update && apt-get install -y --no-install-recommends libvips-tools && rm -rf /var/lib/apt/lists/*; \
     fi
+# The commit only AFTER every layer that doesn't depend on it: an ENV changes the layer chain from
+# that point on, so above the libvips install it rebuilt that apt layer on every commit.
+ARG COMMIT_SHA=unknown
+ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
 COPY stage/ ./
 # `actions/upload-artifact@v4` strips the Unix executable bit, so the
