@@ -65,4 +65,41 @@ class PairSetIndexSpec extends AnyFlatSpec with Matchers {
     index.remove("missing", 1, 'x'); index.removeAll("missing", 1)
     index.toMap shouldBe Map.empty
   }
+
+  // A lone value is stored bare and two or more as a set: every transition between the two must
+  // read back exactly what was added.
+  "SetIndex" should "read back the same set through one → many → one → none" in {
+    val index = new SetIndex[String, String]
+    index.add("k", "a"); index.add("k", "a")
+    index.get("k") shouldBe Set("a")
+    index.add("k", "b")
+    index.get("k") shouldBe Set("a", "b")
+    index.remove("k", "a")
+    index.get("k") shouldBe Set("b")
+    index.remove("k", "x")
+    index.get("k") shouldBe Set("b")
+    index.remove("k", "b")
+    index.holds("k") shouldBe false
+    index.get("k") shouldBe empty
+  }
+
+  it should "hold a set as a value without confusing it for several values" in {
+    val index = new SetIndex[String, Set[Int]]
+    index.add("k", Set(1, 2))
+    index.get("k") shouldBe Set(Set(1, 2))
+    index.toMap shouldBe Map("k" -> Set(Set(1, 2)))
+  }
+
+  "PairSetIndex" should "read back the same set through one → many → one → none" in {
+    val index = new PairSetIndex[String, Int, String]
+    index.add("c", 1, "a"); index.add("c", 1, "b"); index.add("c", 2, "z")
+    index.get("c", 1) shouldBe Set("a", "b")
+    index.remove("c", 1, "b")
+    index.get("c", 1) shouldBe Set("a")
+    index.toMap shouldBe Map(("c", 1) -> Set("a"), ("c", 2) -> Set("z"))
+    index.remove("c", 1, "a"); index.remove("c", 2, "z")
+    index.holds("c", 1) shouldBe false
+    index.toMap shouldBe empty
+  }
 }
+
