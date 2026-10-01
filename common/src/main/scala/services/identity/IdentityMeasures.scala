@@ -906,8 +906,16 @@ object IdentityMeasures {
    *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
-  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l) ++ uncredited(l))
-    .map(_.trim).filter(_.nonEmpty).distinct
+  def searchQueries(l: Listing): Seq[String] = {
+    val asked = titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l) ++ uncredited(l)
+    (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
+  }
+
+  /** A title up to the year it dates itself by in a bracket ("Człowiek z żelaza (1981) 4K" →
+   *  "Człowiek z żelaza"): TMDB's search finds nothing for the bracketed spelling, and a search is
+   *  asked without a year. */
+  private def beforeItsYear(title: String): Option[String] =
+    BracketedYear.findFirstMatchIn(title).map(m => title.take(m.start).trim).filter(_.exists(_.isLetter))
 
   /** The title without an anniversary it dates ("… 20th Anniversary") and a director's possessive
    *  credit before it ("Guillermo del Toro's …"): the work a re-release bills under both, which no

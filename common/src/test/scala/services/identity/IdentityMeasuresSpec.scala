@@ -82,6 +82,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
   }
 
+  "a title dating itself in a bracket" should "also be searched by what precedes the year" in {
+    // PL Kino Kosmos's "Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K": TMDB answers nothing
+    // for "Człowiek z żelaza (1981)" or its "… 4K", and finds Wajda's film for the bare title — a
+    // search is asked without a year, the year being measured apart.
+    IdentityMeasures.searchQueries(Listing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K")) should contain ("Człowiek z żelaza")
+    IdentityMeasures.searchQueries(Listing("Krzyżacy [1960]")) should contain ("Krzyżacy")
+    // A bracket that is not a year stays the title's: "Kura (Mała Sala)" asks nothing new.
+    IdentityMeasures.searchQueries(Listing("Kura (Mała Sala)")).exists(q => !q.contains("Kura")) shouldBe false
+    // Nor does a year with nothing before it name a title.
+    IdentityMeasures.searchQueries(Listing("(2026)")).exists(_.isEmpty) shouldBe false
+  }
+
   "a title crediting its director and dating an anniversary" should "also be searched without them" in {
     // US Showcase ×6 "Guillermo del Toro's Pan's Labyrinth 20th Anniversary": TMDB's search finds no
     // record by the whole title, and none of its pieces is one.
