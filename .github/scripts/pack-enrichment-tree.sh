@@ -28,6 +28,20 @@ echo "remembered enrichment answers: $remembered"
 
 mkdir -p "$(dirname "$ARCHIVE")"
 
+# Compressed on every core. Single-threaded gzip was 75 s of the US recording's critical
+# path (117k files, 586 MB packed — run 36909637796); the runner image ships pigz, whose
+# output is the same gzip every reader of the asset unpacks (`tar -xzf`). Plain gzip
+# where pigz is absent (a developer's machine), so the archive never depends on it.
+compress=gzip
+command -v pigz >/dev/null 2>&1 && compress=pigz
+
+# The listing tar prints as it streams (`-v`, to stderr when the archive is stdout — GNU
+# and BSD tar alike) is what the cache guard below counts: the paths that went INTO the
+# archive. Reading the finished archive back instead was a second full gunzip of it, 16 s
+# of the same US publish, to recover a list tar had already printed.
+listing=$(mktemp)
+trap 'rm -f "$listing"' EXIT
+
 # NOT `set -e` around this tar, and the exit code is graded rather than
 # tested for zero.
 #
@@ -44,12 +58,20 @@ mkdir -p "$(dirname "$ARCHIVE")"
 # entire corpus capture to it.
 #
 # 2 and above is a real tar failure (unwritable target, corrupt stream)
-# and still fails.
-tar -czf "$ARCHIVE" "$DIR"
-packed=$?
+# and still fails — as does any failure of the compressor.
+tar -cvf - "$DIR" 2>"$listing" | "$compress" > "$ARCHIVE"
+statuses=("${PIPESTATUS[@]}")
+packed=${statuses[0]}
+compressed=${statuses[1]}
+# tar's own messages share the listing; they are not paths, and belong in the log.
+grep '^[a-z]*tar: ' "$listing" || true
 if [ "$packed" -gt 1 ]; then
     echo "::error::tar failed with status $packed"
     exit "$packed"
+fi
+if [ "$compressed" -ne 0 ]; then
+    echo "::error::$compress failed with status $compressed"
+    exit "$compressed"
 fi
 if [ "$packed" -eq 1 ]; then
     echo "tar reported files changing under it — the leg's JVM is still recording; archive kept"
@@ -60,20 +82,9 @@ du -h "$ARCHIVE"
 # along with the recorded responses and one asset restores both. Asserted
 # rather than assumed: if a future change to this tar drops hidden paths, the
 # loss is invisible — every leg simply gets slower and still passes.
-# `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
-#
-# `tar -tzf … | grep -q` exits the moment it matches and closes the pipe; GNU
-# tar is still streaming, takes SIGPIPE and returns 141, and under
-# `set -euo pipefail` the PIPELINE is then a failure even though the pattern
-# was found. The `!` turned that into "the cache is missing", so this guard
-# failed all three legs on a tarball that contained the cache perfectly — the
-# published asset had 3,745 cache paths in it. Reading the listing to the end
-# removes the race entirely, and the count is worth printing anyway.
-#
-# (BSD tar on macOS absorbs the SIGPIPE, so this could not be reproduced
-# locally — it needs a Linux runner. Verified instead by inspecting the asset
-# the same run published.)
-cached=$(tar -tzf "$ARCHIVE" | grep -c '/\.enrichment-cache/.*\.entry' || true)
+# Counted off tar's own listing of what it archived (BSD tar prefixes each path
+# with `a `, which the pattern does not anchor on).
+cached=$(grep -c '/\.enrichment-cache/.*\.entry' "$listing" || true)
 echo "remembered answers inside the archive: $cached"
 
 # Compared against what the TREE holds, not against the mere existence of the

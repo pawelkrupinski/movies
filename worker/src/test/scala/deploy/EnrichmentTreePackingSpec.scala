@@ -23,11 +23,13 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers {
 
   private val Packer = ".github/scripts/pack-enrichment-tree.sh"
 
-  /** Runs the real script over `tree`, returning its exit status and combined output. */
-  private def pack(tree: Path, archive: Path): (Int, String) = {
+  /** Runs the real script over `tree`, returning its exit status and combined output —
+   *  with `bin` ahead of the PATH when given, to stand a tool in for the runner's. */
+  private def pack(tree: Path, archive: Path, bin: Option[Path] = None): (Int, String) = {
     val out    = new StringBuilder
     val logger = ProcessLogger(line => out.append(line).append('\n'))
-    val status = Seq("bash", Packer, tree.toString, archive.toString).!(logger)
+    val path   = bin.fold(sys.env("PATH"))(dir => s"$dir:${sys.env("PATH")}")
+    val status = Process(Seq("bash", Packer, tree.toString, archive.toString), None, "PATH" -> path).!(logger)
     (status, out.toString)
   }
 
@@ -58,6 +60,28 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers {
     out should include("remembered enrichment answers: 2")
     out should include("remembered answers inside the archive: 2")
     listing(archive).count(_.endsWith(".entry")) shouldBe 2
+  }
+
+  it should "compress on every core when pigz is there, into the gzip every reader unpacks" in {
+    // The US tree is ~117k files and 586 MB packed, and single-threaded gzip spent 75 s of
+    // the recording's critical path on it (run 36909637796); the runner image ships pigz.
+    // A stand-in pigz that logs its call and hands over to gzip proves which one ran.
+    val tree = tempTree()
+    write(tree.resolve("responses/tmdb-search.json"), """{"results":[]}""")
+    write(tree.resolve(".enrichment-cache/metacritic-dune.entry"), "hit")
+    val bin    = Files.createTempDirectory("pigz-bin")
+    val called = bin.resolve("called")
+    val pigz   = bin.resolve("pigz")
+    Files.writeString(pigz, s"#!/bin/sh\necho \"$$*\" >> '$called'\nexec gzip \"$$@\"\n")
+    pigz.toFile.setExecutable(true)
+    val archive = tree.resolveSibling("enrichment-us.tar.gz")
+
+    val (status, out) = pack(tree, archive, Some(bin))
+
+    withClue(s"the packer failed:\n$out")(status shouldBe 0)
+    withClue("the packer compressed without pigz: ")(Files.exists(called) shouldBe true)
+    out should include("remembered answers inside the archive: 1")
+    listing(archive).count(_.endsWith(".entry")) shouldBe 1
   }
 
   it should "publish a leg that recorded nothing rather than calling its empty cache a loss" in {

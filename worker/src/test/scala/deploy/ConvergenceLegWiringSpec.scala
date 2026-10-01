@@ -322,7 +322,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // and discarded the whole capture — the exact trap the publish exists to close,
     // and it cost Germany's first full leg in a week its entire corpus capture.
     val packer = RepoFile.read(".github/scripts/pack-enrichment-tree.sh")
-    packer should include("packed=$?")
+    // tar's OWN status, out of the pipe into the compressor — and the compressor's graded apart.
+    packer should include("statuses=(\"${PIPESTATUS[@]}\")")
+    packer should include("packed=${statuses[0]}")
+    packer should include("""if [ "$compressed" -ne 0 ]""")
     withClue("tar's warning status (1) must not fail the step; 2+ still must: ") {
       packer should include("""if [ "$packed" -gt 1 ]""")
     }
@@ -489,10 +492,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** Every leg unpacks its country's tree before the suite can start — 18.5 s single-threaded
+   *  for the US's 586 MB (run 36909637796) — so it inflates through pigz where the runner has it,
+   *  and gzip where it does not, rather than through `tar -z`'s one thread. */
+  "the convergence setup" should "inflate the fixture archives through pigz when the runner has it" in {
+    val unpack = RepoFile.step(RepoFile.read(".github/actions/convergence-setup/action.yml"), "Unpack whichever fixtures are present")
+    unpack should include("command -v pigz >/dev/null 2>&1 && inflate=pigz")
+    unpack should include(""""$inflate" -dc "$archive" | tar -xf -""")
+    unpack should include("set -euo pipefail")
+  }
+
   /** The leg's MongoDB starts in the BACKGROUND (~20 s of image pull, boot and election that the JDK,
    *  caches and fixture unpack overlap), so setup must end by waiting for it and failing as the start
    *  would have — or the suite would run against a server that is not up yet. */
-  "the convergence setup" should "start MongoDB in the background and wait for it before it ends" in {
+  it should "start MongoDB in the background and wait for it before it ends" in {
     val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
     val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- name:")).toSeq
     setup should include("start-mongo-replset.sh")

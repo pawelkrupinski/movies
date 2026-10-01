@@ -338,10 +338,14 @@ runs:
       shell: bash
       run: |
           set -euo pipefail
+          # pigz inflates on its own thread beside the read, write and check — about twice
+          # gzip's pace on a 586 MB US tree that took 18.5 s to unpack (run 36909637796).
+          inflate=gzip
+          command -v pigz >/dev/null 2>&1 && inflate=pigz
           for archive in "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
                          "enrichment-archive/enrichment-${{ inputs.code }}.tar.gz"; do
               if [ -f "$archive" ]; then
-                  tar -xzf "$archive"
+                  "$inflate" -dc "$archive" | tar -xf -
                   echo "restored $archive ($(du -h "$archive" | cut -f1))"
               else
                   echo "no $archive — this leg fetches live for it and the recorder captures it next"
