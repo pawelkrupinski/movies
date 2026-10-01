@@ -19,7 +19,8 @@ composition root (`modules.wiring.IdentityCutoverWiring`). For a named country:
 | `EnrichDetails` (a venue's detail page) | runs, then resolves on `MovieDetailsComplete` | runs — the page is source data the model reads — without that resolve |
 | unresolved-TMDB and staging reapers | started | not started (the detail reaper runs on both paths) |
 | TMDB / IMDb lookups the resolver asks | — | the normalized store first (`StoredTmdbLookups` over `TmdbStore`), the live service only for what it lacks (`StoredFirstLookups`), filed back into the store — so a take-up reads the store rather than asking every question again |
-| a listing's venue details (director, runtime, original title) | — | the pipeline's enriched slots (`VenueDetailLookups` over `VenueDetailSlots`); a chain's shared slot answers a page only when its row names one |
+| a listing's venue details (director, runtime, original title) | — | `venue_pages`, the one place every page read is written (`VenuePageReader`, by both paths), read through `VenueDetailSlots`; the film slots answer only a page read before that store existed |
+| a NEW listing at a venue with a detail page | staged until its page is read (`StagingDetail`), then resolved | waits in the model until its page is in `venue_pages` (a `ReadVenuePage` task, keyed by the page, reads it), at most `VenuePageWaitLimit` (1 hour) — so its first resolve has the page's facts and does not move when the page lands |
 
 Unchanged either way: `movies` / `movie_slots` / `screenings` keep their shape (slots still carry
 `listingKey`), `ReadModelProjector`, every rating / IMDb-id / share-card enrichment keyed by the
