@@ -21,62 +21,33 @@ credentials no runbook named. Both took something down, and both were recreated 
 
 | credential | outage | alert that now fires |
 |---|---|---|
-| GitHub token behind `kinowo/ghcr-pull` | ImagePullBackOff on every worker, 13:32-14:07Z | `K3sImagePullFailing` |
+| GitHub token behind `kinowo/ghcr-pull` (now retired) | ImagePullBackOff on every worker, 13:32-14:07Z | `K3sImagePullFailing` |
 | Flux's `movies-gitops` deploy key (`flux-system/flux-git-write`) | image automation stopped deploying, 11:41-13:29Z | `FluxObjectNotReady` |
 
-## 1. `kinowo/ghcr-pull` -- the image pull secret
+## 1. `kinowo/ghcr-pull` -- RETIRED: images pull anonymously
 
-**What it is.** A `kubernetes.io/dockerconfigjson` Secret in namespace `kinowo`, holding a GitHub
-token with `read:packages` ONLY (never the token CI pushes with, never a Fly token -- see
-movies-gitops `worker/README.md`). Every `web-<cc>` and `worker-<cc>` Deployment names it under
-`imagePullSecrets`. It was created by hand from `.env.local`; it is not in git and must never be.
+**State since 2026-10-01** (movies-gitops b4841a1). No Deployment names an `imagePullSecrets` any
+more: both packages (`ghcr.io/pawelkrupinski/movies-web`, `movies-worker`) are public and pull
+anonymously, so revoking a GitHub token can no longer stop a pod starting. The old Secret may still
+sit in namespace `kinowo`; nothing reads it, and deleting it is safe.
 
-**What breaks when it is revoked.** Nothing at once: running pods keep their image. The next pod
-that has to PULL -- a deploy, a reschedule, a crash on a node without the image cached -- sits in
-`ErrImagePull` / `ImagePullBackOff`. On 2026-09-27 that was every worker. The web tier is in the
-same position on its next rollout.
-
-**The alert.** `K3sImagePullFailing` (`infra/nix/files/monitoring/rules/k3s.rules`) fires on a
-container waiting in `ErrImagePull|ImagePullBackOff`. Confirm the cause is the credential, not the
-tag:
+**If a package is ever made private again**, re-add `imagePullSecrets: [{name: ghcr-pull}]` to the
+movies-gitops `web/` and `worker/` bases in the SAME change that recreates the Secret, or every new
+tag stops pulling. The Secret holds a GitHub token with `read:packages` ONLY (never the token CI
+pushes with, never a Fly token), built from the environment so the token is never typed:
 
 ```
-kubectl -n kinowo get pods | grep -E 'ErrImagePull|ImagePullBackOff'
-kubectl -n kinowo describe pod <pod> | grep -iE 'unauthorized|denied|401|403'
+GHCR_PULL_TOKEN=$(secrets get movies GHCR_PULL_TOKEN)   # or read it from .env.local
+kubectl -n kinowo create secret docker-registry ghcr-pull \
+  --docker-server=ghcr.io --docker-username=<github-user> --docker-password="$GHCR_PULL_TOKEN" \
+  --dry-run=client -o yaml | kubectl apply -f -
+unset GHCR_PULL_TOKEN
 ```
 
-**Recreate it.**
-
-1. github.com -> Settings -> Developer settings -> Personal access tokens -> Tokens (classic) ->
-   Generate new token, scope `read:packages` and nothing else. Record it as `GHCR_PULL_TOKEN` in
-   `.env.local` (or `secrets set movies GHCR_PULL_TOKEN`).
-2. Replace the Secret. `--dry-run=client -o yaml | kubectl apply -f -` builds the manifest locally
-   and replaces it in place; the token is read from the environment, not typed:
-
-   ```
-   GHCR_PULL_TOKEN=$(secrets get movies GHCR_PULL_TOKEN)   # or read it from .env.local
-   kubectl -n kinowo create secret docker-registry ghcr-pull \
-     --docker-server=ghcr.io \
-     --docker-username=<github-user> \
-     --docker-password="$GHCR_PULL_TOKEN" \
-     --dry-run=client -o yaml | kubectl apply -f -
-   unset GHCR_PULL_TOKEN
-   ```
-
-3. Kick the pods stuck in back-off rather than waiting for the back-off timer (worker downtime is
-   fine; roll the web tier, do not delete all its pods at once):
-
-   ```
-   kubectl -n kinowo delete pod <pod-in-ImagePullBackOff> ...
-   kubectl -n kinowo rollout status deployment/worker-pl     # and each sibling
-   ```
-
-4. Revoke the old token on GitHub if the sweep has not already.
-
-**Pending decision.** Both packages (`ghcr.io/pawelkrupinski/movies-web`, `movies-worker`) are
-public, so an anonymous pull would work and this Secret may be droppable altogether -- removing the
-`imagePullSecrets` entries from movies-gitops `web/` and `worker/` bases and the Secret with them.
-Not done: the decision is the owner's. Until it is made, this Secret has to exist and be valid.
+**The alert either way.** `K3sImagePullFailing` (`infra/nix/files/monitoring/rules/k3s.rules`)
+fires on a container waiting in `ErrImagePull|ImagePullBackOff`; `kubectl -n kinowo describe pod
+<pod> | grep -iE 'unauthorized|denied|401|403'` says whether the registry refused a credential or
+the tag is simply missing.
 
 ## 2. Flux's `movies-gitops` deploy key -- `flux-system/flux-git-write`
 
