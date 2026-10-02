@@ -156,6 +156,17 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     bySole(sole(ranked(Listing("Loving Karma + Kocia Szajka"), record), 1563699)) shouldBe None
   }
 
+  "a programme dating a one-word film's title" should "take that film by its year" in {
+    // PL Kino NCKF EC1's "Akademia Kina Polskiego: Drogówka (2012)": "Drogówka" alone is many films' title, but not
+    // beside the year that dates it — Smarzowski's 2013 film, a year off.
+    val dated = Listing("Akademia Kina Polskiego: Drogówka (2012)")
+    val film  = (167179, Film("Drogówka", year = Some(2013)), Some(1))
+    val other = (900001, Film("Drogówka", year = Some(1978)), Some(2))
+    acceptance.acceptedBy(ranked(dated, film, other), 167179) shouldBe Some("dated-title")
+    // undated, the one word names no film on its own
+    acceptance.acceptedBy(ranked(Listing("Akademia Kina Polskiego: Drogówka"), film, other), 167179) should not be Some("dated-title")
+  }
+
   "a double bill" should "take neither film when its facts back both" in {
     // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133: each piece found
     // its own film first and both directors were credited — the two scored 91–93%, and popularity picked one.

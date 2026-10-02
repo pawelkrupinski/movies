@@ -340,12 +340,18 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     }
 
   /** Is the listing's title, years aside, the candidate's own title or original title — or that
-   *  title of two words or more decorated along one edge ("La Fanciulla del West Encore" of the
-   *  Met's "… 2026/27: La Fanciulla del West")? */
+   *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
+   *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitle]]). */
   private def namedButForItsYear(candidate: Scored): Boolean = {
     val titles = (Seq(candidate.candidate.film.title) ++ candidate.candidate.film.originalTitle).map(IdentityMeasures.yearlessTokens)
+    // One word is many films' title — but not as a whole piece beside the year the listing dates it by, which the
+    // rule requires: "Akademia Kina Polskiego: Drogówka (2012)" is Smarzowski's 2013 film.
+    // A one-word title must be a whole delimited PIECE of the listing's ("…: Drogówka (2012)"), not its last word
+    // ("Fanciulla Encore (2027)" is no "Encore").
+    lazy val pieces = IdentityMeasures.titleShapes(candidate.listing).map(IdentityMeasures.yearlessTokens).toSet
     (Seq(candidate.listing.title) ++ candidate.listing.rawTitle).map(IdentityMeasures.yearlessTokens).exists(own => own.nonEmpty &&
-      titles.exists(title => title == own || (title.sizeIs >= 2 && services.movies.TitleContainment.isTokenRun(title, own))))
+      titles.exists(title => title == own || (title.sizeIs >= 2 && services.movies.TitleContainment.isTokenRun(title, own)) ||
+        (title.sizeIs == 1 && pieces(title))))
   }
 
   /** The one eligible record billing the listing's work under the listing's OWN house
