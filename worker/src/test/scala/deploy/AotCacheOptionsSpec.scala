@@ -110,5 +110,13 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
     val training = script.linesIterator.find(_.contains("-XX:AOTCacheOutput")).getOrElse(fail("no training JAVA_OPTS"))
     training should include("-XX:+UnlockDiagnosticVMOptions -XX:-AOTRecordTraining")
   }
+
+  // Without profiles the replay only has to load what booting loads: 60 s archived 15,834 classes,
+  // 240 s 15,879 (2026-10-02) — and every second of it delays every worker deploy.
+  it should "replay no longer than the classes need" in {
+    val step = RepoFile.read(".github/workflows/main.yml").linesIterator.dropWhile(!_.contains("scripts/ci/train-worker-aot.sh")).take(5).mkString("\n")
+    val seconds = """08-06-2026 (\d+)""".r.findFirstMatchIn(step).map(_.group(1).toInt).getOrElse(fail("no training seconds"))
+    seconds should be <= 60
+  }
 }
 

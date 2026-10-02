@@ -476,12 +476,12 @@ jobs:
             - name: Train its AOT cache on a replayed boot, and push it under this commit's SHA tag only
               # Archives the classes a running worker loads, not only the listed ones (no method
               # profiles) — see the script and modules.AotTrainingMain. The corpus is the tracked one
-              # the checkout above brought.
+              # the checkout above brought. 60 s: 15,834 classes archived against 15,879 at 240 s.
               run: >-
                   scripts/ci/train-worker-aot.sh
                   ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
                   ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
-                  "$GITHUB_WORKSPACE/test/resources/fixtures" 08-06-2026 240
+                  "$GITHUB_WORKSPACE/test/resources/fixtures" 08-06-2026 60
 
     build-worker:
         needs: [ci, gates, image-worker]
