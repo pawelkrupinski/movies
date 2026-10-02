@@ -184,7 +184,8 @@ runs:
     # own retention and cannot be evicted to make room for a build cache.
     - name: Restore the recorded scrape corpus
       shell: bash
-      continue-on-error: true
+      # A recording leg falls through to bootstrapping; a replay leg's missing pin ENDS the leg.
+      continue-on-error: ${{ inputs.mode == 'record' }}
       env:
           GH_TOKEN: ${{ inputs.token }}
       run: |
@@ -284,7 +285,8 @@ runs:
     # fetching live and publishing what it learns.
     - name: Restore the enrichment tree and remembered answers
       shell: bash
-      continue-on-error: true
+      # A recording leg falls through to bootstrapping; a replay leg's missing pin ENDS the leg.
+      continue-on-error: ${{ inputs.mode == 'record' }}
       env:
           GH_TOKEN: ${{ inputs.token }}
       run: |

@@ -62,6 +62,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       val lines = RepoFile.step(setup, name).linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
       val afterErrors = lines.zip(lines.drop(1)).collect { case (line, next) if line.startsWith("echo \"::error::") => next }
       withClue(s"$name: ")(afterErrors should (not be empty and contain only "exit 1"))
+      // ...and the exit must END the leg: a step that continues on error swallowed it, and run
+      // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
+      withClue(s"$name: ")(lines.filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}"))
     }
   }
 
