@@ -121,7 +121,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  Przepraszam, czy tu biją" and ~30 programme listings like it sat at 28.9% with no rule to take them. */
   def segmentTopHit(ranked: Seq[Scored]): Option[Accepted] = ranked.headOption.flatMap { any =>
     val eligible = eligibleOf(ranked)
-    val named    = ranked.filter(_.titleNamesIt)
+    // a one-word piece names no film here, rival or taken: "Inna Mamusia - maraton" is no "Maraton"
+    val named    = ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
+      IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film)))
     named match {
       case Seq(scored) if !scored.denied && scored.rank.contains(1) && scored.category("title").contains("segment") &&
           !IdentityMeasures.billsTwoWorks(any.listing) && IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film) &&

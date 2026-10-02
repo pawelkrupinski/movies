@@ -59,15 +59,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.segmentTopHit(ranked(day, film)).map(_._2).get should be >= 0.99
     // not its search's FIRST hit: no answer
     segment(day, film.copy(_3 = Some(2)), (9, Film("Inny film"), Some(1))) shouldBe None
-    // a programme naming two films: neither
-    segment(Listing("Akademia: Ostatni etap | Majdanek"), (121141, Film("Ostatni etap", year = Some(1948)), Some(1)),
-      (121142, Film("Majdanek", year = Some(1944)), Some(2))) shouldBe None
+    // a programme naming two films: neither ("Akademia Polskiego Filmu: Ostatni etap | Majdanek - cmentarz Europy"; a
+    // one-word piece names no film here — see "Inna Mamusia - maraton" below)
+    segment(Listing("Akademia: Ostatni etap | Majdanek - cmentarz Europy"), (121141, Film("Ostatni etap", year = Some(1948)), Some(1)),
+      (121142, Film("Majdanek - cmentarz Europy", year = Some(1944)), Some(2))) shouldBe None
     // a double bill: neither
     segment(Listing("Basia. Humor w paski mam + Kocia Szajka"), (1747514, Film("Basia. Humor w paski mam"), Some(1))) shouldBe None
     // the guards: a one-word piece, a title year another than the record's, a numbered set
     segment(Listing("Bhutan - Trails of Happiness"), (5, Film("Bhutan", year = Some(1928)), Some(1))) shouldBe None
     segment(Listing("Toddler Club: Disney Junior Cinema Club 2026"), (6, Film("Disney Junior Cinema Club", year = Some(2024)), Some(1))) shouldBe None
     segment(Listing("Bolek i Lolek - zestaw IV"), (7, Film("Bolek i Lolek", year = Some(1936)), Some(1))) shouldBe None
+    // a one-word piece names no rival: "Inna Mamusia - maraton" is "Inna mamusia", not one of TMDB's "Maraton"s
+    segment(Listing("Inna Mamusia - maraton"), (1400837, Film("Inna mamusia", year = Some(2026)), Some(1)),
+      (493305, Film("Maraton", year = Some(2006)), Some(1))) shouldBe Some(1400837)
     // a whole title is the exact top hit's, not this rule's
     segment(Listing("Przepraszam, czy tu biją?"), film) shouldBe None
   }
