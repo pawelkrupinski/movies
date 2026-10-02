@@ -94,32 +94,17 @@ class MovieControllerService(
     schedulesFor(city, readModel.screeningsForCity(city.slug).filter(s => filmIds(s.filmId)), nowIn(city))
 
   private def schedulesFor(city: City, cityScreenings: Seq[CityScreening], now: LocalDateTime): Seq[FilmSchedule] = {
+    // `Showtime.isUpcoming(now)` is `dateTime.isAfter(now.minus(Grace))`: the cutoff once,
+    // not a fresh LocalDateTime per showtime of the city (54k on New York).
+    val cutoff = now.minus(Showtime.Grace)
     cityScreenings.groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
-        // Flatten this city's future showtimes. A film with no future showing in
-        // this city drops out of its list view (its documents stay in the store).
-        val allShowtimes: Seq[(Cinema, Showtime)] = screenings.flatMap { sc =>
-          MovieControllerService.cinemaByName(sc.cinema).toSeq.flatMap { cinema =>
-            sc.showtimes.iterator.filter(_.isUpcoming(now)).map(st => (cinema, st))
-          }
-        }
-        if (allShowtimes.isEmpty) None
+        val byDate = showingsByDate(screenings, cutoff)
+        if (byDate.isEmpty) None
         else {
-          val earliest = allShowtimes.map(_._2.dateTime).min
-          val byDate: Seq[(LocalDate, Seq[CinemaShowtimes])] =
-            allShowtimes
-              .groupBy(_._2.dateTime.toLocalDate)
-              .toSeq.sortBy(_._1)
-              .map { case (date, slots) =>
-                val perCinema = slots
-                  .groupBy(_._1)
-                  // `displayName` is the tiebreaker so two cinemas sharing a film at
-                  // the same earliest showtime render in a stable order (the
-                  // "Kino Malta vs Kino Meduza" snapshot-flake fix).
-                  .toSeq.sortBy { case (cinema, ss) => (ss.map(_._2.dateTime).min, cinema.displayName) }
-                  .map { case (cinema, ss) => CinemaShowtimes(cinema, ss.map(_._2).sortBy(_.dateTime)) }
-                (date, perCinema)
-              }
+          // A film with no future showing in this city drops out of its list view (its
+          // documents stay in the store); one with any is ordered by its earliest.
+          val earliest = byDate.head._2.iterator.map(_.showtimes.head.dateTime).min
           val cinemaFilmUrls: Seq[(Cinema, String)] =
             screenings
               .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
@@ -128,6 +113,52 @@ class MovieControllerService(
         }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
+  }
+
+  /** One film's upcoming showtimes in this city, by date and then by cinema: dates
+   *  ascending, a date's cinemas by their earliest showtime that day with
+   *  `displayName` breaking ties (the "Kino Malta vs Kino Meduza" snapshot-flake fix),
+   *  each cinema's showtimes by time.
+   *
+   *  Built by sorting each cinema's showtimes ONCE and cutting them into per-date
+   *  runs, rather than regrouping (cinema, showtime) tuples by date and again by
+   *  cinema: on a New-York-sized city that was 25 MB of tuples, maps and orderings per
+   *  render, where this is an array per cinema and a `CinemaShowtimes` per run. */
+  private def showingsByDate(screenings: Seq[CityScreening], cutoff: LocalDateTime): Seq[(LocalDate, Seq[CinemaShowtimes])] = {
+    // A cinema can carry the film on more than one row; its showtimes merge, in row order.
+    val perCinema = new java.util.LinkedHashMap[Cinema, scala.collection.mutable.ArrayBuffer[Showtime]]()
+    for (sc <- screenings; cinema <- MovieControllerService.cinemaByName(sc.cinema); st <- sc.showtimes)
+      if (st.dateTime.isAfter(cutoff)) perCinema.computeIfAbsent(cinema, _ => scala.collection.mutable.ArrayBuffer.empty).addOne(st)
+    if (perCinema.isEmpty) return Nil
+    val runs = scala.collection.mutable.ArrayBuffer.empty[(LocalDate, CinemaShowtimes)]
+    perCinema.forEach { (cinema, showtimes) =>
+      val sorted = showtimes.sortInPlaceBy(_.dateTime)      // stable, as `sortBy` was
+      var from = 0
+      while (from < sorted.length) {
+        val date = sorted(from).dateTime.toLocalDate
+        var to = from + 1
+        while (to < sorted.length && sorted(to).dateTime.toLocalDate == date) to += 1
+        runs += date -> CinemaShowtimes(cinema, sorted.slice(from, to).toList)
+        from = to
+      }
+    }
+    runs.sortInPlaceWith { case ((d1, a), (d2, b)) =>
+      val byDate = d1.compareTo(d2)
+      if (byDate != 0) byDate < 0
+      else {
+        val byFirst = a.showtimes.head.dateTime.compareTo(b.showtimes.head.dateTime)
+        if (byFirst != 0) byFirst < 0 else a.cinema.displayName < b.cinema.displayName
+      }
+    }
+    val days = List.newBuilder[(LocalDate, Seq[CinemaShowtimes])]
+    var i = 0
+    while (i < runs.length) {
+      val date = runs(i)._1
+      val day  = List.newBuilder[CinemaShowtimes]
+      while (i < runs.length && runs(i)._1 == date) { day += runs(i)._2; i += 1 }
+      days += date -> day.result()
+    }
+    days.result()
   }
 
   /** Assemble a [[FilmSchedule]] from a resolved movie + its (possibly empty)
