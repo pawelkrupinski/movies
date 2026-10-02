@@ -288,8 +288,13 @@ jobs:
                   KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
                   KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
                   KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
-                  # Strictly-increasing versionCode for Play (see build.gradle.kts).
-                  KINOWO_VERSION_CODE: ${{ github.run_number }}
+                  # The run number only on a manual (Play-publish) run. On a push
+                  # or PR it is empty, so build.gradle.kts derives the versionCode
+                  # from mobile-version.txt: a per-run code lands in the merged
+                  # manifest and made every release task downstream of it (R8,
+                  # lint-vital, resource linking, bundling) miss the build cache.
+                  # Store releases set their own code (scripts/mobile-ship.sh).
+                  KINOWO_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && github.run_number || '' }}
               run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK

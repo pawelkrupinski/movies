@@ -80,11 +80,13 @@ android {
         // that drift the first time someone bumps one and forgets the other.
         // scripts/mobile-release.sh writes it; scripts/mobile-release-test.sh guards it.
         versionName = mobileVersion
-        // Play rejects re-uploading a versionCode, so CI passes a strictly
-        // increasing one (the workflow run number) via KINOWO_VERSION_CODE. It
-        // changes every run, which is why `buildConfig` stays off (see
-        // buildFeatures). Locally it is DERIVED from the same marketing
-        // version (1.4.0 → 10400), which keeps a local build's code ordered the same way the versions are.
+        // Play rejects re-uploading a versionCode, so a store release passes a
+        // strictly increasing one via KINOWO_VERSION_CODE (scripts/mobile-ship.sh:
+        // epoch seconds; android.yml: the run number, on a manual run only).
+        // Otherwise it is DERIVED from the marketing version (1.4.0 → 10400), so a
+        // push/PR CI build keeps the same code run to run and its release tasks
+        // (R8, lint-vital, packaging) come from the build cache — see
+        // AndroidBuildCacheVersionCodeSpec, and `buildConfig` staying off below.
         versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: mobileVersionCode
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -181,9 +183,9 @@ android {
     }
     buildFeatures {
         compose = true
-        // OFF: AGP writes versionCode into BuildConfig, so CI's per-run
-        // versionCode changed the compile and Compose-mapping inputs of both
-        // release variants and they never came from the build cache (see
+        // OFF: AGP writes versionCode into BuildConfig, so a per-build
+        // versionCode would change the compile and Compose-mapping inputs of both
+        // release variants and keep them out of the build cache (see
         // NoBuildConfigTest). The tuning switch is TUNING_ENABLED, from the
         // tuning/noTuning source sets.
         buildConfig = false
