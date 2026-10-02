@@ -1841,7 +1841,10 @@ object GermanRoster {
    *  Two exist today — a German "Studio" against Opole's `KinoStudio`, and a German
    *  "Cineworld" against the `CineworldChain` detail source — and both silently rebound a
    *  Polish/UK venue's showtimes to a German one. `SourceWireKeySpec` fails on any third. */
-  private def claimedElsewhere: Set[String] =
+  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
+  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
+  // its first ten boot minutes (JFR 2026-10-02).
+  private lazy val claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ Cinema.Networks).map(_.displayName).toSet
 
   private val built: Seq[(GermanRegion, String, Seq[(GermanCinema, String, Option[String])])] =
@@ -1940,7 +1943,10 @@ object UsRoster {
    *  Reads `GermanRoster.byCity` rather than `GermanRosterData` so the comparison is
    *  against the names actually built — German venues are themselves qualified on
    *  collision, and it is the qualified name that ends up on the wire. */
-  private def claimedElsewhere: Set[String] =
+  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
+  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
+  // its first ten boot minutes (JFR 2026-10-02).
+  private lazy val claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       Cinema.Networks).map(_.displayName).toSet
 
@@ -2181,7 +2187,10 @@ object SpanishRoster {
    *  against the names actually built — the German and US venues are themselves
    *  qualified on collision, and it is the qualified name that ends up on the
    *  wire. */
-  private def claimedElsewhere: Set[String] =
+  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
+  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
+  // its first ten boot minutes (JFR 2026-10-02).
+  private lazy val claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       UsRoster.byCity.flatMap(_._2) ++
       Cinema.Networks).map(_.displayName).toSet
