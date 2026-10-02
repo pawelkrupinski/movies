@@ -74,7 +74,30 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
     val result = responses().serve(gzipRequest("/poznan/?date=tomorrow"), "text/html", CachePolicy.BrowserOnly,
       cacheKey = "|q=date=tomorrow", cacheBody = false)("<p>")
     header("Cache-Control", result) shouldBe Some("private, no-cache, no-transform")
-    withClue("an uncached body is left to the GzipFilter: ")(header("Content-Encoding", result) shouldBe None)
+  }
+
+  // An uncached body used to go out plain for the GzipFilter to compress: a second full
+  // pass over the page, ~40 MB a render on New York. Gzipped here, from the same walk
+  // that writes it, the filter sees an encoded response and leaves it alone — and the
+  // shared cache still holds nothing for a filter variant.
+  "an uncached body" should "go out already gzipped to a client that takes gzip, and stay out of the cache" in {
+    val cache  = TestResponseCache()
+    val result = responses(cache).serve(gzipRequest("/poznan/?date=tomorrow"), "text/html", CachePolicy.BrowserOnly,
+      cacheKey = "|q=date=tomorrow", cacheBody = false)("<p>tomorrow</p>")
+    header("Content-Encoding", result) shouldBe Some("gzip")
+    val gzipped = scala.concurrent.Await.result(result, scala.concurrent.duration.Duration.Inf).body match {
+      case play.api.http.HttpEntity.Strict(data, _) => data
+      case other                                    => fail(s"expected a strict body, got $other")
+    }
+    new String(new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(gzipped.toArray)).readAllBytes(), "UTF-8") shouldBe "<p>tomorrow</p>"
+    cache.heldEntries shouldBe 0
+  }
+
+  it should "go out plain to a client that refuses gzip" in {
+    val result = responses().serve(FakeRequest("GET", "/poznan/?date=tomorrow").withHeaders("Host" -> "kinowo.net"),
+      "text/html", CachePolicy.BrowserOnly, cacheKey = "|q=date=tomorrow", cacheBody = false)("<p>tomorrow</p>")
+    header("Content-Encoding", result) shouldBe None
+    contentAsString(result) shouldBe "<p>tomorrow</p>"
   }
 
   it should "be public, max-age=0, must-revalidate, no-transform under RevalidatedAnywhere" in {

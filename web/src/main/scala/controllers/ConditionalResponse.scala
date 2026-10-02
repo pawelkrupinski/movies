@@ -230,10 +230,14 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
       if (served.version != lastMod && clientHolds(served.version)) notModified(served.version)
       else Ok(served.bytes).as(contentType)
         .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validatorsAt(served.version))*)
-    } else
-      // An uncached response, or a client that refuses gzip: leave it uncompressed
-      // and let the GzipFilter handle it, which is what keeps a filter variant
-      // from minting a blob.
+    } else if (acceptsGzip(request))
+      // An uncached response (a filter variant mints no blob) to a client that takes
+      // gzip: gzipped straight from the walk that writes it. Sent plain, the GzipFilter
+      // compressed it in a second full pass over the page — ~40 MB a render on New
+      // York; an encoded response is one the filter leaves alone.
+      Ok(body.gzipped).as(contentType)
+        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validatorsAt(lastMod))*)
+    else
       Ok(body.plain).as(contentType).withHeaders((("Vary" -> Vary) +: validatorsAt(lastMod))*)
   }
 }

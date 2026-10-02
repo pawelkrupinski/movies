@@ -161,15 +161,19 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val crossed = ctrl.index("poznan")(
       gzipRequest("/poznan/?date=week").withHeaders("If-None-Match" -> tomorrow))
     status(crossed) shouldBe OK
-    contentAsString(crossed) should include ("Cache Test Film")
+    gunzip(contentAsBytes(crossed)) should include ("Cache Test Film")
   }
 
-  // The bare page keeps the precompressed blob; a filter variant must not take
-  // an entry in that byte-bounded LRU.
-  it should "not be served from the shared precompressed blob" in {
+  // The bare page keeps the precompressed blob; a filter variant is gzipped as it is
+  // written (not left to the GzipFilter's second pass) but takes no entry in that
+  // byte-bounded LRU — `ConditionalResponseSpec` pins the "no entry" half.
+  it should "go out gzipped like the bare page, rendered fresh rather than from the blob" in {
     val (ctrl, _) = buildController()
     header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe Some("gzip")
-    header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))) shouldBe None
+    val variant = ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))
+    header("Content-Encoding", variant) shouldBe Some("gzip")
+    header("Cache-Control", variant) shouldBe Some("private, no-cache, no-transform")
+    gunzip(contentAsBytes(variant)) should include ("?date=tomorrow")
   }
 
   // One deployment answers on two hosts — a country's own domain and the shared
@@ -309,11 +313,6 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     // …while the bare listing still does, so this is measuring the right thing.
     ctrl.index("poznan")(gzipRequest("/poznan/"))
     cache.heldEntries shouldBe 1
-  }
-
-  it should "leave the compression to the GzipFilter" in {
-    val (ctrl, _) = buildController()
-    header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))) shouldBe None
   }
 
   // A client that refuses gzip still gets a body it can read, uncompressed.
