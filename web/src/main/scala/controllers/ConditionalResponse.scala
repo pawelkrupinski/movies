@@ -74,7 +74,7 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
    *  the two, and for why every one of them carries `no-transform`. */
   def serve(request: RequestHeader, contentType: String, policy: CachePolicy,
             cacheKey: String = "", city: Option[City] = None,
-            cacheBody: Boolean = true)(body: => String): Result = {
+            cacheBody: Boolean = true)(body: => ResponseBody): Result = {
     // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
     // when anything anywhere changes, so validating London's payload with it
     // meant a Warsaw showtime expired London's ETag: every city looked like it
@@ -234,7 +234,7 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
       // An uncached response, or a client that refuses gzip: leave it uncompressed
       // and let the GzipFilter handle it, which is what keeps a filter variant
       // from minting a blob.
-      Ok(body).as(contentType).withHeaders((("Vary" -> Vary) +: validatorsAt(lastMod))*)
+      Ok(body.plain).as(contentType).withHeaders((("Vary" -> Vary) +: validatorsAt(lastMod))*)
   }
 }
 

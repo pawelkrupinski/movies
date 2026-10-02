@@ -15,4 +15,8 @@ object TestResponseCache {
 
   def apply(maxBytes: Long = EncodedResponseCache.DefaultMaxBytes): EncodedResponseCache =
     new EncodedResponseCache(ExecutionContext.parasitic, () => FixedNow, maxBytes)
+
+  /** The cache and `ConditionalResponse` take a [[ResponseBody]]; specs about WHEN they
+   *  render and what they keep give plain strings. `import TestResponseCache.given`. */
+  given Conversion[String, ResponseBody] = ResponseBody.text(_)
 }

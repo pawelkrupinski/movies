@@ -289,7 +289,7 @@ class MovieController( cc: ControllerComponents,
       // branch below is `private, no-cache`, so it keeps setting it server-side
       // and a visitor with no JS is still remembered.
       conditionalResponse.serve(request, HtmlContentType, CachePolicy.RevalidatedAnywhere,
-                                city = Some(city))(renderIndexHtml(city, request).body)
+                                city = Some(city))(ResponseBody.html(renderIndexHtml(city, request)))
     } else {
       // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
       //
@@ -325,7 +325,7 @@ class MovieController( cc: ControllerComponents,
       // -- and `private, no-cache` is exactly the instruction that none may.
       conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
                                 cacheKey = "|q=" + request.rawQueryString, city = Some(city),
-                                cacheBody = false)(renderIndexHtml(city, request).body)
+                                cacheBody = false)(ResponseBody.html(renderIndexHtml(city, request)))
         .withCookies(cityCookie(city))
     }
   }
@@ -505,7 +505,7 @@ class MovieController( cc: ControllerComponents,
   private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
     conditionalResponse.serve(request, "application/json", CachePolicy.RevalidatedAnywhere,
                               cacheKey = cacheKey, city = Some(city))(
-      play.api.libs.json.Json.stringify(body)
+      ResponseBody.text(play.api.libs.json.Json.stringify(body))
     )
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.

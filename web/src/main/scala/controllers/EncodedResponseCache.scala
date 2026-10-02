@@ -3,11 +3,8 @@ package controllers
 import org.apache.pekko.util.ByteString
 import play.api.Logging
 
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
 import java.time.{Duration, Instant}
 import java.util.concurrent.{ConcurrentHashMap, RejectedExecutionException}
-import java.util.zip.GZIPOutputStream
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
@@ -89,7 +86,7 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
    *  minutes as London's showtimes moved, and the request that found it so
    *  rendered synchronously in 0.7-1.2 s (measured in production 2026-09-25)
    *  against ~5 ms for a hit. */
-  def gzippedBody(key: String, version: Instant, staleFloor: Instant = Instant.MIN)(renderBody: => String): Served = {
+  def gzippedBody(key: String, version: Instant, staleFloor: Instant = Instant.MIN)(renderBody: => ResponseBody): Served = {
     val held = synchronized(Option(entries.get(key)))
     held match {
       case Some(entry) if !entry.version.isBefore(version) =>
@@ -105,14 +102,14 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
   private def servableWhileRefreshing(entry: Entry, staleFloor: Instant): Boolean =
     !entry.renderedAt.isBefore(staleFloor) && !entry.renderedAt.isBefore(now().minus(MaxStaleAge))
 
-  private def render(key: String, version: Instant, renderBody: => String): Served = {
+  private def render(key: String, version: Instant, renderBody: => ResponseBody): Served = {
     val renderedAt = now()
-    val bytes      = EncodedResponseCache.gzip(renderBody)
+    val bytes      = renderBody.gzipped
     store(key, Entry(version, renderedAt, bytes))
     Served(version, bytes)
   }
 
-  private def refreshInBackground(key: String, version: Instant, renderBody: => String): Unit =
+  private def refreshInBackground(key: String, version: Instant, renderBody: => ResponseBody): Unit =
     if (refreshing.add(key)) {
       val refresh: Runnable = () =>
         try render(key, version, renderBody)
@@ -196,12 +193,4 @@ object EncodedResponseCache {
    *  long tail a crawler touches fall out, instead of holding all of them against
    *  the same heap the read model lives in. */
   val DefaultMaxBytes: Long = 64L * 1024 * 1024
-
-  def gzip(s: String): ByteString = {
-    val bos = new ByteArrayOutputStream()
-    val gz  = new GZIPOutputStream(bos)
-    try gz.write(s.getBytes(StandardCharsets.UTF_8))
-    finally gz.close()
-    ByteString(bos.toByteArray)
-  }
 }

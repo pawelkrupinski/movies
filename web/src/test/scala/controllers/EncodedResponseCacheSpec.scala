@@ -1,5 +1,7 @@
 package controllers
 
+import scala.language.implicitConversions
+import TestResponseCache.given
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -9,6 +11,7 @@ import java.time.Instant
 import java.util.zip.GZIPInputStream
 
 class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
+
 
   private def gunzip(served: EncodedResponseCache.Served): String = {
     val in = new GZIPInputStream(new ByteArrayInputStream(served.bytes.toArray))

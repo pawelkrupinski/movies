@@ -28,7 +28,7 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
     def serve(request: play.api.mvc.RequestHeader, contentType: String, policy: CachePolicy,
               cacheKey: String = "", city: Option[City] = None,
               cacheBody: Boolean = true)(body: => String): Future[play.api.mvc.Result] =
-      Future.successful(underlying.serve(request, contentType, policy, cacheKey, city, cacheBody)(body))
+      Future.successful(underlying.serve(request, contentType, policy, cacheKey, city, cacheBody)(ResponseBody.text(body)))
   }
   private def responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp) =
     new Responses(cache, now)

@@ -1,5 +1,7 @@
 package controllers
 
+import scala.language.implicitConversions
+import TestResponseCache.given
 import models.City
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec

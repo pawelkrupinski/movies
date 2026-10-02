@@ -1,5 +1,7 @@
 package services.metrics
 
+import scala.language.implicitConversions
+import controllers.TestResponseCache.given
 import controllers.TestResponseCache
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
