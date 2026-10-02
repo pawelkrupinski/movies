@@ -38,6 +38,25 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "say, for a listing no rule took, which condition stopped each rule" in {
+    // two films of one title and nothing published: no rule can tell them apart
+    val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
+    val bare  = listing(Rialto, "Tatarak")
+    val r = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val rules = r.decisionOf(bare.key).trace.rulesOf(bare.key)
+    withClue(rules.mkString("\n")) {
+      // taken, if at all, only by the cluster's pooled vote — each rule that could take it alone says why it did not
+      rules.filter(_.startsWith("accept:")) shouldBe empty
+      rules should contain ("refused:dated-title:no-film-of-its-title-from-the-year-its-title-dates")
+      rules should contain ("refused:exact-top-hit:no-evidence-class-measured-for-it")
+      rules.count(_.startsWith("refused:")) shouldBe 10
+    }
+    // a listing a rule took names no refusal
+    val credited2 = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
+    val taken = IdentityResolver.resolve(Seq(credited2), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    taken.decisionOf(credited2.key).trace.rulesOf(credited2.key).filter(_.startsWith("refused:")) shouldBe empty
+  }
+
   "a title" should "name the title rules it took and the formats peeled off it" in {
     // `xtra-pokaz-filmu`: "Klub Filmowy: pokaz filmu „Mira”" searches as "Mira"
     normalizer.firedRules(Rialto, "Klub Filmowy: pokaz filmu \"Mira\"") should contain ("title:xtra-pokaz-filmu")

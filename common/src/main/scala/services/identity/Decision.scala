@@ -105,11 +105,13 @@ final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, re
  *  @param nodes   each member listing's own rules: the rule its node accepted a film by alone, the kinds of
  *                 must-links joining it to the cluster, and the cannot-links holding a neighbour apart */
 final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTrace.Veto], nodes: Map[ListingKey, DecisionTrace.Node]) {
-  /** `key`'s rule ids, by kind: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`. */
+  /** `key`'s rule ids, by kind: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, and for a member no rule took alone,
+   *  `refused:<rule>:<the first condition that stopped it>` for each rule (computed when asked — the trace's thread). */
   def rulesOf(key: ListingKey): Seq[String] = {
     val node = nodes.get(key)
     (node.flatMap(_.accepted).map("accept:" + _) ++ pooled.map("pooled:" + _) ++ vetoed.map(v => "veto:" + DecisionTrace.id(v.reason)) ++
-      node.toSeq.flatMap(_.joins.map("join:" + _)) ++ node.toSeq.flatMap(_.apart.map(reason => "apart:" + DecisionTrace.id(reason)))).toSeq.distinct
+      node.toSeq.flatMap(_.joins.map("join:" + _)) ++ node.toSeq.flatMap(_.apart.map(reason => "apart:" + DecisionTrace.id(reason))) ++
+      node.toSeq.flatMap(_.refusals())).toSeq.distinct
   }
 }
 
@@ -117,7 +119,8 @@ object DecisionTrace {
   /** `measures`: the node's own measures against the film its decision took (or its best candidate when it took
    *  none) — the same map its scoring holds, rendered into weights only when a trace is written. */
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
-                        measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None)
+                        measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
+                        refusals: () => Seq[String] = () => Nil)
   final case class Veto(reason: String, by: Option[String])
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
   /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */
