@@ -31,7 +31,7 @@ final class DaySwipeCardsVisibleUITests: XCTestCase {
     /// listing, and leave the new day's cards on screen — it must NOT push that
     /// film's detail screen.
     func testSwipingOnACardChangesDayWithoutOpeningTheFilm() throws {
-        XCTAssertTrue(anyCard().appears(within: 30), "Grid never mounted")
+        XCTAssertTrue(anyCard().waitForExistence(timeout: 30), "Grid never mounted")
         Thread.sleep(forTimeInterval: 1.0)
         let screen = app.windows.firstMatch.frame
         guard let card = onScreenCard(in: screen) else {

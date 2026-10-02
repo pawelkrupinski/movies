@@ -22,9 +22,9 @@ final class RotationColumnsUITests: XCTestCase {
 
         // "Wszystkie" guarantees a dense, multi-row grid regardless of the hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(anytime.appears(within: 30), "Top bar never appeared")
+        XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
         anytime.tap()
-        XCTAssertTrue(firstFilmCard().appears(within: 30),
+        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30),
                       "Grid never filled after switching to Wszystkie")
     }
 
@@ -89,7 +89,7 @@ final class RotationColumnsUITests: XCTestCase {
         firstFilmCard().coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
 
         let poster = app.buttons[A11y.FilmDetail.poster]
-        XCTAssertTrue(poster.appears(within: 10),
+        XCTAssertTrue(poster.waitForExistence(timeout: 10),
                       "Film detail never opened after tapping a card")
 
         // The reported sequence: rotate to landscape and back to portrait.
@@ -99,7 +99,7 @@ final class RotationColumnsUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
 
         XCTAssertTrue(
-            poster.appears(within: 5),
+            poster.waitForExistence(timeout: 5),
             """
             Rotating while on a film's detail screen popped back to the grid — \
             the detail poster is gone. The `.id(vSizeClass)` rebuild dropped the \
@@ -121,12 +121,12 @@ final class RotationColumnsUITests: XCTestCase {
         // card's rating / showtime sub-links (mirrors PosterFullScreenUITests).
         firstFilmCard().coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
         let poster = app.buttons[A11y.FilmDetail.poster]
-        XCTAssertTrue(poster.appears(within: 10),
+        XCTAssertTrue(poster.waitForExistence(timeout: 10),
                       "Film detail never opened after tapping a card")
 
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 1.5)
-        XCTAssertTrue(poster.appears(within: 5),
+        XCTAssertTrue(poster.waitForExistence(timeout: 5),
                       "Detail poster vanished after rotating to landscape")
 
         let leadingInset = poster.frame.minX - app.frame.minX

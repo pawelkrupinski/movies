@@ -29,18 +29,18 @@ final class CityChoiceLocateUITests: XCTestCase {
         app.launch()
 
         let chooseOther = app.buttons[A11y.CityGate.chooseOtherButton]
-        XCTAssertTrue(chooseOther.appears(within: 10))
+        XCTAssertTrue(chooseOther.waitForExistence(timeout: 10))
         chooseOther.tap()
 
         let locate = app.buttons[A11y.CityGate.locateButton]
-        XCTAssertTrue(locate.appears(within: 10), "Manual picker never showed the locate button")
+        XCTAssertTrue(locate.waitForExistence(timeout: 10), "Manual picker never showed the locate button")
         locate.tap()
 
         // The button's own resolver read the SAME `KINOWO_FORCE_DETECTED_CITY`
         // (still "warszawa") the first-launch flow already consumed, so it
         // reports the same hit — the confirm screen reappears.
         let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.appears(within: 10), "Locate button didn't offer the confirm screen on a hit")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "Locate button didn't offer the confirm screen on a hit")
     }
 
     func testLocateButtonMissShowsNoNearbyMessage() throws {
@@ -55,14 +55,14 @@ final class CityChoiceLocateUITests: XCTestCase {
         app.launch()
 
         let chooseOther = app.buttons[A11y.CityGate.chooseOtherButton]
-        XCTAssertTrue(chooseOther.appears(within: 10))
+        XCTAssertTrue(chooseOther.waitForExistence(timeout: 10))
         chooseOther.tap()
 
         let locate = app.buttons[A11y.CityGate.locateButton]
-        XCTAssertTrue(locate.appears(within: 10), "Manual picker never showed the locate button")
+        XCTAssertTrue(locate.waitForExistence(timeout: 10), "Manual picker never showed the locate button")
         locate.tap()
 
         let noNearby = app.staticTexts[A11y.CityGate.noNearbyLocateLabel]
-        XCTAssertTrue(noNearby.appears(within: 10), "No 'no nearby city' message after a miss")
+        XCTAssertTrue(noNearby.waitForExistence(timeout: 10), "No 'no nearby city' message after a miss")
     }
 }

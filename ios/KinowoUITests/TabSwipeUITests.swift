@@ -20,10 +20,10 @@ final class DaySwipeUITests: XCTestCase {
         // late in the evening today's showings have all passed, leaving the
         // default "Dziś" grid empty (and an empty grid has no area to swipe).
         let allDates = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(allDates.appears(within: 15), "Top bar never appeared")
+        XCTAssertTrue(allDates.waitForExistence(timeout: 15), "Top bar never appeared")
         allDates.tap()
 
-        XCTAssertTrue(firstFilmCard(app).appears(within: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30), "Grid never appeared")
     }
 
     override func tearDownWithError() throws {

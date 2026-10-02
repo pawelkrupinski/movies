@@ -20,7 +20,7 @@ final class RepertoireLaunchUITests: XCTestCase {
         // over the simulator's host network, which downloads several
         // hundred KB of HTML before the grid has anything to render.
         let card = firstFilmCard(app)
-        let appeared = card.appears(within: 30)
+        let appeared = card.waitForExistence(timeout: 30)
         XCTAssertTrue(appeared, "Expected at least one film card after launch")
     }
 

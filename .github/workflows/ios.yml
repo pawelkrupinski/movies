@@ -92,20 +92,6 @@ jobs:
               with:
                   xcode-version: latest-stable
 
-            # The destination every simulator step below uses: an iPhone this image HAS, never a
-            # hard-coded model (an Xcode 26 image dropped "iPhone 15", and the continue-on-error
-            # XCUITest step silently stopped running). Its spec runs first.
-            - name: Pick the simulator
-              run: |
-                  scripts/ci/ios-sim-destination-test.sh
-                  destination=$(scripts/ci/ios-sim-destination.sh)
-                  echo "DESTINATION=$destination" >> "$GITHUB_ENV"
-                  # Start its cold boot (~2 min) now, so it runs under the app build below instead of
-                  # in front of the first UI test. `simctl boot` hands the boot to CoreSimulatorService
-                  # and returns; "Wait for the simulator" collects it.
-                  xcrun simctl boot "${destination##*id=}"
-
-
             # COMPILING the app is a separate step from RUNNING the UI tests,
             # and only this one blocks. `swift test` builds the SPM view of the
             # sources, which excludes every SwiftUI file (`Views/`, ContentView,
@@ -120,6 +106,14 @@ jobs:
                       -destination 'generic/platform=iOS Simulator' \
                       CODE_SIGNING_ALLOWED=NO
 
+            # The destination every simulator step below uses: an iPhone this image HAS, never a
+            # hard-coded model (an Xcode 26 image dropped "iPhone 15", and the continue-on-error
+            # XCUITest step silently stopped running). Its spec runs first.
+            - name: Pick the simulator
+              run: |
+                  scripts/ci/ios-sim-destination-test.sh
+                  echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
+
             # One simulator, serially: ~28 min (green run 36117454325). Two clones were slower on
             # this 3-core runner, not faster: run 36157983964 took 38 min and clone 2 ran 3 of the
             # 62 tests.
@@ -129,9 +123,6 @@ jobs:
             #
             # Still continue-on-error until two main runs are green with the city-gate flake fixed
             # (only the gate's own suites still tap it, see FixtureLaunch.intoCity); then drop it.
-            - name: Wait for the simulator
-              run: xcrun simctl bootstatus "${DESTINATION##*id=}" -b
-
             - name: Run XCUITest
               id: xcuitest
               continue-on-error: true

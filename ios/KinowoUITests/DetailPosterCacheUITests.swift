@@ -29,7 +29,7 @@ final class DetailPosterCacheUITests: XCTestCase {
             city: "poznan",
             environment: ["KINOWO_UITEST_SEED_POSTER": "1"]
         )
-        XCTAssertTrue(FixtureLaunch.firstFilmCard(app).appears(within: 30),
+        XCTAssertTrue(FixtureLaunch.firstFilmCard(app).waitForExistence(timeout: 30),
                       "Grid never appeared")
     }
 
@@ -40,7 +40,7 @@ final class DetailPosterCacheUITests: XCTestCase {
         // before and after the fix. It's here so a failure on the detail leg
         // can be read as "the detail screen doesn't use the cache" rather
         // than "the seed never landed".
-        XCTAssertTrue(loadedPoster.appears(within: 20),
+        XCTAssertTrue(loadedPoster.waitForExistence(timeout: 20),
                       "The grid card never rendered the seeded poster — did the seed hook run?")
     }
 
@@ -52,7 +52,7 @@ final class DetailPosterCacheUITests: XCTestCase {
         // from their text. An image contributes none, so an empty label means
         // a poster rendered and "Brak plakatu" means the placeholder did.
         let header = app.buttons[A11y.FilmDetail.poster]
-        XCTAssertTrue(header.appears(within: 20), "The detail header never appeared")
+        XCTAssertTrue(header.waitForExistence(timeout: 20), "The detail header never appeared")
         XCTAssertFalse(waitForLabel(header, toContain: Self.missingPosterLabel, timeout: 8),
                        "The detail header showed 'Brak plakatu' for a poster the app has on disk")
     }
@@ -65,9 +65,9 @@ final class DetailPosterCacheUITests: XCTestCase {
         openFirstFilm()
         app.buttons[A11y.FilmDetail.poster].tap()
 
-        XCTAssertTrue(app.buttons[A11y.FilmDetail.closeButton].appears(within: 10),
+        XCTAssertTrue(app.buttons[A11y.FilmDetail.closeButton].waitForExistence(timeout: 10),
                       "Tapping the header poster never presented the full-screen viewer")
-        XCTAssertTrue(loadedPoster.appears(within: 20),
+        XCTAssertTrue(loadedPoster.waitForExistence(timeout: 20),
                       "The full-screen viewer never rendered the seeded poster — it went to the network instead of PosterStore")
     }
 
@@ -101,7 +101,7 @@ final class DetailPosterCacheUITests: XCTestCase {
             .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
         let title = app.descendants(matching: .any)
             .matching(identifier: A11y.Tuning.detailTitle).firstMatch
-        XCTAssertTrue(title.appears(within: 15),
+        XCTAssertTrue(title.waitForExistence(timeout: 15),
                       "Tapping the card never reached the detail screen")
     }
 }

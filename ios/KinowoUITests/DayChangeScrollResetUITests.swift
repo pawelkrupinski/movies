@@ -21,7 +21,7 @@ final class DayChangeScrollResetUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
-        XCTAssertTrue(anyCard().appears(within: 30), "Grid never mounted")
+        XCTAssertTrue(anyCard().waitForExistence(timeout: 30), "Grid never mounted")
     }
 
     override func tearDownWithError() throws { app = nil }
@@ -33,7 +33,7 @@ final class DayChangeScrollResetUITests: XCTestCase {
 
         // Scroll deep into the list so the top film is recycled away.
         let grid = app.scrollViews.firstMatch
-        XCTAssertTrue(grid.appears(within: 5), "No scroll view")
+        XCTAssertTrue(grid.waitForExistence(timeout: 5), "No scroll view")
         for _ in 0..<3 {
             grid.swipeUp(velocity: .fast)
             Thread.sleep(forTimeInterval: 0.4) // let the lazy grid settle

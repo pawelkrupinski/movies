@@ -19,9 +19,9 @@ final class CardShareMenuUITests: XCTestCase {
         // "Wszystkie" so the grid has cards regardless of the hour — late in the
         // evening "Dziś" can be empty (see ios uitests-at-night).
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(anytime.appears(within: 30), "Top bar never appeared")
+        XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
         anytime.tap()
-        XCTAssertTrue(firstFilmCard().appears(within: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
     override func tearDownWithError() throws { app = nil }
@@ -33,7 +33,7 @@ final class CardShareMenuUITests: XCTestCase {
             .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
             .press(forDuration: 0.7)
 
-        XCTAssertTrue(shareMenuItem().appears(within: 5),
+        XCTAssertTrue(shareMenuItem().waitForExistence(timeout: 5),
                       "Long-pressing the poster should open the share menu")
     }
 
@@ -45,7 +45,7 @@ final class CardShareMenuUITests: XCTestCase {
             .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
             .press(forDuration: 0.7)
 
-        XCTAssertFalse(shareMenuItem().appears(within: 2),
+        XCTAssertFalse(shareMenuItem().waitForExistence(timeout: 2),
                        "Long-pressing the showtimes must not open the card share menu")
     }
 

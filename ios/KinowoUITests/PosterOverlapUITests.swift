@@ -24,7 +24,7 @@ final class PosterOverlapUITests: XCTestCase {
         // Wait on app launch (the date-pill row), NOT on a film card —
         // the default "Dziś" repertoire is empty late at night, so the
         // grid only fills once we switch to "Wszystkie" in the test.
-        XCTAssertTrue(anytimePill().appears(within: 30),
+        XCTAssertTrue(anytimePill().waitForExistence(timeout: 30),
                       "App never launched (no date pills)")
     }
 
@@ -36,10 +36,10 @@ final class PosterOverlapUITests: XCTestCase {
         // is often a single card late in the evening, which exercises
         // nothing.
         anytimePill().tap()
-        XCTAssertTrue(firstFilmCard().appears(within: 30),
+        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30),
                       "Grid never filled after switching to Wszystkie")
         let grid = app.scrollViews.firstMatch
-        XCTAssertTrue(grid.appears(within: 5), "No scroll view")
+        XCTAssertTrue(grid.waitForExistence(timeout: 5), "No scroll view")
 
         for _ in 0..<10 {
             if let hit = firstOverlap(cellFrames()) {

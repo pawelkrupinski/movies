@@ -36,16 +36,16 @@ final class CountySubregionPickerUITests: XCTestCase {
         app.launch()
 
         let chooseOther = app.buttons[A11y.CityGate.chooseOtherButton]
-        XCTAssertTrue(chooseOther.appears(within: 10),
+        XCTAssertTrue(chooseOther.waitForExistence(timeout: 10),
                       "Confirm screen never offered the 'choose another city' button")
         chooseOther.tap()
 
         let uk = app.buttons["United Kingdom"]
-        XCTAssertTrue(uk.appears(within: 5), "No 'United Kingdom' country pill on the picker")
+        XCTAssertTrue(uk.waitForExistence(timeout: 5), "No 'United Kingdom' country pill on the picker")
         uk.tap()
 
         let england = app.buttons["England"]
-        XCTAssertTrue(england.appears(within: 5), "No 'England' region row after switching to the UK")
+        XCTAssertTrue(england.waitForExistence(timeout: 5), "No 'England' region row after switching to the UK")
         england.tap()
     }
 
@@ -59,24 +59,24 @@ final class CountySubregionPickerUITests: XCTestCase {
         // "cheshire" (a collapsed county reading as a direct row) sits well
         // ABOVE the fold and needs no search — proof this step still mixes
         // group headings and direct cities, same list.
-        XCTAssertTrue(app.buttons["Cheshire"].appears(within: 5),
+        XCTAssertTrue(app.buttons["Cheshire"].waitForExistence(timeout: 5),
                       "Cheshire should be a direct row on England's list")
 
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.appears(within: 5), "No search field on the picker")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
         search.tap()
         search.typeText("west mid")
 
         // West Midlands is the one English county holding more than one city —
         // it shows as a group row, not a direct city, on England's list.
         let westMidlands = app.buttons["West Midlands"]
-        XCTAssertTrue(westMidlands.appears(within: 5), "No 'West Midlands' group row under England")
+        XCTAssertTrue(westMidlands.waitForExistence(timeout: 5), "No 'West Midlands' group row under England")
         // Its members are not listed individually yet.
         XCTAssertFalse(app.buttons["Birmingham"].exists, "Birmingham should be behind the West Midlands group")
 
         westMidlands.tap()
 
-        XCTAssertTrue(app.buttons["Birmingham"].appears(within: 5))
+        XCTAssertTrue(app.buttons["Birmingham"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Dudley"].exists)
         XCTAssertTrue(app.buttons["Sandwell"].exists)
         // Nothing from the rest of England leaks into the county's own list.
@@ -87,21 +87,21 @@ final class CountySubregionPickerUITests: XCTestCase {
         // West Midlands sits well below the fold in England's alphabetical
         // list — search narrows to it, same as the test above.
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.appears(within: 5), "No search field on the picker")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
         search.tap()
         search.typeText("west mid")
         app.buttons["West Midlands"].tap()
-        XCTAssertTrue(app.buttons["Birmingham"].appears(within: 5))
+        XCTAssertTrue(app.buttons["Birmingham"].waitForExistence(timeout: 5))
 
         let back = app.buttons[A11y.CityGate.backToRegionButton]
-        XCTAssertTrue(back.appears(within: 5), "No back button on the subregion step")
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "No back button on the subregion step")
         back.tap()
 
         // Back on England's list, query reset — "Cheshire" (well above the
         // fold) is back, proving the step reset rather than landing on the
         // top nation list. Re-search to confirm West Midlands is a group row
         // again too, not still showing its own cities.
-        XCTAssertTrue(app.buttons["Cheshire"].appears(within: 5),
+        XCTAssertTrue(app.buttons["Cheshire"].waitForExistence(timeout: 5),
                       "Did not return to England's own list")
         XCTAssertFalse(app.buttons["Birmingham"].exists, "Still showing West Midlands' cities after going back")
         // The nation list itself never reappeared — only one "back" was hit.
@@ -109,7 +109,7 @@ final class CountySubregionPickerUITests: XCTestCase {
 
         search.tap()
         search.typeText("west mid")
-        XCTAssertTrue(app.buttons["West Midlands"].appears(within: 5),
+        XCTAssertTrue(app.buttons["West Midlands"].waitForExistence(timeout: 5),
                       "West Midlands should be a group row again after going back")
     }
 }

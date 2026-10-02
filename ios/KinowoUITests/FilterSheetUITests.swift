@@ -15,7 +15,7 @@ final class FilterSheetUITests: XCTestCase {
     private func launchIntoGrid(_ environment: [String: String] = [:],
                                 file: StaticString = #filePath, line: UInt = #line) {
         FixtureLaunch.intoGrid(app, environment: environment)
-        XCTAssertTrue(FixtureLaunch.firstFilmCard(app).appears(within: 30),
+        XCTAssertTrue(FixtureLaunch.firstFilmCard(app).waitForExistence(timeout: 30),
                       "Grid never appeared", file: file, line: line)
     }
 
@@ -36,7 +36,7 @@ final class FilterSheetUITests: XCTestCase {
         launchIntoGrid()
         filtryButton(app).tap()
         let wymiar = sheetMarker(app)
-        XCTAssertTrue(wymiar.appears(within: 5),
+        XCTAssertTrue(wymiar.waitForExistence(timeout: 5),
                       "Filtry sheet did not appear after tapping the Filtry button")
     }
 
@@ -46,7 +46,7 @@ final class FilterSheetUITests: XCTestCase {
         launchIntoGrid()
         filtryButton(app).tap()
         let marker = sheetMarker(app)
-        XCTAssertTrue(marker.appears(within: 5))
+        XCTAssertTrue(marker.waitForExistence(timeout: 5))
 
         let done = doneButton(app)
         if done.exists { done.tap() } else { app.swipeDown() }
@@ -66,7 +66,7 @@ final class FilterSheetUITests: XCTestCase {
     func testLaunchHookOpensFiltrySheet() throws {
         launchIntoGrid(["KINOWO_UITEST_OPEN_FILTERS": "1"])
 
-        XCTAssertTrue(sheetMarker(app).appears(within: 10),
+        XCTAssertTrue(sheetMarker(app).waitForExistence(timeout: 10),
                       "Filtry sheet did not open from the launch hook")
     }
 
@@ -75,7 +75,7 @@ final class FilterSheetUITests: XCTestCase {
     func testTheSheetStaysShutWithoutTheHook() throws {
         launchIntoGrid()
 
-        XCTAssertFalse(sheetMarker(app).appears(within: 3),
+        XCTAssertFalse(sheetMarker(app).waitForExistence(timeout: 3),
                        "Filtry sheet opened on a launch that never asked for it")
     }
 

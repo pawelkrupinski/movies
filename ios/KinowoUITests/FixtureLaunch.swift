@@ -101,15 +101,3 @@ enum FixtureLaunch {
             .firstMatch
     }
 }
-
-extension XCUIElement {
-    /// `waitForExistence(timeout:)`, minus its one-second floor when the element is already there.
-    ///
-    /// The predicate expectation behind `waitForExistence` first evaluates a full second after it
-    /// starts, so every wait paid ~1 s even when the grid, button or sheet was on screen already:
-    /// 192 such waits were ~206 s of CI run 36930397066's 870 s of test time. One `exists` snapshot
-    /// first answers that case at once; an element that is genuinely late still gets the full wait.
-    func appears(within timeout: TimeInterval) -> Bool {
-        exists || waitForExistence(timeout: timeout)
-    }
-}

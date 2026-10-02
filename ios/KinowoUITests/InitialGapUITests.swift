@@ -14,7 +14,7 @@ import XCTest
 /// can't return.
 ///
 /// `ScrollInsetUITests` can't catch this: it samples the first card only
-/// *after* `appears(within:)` (post-collapse) and anchors to the Filtry
+/// *after* `waitForExistence` (post-collapse) and anchors to the Filtry
 /// button, which sits on the row *above* the bar's true bottom edge. This
 /// test anchors to a 1pt marker at the real bar bottom (`A11y.TopBar.bottomEdge`).
 ///
@@ -40,7 +40,7 @@ final class InitialGapUITests: XCTestCase {
     /// (which the bug left collapsed).
     func testFirstCardRestsBelowBarAtLaunchAndAfterPull() throws {
         let card = firstFilmCard()
-        XCTAssertTrue(card.appears(within: 30), "Grid never mounted")
+        XCTAssertTrue(card.waitForExistence(timeout: 30), "Grid never mounted")
         // The collapse, if present, is there from the first frame and does not
         // self-correct — a short settle is enough.
         Thread.sleep(forTimeInterval: 1.0)
@@ -84,11 +84,11 @@ final class InitialGapUITests: XCTestCase {
     /// 8pt. (Measured relative to the bar's own anchors, so it's independent of
     /// the breathing gap below the bar.)
     func testNavbarBottomPaddingHalved() throws {
-        XCTAssertTrue(firstFilmCard().appears(within: 30), "Grid never mounted")
+        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never mounted")
         Thread.sleep(forTimeInterval: 1.0)
         let edgeY = barBottom()
         let filtry = app.buttons[A11y.TopBar.filtryButton]
-        XCTAssertTrue(filtry.appears(within: 5), "Filtry button missing")
+        XCTAssertTrue(filtry.waitForExistence(timeout: 5), "Filtry button missing")
         let pad = edgeY - filtry.frame.maxY
         print("INITGAP bottomPad = \(pad)")
         // The bottom padding was halved 8*scale → 4*scale. This distance adds a
@@ -104,7 +104,7 @@ final class InitialGapUITests: XCTestCase {
     /// above it, so they'd underestimate the bar by its bottom padding.
     private func barBottom() -> CGFloat {
         let edge = app.descendants(matching: .any)[A11y.TopBar.bottomEdge]
-        XCTAssertTrue(edge.appears(within: 5), "Top-bar bottom-edge marker missing")
+        XCTAssertTrue(edge.waitForExistence(timeout: 5), "Top-bar bottom-edge marker missing")
         return edge.frame.maxY
     }
 

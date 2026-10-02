@@ -19,9 +19,9 @@ final class PosterFullScreenUITests: XCTestCase {
         // "Wszystkie" so the grid has cards regardless of the hour — late in the
         // evening "Dziś" can be empty (see ios uitests-at-night).
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(anytime.appears(within: 30), "Top bar never appeared")
+        XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
         anytime.tap()
-        XCTAssertTrue(firstFilmCard().appears(within: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
     override func tearDownWithError() throws { app = nil }
@@ -32,7 +32,7 @@ final class PosterFullScreenUITests: XCTestCase {
 
         XCTAssertFalse(close.exists, "The cover must not be shown before the poster is tapped")
         poster.tap()
-        XCTAssertTrue(close.appears(within: 5),
+        XCTAssertTrue(close.waitForExistence(timeout: 5),
                       "Tapping the poster should present the full-screen cover")
 
         close.tap()
@@ -45,7 +45,7 @@ final class PosterFullScreenUITests: XCTestCase {
         let close = app.buttons[A11y.FilmDetail.closeButton]
 
         poster.press(forDuration: 0.6)
-        XCTAssertTrue(close.appears(within: 5),
+        XCTAssertTrue(close.waitForExistence(timeout: 5),
                       "Long-pressing the poster should present the full-screen cover")
     }
 
@@ -75,7 +75,7 @@ final class PosterFullScreenUITests: XCTestCase {
     private func presentFullScreenCover() {
         let poster = openFirstFilmAndFindPoster()
         poster.tap()
-        XCTAssertTrue(app.buttons[A11y.FilmDetail.closeButton].appears(within: 5),
+        XCTAssertTrue(app.buttons[A11y.FilmDetail.closeButton].waitForExistence(timeout: 5),
                       "Tapping the poster should present the full-screen cover")
     }
 
@@ -99,10 +99,10 @@ final class PosterFullScreenUITests: XCTestCase {
         let title = app.descendants(matching: .any)
             .matching(identifier: A11y.Tuning.detailTitle)
             .firstMatch
-        XCTAssertTrue(title.appears(within: 10), "Detail screen never opened")
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Detail screen never opened")
 
         let poster = app.buttons[A11y.FilmDetail.poster]
-        XCTAssertTrue(poster.appears(within: 5), "Detail poster never appeared")
+        XCTAssertTrue(poster.waitForExistence(timeout: 5), "Detail poster never appeared")
         return poster
     }
 
