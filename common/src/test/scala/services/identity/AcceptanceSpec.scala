@@ -104,6 +104,23 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     byImdb(suggested(ranked(hope, film), 2, 1058424 -> 1)) shouldBe None
   }
 
+  it should "take IMDb's first suggestion, the only suggested film the title is, when TMDB ranks no film it names above it" in {
+    // PL "Kroll": TMDB ranks Machulski's 1991 film first and Krõll (1972) second; IMDb's only movie suggestion is the
+    // 1991 film, beside other suggestions — the old pipeline's yearless rung.
+    val kroll  = Listing("Kroll")
+    val y1991  = (36394, Film("Kroll", year = Some(1991)), Some(1))
+    val y1972  = (563252, Film("Krõll", year = Some(1972)), Some(2))
+    val others = (58221, Film("Nick Kroll: Thank You Very Cool", year = Some(2011)), Some(4))
+    byImdb(suggested(ranked(kroll, y1991, y1972, others), 3, 36394 -> 1, 58221 -> 2)) shouldBe Some(36394)
+    // ranked below a film the title names, it is no fallback
+    byImdb(suggested(ranked(kroll, y1991.copy(_3 = Some(2)), y1972.copy(_3 = Some(1)), others), 3, 36394 -> 1, 58221 -> 2)) shouldBe None
+    // two suggested films the title is: no answer
+    byImdb(suggested(ranked(kroll, y1991, y1972, others), 3, 36394 -> 1, 563252 -> 2)) shouldBe None
+    // a title only an ALTERNATIVE of the suggested film carries is not the film's: "Lumière" is not "Café Lumière"
+    val cafe = (52512, Film("Café Lumière", year = Some(2004), alternativeTitles = Seq("Lumière")), Some(1))
+    byImdb(suggested(ranked(Listing("Lumière"), cafe, others), 3, 52512 -> 1, 58221 -> 2)) shouldBe None
+  }
+
   it should "be a fallback: not past a film TMDB's own search names, another instalment, or a double bill" in {
     // UK "BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING" [2026]: IMDb's first 2026 suggestion is the Busan concert.
     val bts     = Listing("BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING", year = Some(2026))

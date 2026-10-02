@@ -148,17 +148,23 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     val eligible  = ranked.filterNot(_.denied)
     val suggested = eligible.filter(_.imdb.isDefined)
     def sameDirector(scored: Scored) = scored.category("director").contains("same_person")
+    // the film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière")
+    def exact(scored: Scored)        = scored.category("title").exists(Set("exact", "original"))
     def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
       rival.rank.exists(r => scored.rank.forall(r < _)))
     def rung(scored: Scored): Boolean = scored.imdb.exists { place =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
         (sameDirector(scored) && suggested.count(sameDirector) == 1) ||
-        (place.of == 1 && scored.titleNamesIt && !outranked(scored))
+        (place.of == 1 && scored.titleNamesIt && !outranked(scored)) ||
+        // the old pipeline's yearless rung: IMDb's FIRST suggestion, and the only suggested film the title is ("Kroll")
+        (place.place == 1 && exact(scored) && suggested.count(exact) == 1 && !outranked(scored))
     }
-    // A fallback, as the old pipeline's was: IMDb answers only when TMDB's own search found no OTHER film the title
-    // names ("BTS 'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan), and
+    // A fallback, as the old pipeline's was: IMDb answers only when TMDB's own search ranks no OTHER film the title
+    // names above it ("BTS 'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan;
+    // "Kroll" is TMDB's first, the 1991 film IMDb suggests, above 1972's "Krõll"), and
     // never for an instalment the title numbers otherwise ("Recepta na szczęście 2" is not the first film).
-    def searchNamesAnother(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.rank.isDefined && rival.titleNamesIt)
+    def searchNamesAnother(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.titleNamesIt &&
+      rival.rank.exists(r => scored.rank.forall(r < _)))
     def otherInstalment(scored: Scored) = scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
     Option.when(!IdentityMeasures.billsTwoWorks(any.listing))(suggested.filter(rung)).collect { case Seq(scored) => scored }
       .filter(scored => !searchNamesAnother(scored) && !otherInstalment(scored)).flatMap { scored =>
