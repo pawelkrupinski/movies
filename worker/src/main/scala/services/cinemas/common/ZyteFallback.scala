@@ -33,7 +33,20 @@ object ZyteFallback {
     cookieSource: Option[String] = None,
     meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    chain(configuration.zyteApiKey.map(key =>
+    fetchFor(direct, zyteHttp, configuration.zyteApiKey, configuration, cookieSource, meter)
+
+  /** [[fetchFor]] with the key handed in rather than read off `configuration` — for a
+   *  composition root that decides for itself whether it has a paid Zyte leg at all
+   *  (`EgressWiring.zyteApiKey`; every test wiring answers None). */
+  def fetchFor(
+    direct:        HttpFetch,
+    zyteHttp:      => HttpClient,
+    apiKey:        Option[settings.ZyteApiKey],
+    configuration: settings.ProcessConfiguration,
+    cookieSource:  Option[String],
+    meter:         HttpOutcomeRecorder
+  ): HttpFetch =
+    chain(apiKey.map(key =>
       new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource,
         configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)))), direct, meter)
 

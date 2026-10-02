@@ -68,29 +68,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // across midnight).
   def pinnedToday: Option[java.time.LocalDate] = fixtureDate
 
-  // Route Multikino through the same `FakeHttpFetch` as every other cinema —
-  // single override point. The base `TestWiring` inherits production's
-  // `MultikinoClient.fetchFor(httoFetch)` so the live-network fixture
-  // recorders still go through Zyte.
-  override lazy val multikinoFetch: HttpFetch = httoFetch
-
-  // Same single override point for biletyna (Kino Kameralne): replay the
-  // fixture rather than hitting Zyte. Without this, CI — where ZYTE_API_KEY is
-  // set — routes the fixture-replay scrape through real Zyte → biletyna,
-  // breaking hermetic end-to-end specs (FilmScheduleEndToEndSpec).
-  override lazy val biletynaFetch: HttpFetch = httoFetch
-
-  // Same single override point for the Zyte seam (Kino Kryterium / ck105): replay
-  // the fixture rather than hitting real Zyte (CI sets ZYTE_API_KEY).
-  override lazy val zyteFetch: HttpFetch = httoFetch
-
-  // Same single override point for the residential-proxy seams (Flicks — every UK
-  // venue — plus Vue and Odeon): replay the fixture rather than egressing through
-  // the Decodo residential proxy, which a developer with KINOWO_PROXY_* in
-  // .env.local would otherwise do.
-  override lazy val flicksFetch: HttpFetch = httoFetch
-  override lazy val vueFetch: HttpFetch    = httoFetch
-  override lazy val odeonFetch: HttpFetch  = httoFetch
+  // Every cinema-egress route (Multikino, biletyna, ck105's Zyte seam, Flicks, Vue,
+  // Odeon) replays from this same `FakeHttpFetch` without an override of its own:
+  // `TestWiring` refuses their paid legs, and a route with neither a proxy nor a Zyte
+  // leg IS its direct leg — `httoFetch`.
 
   /** Convenience: scrape every cinema once, drain the cascade, run the daily
    *  `UnscreenedCleanup` pass, then project into the read model. After this

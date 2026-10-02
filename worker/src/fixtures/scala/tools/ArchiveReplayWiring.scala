@@ -98,12 +98,9 @@ class ArchiveReplayWiring(
   override lazy val httoFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
       live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
-  override lazy val multikinoFetch: HttpFetch  = httoFetch
-  override lazy val biletynaFetch: HttpFetch   = httoFetch
-  override lazy val zyteFetch: HttpFetch       = httoFetch
-  override lazy val flicksFetch: HttpFetch     = httoFetch
-  override lazy val vueFetch: HttpFetch        = httoFetch
-  override lazy val odeonFetch: HttpFetch      = httoFetch
+  // Every cinema-egress route (Multikino, biletyna, Zyte, Flicks, Vue, Odeon) is this chain
+  // too, with no override of its own: `TestWiring` refuses their paid legs, and a route with
+  // neither a proxy nor a Zyte leg IS its direct leg.
 
   /**
    * On-disk enrichment fixtures FIRST, live behind them, and whatever the live leg

@@ -24,7 +24,11 @@ trait EgressWiring { self: WorkerWiring =>
   // aren't set (local/CI/fixture-replay → Zyte/direct). Sharing the shards means
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.
-  private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
+  private lazy val proxyShards: Option[IndexedSeq[HttpFetch]] = residentialProxyShards
+
+  /** Where [[proxyShards]] comes from — a seam so the test wirings can refuse the proxy
+   *  whatever environment they are handed: `TestWiring` answers None. */
+  protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
     EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
@@ -92,18 +96,28 @@ trait EgressWiring { self: WorkerWiring =>
   // Lazy, and handed on by name, so a wiring without ZYTE_API_KEY never builds it.
   lazy val zyteHttpClient: java.net.http.HttpClient = ZyteFallback.newHttpClient()
 
+  /** The key every paid Zyte leg below is built with — None means this wiring has no Zyte
+   *  leg anywhere (the chains collapse to proxy → direct, the Odeon harvester mints no
+   *  token). A seam so the test wirings can refuse Zyte whatever environment they are
+   *  handed: `TestWiring` answers None. */
+  protected def zyteApiKey: Option[settings.ZyteApiKey] = configuration.zyteApiKey
+
+  /** Zyte (when [[zyteApiKey]] is set) → `direct`: the paid leg every Zyte route below builds. */
+  private def zyteThenDirect(direct: HttpFetch, cookieSource: Option[String] = None): HttpFetch =
+    ZyteFallback.fetchFor(direct, zyteHttpClient, zyteApiKey, configuration, cookieSource, zyteMeter)
+
   lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteHttpClient, configuration, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
+    proxyPrimary(zyteThenDirect(httoFetch, Some(MultikinoClient.HomeUrl)), warmUrl = Some(MultikinoClient.HomeUrl))
   // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
   // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch = {
-    val fallback = MultikinoClient.fetchFor(httoFetch, zyteHttpClient, configuration, zyteMeter)
+    val fallback = zyteThenDirect(httoFetch, Some(MultikinoClient.HomeUrl))
     proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
   }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, zyteHttpClient, configuration, meter = zyteMeter)
+  lazy val zyteFetch: HttpFetch = zyteThenDirect(httoFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
@@ -155,7 +169,7 @@ trait EgressWiring { self: WorkerWiring =>
   // cache — ~2 browser fetches/day — so Odeon's ocapi pulls run over plain `http`.
   // No key (CI/local) → token() is None → Odeon venues ride the flicks fallback.
   lazy val odeonAuthHarvester: OdeonAuthHarvester =
-    new OdeonAuthHarvester(() => OdeonAuthHarvester.zyteFetchPage(configuration.zyteApiKey, meter = zyteMeter))
+    new OdeonAuthHarvester(() => OdeonAuthHarvester.zyteFetchPage(zyteApiKey, meter = zyteMeter))
 }
 
 object EgressWiring {

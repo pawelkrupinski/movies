@@ -352,4 +352,53 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
     throwing.calls shouldBe 1
   }
+
+  // ── Paid egress ────────────────────────────────────────────────────────────────────────
+  //
+  // Zyte is billed per request and is the Decodo proxy's fallback only. A test wiring is
+  // handed the process's Env (for MONGODB_URI and TMDB's key), and that Env is CI's secrets or
+  // a developer's `.env.local` — so a ZYTE_API_KEY in it built a live, Zyte-FIRST leg into the
+  // wiring's Multikino poster route and armed the Odeon harvester, and proxy credentials in it
+  // built Decodo legs, in a run that is meant to answer from fixtures.
+
+  /** A wiring whose environment carries a Zyte key (plus `extra`), counting every time a route
+   *  builds the client the Zyte API is called through — which a route does only for a Zyte leg. */
+  private final class PaidKeyedWiring(direct: HttpFetch, extra: Seq[(String, String)] = Nil)
+      extends ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+        settings.FixtureRoot.RepositoryRelative, environment = Env.of((("ZYTE_API_KEY" -> "paid-key") +: extra)*)) {
+    val zyteClientsBuilt = new java.util.concurrent.atomic.AtomicInteger
+    override protected def realHttpLeaf: HttpFetch = direct
+    override lazy val zyteHttpClient: java.net.http.HttpClient = {
+      zyteClientsBuilt.incrementAndGet()
+      throw new IllegalStateException("a test wiring reached for Zyte")
+    }
+    def proxyShardsBuilt: Option[IndexedSeq[HttpFetch]] = residentialProxyShards
+  }
+
+  private val paidRoutes: Seq[(String, ArchiveReplayWiring => HttpFetch)] = Seq(
+    "ck105 (zyteFetch)" -> (_.zyteFetch), "biletyna" -> (_.biletynaFetch), "multikino" -> (_.multikinoFetch),
+    "multikino posters" -> (_.multikinoPosterFetch), "flicks (Cineworld)" -> (_.flicksFetch), "odeon" -> (_.odeonFetch),
+    "vue" -> (_.vueFetch))
+
+  paidRoutes.foreach { case (route, fetchOf) =>
+    "a test wiring handed ZYTE_API_KEY" should s"build no Zyte leg into the $route route" in {
+      val direct = new CountingLeaf
+      val wiring = new PaidKeyedWiring(direct)
+      val url    = "https://bilety.ck105.koszalin.test/repertuar"
+
+      scala.util.Try(fetchOf(wiring).get(url))
+
+      withClue("the Zyte client must never be built: ") { wiring.zyteClientsBuilt.get shouldBe 0 }
+      withClue("the route answers from its free leg: ") { direct.calls shouldBe 1 }
+    }
+  }
+
+  it should "mint no Odeon token, which only Zyte's browser fetch can harvest" in {
+    new PaidKeyedWiring(new CountingLeaf).odeonAuthHarvester.token() shouldBe None
+  }
+
+  "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
+    new PaidKeyedWiring(new CountingLeaf, Seq("KINOWO_PROXY_USER" -> "user", "KINOWO_PROXY_PASS" -> "pass"))
+      .proxyShardsBuilt shouldBe None
+  }
 }
