@@ -139,6 +139,22 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A recording's detail misses egress proxy-first like prod (ArchiveReplayWiring's proxied
+  // routes), or Cineworld answers the runner 403 for every film. The credentials reach the two
+  // steps that run the recorder (its sample and its suite) and only in record mode — not the
+  // corpus tunnel, not job-wide; Zyte, billed per request, reaches none.
+  it should "hand the residential-proxy credentials to the recording sample and suite alone, and Zyte to nothing" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    val recorderSteps = Seq(SampleStep, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite").map(RepoFile.step(convergence, _))
+    Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS").foreach { name =>
+      recorderSteps.foreach(_ should include(s"$name: $${{ inputs.mode == 'record' && secrets.$name || '' }}"))
+      withClue(s"$name must be in no other step and not job-wide: ") {
+        directives(leg).split(s"secrets.$name", -1).length - 1 shouldBe recorderSteps.size
+      }
+    }
+    directives(leg) should not include "ZYTE_API_KEY"
+  }
+
   // Hours of paid-for live fills: a manual re-record must queue behind a nightly one.
   it should "not cancel a recording in progress" in {
     RepoFile.block(recorder, "concurrency") should include("cancel-in-progress: false")
