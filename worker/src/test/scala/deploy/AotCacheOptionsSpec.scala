@@ -100,24 +100,4 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       withClue(s"infra/jvm options for $tier:\n$output")(process.waitFor() shouldBe 0)
     }
   }
-
-  // The worker's cache is trained on a replayed POLISH boot, WITH its method profiles: archived, they
-  // keep each method's profile data out of metaspace (6–10 MB less on PL/UK/US at 20 min uptime), and
-  // the JIT compiling from them was CPU-neutral there. A cache without them (2a23ec9bd) gave most of
-  // that back — 2–3 MB was all the extra archived classes saved (2026-10-02). worker-es alone, whose
-  // scrapers a Polish profile steers wrong, runs with -XX:-AOTReplayTraining (movies-gitops).
-  "the worker's AOT training run" should "record method profiles, not only classes" in {
-    val script = RepoFile.read("scripts/ci/train-worker-aot.sh")
-    val training = script.linesIterator.find(_.contains("-XX:AOTCacheOutput")).getOrElse(fail("no training JAVA_OPTS"))
-    training should not include "-XX:-AOTRecordTraining"
-  }
-
-  // 60 s of replay archives 15,832 classes and 20,491 method profiles, 240 s 15,879 and 22,116
-  // (2026-10-02) — and every second of it delays every worker deploy.
-  it should "replay no longer than the classes need" in {
-    val step = RepoFile.read(".github/workflows/main.yml").linesIterator.dropWhile(!_.contains("scripts/ci/train-worker-aot.sh")).take(5).mkString("\n")
-    val seconds = """08-06-2026 (\d+)""".r.findFirstMatchIn(step).map(_.group(1).toInt).getOrElse(fail("no training seconds"))
-    seconds should be <= 60
-  }
 }
-

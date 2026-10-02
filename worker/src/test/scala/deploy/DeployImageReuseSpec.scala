@@ -148,21 +148,8 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
-        if (tier == "web") {
-          val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
-          tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
-        } else {
-          // The worker's build pushes its image BEFORE AOT training under two tags nothing deploys,
-          // and the training step (scripts/ci/train-worker-aot.sh) pushes the trained image under
-          // the SHA tag — still the one nothing deploys until main.yml names it.
-          val lines = image.linesIterator.map(_.trim).toVector
-          val tags  = lines.dropWhile(_ != "tags: |").drop(1).takeWhile(_.startsWith("ghcr.io/"))
-          tags shouldBe Seq(
-            s"ghcr.io/$${{ github.repository_owner }}/movies-worker:$${{ github.sha }}-untrained",
-            s"ghcr.io/$${{ github.repository_owner }}/movies-worker:untrained-latest")
-          image should include("scripts/ci/train-worker-aot.sh")
-          lines should contain(s"ghcr.io/$${{ github.repository_owner }}/movies-worker:$${{ github.sha }}")
-        }
+        val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
+        tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
         image should not include "steps.tag.outputs.value"
         // The web's job sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
         if (tier == "web") image should include("if: github.event_name != 'pull_request'")
@@ -173,15 +160,11 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /**
-   * THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S AOT TRAINING. Training is ~5 min, longer than the
-   * tests; inside ci it held `ci` — and so `build-web`, which `needs: ci` — open until it finished.
-   */
-  it should "keep the worker's AOT training out of everything the web deploy waits for" in {
-    ciYml should not include "train-worker-aot.sh"
+  /** THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S IMAGE: it is built beside ci, not inside it, so
+   *  `ci` — and `build-web`, which `needs: ci` — closes on the tests alone. */
+  it should "keep the worker's image build out of everything the web deploy waits for" in {
     ciYml should not include "\n    image-worker:"
     buildWeb should include("needs: [ci, gates]")
-    imageJob("worker") should include("scripts/ci/train-worker-aot.sh")
     imageJob("worker") should include("needs: gates")
   }
 }

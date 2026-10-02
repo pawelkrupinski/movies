@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 
 /**
  * `WorkerWiring` with fixture-replay HTTP but a real Mongo + read-model projection: what
- * `sbt localStack` runs, and what the worker image's AOT training run ([[AotTrainingMain]]) boots.
+ * `sbt localStack` runs.
  * Mirrors `FixtureTestWiring`'s fetch overrides, minus its in-memory
  * repos — here the projector writes to the local Mongo at `localMongo` so `web` can
  * serve it, and the fixtures are read from under `fixtureRoot`.

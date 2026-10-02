@@ -52,9 +52,6 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[StickyShardHttpFetch]        -> ((d: HttpFetch) => new StickyShardHttpFetch(IndexedSeq(d))),
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
-      // Records every answer under a throwaway root as a side effect; every call reaches the fetch it decorates.
-      classOf[clients.tools.RecordingHttpFetch] -> ((d: HttpFetch) =>
-        new clients.tools.RecordingHttpFetch("probe", d, root = settings.FixtureRoot(java.nio.file.Files.createTempDirectory("recording-probe")))),
       // A budget with room: every call reaches the fetch it decorates.
       classOf[services.identity.ShadowLiveFetch] -> ((d: HttpFetch) =>
         new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ()))),
@@ -70,7 +67,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
           classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.ShadowLiveFetch],
-          classOf[services.identity.NormalizingHttpFetch], classOf[clients.tools.RecordingHttpFetch])
+          classOf[services.identity.NormalizingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

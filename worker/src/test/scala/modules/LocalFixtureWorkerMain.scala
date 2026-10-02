@@ -13,8 +13,8 @@ import java.util.concurrent.CountDownLatch
  * local Mongo, so the web app serves the projected fixture corpus while still
  * fetching posters/etc. from the real internet.
  *
- * Its wiring is [[ReplayWorkerWiring]] (main, shared with the image build's AOT training run);
- * this entry point stays in test scope, launched via `worker/Test/bgRunMain`.
+ * Test scope, not production: its wiring ([[ReplayWorkerWiring]]) replays through `FakeHttpFetch`
+ * (testkit), and it is launched via `worker/Test/bgRunMain`.
  */
 object LocalFixtureWorkerMain {
   // Defaults MUST match the `localStack` command in build.sbt so the worker

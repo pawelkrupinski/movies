@@ -57,19 +57,13 @@ object ClassArchiveTraining {
 
   /** The jars of the directory the image's launcher builds its classpath from (`/app/lib`): which
    *  classes to load. The launcher's own classpath still decides where each one loads from. */
-  def main(arguments: Array[String]): Unit =
-    loadFrom(Paths.get(arguments.headOption.getOrElse(sys.error("usage: ClassArchiveTraining <lib directory>"))))
-
-  /** Load what [[main]] archives: the class list's names, or every class of `directory`'s jars. The
-   *  worker's profile-training run (`modules.AotTrainingMain`) loads them first too, so its cache
-   *  holds every class production loads, not only those its replay happened to touch. */
-  def loadFrom(directory: Path): Loaded = {
+  def main(arguments: Array[String]): Unit = {
+    val directory = Paths.get(arguments.headOption.getOrElse(sys.error("usage: ClassArchiveTraining <lib directory>")))
     val jars = Using.resource(Files.list(directory))(_.iterator.asScala.toVector)
       .filter(jar => jar.toString.endsWith(".jar") && Files.isRegularFile(jar)).sorted
     val listed = Option(getClass.getResourceAsStream(ClassListResource))
       .map(stream => try new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8) finally stream.close())
     val loaded = load(trainingNames(jars, listed), getClass.getClassLoader)
     println(s"class archive training: loaded ${loaded.classes} class(es) ${listed.fold(s"from ${jars.size} jar(s)")(_ => s"from $ClassListResource")}, ${loaded.failed} not loadable")
-    loaded
   }
 }
