@@ -53,8 +53,11 @@ final class DayChangeScrollResetUITests: XCTestCase {
             }
         }
         defer { poll.invalidate() }
+        // 20 s, not 5: each poll reads the frame of every card, which on a slow CI runner takes
+        // seconds per pass — run 36994701138 timed out with Film 1 already back on top. A grid
+        // that never resets never shows Film 1 there, so the budget doesn't soften the check.
         XCTAssertEqual(
-            XCTWaiter.wait(for: [backAtTop], timeout: 5), .completed,
+            XCTWaiter.wait(for: [backAtTop], timeout: 20), .completed,
             "After choosing a different day the grid stayed scrolled (top on-screen "
             + "film was '\(topOnScreenCardLabel() ?? "nil")') instead of resetting to Film 1")
     }
