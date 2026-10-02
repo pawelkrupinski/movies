@@ -11,7 +11,7 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           listing: IdentityMeasures.Listing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
-                                          suggestedOnly: Boolean = false) {
+                                          suggestedOnly: Boolean = false, soleResult: Boolean = false) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }

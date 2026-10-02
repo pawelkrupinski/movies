@@ -9,7 +9,7 @@ import scala.collection.mutable
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
                                           counted: () => Unit) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf}
+  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf, soleResults}
 
   val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
@@ -65,7 +65,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id)).map(placedByImdb(Seq(node))))
+      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id)).map(placedByImdb(Seq(node)))
+      .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored))
 
   /** Each film's place in IMDb's suggestions for the nodes' own titles — its best place, among the most suggested. */
   private def placedByImdb(nodes: Seq[EvidenceNode])(scored: Scored): Scored = {

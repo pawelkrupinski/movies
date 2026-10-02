@@ -48,6 +48,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   val ownSearch: Map[String, Map[Int, Int]] = nodes.map(node => node.id -> CandidateGeneration.ownSearch(queriesOf(node.id), answers)).toMap
   val ownWalk: Map[String, Set[Int]]        = nodes.map(node => node.id -> CandidateGeneration.ownWalk(queriesOf(node.id), answers)).toMap
   val directed: Map[String, Set[Int]]       = nodes.map(node => node.id -> CandidateGeneration.directed(queriesOf(node.id), answers)).toMap
+  val soleResults: Map[String, Set[Int]]    = nodes.map(node => node.id -> CandidateGeneration.soleResults(queriesOf(node.id), answers)).toMap
   val imdbSuggested: Map[String, Seq[Int]] = nodes.map(node => node.id -> CandidateGeneration.imdbSuggested(queriesOf(node.id), answers)).toMap
   /** The films only IMDb's suggestions reached for a node — no title search of its and no director walk. */
   val imdbOnly: Map[String, Set[Int]]       = nodes.map(node => node.id -> (imdbSuggested(node.id).toSet -- ownSearch(node.id).keySet --
@@ -111,6 +112,9 @@ private[identity] object CandidateGeneration {
   /** The films the people a node credits — found by its OWN spelling of their names — directed or wrote. */
   def directed(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
     queries.collect { case query: CandidateQuery.Director => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.toSet
+  /** The films that were the ONLY result of one of a node's own title searches. */
+  def soleResults(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
+    queries.filter(isTitle).flatMap(query => answer(query).toOption.map(_.map(_.tmdbId).distinct)).collect { case Seq(id) => id }.toSet
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
   def reached(ownSearch: Map[Int, Int], ownWalk: Set[Int]): Seq[Int] = (ownSearch.keys ++ ownWalk).toSeq.distinct.sorted
   /** The films an answer names, best first. */

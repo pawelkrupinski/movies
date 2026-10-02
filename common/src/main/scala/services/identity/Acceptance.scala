@@ -25,7 +25,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     rules.iterator.flatMap(rule => rule.accepts(ranked).map(_ -> rule.name)).nextOption()
 
   private val aloneRules = Seq(Rule("sole-work", soleWork), Rule("favoured-calibrated", favouredCalibrated), Rule("exact-top-hit", topHit),
-    Rule("segment-top-hit", segmentTopHit), Rule("imdb-suggested", imdbSuggested),
+    Rule("segment-top-hit", segmentTopHit), Rule("sole-result", soleResult), Rule("imdb-suggested", imdbSuggested),
     Rule("directors-work", directorsWork), Rule("directors-title", directorsTitle), Rule("dated-title", datedTitle),
     Rule("house-production", houseProduction))
 
@@ -163,6 +163,27 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         .flatMap(titled => calibration.classProbability(ListingFilm, titled.measures))
         .map(classProbability => scored -> math.max(scored.probability, classProbability))
         .filter(accepted => calibration.showsRatings(accepted._2))
+    }
+  }
+
+  /** The ONLY film one of the listing's own title searches returned — the old pipeline's `searchUnique`, which
+   *  took it unless a fact CONTRADICTED it: "Loving Karma" [78′] is TMDB's 85-minute record, the one "Loving
+   *  Karma" finds, though seven minutes weigh against it in the probability. The title must name it — a piece
+   *  standing for the whole ([[IdentityMeasures.standsForTheWhole]]: not "Bhutan" of "Bhutan – Trails of
+   *  Happiness") — no other candidate the title names may stand beside it, and a double bill is neither film. */
+  def soleResult(ranked: Seq[Scored]): Option[Accepted] = ranked.headOption.flatMap { any =>
+    val eligible = eligibleOf(ranked)
+    eligible.filter(_.soleResult) match {
+      case Seq(sole) if sole.titleNamesIt && !contradicted(sole) && !IdentityMeasures.billsTwoWorks(any.listing) &&
+          (sole.category("title").exists(IdentityMeasures.Rivalling) || IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film)) &&
+          !eligible.exists(other => (other ne sole) && other.titleNamesIt) &&
+          !sole.category("numeral").exists(IdentityMeasures.OtherInstalment) =>
+        val titled = sole.copy(measures = sole.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
+          "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
+        calibration.classProbability(ListingFilm, titled.measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" })
+          .map(classProbability => sole -> math.max(sole.probability, classProbability))
+          .filter(accepted => calibration.showsRatings(accepted._2))
+      case _ => None
     }
   }
 

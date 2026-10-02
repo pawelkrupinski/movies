@@ -119,6 +119,22 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       .map(_.copy(probability = 0.99)), 3) shouldBe Some("imdb-suggested")
   }
 
+  "the only film a listing's own title search returns" should "be taken unless a fact contradicts it, as the old pipeline took it" in {
+    // PL Kino Bajka's "Loving Karma" [78′]: TMDB's search returns one film, its 85-minute record; seven minutes
+    // weighed against it, so neither the exact top hit nor any other rule took it.
+    val karma  = Listing("Loving Karma", runtime = Some(78))
+    val record = (1563699, Film("Loving Karma", year = Some(2026), runtime = Some(85)), Some(1))
+    def sole(scored: Seq[Scored], id: Int) = scored.map(sc => if (sc.candidate.tmdbId == id) sc.copy(soleResult = true) else sc)
+    def bySole(scored: Seq[Scored]) = acceptance.soleResult(scored).map(_._1.candidate.tmdbId)
+    bySole(ranked(karma, record)) shouldBe None
+    bySole(sole(ranked(karma, record), 1563699)) shouldBe Some(1563699)
+    // a runtime that contradicts it, a one-word piece, another film the title names, a double bill: no
+    bySole(sole(ranked(karma.copy(runtime = Some(150)), record), 1563699)) shouldBe None
+    bySole(sole(ranked(Listing("Bhutan - Trails of Happiness"), (5, Film("Bhutan", year = Some(1928)), Some(1))), 5)) shouldBe None
+    bySole(sole(ranked(karma, record, (7, Film("Loving Karma", year = Some(1990)), None)), 1563699)) shouldBe None
+    bySole(sole(ranked(Listing("Loving Karma + Kocia Szajka"), record), 1563699)) shouldBe None
+  }
+
   "a double bill" should "take neither film when its facts back both" in {
     // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133: each piece found
     // its own film first and both directors were credited — the two scored 91–93%, and popularity picked one.
