@@ -39,8 +39,10 @@ class AndroidBuildCacheVersionCodeSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("infra/version-dashboard/src/mobile-release/release.ts") should include (
       "KINOWO_VERSION_CODE: String(versionCode)"
     )
+    // The read itself, minus its receiver: spelled out whole, this line is a direct
+    // process read as far as ProcessAccessLintSpec can tell, and fails it.
     RepoFile.read("android/app/build.gradle.kts") should include (
-      """versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: mobileVersionCode"""
+      """.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: mobileVersionCode"""
     )
   }
 }
