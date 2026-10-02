@@ -19,6 +19,12 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
   private lazy val buildWeb    = RepoFile.block(mainYml, "build-web")
   private lazy val buildWorker = RepoFile.block(mainYml, "build-worker")
+  private lazy val ciYml       = RepoFile.read(".github/workflows/ci.yml")
+
+  /** Where each tier's image job lives: the web's in ci, the worker's in main.yml — outside ci, so
+   *  `build-web`, which `needs: ci`, never waits for the worker's AOT training. */
+  private def imageJob(tier: String): String =
+    if (tier == "web") RepoFile.block(ciYml, "image-web") else RepoFile.block(mainYml, "image-worker")
 
   // ONE IMAGE PER TIER, built once in ci. A Fly build of the same Dockerfile (on a
   // builder this project does not run) failed roughly two runs in five; with the
@@ -110,17 +116,18 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * the post-ci critical path. The upload and the download move together: an upload nothing downloads
    * is a GB of storage per run nobody complains about, and a download with no upload fails the build.
    */
-  it should "build both images in ci from the dists ci staged, and only publish them after it" in {
-    val ciYml = RepoFile.read(".github/workflows/ci.yml")
+  it should "build both images while ci runs, from the dists ci staged, and only publish them after it" in {
     // On the COMMANDS: the steps' own comments name what they replaced.
     def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
     for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
       withClue(s"$tier: ") {
-        val image = RepoFile.block(ciYml, s"image-$tier")
+        val image = imageJob(tier)
         ciYml should include(s"name: stage-$tier")
         image should include("actions/download-artifact")
         image should include(s"name: stage-$tier")
-        image should include("needs: e2e")
+        // The web's job `needs:` the e2e rows inside ci; the worker's, outside ci, waits for its dist.
+        if (tier == "web") image should include("needs: e2e")
+        else image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (staging)"""")
         commands(publish) should not include "sbt "
         commands(publish) should not include "build-push-action"
         commands(publish) should include("docker buildx imagetools create")
@@ -138,10 +145,9 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * which `needs: ci`; and never on a PR run.
    */
   it should "push only the SHA tag before ci is green, and ship tags only after it" in {
-    val ciYml = RepoFile.read(".github/workflows/ci.yml")
     for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
       withClue(s"$tier: ") {
-        val image = RepoFile.block(ciYml, s"image-$tier")
+        val image = imageJob(tier)
         if (tier == "web") {
           val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
           tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
@@ -158,12 +164,24 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
           lines should contain(s"ghcr.io/$${{ github.repository_owner }}/movies-worker:$${{ github.sha }}")
         }
         image should not include "steps.tag.outputs.value"
-        image should include("if: github.event_name != 'pull_request'")
-        publish should include("needs: [ci, gates]")
+        // The web's job sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
+        if (tier == "web") image should include("if: github.event_name != 'pull_request'")
+        publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
       }
     }
   }
 
+  /**
+   * THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S AOT TRAINING. Training is ~5 min, longer than the
+   * tests; inside ci it held `ci` — and so `build-web`, which `needs: ci` — open until it finished.
+   */
+  it should "keep the worker's AOT training out of everything the web deploy waits for" in {
+    ciYml should not include "train-worker-aot.sh"
+    ciYml should not include "\n    image-worker:"
+    buildWeb should include("needs: [ci, gates]")
+    imageJob("worker") should include("scripts/ci/train-worker-aot.sh")
+    imageJob("worker") should include("needs: gates")
+  }
 }

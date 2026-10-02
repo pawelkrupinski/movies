@@ -170,6 +170,7 @@ jobs:
                   bash scripts/ci/close-mongo-tunnel-test.sh
                   bash scripts/ci/install-playwright-test.sh
                   bash scripts/ci/prune-actions-caches-test.sh
+                  bash scripts/ci/wait-for-run-artifact-test.sh
                   python3 scripts/ci/flake_verdict_test.py
 
             - uses: ./.github/actions/setup-jdk
@@ -247,7 +248,6 @@ jobs:
                   check_name: unit tests
                   detailed_summary: true
                   include_passed: false
-
 
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
     # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
@@ -425,7 +425,6 @@ jobs:
                   path: /tmp/fixture-server/log
                   if-no-files-found: ignore
 
-
     integration-test:
         runs-on: ubuntu-latest
         permissions:
@@ -515,7 +514,6 @@ jobs:
                   check_name: integration tests
                   detailed_summary: true
                   include_passed: false
-
 
     # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across three
     # parallel shards. On one runner the module was the ~13-min pipeline long
@@ -630,9 +628,9 @@ jobs:
             # STAGING row only, the lightest e2e shard, which has compiled the apps
             # already. (This used to close the `test` job, Main's longest ci row,
             # whose tail it lengthened by ~1 min of staging + uploads + lint.) On a
-            # push to main the dists are then handed to the `image-web` /
-            # `image-worker` jobs below (through the uploads that follow), which would otherwise
-            # restage them from a cold compile
+            # push to main the dists are then handed to the `image-web` job below
+            # and main.yml's `image-worker` (through the uploads that follow), which
+            # would otherwise restage them from a cold compile
             # on the post-CI critical path. On a PR run (branch-ci.yml never
             # reaches main.yml) this staging is the only place a dist that stopped
             # linking, or a reappearing Scaladoc tree, is caught at all.
@@ -750,70 +748,6 @@ jobs:
                   # OS, JRE) are all in `latest`, and inline metadata rides the push itself.
                   cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-web:latest
                   cache-to: type=inline
-
-    # THE WORKER IMAGE, BUILT WHILE THE REST OF ci RUNS. It needs only the dist the e2e staging row
-    # staged, which is ready minutes before the slowest ci row finishes, so it rides runners the e2e rows
-    # have just given back (no slot at t=0 — CiRunnerBudgetSpec counts only jobs without `needs`).
-    # SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys a SHA tag; main.yml's
-    # `build-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`) only once
-    # ci is green and the tier's paths changed (DeployImageReuseSpec). Never on a PR run.
-    image-worker:
-        needs: e2e
-        if: github.event_name != 'pull_request'
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
-            packages: write
-        steps:
-            - uses: actions/checkout@v5
-
-            - name: Fetch the worker distribution the e2e staging row staged
-              # Straight into `stage/`, the only path the Dockerfile's whitelisted context
-              # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
-              # `chmod +x bin/*` restores the one that matters.
-              uses: actions/download-artifact@v6
-              with:
-                  name: stage-worker
-                  path: stage
-
-            - uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            - uses: docker/setup-buildx-action@v3
-
-            - name: Build and push the image before its AOT training
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  # amd64 ONLY: the cluster is Hetzner x86_64.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=worker
-                      COMMIT_SHA=${{ github.sha }}
-                  # Not the SHA tag: that one names the image WITH its trained cache, pushed below.
-                  # `untrained-latest` carries the inline cache the next build reuses (base OS, JRE,
-                  # libvips); the shipped image's top layer is the cache, which no build reuses.
-                  tags: |
-                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
-                      ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
-                  cache-from: |
-                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
-                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
-                  cache-to: type=inline
-
-            - name: Train its AOT cache on a replayed boot, and push it under this commit's SHA tag only
-              # The method profiles a production boot then compiles from — see the script and
-              # modules.AotTrainingMain. The corpus is the tracked one the checkout above brought.
-              run: >-
-                  scripts/ci/train-worker-aot.sh
-                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
-                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
-                  "$GITHUB_WORKSPACE/test/resources/fixtures" 08-06-2026 240
 
     # Cross-browser page tests, split into one matrix job per engine
     # family so the CI checks list groups red rows by browser. Every

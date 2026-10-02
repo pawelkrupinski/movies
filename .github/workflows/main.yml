@@ -63,9 +63,10 @@ jobs:
             checks: write
             packages: write
 
-    # The images are BUILT IN ci and only PUBLISHED here. ci's `image-web` / `image-worker` build them
-    # from the dists its `e2e (staging)` row staged, while ci's slowest rows still run, and push them
-    # under the commit SHA alone — a tag nothing deploys. `build-web` / `build-worker` below `needs: ci`,
+    # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `image-web` and this workflow's
+    # `image-worker` build them from the dists ci's `e2e (staging)` row staged, while ci's slowest rows
+    # still run, and push them under the commit SHA alone — a tag nothing deploys. `build-web` /
+    # `build-worker` below `needs: ci` (the worker's also `needs: image-worker`),
     # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
     # of seconds where they used to restage (~2 min of cold `sbt stage`) and build (~1.7 min) on the
     # post-ci critical path. (DeployImageReuseSpec)
@@ -409,8 +410,80 @@ jobs:
                   sha: ${{ github.sha }}
                   commit-message: ${{ github.event.head_commit.message }}
 
+    # THE WORKER IMAGE, BUILT AND AOT-TRAINED WHILE ci RUNS — and OUTSIDE ci, so `build-web` (which
+    # `needs: ci`) never waits for the ~5 min training: only `build-worker` needs this job. It takes
+    # the slot `gates` gives back seconds in (CiRunnerBudgetSpec counts only jobs without `needs`),
+    # then waits for the dist ci's `e2e (staging)` row uploads to this same run — `needs: ci` would
+    # also wait for every other ci row. SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
+    # a SHA tag; `build-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
+    # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
+    image-worker:
+        needs: gates
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            # To see ci's artifacts and jobs while ci still runs.
+            actions: read
+            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
+            packages: write
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Wait for the worker distribution ci's e2e staging row stages
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (staging)" 900
+
+            - name: Fetch the worker distribution the e2e staging row staged
+              # Straight into `stage/`, the only path the Dockerfile's whitelisted context
+              # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
+              # `chmod +x bin/*` restores the one that matters.
+              uses: actions/download-artifact@v6
+              with:
+                  name: stage-worker
+                  path: stage
+
+            - uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/setup-buildx-action@v3
+
+            - name: Build and push the image before its AOT training
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  # amd64 ONLY: the cluster is Hetzner x86_64.
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BIN=worker
+                      COMMIT_SHA=${{ github.sha }}
+                  # Not the SHA tag: that one names the image WITH its trained cache, pushed below.
+                  # `untrained-latest` carries the inline cache the next build reuses (base OS, JRE,
+                  # libvips); the shipped image's top layer is the cache, which no build reuses.
+                  tags: |
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
+                  cache-from: |
+                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
+                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+                  cache-to: type=inline
+
+            - name: Train its AOT cache on a replayed boot, and push it under this commit's SHA tag only
+              # The method profiles a production boot then compiles from — see the script and
+              # modules.AotTrainingMain. The corpus is the tracked one the checkout above brought.
+              run: >-
+                  scripts/ci/train-worker-aot.sh
+                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
+                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                  "$GITHUB_WORKSPACE/test/resources/fixtures" 08-06-2026 240
+
     build-worker:
-        needs: [ci, gates]
+        needs: [ci, gates, image-worker]
         runs-on: ubuntu-latest
 
         permissions:
@@ -452,7 +525,7 @@ jobs:
 
             - name: Publish the image ci built under the tags that ship it
               if: needs.gates.outputs.worker-changed == 'true'
-              # ci's `image-worker` job built this commit's image while the rest of ci ran, and pushed it
+              # `image-worker` above built this commit's image while ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
               # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to

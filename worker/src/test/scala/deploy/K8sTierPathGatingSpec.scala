@@ -338,7 +338,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    */
   "neither k3s build" should "start before ci is green" in {
     job("build-web") should include("needs: [ci, gates]")
-    job("build-worker") should include("needs: [ci, gates]")
+    job("build-worker") should include("needs: [ci, gates, image-worker]")
   }
 
   /** The fold is only done once the workflows it replaced are gone. */
