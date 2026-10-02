@@ -790,7 +790,7 @@ jobs:
 
             - uses: docker/setup-buildx-action@v3
 
-            - name: Build and push under this commit's SHA tag only
+            - name: Build and push the image before its AOT training
               uses: docker/build-push-action@v6
               with:
                   context: .
@@ -800,11 +800,25 @@ jobs:
                   build-args: |
                       BIN=worker
                       COMMIT_SHA=${{ github.sha }}
-                  tags: ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
-                  # INLINE cache, restored from the image last shipped: the layers worth reusing (base
-                  # OS, JRE, libvips) are all in `latest`, and inline metadata rides the push itself.
-                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+                  # Not the SHA tag: that one names the image WITH its trained cache, pushed below.
+                  # `untrained-latest` carries the inline cache the next build reuses (base OS, JRE,
+                  # libvips); the shipped image's top layer is the cache, which no build reuses.
+                  tags: |
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
+                  cache-from: |
+                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:untrained-latest
+                      type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
                   cache-to: type=inline
+
+            - name: Train its AOT cache on a replayed boot, and push it under this commit's SHA tag only
+              # The method profiles a production boot then compiles from — see the script and
+              # modules.AotTrainingMain. The corpus is the tracked one the checkout above brought.
+              run: >-
+                  scripts/ci/train-worker-aot.sh
+                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
+                  ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                  "$GITHUB_WORKSPACE/test/resources/fixtures" 08-06-2026 240
 
     # Cross-browser page tests, split into one matrix job per engine
     # family so the CI checks list groups red rows by browser. Every
