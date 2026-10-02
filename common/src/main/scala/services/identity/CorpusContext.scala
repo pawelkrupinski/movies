@@ -123,7 +123,7 @@ private[identity] object CorpusContext {
 
   /** Every key of the context a family's resolve can read — a superset, so a family whose slice is
    *  unchanged is certain to decide as before: its nodes' title keys (`reachedByTitle`), their title
-   *  groups (`titleGroups`), their titles' sanitised shapes (`wholeTitles`), every banner a node bills
+   *  groups (`titleGroups`, and their search forms' `searchGroupsAny`), their titles' sanitised shapes (`wholeTitles`), every banner a node bills
    *  a pool film's work under (`houses`), and every film its answers named or it decided. */
   final case class Reads(titles: Set[String], groups: Set[String], segments: Set[String], banners: Set[String], films: Set[Int],
                          queries: Set[CandidateQuery]) {
@@ -134,7 +134,7 @@ private[identity] object CorpusContext {
     def of(members: Seq[EvidenceNode], pool: Seq[IdentityMeasures.Film], films: Set[Int], queries: Set[CandidateQuery],
            sanitize: String => String): Reads = Reads(
       members.map(titleOf).toSet,
-      members.flatMap(node => IdentityMeasures.titleGroups(node.evidence.measured)).toSet,
+      members.flatMap(node => IdentityMeasures.titleGroups(node.evidence.measured) ++ IdentityMeasures.searchGroupsAny(node.evidence.measured)).toSet,
       members.flatMap(node => IdentityMeasures.titleShapes(node.evidence.published).map(sanitize)).toSet,
       members.flatMap(node => pool.flatMap(film => IdentityMeasures.billings(node.evidence.measured, film).map(_.listingHouse))).toSet,
       films, queries)

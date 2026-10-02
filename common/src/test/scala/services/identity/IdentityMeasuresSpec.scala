@@ -221,6 +221,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       w("met opera", "salzburger festspiele", "carmen"))) shouldBe Houses(Map("metopera" -> "themetropolitanopera"))
     Houses.learn(Seq(w("nt live", "national theatre live", "earnest"), w("nt live", "national theatre live", "playboy"),
       w("nt live", "rsc live", "macbeth"))) shouldBe Houses(Map("ntlive" -> "nationaltheatrelive"))
+    // One shared word does not NAME a house of more: PL "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT! retransmisja koncertu"
+    // read its title as a banner over the work "André Rieu", learned it as "André Rieu - Love in Maastricht"'s house
+    // by "maastricht" alone, and took the 2019 concert for the 2026 one.
+    Houses.learn(Seq(w("niech zyje maastricht retransmisja koncertu", "love in maastricht", "andrerieu"))) shouldBe Houses.Unknown
+    // ...but a one-word house its banner spells is named
+    Houses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe Houses(Map("bolshoiballetlive" -> "bolshoi"))
+  }
+
+  "a decorated spelling" should "be corroborated by the venues listing its search form, when that is the film's title" in {
+    // PL Kino Oskard's "Kino Konesera: Róża" and seven spellings like it: other venues list "Róża" [2026] {Markus
+    // Schleinzer}, TMDB's "Rose" (2026) under its Polish title; searched as "Róża", the decorated listing counted
+    // none of them — the old pipeline folded it by that search key.
+    val rose     = Film("Rose", year = Some(2026), alternativeTitles = Seq("Róża"), directors = Some(Seq("Markus Schleinzer")))
+    val konesera = Listing("Kino Konesera: Róża", searchTitles = Seq("Róża"))
+    IdentityMeasures.searchGroups(konesera, rose) shouldBe Seq("roza")
+    val plain   = Seq("Rialto", "Apollo").map(venue => venue -> Listing("Róża", year = Some(2026), directors = Seq("Markus Schleinzer")))
+    val backing = new IdentityMeasures.VenueBacking(Map("roza" -> plain))
+    backing.corroborating(IdentityMeasures.titleGroups(konesera), rose, "Oskard") shouldBe 0
+    backing.corroborating(IdentityMeasures.titleGroups(konesera) ++ IdentityMeasures.searchGroups(konesera, rose), rose, "Oskard") shouldBe 2
+    // a search form that is no title of the film names no group: "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched
+    // as "André Rieu", is not "André Rieu - Love in Maastricht"
+    IdentityMeasures.searchGroups(Listing("ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searchTitles = Seq("André Rieu")),
+      Film("André Rieu - Love in Maastricht", year = Some(2019))) shouldBe Nil
   }
 
   "a season-free listing" should "take its house's current-season record only when its banner spells that house" in {

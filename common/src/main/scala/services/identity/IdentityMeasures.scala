@@ -203,8 +203,11 @@ object IdentityMeasures {
       Houses(ranking(billings).flatMap { case (banner, ranked) => chosen(ranked).map(banner -> _.house) })
 
     /** One house a banner's billings name, with how many of the banner's words its name shares
-     *  and how many of the banner's DISTINCT works it bills. */
-    final case class Contender(house: String, spelt: Int, works: Int) {
+     *  (of the `named` words its name has) and how many of the banner's DISTINCT works it bills. */
+    final case class Contender(house: String, spelt: Int, works: Int, named: Int = 1) {
+      /** Does the banner NAME the house — two of its words, or a one-word house's one? One word of more
+       *  ("maastricht" of "Love in Maastricht") is a coincidence of vocabulary, as one work is of billing. */
+      def spells: Boolean = spelt >= 2 || (spelt >= 1 && spelt == named)
       def render: String = s"$house (words $spelt, works $works)"
     }
 
@@ -213,7 +216,8 @@ object IdentityMeasures {
       billings.toSeq.distinct.groupBy(_.listingHouse).map { case (banner, bannerBillings) =>
         val words = bannerBillings.flatMap(_.listingWords).toSet
         banner -> bannerBillings.groupBy(_.filmHouse).toSeq.map { case (house, houseBillings) =>
-          Contender(house, (houseBillings.flatMap(_.filmWords).toSet intersect words).size, houseBillings.map(_.work).distinct.size)
+          val houseWords = houseBillings.flatMap(_.filmWords).toSet
+          Contender(house, (houseWords intersect words).size, houseBillings.map(_.work).distinct.size, houseWords.size)
         }.sortBy(contender => (-contender.spelt, -contender.works, contender.house))
       }
 
@@ -221,7 +225,7 @@ object IdentityMeasures {
     def chosen(ranked: Seq[Contender]): Option[Contender] = {
       val best = ranked.head
       val next = ranked.lift(1)
-      val spelt  = next.fold(best.spelt > 0)(_.spelt < best.spelt)
+      val spelt  = best.spells && next.forall(_.spelt < best.spelt)
       val billed = best.works >= 2 && next.forall(runnerUp => runnerUp.spelt < best.spelt || runnerUp.works < best.works)
       Option.when(spelt || billed)(best)
     }
@@ -1105,6 +1109,17 @@ object IdentityMeasures {
    *  2D PL" as "Mistyczka". */
   def titleGroups(l: Listing): Seq[String] =
     (key(l.title) +: undecorated(l).map(key)).filter(_.nonEmpty).distinct
+
+  /** The title groups (by [[key]]) of the titles `l`'s search asks for — banners and screening notes off
+   *  (`searchTitles`) — that are `f`'s own title, original or alternative: "Kino Konesera: Róża" is the
+   *  "Róża" other venues list with Schleinzer and 2026 (as the old pipeline folded rows by their search
+   *  key), but "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched as "André Rieu", is no concert's title. */
+  def searchGroups(l: Listing, f: Film): Seq[String] = {
+    val titles = (f.title +: (f.originalTitle.toSeq ++ f.alternativeTitles)).map(key).toSet
+    l.searchTitles.map(key).filter(titles).distinct
+  }
+  /** Every group [[searchGroups]] can name for `l`, whatever the film — what a family's resolve may read. */
+  def searchGroupsAny(l: Listing): Seq[String] = l.searchTitles.map(key).filter(_.nonEmpty).distinct
 
   /** The title shapes only `l`'s learned decorations leave. */
   private def undecorated(l: Listing): Seq[String] =
