@@ -114,6 +114,16 @@ object NonMovieEventClassifier {
   private def isStandaloneDiscussion(t: String): Boolean =
     DiscussionMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t)
 
+  /** Workshops sold through the film ticketing ("Warsztaty ceramiczne listopad/ grudzień 2026" at Kino w Ratuszu,
+   *  which the resolver matched to the film "Grudzień" by its month) — the PLURAL only, as they are sold: a film may be
+   *  called "Warsztat". Like a talk, a workshop is often a screening's companion ("Akademia Pana Kleksa - warsztaty i
+   *  film", "Filmy non-camerowe + warsztaty filmowe"), so it is an event only with no film attached — no
+   *  [[FilmAttachmentSignals]] and no "film" in the title. */
+  private val WorkshopMarker = """\bwarsztat(?:y|ów|ach|ami)(?![\p{L}\d])""".r
+  private val FilmWord       = """\bfilm""".r
+  private def isStandaloneWorkshop(t: String): Boolean =
+    WorkshopMarker.findFirstIn(t).isDefined && !hasBoltedOnFilm(t) && FilmWord.findFirstIn(t).isEmpty
+
   /** A magic show ("Pokaz magii dla dzieci", "Wieczór iluzji"), named by what
    *  it shows. Deliberately not a bare `magii`/`iluzj`: "Drzewo magii" and
    *  "Iluzja" are films, and Warsaw's Kino Iluzjon names itself in titles. */
@@ -183,6 +193,7 @@ object NonMovieEventClassifier {
       venueMarkers.exists(_.findFirstIn(t).isDefined) ||
       isStandaloneGala(t) ||
       isStandaloneDiscussion(t) ||
+      isStandaloneWorkshop(t) ||
       isMagicShow(title, t)
   }
 }

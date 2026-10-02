@@ -170,6 +170,17 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
   // The instrumental/accusative "jogą"/"jogę" end on a Polish letter, which Java's
   // ASCII-only `\b` never counts as a word character — so a trailing `\b` after
   // them can never match and the marker only ever caught "joga"/"jogi".
+  it should "drop a workshop sold with no film, and keep a screening a workshop comes with" in {
+    // Kino w Ratuszu (Zduńska Wola, MSI): pottery workshops through the film ticketing, which the resolver then
+    // matched to the film "Grudzień" (2025) by the month in its title.
+    Seq("Warsztaty ceramiczne listopad/ grudzień 2026", "Warsztaty rękodzieła dla dorosłych", "WARSZTATY CERAMICZNE")
+      .foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
+    // a workshop beside the screening it comes with, or a film workshop's own films, stays
+    Seq("Akademia Pana Kleksa - warsztaty i film", "Rodzina w kinie: Filmy non-camerowe + warsztaty filmowe",
+      "Kino Frajda | Warsztaty Pachnące eksperymenty Rodzinna sobota w SDK", "Warsztat (2026)")
+      .foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+  }
+
   it should "drop a yoga class spelled with an inflection ending in a Polish letter" in {
     Seq("Poranek z jogą na tarasie", "Zapraszamy na jogę", "RELAKS Z JOGĄ")
       .foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
