@@ -4,11 +4,10 @@
 #
 #   train-worker-aot.sh <untrained image> <shipped image> <fixtures root> <fixture directory> <seconds>
 #
-# WHY A TRAINED CACHE. The Dockerfile's class-loading training archives classes and nothing else.
-# A cache trained by a run that EXECUTES the worker also carries the method profiles it gathered,
-# and a production boot compiles from those instead of profiling again from scratch. Every deploy
-# restarts all five workers, and JIT warm-up was ~60% of what a restart costs (2026-10-01). Measured
-# locally on the same replayed boot: see modules.AotTrainingMain.
+# WHY A REPLAYED BOOT. The Dockerfile's class-loading training archives the class list taken from
+# production heap dumps. A run that EXECUTES the worker also archives what only running creates —
+# ~15.9k classes against ~13.7k, lambdas and generated classes among them — so they no longer load
+# into metaspace at every restart: 6–11 MB less non-heap per worker (2026-10-02).
 #
 # WHY HERE AND NOT IN THE DOCKERFILE. The run needs a Mongo and the recorded corpus (~725 MB,
 # outside the build context), and it must run on the image's OWN classpath — the JVM refuses a
@@ -52,12 +51,14 @@ prepared=$SECONDS
 
 # The image's launcher, not its CMD: the CMD appends -XX:AOTCache, and a run that both reads and
 # writes a cache is not a training run. -Xmx512m as the Dockerfile's training: the compressed-pointer
-# range every pod's heap is in.
+# range every pod's heap is in. -XX:-AOTRecordTraining: classes only, NO method profiles — a profile
+# of a replayed Polish boot saved no JIT or CPU in production and cost worker-es ~13% of its boot CPU
+# (2026-10-02); the classes the replay adds to the archive are the win (6–11 MB less non-heap).
 docker run --rm --network "$network" \
     -v "$fixtures:/fixtures:ro" -v "$out:/out" \
     -e MONGODB_URI="mongodb://$mongo:27017/?directConnection=true" -e MONGODB_DB=kinowo_aot_training \
     -e KINOWO_FIXTURE_ROOT=/fixtures \
-    -e JAVA_OPTS="-Xmx512m -XX:AOTCacheOutput=/out/classes.aot" \
+    -e JAVA_OPTS="-Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:-AOTRecordTraining -XX:AOTCacheOutput=/out/classes.aot" \
     --entrypoint bin/worker "$untrained" -main modules.AotTrainingMain /app/lib "$fixture_directory" "$seconds"
 test -s "$out/classes.aot"
 trained=$SECONDS

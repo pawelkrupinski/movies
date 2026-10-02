@@ -100,4 +100,15 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       withClue(s"infra/jvm options for $tier:\n$output")(process.waitFor() shouldBe 0)
     }
   }
+
+  // The worker's cache is trained on a replayed POLISH boot. Its method profiles saved neither JIT nor
+  // CPU in production and cost worker-es ~13% boot CPU (+20 s JIT); the archived classes are the win
+  // (6–11 MB less non-heap), and they do not need the profiles. Measured 2026-10-02, re-seed boots
+  // against re-seed boots.
+  "the worker's AOT training run" should "archive classes without recording method profiles" in {
+    val script = RepoFile.read("scripts/ci/train-worker-aot.sh")
+    val training = script.linesIterator.find(_.contains("-XX:AOTCacheOutput")).getOrElse(fail("no training JAVA_OPTS"))
+    training should include("-XX:+UnlockDiagnosticVMOptions -XX:-AOTRecordTraining")
+  }
 }
+

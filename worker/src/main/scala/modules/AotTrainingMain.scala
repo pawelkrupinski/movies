@@ -5,12 +5,15 @@ import settings.ProcessConfiguration
 /**
  * The worker image's AOT-cache training run: boots the real worker ([[ReplayWorkerWiring]] — every
  * fetch replayed from a recorded corpus, a real Mongo) for a fixed time, then exits, and the JVM
- * started with `-XX:AOTCacheOutput` writes the classes it loaded AND the method profiles it gathered
- * into the cache. A production boot handed that cache compiles from those profiles instead of
- * profiling again from scratch. Measured locally on the same 4-minute replayed boot against the
- * class-loading-only cache it replaces (`tools.ClassArchiveTraining`, which carried no profiles):
- * process CPU 52.6 → 41.9 s, JIT 28.6 → 19.8 s, metaspace 29 → 20 MB, committed code 85 → 59 MB
- * (2026-10-02, two runs each).
+ * started with `-XX:AOTCacheOutput` writes the classes it loaded into the cache — the class list from
+ * production heap dumps plus what only running the worker creates (~15.9k classes against ~13.7k), so
+ * a production boot loads them from the cache instead of into metaspace: 6–11 MB less non-heap per
+ * worker (2026-10-02).
+ *
+ * NOT its method profiles (`-XX:-AOTRecordTraining`, scripts/ci/train-worker-aot.sh). They saved 31%
+ * JIT on the replayed boot locally, but a production boot is mostly the identity take-up and cache
+ * hydration over the full corpus, not this Polish scrape replay: in production they saved neither JIT
+ * nor CPU in any country, and cost worker-es ~13% of its boot CPU.
  *
  * CI runs it from the built image itself, so the classpath it trains on is the one production
  * launches — the JVM refuses a cache trained on any other.
@@ -18,7 +21,7 @@ import settings.ProcessConfiguration
  * It first loads every class production loads (`tools.ClassArchiveTraining.loadFrom`, the class
  * list from production heap dumps), so the cache keeps them out of metaspace as the class-only cache
  * did — `worker-pl` died of `OutOfMemoryError: Metaspace` at its 128m cap before there was one —
- * and only then replays, which adds the profiles.
+ * and only then replays, which adds what running creates.
  *
  * {{{
  *   bin/worker -main modules.AotTrainingMain <lib directory> <fixture directory> <seconds>
