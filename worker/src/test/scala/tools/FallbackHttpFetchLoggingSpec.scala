@@ -118,4 +118,104 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     a [RuntimeException] should be thrownBy
       EnrichmentRead.absentOnNotFound(chain.get("https://www.metacritic.com/movie/nope"))
   }
+
+  // ---- A URL failing the same way on every ask is warned ONCE, not once per ask ----
+  //
+  // Record-scrape-fixtures UK leg: Cineworld's details API 403s CI runners, the 403 is
+  // remembered so no network is spent, yet each of 136 URLs asked ~1,300 times logged its
+  // own nine-line warning: 12,397 warnings, ~110k of the leg's 382k lines.
+
+  private def status(code: Int): HttpFetch =
+    new FailingHttpFetch((method, url) => new HttpStatusException(code, method, url, None))
+
+  private def warningsFor(events: Seq[ILoggingEvent], url: String): Seq[String] =
+    events.filter(e => e.getLevel == Level.WARN && e.getFormattedMessage.contains(url)).map(_.getFormattedMessage)
+
+  private def askFailing(chain: HttpFetch, url: String, times: Int): Unit =
+    (1 to times).foreach(_ => a [RuntimeException] should be thrownBy chain.get(url))
+
+  it should "warn once for a failure repeated identically on every ask, still throwing it every time" in {
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)))
+    val url   = uniqueUrl("repeated")
+
+    val (_, events) = capture {
+      (1 to 50).foreach { _ =>
+        val thrown = the [RuntimeException] thrownBy chain.get(url)
+        thrown.getMessage should include ("HTTP 403")
+        thrown.getMessage should include ("no fixture file")
+      }
+    }
+
+    warningsFor(events, url) should have size 1
+  }
+
+  it should "warn again when the same URL fails DIFFERENTLY, naming the repeats it held back" in {
+    var code  = 403
+    val live  = new FailingHttpFetch((method, url) => new HttpStatusException(code, method, url, None))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live))
+    val url   = uniqueUrl("changed")
+
+    val (_, events) = capture {
+      askFailing(chain, url, 5)
+      code = 503
+      askFailing(chain, url, 5)
+    }
+
+    val warnings = warningsFor(events, url)
+    warnings should have size 2
+    warnings(0) should include ("HTTP 403")
+    warnings(1) should include ("HTTP 503")
+    warnings(1) should include ("4 unlogged repeat(s)")
+  }
+
+  it should "log a recovery, and warn afresh if the URL then fails again" in {
+    var up    = false
+    val live  = new GetOnlyHttpFetch {
+      override def get(url: String): String = if (up) "answer" else throw new HttpStatusException(403, "GET", url, None)
+    }
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live))
+    val url   = uniqueUrl("recovered")
+
+    val (_, events) = capture {
+      askFailing(chain, url, 3)
+      up = true
+      chain.get(url) shouldBe "answer"
+      up = false
+      askFailing(chain, url, 3)
+    }
+
+    warningsFor(events, url) should have size 2
+    events.filter(e => e.getLevel == Level.INFO && e.getFormattedMessage.contains(url))
+      .map(_.getFormattedMessage).mkString should include ("answered after its logged failure (2 unlogged repeat(s))")
+  }
+
+  it should "re-warn a persisting failure once per window, with its count" in {
+    var clock = java.time.Instant.parse("2026-10-02T10:00:00Z")
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)),
+      repeats = RepeatedFailureLog.Settings(relogEvery = java.time.Duration.ofHours(1), now = () => clock))
+    val url   = uniqueUrl("window")
+
+    val (_, events) = capture {
+      askFailing(chain, url, 10)
+      clock = clock.plusSeconds(3600)
+      askFailing(chain, url, 10)
+    }
+
+    val warnings = warningsFor(events, url)
+    warnings should have size 2
+    warnings(1) should include ("9 identical repeat(s) since last logged")
+  }
+
+  it should "track at most maxEntries URLs, warning an evicted one afresh" in {
+    val log   = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings(maxEntries = 2))
+    val urls  = (1 to 3).map(i => uniqueUrl(s"bounded-$i"))
+
+    val events = LogCapture.capture(classOf[FallbackHttpFetch].getName, Some(Level.TRACE)) {
+      (1 to 2).foreach(_ => urls.foreach(u => log.failed(u, s"failed $u")))
+    }
+
+    log.tracked shouldBe 2
+    // Cycling three URLs through two slots evicts each before it repeats, so every ask warns.
+    urls.foreach(u => warningsFor(events, u) should have size 2)
+  }
 }

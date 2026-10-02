@@ -7,7 +7,8 @@ import scala.collection.mutable
 /**
  * Tries each backend in order, returning the first successful body.
  * A backend that fails is recorded at DEBUG and the chain falls through
- * to the next one; only when every backend has failed does it warn, and
+ * to the next one; only when every backend has failed does it warn (once per
+ * distinct failure of a URL — see [[RepeatedFailureLog]]), and
  * throw a single composite exception naming each failure — unless a leg's
  * failure is one `endsChain` names as the origin's own answer, which is
  * rethrown as-is without trying the rest.
@@ -32,9 +33,14 @@ class FallbackHttpFetch(
   // different SOURCES (a recorded-fixture layer in front of a live one) must go on
   // past a leg's "not found". A chain whose legs are different ROUTES to one origin
   // (proxy → Zyte → direct) passes [[FallbackHttpFetch.OriginAnswered]].
-  endsChain: Throwable => Boolean = FallbackHttpFetch.NeverEnds
+  endsChain: Throwable => Boolean = FallbackHttpFetch.NeverEnds,
+  // How the "all backends failed" warning is deduplicated: a URL failing the same way on
+  // every ask is warned once (then periodically), not once per ask — see RepeatedFailureLog.
+  repeats:   RepeatedFailureLog.Settings = RepeatedFailureLog.Settings()
 ) extends HttpFetch with Logging {
   require(backends.nonEmpty, "FallbackHttpFetch needs at least one backend")
+
+  private val failureLog = new RepeatedFailureLog(logger, repeats)
 
   override def get(url: String): String = tryEach("get", url, _.get(url))
 
@@ -63,6 +69,7 @@ class FallbackHttpFetch(
     var lastFailure     = Option.empty[Throwable]
     var result: Option[T] = None
     val it              = backends.iterator
+    val key             = s"$verb $url"
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()
       try {
@@ -75,6 +82,7 @@ class FallbackHttpFetch(
           safeOutcome(name, Some(message))
           if (endsChain(t)) {
             logger.debug(s"FallbackHttpFetch $verb $url — $message; the origin answered, not trying later backends")
+            failureLog.cleared(key, s"the origin answered (${t.getMessage})")
             throw t
           }
           // DEBUG, not WARN: falling through is what a fallback chain is FOR, and a
@@ -90,6 +98,7 @@ class FallbackHttpFetch(
           failures += message
       }
     }
+    if (result.isDefined) failureLog.cleared(key, "answered")
     result.getOrElse {
       val detail = s"All ${backends.size} backends failed for $verb $url:\n  " + failures.mkString("\n  ")
       // A definitive "not found" from the LAST backend is an ANSWER, and it has to
@@ -108,12 +117,15 @@ class FallbackHttpFetch(
       lastFailure.filter(EnrichmentRead.isAbsent).foreach { absent =>
         logger.debug(s"FallbackHttpFetch $verb $url — every backend failed and the last says NOT FOUND; " +
                      s"propagating that rather than a composite failure")
+        failureLog.cleared(key, s"answered not found (${absent.getMessage})")
         throw absent
       }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
       // callers routinely catch this to degrade gracefully, and a swallowed
-      // exception is how a chain fails silently.
-      logger.warn(s"FallbackHttpFetch $detail")
+      // exception is how a chain fails silently. Once per distinct failure, though: a
+      // repeat of the identical failure is held back (RepeatedFailureLog); the exception
+      // below still carries the full detail every time.
+      failureLog.failed(key, s"FallbackHttpFetch $detail")
       throw new RuntimeException(detail)
     }
   }
