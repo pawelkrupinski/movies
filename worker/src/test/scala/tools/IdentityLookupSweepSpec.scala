@@ -25,20 +25,29 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
                      listing(Kinoteka, "Coś", page = Some("https://kinoteka.pl/boom"))),
     Helios    -> Seq(listing(Helios, "Sinn und Sinnlichkeit", Some(1995), Seq("Ang Lee"))))
 
-  /** A source answering every question with a film per distinct string, recording what it was asked. */
-  private final class Recording extends IdentityLookups {
-    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+  /** A source answering every question with a film per distinct string, recording what it was asked
+   *  — from any thread, each ask taking `latency` (a live fetch's wait), the most it held in flight
+   *  at once counted in `mostInFlight`. */
+  private final class Recording(latency: Long = 0) extends IdentityLookups {
+    private val asks     = java.util.concurrent.ConcurrentLinkedQueue[String]()
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger()
+    val mostInFlight     = java.util.concurrent.atomic.AtomicInteger()
+    def asked: Seq[String] = scala.jdk.CollectionConverters.IterableHasAsScala(asks).asScala.toSeq
+    private def ask(name: String): Unit = {
+      mostInFlight.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+      try { if (latency > 0) Thread.sleep(latency); asks.add(name); () } finally { inFlight.decrementAndGet(); () }
+    }
     override def hasDetail(l: Listing): Boolean = l.page.isDefined
     override def detail(l: Listing): Answer[Option[DetailFacts]] = {
-      asked += s"detail ${l.page.get}"
+      ask(s"detail ${l.page.get}")
       if (l.page.exists(_.endsWith("/boom"))) Answer.Unknown else Answer.Known(Some(DetailFacts(Some(1995), Seq("Ang Lee"), Some(136), None)))
     }
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = {
-      asked += q.sortKey
+      ask(q.sortKey)
       Answer.Known(Seq(Hit(math.abs(q.sortKey.hashCode % 50), q.sortKey.drop(2), None, Some(1995), 1.0)))
     }
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
-      asked += s"film $id"
+      ask(s"film $id")
       Answer.Known(Some(IdentityMeasures.Film(s"film $id", year = Some(1995))))
     }
   }
@@ -47,7 +56,7 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     val source = new Recording
     val names  = scala.collection.mutable.ArrayBuffer.empty[String]
     val summary = IdentityLookupSweep.run(services.identity.Listing.corpus(archived, titleNormalizer), source, titleNormalizer, names += _)
-    (summary, source.asked.toSeq, names.toSeq)
+    (summary, source.asked, names.toSeq)
   }
 
   "the sweep" should "ask exactly the resolver's questions: every listing's CandidateQueries, its detail page, and every named film's record" in {
@@ -125,5 +134,49 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     replay.asked.toSet shouldBe recordedAsked.toSet
     summary.unrecorded should be > 0
     summary.toString should include (s"${summary.unrecorded} lookup(s) the tree was recorded without")
+  }
+
+  // A recording leg's sweep met every lookup its tree lacked live and ONE AT A TIME: 274 s of the US
+  // leg against 41 s for the same sweep replayed hermetically (runs 36974178044, 37029415020).
+  private def pooled[A](body: java.util.concurrent.ExecutorService => A): A = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(4)
+    try body(pool) finally { pool.shutdownNow(); () }
+  }
+
+  "a sweep with a pool" should "ask its lookups side by side, and ask and answer exactly what it does one at a time" in pooled { pool =>
+    val listed  = services.identity.Listing.corpus(corpus, titleNormalizer)
+    val serial  = new Recording(latency = 5)
+    val serialNames = scala.collection.mutable.ArrayBuffer.empty[String]
+    val serialSummary = IdentityLookupSweep.run(listed, serial, titleNormalizer, serialNames += _)
+    val side    = new Recording(latency = 5)
+    val sideNames = scala.collection.mutable.ArrayBuffer.empty[String]
+    val sideSummary = IdentityLookupSweep.run(listed, side, titleNormalizer, sideNames += _, pool = Some(pool))
+    serial.mostInFlight.get shouldBe 1
+    side.mostInFlight.get should be > 1
+    side.asked.sorted shouldBe serial.asked.sorted
+    sideNames.sorted shouldBe serialNames.sorted
+    sideSummary shouldBe serialSummary
+  }
+
+  it should "fetch a detail page several listings share once" in pooled { pool =>
+    val page   = Some("https://kinoteka.pl/film/1")
+    val shared = corpus.updated(Kinoteka, corpus(Kinoteka) :+ listing(Kinoteka, "Rozważna i romantyczna", page = page))
+    val side   = new Recording
+    IdentityLookupSweep.run(services.identity.Listing.corpus(shared, titleNormalizer), side, titleNormalizer, pool = Some(pool))
+    side.asked.count(_ == s"detail ${page.get}") shouldBe 1
+  }
+
+  it should "prefetch nothing a hermetic replay's recording did not ask" in withTree { root =>
+    pooled { pool =>
+      val (_, recordedAsked, recordedNames) = sweep(corpus)
+      IdentityLookupSweep.markRecorded(root, recordedNames)
+      val grown  = corpus.updated(Kinoteka, corpus(Kinoteka) :+ listing(Kinoteka, "RBO Cinema Season 2026-27: Manon",
+        page = Some("https://kinoteka.pl/manon")))
+      val replay = new Recording
+      val summary = IdentityLookupSweep.run(services.identity.Listing.corpus(grown, titleNormalizer), replay, titleNormalizer,
+        recorded = IdentityLookupSweep.recordedIn(root), pool = Some(pool))
+      replay.asked.toSet shouldBe recordedAsked.toSet
+      summary.unrecorded should be > 0
+    }
   }
 }

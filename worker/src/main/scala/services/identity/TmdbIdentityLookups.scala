@@ -21,7 +21,8 @@ import scala.util.Try
  * replay's), is [[Answer.Unknown]], never an empty answer — `TmdbClient` turns a failed read into
  * an empty one, which would read as "no such film". Production builds it over the observation
  * store (`ObservedIdentityLookups`, `CutoverIdentityLookups`), where lookups run side by side on
- * the prefetch's threads; the offline harness over a recorded replay, one lookup at a time.
+ * the prefetch's threads; the offline harness over a recorded replay (`IdentityLookupSweep`), one
+ * lookup at a time or, in a convergence leg, on its pool of prefetch threads.
  */
 final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher],
                                 gaps: TmdbIdentityLookups.Gaps = TmdbIdentityLookups.NoGaps)
