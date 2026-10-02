@@ -47,7 +47,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // the billed second work is a whole film title, not a talk ("+ prelekcja", "+ spotkanie z reżyserem …")
     val billed   = IdentityMeasures.billedSecondWork(any.listing)
     IdentityMeasures.billsTwoWorks(any.listing) && !eligible.exists(_.category("title").contains("exact")) &&
-      works.sizeIs >= 2 && billed.exists(works.contains)
+      // two words at least: one is many films' title ("+ SPOTKANIE" is a talk, though TMDB holds three "Spotkanie"s)
+      works.sizeIs >= 2 && billed.exists(work => work.sizeIs >= 2 && works.contains(work))
   }
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a

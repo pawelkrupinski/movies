@@ -736,6 +736,20 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       Map("director" -> Category("same_person"))
   }
 
+  "A double bill crediting both its works' directors" should "be neither film, though its title joins it to a spelling whose facts pick one" in {
+    // UK, 2026-10-02: "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133 was
+    // joined by its title to the same bill crediting Harrison alone — which IS Bear Hunt — and took that film.
+    val films = Seq(F(431591, "We're Going on a Bear Hunt", 2016, "Joanna Harrison", 32), F(644120, "The Tiger Who Came to Tea", 2019, "Robin Shaw", 24))
+    val both  = Seq(Rialto, KinoApollo).map(v => listing(v, "We're Going on a Bear Hunt + The Tiger Who Came to Tea").copy(directors = Seq("Joanna Harrison", "Robin Shaw")))
+    val one   = Seq(Multikino, KinoMikro).map(v => listing(v, "We're Going on a Bear Hunt + The Tiger Who Came to Tea", director = Some("Joanna Harrison")))
+    val r = shipped(both ++ one, films)
+    withClue((both ++ one).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      one.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(431591), Some(431591))
+      both.map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None)
+      r.decisionOf(both.head.key).trace.rulesOf(both.head.key) should contain ("veto:bills-both-works")
+    }
+  }
+
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
     // UK, 2026-10-01: "Toddler Club: Tabby McTat + Room on the Broom" {Various Directors} searches as "Tabby McTat";
     // joined to the bare "Tabby McTat" ×23, its directors vetoed the film for all of them. A bill whose second

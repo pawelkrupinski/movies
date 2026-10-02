@@ -172,6 +172,10 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.billsBothItsWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe false
     // a single film is no bill
     acceptance.billsBothItsWorks(ranked(Listing("We're Going on a Bear Hunt"), bear)) shouldBe false
+    // a one-word "work" after the plus is a talk, not a bill: "La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"
+    val perra = (1550622, Film("La Perra", year = Some(2026)), Some(1))
+    val talk  = (1195735, Film("Spotkanie", year = Some(1949)), Some(1))
+    acceptance.billsBothItsWorks(ranked(Listing("La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"), perra, talk)) shouldBe false
   }
 
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {

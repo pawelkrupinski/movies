@@ -337,7 +337,22 @@ object IdentityResolver {
 
       val clusterIndex = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap
       val violations   = familyEdges.count(edge => !edge.must && clusterIndex(edge.a) == clusterIndex(edge.b))
-      (familyEdges, clusters.map(decisions.of(_, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken)), violations)
+      // A member billing two works its own facts both fit is neither film, whichever film its cluster took
+      // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
+      // title to the spelling crediting Harrison alone): it is decided apart, as no film.
+      val billing = members.filter(node => acceptance.billsBothItsWorks(scope.of(node))).map(_.id).toSet
+      val decided = clusters.flatMap { cluster =>
+        val (bills, rest) = cluster.partition(node => billing(node.id))
+        if (bills.isEmpty || rest.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))
+          Seq(decisions.of(cluster, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken))
+        else {
+          val neither = decisions.of(bills, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex, Map.empty)
+          Seq(decisions.of(rest, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken),
+            neither.copy(explanation = "bills two works its own facts both fit: neither film" +: neither.explanation)(
+              neither.trace.copy(vetoed = Some(DecisionTrace.Veto("bills both works", None)))))
+        }
+      }
+      (familyEdges, decided, violations)
     }
 
     val decided = perFamily.flatMap(_._2).sortBy(_.members.head)(using ListingKey.ordering)
