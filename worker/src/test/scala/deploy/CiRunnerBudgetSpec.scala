@@ -18,7 +18,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * So the budget is a fixed 20, and a new job has to take its slot from an
  * existing one rather than be added. Both files that contribute count: ci.yml's
- * jobs and main.yml's `preflight` start at t=0. (The Fly deploy does not — it
+ * jobs and main.yml's `gates` start at t=0. (main.yml's build jobs do not — they
  * `needs: ci`, so ci's jobs have released their slots by then.)
  *
  * A NEEDS-LESS JOB IS THE ONLY KIND THAT COSTS ANYTHING HERE, and that is what
@@ -78,7 +78,7 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The slots ci.yml does NOT take are deliberate. One is main.yml's `preflight` (below).
+   * The slots ci.yml does NOT take are deliberate. One is main.yml's `gates` (below).
    * The other `Headroom` are for the workflows that overlap a push — Country convergence
    * (which Main kicks off itself), dispatched identity runs, the mobile workflows — which
    * hold runners for 20-40 min: with ci filling 19 slots each of their jobs queued one of
@@ -89,33 +89,32 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    */
   private val Headroom = 4
 
-  it should "leave the preflight's slot and a headroom for overlapping workflows free" in {
+  it should "leave the gates job's slot and a headroom for overlapping workflows free" in {
     withClue(s"ci.yml=$ciRunners: ")(ciRunners should be <= (Allowance - 1 - Headroom))
   }
 
   /**
-   * ONE main.yml job starts alongside ci: `preflight`, which checks the deploy's
-   * secret in seconds so a missing one fails the run at t=0 rather than after
-   * ci (`PreflightWiringSpec`). Everything else — the GHCR build jobs that ship
-   * the k3s tiers, the Fly release — hangs off `needs: ci`, which is what keeps
+   * ONE main.yml job starts alongside ci: `gates`, which answers in seconds
+   * which tiers changed since their last deploy. Everything else — the GHCR
+   * build jobs that ship the k3s tiers — hangs off `needs: ci`, which is what keeps
    * the budget above honest: dropping a `needs:` to make a deploy land sooner
    * would silently push a push to main past the allowance, and the jobs that
    * queue would be whichever GitHub felt like. `free-runners` was the earlier
    * t=0 exception and is gone (`DeployImageReuseSpec`).
    */
-  it should "start nothing alongside ci but the preflight" in {
+  it should "start nothing alongside ci but the tier gates" in {
     val atStart = RepoFile.jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("preflight"))
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("gates"))
   }
 
-  /** ...and the preflight holds that slot for seconds, not for whatever it grows into. */
-  it should "bound the preflight to a few minutes at most" in {
-    val timeout = RepoFile.jobs(mainYml)("preflight").linesIterator.map(_.trim).collectFirst {
+  /** ...and the gates job holds that slot for seconds, not for whatever it grows into. */
+  it should "bound the tier gates to a few minutes at most" in {
+    val timeout = RepoFile.jobs(mainYml)("gates").linesIterator.map(_.trim).collectFirst {
       case s"timeout-minutes: $n" => n.toInt
     }
-    timeout.getOrElse(fail("main.yml's preflight has no timeout-minutes")) should be <= 5
+    timeout.getOrElse(fail("main.yml's gates job has no timeout-minutes")) should be <= 5
   }
 }

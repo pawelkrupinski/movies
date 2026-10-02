@@ -3,9 +3,8 @@ name: Main
 on:
     push:
         branches: [main]
-    # No inputs. The only one this workflow ever had was `force_worker_deploy`,
-    # which forced past the Fly worker deploy's no-op guard; the worker is a k3s
-    # pod now and CI does not deploy it, so there is nothing here to force.
+    # No inputs: CI deploys nothing itself (Flux ships the GHCR images), so there
+    # is nothing here to force.
     workflow_dispatch:
 
 # Workflow-level concurrency: a newer push cancels the older workflow
@@ -25,23 +24,16 @@ on:
 # either way, because CI does not perform one: the image is in GHCR, and
 # image-automation ships it on its own schedule. Do not trade the cancellation
 # away — the runner budget above depends on it.
-#
-# The Fly deploy JOB has NO concurrency group of its own, deliberately: GitHub
-# keeps one running plus one pending per group, so back when that job was a
-# six-app matrix a group covering a tier CANCELLED the third app rather than
-# queueing it, and apps silently stopped deploying for days.
-# DeployParallelismConfigSpec is there to stop one coming back — do not add one
-# here either.
 concurrency:
     group: deploy-${{ github.ref }}
     cancel-in-progress: true
 
 # Pipeline shape:
 #
-#                                                             ┌─► deploy (kinowo, the retired Fly redirect host)
-#   ci (reusable workflow — lint, test, integration,          ├─► kick-convergence
-#       ios/android local-server, page-tests) ─────────────── ─┼─► build-web ──► record-web
-#                                                             └─► build-worker ──► record-worker
+#                                                             ┌─► kick-convergence
+#   ci (reusable workflow — lint, test, integration,          ├─► build-web ──► record-web
+#       ios/android local-server, page-tests) ─────────────── ─┴─► build-worker ──► record-worker
+#   gates (t=0: which tiers changed since their last deploy) ──┘  (both builds need it too)
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
@@ -81,34 +73,27 @@ jobs:
     # Both images are built on every main push, including a tier whose paths did not change: building
     # is not shipping. An unpublished SHA-tagged image costs registry space and builder time on runners
     # ci's e2e rows have already given back, nothing else.
-    # ONLY THE WEB IMAGE IS EVER RELEASED, and only to `kinowo` — the one leg of the `deploy`
-    # matrix below that is `enabled: true` (see the rule stated there). The worker image and the
-    # other five legs' images are built and then sit in the registry unreleased, because both tiers
-    # otherwise run on k3s and are shipped by the GHCR jobs at the bottom of this file.
-    #
     # `free-runners` — the job that used to sit here, cancelling any in-flight
-    # `Country convergence` run to take its runners back for the deploy — was
+    # `Country convergence` run to take its runners back for the Fly deploy — was
     # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
     # false`. Cancelling a run that lane no longer intends to throw away would
     # destroy real progress rather than merely accelerate a supersede that was
     # coming anyway. See `country-convergence.yml`'s `concurrency:` block.
     #
     # This job used to occupy a concurrent slot at t=0. That slot now goes to
-    # `preflight` below, for the few seconds it takes to check
-    # the deploy's secret (`CiRunnerBudgetSpec`).
+    # `gates` below, for the few seconds it takes to answer the tier gates
+    # (`CiRunnerBudgetSpec`).
 
-    # Seconds, at t=0: the deploy's secret is set, so a missing one fails the run now rather than
-    # after ci's minutes. It takes the one slot ci.yml leaves it (beside the headroom kept for
-    # overlapping workflows) for the few seconds it runs (CiRunnerBudgetSpec). The Grafana marker's secrets are optional
-    # by design (mark-grafana-deploy skips without them), so they are not required here.
-    # (PreflightWiringSpec)
-    preflight:
+    # Seconds, at t=0. It takes the one slot ci.yml leaves it (beside the headroom kept for
+    # overlapping workflows) for the few seconds it runs (CiRunnerBudgetSpec). No secret is checked
+    # here: the Grafana marker's are optional by design (mark-grafana-deploy skips without them), and
+    # nothing else in this workflow reads one beyond what ci.yml's own jobs check.
+    gates:
         runs-on: ubuntu-latest
         timeout-minutes: 5
-        # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci: `deploy`
-        # (the Fly release) needs only this answer and ci, so it starts the moment ci is green instead
-        # of waiting for `build-web`. A marker that moves between t=0 and ci's end can only make a gate
-        # say "changed" more often, never skip a tier that did change.
+        # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
+        # builds start the moment ci is green. A marker that moves between t=0 and ci's end can only
+        # make a gate say "changed" more often, never skip a tier that did change.
         outputs:
             web-changed: ${{ steps.changed-web.outputs.changed }}
             worker-changed: ${{ steps.changed-worker.outputs.changed }}
@@ -174,128 +159,10 @@ jobs:
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
-            - name: Deploy secrets present
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: scripts/ci/preflight.sh FLY_API_TOKEN
 
-    # THE ONE THING FLY.IO STILL HOSTS FROM THIS REPOSITORY: the Polish web app
-    # `kinowo`, which is what `kinowo.fly.dev` resolves to. There is no matrix here
-    # any more, and that absence is the point — a matrix is a place to add a row,
-    # and every row anyone would add would put a SECOND copy of a live service on a
-    # host with none of the traffic, against the same databases.
-    #
-    # THE WHOLE PRODUCT MOVED TO KUBERNETES 2026-08-29: the three sites and all
-    # three workers run as pods on k3s (movies-gitops/), on domains this project
-    # owns — kinowo.net and showtimes.cc, countries served as paths — built by
-    # `build-web` / `build-worker` at the bottom of this file and rolled out by
-    # Flux. Their Fly apps, configs and deploy legs are gone; restoring one means
-    # writing it again from `fly.toml`, which is the right amount of friction.
-    #
-    # `kinowo` survives as the RETIRED redirect host for links that predate the
-    # move. `fly.toml` sets `KINOWO_RETIRED=true`, which boots
-    # `modules.RetiredComponents` instead of the serving app (docs/domain-cutover.md)
-    # — a composition root with no `Wiring` mixed in, so it cannot open a Mongo
-    # client whatever this job deploys. The flag lives in the fly config rather than
-    # here, which is what makes tracking `main` safe: this job cannot un-retire the
-    # host, only ship it a newer build of the same redirects.
-    #
-    # Each push therefore costs the retired host a rolling restart. That is the
-    # accepted price of it not drifting away from `main` — the alternative was a
-    # hand-rolled deploy nobody would remember to run. (`FlyDeployScopeSpec`)
-
-    deploy:
-        needs: [ci, preflight]
-        runs-on: ubuntu-latest
-        # NO concurrency group. GitHub keeps one running plus one pending per group,
-        # so back when this was a six-app matrix a per-tier group CANCELLED the third
-        # app rather than queueing it and one app silently missed every deploy for
-        # days. One app cannot hit that, but the group would be inherited by whoever
-        # re-grows this job — so it stays off, and DeployParallelismConfigSpec says so.
-        steps:
-            # Full history, because the roll-back guard below needs
-            # `git merge-base` against whatever commit is live and that can be
-            # arbitrarily old — but BLOBLESS. The guard reads commit topology and
-            # tree object ids, never file contents, so fetching every blob in the
-            # history (fixture corpus included) was ~15s of pure waste on the
-            # deploy's critical path. `filter: blob:none` lazily fetches a blob
-            # only if something asks for one; nothing here does.
-            - uses: actions/checkout@v5
-              with:
-                  fetch-depth: 0
-                  filter: blob:none
-
-            - uses: superfly/flyctl-actions/setup-flyctl@v1
-
-            # Decide whether this app actually needs a deploy. Two skip reasons,
-            # both fail-open (any probe error → deploy):
-            #
-            #  (1) Nothing was built for the web tier, so there is no tag to
-            #      release. The image comes from `build-web`, which is path-gated:
-            #      a push that does not touch the tier pushes no tag for it. That
-            #      is the right answer — an unchanged tier needs no deploy — but it
-            #      has to be said HERE, or the release names a tag that was never
-            #      pushed and reddens a green build.
-            #
-            #  (2) Roll-back guard: the running machine carries COMMIT_SHA from the
-            #      Dockerfile build-arg; if this workflow's commit is an ANCESTOR of
-            #      the live one, a newer build already shipped and re-deploying
-            #      would roll it back. (First-ever deploy: no machine → empty probe
-            #      → proceed.)
-            - name: Decide whether to deploy
-              id: guard
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: |
-                  if [ "${{ needs.preflight.outputs.web-changed }}" != "true" ]; then
-                      echo "::notice::Skipping kinowo — the web tier did not change, so no image was built for this commit."
-                      echo "skip=true" >> "$GITHUB_OUTPUT"
-                      exit 0
-                  fi
-                  deployed=$(flyctl ssh console -a kinowo -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
-                  if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
-                      if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then
-                          echo "::warning::Skipping kinowo — commit $deployed (descendant of ${{ github.sha }}) is already live"
-                          echo "skip=true" >> "$GITHUB_OUTPUT"
-                          exit 0
-                      fi
-                  fi
-
-            # Release only — no `--build-arg`: COMMIT_SHA was baked in when the
-            # image was built.
-            #
-            # THE IMAGE COMES FROM GHCR, which `build-web` pushes from the same
-            # Dockerfile with the same build-args for the cluster. It used to be
-            # built a SECOND time, by a `build-image` job running on Fly's remote
-            # builder, purely so this line could say `registry.fly.io`. That builder
-            # is not something this project runs — the org has no builder app, so
-            # every build cold-provisioned one, and roughly two runs in five died on
-            # `timed out connecting to machine: authentication handshake failed`
-            # while producing bytes GHCR already had. The package is public, so Fly
-            # pulls it with no credential.
-            - name: Release the image GHCR already built
-              if: steps.guard.outputs.skip != 'true'
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: flyctl deploy -c fly.toml -a kinowo -i ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
-
-            # Drop a vertical marker on the self-hosted Grafana carrying this
-            # commit's SHA + subject, so a metric regression on the dashboard
-            # lines up visually with the release that caused it — the "I deploy X
-            # and a service degrades" loop, made legible.
-            - name: Mark deploy in Grafana
-              if: steps.guard.outputs.skip != 'true'
-              uses: ./.github/actions/mark-grafana-deploy
-              with:
-                  tier: kinowo
-                  grafana-url: ${{ secrets.GRAFANA_URL }}
-                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-                  sha: ${{ github.sha }}
-                  commit-message: ${{ github.event.head_commit.message }}
-
-    # Kick the country convergence suite off ALONGSIDE the deploy matrix — same
-    # `needs: ci` the legs have, so the dispatch goes out the moment the build is
-    # green and the suite runs concurrently with the six flyctl legs.
+    # Kick the country convergence suite off ALONGSIDE the image builds — same
+    # `needs: ci` they have, so the dispatch goes out the moment the build is
+    # green.
     #
     # Two shapes this deliberately is not:
     #
@@ -310,12 +177,12 @@ jobs:
     #    skipped-but-cancelling runs and nothing completed for a day. An explicit
     #    dispatch inverts that: no dispatch, no run, nothing cancelled.
     #
-    #  * Not `needs: deploy`. Convergence never reads the deployed machines — every
+    #  * Not after a deploy. Convergence never reads the deployed machines — every
     #    leg runs against its own MongoDB container and a recorded corpus — and
-    #    nothing gates the deploy on its result, so waiting for six flyctl legs only
-    #    pushed a tens-of-minutes suite later into the window where the next push's
+    #    nothing gates a deploy on its result, so waiting for the (since removed) Fly
+    #    deploy legs only pushed a tens-of-minutes suite later into the window where the next push's
     #    dispatch supersedes it. Starting with the legs is the earliest this commit's
-    #    answer can exist. (DeployParallelismConfigSpec)
+    #    answer can exist. (KickConvergenceWiringSpec)
     #
     # Both suites' lanes are `cancel-in-progress: false` (country-convergence.yml's
     # `concurrency:` block), so a run in flight always finishes and a dispatch queues
@@ -380,9 +247,8 @@ jobs:
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #
     # These four jobs were two workflows of their own until they were folded in here
-    # (`build-web-image.yaml`, `build-worker-image.yaml`). They build the images the CLUSTER runs —
-    # the Fly `deploy` matrix above is disabled top to bottom, so THIS is the deploy that ships
-    # production.
+    # (`build-web-image.yaml`, `build-worker-image.yaml`). They publish the images the CLUSTER runs,
+    # which is how production ships.
     #
     # WHAT THE FOLD HAD TO PRESERVE, and the single most important property of the whole file: the
     # two workflows carried DIFFERENT `on.push.paths` filters, and that difference is load-bearing.
@@ -392,7 +258,7 @@ jobs:
     #
     # `on.push.paths` is workflow-level, so one workflow cannot carry two filters. The gating is
     # therefore per JOB: each tier hands its own path list to `.github/actions/changed-paths`, and
-    # everything downstream of that answer — the build steps, and the deploy job's `if:` — reads it.
+    # everything downstream of that answer — the publish steps and the `record-*` markers — reads it.
     # `K8sTierPathGatingSpec` runs the real matcher over the real lists and asserts a web-only
     # change does not reach the worker. Keep the lists apart; a union quietly undoes all of this.
     #
@@ -408,7 +274,7 @@ jobs:
     # ones spoken for at t=0 now that `free-runners` is retired, and a job that waits for ci takes a
     # slot ci has already given back (`CiRunnerBudgetSpec`).
     build-web:
-        needs: [ci, preflight]
+        needs: [ci, gates]
         runs-on: ubuntu-latest
 
         permissions:
@@ -418,24 +284,24 @@ jobs:
             packages: write
 
         outputs:
-            changed: ${{ needs.preflight.outputs.web-changed }}
+            changed: ${{ needs.gates.outputs.web-changed }}
 
         steps:
-            # No checkout: the tier's gate is `preflight`'s, and publishing is a registry copy of the
+            # No checkout: the tier's gate is `gates`', and publishing is a registry copy of the
             # image ci built.
             - uses: docker/login-action@v3
-              if: needs.preflight.outputs.web-changed == 'true'
+              if: needs.gates.outputs.web-changed == 'true'
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - uses: docker/setup-buildx-action@v3
-              if: needs.preflight.outputs.web-changed == 'true'
+              if: needs.gates.outputs.web-changed == 'true'
 
             - name: Compute an orderable image tag
               id: tag
-              if: needs.preflight.outputs.web-changed == 'true'
+              if: needs.gates.outputs.web-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -452,7 +318,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: needs.preflight.outputs.web-changed == 'true'
+              if: needs.gates.outputs.web-changed == 'true'
               # ci's `image-web` job built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
@@ -544,7 +410,7 @@ jobs:
                   commit-message: ${{ github.event.head_commit.message }}
 
     build-worker:
-        needs: [ci, preflight]
+        needs: [ci, gates]
         runs-on: ubuntu-latest
 
         permissions:
@@ -553,22 +419,22 @@ jobs:
             packages: write
 
         outputs:
-            changed: ${{ needs.preflight.outputs.worker-changed }}
+            changed: ${{ needs.gates.outputs.worker-changed }}
 
         steps:
             - uses: docker/login-action@v3
-              if: needs.preflight.outputs.worker-changed == 'true'
+              if: needs.gates.outputs.worker-changed == 'true'
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - uses: docker/setup-buildx-action@v3
-              if: needs.preflight.outputs.worker-changed == 'true'
+              if: needs.gates.outputs.worker-changed == 'true'
 
             - name: Compute an orderable image tag
               id: tag
-              if: needs.preflight.outputs.worker-changed == 'true'
+              if: needs.gates.outputs.worker-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -585,7 +451,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: needs.preflight.outputs.worker-changed == 'true'
+              if: needs.gates.outputs.worker-changed == 'true'
               # ci's `image-worker` job built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image

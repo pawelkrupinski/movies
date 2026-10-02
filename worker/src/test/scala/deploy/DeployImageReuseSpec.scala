@@ -4,69 +4,37 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Guards the split between BUILDING the container image and RELEASING it.
+ * Guards the split between BUILDING the container images and PUBLISHING them.
  *
- * The deploy leg used to do both — `flyctl deploy --remote-only` downloaded the
- * staged dist, built the image on Fly's builder and rolled the machines, ~86s of
- * which only the roll actually needed a green test run.
+ * ci builds both images from the dists its `e2e (staging)` row staged, and pushes
+ * them under the commit SHA alone — a tag nothing deploys. main.yml's `build-web`
+ * / `build-worker` give those bytes the tags Flux ships only once ci is green, so
+ * the early build never reaches a machine untested.
  *
- * The build moved out, first to a `build-image` job running alongside ci, and
- * then out of Fly entirely: `build-web` / `build-worker` were already building
- * the same Dockerfile with the same build-args and pushing to GHCR for the
- * cluster, so the Fly copy was a second build of identical bytes — on a builder
- * this project does not run, which failed roughly two runs in five with
- * `timed out connecting to machine`. The leg now releases the GHCR image.
- *
- * Two things must stay true for that to be both fast and safe:
- *
- *  - the leg must not build (a `--remote-only` creeping back puts the ~86s back
- *    on the post-CI tail, and the pre-built image becomes dead weight), and
- *  - the leg must still `needs: ci`, or the split turns into shipping untested
- *    code. That is the whole reason the build may run early: nothing it produces
- *    reaches a machine until the tests are green.
+ * It used to be a third copy: a Fly `deploy` leg released the same image to the
+ * retired `kinowo.fly.dev` redirect host. That leg and the Fly app's config are
+ * gone; the one assertion left about it below keeps a Fly build from creeping back.
  */
 class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
-  private lazy val deployJob  = RepoFile.block(mainYml, "deploy")
   private lazy val buildWeb    = RepoFile.block(mainYml, "build-web")
   private lazy val buildWorker = RepoFile.block(mainYml, "build-worker")
 
-  "the deploy leg" should "release a pre-built image rather than build one" in {
-    deployJob should include("-i ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
-    deployJob should not include "--remote-only"
-    deployJob should not include "download-artifact"
-  }
-
-  // ONE IMAGE, NOT TWO. Fly is released with the bytes the cluster already runs,
-  // which is the whole point: a second build of the same Dockerfile could differ
-  // from the first only by failing, and on Fly's builder it usually did.
-  it should "not build an image on Fly at all" in {
-    // On the COMMANDS, not the file: the comment above the release step names
-    // both of these while explaining why they are gone, and a spec that forbids
-    // saying so would delete the explanation along with the behaviour.
+  // ONE IMAGE PER TIER, built once in ci. A Fly build of the same Dockerfile (on a
+  // builder this project does not run) failed roughly two runs in five; with the
+  // Fly app retired from CI there is nothing it could even be for.
+  "the main workflow" should "not build or release anything on Fly" in {
+    // On the COMMANDS, not the file: comments may name what is gone.
     val commands = mainYml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
     commands should not include "--build-only"
     commands should not include "registry.fly.io"
-  }
-
-  it should "still wait for a green build before releasing anything" in {
-    deployJob should include("needs: [ci, preflight]")
+    commands should not include "flyctl"
+    commands should not include "FLY_API_TOKEN"
   }
 
   it should "release a tag those builds actually push" in {
     buildWeb    should include("ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
     buildWorker should include("ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}")
-  }
-
-  /**
-   * ...and NOT release when it pushed nothing. `build-web` is path-gated, so a
-   * push that misses the tier pushes no tag for it — where the old `build-image`
-   * built both tiers unconditionally and the case could not arise. Without this
-   * the job names a tag that was never pushed, and an unchanged tier turns a
-   * green build red.
-   */
-  it should "skip a commit whose web build pushed no tag" in {
-    deployJob should include("needs.preflight.outputs.web-changed")
   }
 
   /**
@@ -77,37 +45,23 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * a k3s pod now, and what restarts it is Flux picking up an image tag — and
    * `build-worker` is already path-gated, so a push that leaves the tier alone
    * builds no image for Flux to pick up. Baking a hash nothing reads back is the
-   * kind of thing that survives for years; assert it is gone in BOTH places, since
-   * either half left behind is dead weight that reads as live wiring.
+   * kind of thing that survives for years; assert it is gone from both the build and
+   * the image, since either half left behind is dead weight that reads as live wiring.
    */
   it should "not bake a worker input hash nothing reads back any more" in {
     buildWorker should not include "WORKER_INPUT_HASH"
-    deployJob   should not include "WORKER_INPUT_HASH"
     RepoFile.read("Dockerfile") should not include "WORKER_INPUT_HASH"
   }
 
   /**
-   * The Grafana deploy marker was a job of its own (`annotate`, `needs: deploy`),
-   * which spent ~10s of runner spin-up on the critical path to run one curl. It
-   * rides the deploy now — where it also lands at a truer moment, when the
-   * user-visible tier shipped rather than when the last of six legs stopped.
+   * `record-web`/`record-worker` are the closest CI gets to "this tier shipped a
+   * new image" — CI does not roll the cluster itself — so the Grafana deploy
+   * marker rides there. Found 2026-09-15 when a dashboard showed no deploy lines
+   * at all: the marker then rode only the Fly redirect host's release, an app
+   * nobody watched.
    */
-  it should "mark the deploy from the deploy job rather than one of its own" in {
+  it should "mark web and worker deploys from record-web/record-worker" in {
     mainYml should not include "annotate:"
-    deployJob should include("Mark deploy in Grafana")
-  }
-
-  /**
-   * The `deploy` job above only ships the retired `kinowo` Fly redirect host —
-   * it hasn't shipped the tiers a production dashboard cares about since CI
-   * stopped rolling k3s itself (see `record-web`'s own comment on why its
-   * marker "no longer means what is live"). A marker that rides only `deploy`
-   * ships a "deploy" annotation for an app nobody watches and none at all for
-   * the tiers that page. `record-web`/`record-worker` are the closest CI gets
-   * to "this tier shipped a new image" now, so the marker has to ride there
-   * too — found 2026-09-15 when a dashboard showed no deploy lines at all.
-   */
-  it should "also mark web and worker deploys from record-web/record-worker" in {
     val recordWeb    = RepoFile.block(mainYml, "record-web")
     val recordWorker = RepoFile.block(mainYml, "record-worker")
     recordWeb    should include("Mark deploy in Grafana")
@@ -205,22 +159,11 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         }
         image should not include "steps.tag.outputs.value"
         image should include("if: github.event_name != 'pull_request'")
-        publish should include("needs: [ci, preflight]")
+        publish should include("needs: [ci, gates]")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
       }
     }
   }
 
-  /**
-   * The roll-back guard walks history with `git merge-base` against whatever
-   * commit is live, so it needs full history — but only commits and trees, never
-   * a file's contents. Fetching every blob in this repo's history (the fixture
-   * corpus included) was ~15s of the deploy's critical path for data nothing
-   * reads.
-   */
-  it should "check out history without the blobs the guard never reads" in {
-    deployJob should include("fetch-depth: 0")
-    deployJob should include("filter: blob:none")
-  }
 }

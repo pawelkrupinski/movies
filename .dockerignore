@@ -1,7 +1,7 @@
 # Everything is excluded by default — Docker only ever needs the staged
 # Play distribution that `sbt stage` produces (and the Dockerfile itself).
 # Source, tests, fixtures, build caches, and .git are pure noise for the
-# runtime image and bloat the build-context upload to Fly's remote builder.
+# runtime image and bloat the build context.
 *
 
 # Whitelist the staged Play distribution. The GitHub Actions deploy job

@@ -2,7 +2,7 @@
 # produced by `sbt stage` in the GitHub Actions `test` job (see
 # .github/workflows/main.yml) and downloaded into a top-level `stage/`
 # directory before this image is built. `.dockerignore` whitelists exactly
-# that directory, so Fly's remote builder receives just the staged JARs +
+# that directory, so the build context holds just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
 # Eclipse Temurin (HotSpot) JRE 27 — the current feature release (25 is the
@@ -11,9 +11,8 @@
 # accepts); JRE 27 loads those class files unchanged. CI builds on the same
 # JDK 27 — toolchain consistent end-to-end.
 # One image, two apps. `BIN` selects which staged launcher the container
-# runs: `web` (the Play serving app, Fly app `kinowo`) or `worker` (the
-# scrape/enrich `def main` app, Fly app `kinowo-worker`). Each app's deploy
-# downloads ITS OWN `web/target/universal/stage` or
+# runs: `web` (the Play serving app) or `worker` (the scrape/enrich
+# `def main` app). Each tier's image build downloads ITS OWN `web/target/universal/stage` or
 # `worker/target/universal/stage` into the build context's `stage/`, so
 # `COPY stage/` stays a single fixed path and only the launcher name differs.
 # The Play `-D` props below are harmless no-op system properties for the
@@ -155,8 +154,7 @@ CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     -Dpidfile.path=/dev/null; }; \
     if [ -d /data ]; then mkdir -p /data/logs; launch 2>> "$stderr_log"; else launch; fi
     # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` — the
-    # launcher reads it — set in each tier+country's k3s overlay (and in `fly.toml`
-    # for the retired `kinowo` redirect host), so every app can be sized
+    # launcher reads it — set in each tier+country's k3s overlay, so every app can be sized
     # independently from this one shared image. web runs a smaller heap (it no
     # longer scrapes); the worker keeps the larger one. The historical rationale
     # for the original single sizing is preserved below for reference.

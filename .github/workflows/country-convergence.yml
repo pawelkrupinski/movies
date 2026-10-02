@@ -31,9 +31,8 @@ on:
     # Poland's films), and the lane below queues rather than cancels — so starting
     # alongside the deploy, instead of after it, is what keeps a leg dispatched by
     # one push from still being queued when the next push's leg would otherwise
-    # jump ahead of it. The runner-pool cost is four concurrent jobs while the
-    # deploy runs; the deploy is a flyctl release wait, so it contends for a slot,
-    # not for CPU.
+    # jump ahead of it. The runner-pool cost is four concurrent jobs beside main's
+    # image publishing, which is a registry copy: it contends for a slot, not for CPU.
     #
     # Deploy-time dispatch is best-effort by construction. The nightly schedule below
     # is the run that is guaranteed to finish.

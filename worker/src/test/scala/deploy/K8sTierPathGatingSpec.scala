@@ -38,12 +38,12 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
 
   private def job(name: String): String = RepoFile.block(mainYml, name)
 
-  /** The `patterns:` block a tier's gate (in `preflight`, step `changed-<tier>`) hands to the
+  /** The `patterns:` block a tier's gate (in `gates`, step `changed-<tier>`) hands to the
    *  `changed-paths` action. The gates run at t=0 so the Fly release need not wait for `build-web`. */
   private def filterSet(tier: String): Vector[String] = {
-    val lines = job("preflight").linesIterator.toVector
+    val lines = job("gates").linesIterator.toVector
     val step  = lines.indexWhere(_.trim == s"id: changed-$tier")
-    withClue(s"`preflight` has no `changed-$tier` gate step: ")(step should be >= 0)
+    withClue(s"`gates` has no `changed-$tier` gate step: ")(step should be >= 0)
     val start = lines.indexWhere(_.trim == "patterns: |", step)
     withClue(s"`changed-$tier` hands no `patterns: |` block to the changed-paths action: ")(start should be >= 0)
     val indent = lines(start).takeWhile(_ == ' ').length
@@ -196,7 +196,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * has to come from the marker, and the marker has to be moved by the deploy.
    */
   "each tier's gate" should "diff from the commit that tier last deployed, not from the push's parent" in {
-    val gate = job("preflight")
+    val gate = job("gates")
     Seq("web", "worker").foreach { tier =>
       withClue(s"the $tier gate does not resolve a deployed base: ")(
         gate should include(s"id: base-$tier"))
@@ -205,7 +205,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
       withClue(s"the $tier gate asks for the wrong tier's marker: ")(
         gate should include(s"tier: $tier"))
       withClue(s"build-$tier publishes on a gate other than its own: ")(
-        job(s"build-$tier") should include(s"needs.preflight.outputs.$tier-changed"))
+        job(s"build-$tier") should include(s"needs.gates.outputs.$tier-changed"))
     }
     gate should include("uses: ./.github/actions/deployed-base")
   }
@@ -337,8 +337,8 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * (CiRunnerBudgetSpec), so dropping the `needs:` breaks two things at once.
    */
   "neither k3s build" should "start before ci is green" in {
-    job("build-web") should include("needs: [ci, preflight]")
-    job("build-worker") should include("needs: [ci, preflight]")
+    job("build-web") should include("needs: [ci, gates]")
+    job("build-worker") should include("needs: [ci, gates]")
   }
 
   /** The fold is only done once the workflows it replaced are gone. */
