@@ -232,16 +232,25 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       Indexes.ascending("bucket"),
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
     ).toFuture(), 10.seconds)
+    forget()
+    val monitor = new UptimeMonitor(Some(database), surfaceExternalWrites = true)
     try {
-      forget()
-      new UptimeMonitor(Some(database), surfaceExternalWrites = true)
       // The index work runs on a daemon thread, so give it room to have done the wrong thing.
       eventually(timeout(Span(5, Seconds)), interval(Span(150, Millis))) {
         sent("listIndexes") should be > 0
       }
       withClue("the serving app rebuilt an index it does not own: ")(sent("dropIndexes") shouldBe 0)
       expiryOf(buckets, "bucket") shouldBe Some(100L)
-    } finally Await.ready(buckets.drop().toFuture(), 10.seconds)
+    } finally {
+      // Leave nothing running on this client: the init thread goes on past the first
+      // `listIndexes` to create uptimeServiceTags' index, and a `createIndexes` landing after
+      // the NEXT case's `forget()` failed "ignore a compound index" (Main run on b25f9a2ba).
+      eventually(timeout(Span(30, Seconds)), interval(Span(100, Millis))) {
+        Thread.getAllStackTraces.keySet.asScala.exists(t => t.getName == "uptime-monitor-init" && t.isAlive) shouldBe false
+      }
+      monitor.close()
+      Await.ready(buckets.drop().toFuture(), 10.seconds)
+    }
   }
 
   it should "ignore a compound index that merely mentions the field" in {
