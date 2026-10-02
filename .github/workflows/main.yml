@@ -474,8 +474,9 @@ jobs:
                   cache-to: type=inline
 
             - name: Train its AOT cache on a replayed boot, and push it under this commit's SHA tag only
-              # The method profiles a production boot then compiles from — see the script and
-              # modules.AotTrainingMain. The corpus is the tracked one the checkout above brought.
+              # Archives the classes a running worker loads, not only the listed ones (no method
+              # profiles) — see the script and modules.AotTrainingMain. The corpus is the tracked one
+              # the checkout above brought.
               run: >-
                   scripts/ci/train-worker-aot.sh
                   ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}-untrained
