@@ -74,7 +74,8 @@ object ShowingsMarkup {
   /** A film's whole showings tree — every day, cinema group and pill `_filmShowings`
    *  lists — streamed: written straight into the response's own buffer as the body
    *  is written (see [[StreamedHtml]]), flushed after each cinema group, so no film's
-   *  markup is ever held whole.
+   *  markup is ever held whole. (A listing keeps whole cards across renders, showings
+   *  included: `FilmCardFragments`.)
    *
    *  WHY NOT TWIRL. As a template this was a fragment object per static run of markup
    *  per loop iteration, plus an escaped `Html` per interpolated value: on a
@@ -87,32 +88,16 @@ object ShowingsMarkup {
    *  in every cinema link, doubled each film's builder mid-render (23 MB of copying on
    *  New York). The entity renders the same glyph, and `textContent` — what the
    *  filters read a cinema's name from — already has it decoded. */
-  def days(film: FilmSchedule, city: models.City, fragments: ShowingsFragments): play.twirl.api.Html = {
+  def days(film: FilmSchedule, city: models.City): play.twirl.api.Html = {
     val zone   = city.zoneId
     val locale = city.country.language
-    // What only rendering needs, worked out only when rendering: a film written from
-    // the cache costs its key and a lookup, nothing more.
-    def commonToks   = FilmFormat.tokensToStrip(film)
-    def firstListing = firstListings(film.showings)
-    val streamed = fragments match {
-      // Nothing keeps the tree, so it is never held as a string: it is written into the
-      // body as the body is written.
-      case ShowingsFragments.Uncached =>
-        new StreamedHtml((out, flush) => writeDays(film, commonToks, firstListing, zone, locale, out, flush))
-      // Kept across renders, so built once as the string the cache holds — and written
-      // from it, unrendered, on every render that finds the film unchanged.
-      case cache =>
-        val text = cache.fragment(ShowingsFragments.Key.of(film, city)) {
-          val out = new java.lang.StringBuilder(16 * 1024)
-          writeDays(film, commonToks, firstListing, zone, locale, out, () => ())
-          out.toString
-        }
-        new StreamedHtml((out, flush) => { out.append(text); flush() })
-    }
+    val commonToks   = FilmFormat.tokensToStrip(film)
+    val firstListing = firstListings(film.showings)
     // Wrapped in a plain `Html`: a template passes a value through untouched only when
     // its class is exactly `Html`, and anything else — a subclass included — it
     // escapes as text (`_display_`), which would print this whole tree as markup.
-    new play.twirl.api.Html(List(streamed))
+    new play.twirl.api.Html(List(new StreamedHtml((out, flush) =>
+      writeDays(film, commonToks, firstListing, zone, locale, out, flush))))
   }
 
   private def writeDays(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],

@@ -1,5 +1,5 @@
 @import controllers.{FilmSchedule, FilmHref, ShowingsMarkup}
-@(film: FilmSchedule)(implicit city: models.City, fragments: controllers.ShowingsFragments = controllers.ShowingsFragments.Uncached)
+@(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
    `_filmCards` (the listing) and `_filmDetailContent` (the per-film page).
@@ -37,6 +37,6 @@
    about what a cap should be.
 *@
 
-@ShowingsMarkup.days(film, city, fragments)
+@ShowingsMarkup.days(film, city)
 <a href="@FilmHref.forSlug(film.slug, film.movie.title)" class="showings-more" style="display:none"></a>
 
