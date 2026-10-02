@@ -21,6 +21,8 @@
   </div>
 </div>
 
+@_showingsHydrate(minifier)
+
 @_minified(minifier) {
 <script>
   // Wrapped in an IIFE to keep the per-view locals (`INDEX`,
@@ -97,7 +99,7 @@
     };
   }
 
-  // A pill's clock time is the text it opens with (`ShowtimeBadge` carries no
+  // A pill's clock time is the text it opens with (`ShowingsMarkup` carries no
   // `data-time`: on a 52k-pill page the duplicate was ~1 MB).
   function slotTime(badge) {
     const first = badge.firstChild;
@@ -407,7 +409,7 @@
   // `.date-group` carries that instant for 00:00 (`data-expires-from`), so an
   // ordinary slot lapses at that plus its clock time; one the sum would get wrong
   // (a DST changeover, a past-midnight screening filed under the day before)
-  // carries its own `data-expires`, which wins. See `ShowtimeBadge`.
+  // carries its own `data-expires`, which wins. See `ShowingsMarkup`.
   //
   // The reference clock is the SERVER's render instant carried forward by the
   // browser's elapsed time — deliberately NOT `Date.now()` on its own. A
@@ -542,7 +544,7 @@
   window.pruneExpiredShowtimes = pruneExpiredShowtimes;
   window.scheduleExpiryPrune   = scheduleExpiryPrune;
   window.scheduleDayRollover   = scheduleDayRollover;
-  // A pill's clock time, read the way the view reads it (`ShowtimeBadge` emits no
+  // A pill's clock time, read the way the view reads it (`ShowingsMarkup` emits no
   // `data-time`) — so a page test asserting on times cannot drift from the view.
   window.slotTime              = slotTime;
   })();

@@ -5337,8 +5337,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // `ShowingsMarkup` sends a booking link as its group's prefix + its own suffix, a
+  // cinema's name only as its label, and its page for the film only on its first
+  // day. `_showingsHydrate` puts all three back before any script reads the tree.
+  private val HydratedShowings =
+    """(() => {
+      |  const groups = [...document.querySelectorAll('.cinema-group')];
+      |  const label  = g => g.querySelector('.cinema-label').textContent.replace(/\s*↗\s*$/, '').trim();
+      |  return groups.length > 0 &&
+      |    groups.every(g => g.dataset.cinema && g.dataset.cinema === label(g)) &&
+      |    [...document.querySelectorAll('a.badge-time')].every(a => /^https?:\/\//.test(a.getAttribute('href') || '')) &&
+      |    [...document.querySelectorAll('.cinema-label-link')].every(a => /^https?:\/\//.test(a.getAttribute('href') || ''));
+      |})()""".stripMargin
+
+  "the showings tree" should "come back whole in the browser: names, booking links, cinema pages" in {
+    onPath("/") { page => page.evalBool(HydratedShowings) shouldBe true }
+  }
+
+  it should "come back whole on a film page too" in {
+    onPath(s"/movie/${tools.Slugify(firstFixtureTitle)}") { page => page.evalBool(HydratedShowings) shouldBe true }
+  }
+
   // A pill carries no `data-expires` of its own unless its day's base would get it
-  // wrong (`ShowtimeBadge`): it lapses at `.date-group[data-expires-from]` plus its
+  // wrong (`ShowingsMarkup`): it lapses at `.date-group[data-expires-from]` plus its
   // clock time, so moving the day's base is what expires it — and only it and the
   // slots before it, never a later one.
   it should "lapse a pill at its day's base plus its clock time" in {

@@ -1,0 +1,47 @@
+@(minifier: tools.Minifier)
+@*
+   Puts back what `ShowingsMarkup` leaves out of every showings tree on the page,
+   so everything after it reads the DOM it always did. Included right AFTER the
+   showings (the listing's grid, the film page's showtimes section) and BEFORE
+   any script that reads them: it runs as the parser reaches it, synchronously,
+   so no filter, index or day clone ever sees a pill without its link or a group
+   without its name.
+
+   - `data-cinema` on each `.cinema-group`, from its visible label: the name is
+     sent once, as text a crawler reads, not again as an attribute.
+   - each booking link's `href`, as its group's `data-u` prefix + its own
+     `data-s` — written onto the element, so a middle-click, a long-press menu,
+     "copy link" and keyboard focus all see an ordinary link.
+   - the cinema's page for the film on every day's label, from the one listing
+     that carries it (the cinema's first day, within the same film).
+*@
+@_minified(minifier) {
+<script>
+  (function () {
+    var groups = document.querySelectorAll('.cinema-group');
+    for (var i = 0; i < groups.length; i++) {
+      var group = groups[i];
+      var label = group.querySelector('.cinema-label');
+      if (label) group.dataset.cinema = label.textContent.replace(/\s*↗\s*$/, '').trim();
+      var prefix = group.dataset.u;
+      if (prefix === undefined) continue;
+      var pills = group.querySelectorAll('a[data-s]');
+      for (var j = 0; j < pills.length; j++) pills[j].setAttribute('href', prefix + pills[j].dataset.s);
+    }
+    // Per film: a cinema's first listing carries its page, later days borrow it.
+    // Document order is date order, so the carrier is always met first.
+    var pages = new Map();
+    var links = document.querySelectorAll('.cinema-label-link');
+    for (var k = 0; k < links.length; k++) {
+      var link  = links[k];
+      var day   = link.closest('.date-group');
+      var film  = day ? day.parentElement : null;
+      var name  = link.closest('.cinema-group').dataset.cinema;
+      var known = pages.get(film) || new Map();
+      pages.set(film, known);
+      if (link.hasAttribute('href')) known.set(name, link.getAttribute('href'));
+      else if (known.has(name)) link.setAttribute('href', known.get(name));
+    }
+  })();
+</script>
+}

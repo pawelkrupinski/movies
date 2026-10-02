@@ -1,4 +1,4 @@
-@import controllers.{FilmFormat, FilmSchedule, CardFormat, FilmHref, ShowtimeBadge}
+@import controllers.{FilmFormat, FilmSchedule, CardFormat, FilmHref, ShowingsMarkup}
 @(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
@@ -23,16 +23,19 @@
    THE LOOPS BELOW ARE WRITTEN ON ONE LINE, AND THAT IS LOAD-BEARING. Twirl emits a
    template's indentation verbatim, once per iteration, and these iterate per day,
    per cinema and per showtime: indented, they were 2.3 MB of New York's 19.9 MB
-   page. The pill itself is `ShowtimeBadge`, which says why it is as terse as it is.
+   page. What the markup leaves out for the same reason — booking-URL prefixes,
+   `data-cinema`, repeated cinema links — `ShowingsMarkup` lists, and
+   `_showingsHydrate` puts back in the browser before anything reads it.
 
    EVERY cinema is rendered, on both hosts. What narrows the list is the
    visitor's own Filtry selection, applied client-side: the listing does it in
    `_repertoireView`'s `applyFilters`, the film page in the one `film.scala.html`
-   defines. Both hide with inline `style.display` keyed on `data-cinema`, so
-   this partial stays a plain render of the whole tree and neither host has to
-   agree with the other about what a cap should be.
+   defines. Both hide with inline `style.display` keyed on `data-cinema` (which
+   `_showingsHydrate` copies from each group's label), so this partial stays a
+   plain render of the whole tree and neither host has to agree with the other
+   about what a cap should be.
 *@
-@defining(FilmFormat.tokensToStrip(film)) { commonToks =>
-@for((date, cinemaShowtimesList) <- film.showings) {<div class="date-group" data-date="@date" data-expires-from="@ShowtimeBadge.expiresFrom(date, city.zoneId)"><div class="date-label">@CardFormat.date(date, film.asOf, city.country.language)</div>@for(cinemaShowtimes <- cinemaShowtimesList) {<div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName"><div class="cinema-label">@film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {case Some((_, url)) => {<a href="@url" target="_blank" rel="nofollow" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a>} case None => {@cinemaShowtimes.cinema.displayName}}</div><div>@for(slot <- cinemaShowtimes.showtimes) {@Html(ShowtimeBadge.html(slot, date, city.zoneId, commonToks))}</div></div>}</div>}
+@defining((FilmFormat.tokensToStrip(film), ShowingsMarkup.firstListings(film.showings))) { case (commonToks, firstListing) =>
+@for((date, cinemaShowtimesList) <- film.showings) {<div class="date-group" data-date="@date" data-expires-from="@ShowingsMarkup.expiresFrom(date, city.zoneId)"><div class="date-label">@CardFormat.date(date, film.asOf, city.country.language)</div>@for(cinemaShowtimes <- cinemaShowtimesList) {@defining(ShowingsMarkup.urlPrefix(cinemaShowtimes.showtimes)) { prefix =><div class="cinema-group"@if(prefix.nonEmpty){ data-u="@prefix"}><div class="cinema-label">@film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {case Some((_, url)) if firstListing.get(cinemaShowtimes.cinema).contains(date) => {<a href="@url" target="_blank" rel="nofollow" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a>} case Some(_) => {<a target="_blank" rel="nofollow" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a>} case None => {@cinemaShowtimes.cinema.displayName}}</div><div>@for(slot <- cinemaShowtimes.showtimes) {@Html(ShowingsMarkup.badge(slot, date, city.zoneId, commonToks, prefix))}</div></div>}}</div>}
 <a href="@FilmHref.forSlug(film.slug, film.movie.title)" class="showings-more" style="display:none"></a>
 }
