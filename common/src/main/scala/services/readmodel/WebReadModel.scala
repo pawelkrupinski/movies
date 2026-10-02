@@ -4,7 +4,7 @@ import models.{Cinema, City, CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -33,7 +33,8 @@ class WebReadModel(
     // The backstop reload and the cold-start retry cadences (`KINOWO_READMODEL_RELOAD_SECONDS` /
     // `…_COLD_RETRY_SECONDS`, resolved by the web root); the compiled-in ones for specs.
     reloadInterval:    ReadModelReloadInterval    = WebReadModel.DefaultReloadInterval,
-    coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval) extends Stoppable with Logging {
+    coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval,
+    driftSettle:       WebReadModel.DriftSettle   = WebReadModel.DefaultDriftSettle) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -288,35 +289,48 @@ class WebReadModel(
 
   /** Full reload from the derived collections — boot hydrate, periodic backstop,
    *  and the `/rehydrate` endpoint. Additive-then-evict so a page render mid-
-   *  reload never sees an empty corpus (mirrors `MovieCache.rehydrate`); a
-   *  transient empty result on a warm cache is treated as a Mongo hiccup and
-   *  skipped. Returns the movie-document count. */
+   *  reload never sees an empty corpus (mirrors `MovieCache.rehydrate`). A read
+   *  that comes back INCOMPLETE adds what it reached and evicts nothing: an
+   *  incomplete keyset scan holds only the pages before the failure, and evicting
+   *  against it would drop every row after them from a model serving them
+   *  correctly. Returns the movie-document count.
+   *
+   *  ONE CORPUS ON THE HEAP, NOT TWO. The screenings are STREAMED a page at a time
+   *  and written over the live rows, never buffered whole: web-us heap-OOMed on
+   *  2026-10-02 34s into a drift reload, its dump holding 196k `CityScreening`s
+   *  for a 101k corpus — the buffered read and its `groupBy` beside the live
+   *  buckets, ~400 MB each, in a 1 GiB heap. What the stream keeps per row is its
+   *  id, which the row already holds. */
   def reload(): Int = {
-    val ms = reader.findAllMovies()
-    val ss = reader.findAllScreenings().map(onCurrentPage)
-    if (ms.isEmpty && ss.isEmpty && !movies.isEmpty) {
-      logger.warn("WebReadModel reload: read model returned empty while the cache is warm — " +
-        "treating as a transient Mongo failure; cache left intact.")
-      return movies.size
-    }
-    // Movies: additive put + evict the ids that disappeared.
+    val (ms, moviesComplete) = reader.findAllMoviesChecked()
     ms.foreach(m => movies.put(m._id, m))
-    val liveMovieIds = ms.iterator.map(_._id).toSet
-    movies.keySet().asScala.toSeq.filterNot(liveMovieIds).foreach(movies.remove)
-    // Screenings: rebuild each city bucket additively, evict missing, drop empty
-    // buckets.
-    val nextByCity = ss.groupBy(_.city)
-    nextByCity.foreach { case (city, items) =>
-      val bucket  = byCity.computeIfAbsent(city, _ => new ConcurrentHashMap[String, CityScreening]())
-      items.foreach(s => bucket.put(s._id, s))
-      val liveIds = items.iterator.map(_._id).toSet
-      bucket.keySet().asScala.toSeq.filterNot(liveIds).foreach(bucket.remove)
+    if (moviesComplete) {
+      val liveMovieIds = ms.iterator.map(_._id).toSet
+      movies.keySet().asScala.toSeq.filterNot(liveMovieIds).foreach(movies.remove)
     }
-    byCity.keySet().asScala.toSeq.filterNot(nextByCity.keySet).foreach(byCity.remove)
-    // Rebuild the film->cities index exactly; this is the point at which the
-    // incrementally-grown superset is made true again.
-    filmCities.clear()
-    ss.foreach(s => indexFilmCity(s.filmId, s.city))
+
+    val seenByCity      = new java.util.HashMap[String, java.util.HashSet[String]]()
+    val nextFilmCities  = new java.util.HashMap[String, java.util.HashSet[String]]()
+    val screeningsComplete = reader.foreachScreening { projected =>
+      val s = onCurrentPage(projected)
+      byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]()).put(s._id, s)
+      seenByCity.computeIfAbsent(s.city, _ => new java.util.HashSet[String]()).add(s._id)
+      nextFilmCities.computeIfAbsent(s.filmId, _ => new java.util.HashSet[String]()).add(s.city)
+    }
+    if (screeningsComplete) {
+      byCity.forEach { (city, bucket) =>
+        val seen = seenByCity.get(city)
+        if (seen == null) byCity.remove(city)
+        else bucket.keySet().removeIf(id => !seen.contains(id))
+      }
+      // Rebuild the film->cities index exactly; this is the point at which the
+      // incrementally-grown superset is made true again.
+      filmCities.clear()
+    }
+    nextFilmCities.forEach((filmId, cities) => cities.forEach(city => indexFilmCity(filmId, city)))
+    if (!moviesComplete || !screeningsComplete)
+      logger.warn(s"WebReadModel reload: incomplete read (movies complete=$moviesComplete, " +
+        s"screenings complete=$screeningsComplete) — added what was read, evicted nothing it could not see.")
     // Every city is re-derived, so no per-city stamp survives as evidence of
     // anything; the floor alone answers for all of them.
     cityStamps.clear()
@@ -363,16 +377,34 @@ class WebReadModel(
   private[readmodel] def backstopTick(): Unit = {
     val streamsLive = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
     if (!streamsLive) { reload(); return }
+    drift().foreach { first =>
+      // A COUNT TAKEN MID-WRITE IS NOT DRIFT. The count is read straight off the server, the
+      // model only once the write's change event has been applied, so a count landing between
+      // the two sees the database a row or two ahead. That was every drift reload web-us ever
+      // logged (3 in the 7 days to 2026-10-02: isolated, db ahead by 1-2 screenings, each in the
+      // same minute as a worker prune burst, never at two consecutive ticks) -- a full corpus
+      // decode bought for an event already on its way. A lost event is still missing after
+      // the settle; an in-flight one is not.
+      Thread.sleep(driftSettle.value.toMillis)
+      drift() match {
+        case Some(confirmed) =>
+          logger.info(s"WebReadModel backstop: drift detected — reloading ($confirmed).")
+          reload()
+        case None =>
+          logger.info(s"WebReadModel backstop: count mismatch settled within ${driftSettle.value} ($first) — no reload.")
+      }
+    }
+  }
+
+  /** The mismatch between the server-side counts and the model, described, or `None` when they
+   *  agree. An unavailable count (negative) is a mismatch: it is no evidence the model is right. */
+  private def drift(): Option[String] = {
     val dbMovies     = reader.countMovies()
     val dbScreenings = reader.countScreenings()
     val drifted =
       dbMovies     < 0 || dbMovies     != movies.size.toLong ||
       dbScreenings < 0 || dbScreenings != liveScreeningCount.toLong
-    if (drifted) {
-      logger.info(s"WebReadModel backstop: drift detected — reloading " +
-        s"(movies mem=${movies.size}/db=$dbMovies, screenings mem=$liveScreeningCount/db=$dbScreenings).")
-      reload()
-    }
+    Option.when(drifted)(s"movies mem=${movies.size}/db=$dbMovies, screenings mem=$liveScreeningCount/db=$dbScreenings")
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -416,4 +448,9 @@ class WebReadModel(
 object WebReadModel {
   val DefaultReloadInterval: ReadModelReloadInterval       = ReadModelReloadInterval(30.minutes)
   val DefaultColdRetryInterval: ReadModelColdRetryInterval = ReadModelColdRetryInterval(30.seconds)
+
+  /** How long the backstop waits before re-counting a mismatch (see `backstopTick`): long enough
+   *  for a write's change event to reach the model, short enough to hold its one thread briefly. */
+  final case class DriftSettle(value: FiniteDuration) extends AnyVal
+  val DefaultDriftSettle: DriftSettle = DriftSettle(5.seconds)
 }

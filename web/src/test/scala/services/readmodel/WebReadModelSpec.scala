@@ -4,6 +4,8 @@ import models.{City, CityScreening, ResolvedMovie, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.concurrent.duration.Duration
+
 /**
  * Unit cover for the read cache's read surface. `allScreenings()` exists for the
  * dev `/debug/readmodel` dump, which needs every cached screening across cities
@@ -183,7 +185,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
   private def started(repository: InMemoryReadModelRepository): WebReadModel = {
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero))
     rm.start() // hydrates once + opens the watches; reset the counters so we only
     repository.findAllMoviesCalls.set(0)     // measure what the backstop tick itself does
     repository.findAllScreeningsCalls.set(0)
@@ -231,6 +233,91 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
 
     repository.findAllScreeningsCalls.get() should be >= 1
     rm.stop()
+  }
+
+  // 2026-10-02: every drift reload web-us logged in a week was a count read mid-write -- the
+  // database a screening or two ahead of a change event still on its way.
+  it should "not reload over a mismatch that settles once the in-flight event lands" in {
+    val counts = new java.util.concurrent.atomic.AtomicInteger(0)
+    val repository = new InMemoryReadModelRepository {
+      override def countScreenings(): Long =
+        super.countScreenings() + (if (counts.getAndIncrement() == 0) 1 else 0)
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    val rm = started(repository)
+
+    rm.backstopTick()
+
+    repository.findAllScreeningsCalls.get() shouldBe 0
+    rm.stop()
+  }
+
+  // ── reload: one corpus on the heap, not two ─────────────────────────────────
+  //
+  // 2026-10-02: web-us heap-OOMed 34s into a drift reload. The reload buffered all of
+  // `web_screenings` (~400 MB decoded for the US) and grouped it by city while the live
+  // buckets still held the previous ~400 MB, which a 1 GiB heap cannot hold. Streamed a page
+  // at a time and written over the live rows, the reload's transient is one page.
+
+  "reload" should "stream the screenings rather than buffer the whole collection" in {
+    val buffered = new java.util.concurrent.atomic.AtomicInteger(0)
+    val repository = new InMemoryReadModelRepository {
+      override def findAllScreenings(): Seq[CityScreening] = { buffered.incrementAndGet(); super.findAllScreenings() }
+      override def foreachScreening(f: CityScreening => Unit): Boolean = { super.findAllScreenings().foreach(f); true }
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
+    val rm = new WebReadModel(repository)
+
+    rm.reload()
+
+    buffered.get() shouldBe 0
+    rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2")
+  }
+
+  it should "still evict the rows and cities a complete read no longer holds" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s2", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s3", "belle|2021", "krakow"))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    repository.deleteScreening("s2")
+    repository.deleteScreening("s3")
+    rm.reload()
+
+    rm.screeningsForCity("wroclaw").map(_._id) shouldBe Seq("s1")
+    rm.screeningsForCity("krakow") shouldBe empty
+    rm.allScreenings().map(_._id) shouldBe Seq("s1")
+  }
+
+  // An incomplete keyset scan hands back only the pages it reached. Evicting against that
+  // would drop every row past the failure from a model that was serving them correctly.
+  it should "keep the rows it holds when the screenings read comes back incomplete" in {
+    @volatile var screeningsFail = false
+    // Both read shapes fail the way `MongoReadModelRepository`'s do: the buffered one empty,
+    // the streamed one partway through and reporting it.
+    val repository = new InMemoryReadModelRepository {
+      override def findAllScreenings(): Seq[CityScreening] =
+        if (screeningsFail) Seq.empty else super.findAllScreenings()
+      override def foreachScreening(f: CityScreening => Unit): Boolean =
+        if (!screeningsFail) super.foreachScreening(f)
+        else { super.findAllScreenings().take(1).foreach(f); false }
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    screeningsFail = true
+    rm.reload()
+
+    rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2")
   }
 
   // ── Cold retry: a failed boot read must not become an empty corpus ───────────
