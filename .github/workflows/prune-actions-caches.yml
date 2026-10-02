@@ -1,0 +1,64 @@
+name: Prune Actions caches
+
+# Keeps main's Actions caches under GitHub's 10 GB cap by deleting the superseded
+# per-commit entries (sbt-target-*-<hash>, gradle-home-…-<sha>) once the workflows that
+# save them finish, keeping the newest of each family — the only one a restore-keys
+# prefix ever restores. Over the cap, GitHub evicts least-recently-used entries, and the
+# first to go were the Android jobs' Gradle homes, so every Android run re-dexed and
+# re-ran R8. See scripts/ci/prune-actions-caches.sh for what is and isn't pruned.
+on:
+    workflow_run:
+        # The workflows that save per-commit caches on main. The daily run catches the
+        # rest: Nightly stress, the OG-card and fixture-artifact jobs, and the convergence
+        # workflows — Main dispatches those with the GITHUB_TOKEN, whose runs raise no
+        # workflow_run (ConvergenceBisectTriggerSpec).
+        workflows:
+            - Main
+            - Android
+            - iOS
+            - Order independence
+            - Record scrape fixtures
+        types: [completed]
+        branches: [main]
+    schedule:
+        - cron: '17 4 * * *'
+    workflow_dispatch:
+
+# One prune at a time; a newer one sees everything an older one would have.
+concurrency:
+    group: prune-actions-caches
+    cancel-in-progress: true
+
+permissions:
+    actions: write
+    contents: read
+
+jobs:
+    prune:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+            - name: Delete superseded cache entries
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: scripts/ci/prune-actions-caches.sh
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: prune
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
