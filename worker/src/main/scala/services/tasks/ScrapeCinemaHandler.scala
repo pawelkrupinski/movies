@@ -65,9 +65,14 @@ class ScrapeCinemaHandler(
         // plan — not here. The run doc is the per-cinema mutex, so a duplicate
         // ScrapeCinema while a run is in flight just no-ops. A plan throw can't
         // escape (it records the outcome itself), but guard anyway so the queue
-        // never reschedules.
+        // never reschedules. A shutdown's interrupt is no fault: kept set for the task loop to stop on.
         try { val _ = planner.plan(cinemaName) }
-        catch { case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e) }
+        catch {
+          case _: InterruptedException =>
+            Thread.currentThread().interrupt()
+            logger.info(s"chunked plan for $cinemaName interrupted — the worker is stopping")
+          case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e)
+        }
         return Done
       case None =>
     }

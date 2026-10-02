@@ -179,11 +179,16 @@ final class ShadowLookupFill(
     r
   }
 
-  /** Start a round in the background unless one is running. */
+  /** Start a round in the background unless one is running. A worker's shutdown interrupts a round
+   *  mid-sleep or mid-fetch: that ends it, interrupt re-asserted, rather than escaping `NonFatal` as an
+   *  uncaught exception Sentry reports as FATAL on every restart. */
   def start(): Unit =
     if (running.compareAndSet(false, true))
       executor.execute { () =>
-        try round() catch { case NonFatal(e) => logger.warn(s"identity shadow fill: round failed: $e") }
+        try round() catch {
+          case _: InterruptedException => Thread.currentThread().interrupt()
+          case NonFatal(e)             => logger.warn(s"identity shadow fill: round failed: $e")
+        }
         finally running.set(false)
       }
 }

@@ -144,6 +144,19 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     f.effectiveRate shouldBe IdentityShadowLookupRate(600)
   }
 
+  "a background round" should "end quietly when the worker's shutdown interrupts it, leaving the interrupt set, not escape as uncaught" in {
+    var interrupt = true
+    val rounds    = mutable.Buffer.empty[ShadowLookupRound]
+    val shadow    = fill(store(), new Service, rounds = rounds,
+      beforeRound = () => if (interrupt) throw new InterruptedException("sleep interrupted"))
+    noException should be thrownBy shadow.start()
+    Thread.interrupted() shouldBe true // re-asserted for the executor, and cleared for this test's thread
+    rounds shouldBe empty
+    interrupt = false
+    shadow.start() // the next start runs: the interrupted round let go of `running`
+    rounds should have size 1
+  }
+
   "the pipeline's own requests" should "wait on a shared paced host no longer than one interval per shadow ask, the shadow capped by its rate" in {
     // A virtual clock: sleeping advances it. The pipeline asks the paced host every interval — at
     // the host's full capacity — and the shadow at its capped rate, both through ONE shared pacer.

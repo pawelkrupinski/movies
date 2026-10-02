@@ -187,6 +187,23 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     fresh.isFresh(key, FreshnessKind.CinemaScrape, specClock.instant()) shouldBe false
   }
 
+  // A worker's shutdown interrupts a chunked plan mid-fetch or mid-enqueue. It logged ERROR, so
+  // every restart filed a Sentry issue (KINOWO-1F, KINOWO-2R) for the shutdown it was obeying.
+  it should "let a chunked plan interrupted by shutdown go without an ERROR, keeping the interrupt" in {
+    val interrupted = new InMemoryChunkScrapeStore with tools.contracts.FailsOnPurpose {
+      override def activeRun(cinema: String): Option[ChunkRun] = throw new InterruptedException("sleep interrupted")
+    }
+    val scraper = new FakeChunkedScraper(Map("k" -> Nil))
+    val planner = new ChunkScrapePlanner(Map(Multikino.displayName -> scraper), interrupted, new InMemoryTaskQueue, _ => (),
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = specClock), clock = specClock)
+    val h = new ScrapeCinemaHandler(Map.empty, freshRunner(), new InMemoryFreshnessStore, clock = specClock, chunkPlanner = Some(planner))
+    val errors = tools.LogCapture.thisThread(classOf[ScrapeCinemaHandler].getName, Some(ch.qos.logback.classic.Level.ERROR)) {
+      h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    }
+    Thread.interrupted() shouldBe true // re-asserted for the task loop's stop, and cleared for this test's thread
+    errors shouldBe empty
+  }
+
   // Starvation regression (prod 2026-07-24 → 07-27, kinowo_de + kinowo_uk). A cinema
   // that never marks fresh has `lastFetchedAt = None`, and the reaper orders the due
   // set oldest-first with never-fetched AHEAD of every timestamp — so a permanently
