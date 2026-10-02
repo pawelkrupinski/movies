@@ -318,7 +318,7 @@ class MovieController( cc: ControllerComponents,
       // started -- under the same validator, so a client holding the earlier
       // copy keeps it until the city's stamp moves or its midnight arrives. That
       // is the same age the branch above serves from its blob between two stamps,
-      // and the page is built for it: `data-expires` prunes the lapsed showtimes
+      // and the page is built for it: each slot's expiry prunes the lapsed showtimes
       // client-side and `data-next-day` retires the document at midnight. What
       // it costs that the blob branch does not is byte-identity between two
       // clients holding one validator, which only a SHARED cache could observe

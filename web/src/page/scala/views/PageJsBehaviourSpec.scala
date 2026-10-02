@@ -3162,7 +3162,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool(
         "[...document.querySelectorAll('.badge-time')]" +
           ".filter(b => b.style.display !== 'none')" +
-          ".every(b => { const [h,m] = (b.dataset.time||'').split(':').map(Number); return h*60+m >= 18*60; })"
+          ".every(b => { const [h,m] = slotTime(b).split(':').map(Number); return h*60+m >= 18*60; })"
       ) shouldBe true
     }
   }
@@ -4008,7 +4008,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |    let best = null;
           |    c.querySelectorAll('.date-group[data-date="$day"] .badge-time').forEach(b => {
           |      if (b.style.display === 'none') return;
-          |      const t = (b.dataset.time || '').trim();
+          |      const t = slotTime(b);
           |      if (t && (best === null || t < best)) best = t;
           |    });
           |    return best;
@@ -5337,6 +5337,28 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A pill carries no `data-expires` of its own unless its day's base would get it
+  // wrong (`ShowtimeBadge`): it lapses at `.date-group[data-expires-from]` plus its
+  // clock time, so moving the day's base is what expires it — and only it and the
+  // slots before it, never a later one.
+  it should "lapse a pill at its day's base plus its clock time" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.evalBool(
+        """(() => {
+          |  const b = [...document.querySelectorAll('.badge-time')].find(x => !x.dataset.expires);
+          |  const day = b.closest('.date-group');
+          |  const [h, m] = slotTime(b).split(':').map(Number);
+          |  day.dataset.expiresFrom = String(showtimeNow() - 1 - (h * 60 + m) * 60000);
+          |  const later = [...day.querySelectorAll('.badge-time')]
+          |    .filter(x => !x.dataset.expires && slotTime(x) > slotTime(b));
+          |  pruneExpiredShowtimes();
+          |  return !b.isConnected && later.every(x => x.isConnected);
+          |})()""".stripMargin) shouldBe true
+    }
+  }
+
   it should "take its cinema-group, date-group and film card with it when it was the last one" in {
     onPath("/") { page =>
       clearLocalStorage(page)
@@ -5607,7 +5629,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   /** Each visible card's earliest VISIBLE showtime on `day`, in current DOM
    *  order — the key `sortByEarliestVisible` claims to have sorted on, read back
-   *  off the rendered grid. Reads `data-time` (what `badgeFacts` reads) rather
+   *  off the rendered grid. Reads `slotTime` (what `badgeFacts` reads) rather
    *  than badge text, which also carries the format chip. Cards showing nothing
    *  on `day` contribute nothing. */
   private def visibleEarliestTimes(page: CdpPage, day: String): Seq[String] =
@@ -5621,7 +5643,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         |        if (cg.style.display === 'none') return;
         |        cg.querySelectorAll('.badge-time').forEach(b => {
         |          if (b.style.display === 'none') return;
-        |          const t = (b.dataset.time || '').trim();
+        |          const t = slotTime(b);
         |          if (t && (best === null || t < best)) best = t;
         |        });
         |      });

@@ -279,14 +279,14 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
           const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ').filter(Boolean);
           const expected = format.filter((t) => !common.includes(t));
           if (shown.join(' ') !== expected.join(' ')) {
-            wrong.push(`${card.getAttribute('data-title')} ${badge.getAttribute('data-time')}: shown "${shown.join(' ')}" want "${expected.join(' ')}"`);
+            wrong.push(`${card.getAttribute('data-title')} ${(badge.firstChild?.nodeValue ?? '').trim()}: shown "${shown.join(' ')}" want "${expected.join(' ')}"`);
           }
           // A film screened more than one way must say so on every pill that
           // carries a version — that is the whole point of keeping the tag.
           if (filmVersions.size > 1) {
             for (const t of format) {
               if (VERSIONS.has(t) && !shown.includes(t)) {
-                wrong.push(`${card.getAttribute('data-title')} ${badge.getAttribute('data-time')}: lost ${t} on a mixed film`);
+                wrong.push(`${card.getAttribute('data-title')} ${(badge.firstChild?.nodeValue ?? '').trim()}: lost ${t} on a mixed film`);
               }
             }
           }

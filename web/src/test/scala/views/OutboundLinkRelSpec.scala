@@ -21,8 +21,9 @@ import java.time.{LocalDate, LocalDateTime}
  * plumbing — so passing crawl equity down them is pure leakage, and the volume
  * alone reads as a link farm to a crawler sizing up a young domain.
  *
- * `noopener` rides along on the showings links, which had `target="_blank"`
- * without it.
+ * The showings links — one per showtime, 52k on New York — carry `nofollow` and
+ * `target="_blank"` but not `noopener`: every supported browser applies it to a
+ * `target="_blank"` link on its own, and on that page the word was 0.6 MB.
  */
 class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
 
@@ -68,14 +69,14 @@ class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
     val html = views.html._filmShowings(schedule()).body
     html should include ("""href="https://helios.pl/book/1"""")
     externalAnchors(html).filter(_.contains("badge-time")) should not be empty
-    all (externalAnchors(html)) should include ("""rel="nofollow noopener"""")
+    all (externalAnchors(html)) should include ("""target="_blank" rel="nofollow"""")
   }
 
   it should "nofollow the cinema's own page for the film" in {
     val html = views.html._filmShowings(schedule(Seq(Helios -> "https://helios.pl/film/test"))).body
     val label = externalAnchors(html).filter(_.contains("cinema-label-link"))
     label should have size 1
-    all (label) should include ("""rel="nofollow noopener"""")
+    all (label) should include ("""target="_blank" rel="nofollow"""")
   }
 
   it should "leave the internal 'more showings' link followable" in {

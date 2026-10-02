@@ -97,10 +97,17 @@
     };
   }
 
+  // A pill's clock time is the text it opens with (`ShowtimeBadge` carries no
+  // `data-time`: on a 52k-pill page the duplicate was ~1 MB).
+  function slotTime(badge) {
+    const first = badge.firstChild;
+    return first && first.nodeType === Node.TEXT_NODE ? first.nodeValue.trim() : '';
+  }
+
   // Per-slot facts. Re-reading dataset.format / re-parsing "HH:MM" on every
   // pass adds up over ~1500 badges, and none of it ever changes.
   function badgeFacts(badge, cinema) {
-    const time  = (badge.dataset.time || '').trim();
+    const time  = slotTime(badge);
     const colon = time.indexOf(':');
     const room  = badge.dataset.room || '';
     return {
@@ -395,9 +402,12 @@
   //
   // The page is a snapshot: the server dropped everything already past when it
   // rendered, but a tab left open through the evening keeps listing screenings
-  // that have since started. Every `.badge-time` carries `data-expires` — the
-  // epoch millis at which it stops counting as upcoming (start + the 30-min
-  // `models.Showtime.Grace` window), resolved in the city's timezone.
+  // that have since started. A slot stops counting as upcoming at its start + the
+  // 30-min `models.Showtime.Grace` window, resolved in the city's timezone. Its
+  // `.date-group` carries that instant for 00:00 (`data-expires-from`), so an
+  // ordinary slot lapses at that plus its clock time; one the sum would get wrong
+  // (a DST changeover, a past-midnight screening filed under the day before)
+  // carries its own `data-expires`, which wins. See `ShowtimeBadge`.
   //
   // The reference clock is the SERVER's render instant carried forward by the
   // browser's elapsed time — deliberately NOT `Date.now()` on its own. A
@@ -412,14 +422,25 @@
 
   function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }
 
+  // Epoch millis at which `badge` lapses, or Infinity when the page cannot say.
+  function slotExpiresAt(badge) {
+    if (badge.dataset.expires) return parseInt(badge.dataset.expires, 10);
+    const day  = badge.closest('.date-group');
+    const from = day ? parseInt(day.dataset.expiresFrom, 10) : NaN;
+    const time = slotTime(badge);
+    const colon = time.indexOf(':');
+    if (isNaN(from) || colon < 0) return Infinity;
+    return from + (parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)) * 60000;
+  }
+
   // Lapsed slots are REMOVED, not hidden: `applyFilters` decides visibility from
   // the filter state alone, and would happily show a `display:none` badge again
   // on the next pass. Taking them out of the DOM keeps expiry out of the filter
   // cascade entirely. Returns how many went.
   function removeExpired(nowMs) {
     let removed = 0;
-    for (const badge of document.querySelectorAll('.badge-time[data-expires]')) {
-      if (parseInt(badge.dataset.expires, 10) <= nowMs) { badge.remove(); removed++; }
+    for (const badge of document.querySelectorAll('.badge-time')) {
+      if (slotExpiresAt(badge) <= nowMs) { badge.remove(); removed++; }
     }
     if (removed === 0) return 0;
     // Cascade upwards: a cinema with no slots left, a day with no cinemas, and
@@ -457,8 +478,8 @@
     _expiryTimer = null;
     const now = showtimeNow();
     let next = Infinity;
-    for (const badge of document.querySelectorAll('.badge-time[data-expires]')) {
-      const at = parseInt(badge.dataset.expires, 10);
+    for (const badge of document.querySelectorAll('.badge-time')) {
+      const at = slotExpiresAt(badge);
       if (at > now && at < next) next = at;
     }
     if (next === Infinity) return;   // nothing left that can expire
@@ -521,6 +542,9 @@
   window.pruneExpiredShowtimes = pruneExpiredShowtimes;
   window.scheduleExpiryPrune   = scheduleExpiryPrune;
   window.scheduleDayRollover   = scheduleDayRollover;
+  // A pill's clock time, read the way the view reads it (`ShowtimeBadge` emits no
+  // `data-time`) — so a page test asserting on times cannot drift from the view.
+  window.slotTime              = slotTime;
   })();
 </script>
 }
