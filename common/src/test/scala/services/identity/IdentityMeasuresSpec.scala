@@ -229,6 +229,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Houses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe Houses(Map("bolshoiballetlive" -> "bolshoi"))
   }
 
+  "a venue dropping a film's leading article" should "still list the film's exact title — a plain title of three words or more" in {
+    // US Metrograph's "Brides of Dracula" {Terence Fisher} read a `fragment` of "The Brides of Dracula" and took Fisher's "Dracula".
+    def rel(l: String, f: String) = IdentityMeasures.titleRelation(Listing(l), Film(f)).value
+    rel("Brides of Dracula", "The Brides of Dracula") shouldBe "exact"
+    // not a short title: "Spookies" is no more "The Spookies" than any other
+    rel("Spookies", "The Spookies") should not be "exact"
+    // not a listing's own article dropped by the film
+    rel("A Bay of Blood", "Bay of Blood") should not be "exact"
+    // not a banner's title: "Royal Ballet: Swan Lake" is not the house's 2024 "The Royal Ballet: Swan Lake"
+    rel("Royal Ballet: Swan Lake", "The Royal Ballet: Swan Lake") should not be "exact"
+  }
+
   "a decorated spelling" should "be corroborated by the venues listing its search form, when that is the film's title" in {
     // PL Kino Oskard's "Kino Konesera: Róża" and seven spellings like it: other venues list "Róża" [2026] {Markus
     // Schleinzer}, TMDB's "Rose" (2026) under its Polish title; searched as "Róża", the decorated listing counted

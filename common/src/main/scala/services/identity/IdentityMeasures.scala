@@ -450,11 +450,16 @@ object IdentityMeasures {
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
+    /** Its words after a leading English article, when it has one — what a venue that drops the article lists. */
+    lazy val afterArticle: Option[Seq[String]] = Option.when(words.sizeIs >= 2 && LeadingArticles(words.head))(words.tail)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
     lazy val unglossedKey: Option[String] =
       TrailingGloss.findFirstMatchIn(text).map(m => IdentityMeasures.key(m.group(1))).filter(k => k.nonEmpty && k != key)
   }
   private val TrailingGloss = """^(.*\S)\s*\([^()]*\)\s*$""".r
+  /** The English articles a venue drops from a title's head, as the old pipeline's IMDb match dropped them — English
+   *  titles are listed everywhere; another language's articles are part of its titles ("La familia Dino"). */
+  private val LeadingArticles = Set("the", "a", "an")
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
@@ -667,10 +672,17 @@ object IdentityMeasures {
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     val (titleForm, rest) = (all.head, all.tail)
     val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
-    if (own.contains(titleForm.key) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
+    // The film's title with the leading English article the venue dropped: "Brides of Dracula" is "The Brides of Dracula"
+    // (US Metrograph's listing took Fisher's "Dracula" over a `fragment` of its own film). Three words left at least —
+    // "Spookies" is no more "The Spookies" than any other — and never the other way: a listing's own article is its title's.
+    // A plain title, not a banner's: "Royal Ballet: Swan Lake" is not thereby "The Royal Ballet: Swan Lake" (2024), the
+    // house's earlier recording, over the 2026/27 broadcast its banner names.
+    val articleless = (t: TitleForm) => !t.text.contains(':') && t.afterArticle.exists(rest => rest.sizeIs >= 3 &&
+      ls.exists(a => !a.text.contains(':') && a.words == rest))
+    if (own.contains(titleForm.key) || articleless(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
         (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey))) Category("exact")
-    else if (originalForms.map(_.key).exists(own)) Category("original")
-    else if (alternativeForms.map(_.key).exists(own)) Category("alternative")
+    else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless)) Category("original")
+    else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None
           else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords, l.undecoratedWords)).getOrElse(
       if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
