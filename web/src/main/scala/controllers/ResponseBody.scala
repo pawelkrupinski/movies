@@ -97,9 +97,11 @@ object ResponseBody {
       scratch.clear()
     }
     val flushIfFull: () => Unit = () => if (scratch.length >= FlushAt) flush()
-    def walk(node: Html): Unit = node match {
+    // ONE function value for the whole walk: `children.foreach(walk)` eta-expands a
+    // fresh one at every node, ~1 MB a page across a listing's fragments.
+    lazy val walk: Html => Unit = {
       case streamed: StreamedHtml => streamed.renderInto(scratch.underlying, flushIfFull)
-      case _ =>
+      case node =>
         val children = TwirlTree.children(node)
         if (children.nonEmpty) children.foreach(walk)
         else { TwirlTree.renderLeaf(node, scratch); flushIfFull() }
