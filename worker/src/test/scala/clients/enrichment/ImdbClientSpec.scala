@@ -216,6 +216,14 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions(body, "Spider–Man", None) shouldBe Some("tt0145487")
   }
 
+  "suggestedIds" should "follow IMDb's movie suggestions whatever title it displays them under" in {
+    // Captured from https://v3.sg.media-imdb.com/suggestion/s/Super+futrzak+i+złośliwa+wiewiórka.json (recording
+    // 36807940234): IMDb matched the Polish title and displays the Finnish original, "Supermarsu ja suuri huijaus".
+    val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> loadFixture("/fixtures/imdb/suggestion_superfutrzak.json"))))
+    c.suggestedIds("Super futrzak i złośliwa wiewiórka") shouldBe Seq("tt35166699")
+    c.suggestedIds("  ") shouldBe Nil
+  }
+
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
     val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> fixture)))

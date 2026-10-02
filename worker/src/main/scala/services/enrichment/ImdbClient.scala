@@ -170,15 +170,16 @@ class ImdbClient(http: HttpFetch) {
     }
   }
 
-  /** The IMDb ids of every film IMDb's suggestion endpoint lists under `title` itself — its display
-   *  title the query's, deburred and a leading English article aside, as `parseSuggestions` matches
-   *  a title — in IMDb's order. No choice between them: the identity resolver's candidate path to a
-   *  record TMDB's own search does not return (`TmdbIdentityLookups`). Empty for a blank title or a
-   *  query IMDb does not know; a failed read throws, as `http` threw it. */
-  def titledIds(title: String): Seq[String] =
+  /** The IMDb ids of the first [[ImdbClient.SuggestedMovies]] films IMDb's suggestion endpoint suggests for
+   *  `title`, in IMDb's order — whatever title it DISPLAYS them under: it matches a query against a film's
+   *  other-language titles too, and shows its original ("Superfutrzak i złośliwa wiewiórka" suggests only
+   *  tt35166699, displayed as the Finnish "Supermarsu ja suuri huijaus"). No choice between them: the identity
+   *  resolver's candidate path (`TmdbIdentityLookups`), which weighs each on the listing's facts. Empty for a
+   *  blank title or a query IMDb does not know; a failed read throws, as `http` threw it. */
+  def suggestedIds(title: String): Seq[String] =
     if (title.trim.isEmpty) Nil
     else EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).toSeq.flatMap { body =>
-      Try(Json.parse(body)).toOption.toSeq.flatMap(js => titleMatches(movieSuggestions(js), title)).map(_.id).distinct
+      Try(Json.parse(body)).toOption.toSeq.flatMap(js => ImdbClient.suggested(movieSuggestions(js)))
     }
 
   /** Director-based fallback: when `parseSuggestions` finds no title match (the
@@ -307,6 +308,11 @@ object ImdbClient {
    *  matcher ranks on (lowercased display title, release year, popularity
    *  rank). */
   private[services] final case class Suggestion(id: String, title: Option[String], year: Option[Int], rank: Int)
+
+  /** How many of IMDb's movie suggestions the identity resolver follows — the old pipeline's director rung read as many. */
+  val SuggestedMovies = 5
+  /** The ids of IMDb's first [[SuggestedMovies]] movie suggestions, in its order. */
+  private[services] def suggested(movies: Seq[Suggestion]): Seq[String] = movies.map(_.id).distinct.take(SuggestedMovies)
 
   /** Full IMDb record consumed by the IMDb enrichment stage: rating plus the
    *  content fields that fill `SourceData(Imdb)` (synopsis, director, cast,

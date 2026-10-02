@@ -10,16 +10,21 @@ import services.identity.IdentityMeasures.Measure
 private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[String],
                                           listing: IdentityMeasures.Listing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
-                                          houseProduction: Boolean = false) {
+                                          houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
+                                          suggestedOnly: Boolean = false) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }
   def number(measure: String): Option[Double]   = measures.get(measure).collect { case IdentityMeasures.Number(value) => value }
   /** Does the listing's title NAME the film ([[IdentityMeasures.NamingRelations]])? */
   def titleNamesIt: Boolean = category("title").exists(IdentityMeasures.NamingRelations)
+  // `suggestedOnly`: only IMDb's suggestions reached the film, under a title the listing does not carry
+  // (IMDb matched another-language title of it) — a candidate for `Acceptance.imdbSuggested` alone.
 }
 
 private[identity] object Scored {
+  /** Where IMDb's suggestions for the listing's own title put the film: its 1-based place, among `of` films. */
+  final case class ImdbPlace(place: Int, of: Int)
   /** A scored candidate the resolver takes, with the confidence it is taken at. */
   type Accepted = (Scored, Double)
 }

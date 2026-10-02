@@ -45,7 +45,7 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       answered(tmdb.findPersonCandidates(TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
         .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
-      answered(imdb.titledIds(title).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+      answered(imdb.suggestedIds(title).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
   }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))

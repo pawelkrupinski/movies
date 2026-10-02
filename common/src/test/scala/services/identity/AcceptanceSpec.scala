@@ -72,6 +72,53 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     segment(Listing("Przepraszam, czy tu biją?"), film) shouldBe None
   }
 
+  /** `scored` as IMDb's suggestions for the listing's own title placed them: `(tmdbId, place)` among `of`. A film
+   *  only IMDb reached, under a title the listing does not carry, is one only the IMDb rule may take. */
+  private def suggested(scored: Seq[Scored], of: Int, places: (Int, Int)*): Seq[Scored] = scored.map { sc =>
+    places.toMap.get(sc.candidate.tmdbId).fold(sc)(place => sc.copy(imdb = Some(Scored.ImdbPlace(place, of)),
+      suggestedOnly = sc.rank.isEmpty && !sc.category("title").exists(IdentityMeasures.Rivalling)))
+  }
+  private def byImdb(scored: Seq[Scored]): Option[Int] = acceptance.imdbSuggested(scored).map(_._1.candidate.tmdbId)
+
+  "a film IMDb suggests for the listing's title" should "be taken on the old pipeline's rungs: its director, its year, or the only suggestion the title names" in {
+    // PL "Superfutrzak i złośliwa wiewiórka" {Joona Tena}: TMDB holds the film only under its Finnish title; IMDb
+    // suggests just it (tt35166699, test/resources/fixtures/imdb/suggestion_superfutrzak.json).
+    val futrzak = Listing("Superfutrzak i złośliwa wiewiórka", directors = Seq("Joona Tena"))
+    val finnish = (1273554, Film("Supermarsu ja suuri huijaus", year = Some(2025), directors = Some(Seq("Joona Tena"))), None)
+    taken(ranked(futrzak, finnish)) shouldBe None
+    val placed  = suggested(ranked(futrzak, finnish), 1, 1273554 -> 1)
+    acceptance.acceptedBy(placed, 1273554) shouldBe Some("imdb-suggested")
+    // the director rung, among several suggestions
+    val other = (9, Film("Inny", year = Some(2020), directors = Some(Seq("Ktoś Inny"))), None)
+    byImdb(suggested(ranked(futrzak, finnish, other), 2, 9 -> 1, 1273554 -> 2)) shouldBe Some(1273554)
+    // the year rung: IMDb's first suggestion, in the year the listing states — "Camino dla opornych" is Compostelle
+    val camino      = Listing("Filmowe Rekolekcje: Camino dla opornych", year = Some(2026))
+    val compostelle = (1404604, Film("Compostelle", year = Some(2026)), None)
+    byImdb(suggested(ranked(camino, compostelle), 3, 1404604 -> 1)) shouldBe Some(1404604)
+    byImdb(suggested(ranked(camino.copy(year = Some(2024)), compostelle), 3, 1404604 -> 1)) shouldBe None
+    byImdb(suggested(ranked(camino, compostelle), 3, 1404604 -> 2)) shouldBe None
+    // the sole rung: the one film IMDb suggests, when the title names it
+    val hope = Listing("Witajcie w Hope PREMIERA 2D napisy")
+    val film = (1058424, Film("Witajcie w Hope", year = Some(2026)), None)
+    byImdb(suggested(ranked(hope, film), 1, 1058424 -> 1)) shouldBe Some(1058424)
+    byImdb(suggested(ranked(hope, film), 2, 1058424 -> 1)) shouldBe None
+  }
+
+  it should "be a fallback: not past a film TMDB's own search names, another instalment, or a double bill" in {
+    // UK "BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING" [2026]: IMDb's first 2026 suggestion is the Busan concert.
+    val bts     = Listing("BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING", year = Some(2026))
+    val saoPaulo = (1700001, Film("BTS 'Arirang' in São Paulo: Live Viewing", year = Some(2026)), Some(1))
+    val busan    = (1700002, Film("BTS WORLD TOUR [ARIRANG] in Busan", year = Some(2026)), None)
+    byImdb(suggested(ranked(bts, saoPaulo, busan), 2, 1700002 -> 1)) shouldBe None
+    // "Recepta na szczęście 2" is not the first film
+    byImdb(suggested(ranked(Listing("Recepta na szczęście 2"), (1, Film("Recepta na szczęście", year = Some(2008)), None)), 1, 1 -> 1)) shouldBe None
+    // a double bill is neither film
+    byImdb(suggested(ranked(Listing("Basia. Humor w paski mam + Kocia Szajka"), (2, Film("Basia. Humor w paski mam"), None)), 1, 2 -> 1)) shouldBe None
+    // and a film only IMDb's other-language match reached is the IMDb rule's alone, however it scores
+    acceptance.acceptedBy(suggested(ranked(Listing("Kuźma", year = Some(2026)), (3, Film("Кузьма: Страшно веселий", year = Some(2026)), None)), 2, 3 -> 1)
+      .map(_.copy(probability = 0.99)), 3) shouldBe Some("imdb-suggested")
+  }
+
   "a double bill" should "take neither film when its facts back both" in {
     // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133: each piece found
     // its own film first and both directors were credited — the two scored 91–93%, and popularity picked one.

@@ -9,7 +9,7 @@ import scala.collection.mutable
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
                                           counted: () => Unit) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, ownSearch, ownWalk, sharedOf}
+  import scoring.generation.{candidateById, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf}
 
   val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
@@ -22,12 +22,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  its node (`deniedByNode`: a pin, a venue's own name) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByNode: Int => Option[String]): Seq[Scored] = {
+            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
     val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
-    val close     = reachable.count(candidate => IdentityMeasures.Rivalling(relation(candidate.tmdbId)))
+    // A film only IMDb suggested, under a title the listing does not carry, rivals nothing: the rules other than
+    // IMDb's own never see it, as before IMDb's other-language matches were followed.
+    val onlySuggested = (id: Int) => suggested(id) && !IdentityMeasures.Rivalling(relation(id))
+    val close     = reachable.count(candidate => IdentityMeasures.Rivalling(relation(candidate.tmdbId)) && !onlySuggested(candidate.tmdbId))
     val groups    = IdentityMeasures.titleGroups(listing)
     val candidates = reachable.map { candidate =>
       val rivals   = close - (if (IdentityMeasures.Rivalling(relation(candidate.tmdbId))) 1 else 0)
@@ -36,7 +39,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
-        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, IdentityMeasures.billsUnderItsHouse(listing, candidate.film, houses))
+        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, IdentityMeasures.billsUnderItsHouse(listing, candidate.film, houses),
+        suggestedOnly = onlySuggested(candidate.tmdbId))
     }
     // The listing's whole title (or its original or an alternative title) and its credited
     // director name ONE film together: another film of that director, which its title does not
@@ -61,7 +65,14 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => denialByNode(node, id)))
+      id => denialByNode(node, id), imdbOnly(node.id)).map(placedByImdb(Seq(node))))
+
+  /** Each film's place in IMDb's suggestions for the nodes' own titles — its best place, among the most suggested. */
+  private def placedByImdb(nodes: Seq[EvidenceNode])(scored: Scored): Scored = {
+    val lists = nodes.map(node => imdbSuggested(node.id)).filter(_.nonEmpty)
+    val place = lists.flatMap(list => Option(list.indexOf(scored.candidate.tmdbId)).filter(_ >= 0).map(i => Scored.ImdbPlace(i + 1, list.size)))
+    place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
+  }
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
@@ -91,7 +102,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption())
+      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
+      .map(placedByImdb(cluster))
   }
 }

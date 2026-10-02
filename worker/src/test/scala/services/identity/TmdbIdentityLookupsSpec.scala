@@ -38,19 +38,21 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     hits.head.tmdbId shouldBe 946306
   }
 
-  "the films IMDb lists under a title" should "be the TMDB records of IMDb's own entries of that very title, by their IMDb ids" in {
+  "the films IMDb suggests for a title" should "be the TMDB records of IMDb's movie suggestions, by their IMDb ids, in IMDb's order" in {
     // Recording 36224654409 (US): IMDb's suggestions for "Caligula: The Ultimate Cut" list the
-    // re-cut (tt29703523) and the 1979 film; only the re-cut is titled so, and TMDB's find by its
-    // id is the record its search never returns.
+    // re-cut (tt29703523) and the 1979 film (tt0080491, find_tt0080491.json captured 2026-10-02); TMDB's find
+    // by the re-cut's id is the record its search never returns. Both are followed — whatever title IMDb shows
+    // a film under, the resolver weighs it on the listing's facts.
     def fixture(path: String) = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8)
     val fetch = tools.RoutingHttpFetch.getOnly(Seq(
       "suggestion/c/Caligula" -> fixture("test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json"),
-      "/find/tt29703523"      -> fixture("test/resources/fixtures/tmdb/find_tt29703523.json")))
+      "/find/tt29703523"      -> fixture("test/resources/fixtures/tmdb/find_tt29703523.json"),
+      "/find/tt0080491"       -> fixture("test/resources/fixtures/tmdb/find_tt0080491.json")))
     val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ())
     val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil)
       .candidates(CandidateQuery.Imdb("Caligula: The Ultimate Cut")).toOption.get
-    hits.map(h => (h.tmdbId, h.title, h.year)) shouldBe Seq((1774981, "Caligula: The Ultimate Cut", Some(2024)))
-    fetch.calls.map(_._2).filter(_.contains("/find/")) should have size 1
+    hits.map(h => (h.tmdbId, h.title, h.year)) shouldBe Seq((1774981, "Caligula: The Ultimate Cut", Some(2024)), (9453, "Caligula", Some(1979)))
+    fetch.calls.map(_._2).filter(_.contains("/find/")) should have size 2
   }
 
   "lookups over a live source" should "read side by side, so a prefetch's threads overlap their round-trips" in {

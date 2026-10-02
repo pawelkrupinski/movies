@@ -47,6 +47,10 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
 
   val ownSearch: Map[String, Map[Int, Int]] = nodes.map(node => node.id -> CandidateGeneration.ownSearch(queriesOf(node.id), answers)).toMap
   val ownWalk: Map[String, Set[Int]]        = nodes.map(node => node.id -> CandidateGeneration.ownWalk(queriesOf(node.id), answers)).toMap
+  val imdbSuggested: Map[String, Seq[Int]] = nodes.map(node => node.id -> CandidateGeneration.imdbSuggested(queriesOf(node.id), answers)).toMap
+  /** The films only IMDb's suggestions reached for a node — no title search of its and no director walk. */
+  val imdbOnly: Map[String, Set[Int]]       = nodes.map(node => node.id -> (imdbSuggested(node.id).toSet -- ownSearch(node.id).keySet --
+    queriesOf(node.id).collect { case query: CandidateQuery.Director => answers(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten)).toMap
   val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
   // Looked up only when these listings are the whole corpus: a region reads its candidates from
   // the corpus's context, which holds every record already.
@@ -100,6 +104,9 @@ private[identity] object CandidateGeneration {
    *  films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank. */
   def ownWalk(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
     queries.filterNot(isTitle).flatMap(query => answer(query).toOption.getOrElse(Nil)).map(_.tmdbId).toSet
+  /** The films IMDb suggests for a node's own title, in IMDb's order. */
+  def imdbSuggested(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Seq[Int] =
+    queries.collect { case query: CandidateQuery.Imdb => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.distinct
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
   def reached(ownSearch: Map[Int, Int], ownWalk: Set[Int]): Seq[Int] = (ownSearch.keys ++ ownWalk).toSeq.distinct.sorted
   /** The films an answer names, best first. */

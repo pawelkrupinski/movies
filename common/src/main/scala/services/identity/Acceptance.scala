@@ -15,7 +15,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   val weights = new EvidenceWeights(calibration)
   import weights.{factsAnswered, favours, facts, fitsBetter, own, priorsLent, speaksAgainst}
 
-  private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filterNot(_.denied)
+  private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filterNot(scored => scored.denied || scored.suggestedOnly)
 
   /** A rule, by the name an explanation gives it. */
   private final case class Rule(name: String, accepts: Seq[Scored] => Option[Accepted])
@@ -25,7 +25,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     rules.iterator.flatMap(rule => rule.accepts(ranked).map(_ -> rule.name)).nextOption()
 
   private val aloneRules = Seq(Rule("sole-work", soleWork), Rule("favoured-calibrated", favouredCalibrated), Rule("exact-top-hit", topHit),
-    Rule("segment-top-hit", segmentTopHit),
+    Rule("segment-top-hit", segmentTopHit), Rule("imdb-suggested", imdbSuggested),
     Rule("directors-work", directorsWork), Rule("directors-title", directorsTitle), Rule("dated-title", datedTitle),
     Rule("house-production", houseProduction))
 
@@ -65,7 +65,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibrated]]).
    *  Each the edition of it the listing names, if any ([[editionNamed]]). */
   def pooled(ranked: Seq[Scored]): Option[Accepted] =
-    if (billsBothItsWorks(ranked)) None else seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit))).map(_._1))
+    if (billsBothItsWorks(ranked)) None else seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit), Rule("imdb-suggested", imdbSuggested))).map(_._1))
       .map(editionNamed(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
@@ -128,6 +128,41 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
           .map(classProbability => scored -> math.max(scored.probability, classProbability))
           .filter(accepted => calibration.showsRatings(accepted._2))
       case _ => None
+    }
+  }
+
+  /** The film IMDb's suggestions for the listing's own title name, on the old pipeline's three rungs — the route
+   *  that reaches a film whose local title TMDB lacks, since IMDb matches a query against a film's
+   *  other-language titles ("Superfutrzak i złośliwa wiewiórka" suggests only the Finnish "Supermarsu ja suuri
+   *  huijaus"): IMDb's FIRST suggestion with the year the listing states; the ONE suggested film the listing's
+   *  credited director directed; or the ONLY film IMDb suggests, when the title names it and TMDB ranks no
+   *  other film of that very title above it ("Ziemia obiecana" is Wajda's, not the 1927 film IMDb alone spells
+   *  so). Read as a title the film answers to, nothing the listing publishes may speak against it, no rival may
+   *  fit better, and a double bill is neither film. */
+  def imdbSuggested(ranked: Seq[Scored]): Option[Accepted] = ranked.headOption.flatMap { any =>
+    val eligible  = ranked.filterNot(_.denied)
+    val suggested = eligible.filter(_.imdb.isDefined)
+    def sameDirector(scored: Scored) = scored.category("director").contains("same_person")
+    def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
+      rival.rank.exists(r => scored.rank.forall(r < _)))
+    def rung(scored: Scored): Boolean = scored.imdb.exists { place =>
+      (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
+        (sameDirector(scored) && suggested.count(sameDirector) == 1) ||
+        (place.of == 1 && scored.titleNamesIt && !outranked(scored))
+    }
+    // A fallback, as the old pipeline's was: IMDb answers only when TMDB's own search found no OTHER film the title
+    // names ("BTS 'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan), and
+    // never for an instalment the title numbers otherwise ("Recepta na szczęście 2" is not the first film).
+    def searchNamesAnother(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.rank.isDefined && rival.titleNamesIt)
+    def otherInstalment(scored: Scored) = scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
+    Option.when(!IdentityMeasures.billsTwoWorks(any.listing))(suggested.filter(rung)).collect { case Seq(scored) => scored }
+      .filter(scored => !searchNamesAnother(scored) && !otherInstalment(scored)).flatMap { scored =>
+      val titled = scored.copy(measures = scored.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
+        "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
+      Option.when(!speaksAgainst(titled) && eligible.forall(rival => (rival eq scored) || !fitsBetter(rival, titled)))(titled)
+        .flatMap(titled => calibration.classProbability(ListingFilm, titled.measures))
+        .map(classProbability => scored -> math.max(scored.probability, classProbability))
+        .filter(accepted => calibration.showsRatings(accepted._2))
     }
   }
 
