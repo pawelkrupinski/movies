@@ -5,15 +5,15 @@ import settings.ProcessConfiguration
 /**
  * The worker image's AOT-cache training run: boots the real worker ([[ReplayWorkerWiring]] — every
  * fetch replayed from a recorded corpus, a real Mongo) for a fixed time, then exits, and the JVM
- * started with `-XX:AOTCacheOutput` writes the classes it loaded into the cache — the class list from
- * production heap dumps plus what only running the worker creates (~15.9k classes against ~13.7k), so
- * a production boot loads them from the cache instead of into metaspace: 6–11 MB less non-heap per
- * worker (2026-10-02).
+ * started with `-XX:AOTCacheOutput` writes into the cache the classes it loaded — the class list from
+ * production heap dumps plus what only running the worker creates (~15.9k against ~13.7k) — and the
+ * method profiles it gathered. Archived, neither is rebuilt in metaspace at every restart: 6–10 MB
+ * less metaspace per worker (2026-10-02), most of it the profile data.
  *
- * NOT its method profiles (`-XX:-AOTRecordTraining`, scripts/ci/train-worker-aot.sh). They saved 31%
- * JIT on the replayed boot locally, but a production boot is mostly the identity take-up and cache
- * hydration over the full corpus, not this Polish scrape replay: in production they saved neither JIT
- * nor CPU in any country, and cost worker-es ~13% of its boot CPU.
+ * What the profiles did NOT do is save CPU. They cut JIT 31% on the replayed boot locally, but a
+ * production boot is mostly the identity take-up and cache hydration over the full corpus, not this
+ * Polish scrape replay: JIT and CPU held level on PL/UK/US/DE, and worker-es — whose scrapers a Polish
+ * profile steers wrong — lost ~13% of its boot CPU, so it runs with `-XX:-AOTReplayTraining`.
  *
  * CI runs it from the built image itself, so the classpath it trains on is the one production
  * launches — the JVM refuses a cache trained on any other.
