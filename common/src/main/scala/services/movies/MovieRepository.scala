@@ -593,7 +593,7 @@ class MongoMovieRepository(
       (slotRows, slotsRead)      = sl.findAtCinemasChecked(filmId, names)
       if slotsRead
       (showtimeRows, showsRead)  = sc.findAtCinemasChecked(filmId, names)
-      if showsRead && showtimeRows.keySet.subsetOf(slotRows.keySet)
+      if showsRead && covered(filmId, showtimeRows.keySet, slotRows.keySet)
       placed                     = slotRows.toSeq.map { case (key, slot) => Source.byWireKey(key).collect {
                                      case showing: models.CinemaShowing if cinemas(showing.cinema) => showing -> slot } }
       if placed.forall(_.isDefined)
@@ -602,6 +602,18 @@ class MongoMovieRepository(
       VenueSlots(FilmId(filmId), cinemas.map(cinema => cinema -> stitched.toSeq.collect {
         case (showing: models.CinemaShowing, slot) if showing.cinema == cinema => showing -> slot }).toMap)
     }
+  }
+
+  /** Whether every showtimes row has a slot row beside it — logging, when not, which keys lack one and
+   *  which slot keys the film does have, so a write path that leaves showtimes without slots (or files
+   *  the two under different keys) can be named from the log. A few a day at most. */
+  private def covered(filmId: String, showtimeKeys: Set[String], slotKeys: Set[String]): Boolean = {
+    val orphans = showtimeKeys -- slotKeys
+    if (orphans.nonEmpty)
+      logger.info(s"MovieRepository.readVenues: film $filmId has showtimes without a slot row at " +
+        s"${orphans.toSeq.sorted.map(_.replace('\u241f', '|')).mkString(", ")}; slot rows there: " +
+        s"${slotKeys.toSeq.sorted.map(_.replace('\u241f', '|')).mkString(", ")}")
+    orphans.isEmpty
   }
 
   /** Union a row's stored `movie_slots` rows with whatever its `movies` document still
