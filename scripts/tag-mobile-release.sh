@@ -8,10 +8,10 @@
 #   scripts/tag-mobile-release.sh <ios|android> <version> [sha]
 #
 # sha defaults to HEAD. Shared between ios-release.sh (local, after a
-# successful altool upload) and android.yml (CI, after a successful Play
-# publish) so the two callers can't drift on error handling the way they
-# already had once -- one warned on a failed push, the other let it fail the
-# whole job. Neither a failed local tag creation nor a failed push is fatal
+# successful altool upload) and the mobile-ship release lane's Android upload
+# (infra/version-dashboard/src/mobile-release/release.ts) so the callers can't
+# drift on error handling the way two once had -- one warned on a failed push,
+# the other let it fail the whole job. Neither a failed local tag creation nor a failed push is fatal
 # here: the store upload this tag is only bookkeeping for has already
 # succeeded by the time this runs, and failing the caller's job over a
 # best-effort dashboard tag would report a shipped release as broken.

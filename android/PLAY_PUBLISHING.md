@@ -15,9 +15,9 @@ sanctioned way to upload builds, move tracks, and edit the store listing.
    Console (*Users & permissions*) invite that service account and grant it
    release permission for `net.pawel.kinowo`.
 3. **Store the key:**
-   - **CI** — paste the JSON as the `PLAY_SERVICE_ACCOUNT_JSON` GitHub Actions
-     secret (already wired: the `android.yml` workflow writes it to a file and
-     points `KINOWO_PLAY_CREDENTIALS_FILE` at it).
+   - **CI does not publish.** `android.yml` builds and signs, but never uploads to Play:
+     a CI run number is far below the epoch-second versionCodes releases use, so Play
+     would refuse it. Releases go through `scripts/mobile-ship.sh` below.
    - **Locally** — drop the JSON at `android/play-credentials.json`
      (git-ignored). Every `./gradlew publish*` command below picks it up.
 

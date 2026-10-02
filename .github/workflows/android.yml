@@ -13,8 +13,7 @@ on:
             # capture would not run the test that catches it.
             - 'scripts/store-screenshots-common.sh'
             - 'ios/scripts/store-screenshots*.sh'
-            # The mobile RELEASE scripts' own specs run in the same step; this
-            # workflow calls tag-mobile-release.sh itself after a Play publish.
+            # The mobile RELEASE scripts' own specs run in the same step.
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
@@ -43,8 +42,7 @@ on:
             # capture would not run the test that catches it.
             - 'scripts/store-screenshots-common.sh'
             - 'ios/scripts/store-screenshots*.sh'
-            # The mobile RELEASE scripts' own specs run in the same step; this
-            # workflow calls tag-mobile-release.sh itself after a Play publish.
+            # The mobile RELEASE scripts' own specs run in the same step.
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
@@ -174,11 +172,6 @@ jobs:
         permissions:
             contents: write
             checks: write
-        # Hoisted to job scope so the Play-publish step's `if:` can test whether
-        # the service-account secret is set (secrets can't be read directly in
-        # an `if:`, but a job-level env derived from one can).
-        env:
-            PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         defaults:
             run:
                 working-directory: android
@@ -288,13 +281,11 @@ jobs:
                   KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
                   KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
                   KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
-                  # The run number only on a manual (Play-publish) run. On a push
-                  # or PR it is empty, so build.gradle.kts derives the versionCode
-                  # from mobile-version.txt: a per-run code lands in the merged
-                  # manifest and made every release task downstream of it (R8,
-                  # lint-vital, resource linking, bundling) miss the build cache.
-                  # Store releases set their own code (scripts/mobile-ship.sh).
-                  KINOWO_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && github.run_number || '' }}
+                  # No KINOWO_VERSION_CODE: build.gradle.kts derives the versionCode
+                  # from mobile-version.txt, the same on every run, so the release
+                  # tasks downstream of the merged manifest (R8, lint-vital, resource
+                  # linking, bundling) come from the build cache. Store releases set
+                  # their own epoch-second code locally (scripts/mobile-ship.sh).
               run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK
@@ -314,64 +305,6 @@ jobs:
                   name: kinowo-release-aab
                   path: android/app/build/outputs/bundle/release/app-release.aab
                   if-no-files-found: error
-
-            # Manually-triggered publish of the signed AAB to Google Play's
-            # `internal` testing track via Gradle Play Publisher (the `play {}`
-            # block in app/build.gradle.kts). workflow_dispatch ONLY — a normal
-            # push/PR never ships to Play; you click "Run workflow" in the Actions
-            # tab when you want to release. Gated on PLAY_SERVICE_ACCOUNT_JSON:
-            # absent → the step below is skipped and a notice explains how to
-            # enable it, so the workflow still passes without the secret.
-            #
-            # `publishReleaseBundle` uploads ONLY the app binary + its R8 mapping
-            # (auto-detected → Play can symbolicate crashes); it does NOT touch
-            # the store listing/description. Editing descriptions is a separate,
-            # deliberate `publishReleaseListing` — see android/PLAY_PUBLISHING.md —
-            # so a routine deploy can't clobber the live listing. (Switch the task
-            # to `publishRelease` here if you ever want CI to push both.)
-            #
-            # Prerequisites (one-time, outside CI): the app `net.pawel.kinowo`
-            # must already exist in the Play Console with its FIRST AAB uploaded
-            # manually once; a Google Cloud service account with the Play Android
-            # Developer API enabled + release permission in the Console; its JSON
-            # key stored as the PLAY_SERVICE_ACCOUNT_JSON repo secret.
-            - name: Publish to Google Play (internal)
-              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
-              env:
-                  # GPP reads the service-account key from a file; write the
-                  # secret out and point the build at it (same env-var-or-local
-                  # -file shape build.gradle.kts uses). Reuse the signing env +
-                  # version code so the re-resolved bundleRelease is the identical
-                  # signed AAB assembled above (up-to-date, not rebuilt).
-                  KINOWO_RELEASE_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
-                  KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
-                  KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
-                  KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
-                  KINOWO_VERSION_CODE: ${{ github.run_number }}
-              run: |
-                  printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play-credentials.json"
-                  KINOWO_PLAY_CREDENTIALS_FILE="$RUNNER_TEMP/play-credentials.json" \
-                      ./gradlew --no-daemon :app:publishReleaseBundle
-
-            - name: Note skipped Play publish
-              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON == '' }}
-              run: echo "::notice::Play upload skipped — add the PLAY_SERVICE_ACCOUNT_JSON secret (service-account key with Play release permission) to enable it."
-
-            # Marks the commit this internal-track build was actually cut from — see
-            # tag-mobile-release.sh. A later production promotion
-            # (`:app:promoteReleaseArtifact`) ships this SAME artifact unchanged, so the tag
-            # stays correct through that step without needing its own update. `success()` is
-            # required in the `if:` (not implied by the custom condition alone — a step's own
-            # `if:` REPLACES the default success()-only check, it doesn't AND with it), or a
-            # failed Play publish still gets tagged as shipped. Non-fatal on push failure — see
-            # the script — so a best-effort dashboard tag can never turn an already-shipped
-            # release into red CI and skip the artifact-upload steps below.
-            - name: Tag the commit this internal build was cut from
-              if: ${{ success() && github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
-              working-directory: ${{ github.workspace }}
-              run: |
-                  version="$(tr -d '\n' < mobile-version.txt)"
-                  scripts/tag-mobile-release.sh android "$version" "$GITHUB_SHA"
 
             - name: Upload tune APK
               uses: actions/upload-artifact@v6
