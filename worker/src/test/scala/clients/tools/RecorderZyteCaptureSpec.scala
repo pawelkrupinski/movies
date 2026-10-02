@@ -9,10 +9,10 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Guards `RecordAllDataToFixture`'s capture of Zyte-routed cinemas (Multikino,
+ * Guards `RecordAllDataToFixture`'s capture of the paid-egress cinemas (Multikino,
  * Kino Kameralne / biletyna). Those sit behind a WAF that blocks our datacenter
- * IP, so they're fetched through a Zyte-primary → `direct` chain whose Zyte leg
- * tunnels through its OWN HttpClient. A `RecordingHttpFetch` wired as the
+ * IP, so they're fetched through a residential proxy → Zyte → `direct` chain whose
+ * paid legs tunnel through their OWN clients. A `RecordingHttpFetch` wired as the
  * chain's inner `direct` fallback therefore never sees a Zyte-served response —
  * the scrape succeeds but the corpus silently lacks every `www.multikino.pl`
  * fixture. The recorder fixes this by wrapping the WHOLE chain in recording.
@@ -77,6 +77,41 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     // network, no `main()`.
     recordingWiring.multikinoFetch shouldBe a[RecordingHttpFetch]
     recordingWiring.biletynaFetch  shouldBe a[RecordingHttpFetch]
+  }
+
+  // Zyte is billed per request and is the residential proxy's fallback, never a primary. The
+  // recorder used to build Zyte → direct with no proxy at all, so every Multikino / biletyna
+  // request of a daily recording was a paid Zyte call.
+
+  /** A leg that counts what reaches it and serves `body`, or fails like a dead tunnel. */
+  private final class Leg(body: Option[String]) extends GetOnlyHttpFetch {
+    val calls = new java.util.concurrent.atomic.AtomicInteger
+    override def get(url: String): String = {
+      calls.incrementAndGet()
+      body.getOrElse(throw new java.io.IOException("proxy: Tunnel failed, got: 503"))
+    }
+  }
+
+  "The recorder's paid-egress chain" should "build no Zyte leg when there is no residential proxy" in {
+    val zyte   = new Leg(Some("from-zyte"))
+    val direct = new Leg(Some("from-direct"))
+    RecordAllDataToFixture.paidEgressChain(None, _ => zyte, direct).get(MultikinoFilmsUrl) shouldBe "from-direct"
+    zyte.calls.get shouldBe 0
+  }
+
+  it should "ask the proxy first and leave Zyte unasked when the proxy answers" in {
+    val proxy = new Leg(Some("from-proxy"))
+    val zyte  = new Leg(Some("from-zyte"))
+    RecordAllDataToFixture.paidEgressChain(Some(IndexedSeq(proxy)), _ => zyte, new Leg(Some("from-direct")))
+      .get(MultikinoFilmsUrl) shouldBe "from-proxy"
+    zyte.calls.get shouldBe 0
+  }
+
+  it should "fall back to Zyte only behind a proxy that failed" in {
+    val zyte = new Leg(Some("from-zyte"))
+    RecordAllDataToFixture.paidEgressChain(Some(IndexedSeq(new Leg(None))), _ => zyte, new Leg(Some("from-direct")))
+      .get(MultikinoFilmsUrl) shouldBe "from-zyte"
+    zyte.calls.get shouldBe 1
   }
 
   "The recorder's capture directory" should

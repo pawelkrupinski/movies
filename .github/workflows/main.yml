@@ -45,7 +45,7 @@ concurrency:
 # reusable workflow so it has exactly one definition; branch-ci.yml
 # runs the same thing on every PR. Here on push-to-main we run it and,
 # once green, deploy. `secrets: inherit` hands the called workflow the
-# ZYTE / TMDB / MONGODB secrets its test jobs need.
+# TMDB / MONGODB secrets its test jobs need.
 #
 # Least privilege by default: every job that needs more than reading the
 # repository grants it at job level.

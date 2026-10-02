@@ -8,7 +8,7 @@ name: Branch CI
 #
 # Reuses ci.yml verbatim (one definition, two callers — see ci.yml's
 # header). `secrets: inherit` hands the called workflow the
-# ZYTE / TMDB / MONGODB secrets its test jobs need; same-repo PRs (which
+# TMDB / MONGODB secrets its test jobs need; same-repo PRs (which
 # is what Steward opens) get a write-scoped token so the junit
 # check-runs post fine.
 on:

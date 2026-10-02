@@ -206,7 +206,6 @@ jobs:
             - id: unit
               run: sbt testUnitNoE2e
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
@@ -221,7 +220,6 @@ jobs:
               timeout-minutes: 20
               run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "unit tests" target/flake-rerun
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
@@ -486,7 +484,6 @@ jobs:
             - id: it
               run: sbt itAll
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB:      kinowo
@@ -497,7 +494,6 @@ jobs:
               timeout-minutes: 20
               run: scripts/ci/rerun-failed-sbt.sh target/test-reports/it "integration tests" target/flake-rerun
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB:      kinowo
@@ -592,7 +588,6 @@ jobs:
             - id: e2e
               run: sbt ${{ matrix.cmd }}
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
@@ -604,7 +599,6 @@ jobs:
               timeout-minutes: 30
               run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "e2e (${{ matrix.shard }})" target/flake-rerun
               env:
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}

@@ -40,15 +40,16 @@ jobs:
               id: stamp
               run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-            # Compare 3 days ahead. ZYTE_API_KEY is the existing repo secret the
-            # deploy job already uses — Multikino's scrape chains through Zyte and
-            # needs it from datacenter IPs. `continue-on-error` is a belt-and-
-            # braces guard on top of the tool's own always-exit-0 behaviour, so a
-            # transient network wobble still lets the artifact upload below run.
+            # Compare 3 days ahead. No ZYTE_API_KEY: the diagnostic catalogue's
+            # Multikino / biletyna / ck105 chains are Zyte-PRIMARY, and Zyte (billed
+            # per request) is only ever the Decodo proxy's fallback
+            # (PaidEgressWorkflowSpec) — so from this runner those venues are
+            # direct, and a WAF block shows up in the diff as a scrape failure.
+            # `continue-on-error` is a belt-and-braces guard on top of the tool's
+            # own always-exit-0 behaviour, so a transient network wobble still lets
+            # the artifact upload below run.
             - name: Run FilmwebDiff
               continue-on-error: true
-              env:
-                  ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
               run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
 
             # Upload the human-readable report, the CSV summary, AND the

@@ -105,14 +105,19 @@ jobs:
             # capture, and — given a zip path — wraps the tree in one colon-free
             # zip for upload.
             #
-            # Secrets are the two keyed upstreams the recorder hits — TMDB
-            # (enrichment) and Zyte (the Multikino/biletyna scrapes that route
-            # through it). IMDb/Filmweb/RT/Metacritic are keyless. MONGODB_* are
-            # passed for parity with ci.yml even though the recorder uses an
-            # in-memory repo and writes no Mongo.
+            # Secrets are the keyed upstreams the recorder hits — TMDB (enrichment)
+            # and the Decodo residential proxy the Multikino/biletyna scrapes egress
+            # through, with Zyte as the proxy's paid fallback exactly as in
+            # production: the recorder never builds a Zyte leg without the proxy
+            # ahead of it (RecordAllDataToFixture.paidEgressChain;
+            # PaidEgressWorkflowSpec). IMDb/Filmweb/RT/Metacritic are keyless.
+            # MONGODB_* are passed for parity with ci.yml even though the recorder
+            # uses an in-memory repo and writes no Mongo.
             - name: Record the country's fixture corpus
               id: record
               env:
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
                   ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:  ${{ secrets.MONGODB_URI }}

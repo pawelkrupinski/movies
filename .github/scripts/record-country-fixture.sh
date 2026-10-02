@@ -23,9 +23,14 @@
 #                       never overwrites another's corpus.
 #   TMDB_API_KEY        REQUIRED — real TMDB key; the whole enrichment cascade
 #                       401s and captures nothing without it.
-#   ZYTE_API_KEY        REQUIRED — Zyte key for the Multikino / biletyna scrapes.
-# Both keys are auto-loaded from .env.local locally; the script exits 1 if either
-# is still missing rather than recording a silently-partial corpus.
+#   KINOWO_PROXY_USER   REQUIRED — the Decodo residential-proxy credentials the
+#   KINOWO_PROXY_PASS   Multikino / biletyna scrapes egress through (their WAF
+#                       blocks a datacenter IP, a GitHub runner's included).
+#   ZYTE_API_KEY        optional — the paid fallback BEHIND the proxy, as in
+#                       production. Never a leg of its own: without the proxy
+#                       credentials the recorder builds no Zyte leg at all.
+# All are auto-loaded from .env.local locally; the script exits 1 if a required
+# one is still missing rather than recording a silently-partial corpus.
 #
 # Args:
 #   $1  optional path for a zip of the corpus. When given, the recorded tree is
@@ -37,7 +42,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-# Local convenience: pull the two upstream keys from the gitignored .env.local
+# Local convenience: pull the upstream keys from the gitignored .env.local
 # when they aren't already in the environment. CI sets them as secrets, so the
 # file is absent there and this is a no-op.
 #
@@ -55,17 +60,20 @@ load_env_key() {
 }
 if [ -f "$REPO_ROOT/.env.local" ]; then
     [ -n "${TMDB_API_KEY:-}" ] || load_env_key TMDB_API_KEY
+    [ -n "${KINOWO_PROXY_USER:-}" ] || load_env_key KINOWO_PROXY_USER
+    [ -n "${KINOWO_PROXY_PASS:-}" ] || load_env_key KINOWO_PROXY_PASS
     [ -n "${ZYTE_API_KEY:-}" ] || load_env_key ZYTE_API_KEY
 fi
 
-# Both keys are required: without TMDB_API_KEY the whole enrichment cascade
-# (TMDB → IMDb → MC → RT → Filmweb) 401s and captures nothing; without
-# ZYTE_API_KEY the Multikino / biletyna scrapes never reach their sites. A
-# partial capture is worse than no capture — it looks complete but silently
-# omits whole cinemas/ratings — so fail loudly rather than record a sparse one.
+# Without TMDB_API_KEY the whole enrichment cascade (TMDB → IMDb → MC → RT →
+# Filmweb) 401s and captures nothing; without the proxy credentials the
+# Multikino / biletyna scrapes never reach their sites. A partial capture is
+# worse than no capture — it looks complete but silently omits whole
+# cinemas/ratings — so fail loudly rather than record a sparse one.
 missing=""
 [ -n "${TMDB_API_KEY:-}" ] || missing="$missing TMDB_API_KEY"
-[ -n "${ZYTE_API_KEY:-}" ] || missing="$missing ZYTE_API_KEY"
+[ -n "${KINOWO_PROXY_USER:-}" ] || missing="$missing KINOWO_PROXY_USER"
+[ -n "${KINOWO_PROXY_PASS:-}" ] || missing="$missing KINOWO_PROXY_PASS"
 if [ -n "$missing" ]; then
     echo "::error::Missing required key(s):$missing — set them in the environment or .env.local before recording." >&2
     exit 1

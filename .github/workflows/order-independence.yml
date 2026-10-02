@@ -101,7 +101,6 @@ jobs:
               run: sbt testUnitNoE2e
               env:
                   TEST_ORDER_SEED: ${{ steps.order.outputs.seed }}
-                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
