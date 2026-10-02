@@ -14,7 +14,7 @@ class ShadowDiffSpec extends AnyFlatSpec with Matchers {
       key("A", "Opętanie"), key("B", "Opętanie"))
 
   private def decision(members: Seq[ListingKey], film: Option[Int], confidence: Double = 0.9) =
-    ResolverDecision(members, film, confidence, if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)
+    ResolverDecision(members, film, confidence, if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)()
 
   private val belle   = PipelineFilmRef("belle", Some(1))
   private val lalka   = PipelineFilmRef("lalka", Some(2))

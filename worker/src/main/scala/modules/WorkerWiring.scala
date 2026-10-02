@@ -154,7 +154,8 @@ class WorkerWiring(
           tracked = Some(lookupsNow)
           new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
             store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins))
+            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
+            traces = mongoConnection.database.fold[IdentityTraceStore](IdentityTraceStore.Discard)(new MongoIdentityTraceStore(_)))
         },
         reads      = identityReads,
         archive    = listings,

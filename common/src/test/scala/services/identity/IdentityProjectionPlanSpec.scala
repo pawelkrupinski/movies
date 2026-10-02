@@ -36,7 +36,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
   private def decision(film: Option[Int], members: ProjectedListing*): ResolverDecision =
     ResolverDecision(members.map(_.listing.key).sorted, film, 0.9,
-      if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)
+      if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)()
 
   private def resolution(decisions: ResolverDecision*): Resolution = {
     val ds = decisions.sortBy(_.members.head)(using ListingKey.ordering)

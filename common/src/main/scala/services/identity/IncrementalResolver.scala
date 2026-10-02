@@ -32,7 +32,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                                 store: IdentityModelStore = new InMemoryIdentityModelStore,
                                 rules: String = "",
                                 regionBatch: Int = IncrementalResolver.RegionBatch,
-                                mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None) {
+                                mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
+                                traces: IdentityTraceStore = IdentityTraceStore.Discard) {
   import IdentityResolver.RegionFamily
   import IncrementalResolver.Mutation
 
@@ -101,7 +102,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     listings.foreach(hold)
     clock.context(corpus.seen(listings))
     // Families decided under other rules stand for nothing: every one is re-resolved.
-    val stored  = if (store.rulesVersion.contains(rules)) store.families() else { store.replace(store.families().map(_.id).toSet, Nil); Nil }
+    val stored  = if (store.rulesVersion.contains(rules)) store.families() else {
+      val all = store.families().map(_.id).toSet
+      store.replace(all, Nil); traces.replace(all, () => Nil); Nil
+    }
     val claimed = stored.flatMap(_.family.listings).groupBy(identity).collect { case (key, claims) if claims.sizeIs > 1 => key }.toSet
     val (standing, fallen) = stored.partition { family =>
       family.family.listings.forall(key => isHeld(key) && !claimed(key)) &&
@@ -112,6 +116,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // is kept, not digested again (half a UK take-up's hashing when it was).
     standing.foreach(family => remember(family.family, family.digest))
     store.replace(fallen.map(_.id).toSet, Nil)
+    traces.replace(fallen.map(_.id).toSet, () => Nil)
     update(Set.empty, byKey.collect { case (key, k) if k.listing != null && k.family < 0 => key }.toSet, CorpusContext.Changed.None)
     ruled()
   }
@@ -209,10 +214,22 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
-    clock.slices(settled.values.foreach(family => remember(family, context.slice(family.reads).digest)))
+    // The rules behind each settled family's decisions go to the trace store — built there, off this thread, from
+    // the families as resolved and each listing's venue and title — and the model keeps the decisions without them.
+    val tracedFamilies = settled.values.toSeq
+    val titled = tracedFamilies.flatMap(_.listings).flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
+    val traced = () => {
+      val titleRules = mutable.HashMap.empty[(String, String), Seq[String]]
+      tracedFamilies.flatMap(family => ListingTrace.of(StoredFamily.idOf(family.listings), family, key =>
+        titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
+          titleRules.getOrElseUpdate((cinema.displayName, raw), normalizer.firedRules(cinema, raw)) }))
+    }
+    clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(_.copy()(DecisionTrace.Empty))),
+      context.slice(family.reads).digest)))
     val added   = settled.values.toSeq.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
     store.replace(removed -- added.map(_.id), added)
+    traces.replace(removed, traced)
     ruled()
   }
 

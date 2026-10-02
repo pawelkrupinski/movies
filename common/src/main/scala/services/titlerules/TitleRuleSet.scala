@@ -62,6 +62,17 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
 
   private def fold(rs: Seq[TitleRule], in: String): String = rs.foldLeft(in)((s, r) => r(s))
 
+  /** The ids of `rs` that CHANGE `in` as the tier folds it, in fold order — what the identity trace records a
+   *  title took. Uncached: asked only when a trace is written, never on the pipeline's path. */
+  private def fired(rs: Seq[TitleRule], in: String): Seq[String] =
+    rs.foldLeft((in, Vector.empty[String])) { case ((acc, ids), r) => val next = r(acc); (next, if (next != acc) ids :+ r.id else ids) }._2
+  /** The [[perCinema]] rules that change `raw`. */
+  def firedPerCinema(cinemaId: String, raw: String): Seq[String] = perCinemaRules.get(cinemaId).fold(Seq.empty[String])(fired(_, raw))
+  /** The [[canonical]] rules that change `t`. */
+  def firedCanonical(t: String): Seq[String] = fired(canonicalRules, t.trim)
+  /** The [[structural]] (search) rules that change `t`. */
+  def firedSearch(t: String): Seq[String] = fired(structuralRules, t)
+
   // Per-title memo caches. These tier folds are pure functions over an IMMUTABLE
   // rule set, but the pipeline normalises the same ~1k corpus titles millions of
   // times (hydrate → merge → settle → display), and since ExtraTitleRules merged

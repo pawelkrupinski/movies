@@ -50,6 +50,28 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
       (own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
-        apart.take(4) ++ best ++ gaps) :+ s"node ${cluster.head.listings.head.key}", contradictions = apart)
+        apart.take(4) ++ best ++ gaps) :+ s"node ${cluster.head.listings.head.key}", contradictions = apart)(
+      traceOf(cluster, scope, scored, film, basis, edges, ids))
+  }
+
+  /** The rules behind the decision ([[DecisionTrace]]): each node's own accepting rule, joins and cannot-links,
+   *  the pooled rule when the pooled scoring decided, and which member's own evidence denied a vetoed film. */
+  private def traceOf(cluster: Seq[EvidenceNode], scope: FamilyScope, scored: Seq[Scored], film: Option[Int],
+                      basis: ResolverDecision.Basis, edges: Seq[ResolverEdge], ids: Set[String]): DecisionTrace = {
+    val nodes = cluster.flatMap { node =>
+      val accepted = bestOf.get(node.id).flatMap { case (best, _) => acceptance.acceptedBy(scope.of(node), best.candidate.tmdbId) }
+      val joins    = edges.filter(edge => edge.must && (edge.a == node.id || edge.b == node.id) && ids(edge.a) && ids(edge.b)).map(_.reason).distinct.sorted
+      val apart    = edges.filter(edge => !edge.must && (edge.a == node.id || edge.b == node.id) && (ids(edge.a) ^ ids(edge.b))).map(_.reason).distinct.sorted
+      val traced   = DecisionTrace.Node(accepted, joins, apart)
+      node.listings.map(_.key -> traced)
+    }.toMap
+    val pooled = Option.when(basis == ResolverDecision.Basis.PooledMatch)(acceptance.pooledNamed(scored).collect {
+      case ((accepted, _), rule) if film.contains(accepted.candidate.tmdbId) => rule }).flatten
+    val vetoed = scored.headOption.filter(best => best.denied && !film.contains(best.candidate.tmdbId)).map { best =>
+      val by = cluster.find(node => scope.of(node).exists(own => own.candidate.tmdbId == best.candidate.tmdbId && own.denied))
+      DecisionTrace.Veto(by.flatMap(node => scope.of(node).find(_.candidate.tmdbId == best.candidate.tmdbId)).flatMap(_.denial)
+        .orElse(best.denial).getOrElse("denied"), by.map(_.label))
+    }
+    DecisionTrace(pooled, vetoed, nodes)
   }
 }

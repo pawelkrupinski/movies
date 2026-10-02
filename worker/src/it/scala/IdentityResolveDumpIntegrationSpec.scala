@@ -57,7 +57,8 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
           "filmTitle"   -> d.film.flatMap(resolution.films.get).fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.title} (${f.year.getOrElse("?")})")),
           "confidence"  -> JsNumber(BigDecimal(d.confidence).setScale(4, BigDecimal.RoundingMode.HALF_UP)),
           "basis"       -> JsString(d.basis.toString),
-          "explanation" -> JsArray(d.explanation.take(4).map(JsString(_))))))
+          "explanation" -> JsArray(d.explanation.take(4).map(JsString(_))),
+          "rules"       -> JsArray((d.trace.rulesOf(l.key) ++ c.normalizer.firedRules(l.cinema, l.rawTitle)).map(JsString(_))))))
       }
       Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
       configuration.identityFocus.foreach { f =>

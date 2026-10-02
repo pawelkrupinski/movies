@@ -117,7 +117,7 @@ object IdentityDisagreements {
    *  resolver) can be diffed listing by listing. */
   def listingJson(country: String, corpus: String, l: Listing, e: Evidence, pipeline: Option[FilmAnswer], cluster: Int,
                   decision: ResolverDecision, resolution: Resolution, label: Option[IdentityShadow.Label],
-                  pipelineBasis: Option[String] = None): JsObject =
+                  pipelineBasis: Option[String] = None, titleRules: Seq[String] = Nil): JsObject =
     Json.obj("country" -> country, "corpus" -> corpus, "key" -> l.key.toString, "venue" -> l.venue, "rawTitle" -> l.rawTitle,
       "originalTitle" -> e.originalTitle, "year" -> e.year, "statedYear" -> e.statedYear, "directors" -> e.directors,
       "runtime" -> e.runtime,
@@ -125,6 +125,8 @@ object IdentityDisagreements {
       "resolver" -> decision.film.flatMap(id => resolution.films.get(id).map(filmFacts(id, _))).getOrElse[JsValue](JsNull),
       "cluster" -> cluster, "basis" -> decision.basis.toString, "confidence" -> decision.confidence,
       "explanation" -> decision.explanation.take(4),
+      // The rules that decided it, as rule ids (`DecisionTrace`, the title rules its title took): what `rules.py` reads.
+      "rules" -> (decision.trace.rulesOf(l.key) ++ titleRules), "vetoedBy" -> decision.trace.vetoed.flatMap(_.by),
       "label" -> label.fold[JsValue](JsNull)(x => Json.obj("tmdbId" -> x.tmdbId, "corroborated" -> x.corroborated)),
       // The absolute referee, each side alone (`IdentityReferee`).
       "pipelineVerdict" -> pipeline.fold[JsValue](JsNull)(a => verdict(IdentityReferee.judge(e, a.film))),

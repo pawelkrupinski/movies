@@ -64,9 +64,14 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
    *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibrated]]).
    *  Each the edition of it the listing names, if any ([[editionNamed]]). */
-  def pooled(ranked: Seq[Scored]): Option[Accepted] =
-    if (billsBothItsWorks(ranked)) None else seasonProduction(ranked).getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit), Rule("imdb-suggested", imdbSuggested))).map(_._1))
-      .map(editionNamed(ranked))
+  def pooled(ranked: Seq[Scored]): Option[Accepted] = pooledNamed(ranked).map(_._1)
+
+  /** [[pooled]], with the rule that accepted — for the decision's trace. */
+  def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    if (billsBothItsWorks(ranked)) None
+    else seasonProduction(ranked).map(_.map(_ -> "season-production"))
+      .getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibrated), Rule("exact-top-hit", topHit), Rule("imdb-suggested", imdbSuggested))))
+      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
    *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its

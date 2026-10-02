@@ -43,7 +43,7 @@ trait Decision {
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
-                                  contradictions: Seq[String] = Nil) extends Decision {
+                                  contradictions: Seq[String] = Nil)(val trace: DecisionTrace = DecisionTrace.Empty) extends Decision {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
   def render: String =
@@ -96,3 +96,27 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
 
 /** One constraint edge between two nodes (named by their smallest listing's sort key). */
 final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, reason: String)
+
+/** Which rules decided a [[ResolverDecision]], as rule ids — the structured twin of its explanation, for the
+ *  identity trace (`identity_traces`): every listing's rules, and every rule's listings. Outside the decision's
+ *  equality (its second parameter list): two decisions alike are alike however they were traced.
+ *  @param pooled  the rule the cluster's POOLED scoring accepted its film by, if that decided it
+ *  @param vetoed  why the cluster's best candidate was denied, and the member listing whose own evidence denied it
+ *  @param nodes   each member listing's own rules: the rule its node accepted a film by alone, the kinds of
+ *                 must-links joining it to the cluster, and the cannot-links holding a neighbour apart */
+final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTrace.Veto], nodes: Map[ListingKey, DecisionTrace.Node]) {
+  /** `key`'s rule ids, by kind: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`. */
+  def rulesOf(key: ListingKey): Seq[String] = {
+    val node = nodes.get(key)
+    (node.flatMap(_.accepted).map("accept:" + _) ++ pooled.map("pooled:" + _) ++ vetoed.map(v => "veto:" + DecisionTrace.id(v.reason)) ++
+      node.toSeq.flatMap(_.joins.map("join:" + _)) ++ node.toSeq.flatMap(_.apart.map(reason => "apart:" + DecisionTrace.id(reason)))).toSeq.distinct
+  }
+}
+
+object DecisionTrace {
+  final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String])
+  final case class Veto(reason: String, by: Option[String])
+  val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
+  /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */
+  def id(reason: String): String = reason.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "-").stripPrefix("-").stripSuffix("-")
+}

@@ -19,6 +19,6 @@ object ResolverDecisionBson {
   def decode(d: BsonDocument): ResolverDecision = {
     def strings(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asString.getValue)
     ResolverDecision(ListingKeyBson.decodeAll(d.getArray("members")), Option(d.get("film")).filter(_.isInt32).map(_.asInt32.getValue),
-      d.getDouble("confidence").getValue, ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"))
+      d.getDouble("confidence").getValue, ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"))()
   }
 }

@@ -146,7 +146,7 @@ object IdentityProjectionPlan {
     val placed = previousFilms.map(_.id).toSet
     // The canary compares the films as STORED — one per TMDB film — with the films before.
     val asStored = resolution.copy(decisions = clusters.map { case (members, film) =>
-      ResolverDecision(members.toSeq.sorted, film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)
+      ResolverDecision(members.toSeq.sorted, film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)()
     })
     ProjectionDraft(drafts, retired, retired.filterNot(id => placed(id.value)), covered, additions, regroupings,
       ShadowDiff.counts(ShadowDiff.of(asStored, previousOf)._1))

@@ -48,7 +48,7 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     val store = ShadowRunStore.inMemory(Now)
     def cluster(title: String, film: Int, confidence: Double, relation: ShadowRelation, contradictions: Seq[String] = Nil) =
       ShadowCluster(ResolverDecision(Seq(ListingKey.Published("Kino Amok", title, None, Nil)), Some(film), confidence,
-        ResolverDecision.Basis.OwnMatch, Seq(s"why $title"), contradictions), 0, Some(relation), Seq(PipelineFilmRef(title, Some(film))))
+        ResolverDecision.Basis.OwnMatch, Seq(s"why $title"), contradictions)(), 0, Some(relation), Seq(PipelineFilmRef(title, Some(film))))
     store.record(ShadowRun(Now.instant(), Seq(
       cluster("Lalka", 1321666, 0.95, ShadowRelation.Identical, Seq("a cannot-link held 'Lalka' ×3 apart")),
       cluster("Opętanie", 21484, 0.3, ShadowRelation.Moved),

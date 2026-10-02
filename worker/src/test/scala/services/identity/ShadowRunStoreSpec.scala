@@ -76,7 +76,7 @@ object ShadowRunStoreBehaviour {
     val published = ListingKey.Published("Kino Amok", "Lalka", Some(2026), Seq("Maciej Kawalski"))
     val bare      = ListingKey.Published("Kino Pod Baranami", "Lalka", None, Nil)
     val decision  = ResolverDecision(Seq(native, published), Some(1321666), 0.87, ResolverDecision.Basis.PooledMatch,
-      Seq("'Lalka' [2026] {Maciej Kawalski} ×1 → tmdb 1321666"), Seq("cannot-link held 'Lalka' ×1 apart"))
+      Seq("'Lalka' [2026] {Maciej Kawalski} ×1 → tmdb 1321666"), Seq("cannot-link held 'Lalka' ×1 apart"))()
     val film = PipelineFilmRef("f-lalka", Some(1321666))
     (ShadowCluster(decision, 7, Some(ShadowRelation.Identical), Seq(film)),
       ShadowFamily(7, Seq(Some(1321666) -> Seq(native, published), None -> Seq(bare)),

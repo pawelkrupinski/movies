@@ -53,6 +53,16 @@ class TitleNormalizer(val rules: TitleRuleSet) {
     formatPeeled.computeIfAbsent(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw),
       FormatTags.extractFormatTags(_))
 
+  /** What the title rules did to a venue's `raw` title, as rule ids: the venue's own cleanup and the format
+   *  tags it peeled (`format:<tag>`), then the canonical and search tiers over what that leaves (`title:<id>`).
+   *  The identity trace's — uncached, and never asked on the pipeline's path. */
+  def firedRules(cinema: Cinema, raw: String): Seq[String] = {
+    val key             = TitleRuleKey.of(cinema.displayName)
+    val (clean, formats) = listingTitle(cinema, raw)
+    (rules.firedPerCinema(key, TitleText.tidy(raw)) ++ rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean))).map("title:" + _).distinct ++
+      formats.map("format:" + _)
+  }
+
   /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
   private[movies] def listingTitlesCached: Int = formatPeeled.size
 
