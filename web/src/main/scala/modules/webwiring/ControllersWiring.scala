@@ -31,10 +31,12 @@ trait ControllersWiring { self: Wiring =>
     tools.DaemonExecutors.boundedEC("page-refresh", maxConcurrent = 2)
   lazy val encodedResponseCache = new EncodedResponseCache(pageRefreshExecutor, () => clock.instant())
   lazy val minifier: tools.Minifier = tools.Minifier.forMode(environmentMode)
+  lazy val showingsFragments = new controllers.CaffeineShowingsFragments(controllers.CaffeineShowingsFragments.DefaultMaxBytes)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
     servingCountry = country, normalizer = titleNormalizer, minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
-    pageTags = () => controllers.PageTags.from(processConfiguration))
+    pageTags = () => controllers.PageTags.from(processConfiguration),
+    showingsFragments = showingsFragments)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

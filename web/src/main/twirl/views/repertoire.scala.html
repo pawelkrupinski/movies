@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages, fragments: controllers.ShowingsFragments = controllers.ShowingsFragments.Uncached)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>

@@ -1,5 +1,5 @@
-@import controllers.{FilmFormat, FilmSchedule, CardFormat, FilmHref, ShowingsMarkup}
-@(film: FilmSchedule)(implicit city: models.City)
+@import controllers.{FilmSchedule, FilmHref, ShowingsMarkup}
+@(film: FilmSchedule)(implicit city: models.City, fragments: controllers.ShowingsFragments = controllers.ShowingsFragments.Uncached)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
    `_filmCards` (the listing) and `_filmDetailContent` (the per-film page).
@@ -36,7 +36,7 @@
    plain render of the whole tree and neither host has to agree with the other
    about what a cap should be.
 *@
-@defining((FilmFormat.tokensToStrip(film), ShowingsMarkup.firstListings(film.showings))) { case (commonToks, firstListing) =>
-@ShowingsMarkup.days(film, commonToks, firstListing, city.zoneId, city.country.language)
+
+@ShowingsMarkup.days(film, city, fragments)
 <a href="@FilmHref.forSlug(film.slug, film.movie.title)" class="showings-more" style="display:none"></a>
-}
+

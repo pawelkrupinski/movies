@@ -175,7 +175,12 @@ class MovieController( cc: ControllerComponents,
                        // function read per render rather than a value fixed at
                        // boot, so a live config change reaches the page.
                        pageTags: () => PageTags,
+                       // Rendered showings kept across renders of a listing (see
+                       // `ShowingsFragments`); the templates find it as their implicit.
+                       showingsFragments: ShowingsFragments = ShowingsFragments.Uncached,
                      ) extends AbstractController(cc) with Logging {
+
+  private implicit val fragments: ShowingsFragments = showingsFragments
 
   // The deployment's own, and ONLY, language. Every visitor gets this same
   // rendered `Messages` regardless of `Accept-Language`, cookie, or anything
