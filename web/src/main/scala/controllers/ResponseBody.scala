@@ -87,21 +87,46 @@ object ResponseBody {
    *  walk only replaces the concatenation of the leaves, never their rendering. */
   private[controllers] def write(html: Html, out: OutputStream): Unit = {
     val writer  = new OutputStreamWriter(out, StandardCharsets.UTF_8)
-    val scratch = new scala.collection.mutable.StringBuilder(1024)
-    var chars   = new Array[Char](1024)
-    def walk(node: Html): Unit = {
-      val children = TwirlTree.children(node)
-      if (children.nonEmpty) children.foreach(walk)
-      else {
-        scratch.clear()
-        TwirlTree.renderLeaf(node, scratch)
-        val length = scratch.length
-        if (length > chars.length) chars = new Array[Char](math.max(length, chars.length * 2))
-        scratch.underlying.getChars(0, length, chars, 0)
-        writer.write(chars, 0, length)
-      }
+    val scratch = new scala.collection.mutable.StringBuilder(FlushAt * 2)
+    var chars   = new Array[Char](FlushAt * 2)
+    def flush(): Unit = {
+      val length = scratch.length
+      if (length > chars.length) chars = new Array[Char](math.max(length, chars.length * 2))
+      scratch.underlying.getChars(0, length, chars, 0)
+      writer.write(chars, 0, length)
+      scratch.clear()
+    }
+    val flushIfFull: () => Unit = () => if (scratch.length >= FlushAt) flush()
+    def walk(node: Html): Unit = node match {
+      case streamed: StreamedHtml => streamed.renderInto(scratch.underlying, flushIfFull)
+      case _ =>
+        val children = TwirlTree.children(node)
+        if (children.nonEmpty) children.foreach(walk)
+        else { TwirlTree.renderLeaf(node, scratch); flushIfFull() }
     }
     walk(html)
+    flush()
     writer.flush()
   }
+
+  /** How much markup the walk buffers before handing it to the stream. */
+  private val FlushAt = 32 * 1024
+
+}
+
+/** A fragment that writes itself into the body as the body is written, instead of
+ *  being rendered into a `String` first: [[ResponseBody.html]] hands it the buffer it
+ *  is filling and a `flush` to call between pieces, so the fragment is never held
+ *  whole. Rendered any other way — `Html.body`, a template nesting it — it writes into
+ *  that builder and nothing changes, so the bytes are identical either way.
+ *
+ *  For the one fragment large enough to matter: a city listing's showings
+ *  (`ShowingsMarkup.days`), 7 MB of New York's 7.7 MB page.
+ *
+ *  ⚠️ NEVER HAND ONE TO A TEMPLATE BARE. Twirl's `_display_` passes a value through
+ *  only when its class is exactly `Html`; a subclass is escaped as text. Wrap it:
+ *  `new Html(List(streamed))`. */
+final class StreamedHtml(val renderInto: (java.lang.StringBuilder, () => Unit) => Unit) extends Html(Nil) {
+  override protected def buildString(builder: scala.collection.mutable.StringBuilder): Unit =
+    renderInto(builder.underlying, () => ())
 }

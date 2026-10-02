@@ -37,6 +37,6 @@
    about what a cap should be.
 *@
 @defining((FilmFormat.tokensToStrip(film), ShowingsMarkup.firstListings(film.showings))) { case (commonToks, firstListing) =>
-@Html(ShowingsMarkup.days(film, commonToks, firstListing, city.zoneId, city.country.language))
+@ShowingsMarkup.days(film, commonToks, firstListing, city.zoneId, city.country.language)
 <a href="@FilmHref.forSlug(film.slug, film.movie.title)" class="showings-more" style="display:none"></a>
 }

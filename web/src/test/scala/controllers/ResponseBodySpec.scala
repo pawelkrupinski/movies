@@ -37,6 +37,19 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
     expected.utf8String should include ("&lt;script&gt;")
   }
 
+  // A streamed fragment writes into the walk's own buffer and flushes as it goes; the
+  // bytes must still be exactly what `Html.body` renders the same tree to — here
+  // across many flushes, with a multi-byte char straddling them.
+  it should "write a streamed fragment's bytes exactly, across flushes" in {
+    val streamed = new StreamedHtml((out, flush) =>
+      for (i <- 0 until 5000) { out.append("<i>").append(i).append(" Łódź ↗</i>"); flush() })
+    val page = new Html(Seq(Html("<ul>"), new Html(List(streamed)), Html("</ul>")))
+    val expected = ByteString(page.body, StandardCharsets.UTF_8)
+    expected.length should be > 64 * 1024
+    ResponseBody.html(page).plain shouldBe expected
+    gunzip(ResponseBody.html(page).gzipped) shouldBe expected
+  }
+
   it should "say the same of a text body" in {
     val json = """{"title":"Łódź ↗"}"""
     ResponseBody.text(json).plain.utf8String shouldBe json

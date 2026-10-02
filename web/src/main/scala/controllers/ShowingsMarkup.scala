@@ -72,7 +72,9 @@ object ShowingsMarkup {
       .groupMapReduce(_._1)(_._2)((a, b) => if (a.isBefore(b)) a else b)
 
   /** A film's whole showings tree — every day, cinema group and pill `_filmShowings`
-   *  lists — as ONE string, built in one pre-sized builder.
+   *  lists — streamed: written straight into the response's own buffer as the body
+   *  is written (see [[StreamedHtml]]), flushed after each cinema group, so no film's
+   *  markup is ever held whole.
    *
    *  WHY NOT TWIRL. As a template this was a fragment object per static run of markup
    *  per loop iteration, plus an escaped `Html` per interpolated value: on a
@@ -86,8 +88,14 @@ object ShowingsMarkup {
    *  New York). The entity renders the same glyph, and `textContent` — what the
    *  filters read a cinema's name from — already has it decoded. */
   def days(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],
-           zone: ZoneId, locale: java.util.Locale): String = {
-    val out   = new java.lang.StringBuilder(sizeOf(film))
+           zone: ZoneId, locale: java.util.Locale): play.twirl.api.Html =
+    // Wrapped in a plain `Html`: a template passes a value through untouched only when
+    // its class is exactly `Html`, and anything else — a subclass included — it
+    // escapes as text (`_display_`), which would print this whole tree as markup.
+    new play.twirl.api.Html(List(new StreamedHtml((out, flush) => writeDays(film, commonToks, firstListing, zone, locale, out, flush))))
+
+  private def writeDays(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],
+                        zone: ZoneId, locale: java.util.Locale, out: java.lang.StringBuilder, flush: () => Unit): Unit = {
     val rules = zone.getRules
     for ((date, cinemas) <- film.showings) {
       val day = Day(date, expiresFrom(date, zone), rules.getOffset(date.atStartOfDay.plus(Showtime.Grace)))
@@ -114,33 +122,15 @@ object ShowingsMarkup {
         out.append("</div><div>")
         for (slot <- cinemaShowtimes.showtimes) badgeInto(out, slot, day, zone, commonToks, prefix)
         out.append("</div></div>")
+        flush()
       }
       out.append("</div>")
     }
-    out.toString
   }
 
   /** The pill for `slot`, filed under `date`, into `out`. `commonToks` are the format
    *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
    *  `prefix` is its cinema group's [[urlPrefix]]. */
-  /** About [[days]]' length for `film`, a little over, so its builder is allocated
-   *  once and rarely grows: growing a 200 KB builder copies it at every doubling, and
-   *  an estimate twice too large costs as much as the copies it saves. */
-  private def sizeOf(film: FilmSchedule): Int = {
-    // Each slot is counted with its WHOLE booking URL, which over-states the suffix
-    // most of them carry — the slack a builder that must not grow is allowed. Every
-    // other figure is the markup's own length plus a margin for escaping.
-    var size = 64
-    for ((_, cinemas) <- film.showings) {
-      size += 150
-      for (cinema <- cinemas) {
-        size += 130 + cinema.cinema.displayName.length
-        for (slot <- cinema.showtimes) size += 40 + slot.bookingUrl.fold(0)(_.length) + slot.room.fold(0)(_.length + 14)
-      }
-    }
-    size
-  }
-
   /** One `.date-group`'s day: its date, its [[expiresFrom]], and the zone offset that
    *  base was taken at — what lets a pill on an ordinary day skip the zone arithmetic. */
   private final case class Day(date: LocalDate, expiresFrom: Long, offset: java.time.ZoneOffset)
