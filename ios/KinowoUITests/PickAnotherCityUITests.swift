@@ -37,7 +37,7 @@ final class PickAnotherCityUITests: XCTestCase {
         // gone, and (under this fixture's forced-detected-city env) the gate
         // lands back on the confirm screen rather than the grid.
         let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10),
+        XCTAssertTrue(confirm.appears(within: 10),
                       "CityGate never re-armed after 'Choose another city'")
         XCTAssertFalse(pickButton.exists,
                        "Filtry sheet is still on screen after 'Choose another city'")
@@ -50,7 +50,7 @@ final class PickAnotherCityUITests: XCTestCase {
         let picker = app.descendants(matching: .any)
             .matching(identifier: A11y.CityGate.picker)
             .firstMatch
-        XCTAssertTrue(picker.waitForExistence(timeout: 10),
+        XCTAssertTrue(picker.appears(within: 10),
                       "CityChoiceView never reappeared after 'Choose another city'")
     }
 }

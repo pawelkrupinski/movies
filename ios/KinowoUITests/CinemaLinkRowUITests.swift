@@ -26,14 +26,14 @@ final class CinemaLinkRowUITests: XCTestCase {
 
     func testSharedCinemaURLCollapsesToOneChainLink() throws {
         let card = FixtureLaunch.firstFilmCard(app)
-        XCTAssertTrue(card.waitForExistence(timeout: 30), "Grid never appeared")
+        XCTAssertTrue(card.appears(within: 30), "Grid never appeared")
         // Tap the poster region: the rating links and showtime chips own their
         // own hit areas, so a centre tap can miss the NavigationLink.
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
 
         let links = app.descendants(matching: .any)
             .matching(identifier: A11y.FilmDetail.cinemaLink)
-        XCTAssertTrue(links.firstMatch.waitForExistence(timeout: 15),
+        XCTAssertTrue(links.firstMatch.appears(within: 15),
                       "Detail screen never showed its cinema-link row")
 
         let labels = links.allElementsBoundByIndex.map(\.label)

@@ -20,7 +20,7 @@ final class ScrollInsetUITests: XCTestCase {
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
 
-        XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30),
+        XCTAssertTrue(firstFilmCard(app).appears(within: 30),
                       "Grid never appeared")
     }
 
@@ -30,7 +30,7 @@ final class ScrollInsetUITests: XCTestCase {
 
     func testFirstCardRestingPositionIsStableAndBelowBar() throws {
         let grid = app.scrollViews.firstMatch
-        XCTAssertTrue(grid.waitForExistence(timeout: 5), "No scroll view")
+        XCTAssertTrue(grid.appears(within: 5), "No scroll view")
 
         let barBottom = topBarBottom()
         let initialMinY = firstFilmCard(app).frame.minY
@@ -71,7 +71,7 @@ final class ScrollInsetUITests: XCTestCase {
     /// bottom of the Filtry button which hugs the bar's lower edge.
     private func topBarBottom() -> CGFloat {
         let filtry = app.buttons[A11y.TopBar.filtryButton]
-        XCTAssertTrue(filtry.waitForExistence(timeout: 5), "Filtry button missing")
+        XCTAssertTrue(filtry.appears(within: 5), "Filtry button missing")
         return filtry.frame.maxY
     }
 

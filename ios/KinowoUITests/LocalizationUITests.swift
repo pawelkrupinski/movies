@@ -116,7 +116,7 @@ final class LocalizationUITests: XCTestCase {
         pickButton.tap()
 
         let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "CityGate never re-armed")
+        XCTAssertTrue(confirm.appears(within: 10), "CityGate never re-armed")
         app.buttons[A11y.CityGate.chooseOtherButton].tap()
 
         // Country pills now resolve through the `country.<code>` catalog key
@@ -124,7 +124,7 @@ final class LocalizationUITests: XCTestCase {
         // in the CURRENTLY FORCED UI language — still German here, since only
         // the country is switching — rather than "Polska", Poland's own name.
         let poland = app.buttons["Polen"]
-        XCTAssertTrue(poland.waitForExistence(timeout: 10), "Country picker never showed Poland")
+        XCTAssertTrue(poland.appears(within: 10), "Country picker never showed Poland")
         poland.tap()
 
         // Poland is a flat (unregioned) country, so its city list renders
@@ -132,12 +132,12 @@ final class LocalizationUITests: XCTestCase {
         // list, so it isn't in the accessibility tree until the search field
         // narrows to it (same reasoning as `CityChoiceSearchUITests`).
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
+        XCTAssertTrue(search.appears(within: 10), "No search field on the picker")
         search.tap()
         search.typeText("warszawa")
 
         let warszawa = app.buttons["Warszawa"]
-        XCTAssertTrue(warszawa.waitForExistence(timeout: 10), "Poland's city list never appeared")
+        XCTAssertTrue(warszawa.appears(within: 10), "Poland's city list never appeared")
         warszawa.tap()
 
         // Back on the grid, now under Poland — and still German, proving the
@@ -173,14 +173,14 @@ final class LocalizationUITests: XCTestCase {
         pickButton.tap()
 
         let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "CityGate never re-armed")
+        XCTAssertTrue(confirm.appears(within: 10), "CityGate never re-armed")
         app.buttons[A11y.CityGate.chooseOtherButton].tap()
 
         // Both pills read their GERMAN translation, not their own native
         // name — Poland's own name is "Polska", the UK's is "United Kingdom";
         // neither string should appear on this screen any more.
         let poland = app.buttons["Polen"]
-        XCTAssertTrue(poland.waitForExistence(timeout: 10),
+        XCTAssertTrue(poland.appears(within: 10),
                       "Country picker never showed Poland's German name")
         XCTAssertTrue(app.buttons["Vereinigtes Königreich"].exists,
                       "Country picker never showed the UK's German name")
@@ -197,12 +197,12 @@ final class LocalizationUITests: XCTestCase {
         // "Warszawa", not a German rendering, because a city's name is the
         // city's own name and never runs through the language catalog.
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
+        XCTAssertTrue(search.appears(within: 10), "No search field on the picker")
         search.tap()
         search.typeText("warszawa")
 
         let warszawa = app.buttons["Warszawa"]
-        XCTAssertTrue(warszawa.waitForExistence(timeout: 10),
+        XCTAssertTrue(warszawa.appears(within: 10),
                       "Poland's city list never showed Warszawa under its own, untranslated name")
     }
 
@@ -247,7 +247,7 @@ final class LocalizationUITests: XCTestCase {
         picker.tap()
 
         let english = app.buttons["English"]
-        XCTAssertTrue(english.waitForExistence(timeout: 5), "Language picker never offered English")
+        XCTAssertTrue(english.appears(within: 5), "Language picker never offered English")
         english.tap()
 
         // `.id(prefs.selectedLanguage)` on the root (see `KinowoApp.body`) tears
@@ -285,7 +285,7 @@ final class LocalizationUITests: XCTestCase {
         filtersButton.tap()
 
         let sortPicker = app.buttons[A11y.FiltersSheet.sortPicker]
-        XCTAssertTrue(sortPicker.waitForExistence(timeout: 10), "Filtry never showed the sort picker")
+        XCTAssertTrue(sortPicker.appears(within: 10), "Filtry never showed the sort picker")
         XCTAssertTrue(sortPicker.label.contains("Next showing"),
                      "Sort picker read \"\(sortPicker.label)\", expected it to mention the English \"Next showing\" option")
     }
@@ -346,7 +346,7 @@ final class LocalizationUITests: XCTestCase {
         launch(country: country, language: language)
 
         let card = FixtureLaunch.firstFilmCard(app)
-        XCTAssertTrue(card.waitForExistence(timeout: 30),
+        XCTAssertTrue(card.appears(within: 30),
                       "Grid never appeared", file: file, line: line)
         // Tap the poster region: the rating links and showtime chips hold their
         // own hit areas, so a centre tap can miss the NavigationLink.
@@ -357,7 +357,7 @@ final class LocalizationUITests: XCTestCase {
     private func assertDetailReads(_ expected: [String],
                                    file: StaticString = #filePath, line: UInt = #line) {
         for caption in expected {
-            XCTAssertTrue(app.staticTexts[caption].waitForExistence(timeout: 10),
+            XCTAssertTrue(app.staticTexts[caption].appears(within: 10),
                           "Detail screen is missing the \(caption) meta block",
                           file: file, line: line)
         }
@@ -376,7 +376,7 @@ final class LocalizationUITests: XCTestCase {
             A11y.TopBar.datePillWeek,
             A11y.TopBar.datePillAnytime,
         ]
-        XCTAssertTrue(app.buttons[ids[0]].waitForExistence(timeout: 20),
+        XCTAssertTrue(app.buttons[ids[0]].appears(within: 20),
                       "Top bar never appeared", file: file, line: line)
         // `DateFilter.label` — resolved through `String(localized:)`, because
         // the pill row measures the rendered width of each caption.
@@ -386,7 +386,7 @@ final class LocalizationUITests: XCTestCase {
         // A plain `LocalizedStringKey` handed to `TextField`, i.e. the other
         // half of how captions reach the screen.
         let search = app.textFields[A11y.Search.field]
-        XCTAssertTrue(search.waitForExistence(timeout: 5),
+        XCTAssertTrue(search.appears(within: 5),
                       "Search field missing", file: file, line: line)
         XCTAssertEqual(search.placeholderValue, searchPlaceholder,
                        "Search field placeholder", file: file, line: line)
@@ -394,7 +394,7 @@ final class LocalizationUITests: XCTestCase {
         // Icon-only button: proves our `.accessibilityLabel` overrides the SF
         // Symbol's own system name, which reads "Filter" in every language.
         let filters = app.buttons[A11y.TopBar.filtryButton]
-        XCTAssertTrue(filters.waitForExistence(timeout: 5),
+        XCTAssertTrue(filters.appears(within: 5),
                       "Filtry button missing", file: file, line: line)
         XCTAssertEqual(filters.label, filtersButton,
                        "Filtry button accessibility label", file: file, line: line)

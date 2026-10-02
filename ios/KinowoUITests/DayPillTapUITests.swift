@@ -27,10 +27,10 @@ final class DayPillTapUITests: XCTestCase {
         // "Wszystkie" so the Films grid has cards regardless of the hour —
         // late in the evening "Dziś" can be empty (see ios uitests-at-night).
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(anytime.waitForExistence(timeout: 15), "Top bar never appeared")
+        XCTAssertTrue(anytime.appears(within: 15), "Top bar never appeared")
         anytime.tap()
 
-        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard().appears(within: 30), "Grid never appeared")
     }
 
     override func tearDownWithError() throws {
@@ -43,14 +43,14 @@ final class DayPillTapUITests: XCTestCase {
     /// translucent bar).
     func testVerticalDragInTopBarDoesNotScrollGrid() throws {
         let card = firstFilmCard()
-        XCTAssertTrue(card.waitForExistence(timeout: 5), "No film card")
+        XCTAssertTrue(card.appears(within: 5), "No film card")
         let startMinY = card.frame.minY
 
         // Start in the bar, on the 🎬 brand mark (a non-interactive Text on the
         // far left, so the touch isn't claimed by a pill button), and drag up
         // by a long throw. If the grid's pan reaches here, the cards scroll up.
         let brand = app.staticTexts["🎬"]
-        XCTAssertTrue(brand.waitForExistence(timeout: 5), "Brand mark missing")
+        XCTAssertTrue(brand.appears(within: 5), "Brand mark missing")
         let start = brand.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let end   = start.withOffset(CGVector(dx: 0, dy: -300))
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast,
@@ -69,7 +69,7 @@ final class DayPillTapUITests: XCTestCase {
     /// trait).
     func testTappingDayPillSelectsIt() throws {
         let today = app.buttons[A11y.TopBar.datePillToday]
-        XCTAssertTrue(today.waitForExistence(timeout: 5), "Day pill missing")
+        XCTAssertTrue(today.appears(within: 5), "Day pill missing")
 
         today.tap()
         let selected = XCTNSPredicateExpectation(

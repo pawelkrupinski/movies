@@ -21,7 +21,7 @@ final class CityChoiceSearchUITests: XCTestCase {
         app.launch()
 
         let chooseOther = app.buttons[A11y.CityGate.chooseOtherButton]
-        XCTAssertTrue(chooseOther.waitForExistence(timeout: 10),
+        XCTAssertTrue(chooseOther.appears(within: 10),
                       "Confirm screen never offered the 'choose another city' button")
         chooseOther.tap()
     }
@@ -33,17 +33,17 @@ final class CityChoiceSearchUITests: XCTestCase {
         // Polish-collated rows, so it's on-screen before any query — proof the
         // manual list rendered. (Wrocław sits inside that group, hence not in
         // the accessibility tree until a query flattens it up.)
-        XCTAssertTrue(app.buttons["Dolnośląskie"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.buttons["Dolnośląskie"].appears(within: 5),
                       "Manual city list never appeared")
 
         // "wroc" — typed without diacritics — narrows to Wrocław alone: it gets
         // pulled into view, and the previously-visible voivodeship drops out.
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
+        XCTAssertTrue(search.appears(within: 5), "No search field on the picker")
         search.tap()
         search.typeText("wroc")
 
-        XCTAssertTrue(app.buttons["Wrocław"].waitForExistence(timeout: 3),
+        XCTAssertTrue(app.buttons["Wrocław"].appears(within: 3),
                       "Wrocław was filtered out by a query that should match it")
         XCTAssertFalse(app.buttons["Dolnośląskie"].exists,
                        "Dolnośląskie is still shown after searching 'wroc'")
@@ -52,11 +52,11 @@ final class CityChoiceSearchUITests: XCTestCase {
     func testDiacriticTypedQueryFindsThePolishCity() throws {
         // "lodz" must find "Łódź" (ł/ó folded away).
         let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("lodz")
 
-        XCTAssertTrue(app.buttons["Łódź"].waitForExistence(timeout: 3),
+        XCTAssertTrue(app.buttons["Łódź"].appears(within: 3),
                       "'lodz' did not surface 'Łódź'")
         // Dolnośląskie led the unfiltered list; "lodz" must have dropped it.
         XCTAssertFalse(app.buttons["Dolnośląskie"].exists)

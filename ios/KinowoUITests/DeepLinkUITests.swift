@@ -32,7 +32,7 @@ final class DeepLinkUITests: XCTestCase {
 
         let poster = app.descendants(matching: .any).matching(identifier: "filmdetail.poster").firstMatch
         XCTAssertTrue(
-            poster.waitForExistence(timeout: 30),
+            poster.appears(within: 30),
             "A film deep link should push the detail screen, but the detail poster never appeared")
     }
 
@@ -45,7 +45,7 @@ final class DeepLinkUITests: XCTestCase {
 
         let poster = app.descendants(matching: .any).matching(identifier: "filmdetail.poster").firstMatch
         XCTAssertTrue(
-            poster.waitForExistence(timeout: 30),
+            poster.appears(within: 30),
             "A numbered film link (Film II) should open the fixture's 'Film 2' detail via normalized matching")
     }
 
@@ -56,7 +56,7 @@ final class DeepLinkUITests: XCTestCase {
         app.launch()
 
         let card = app.descendants(matching: .any).matching(identifier: "filmgrid.cell").firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 30), "City link should land on the repertoire grid")
+        XCTAssertTrue(card.appears(within: 30), "City link should land on the repertoire grid")
         XCTAssertFalse(
             app.buttons[A11y.CityGate.confirmButton].exists,
             "A city deep link should bypass the first-launch city-confirm screen")

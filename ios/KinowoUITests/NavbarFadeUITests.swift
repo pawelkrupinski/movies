@@ -32,9 +32,9 @@ final class NavbarFadeUITests: XCTestCase {
 
         // "Wszystkie" guarantees a dense, multi-row poster grid at any hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
-        XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
+        XCTAssertTrue(anytime.appears(within: 30), "Top bar never appeared")
         anytime.tap()
-        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30),
+        XCTAssertTrue(firstFilmCard().appears(within: 30),
                       "Grid never filled after switching to Wszystkie")
     }
 
@@ -42,7 +42,7 @@ final class NavbarFadeUITests: XCTestCase {
 
     func testNoFadeScrimUnderNavbar() throws {
         let grid = app.scrollViews.firstMatch
-        XCTAssertTrue(grid.waitForExistence(timeout: 5), "No grid scroll view")
+        XCTAssertTrue(grid.appears(within: 5), "No grid scroll view")
 
         // Get posters up against the bar so the sampled band crosses poster
         // bodies, not the launch gap.

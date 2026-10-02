@@ -30,7 +30,7 @@ final class CityGateButtonSizeUITests: XCTestCase {
     func testConfirmButtonIsLarge() throws {
         let button = app.buttons[A11y.CityGate.confirmButton]
         XCTAssertTrue(
-            button.waitForExistence(timeout: 10),
+            button.appears(within: 10),
             "City-confirm screen never showed its primary button"
         )
 

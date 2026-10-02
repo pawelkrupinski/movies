@@ -29,9 +29,9 @@ final class DetailShowsAllDaysUITests: XCTestCase {
         // Pin the listing to the single "Dziś" page so the grid hands the detail
         // screen a today-only copy.
         let today = app.buttons[A11y.TopBar.datePillToday]
-        XCTAssertTrue(today.waitForExistence(timeout: 30), "Top bar never appeared")
+        XCTAssertTrue(today.appears(within: 30), "Top bar never appeared")
         today.tap()
-        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard().appears(within: 30), "Grid never appeared")
 
         // Tap the poster region (top of the card) — the rating links and showtime
         // chips keep their own hit areas, so a centre tap can miss the
@@ -42,14 +42,14 @@ final class DetailShowsAllDaysUITests: XCTestCase {
         let detailTitle = app.descendants(matching: .any)
             .matching(identifier: A11y.Tuning.detailTitle)
             .firstMatch
-        XCTAssertTrue(detailTitle.waitForExistence(timeout: 10), "Detail screen never opened")
+        XCTAssertTrue(detailTitle.appears(within: 10), "Detail screen never opened")
 
         // The day blocks render `DateLabel`'s long weekday + day + month,
         // uppercased — "ŚRODA 23 WRZEŚNIA", not the server's "Dziś"/"Jutro".
         // The fixture film plays today AND tomorrow; the detail must show BOTH.
-        XCTAssertTrue(dayBlock(offsetDays: 0).waitForExistence(timeout: 5),
+        XCTAssertTrue(dayBlock(offsetDays: 0).appears(within: 5),
                       "Detail is missing today's seanse block")
-        XCTAssertTrue(dayBlock(offsetDays: 1).waitForExistence(timeout: 5),
+        XCTAssertTrue(dayBlock(offsetDays: 1).appears(within: 5),
                       "Detail opened from the Dziś page shows only today — the full, "
                       + "all-days schedule was not resolved (the day-filter leaked into detail)")
     }

@@ -39,7 +39,7 @@ final class CardsVisibleUITests: XCTestCase {
     func testAtLeastOneCardIsVisibleAndHittableAtLaunch() throws {
         // Wait until *some* card mounts (any page), then look for an on-screen one.
         XCTAssertTrue(
-            anyCard().waitForExistence(timeout: 30),
+            anyCard().appears(within: 30),
             "Grid never mounted — no film card in the tree at all")
         // Let the first-frame paged layout settle.
         Thread.sleep(forTimeInterval: 1.5)
@@ -68,10 +68,10 @@ final class CardsVisibleUITests: XCTestCase {
     /// here is the regression guard for "always show the cinema label".
     func testCinemaLabelShownEvenWithASingleCinema() throws {
         XCTAssertTrue(
-            anyCard().waitForExistence(timeout: 30),
+            anyCard().appears(within: 30),
             "Grid never mounted — no film card in the tree at all")
         XCTAssertTrue(
-            app.staticTexts["Kino"].firstMatch.waitForExistence(timeout: 10),
+            app.staticTexts["Kino"].firstMatch.appears(within: 10),
             "The cinema label 'Kino' was not rendered — a single-cinema listing "
             + "is suppressing the per-card cinema label")
     }
@@ -86,13 +86,13 @@ final class CardsVisibleUITests: XCTestCase {
     /// generic element rather than a plain `staticText`.
     func testAgeRatingBadgeShownWhenFilmHasCertificate() throws {
         XCTAssertTrue(
-            anyCard().waitForExistence(timeout: 30),
+            anyCard().appears(within: 30),
             "Grid never mounted — no film card in the tree at all")
         let badge = app.descendants(matching: .any)
             .matching(identifier: A11y.FilmCard.ageRating)
             .firstMatch
         XCTAssertTrue(
-            badge.waitForExistence(timeout: 10),
+            badge.appears(within: 10),
             "The age-rating badge did not render for a film carrying an ageRating")
     }
 
