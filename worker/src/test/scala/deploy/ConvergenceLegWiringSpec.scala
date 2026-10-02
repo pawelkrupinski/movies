@@ -513,4 +513,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     steps.last shouldBe "- name: Wait for MongoDB, started in the background above"
     setup should include("""exit "$(cat "$RUNNER_TEMP/mongo-start.rc")"""")
   }
+
+  /** A recording leg's identity lookup sweep is minutes of live lookups; untimed, it read as a
+   *  silent gap between `reloadReadModel` and `boot complete`, and nobody could tell whether a
+   *  change to it helped (recording 37063331034). */
+  "a convergence leg" should "time its identity lookup sweep as a phase of its own" in {
+    RepoFile.read("e2e/src/test/scala/services/movies/CountryConvergenceBehaviour.scala") should include(
+      """step("identityLookupSweep")(IdentityLookupSweep.over(""")
+  }
 }

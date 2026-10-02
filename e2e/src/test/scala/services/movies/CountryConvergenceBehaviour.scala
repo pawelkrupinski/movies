@@ -441,7 +441,10 @@ abstract class CountryConvergenceBehaviour(
       // (`IdentityLookupSweep.RecordedMarker`), so a resolver query added since then is never a
       // request of this leg. Asked for by name, it asks the whole set: that is the coverage check.
       val recorded = if (sweepRequested || missingFixtures.isEmpty) None else IdentityLookupSweep.recordedIn(treeRoot)
-      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, asked += _, recorded, IdentityLookupSweep.LookupThreads)}")
+      // Timed like every other phase: in a recording leg it is minutes of live lookups, and it
+      // used to show only as a silent gap between `reloadReadModel` and `boot complete`.
+      val lookups = step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, recorded, IdentityLookupSweep.LookupThreads))
+      info(s"${country.displayName}: identity resolver lookups — $lookups")
       if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot, asked)
     }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
