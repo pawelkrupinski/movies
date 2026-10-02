@@ -95,15 +95,40 @@ class ArchiveReplayWiring(
    * run saw for it, and a hermetic replay of the UK sample stopped on exactly that request.
    * Remembered, it replays the way it failed.
    */
-  override lazy val httoFetch: HttpFetch =
+  override lazy val httoFetch: HttpFetch = recordedDetail(identity)
+
+  /**
+   * The routes production sends through the residential proxy, each with the same tree and
+   * verdict cache in front of it — and behind them the route PRODUCTION builds
+   * (`EgressWiring`'s `…Over`), over this wiring's live leg instead of prod's direct one.
+   *
+   * They all used to be `httoFetch`, which egresses direct. For most hosts that is what prod
+   * does too; for these it is the exact Cloudflare block the proxy exists to clear, so a
+   * recording asked Cineworld's box-office API for 136 UK films from a GitHub runner, was
+   * answered 403 for every one, and the tree never held a single Cineworld detail. Prod's
+   * chain degrades on its own where the run has no credentials — no KINOWO_PROXY_* means no
+   * proxy leg and no ZYTE_API_KEY means no Zyte leg — so a keyless recording is the direct
+   * leg it was, and only the recorder step is handed the proxy secrets.
+   *
+   * A hermetic run keeps the bare leaf: those legs fetch through their own clients (the proxy
+   * shards, Zyte's API) rather than through `realHttpLeaf`, so they are exactly the requests
+   * the hermetic wire could not refuse.
+   */
+  override lazy val multikinoFetch: HttpFetch = recordedDetail(multikinoOver)
+  override lazy val biletynaFetch: HttpFetch  = recordedDetail(biletynaOver)
+  override lazy val zyteFetch: HttpFetch      = recordedDetail(zyteOver)
+  override lazy val flicksFetch: HttpFetch    = recordedDetail(flicksOver)
+  override lazy val vueFetch: HttpFetch       = recordedDetail(vueOver)
+  override lazy val odeonFetch: HttpFetch     = recordedDetail(odeonOver)
+
+  /** The detail tree and verdict cache in front of `route` built over this run's live leg. */
+  private def recordedDetail(route: HttpFetch => HttpFetch): HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
-  override lazy val multikinoFetch: HttpFetch  = httoFetch
-  override lazy val biletynaFetch: HttpFetch   = httoFetch
-  override lazy val zyteFetch: HttpFetch       = httoFetch
-  override lazy val flicksFetch: HttpFetch     = httoFetch
-  override lazy val vueFetch: HttpFetch        = httoFetch
-  override lazy val odeonFetch: HttpFetch      = httoFetch
+      live(if (hermetic.isDefined) detailLeaf else route(detailLeaf)), "detail-fixtures", "detail-live")
+
+  /** ONE scrape-phase chain under every route, as prod's `httoFetch` is: its throttle and
+   *  breakers pace all cinema hosts together, not one route at a time. */
+  private lazy val detailLeaf: HttpFetch = phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)
 
   /**
    * On-disk enrichment fixtures FIRST, live behind them, and whatever the live leg

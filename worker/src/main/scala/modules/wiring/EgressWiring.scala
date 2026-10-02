@@ -21,10 +21,15 @@ trait EgressWiring { self: WorkerWiring =>
   // the `reference_decodo_isp_proxy` memory.
   // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built
   // once and shared by the proxied clients; None where the KINOWO_PROXY_* secrets
-  // aren't set (local/CI/fixture-replay → Zyte/direct). Sharing the shards means
+  // aren't set (local, CI jobs not handed them, hermetic replay → Zyte/direct).
+  // Sharing the shards means
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.
-  private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
+  private lazy val proxyShards: Option[IndexedSeq[HttpFetch]] = residentialProxyShards
+
+  /** Where [[proxyShards]] comes from — a seam only so a spec can stand a fake shard in for
+   *  Decodo and watch a route reach it without a network. */
+  protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
     EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
@@ -92,8 +97,15 @@ trait EgressWiring { self: WorkerWiring =>
   // Lazy, and handed on by name, so a wiring without ZYTE_API_KEY never builds it.
   lazy val zyteHttpClient: java.net.http.HttpClient = ZyteFallback.newHttpClient()
 
-  lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteHttpClient, configuration, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
+  // Every route below is a `protected def …Over(direct)` building the chain over the DIRECT
+  // leg it bottoms out on, and a `lazy val` applying it to `httoFetch`. The split exists for
+  // the archive-replay RECORDER, which hangs its fixture tree in front of each route and so
+  // needs the same chain over its own live leg: a recording that egressed direct where prod
+  // goes proxy-first recorded Cloudflare's 403 for every UK Cineworld film (29,512 of them for
+  // 136 ids in one run) instead of the film. One definition, so the two cannot drift.
+  protected def multikinoOver(direct: HttpFetch): HttpFetch =
+    proxyPrimary(MultikinoClient.fetchFor(direct, zyteHttpClient, configuration, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
+  lazy val multikinoFetch: HttpFetch = multikinoOver(httoFetch)
   // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
   // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
@@ -102,10 +114,14 @@ trait EgressWiring { self: WorkerWiring =>
     val fallback = MultikinoClient.fetchFor(httoFetch, zyteHttpClient, configuration, zyteMeter)
     proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
   }
-  // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, zyteHttpClient, configuration, meter = zyteMeter)
+  // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set; without
+  // the key this IS `direct`). Stateless without a cookie source, so a chain per route
+  // behaves exactly as one shared chain would.
+  protected def zyteOver(direct: HttpFetch): HttpFetch = ZyteFallback.fetchFor(direct, zyteHttpClient, configuration, meter = zyteMeter)
+  lazy val zyteFetch: HttpFetch = zyteOver(httoFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
-  lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
+  protected def biletynaOver(direct: HttpFetch): HttpFetch = proxyPrimary(zyteOver(direct))
+  lazy val biletynaFetch: HttpFetch = biletynaOver(httoFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
   // from kinowo-worker-uk: the identical GET returns 403 from Fly, 200 from a
   // residential IP; every Decodo pool IP returns 200 too). Flicks is the ONLY UK
@@ -123,7 +139,8 @@ trait EgressWiring { self: WorkerWiring =>
   // primary — see feedback_zyte_is_decodo_fallback_only — and the
   // `kinowo-residential-proxy-failing` alert (now ResidentialProxyFallingBackToZyte,
   // routed to email) is what says whether that's actually happening.
-  lazy val flicksFetch: HttpFetch = proxyPrimary(zyteFetch)
+  protected def flicksOver(direct: HttpFetch): HttpFetch = proxyPrimary(zyteOver(direct))
+  lazy val flicksFetch: HttpFetch = flicksOver(httoFetch)
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
@@ -131,7 +148,8 @@ trait EgressWiring { self: WorkerWiring =>
   // the proxy is down. Cineworld reuses flicksFetch (GET-only, no cookie, so
   // per-venue stickiness is fine), Zyte fallback included. Showcase/Everyman still
   // reach their origins directly.
-  lazy val vueFetch: HttpFetch = proxyPrimary(httoFetch, keyOf = StickyShardHttpFetch.hostOnly)
+  protected def vueOver(direct: HttpFetch): HttpFetch = proxyPrimary(direct, keyOf = StickyShardHttpFetch.hostOnly)
+  lazy val vueFetch: HttpFetch = vueOver(httoFetch)
 
   // vwc.odeon.co.uk — Odeon's Vista ocapi backend — is Cloudflare-403'd too. It was
   // NOT when the client was written: it answered our Fly egress directly, and only
@@ -148,7 +166,8 @@ trait EgressWiring { self: WorkerWiring =>
   // Decodo-account-wide 503 outage — see the comment there). Odeon Middlesbrough hit
   // the identical "proxy: Tunnel failed, got: 503 / fallback: HTTP 403" loop with a
   // bare direct fallback, because direct is Cloudflare-blocked here too.
-  lazy val odeonFetch: HttpFetch = proxyPrimary(zyteFetch)
+  protected def odeonOver(direct: HttpFetch): HttpFetch = proxyPrimary(zyteOver(direct))
+  lazy val odeonFetch: HttpFetch = odeonOver(httoFetch)
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL
