@@ -88,6 +88,9 @@ object FilmwebDiff {
 
   def main(args: Array[String]): Unit = {
     // Before any handshake — see IssuerCertificateFetching.
+    // Before any request: Multikino / biletyna / ck105 tunnel through the residential proxy,
+    // and the JDK reads this once — see ProxyTunnelAuthentication.
+    ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
@@ -110,7 +113,10 @@ object FilmwebDiff {
     val http     = new RealHttpFetch()
     // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.
     val titles   = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
-    val catalog  = new CinemaScraperCatalog(http, today = today, titles = titles, configuration = process)
+    // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
+    // proxy (Zyte behind it), as the worker reaches them, when the Decodo credentials are set.
+    val shards   = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
+    val catalog  = new CinemaScraperCatalog(http, today = today, titles = titles, configuration = process, proxyShards = shards)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder

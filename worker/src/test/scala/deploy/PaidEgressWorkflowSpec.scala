@@ -37,7 +37,8 @@ class PaidEgressWorkflowSpec extends AnyFlatSpec with Matchers {
 
   "every CI step handed the Zyte key" should "carry the residential-proxy credentials beside it" in {
     withClue("the sweep must see the recorder's key, or it would pass over nothing: ") {
-      zyteSites.map(_._1) should contain(".github/workflows/country-fixture-artifact.yml")
+      zyteSites.map(_._1) should contain allOf(".github/workflows/country-fixture-artifact.yml",
+        ".github/workflows/filmweb-diff.yml")
     }
     zyteSites.foreach { case (path, env) =>
       withClue(s"$path hands out ZYTE_API_KEY without Decodo ahead of it (env: ${env.mkString(", ")}): ") {
@@ -48,7 +49,7 @@ class PaidEgressWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   "a test run" should "never be handed the Zyte key" in {
-    Seq(".github/workflows/ci.yml", ".github/workflows/order-independence.yml", ".github/workflows/filmweb-diff.yml")
+    Seq(".github/workflows/ci.yml", ".github/workflows/order-independence.yml")
       .foreach(path => withClue(s"$path: ")(zyteEnvBlocks(RepoFile.read(path)) shouldBe empty))
   }
 

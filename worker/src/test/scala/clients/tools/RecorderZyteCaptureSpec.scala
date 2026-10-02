@@ -95,21 +95,21 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   "The recorder's paid-egress chain" should "build no Zyte leg when there is no residential proxy" in {
     val zyte   = new Leg(Some("from-zyte"))
     val direct = new Leg(Some("from-direct"))
-    RecordAllDataToFixture.paidEgressChain(None, _ => zyte, direct).get(MultikinoFilmsUrl) shouldBe "from-direct"
+    modules.wiring.EgressWiring.paidEgressChain(None, _ => zyte, direct).get(MultikinoFilmsUrl) shouldBe "from-direct"
     zyte.calls.get shouldBe 0
   }
 
   it should "ask the proxy first and leave Zyte unasked when the proxy answers" in {
     val proxy = new Leg(Some("from-proxy"))
     val zyte  = new Leg(Some("from-zyte"))
-    RecordAllDataToFixture.paidEgressChain(Some(IndexedSeq(proxy)), _ => zyte, new Leg(Some("from-direct")))
+    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(proxy)), _ => zyte, new Leg(Some("from-direct")))
       .get(MultikinoFilmsUrl) shouldBe "from-proxy"
     zyte.calls.get shouldBe 0
   }
 
   it should "fall back to Zyte only behind a proxy that failed" in {
     val zyte = new Leg(Some("from-zyte"))
-    RecordAllDataToFixture.paidEgressChain(Some(IndexedSeq(new Leg(None))), _ => zyte, new Leg(Some("from-direct")))
+    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(new Leg(None))), _ => zyte, new Leg(Some("from-direct")))
       .get(MultikinoFilmsUrl) shouldBe "from-zyte"
     zyte.calls.get shouldBe 1
   }

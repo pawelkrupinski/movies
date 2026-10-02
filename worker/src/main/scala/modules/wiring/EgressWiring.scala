@@ -173,6 +173,24 @@ trait EgressWiring { self: WorkerWiring =>
 }
 
 object EgressWiring {
+  /** The residential proxy first, `zyteOver(direct)` behind it — and with no proxy, `direct`
+   *  ALONE: Zyte is the proxy's paid fallback, so a tool run without Decodo credentials never
+   *  builds a Zyte leg, whatever ZYTE_API_KEY says. */
+  def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], zyteOver: HttpFetch => HttpFetch, direct: HttpFetch,
+                      warmUrl: Option[String] = None): HttpFetch =
+    proxyShards.fold(direct)(proxyPrimary(_, zyteOver(direct), warmUrl))
+
+  /** Zyte over `configuration`'s key (cookie-walled on `cookieSource`) → `direct`: the leg
+   *  [[paidEgressChain]] puts behind the proxy. */
+  def zyteOver(configuration: settings.ProcessConfiguration, cookieSource: Option[String])(direct: HttpFetch): HttpFetch =
+    ZyteFallback.fetchFor(direct, ZyteFallback.newHttpClient(), configuration.zyteApiKey, configuration, cookieSource,
+      HttpOutcomeRecorder.noop)
+
+  /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → Zyte → `direct`. */
+  def multikinoChain(configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]],
+                     direct: HttpFetch): HttpFetch =
+    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl)), direct, Some(MultikinoClient.HomeUrl))
+
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
 

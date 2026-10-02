@@ -1,9 +1,8 @@
 package clients.tools
 
 import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, ResidentialProxy, TestWiring}
+import modules.wiring.EgressWiring
 import services.movies.InMemoryMovieRepository
-import services.cinemas.common.ZyteFallback
-import services.cinemas.pl.MultikinoClient
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
@@ -61,24 +60,6 @@ object RecordAllDataToFixture {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     new RecordAllDataToFixture(_root_.settings.ProcessConfiguration.resolve()).run()
   }
-
-  /** The residential proxy first, `zyteOver(direct)` behind it — and with no proxy, `direct`
-   *  ALONE: Zyte is the proxy's paid fallback, so a recording without Decodo credentials never
-   *  builds a Zyte leg, whatever ZYTE_API_KEY says. */
-  def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], zyteOver: HttpFetch => HttpFetch, direct: HttpFetch,
-                      warmUrl: Option[String] = None): HttpFetch =
-    proxyShards.fold(direct)(modules.wiring.EgressWiring.proxyPrimary(_, zyteOver(direct), warmUrl))
-
-  /** Zyte over `configuration`'s key (cookie-walled on `cookieSource`) → `direct`: the leg
-   *  [[paidEgressChain]] puts behind the proxy. */
-  def zyteOver(configuration: _root_.settings.ProcessConfiguration, cookieSource: Option[String])(direct: HttpFetch): HttpFetch =
-    ZyteFallback.fetchFor(direct, ZyteFallback.newHttpClient(), configuration.zyteApiKey, configuration, cookieSource,
-      tools.HttpOutcomeRecorder.noop)
-
-  /** Multikino's chain for a recording tool: proxy (warmed on the homepage) → Zyte → `direct`. */
-  def multikinoChain(configuration: _root_.settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]],
-                     direct: HttpFetch): HttpFetch =
-    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl)), direct, Some(MultikinoClient.HomeUrl))
 }
 
 /** The recording wiring — an instance `main` builds, so the lazily built fetches, clients
@@ -108,7 +89,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // last. The recorder builds the same chain over the PROCESS's credentials — the wiring's
   // own configuration is empty and `TestWiring` refuses paid egress — and never a Zyte leg
   // without Decodo ahead of it: Zyte is billed per request and is Decodo's fallback, never a
-  // primary (see [[RecordAllDataToFixture.paidEgressChain]]).
+  // primary (see [[EgressWiring.paidEgressChain]]).
   //
   // The paid legs fetch through their OWN clients, so a recorder wired as the chain's inner
   // `direct` would never see a proxy- or Zyte-served response and the corpus would silently
@@ -118,10 +99,10 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
     modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, RecordAllDataToFixture.multikinoChain(configuration, processProxyShards, new RealHttpFetch()))
+    new RecordingHttpFetch(captureDate, EgressWiring.multikinoChain(configuration, processProxyShards, new RealHttpFetch()))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, RecordAllDataToFixture.paidEgressChain(processProxyShards,
-      RecordAllDataToFixture.zyteOver(configuration, None), new RealHttpFetch()))
+    new RecordingHttpFetch(captureDate, EgressWiring.paidEgressChain(processProxyShards,
+      EgressWiring.zyteOver(configuration, None), new RealHttpFetch()))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

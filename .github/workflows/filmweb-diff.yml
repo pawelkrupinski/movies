@@ -40,17 +40,20 @@ jobs:
               id: stamp
               run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-            # Compare 3 days ahead. No ZYTE_API_KEY: the diagnostic catalogue's
-            # Multikino / biletyna / ck105 chains are Zyte-PRIMARY, and Zyte (billed
-            # per request) is only ever the Decodo proxy's fallback
-            # (PaidEgressWorkflowSpec) — so from this runner those venues are
-            # direct, and a WAF block shows up in the diff as a scrape failure.
-            # `continue-on-error` is a belt-and-braces guard on top of the tool's
-            # own always-exit-0 behaviour, so a transient network wobble still lets
-            # the artifact upload below run.
+            # Compare 3 days ahead. Multikino / biletyna / ck105 refuse a datacenter
+            # runner, so — as in the worker — they go through the Decodo residential
+            # proxy first, with Zyte (billed per request) only as its fallback
+            # (PaidEgressWorkflowSpec: the Zyte key only ever sits beside the proxy
+            # credentials). `continue-on-error` is a belt-and-braces guard on top of
+            # the tool's own always-exit-0 behaviour, so a transient network wobble
+            # still lets the artifact upload below run.
             - name: Run FilmwebDiff
               continue-on-error: true
               run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
+              env:
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
 
             # Upload the human-readable report, the CSV summary, AND the
             # deterministic JSON (per-film discrepancies; diffs cleanly across

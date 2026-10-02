@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient, ZyteFallback}
+import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket, KinoprogrammClient}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
@@ -23,18 +23,19 @@ import scala.concurrent.duration._
  * Takes the seams the worker (and its fixture-replay test wiring) vary:
  *   - `http`     — the shared `HttpFetch` every cinema fetches through.
  *   - `mkFetch`  — Multikino's fetch path, passed by `WorkerWiring` (production
- *                  routes it through Zyte via `MultikinoClient.fetchFor`; the
- *                  fixture wiring overrides it back to `http`). A diagnostic that
- *                  doesn't care uses the secondary constructor below, which
- *                  defaults `mkFetch` to the Zyte-routed path.
+ *                  routes it residential proxy → Zyte → direct; the fixture
+ *                  wiring overrides it back to `http`). A diagnostic uses the
+ *                  secondary constructor below, which builds the same chain over
+ *                  the proxy shards it is handed.
  *   - `zyteFetch` — Zyte residential egress for venues whose origin firewall
  *                  blocks BOTH our Fly datacenter IP AND the Decodo proxy's
  *                  (datacenter-flavoured) ISP IPs. Kino Kryterium /
  *                  bilety.ck105.koszalin.pl times out the connection from Fly and
  *                  from every Decodo IP, but Zyte's true-residential network gets
  *                  through. `WorkerWiring` routes it through Zyte; the diagnostic
- *                  ctor defaults it to `ZyteFallback.fetchFor(http, …)`, and the
- *                  fixture wiring overrides it back to `http`.
+ *                  ctor puts the proxy ahead of Zyte (Zyte is only ever the
+ *                  proxy's fallback outside the worker), and the fixture wiring
+ *                  overrides it back to `http`.
  *   - `flicksFetch` — Decodo residential egress for www.flicks.co.uk, which
  *                  Cloudflare 403s from our Fly datacenter IP. Flicks is the
  *                  ONLY UK source, so this seam carries all ~843 UK venues; a
@@ -94,23 +95,22 @@ class CinemaScraperCatalog(
   titles: TitleNormalizer
 ) {
 
-  /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
-   *  pages) default to the path derived from `http` (a clean body-derived
-   *  default, not the old `null`-parameter workaround — Scala can't reference `http`
-   *  in a primary-constructor default, but a secondary constructor can).
-   *  `WorkerWiring` uses the primary ctor to inject its (possibly
-   *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. Each Zyte chain gets a
-   *  client of its own, built only if `configuration` carries ZYTE_API_KEY — a diagnostic is not worth
-   *  a shared one. `configuration` is the caller's: a tool's `main` passes the process's, a spec none. */
+  /** Diagnostic ctor (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
+   *  biletyna's venue pages, the venues behind `zyteFetch` — is the residential proxy over
+   *  `proxyShards` first, Zyte over `configuration`'s key behind it, then `http`; with no
+   *  shards it is `http` ALONE, since Zyte is only ever the proxy's fallback
+   *  ([[modules.wiring.EgressWiring.paidEgressChain]]). `WorkerWiring` uses the primary ctor
+   *  to inject its own routes. `configuration` is the caller's: a tool's `main` passes the
+   *  process's, a spec none. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
-           configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of())) =
-    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient(), configuration),
-      ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), configuration), today,
-      (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), configuration),
-      // No residential proxy outside WorkerWiring — a diagnostic runs from a
-      // developer's own (unblocked) IP, so plain `http` is the right default.
+           configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
+           proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
+    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http),
+      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
+      today, (_, h, ttl) => new CachingDetailFetch(h, ttl),
+      zyteFetch = modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
+      // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
       flicksFetch = http, vueFetch = http, odeonFetch = http,
       // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.
       odeonAuthToken = () => None,
@@ -537,9 +537,9 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Forum),
     helios(HeliosNuxt.Riviera),
     new KinoSpektrumClient(http, KinoSpektrum),
-    // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — Zyte's
-    // residential egress in production, the fixture fake in tests. See
-    // WorkerWiring.biletynaFetch / ZyteFallback.
+    // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — the
+    // residential proxy (Zyte behind it) in production, the fixture fake in
+    // tests. See EgressWiring.biletynaFetch.
     biletyna(KinoKameralne),
     new KinoIkmClient(http, KinoIkm, today),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
