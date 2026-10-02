@@ -13,8 +13,7 @@ import java.util.Properties
  *
  * Returns a [[RealHttpFetch.ProxyConfig]] only when ALL four are present, so the
  * proxy stays disabled — and the worker falls back to Zyte/direct — wherever the
- * credentials aren't set: local dev without `.env.local`, CI jobs not handed them,
- * hermetic fixture replay.
+ * credentials aren't set: local dev without `.env.local`, CI, fixture replay.
  * See the `reference_decodo_isp_proxy` memory.
  */
 object ResidentialProxy {

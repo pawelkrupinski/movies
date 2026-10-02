@@ -538,9 +538,6 @@ jobs:
                   KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
-                  # Proxy-first detail misses, as the suite below (see the comment there).
-                  KINOWO_PROXY_USER: ${{ inputs.mode == 'record' && secrets.KINOWO_PROXY_USER || '' }}
-                  KINOWO_PROXY_PASS: ${{ inputs.mode == 'record' && secrets.KINOWO_PROXY_PASS || '' }}
 
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
@@ -630,13 +627,6 @@ jobs:
                   # Absent, the suite runs in memory and says which it chose — a suite that
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
-                  # A RECORDING's cinema detail misses egress the way prod does: proxy-first for the
-                  # Cloudflare-blocked chains (Cineworld/flicks, Odeon, Vue, biletyna, Multikino),
-                  # or Cineworld answers this runner 403 for every film. Record mode only — a
-                  # hermetic leg never reaches a network, and empty means no proxy leg. No Zyte key
-                  # on purpose: billed per request, and the chain degrades to proxy → direct without it.
-                  KINOWO_PROXY_USER: ${{ inputs.mode == 'record' && secrets.KINOWO_PROXY_USER || '' }}
-                  KINOWO_PROXY_PASS: ${{ inputs.mode == 'record' && secrets.KINOWO_PROXY_PASS || '' }}
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
