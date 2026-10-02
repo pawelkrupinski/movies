@@ -62,5 +62,7 @@ trait AdminWiring { self: Wiring =>
     mongoConnection.database.fold[services.identity.ShadowRunBackend](new services.identity.InMemoryShadowRunBackend)(
       services.identity.MongoShadowRunBackend.reader), clock)
   lazy val identityAdminController =
-    new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins, shadowDecisions)
+    new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins, shadowDecisions,
+      mongoConnection.database.fold[services.identity.IdentityTraceReads](services.identity.IdentityTraceReads.Empty)(
+        new services.identity.MongoIdentityTraceReads(_)))
 }

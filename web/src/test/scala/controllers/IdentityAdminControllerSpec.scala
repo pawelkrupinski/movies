@@ -29,6 +29,33 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
   private def json(body: JsObject, session: Boolean = true) =
     (if (session) admin else FakeRequest()).withBody(body).withHeaders("Content-Type" -> "application/json")
 
+  "the trace page" should "show a rule's listings with their evidence, a film's, a title's — and every rule's count when asked nothing" in {
+    import services.identity.{InMemoryIdentityTraceStore, ListingTrace}
+    val store = new InMemoryIdentityTraceStore
+    val brides = ListingKey.Published("Metrograph", "Brides of Dracula", None, Seq("Terence Fisher"))
+    val camino = ListingKey.Published("Helios Bełchatów", "Camino dla opornych - KNT", None, Nil)
+    store.replace(Set.empty, () => Seq(
+      ListingTrace(brides, "f1", Some(23220), "OwnMatch", Seq("accept:favoured-calibrated", "join:same-film"), None,
+        Seq("director=same_person +4.22", "title=exact +1.50"), Some(23220)),
+      ListingTrace(camino, "f2", None, "Vetoed", Seq("veto:learned-listing-film-probability-below-the-cannot-link-cut"), Some("'Camino dla opornych - KNT'"),
+        Seq("originalTitle=fragment -4.53"), Some(1404604))))
+    val c = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository,
+      new Pins(new InMemoryPinStore, Now), Shadow, store)
+    val byRule = contentAsString(c.traces(Some("accept:favoured-calibrated"), None, None).apply(admin))
+    byRule should include ("Brides of Dracula")
+    byRule should include ("director=same_person +4.22")
+    byRule should not include ("Camino")
+    contentAsString(c.traces(None, Some(23220), None).apply(admin)) should include ("Brides of Dracula")
+    val byTitle = contentAsString(c.traces(None, None, Some("camino")).apply(admin))
+    byTitle should include ("vetoed by")
+    byTitle should include ("originalTitle=fragment -4.53")
+    val counts = contentAsString(c.traces(None, None, None).apply(admin))
+    counts should include ("accept:favoured-calibrated")
+    counts should include ("join:same-film")
+    // admins only
+    status(c.traces(None, None, None).apply(FakeRequest())) should not be OK
+  }
+
   "the identity page" should "list contradicted and low-confidence decisions with their explanations, and the calibration" in {
     val (c, _) = fixture()
     val page = contentAsString(c.index.apply(admin))

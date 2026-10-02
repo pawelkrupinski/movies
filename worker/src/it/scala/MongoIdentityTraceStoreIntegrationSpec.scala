@@ -40,6 +40,13 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
         val plan = Await.result(c.find(Filters.equal(field, value)).explain[Document]().toFuture(), 30.seconds).toJson()
         withClue(s"$field: ")(plan should include ("IXSCAN"))
       }
+      // the admin page's reads: a rule's, a film's, a title's listings, and every rule's count
+      val reads = new MongoIdentityTraceReads(db)
+      reads.byRule("accept:imdb-suggested", 10).map(_.listing).toSet shouldBe Set(key(1), key(3))
+      reads.byFilm(101, 10).map(_.listing).toSet shouldBe Set(key(1), key(3))
+      reads.byTitle("FILM 2", 10).map(_.listing) shouldBe Seq(key(2))
+      reads.byRule("accept:imdb-suggested", 10).find(_.listing == key(1)).map(_.evidence) shouldBe Some(Seq("director=same_person +4.22", "title=exact +1.50"))
+      reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1)
       // re-resolving family f1 replaces its traces: listing 2 left it
       store.replace(Set("f1"), () => Seq(trace(1, "f1", Seq("accept:sole-result"))))
       store.flush()

@@ -22,8 +22,16 @@ import services.users.UserRepository
  * (`RouteProtectionMatrixSpec`).
  */
 class IdentityAdminController(cc: ControllerComponents, adminAction: AdminAction, users: UserRepository,
-                              pins: Pins, shadow: ShadowDecisions) extends AbstractController(cc) {
+                              pins: Pins, shadow: ShadowDecisions,
+                              traces: services.identity.IdentityTraceReads = services.identity.IdentityTraceReads.Empty)
+    extends AbstractController(cc) {
   import IdentityAdminController._
+
+  /** `/admin/identity/traces` — the identity trace both ways: a rule's listings (`rule`), a film's (`film`), a title's
+   *  (`title`), each with its rules and weighed evidence; asked nothing, every rule's count. */
+  def traces(rule: Option[String], film: Option[Int], title: Option[String]): Action[AnyContent] = adminAction {
+    Ok(views.html.admin.identityTraces(tracesPage(traces, rule.map(_.trim).filter(_.nonEmpty), film, title.map(_.trim).filter(_.nonEmpty))))
+  }
 
   def index: Action[AnyContent] = adminAction { Ok(views.html.admin.identity(page(shadow, pins.all()))) }
 
@@ -51,6 +59,21 @@ class IdentityAdminController(cc: ControllerComponents, adminAction: AdminAction
 }
 
 object IdentityAdminController {
+
+  /** How many listings a trace query shows. */
+  val TraceLimit = 500
+
+  /** What the trace page renders: the query, its listings — or, asked nothing, every rule's count. */
+  final case class TracesPage(rule: Option[String], film: Option[Int], title: Option[String],
+                              traces: Seq[services.identity.ListingTrace], counts: Seq[(String, Int)], limit: Int = TraceLimit) {
+    def asked: Boolean = rule.isDefined || film.isDefined || title.isDefined
+  }
+
+  def tracesPage(reads: services.identity.IdentityTraceReads, rule: Option[String], film: Option[Int], title: Option[String]): TracesPage = {
+    val shown = rule.map(reads.byRule(_, TraceLimit)).orElse(film.map(reads.byFilm(_, TraceLimit)))
+      .orElse(title.map(reads.byTitle(_, TraceLimit))).getOrElse(Nil)
+    TracesPage(rule, film, title, shown, if (rule.isEmpty && film.isEmpty && title.isEmpty) reads.ruleCounts() else Nil)
+  }
 
   /** What the page renders. */
   final case class Page(contradicted: Seq[Decision], lowConfidence: Seq[Decision], calibration: Option[Calibration], pins: Seq[Pin])

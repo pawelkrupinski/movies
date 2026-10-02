@@ -1,0 +1,73 @@
+@import controllers.IdentityAdminController.TracesPage
+@(page: TracesPage)
+
+@ruleLink(rule: String) = { <a class="rule" href="?rule=@helper.urlEncode(rule)">@rule</a> }
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identity traces — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    h2 { font-size: 13px; color: #fff; margin: 22px 0 8px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 12px; max-width: 760px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: #666; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid #1a1a1a; }
+    td { padding: 6px 10px; border-bottom: 1px solid #141414; vertical-align: top; }
+    a { color: #8ab4f8; text-decoration: none; }
+    a.rule { display: inline-block; margin: 0 6px 2px 0; }
+    .muted, .empty { color: #666; }
+    .veto { color: #f0ad4e; }
+    .form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+    input { font: inherit; background: #000; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; }
+    button { font: inherit; cursor: pointer; background: #1c1c1c; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 9px; }
+  </style>
+</head>
+<body>
+  <h1>Identity traces</h1>
+  <div class="sub">
+    Which rules decided each listing, and by how much: the rule that accepted its film, the links that joined it,
+    the cannot-links that kept others apart, a veto and the member that cast it, the title rules its title took —
+    and every measure against the film it was weighed on, with its weight. <a href="/admin/identity">Back to identity</a>.
+  </div>
+  <form class="form" method="get">
+    <input name="title" placeholder="listing title contains…" value="@page.title.getOrElse("")" size="40">
+    <input name="film" placeholder="tmdb id" value="@page.film.fold("")(_.toString)" size="10">
+    <input name="rule" placeholder="rule id (accept:imdb-suggested)" value="@page.rule.getOrElse("")" size="36">
+    <button type="submit">Show</button>
+  </form>
+
+  @if(page.asked) {
+    <h2>@page.traces.size listing(s)@if(page.traces.size >= page.limit) { (first @page.limit)}</h2>
+    <table id="traces">
+      <thead><tr><th>Listing</th><th>Film</th><th>Basis</th><th>Rules</th><th>Evidence</th></tr></thead>
+      <tbody>
+      @for(t <- page.traces) {
+        <tr class="trace">
+          <td>@t.listing.venue — @t.listing.rawTitle</td>
+          <td>@t.film.fold(Html("<span class=\"muted\">none</span>"))(id => Html(s"""<a href="?film=$id">tmdb $id</a>"""))</td>
+          <td>@t.basis @t.vetoedBy.map { by => <div class="veto">vetoed by @by</div> }</td>
+          <td>@for(rule <- t.rules) { @ruleLink(rule) }</td>
+          <td>@t.weighedFilm.map { id => <div class="muted">against tmdb @id</div> }@for(e <- t.evidence) { <div>@e</div> }</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    @if(page.traces.isEmpty) { <div class="empty">None.</div> }
+  } else {
+    <h2>Rules</h2>
+    <table id="rules">
+      <thead><tr><th>Rule</th><th>Listings</th></tr></thead>
+      <tbody>
+      @for((rule, count) <- page.counts) { <tr><td>@ruleLink(rule)</td><td>@count</td></tr> }
+      </tbody>
+    </table>
+    @if(page.counts.isEmpty) { <div class="empty">No traces — the worker files them as it resolves.</div> }
+  }
+</body>
+</html>

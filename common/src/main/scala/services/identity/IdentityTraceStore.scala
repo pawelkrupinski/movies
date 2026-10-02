@@ -8,6 +8,7 @@ import services.movies.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.jdk.CollectionConverters._
 
 /** Which rules decided one listing ([[DecisionTrace]], plus the title rules its title took), filed under its
  *  family: the record `identity_traces` keeps per listing, so a listing's rules and a rule's listings are each
@@ -38,6 +39,39 @@ object ListingTrace {
 trait IdentityTraceStore {
   /** Drop the traces of the families `removed` names, then keep what `added` builds. */
   def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit
+}
+
+/** The trace READ both ways, for `/admin/identity/traces`: a rule's listings, a film's, a title's, and every rule's count. */
+trait IdentityTraceReads {
+  def byRule(rule: String, limit: Int): Seq[ListingTrace]
+  def byFilm(film: Int, limit: Int): Seq[ListingTrace]
+  /** The listings whose raw title contains `text`, ignoring case. */
+  def byTitle(text: String, limit: Int): Seq[ListingTrace]
+  /** Every rule id, with how many listings it decided — most first. */
+  def ruleCounts(): Seq[(String, Int)]
+}
+
+object IdentityTraceReads {
+  /** Nothing traced: a deployment with no Mongo. */
+  val Empty: IdentityTraceReads = new IdentityTraceReads {
+    def byRule(rule: String, limit: Int)  = Nil
+    def byFilm(film: Int, limit: Int)     = Nil
+    def byTitle(text: String, limit: Int) = Nil
+    def ruleCounts()                      = Nil
+  }
+}
+
+/** Traces held in memory, written and read as `identity_traces` is — for tests and Mongo-less runs. */
+final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityTraceReads {
+  private val held = scala.collection.mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
+  def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit = synchronized {
+    held.filterInPlace((_, trace) => !removed(trace.family)); added().foreach(trace => held(trace.listing) = trace)
+  }
+  private def all = synchronized(held.values.toSeq)
+  def byRule(rule: String, limit: Int)  = all.filter(_.rules.contains(rule)).take(limit)
+  def byFilm(film: Int, limit: Int)     = all.filter(_.film.contains(film)).take(limit)
+  def byTitle(text: String, limit: Int) = all.filter(_.listing.rawTitle.toLowerCase.contains(text.toLowerCase)).take(limit)
+  def ruleCounts()                      = all.flatMap(_.rules).groupBy(identity).map { case (rule, hits) => rule -> hits.size }.toSeq.sortBy(c => (-c._2, c._1))
 }
 
 object IdentityTraceStore {
@@ -79,8 +113,35 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   }
 }
 
+/** `identity_traces` read for the admin page — through its indexes for a rule and a film; a title is a scan, asked by hand. */
+final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceReads {
+  import MongoIdentityTraceStore._
+  private val Timeout = 60.seconds
+  private lazy val collection: MongoCollection[Document] = db.getCollection[Document](Collection)
+  private def find(filter: org.bson.conversions.Bson, limit: Int): Seq[ListingTrace] =
+    Await.result(collection.find(filter).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
+  def byRule(rule: String, limit: Int)  = find(Filters.equal("rules", rule), limit)
+  def byFilm(film: Int, limit: Int)     = find(Filters.equal("film", film), limit)
+  def byTitle(text: String, limit: Int) =
+    find(Filters.regex("listing.rawTitle", java.util.regex.Pattern.quote(text), "i"), limit)
+  def ruleCounts(): Seq[(String, Int)] =
+    Await.result(collection.aggregate(Seq(
+      org.mongodb.scala.model.Aggregates.unwind("$rules"),
+      org.mongodb.scala.model.Aggregates.group("$rules", org.mongodb.scala.model.Accumulators.sum("n", 1)),
+      org.mongodb.scala.model.Aggregates.sort(org.mongodb.scala.model.Sorts.descending("n")))).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
+      .map(d => d.toBsonDocument).map(d => d.getString("_id").getValue -> d.getInt32("n").getValue)
+}
+
 object MongoIdentityTraceStore {
   val Collection = "identity_traces"
+
+  private[identity] def decode(d: BsonDocument): ListingTrace = {
+    def strings(name: String) = Option(d.get(name)).filter(_.isArray).fold(Seq.empty[String])(_.asArray.getValues.asScala.toSeq.map(_.asString.getValue))
+    def int(name: String)     = Option(d.get(name)).filter(_.isInt32).map(_.asInt32.getValue)
+    ListingTrace(ListingKeyBson.decode(d.getDocument("listing")), d.getString("family").getValue, int("film"),
+      d.getString("basis").getValue, strings("rules"), Option(d.get("vetoedBy")).filter(_.isString).map(_.asString.getValue),
+      strings("evidence"), int("weighedFilm"))
+  }
 
   private[identity] def encode(trace: ListingTrace): BsonDocument = new BsonDocument()
     .append("_id", BsonString(ListingKey.serialised(trace.listing)))
