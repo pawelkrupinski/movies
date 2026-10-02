@@ -72,8 +72,6 @@ final class ProcessConfiguration(val env: Env) {
   def executableSearchPath: ExecutableSearchPath =
     ExecutableSearchPath(fact("PATH").toSeq.flatMap(_.split(java.io.File.pathSeparator)).filter(_.nonEmpty).map(Path.of(_)))
 
-  /** `KINOWO_RETIRED`. */
-  def retiredDeployment: RetiredDeployment = RetiredDeployment(env.flag("KINOWO_RETIRED"))
 
   // ── Mongo ───────────────────────────────────────────────────────────────────
   /** `MONGODB_URI` / `MONGODB_DB`. */

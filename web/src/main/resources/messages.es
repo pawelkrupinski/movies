@@ -96,10 +96,6 @@ landing.level.us.region=estado
 landing.level.de.region=estado federado
 landing.level.pl.region=voivodato
 
-# The notice a retired deployment serves in place of `/` and `/{city}/`.
-moved.heading=Nos hemos mudado
-moved.lead=Esta página tiene una dirección nueva. Actualiza tu marcador: no ha cambiado nada más.
-moved.cta=Ir a {0}
 
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Sin cartel

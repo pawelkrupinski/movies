@@ -22,8 +22,7 @@ import scala.util.Try
  * It is a genuinely different signal from the heap and RSS panels beside it.
  * `-Xmx384m` inside a 1 GB machine leaves room for exactly one surprise, and
  * this app has already OOM-crash-looped once at a smaller VM size (see the
- * `[[vm]]` note in fly.toml, and the memory limit in
- * movies-gitops/web/base/all.yaml, which is the same bet on this platform) —
+ * memory limit in movies-gitops/web/base/all.yaml) —
  * the tell was the free memory in whatever bounds the process, which
  * neither `jvm_memory_used_bytes` nor `process_resident_memory_bytes` can show,
  * because neither counts the page cache, the sidecar processes, or a second
@@ -51,8 +50,7 @@ import scala.util.Try
  * developer box that has the files at all — that spelling is treated as "no
  * limit", so the fallback still answers for a VM.
  *
- * DISK is the ROOT filesystem, not a volume: the web app mounts none (no
- * `[mounts]` in fly.toml), so the thing that can fill up is the machine's own
+ * DISK is the ROOT filesystem, not a volume: the web app mounts none, so the thing that can fill up is the machine's own
  * overlay — logs, the JVM's temp files, a runaway heap dump. Naming it `disk`
  * rather than `volume` keeps the panel honest if a volume is ever added.
  *

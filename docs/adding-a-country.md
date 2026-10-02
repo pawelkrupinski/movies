@@ -286,9 +286,8 @@ into a sibling's pod will OOM or throttle it.
    `movies-gitops/flux/gotk-sync.yaml`, then `kubectl apply -f flux/gotk-sync.yaml`
    once — that file is the one thing Flux does not reconcile for itself. Flux builds
    the Deployment from the overlay and keeps it thereafter, and image-automation
-   moves its image with everyone else's. Nothing to add in `main.yml`: the Fly deploy
-   job there ships exactly one app, the retired Polish redirect host, and
-   `FlyDeployScopeSpec` holds that rule.
+   moves its image with everyone else's. Nothing to add in `main.yml`: CI deploys
+   nothing itself.
 
 ## 4. Web frontend (`showtimes.cc/<cc>/`)
 

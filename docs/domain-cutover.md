@@ -94,20 +94,11 @@ ordering — several of the steps below are only safe in one sequence.
    scale to zero rather than `machines stop`, because `auto_start_machines = true`
    means any inbound request boots a stopped web machine and it never stops again.
 
-   `kinowo` is the exception and stays up as a REDIRECT HOST, because it is the
-   only one of the three with published links behind it (see the last section).
-   Its leg is the ONE Fly deploy this repository still does, so the redirects
-   track `main` rather than drifting behind a hand-rolled deploy nobody remembers
-   to run. `KINOWO_RETIRED` lives in `fly.toml`, not the workflow, so that leg
-   cannot un-retire the host — it can only ship a newer build of the same
-   redirects. The price is a rolling restart of the redirect host on every push.
-
-   **Fly now hosts exactly one thing from this repository, and CI deploys only
-   that.** `FlyDeployScopeSpec` enforces it across every workflow. It used to do
-   so against six matrix legs held at `enabled: false` and a `deploy-grafana.yml`
-   held at `workflow_dispatch` only; the legs, the `fly.*.toml` configs behind
-   them, the `fly/` tree and that workflow are all deleted now, so there is one
-   inline deploy of one app and nothing to flip back on by accident.
+   `kinowo` was the exception and stayed up as a REDIRECT HOST, because it was
+   the only one of the three with published links behind it (see the last
+   section). On **2026-10-02** that ended too: `fly.toml`, the CI deploy leg and
+   the `KINOWO_RETIRED` composition root (`modules.RetiredComponents`) were
+   deleted, so **nothing in this repository deploys to Fly any more**.
 
 ## What DNS and a deploy do not cover
 
@@ -130,21 +121,13 @@ ordering — several of the steps below are only safe in one sequence.
   tag on `/` is kept (removing a verification a property rests on un-verifies
   it), but the new domain now also supports DNS TXT verification, which
   `fly.dev` never could because Fly owned the zone.
-- **`kinowo.fly.dev` is RETIRED, not switched off** (reversing the original call
-  here, which was to scale it to zero and let the old links die). Fly's edge only
-  routes to a running machine, so a scaled-to-zero app cannot redirect — the one
-  machine stays up, running the same image with `KINOWO_RETIRED=true` in
-  `fly.toml`. That boots `modules.RetiredComponents` rather than the serving
-  composition root, which is what makes it cheap: no Mongo client, no change
-  stream, no read model, a 512 MB machine instead of 1 GB. `/` and `/{city}/`
-  render a notice — the address changed, here is the new one — and everything
-  else 301/308s to the same path on `kinowo.net`.
-
-  The notice pages carry the LIVE page's own `<title>`, Open Graph tags and
-  canonical, all derived from the city and country rather than the repertoire, so
-  a link shared before the move still previews exactly as it did and the indexing
-  goes to `kinowo.net`. Deep links redirect rather than showing the notice
-  precisely because every social scraper follows a 30x when it scrapes.
+- **`kinowo.fly.dev` was RETIRED, not switched off** (reversing the original call
+  here, which was to scale it to zero and let the old links die): one machine ran
+  the same image with `KINOWO_RETIRED=true`, which booted a database-less
+  composition root rendering a "the address changed" notice on `/` and
+  `/{city}/` and 301/308-ing everything else to `kinowo.net`. That code, its
+  config and its CI deploy were removed on 2026-10-02; whatever image the Fly app
+  last received keeps answering until the app itself is destroyed.
 
   `showtimes-uk.fly.dev` / `showtimes-de.fly.dev` were already at zero machines
   and stay there; they were never public long enough to accumulate links.

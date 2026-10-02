@@ -17,8 +17,7 @@ trait ControllersWiring { self: Wiring =>
   lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(country.language)
 
   // The fixed deployment `Messages` — what every visitor-facing render uses,
-  // plus `DebugController`/`RetiredSiteController`-adjacent, ops/crawler-facing
-  // ones.
+  // plus the `DebugController`-adjacent, ops/crawler-facing ones.
   implicit lazy val deploymentMessages: play.api.i18n.Messages =
     messagesApi.preferred(Seq(deploymentLang))
 

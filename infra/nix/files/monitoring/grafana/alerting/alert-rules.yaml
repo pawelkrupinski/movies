@@ -485,7 +485,7 @@ groups:
   # These watch the SAME data the public /uptime page shows — the Mongo
   # `uptimeBuckets` health that Fly's host metrics can't see — exposed as
   # Prometheus gauges by web's MetricsController (kinowo_uptime_recent_* over a
-  # 30-min window) and scraped via the [[metrics]] block in fly.toml.
+  # 30-min window) and scraped by the fleet Prometheus at each web pod's /metrics.
   # ================================================================================================
   # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `app-uptime`: ALL SIX KEPT, UNCHANGED.
   # (Residential proxy failing left the group on 2026-09-10 -- see the tombstone above -- so this

@@ -166,11 +166,8 @@ GET     /health                     controllers.HealthController.check
 # Prometheus exposition: the in-app /uptime health, JVM/process metrics, and the HTTP request
 # counter and latency histogram from modules.HttpMetricsFilter.
 #
-# SCRAPED DIRECTLY BY THE FLEET'S OWN PROMETHEUS on monitoring-1, over a WireGuard peer into Fly's
-# private 6PN -- NOT by Fly's managed Prometheus any more. The [[metrics]] block in fly.toml still
-# points Fly at this endpoint and is harmless, but nothing reads what it collects: both read-only
-# tokens for Fly's Prometheus are revoked and cannot be reissued. Scraping the app directly needs no
-# Fly credential at all, which is why it is the path that survived.
+# SCRAPED DIRECTLY BY THE FLEET'S OWN PROMETHEUS on monitoring-1, at each web pod's NodePort (see
+# `rootOperationalRoutes` in AppLoader for why it answers at the host root whatever the mount).
 GET     /metrics                    controllers.MetricsController.metrics
 GET     /uptime                     controllers.UptimeController.index()
 GET     /uptime/stream              controllers.UptimeController.stream()

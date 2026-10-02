@@ -25,8 +25,6 @@ final case class GithubCommitSha(value: String) extends AnyVal
 final case class HealthPort(value: Int) extends AnyVal
 /** `PATH` — the directories an executable (vips) is looked for in, in order. */
 final case class ExecutableSearchPath(value: Seq[Path]) extends AnyVal
-/** `KINOWO_RETIRED` — this web deployment only redirects to where its country moved. */
-final case class RetiredDeployment(value: Boolean) extends AnyVal
 /** `APP_MODE` — an explicit override of the mode Play derived for itself. */
 enum ApplicationMode { case Development, Test, Production }
 

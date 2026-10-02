@@ -263,7 +263,7 @@ class DebugController(cc: ControllerComponents,
   }
 
   /** Reload the in-memory read-model caches from Mongo. Available in every mode
-   * (unlike the rest of the debug endpoints, which are dev-only) so a fly.io
+   * (unlike the rest of the debug endpoints, which are dev-only) so a production
    * instance whose caches drifted from the derived collections can be reconciled
    * without a redeploy — but since it runs in prod and mutates state, it's gated
    * by [[AdminAction]] (login session + ADMIN_ALLOWLIST) rather than left open. */

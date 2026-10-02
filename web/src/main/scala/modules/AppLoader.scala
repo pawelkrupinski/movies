@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AssetsComponents, RetiredSiteController, TruncationTolerantHttpErrorHandler, WellKnownController}
+import controllers.{AssetsComponents, TruncationTolerantHttpErrorHandler}
 import play.api.ApplicationLoader.Context
 import play.api.http.{HttpErrorConfig, HttpErrorHandler}
 import play.api.mvc.{EssentialFilter, Handler}
@@ -36,10 +36,10 @@ class AppLoader extends ApplicationLoader {
     // APP_MODE is an *override*; when unset we trust the mode Play already
     // baked into the Context. That works out to:
     //   - `sbt run`                          → Mode.Dev  (debug routes on)
-    //   - production launcher (Docker/fly.io)→ Mode.Prod (debug routes 404)
+    //   - production launcher (Docker)       → Mode.Prod (debug routes 404)
     //   - tests                              → Mode.Test
-    // Forcing Dev when APP_MODE is unset was leaking debug pages on fly because
-    // we had no APP_MODE configured there — Play's own Prod was being overridden.
+    // Forcing Dev when APP_MODE is unset once leaked debug pages in production,
+    // where no APP_MODE was configured — Play's own Prod was being overridden.
     val mode = process.applicationMode match {
       case Some(ApplicationMode.Production)  => Mode.Prod
       case Some(ApplicationMode.Test)        => Mode.Test
@@ -51,14 +51,7 @@ class AppLoader extends ApplicationLoader {
       .foreach(_.configure(adjusted.environment))
     val country = process.country
     val mounted = AppLoader.mountedAt(adjusted, country)
-    // KINOWO_RETIRED picks a DIFFERENT composition root, not a different code
-    // path inside the usual one — see `RetiredComponents` for why a retired host
-    // must not be able to reach the database at all. Where it moved TO is not
-    // configured alongside it: the country already knows its live address
-    // (`Country.webOrigin`), and a second spelling of it is a second thing to
-    // get wrong.
-    if (process.retiredDeployment.value) new RetiredComponents(mounted, country).application
-    else                            new AppComponents(mounted, env, country, process.mongoAddress).application
+    new AppComponents(mounted, env, country, process.mongoAddress).application
   }
 }
 
@@ -123,33 +116,6 @@ object AppLoader {
     Router.from {
       case GET(p"/health")  => health
       case GET(p"/metrics") => metrics
-    }
-
-  /** Everything a RETIRED deployment routes, below the two operational
-   *  endpoints above (see [[controllers.RetiredSiteController]] for what each
-   *  one answers, and why only two of them render a page).
-   *
-   *  A TOTAL function, ending in a catch-all: a retired host has no 404s to
-   *  give. Every path it does not recognise is a path the live site might, so
-   *  the client is sent there to find out rather than told it does not exist —
-   *  which also means this router never needs updating when the live site grows
-   *  a page.
-   *
-   *  `asset` is passed in rather than an `Assets` controller taken, so the whole
-   *  table can be exercised in a spec without an asset pipeline behind it. */
-  private[modules] def retiredRoutes(
-      site:      RetiredSiteController,
-      wellKnown: WellKnownController,
-      asset:     String => Handler): Router =
-    Router.from {
-      // An app installed before the move still resolves its Universal Links /
-      // App Links against this host.
-      case GET(p"/.well-known/apple-app-site-association") => wellKnown.appleAppSiteAssociation
-      case GET(p"/.well-known/assetlinks.json")            => wellKnown.assetLinks
-      case GET(p"/assets/$file*")                          => asset(file)
-      case GET(p"/")                                       => site.landing
-      case GET(p"/$slug/")                                 => site.city(slug)
-      case _                                               => site.elsewhere
     }
 
   /** The live filter chain, outermost first (see `AppComponents.httpFilters`

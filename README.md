@@ -71,7 +71,6 @@ android/                  # Native Compose Android app
 ios/Kinowo/               # SwiftUI iOS app (uses /api/repertoire + /api/details)
 Dockerfile                # One image, BIN build-arg selects web or worker
 infra/                    # NixOS fleet, k3s manifests, Prometheus + Grafana
-fly.toml                  # The one app left on Fly: the retired kinowo redirect host
 ```
 
 ## Running locally
@@ -144,12 +143,9 @@ Every push to `main` builds and pushes the two images to GHCR
 path-gated so a web-only push does not restart the workers. **Flux's
 image automation rolls them out** — CI does not deploy to the cluster.
 
-**Fly.io hosts exactly one thing**: `kinowo`, the retired redirect host
-that keeps links predating the move to `kinowo.net` working
-(`docs/domain-cutover.md`). `fly.toml` sets `KINOWO_RETIRED=true`, which
-boots a composition root with no Mongo client in it. The `deploy` job in
-that same workflow ships it, and `FlyDeployScopeSpec` is what keeps
-anything else from being added back.
+**Nothing from this repository deploys to Fly.io any more.** The last
+Fly app, the `kinowo.fly.dev` redirect host (`docs/domain-cutover.md`), lost
+its config, its CI deploy and its retirement composition root on 2026-10-02.
 
 Brief downtime during a redeploy is acceptable per project conventions —
 this is a hobby-traffic app, not a 24/7 SLA.
