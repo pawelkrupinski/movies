@@ -25,6 +25,16 @@ class KinoAmokClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // Every case only reads the parsed result, so the fixture is replayed once per suite.
   private lazy val fetched = client.fetch()
 
+  "KinoAmokClient" should "drop the venue's own live evenings, keeping its films" in {
+    // The recorded page with one film retitled as Kino Amok listed a concert evening on 2026-10-02.
+    val evening = "Siesta – Trylogia Afrykańska | Spotkanie autorskie z Marcinem Kydryńskim i koncert muzyki na żywo"
+    val page    = new FakeHttpFetch("kino-amok").get("https://amok.gliwice.pl/repertuar/").replace("Diabeł ubiera się u Prady 2", evening)
+    val titles  = new KinoAmokClient(tools.RoutingHttpFetch.getOnly(Seq("amok.gliwice.pl" -> page)), KinoAmok, LocalDate.of(2026, 6, 7))
+      .fetch().map(_.movie.title)
+    titles should not be empty
+    titles should not contain (evening)
+  }
+
   "KinoAmokClient" should "return a non-empty film list" in {
     val movies = fetched
     movies should not be empty

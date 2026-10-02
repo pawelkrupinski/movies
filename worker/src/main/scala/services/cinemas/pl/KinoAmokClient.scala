@@ -36,14 +36,16 @@ class KinoAmokClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoAmokClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
+  // The repertoire also sells the venue's own evenings — "Siesta – Trylogia Afrykańska | Spotkanie autorskie z Marcinem
+  // Kydryńskim i koncert muzyki na żywo" — which the identity resolver then matched to the 1987 film "Sjesta".
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
