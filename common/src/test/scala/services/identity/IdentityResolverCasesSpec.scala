@@ -716,6 +716,26 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
     IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
 
+  "A director credited in another script" should "be the listing's when its person search, by the listing's own spelling, reaches the film" in {
+    // PL "Spragnieni miłości" [2000] {Wong Kar Wai}: TMDB's Polish credits write him 王家衛 (film 843, recording
+    // 36807940234); transliterated, that reads "Wang Jiawei", a different person, and vetoed the film. TMDB's person
+    // search for "Wong Kar Wai" finds him and his filmography holds 843. PL, DE and ES held 41 listings so.
+    val mood   = F(843, "Spragnieni miłości", 2000, "王家衛", 98, directorAliases = Seq("Wong Kar Wai"))
+    val rival  = F(9001, "Spragnieni miłości", 1987, "Someone Else", 90, 3)
+    val credited = listing(Rialto, "Spragnieni miłości", Some(2000), Some("Wong Kar Wai"), Some(98))
+    val d = shipped(Seq(credited), Seq(mood, rival)).decisionOf(credited.key)
+    withClue(d.render)(d.film shouldBe Some(843))
+    // only a script gap the person search bridges moves: a film its search does not reach, or two Latin names
+    // that differ, stay what they were
+    import IdentityMeasures.Category
+    IdentityMeasures.creditedBySearch(Map("director" -> Category("different_script")), directedBySpelling = false) shouldBe
+      Map("director" -> Category("different_script"))
+    IdentityMeasures.creditedBySearch(Map("director" -> Category("different")), directedBySpelling = true) shouldBe
+      Map("director" -> Category("different"))
+    IdentityMeasures.creditedBySearch(Map("director" -> Category("incomparable")), directedBySpelling = true) shouldBe
+      Map("director" -> Category("same_person"))
+  }
+
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
     // UK, 2026-10-01: "Toddler Club: Tabby McTat + Room on the Broom" {Various Directors} searches as "Tabby McTat";
     // joined to the bare "Tabby McTat" ×23, its directors vetoed the film for all of them. A bill whose second

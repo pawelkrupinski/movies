@@ -9,7 +9,7 @@ import scala.collection.mutable
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
                                           counted: () => Unit) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf}
+  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf}
 
   val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
@@ -22,7 +22,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  its node (`deniedByNode`: a pin, a venue's own name) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty): Seq[Scored] = {
+            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
     val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
@@ -34,8 +34,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val groups    = IdentityMeasures.titleGroups(listing)
     val candidates = reachable.map { candidate =>
       val rivals   = close - (if (IdentityMeasures.Rivalling(relation(candidate.tmdbId))) 1 else 0)
-      val measures = IdentityMeasures.listingFilm(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
-        backing.corroborating(groups, candidate.film, venue), houses, qualifiers)
+      val measures = IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilm(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
+        backing.corroborating(groups, candidate.film, venue), houses, qualifiers), directedBy(candidate.tmdbId))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
@@ -65,7 +65,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => denialByNode(node, id), imdbOnly(node.id)).map(placedByImdb(Seq(node))))
+      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id)).map(placedByImdb(Seq(node))))
 
   /** Each film's place in IMDb's suggestions for the nodes' own titles — its best place, among the most suggested. */
   private def placedByImdb(nodes: Seq[EvidenceNode])(scored: Scored): Scored = {
@@ -102,7 +102,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet)
+      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet,
+      cluster.flatMap(node => directed(node.id)).toSet)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
   }

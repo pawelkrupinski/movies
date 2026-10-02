@@ -516,6 +516,14 @@ object IdentityMeasures {
    *  its pinyin). `incomparable` only when a side has no name left to compare in Latin letters. */
   def directorRelation(a: Seq[String], b: Seq[String]): Measure = creditRelation(new Credits(a), new Credits(b))
 
+  /** `measures`, the director read as the listing's own when its credits and the record's are in different
+   *  scripts and no transliteration joins them, but the person TMDB finds by the listing's OWN spelling directed
+   *  (or wrote) the film: "Wong Kar Wai" is TMDB's 王家衛, whose pinyin reads "Wang Jiawei" (film 843). */
+  def creditedBySearch(measures: Map[String, Measure], directedBySpelling: Boolean): Map[String, Measure] =
+    if (directedBySpelling && measures.get("director").exists(m => m == Category("different_script") || m == Category("incomparable")))
+      measures + ("director" -> Category("same_person"))
+    else measures
+
   /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
    *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
   private def creditRelation(ca: Credits, cb: Credits): Measure = {
