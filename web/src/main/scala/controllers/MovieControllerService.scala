@@ -97,23 +97,58 @@ class MovieControllerService(
     // `Showtime.isUpcoming(now)` is `dateTime.isAfter(now.minus(Grace))`: the cutoff once,
     // not a fresh LocalDateTime per showtime of the city (54k on New York).
     val cutoff = now.minus(Showtime.Grace)
+    val asOf   = now.toLocalDate
     cityScreenings.groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
-        val byDate = showingsByDate(screenings, cutoff)
-        if (byDate.isEmpty) None
+        val key   = (city.slug, filmId)
+        val prior = built.getIfPresent(key)
+        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff, readModel.filmSlugs.slugFor(resolved._id)))
+          Some((prior.earliest, prior.schedule))
         else {
-          // A film with no future showing in this city drops out of its list view (its
-          // documents stay in the store); one with any is ordered by its earliest.
-          val earliest = byDate.head._2.iterator.map(_.showtimes.head.dateTime).min
-          val cinemaFilmUrls: Seq[(Cinema, String)] =
-            screenings
-              .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
-              .sortBy(_._1.displayName)
-          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate, city, now.toLocalDate)))
+          val byDate = showingsByDate(screenings, cutoff)
+          if (byDate.isEmpty) None
+          else {
+            // A film with no future showing in this city drops out of its list view (its
+            // documents stay in the store); one with any is ordered by its earliest.
+            val earliest = byDate.head._2.iterator.map(_.showtimes.head.dateTime).min
+            val cinemaFilmUrls: Seq[(Cinema, String)] =
+              screenings
+                .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
+                .sortBy(_._1.displayName)
+            val schedule = filmSchedule(resolved, cinemaFilmUrls, byDate, city, asOf)
+            built.put(key, Built(screenings, resolved, asOf, earliest, schedule))
+            Some((earliest, schedule))
+          }
         }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
   }
+
+  /** A film's schedule as last built for a city, and what it was built from.
+   *
+   *  WHY. Every render of a listing rebuilt every film's schedule from the read model —
+   *  8 MB a render on New York — while between two renders almost every film is
+   *  unchanged. A schedule is a pure function of its film's rows, its resolved
+   *  metadata, the city, the day, its corpus-wide slug and which showtimes are still
+   *  upcoming; [[stillHolds]] checks every one of them, so a reused schedule is the one
+   *  a rebuild would produce. The read model replaces a row or a movie document on any
+   *  write rather than mutating it, so "the same object" is "unchanged". */
+  private final case class Built(rows: Seq[CityScreening], resolved: ResolvedMovie, asOf: LocalDate,
+                                 earliest: LocalDateTime, schedule: FilmSchedule) {
+    def stillHolds(current: Seq[CityScreening], currentResolved: ResolvedMovie, today: LocalDate,
+                   cutoff: LocalDateTime, slug: Option[String]): Boolean =
+      (resolved eq currentResolved) && asOf == today &&
+        // No showtime has lapsed since: the earliest one is still upcoming, so all are —
+        // and the cutoff only moves forward, so none has become upcoming either.
+        cutoff.isBefore(earliest) &&
+        schedule.slug == slug &&
+        rows.size == current.size && rows.forall(row => current.exists(_ eq row))
+  }
+
+  private val built: com.github.benmanes.caffeine.cache.Cache[(String, String), Built] =
+    com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+      .maximumSize(MovieControllerService.BuiltSchedules)
+      .build[(String, String), Built]()
 
   /** One film's upcoming showtimes in this city, by date and then by cinema: dates
    *  ascending, a date's cinemas by their earliest showtime that day with
@@ -266,6 +301,10 @@ class MovieControllerService(
 }
 
 object MovieControllerService {
+
+  /** How many (city, film) schedules [[MovieControllerService]] keeps for reuse: every
+   *  film of the busiest cities several times over. A New York schedule set is ~4 MB. */
+  val BuiltSchedules: Long = 10_000
   /** Above this many showtimes on one page, the day carousel's clone-and-slide
    *  preview (`shared.js` `buildDayColumn`, cloning the whole `#film-grid` to
    *  build a sliding neighbour-day preview) costs enough DOM-cloning that a
@@ -280,8 +319,12 @@ object MovieControllerService {
 
   /** Total individual showtimes across every film/date/cinema in `schedules` —
    *  the size the day carousel actually has to clone per swipe. */
-  def totalShowtimes(schedules: Seq[FilmSchedule]): Int =
-    schedules.iterator.flatMap(_.showings).flatMap(_._2).map(_.showtimes.size).sum
+  def totalShowtimes(schedules: Seq[FilmSchedule]): Int = {
+    // Counted in a plain Int rather than `.map(...).sum`, which boxed every count.
+    var total = 0
+    for (film <- schedules; (_, cinemas) <- film.showings; cinema <- cinemas) total += cinema.showtimes.size
+    total
+  }
 
   /** Does any showtime on any day of `schedules` screen in IMAX? The Filtry
    *  panel offers its "IMAX only" checkbox only then -- in a city without an
