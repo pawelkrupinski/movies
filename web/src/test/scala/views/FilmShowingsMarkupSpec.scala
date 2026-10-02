@@ -39,7 +39,8 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
 
   private def slot(at: LocalDateTime) = Showtime(at, Some(s"https://helios.pl/book/${at.getHour}"), None, Nil)
   private def expiresAt(at: LocalDateTime) = at.plus(Showtime.Grace).atZone(city.zoneId).toInstant.toEpochMilli
-  private def pills(html: String) = """<a [^>]*class="badge-time"[^>]*>""".r.findAllIn(html).toSeq
+  // A pill is `.badge-time` with a whole link, or a bare `<a data-s>` the browser completes.
+  private def pills(html: String) = """<a [^>]*(?:class="badge-time"|data-s=)[^>]*>""".r.findAllIn(html).toSeq
   private def attr(tag: String, name: String) = s""" $name="([^"]*)"""".r.findFirstMatchIn(tag).map(_.group(1))
   private def render(showings: (LocalDate, Seq[Showtime])*) = views.html._filmShowings(schedule(showings*)).body
 
@@ -86,6 +87,9 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     prefix shouldBe "https://helios.pl/book/"
     all (pills(html)) should not include "href="
     pills(html).map(p => prefix + attr(p, "data-s").get) shouldBe slots.flatMap(_.bookingUrl)
+    // Not a link until the browser builds its href, so it carries nothing a link needs
+    // either: `_showingsHydrate` adds the class, target and nofollow with the href.
+    all (pills(html)) should (not include "class=" and not include "target=" and not include "rel=")
   }
 
   it should "keep a lone pill's whole link, where a prefix would save nothing" in {
@@ -104,6 +108,8 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     val html = views.html._filmShowings(scheduleWith(Seq(Helios -> "https://helios.pl/film/test"),
       day -> Seq(slot(day.atTime(18, 0))), day.plusDays(1) -> Seq(slot(day.plusDays(1).atTime(18, 0))))).body
     "https://helios.pl/film/test".r.findAllIn(html).size shouldBe 1
-    """class="cinema-label-link"""".r.findAllIn(html).size shouldBe 2
+    """class="cinema-label-link"""".r.findAllIn(html).size shouldBe 1
+    // The later day's label is a bare link the browser completes from the first one.
+    html should include (s"""<div class="cinema-label"><a>${Helios.displayName} ↗</a></div>""")
   }
 }

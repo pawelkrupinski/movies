@@ -5337,17 +5337,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // `ShowingsMarkup` sends a booking link as its group's prefix + its own suffix, a
-  // cinema's name only as its label, and its page for the film only on its first
-  // day. `_showingsHydrate` puts all three back before any script reads the tree.
+  // `ShowingsMarkup` sends a booking link as its group's prefix + its own suffix (and
+  // without the class, target and nofollow a link that is not one yet has no use for),
+  // a cinema's name only as its label, and its page for the film only on its first
+  // day. `_showingsHydrate` puts all of it back before any script reads the tree —
+  // every link in it ends up whole, opening in a new tab, nofollowed and classed.
   private val HydratedShowings =
     """(() => {
       |  const groups = [...document.querySelectorAll('.cinema-group')];
       |  const label  = g => g.querySelector('.cinema-label').textContent.replace(/\s*↗\s*$/, '').trim();
       |  return groups.length > 0 &&
       |    groups.every(g => g.dataset.cinema && g.dataset.cinema === label(g)) &&
-      |    [...document.querySelectorAll('a.badge-time')].every(a => /^https?:\/\//.test(a.getAttribute('href') || '')) &&
-      |    [...document.querySelectorAll('.cinema-label-link')].every(a => /^https?:\/\//.test(a.getAttribute('href') || ''));
+      |    [...document.querySelectorAll('.cinema-group a')].every(a =>
+      |      /^https?:\/\//.test(a.getAttribute('href') || '') &&
+      |      a.getAttribute('target') === '_blank' && a.getAttribute('rel') === 'nofollow' &&
+      |      (a.classList.contains('badge-time') || a.classList.contains('cinema-label-link')));
       |})()""".stripMargin
 
   "the showings tree" should "come back whole in the browser: names, booking links, cinema pages" in {

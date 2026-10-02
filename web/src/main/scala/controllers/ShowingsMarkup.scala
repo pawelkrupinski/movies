@@ -24,14 +24,18 @@ import play.twirl.api.HtmlFormat
  *    screening filed under the previous day, a time with seconds — keeps its own
  *    `data-expires`, so the rule is exact by construction, not approximately right.
  *  - A BOOKING URL AS A SUFFIX: the cinema group carries the URL prefix its slots
- *    share ([[urlPrefix]], `data-u`), each pill the rest (`data-s`). The visible time
- *    stays server-rendered; only the outbound, `nofollow` link is put together in
- *    the browser, which a crawler renders anyway and which passes us nothing either way.
+ *    share ([[urlPrefix]], `data-u`), each pill the rest (`data-s`) — and nothing a
+ *    link needs, since it is not one until its href exists: the browser adds
+ *    `badge-time`, `target` and `nofollow` with it (2.5 MB of New York's 10.7 MB). The
+ *    visible time stays server-rendered; only the outbound, `nofollow` link is put
+ *    together in the browser, which a crawler renders anyway and which passes us
+ *    nothing either way.
  *  - NO `data-cinema`: the name is the group's visible label, which hydration copies
  *    into `data-cinema` for the filters. The label stays server-rendered text, so a
  *    search engine reads every cinema the page lists.
  *  - The cinema's own page for the film ONCE per film: only its first listing
- *    ([[firstListings]]) carries the `href`; later days' labels borrow it.
+ *    ([[firstListings]]) carries the link; later days' labels are a bare `<a>` that
+ *    borrows its `href`, class, target and `nofollow`.
  *  - `rel="nofollow"` WITHOUT `noopener`: every browser the site supports applies
  *    `noopener` to a `target="_blank"` link on its own. `nofollow` stays — it is what
  *    tells a crawler these booking links are plumbing, not endorsements.
@@ -82,7 +86,7 @@ object ShowingsMarkup {
     val attrs     = s"$roomAttr$fmtAttr$expAttr"
     slot.bookingUrl match {
       case Some(url) if prefix.nonEmpty && url.startsWith(prefix) =>
-        s"""<a data-s="${HtmlFormat.escape(url.drop(prefix.length))}" class="badge-time" target="_blank" rel="nofollow"$attrs>$time$fmtBadge</a>"""
+        s"""<a data-s="${HtmlFormat.escape(url.drop(prefix.length))}"$attrs>$time$fmtBadge</a>"""
       case Some(url) =>
         s"""<a href="${HtmlFormat.escape(url)}" class="badge-time" target="_blank" rel="nofollow"$attrs>$time$fmtBadge</a>"""
       case None =>

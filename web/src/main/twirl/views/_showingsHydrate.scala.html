@@ -10,10 +10,12 @@
    - `data-cinema` on each `.cinema-group`, from its visible label: the name is
      sent once, as text a crawler reads, not again as an attribute.
    - each booking link's `href`, as its group's `data-u` prefix + its own
-     `data-s` — written onto the element, so a middle-click, a long-press menu,
-     "copy link" and keyboard focus all see an ordinary link.
+     `data-s`, with the `badge-time` class, `target` and `nofollow` the server
+     left off it — written onto the element, so a middle-click, a long-press
+     menu, "copy link" and keyboard focus all see an ordinary link.
    - the cinema's page for the film on every day's label, from the one listing
-     that carries it (the cinema's first day, within the same film).
+     that carries it (the cinema's first day, within the same film), completed
+     the same way.
 *@
 @_minified(minifier) {
 <script>
@@ -26,12 +28,18 @@
       var prefix = group.dataset.u;
       if (prefix === undefined) continue;
       var pills = group.querySelectorAll('a[data-s]');
-      for (var j = 0; j < pills.length; j++) pills[j].setAttribute('href', prefix + pills[j].dataset.s);
+      for (var j = 0; j < pills.length; j++) {
+        var pill = pills[j];
+        pill.setAttribute('href', prefix + pill.dataset.s);
+        pill.className = 'badge-time';
+        pill.target = '_blank';
+        pill.rel = 'nofollow';
+      }
     }
     // Per film: a cinema's first listing carries its page, later days borrow it.
     // Document order is date order, so the carrier is always met first.
     var pages = new Map();
-    var links = document.querySelectorAll('.cinema-label-link');
+    var links = document.querySelectorAll('.cinema-label > a');
     for (var k = 0; k < links.length; k++) {
       var link  = links[k];
       var day   = link.closest('.date-group');
@@ -40,7 +48,12 @@
       var known = pages.get(film) || new Map();
       pages.set(film, known);
       if (link.hasAttribute('href')) known.set(name, link.getAttribute('href'));
-      else if (known.has(name)) link.setAttribute('href', known.get(name));
+      else if (known.has(name)) {
+        link.setAttribute('href', known.get(name));
+        link.className = 'cinema-label-link';
+        link.target = '_blank';
+        link.rel = 'nofollow';
+      }
     }
   })();
 </script>
