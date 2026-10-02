@@ -298,9 +298,20 @@ object ExtraTitleRules {
       "'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail goes by xtra-rezyseria-suffix")
   )
 
+  /** Rules that must fold BEFORE the seed's `search-plus-event-suffix` (order 14), which drops everything after a
+   *  " + ": a film announced after the plus ("Spotkanie z Kamilą Urzędowską + pokaz filmu "Lalka"") went with it, and the
+   *  search asked for the meeting. Stamped order 13 by [[all]]. */
+  val beforePlusEvent: Seq[TitleRule] = Seq(
+    searchReplace("xtra-pokaz-filmu",              """(?iu)^.*?\bpokaz\s+filmu\s+["„]?([^"„”]+?)["”]?\s*$""", "$1", "'… pokaz filmu <film>' screening of a film"),
+  )
+
   /** Strips that fix enrichment without merging the row away — a premiere or a
    *  DKF screening keeps its own line, it just resolves ratings now. */
   val searchStrips: Seq[TitleRule] = Seq(
+    searchStrip("xtra-napisy-dla-nieslyszacych", """(?iu)\s*[-–(]?\s*napisy\s+dla\s+(?:osób\s+)?niesłysząc\p{L}*\s*\)?\s*$""",
+      "'Lalka-napisy dla niesłyszących' accessibility subtitles, joined with or without a spaced hyphen"),
+    searchStrip("xtra-unclosed-bracket-tail",   """\s*\([^()]*$""",
+      "'Lalka (+ ENG' — a bracket a truncated title never closes"),
     // "<film>. Amerykańska klasyka od Warner Bros." — a distributor's re-release strapline
     // appended after a full stop, seen on Bullitt and Co się zdarzyło Baby Jane. Stripped
     // for the query only: the row stays its own screening, as with every other banner.
@@ -321,7 +332,6 @@ object ExtraTitleRules {
     // A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
     // Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; a director credit after the title
     // ("… reż. Antoine Lanciaux") and Kino w Kadrze's ": Kadr Non-Fiction (16+)" are no part of it.
-    searchReplace("xtra-pokaz-filmu",              """(?iu)^.*?\bpokaz\s+filmu\s+["„]?([^"„”]+?)["”]?\s*$""", "$1", "'… pokaz filmu <film>' screening of a film"),
     searchStrip("xtra-rez-credit-suffix",          """(?iu)\s*,?\s+reż\.\s+\p{Lu}[^|:]*$""",            "'<film> reż. <director>' credit suffix"),
     searchStrip("xtra-kadr-non-fiction-suffix",    """(?iu)\s*:\s*Kadr\s+Non-?Fiction\b.*$""",     "'<film>: Kadr Non-Fiction (16+)' programme suffix"),
     searchStrip("xtra-premiera-bracketed",         """(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$""", "'(PREMIERA)' bracketed premiere tag"),
@@ -888,7 +898,7 @@ object ExtraTitleRules {
   /** Orders stamped by position so the extras fold AFTER the seed rules — all but
    *  [[beforeSlashBanners]], which must fold before the seed's slash strip. */
   val all: Seq[TitleRule] =
-    beforeSlashBanners.map(_.copy(order = 25)) ++
+    beforePlusEvent.map(_.copy(order = 13)) ++ beforeSlashBanners.map(_.copy(order = 25)) ++
     (programmePrefixes ++ searchStrips ++ canonical ++ perCinemaRules).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)
     }

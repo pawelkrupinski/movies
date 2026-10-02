@@ -25,6 +25,20 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     Evidence.of(l, None).published.searchTitles shouldBe empty
   }
 
+  "A screening's title" should "search the film it shows, however the venue joins the extras to it" in {
+    // PL corpus, 2026-10-02: each found no candidate, or the film's title only with what the venue bolted on.
+    def search(title: String) = SingleCountryNormalizer.titleNormalizer.searchQuery(title)
+    // a film announced after a "+" survives the "+ <event>" strip, which used to take the film with it
+    search("Spotkanie z Kamilą Urzędowską + pokaz filmu \"Lalka\"") shouldBe "Lalka"
+    // accessibility subtitles, joined with or without a spaced hyphen
+    search("Lalka-napisy dla niesłyszących") shouldBe "Lalka"
+    search("Lalka - napisy dla niesłyszących") shouldBe "Lalka"
+    // a bracket only a truncated title leaves open
+    search("Lalka (+ ENG") shouldBe "Lalka"
+    // a closed bracket and a plain "+ <event>" are as before
+    search("Hamnet + pokaz filmu") shouldBe "Hamnet"
+  }
+
   "A plain title" should "have no search title of its own" in {
     listing("Lalka").searchTitle shouldBe None
   }
