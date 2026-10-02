@@ -110,6 +110,28 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     "https://helios.pl/film/test".r.findAllIn(html).size shouldBe 1
     """class="cinema-label-link"""".r.findAllIn(html).size shouldBe 1
     // The later day's label is a bare link the browser completes from the first one.
-    html should include (s"""<div class="cinema-label"><a>${Helios.displayName} ↗</a></div>""")
+    html should include (s"""<div class="cinema-label"><a>${Helios.displayName} &#8599;</a></div>""")
+  }
+
+  // `ShowingsMarkup` escapes straight into its builder rather than through
+  // `HtmlFormat.escape`; it must agree with Twirl on every character, or a cinema name
+  // or a booking URL could break out of its attribute.
+  // A Java string is one byte per char until its first char outside Latin-1, then two
+  // for all of it. The cinema link's arrow went out as the literal `↗`, which doubled
+  // every film's markup mid-render; as `&#8599;` it renders the same and keeps it narrow.
+  it should "keep a film whose names are Latin-1 in Latin-1, cinema-page arrow included" in {
+    // An English-language city: a Polish date label is outside Latin-1 on its own.
+    val london = models.City.bySlug("london").getOrElse(fail("no city 'london'"))
+    val html = views.html._filmShowings(scheduleWith(Seq(Helios -> "https://helios.pl/film/test"),
+      day -> Seq(slot(day.atTime(18, 0))), day.plusDays(1) -> Seq(slot(day.plusDays(1).atTime(18, 0)))))(using london).body
+    html should include ("&#8599;</a>")
+    html.filter(_ > '\u00FF') shouldBe empty
+  }
+
+  "ShowingsMarkup.escapeInto" should "escape exactly as Twirl does, character for character" in {
+    val everything = (0 to 0x2FF).map(_.toChar).mkString + "↗—Łódź\uD83C\uDFAC" + "<script>\"'&"
+    val ours = new java.lang.StringBuilder
+    ShowingsMarkup.escapeInto(ours, everything)
+    ours.toString shouldBe play.twirl.api.HtmlFormat.escape(everything).body
   }
 }

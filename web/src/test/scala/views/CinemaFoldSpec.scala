@@ -72,7 +72,7 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     // DISPLAY names — a pill name here would silently match nothing. The server
     // sends the name once, as the group's label; `_showingsHydrate` copies it into
     // `data-cinema` (PageJsBehaviourSpec "the showings tree" pins that half).
-    val rendered = """<div class="cinema-group"[^>]*><div class="cinema-label">(?:<a[^>]*>)?([^<]+?)(?: ↗)?(?:</a>)?</div>""".r
+    val rendered = """<div class="cinema-group"[^>]*><div class="cinema-label">(?:<a[^>]*>)?([^<]+?)(?: &#8599;)?(?:</a>)?</div>""".r
       .findAllMatchIn(html).map(_.group(1)).toList
     rendered shouldBe expected
   }

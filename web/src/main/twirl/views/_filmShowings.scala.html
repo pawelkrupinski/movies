@@ -20,12 +20,13 @@
    endorsements. `noopener` is left to the browser, which applies it to every
    `target="_blank"` link on its own.
 
-   THE LOOPS BELOW ARE WRITTEN ON ONE LINE, AND THAT IS LOAD-BEARING. Twirl emits a
-   template's indentation verbatim, once per iteration, and these iterate per day,
-   per cinema and per showtime: indented, they were 2.3 MB of New York's 19.9 MB
-   page. What the markup leaves out for the same reason — booking-URL prefixes,
-   `data-cinema`, repeated cinema links — `ShowingsMarkup` lists, and
-   `_showingsHydrate` puts back in the browser before anything reads it.
+   THE TREE ITSELF IS `ShowingsMarkup.days`, NOT TWIRL. Per day, per cinema and per
+   showtime, a template allocated a fragment object for every static run of markup
+   and an escaped `Html` for every value — 72 MB a render on New York — where one
+   pre-sized builder per film costs a fraction. What the markup leaves out for the
+   same reason (booking-URL prefixes, `data-cinema`, repeated cinema links)
+   `ShowingsMarkup` lists, and `_showingsHydrate` puts back in the browser before
+   anything reads it.
 
    EVERY cinema is rendered, on both hosts. What narrows the list is the
    visitor's own Filtry selection, applied client-side: the listing does it in
@@ -36,6 +37,6 @@
    about what a cap should be.
 *@
 @defining((FilmFormat.tokensToStrip(film), ShowingsMarkup.firstListings(film.showings))) { case (commonToks, firstListing) =>
-@for((date, cinemaShowtimesList) <- film.showings) {<div class="date-group" data-date="@date" data-expires-from="@ShowingsMarkup.expiresFrom(date, city.zoneId)"><div class="date-label">@CardFormat.date(date, film.asOf, city.country.language)</div>@for(cinemaShowtimes <- cinemaShowtimesList) {@defining(ShowingsMarkup.urlPrefix(cinemaShowtimes.showtimes)) { prefix =><div class="cinema-group"@if(prefix.nonEmpty){ data-u="@prefix"}><div class="cinema-label">@film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {case Some((_, url)) if firstListing.get(cinemaShowtimes.cinema).contains(date) => {<a href="@url" target="_blank" rel="nofollow" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a>} case Some(_) => {<a>@cinemaShowtimes.cinema.displayName ↗</a>} case None => {@cinemaShowtimes.cinema.displayName}}</div><div>@for(slot <- cinemaShowtimes.showtimes) {@Html(ShowingsMarkup.badge(slot, date, city.zoneId, commonToks, prefix))}</div></div>}}</div>}
+@Html(ShowingsMarkup.days(film, commonToks, firstListing, city.zoneId, city.country.language))
 <a href="@FilmHref.forSlug(film.slug, film.movie.title)" class="showings-more" style="display:none"></a>
 }

@@ -3,7 +3,6 @@ package controllers
 import java.time.{LocalDate, ZoneId}
 
 import models.{Cinema, Showtime}
-import play.twirl.api.HtmlFormat
 
 /**
  * The repeated parts of `_filmShowings`: one showtime pill, and what its cinema group
@@ -50,16 +49,20 @@ object ShowingsMarkup {
   /** The prefix every booking URL of `slots` shares — `.cinema-group[data-u]` — or empty
    *  when fewer than two have one, where a shared prefix would save nothing. */
   def urlPrefix(slots: Seq[Showtime]): String = {
-    val urls = slots.flatMap(_.bookingUrl)
-    if (urls.sizeIs < 2) ""
-    else urls.reduce(commonPrefix)
-  }
-
-  private def commonPrefix(a: String, b: String): String = {
-    val limit = math.min(a.length, b.length)
-    var i = 0
-    while (i < limit && a.charAt(i) == b.charAt(i)) i += 1
-    a.substring(0, i)
+    var first: String = null
+    var length = 0
+    var count  = 0
+    for (slot <- slots; url <- slot.bookingUrl) {
+      if (first == null) { first = url; length = url.length }
+      else {
+        val limit = math.min(length, url.length)
+        var i = 0
+        while (i < limit && first.charAt(i) == url.charAt(i)) i += 1
+        length = i
+      }
+      count += 1
+    }
+    if (count < 2) "" else first.substring(0, length)
   }
 
   /** For each cinema of `showings`, the first day it is listed on: the one listing whose
@@ -68,29 +71,144 @@ object ShowingsMarkup {
     showings.flatMap { case (date, cinemas) => cinemas.map(_.cinema -> date) }
       .groupMapReduce(_._1)(_._2)((a, b) => if (a.isBefore(b)) a else b)
 
-  /** The pill for `slot`, filed under `date`. `commonToks` are the format tokens every
-   *  slot of the film shares, which the pill drops (see `FilmFormat`); `prefix` is its
-   *  cinema group's [[urlPrefix]]. */
-  def badge(slot: Showtime, date: LocalDate, zone: ZoneId, commonToks: Set[String], prefix: String): String = {
-    val time      = slot.dateTime.toLocalTime.toString
-    val tokens    = slot.format.filterNot(commonToks.contains).mkString(" ")
-    val fmtBadge  = if (tokens.isEmpty) "" else s"""<span class="badge-fmt">${HtmlFormat.escape(tokens)}</span>"""
-    val roomAttr  = slot.room.map(r => s""" data-room="${HtmlFormat.escape(r)}"""").getOrElse("")
-    val formats   = slot.format.mkString(" ")
-    // Omitted rather than emitted empty: most slots carry no token, and the reader treats a
-    // missing attribute and an empty one alike (`badge.dataset.format || ''`).
-    val fmtAttr   = if (formats.isEmpty) "" else s""" data-format="${HtmlFormat.escape(formats)}""""
-    val expiresAt = slot.dateTime.plus(Showtime.Grace).atZone(zone).toInstant.toEpochMilli
-    val derived   = expiresFrom(date, zone) + (slot.dateTime.getHour * 60L + slot.dateTime.getMinute) * 60000L
-    val expAttr   = if (derived == expiresAt) "" else s""" data-expires="$expiresAt""""
-    val attrs     = s"$roomAttr$fmtAttr$expAttr"
-    slot.bookingUrl match {
+  /** A film's whole showings tree — every day, cinema group and pill `_filmShowings`
+   *  lists — as ONE string, built in one pre-sized builder.
+   *
+   *  WHY NOT TWIRL. As a template this was a fragment object per static run of markup
+   *  per loop iteration, plus an escaped `Html` per interpolated value: on a
+   *  New-York-sized listing (27k cinema groups, 54k pills) 72 MB of the 77 MB its
+   *  render allocated, per uncached request. Every interpolated value is escaped with
+   *  [[escapeInto]], Twirl's own rule; the page snapshots pin the result.
+   *
+   *  THE ARROW IS `&#8599;`, NOT `↗`. A Java string holds one byte per char until its
+   *  first character outside Latin-1, and then two for all of it: the literal arrow,
+   *  in every cinema link, doubled each film's builder mid-render (23 MB of copying on
+   *  New York). The entity renders the same glyph, and `textContent` — what the
+   *  filters read a cinema's name from — already has it decoded. */
+  def days(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],
+           zone: ZoneId, locale: java.util.Locale): String = {
+    val out   = new java.lang.StringBuilder(sizeOf(film))
+    val rules = zone.getRules
+    for ((date, cinemas) <- film.showings) {
+      val day = Day(date, expiresFrom(date, zone), rules.getOffset(date.atStartOfDay.plus(Showtime.Grace)))
+      out.append("<div class=\"date-group\" data-date=\"").append(date)
+        .append("\" data-expires-from=\"").append(day.expiresFrom).append("\"><div class=\"date-label\">")
+      escapeInto(out, CardFormat.date(date, film.asOf, locale))
+      out.append("</div>")
+      for (cinemaShowtimes <- cinemas) {
+        val cinema = cinemaShowtimes.cinema
+        val prefix = urlPrefix(cinemaShowtimes.showtimes)
+        out.append("<div class=\"cinema-group\"")
+        if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
+        out.append("><div class=\"cinema-label\">")
+        film.cinemaFilmUrls.find(_._1 == cinema) match {
+          case Some((_, url)) if firstListing.get(cinema).contains(date) =>
+            out.append("<a href=\""); escapeInto(out, url)
+            out.append("\" target=\"_blank\" rel=\"nofollow\" class=\"cinema-label-link\">")
+            escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
+          case Some(_) =>
+            out.append("<a>"); escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
+          case None =>
+            escapeInto(out, cinema.displayName)
+        }
+        out.append("</div><div>")
+        for (slot <- cinemaShowtimes.showtimes) badgeInto(out, slot, day, zone, commonToks, prefix)
+        out.append("</div></div>")
+      }
+      out.append("</div>")
+    }
+    out.toString
+  }
+
+  /** The pill for `slot`, filed under `date`, into `out`. `commonToks` are the format
+   *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
+   *  `prefix` is its cinema group's [[urlPrefix]]. */
+  /** About [[days]]' length for `film`, a little over, so its builder is allocated
+   *  once and rarely grows: growing a 200 KB builder copies it at every doubling, and
+   *  an estimate twice too large costs as much as the copies it saves. */
+  private def sizeOf(film: FilmSchedule): Int = {
+    // Each slot is counted with its WHOLE booking URL, which over-states the suffix
+    // most of them carry — the slack a builder that must not grow is allowed. Every
+    // other figure is the markup's own length plus a margin for escaping.
+    var size = 64
+    for ((_, cinemas) <- film.showings) {
+      size += 150
+      for (cinema <- cinemas) {
+        size += 130 + cinema.cinema.displayName.length
+        for (slot <- cinema.showtimes) size += 40 + slot.bookingUrl.fold(0)(_.length) + slot.room.fold(0)(_.length + 14)
+      }
+    }
+    size
+  }
+
+  /** One `.date-group`'s day: its date, its [[expiresFrom]], and the zone offset that
+   *  base was taken at — what lets a pill on an ordinary day skip the zone arithmetic. */
+  private final case class Day(date: LocalDate, expiresFrom: Long, offset: java.time.ZoneOffset)
+
+  /** The instant `slot` lapses, when its day's base plus its clock time would get it
+   *  wrong — or `None` when the sum is exact, which is what lets the pill omit it. The
+   *  sum is exact whenever the slot is on its day, on a whole minute, and the zone's
+   *  offset at its lapse is the offset the base was taken at; only then is the exact
+   *  instant (a `ZonedDateTime`, ~3x a pill's own bytes) skipped. */
+  private def explicitExpiry(slot: Showtime, day: Day, zone: ZoneId): Option[Long] = {
+    val start  = slot.dateTime
+    val lapses = start.plus(Showtime.Grace)
+    if (start.toLocalDate == day.date && start.getSecond == 0 && start.getNano == 0 &&
+        zone.getRules.getOffset(lapses) == day.offset) None
+    else {
+      val expiresAt = lapses.atZone(zone).toInstant.toEpochMilli
+      val derived   = day.expiresFrom + (start.getHour * 60L + start.getMinute) * 60000L
+      Option.when(derived != expiresAt)(expiresAt)
+    }
+  }
+
+  private def badgeInto(out: java.lang.StringBuilder, slot: Showtime, day: Day, zone: ZoneId,
+                        commonToks: Set[String], prefix: String): Unit = {
+    val tag = slot.bookingUrl match {
       case Some(url) if prefix.nonEmpty && url.startsWith(prefix) =>
-        s"""<a data-s="${HtmlFormat.escape(url.drop(prefix.length))}"$attrs>$time$fmtBadge</a>"""
+        out.append("<a data-s=\""); escapeInto(out, url, prefix.length); out.append('"'); "a"
       case Some(url) =>
-        s"""<a href="${HtmlFormat.escape(url)}" class="badge-time" target="_blank" rel="nofollow"$attrs>$time$fmtBadge</a>"""
+        out.append("<a href=\""); escapeInto(out, url)
+        out.append("\" class=\"badge-time\" target=\"_blank\" rel=\"nofollow\""); "a"
       case None =>
-        s"""<span class="badge-time"$attrs>$time$fmtBadge</span>"""
+        out.append("<span class=\"badge-time\""); "span"
+    }
+    // Omitted rather than emitted empty: most slots carry neither, and the readers treat
+    // a missing attribute and an empty one alike (`badge.dataset.format || ''`).
+    slot.room.foreach { room => out.append(" data-room=\""); escapeInto(out, room); out.append('"') }
+    if (slot.format.nonEmpty) { out.append(" data-format=\""); escapeInto(out, slot.format.mkString(" ")); out.append('"') }
+    explicitExpiry(slot, day, zone).foreach(at => out.append(" data-expires=\"").append(at).append('"'))
+    out.append('>')
+    appendTime(out, slot.dateTime)
+    val tokens = slot.format.filterNot(commonToks.contains)
+    if (tokens.nonEmpty) { out.append("<span class=\"badge-fmt\">"); escapeInto(out, tokens.mkString(" ")); out.append("</span>") }
+    out.append("</").append(tag).append('>')
+  }
+
+  /** `LocalTime.toString`'s spelling of the slot's clock time, without allocating it:
+   *  `HH:mm`, or the full form when it carries seconds. */
+  private def appendTime(out: java.lang.StringBuilder, at: java.time.LocalDateTime): Unit =
+    if (at.getSecond != 0 || at.getNano != 0) out.append(at.toLocalTime.toString)
+    else {
+      val h = at.getHour; val m = at.getMinute
+      out.append((h / 10 + '0').toChar).append((h % 10 + '0').toChar).append(':')
+        .append((m / 10 + '0').toChar).append((m % 10 + '0').toChar)
+    }
+
+  /** `value` from `from` on, HTML-escaped into `out` exactly as Twirl's
+   *  `HtmlFormat.escape` renders it — without the `Html` and `String` it allocates. */
+  def escapeInto(out: java.lang.StringBuilder, value: String, from: Int = 0): Unit = {
+    var i = from
+    while (i < value.length) {
+      value.charAt(i) match {
+        case '<'  => out.append("&lt;")
+        case '>'  => out.append("&gt;")
+        case '"'  => out.append("&quot;")
+        case '\'' => out.append("&#x27;")
+        case '&'  => out.append("&amp;")
+        case c    => out.append(c)
+      }
+      i += 1
     }
   }
 }
