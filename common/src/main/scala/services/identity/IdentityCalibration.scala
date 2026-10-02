@@ -54,6 +54,11 @@ final case class IdentityCalibration(version: String,
     contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1)).take(top)
       .map { case (s, w) => f"$s=${render(measures.get(s))}%s(${if (w >= 0) "+" else ""}$w%.2f)" }.mkString(" ")
 
+  /** Every measure that moved `measures`' probability, with its weight, largest first: `director=same_person +4.22`. */
+  def evidence(scope: String, measures: Map[String, Measure]): Seq[String] =
+    contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1))
+      .map { case (s, w) => f"$s=${render(measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
+
   /** Is this probability high enough to show the film's ratings? */
   def showsRatings(probability: Double): Boolean =
     probability >= model(IdentityMeasures.ListingFilm).thresholds("showRatings").probability

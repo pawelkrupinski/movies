@@ -15,15 +15,21 @@ import scala.concurrent.duration.DurationInt
  *  @param rules   rule ids by kind — `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, `title:`, `format:`
  *  @param vetoedBy the member listing whose own evidence denied the cluster's best film, when one did */
 final case class ListingTrace(listing: ListingKey, family: String, film: Option[Int], basis: String, rules: Seq[String],
-                              vetoedBy: Option[String])
+                              vetoedBy: Option[String], evidence: Seq[String] = Nil, weighedFilm: Option[Int] = None)
 
 object ListingTrace {
   /** The traces of `family`'s listings: each decision's rules for its members ([[DecisionTrace.rulesOf]]), and
    *  the title rules each member's title took (`titleRules`, by venue and raw title). */
-  def of(familyId: String, family: IdentityResolver.RegionFamily, titleRules: ListingKey => Seq[String]): Seq[ListingTrace] =
+  def of(familyId: String, family: IdentityResolver.RegionFamily, titleRules: ListingKey => Seq[String],
+         calibration: Option[IdentityCalibration] = None): Seq[ListingTrace] =
     family.decisions.flatMap { decision =>
-      decision.members.map(key => ListingTrace(key, familyId, decision.film, decision.basis.toString,
-        decision.trace.rulesOf(key) ++ titleRules(key), decision.trace.vetoed.flatMap(_.by)))
+      decision.members.map { key =>
+        val node = decision.trace.nodes.get(key)
+        ListingTrace(key, familyId, decision.film, decision.basis.toString, decision.trace.rulesOf(key) ++ titleRules(key),
+          decision.trace.vetoed.flatMap(_.by),
+          calibration.zip(node).fold(Seq.empty[String]) { case (c, n) => c.evidence(IdentityMeasures.ListingFilm, n.measures) },
+          node.flatMap(_.candidate))
+      }
     }
 }
 
@@ -84,4 +90,7 @@ object MongoIdentityTraceStore {
     .append("basis", BsonString(trace.basis))
     .append("rules", BsonArray.fromIterable(trace.rules.map(BsonString(_))))
     .append("vetoedBy", trace.vetoedBy.fold[BsonValue](BsonNull())(BsonString(_)))
+    // why: each measure of the listing against `weighedFilm` (its decision's film, else its best candidate), with its weight
+    .append("weighedFilm", trace.weighedFilm.fold[BsonValue](BsonNull())(BsonInt32(_)))
+    .append("evidence", BsonArray.fromIterable(trace.evidence.map(BsonString(_))))
 }

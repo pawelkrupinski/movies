@@ -62,7 +62,10 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       val accepted = bestOf.get(node.id).flatMap { case (best, _) => acceptance.acceptedBy(scope.of(node), best.candidate.tmdbId) }
       val joins    = edges.filter(edge => edge.must && (edge.a == node.id || edge.b == node.id) && ids(edge.a) && ids(edge.b)).map(_.reason).distinct.sorted
       val apart    = edges.filter(edge => !edge.must && (edge.a == node.id || edge.b == node.id) && (ids(edge.a) ^ ids(edge.b))).map(_.reason).distinct.sorted
-      val traced   = DecisionTrace.Node(accepted, joins, apart)
+      val own      = scope.of(node)
+      val weighed  = film.flatMap(id => own.find(_.candidate.tmdbId == id)).orElse(own.headOption)
+      val traced   = DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, IdentityMeasures.Measure])(_.measures),
+        weighed.map(_.candidate.tmdbId))
       node.listings.map(_.key -> traced)
     }.toMap
     val pooled = Option.when(basis == ResolverDecision.Basis.PooledMatch)(acceptance.pooledNamed(scored).collect {

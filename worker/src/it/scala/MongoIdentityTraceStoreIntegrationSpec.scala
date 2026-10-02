@@ -15,7 +15,8 @@ import scala.concurrent.duration._
 class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private def key(n: Int) = ListingKey.Published(s"Venue $n", s"Film $n", None, Nil)
-  private def trace(n: Int, family: String, rules: Seq[String]) = ListingTrace(key(n), family, Some(100 + n % 2), "OwnMatch", rules, None)
+  private def trace(n: Int, family: String, rules: Seq[String]) =
+    ListingTrace(key(n), family, Some(100 + n % 2), "OwnMatch", rules, None, Seq("director=same_person +4.22", "title=exact +1.50"), Some(100 + n % 2))
 
   "the trace store" should "answer a rule's listings and a film's listings' rules through its indexes, and replace a family's traces" in {
     val client = MongoClient(mongoTarget.uri.value)
@@ -27,6 +28,9 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       store.flush()
       val c = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), 30.seconds).map(_.toBsonDocument.getString("_id").getValue).toSet
+      // why, with its weights, stored beside the rules
+      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(1)))).head(), 30.seconds).toBsonDocument
+        .getArray("evidence").getValues.toString should include ("director=same_person +4.22")
       // a rule's listings
       ids(Filters.equal("rules", "accept:imdb-suggested")) shouldBe Set(key(1), key(3)).map(ListingKey.serialised)
       // a film's listings, with their rules

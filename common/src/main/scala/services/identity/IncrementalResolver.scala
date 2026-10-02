@@ -222,7 +222,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       val titleRules = mutable.HashMap.empty[(String, String), Seq[String]]
       tracedFamilies.flatMap(family => ListingTrace.of(StoredFamily.idOf(family.listings), family, key =>
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
-          titleRules.getOrElseUpdate((cinema.displayName, raw), normalizer.firedRules(cinema, raw)) }))
+          titleRules.getOrElseUpdate((cinema.displayName, raw), normalizer.firedRules(cinema, raw)) }, Some(calibration)))
     }
     clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(_.copy()(DecisionTrace.Empty))),
       context.slice(family.reads).digest)))

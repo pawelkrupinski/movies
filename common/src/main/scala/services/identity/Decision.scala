@@ -114,7 +114,10 @@ final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTr
 }
 
 object DecisionTrace {
-  final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String])
+  /** `measures`: the node's own measures against the film its decision took (or its best candidate when it took
+   *  none) — the same map its scoring holds, rendered into weights only when a trace is written. */
+  final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
+                        measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None)
   final case class Veto(reason: String, by: Option[String])
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
   /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */

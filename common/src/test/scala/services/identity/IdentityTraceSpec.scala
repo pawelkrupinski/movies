@@ -60,6 +60,10 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     filed.keySet shouldBe Set(credited.key, bare.key)
     filed(credited.key).film shouldBe Some(1018)
     filed(credited.key).rules.exists(_.startsWith("accept:")) shouldBe true
+    // why, with the numbers: each measure against the film it was decided on, and its weight
+    filed(credited.key).weighedFilm shouldBe Some(1018)
+    filed(credited.key).evidence.exists(_.startsWith("director=same_person +")) shouldBe true
+    filed(credited.key).evidence.exists(_.startsWith("year.delta=")) shouldBe true
     model.decisions.map(_.trace) shouldBe Seq(DecisionTrace.Empty)
     model.listingsGone(Seq(bare.key))
     dropped should not be empty
