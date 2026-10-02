@@ -59,6 +59,14 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear
     bytes
   }
 
+  // A header-bearing GET (Flicks' `is-ajax-call`) reaches the delegate WITH its headers: the inherited
+  // default dropped them and recorded the page a header-less request gets instead.
+  override def get(url: String, headers: Map[String, String]): String = {
+    val content = delegate.get(url, headers)
+    write(fileFor(url), content.getBytes(StandardCharsets.UTF_8))
+    content
+  }
+
   override def post(url: String, body: String, contentType: String): String = {
     val content = delegate.post(url, body, contentType)
     write(fileFor(url, Some(body)), content.getBytes(StandardCharsets.UTF_8))

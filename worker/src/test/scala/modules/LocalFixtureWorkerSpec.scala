@@ -28,19 +28,19 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val temporaryDirectory  = "local-fixture-worker-spec"
   private val temporaryRoot = new File(s"test/resources/fixtures/$temporaryDirectory")
 
-  "FixtureWorkerWiring.captureDate" should "read `date=` from the directory's CAPTURE_DATE file" in {
+  "ReplayWorkerWiring.captureDate" should "read `date=` from the directory's CAPTURE_DATE file" in {
     temporaryRoot.mkdirs()
     Files.write(new File(temporaryRoot, "CAPTURE_DATE").toPath,
       "date=13-06-2026\ncaptured_at=2026-06-13T17:34:08+02:00\n".getBytes("UTF-8"))
-    FixtureWorkerWiring.captureDate(temporaryDirectory) shouldBe Some(LocalDate.of(2026, 6, 13))
+    ReplayWorkerWiring.captureDate(temporaryDirectory) shouldBe Some(LocalDate.of(2026, 6, 13))
   }
 
   it should "fall back to the directory name when it is itself dd-MM-yyyy and has no CAPTURE_DATE" in {
-    FixtureWorkerWiring.captureDate("01-01-2020") shouldBe Some(LocalDate.of(2020, 1, 1))
+    ReplayWorkerWiring.captureDate("01-01-2020") shouldBe Some(LocalDate.of(2020, 1, 1))
   }
 
   it should "be None for a dateless directory with no CAPTURE_DATE (a bare `today` synced before the stamp)" in {
-    FixtureWorkerWiring.captureDate("definitely-not-a-fixture-directory") shouldBe None
+    ReplayWorkerWiring.captureDate("definitely-not-a-fixture-directory") shouldBe None
   }
 
   // The local stack must target the native brew Mongo (:28017) the rest of the
