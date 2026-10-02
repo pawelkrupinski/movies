@@ -40,3 +40,7 @@ scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
 scripts/ci/preflight.sh
 scripts/ci/start-mongo-replset.sh
+# A recording leg's corpus capture: the tunnel it opens and closes around the read.
+scripts/ci/wait-for-mongo-tunnel.sh
+scripts/ci/close-mongo-tunnel.sh
+scripts/ci/mongo-tunnel-paths.sh

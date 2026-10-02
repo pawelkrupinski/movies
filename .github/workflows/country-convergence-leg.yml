@@ -409,6 +409,104 @@ jobs:
                   corpus-run:    ${{ inputs.corpus-run }}
                   hermetic-pair: ${{ needs.sample.outputs.pair }}
 
+            # A RECORDING leg records its own country's corpus FIRST, in this job — the sample
+            # and the suite below then replay what it wrote to test/resources/fixtures/corpus.
+            #
+            # It used to be five `scrapes (<country>)` jobs of the recorder, every one of which
+            # had to finish before ANY country's leg could start (`needs:` joins jobs, not matrix
+            # rows), each paying a runner, a checkout and a JDK/sbt setup of its own to hand a
+            # tarball to the leg through an artifact. Here it reuses the setup above and the
+            # slowest country's capture holds up only itself.
+            #
+            # Refuses an empty read rather than writing a fixture from one, and `findAll`
+            # discards an incomplete keyset scan — a fixture is AUTHORITATIVE, and a truncated
+            # one already slipped through once at 236 of 281 Polish venues. No
+            # `continue-on-error`: a leg with no fresh corpus has nothing to record a tree over.
+            #
+            # THE TUNNEL IS OPENED LAST AND CLOSED FIRST. Last, immediately before the read: a
+            # tunnel wedges while idle (see wait-for-mongo-tunnel.sh), and opening it before a
+            # JDK install and a possibly-cold sbt compile left it rotting for 5-10 minutes.
+            # Closed straight after the read, `always()`: this job goes on to run project code
+            # for hours with a write-scoped token and the TMDB/OMDb keys, and none of it may
+            # reach prod Mongo — close-mongo-tunnel.sh kills the relay, deletes the key and
+            # blanks the credential, and fails unless the port is dead.
+            #
+            # THE CONNECTION STRING IS NOT A SECRET OF THIS WORKFLOW. The tunnel step asks
+            # mongo-1's forced-command endpoint for the read-only credential and exports
+            # KINOWO_CONVERGENCE_SCRAPES_URI itself, so the only thing GitHub holds is an ssh key
+            # that can do exactly two read-only things, and only the tunnel step sees it.
+            # (RecordCorpusInLegWiringSpec)
+            # The two corpus steps' ceilings are fifteen minutes between them — the recorder sizes
+            # its job over them (HermeticConvergenceWiringSpec). The tunnel bounds its own retries
+            # in ~3 minutes; the read took under 2 for the largest corpus (run 36928948671).
+            - name: Tunnel to prod Mongo
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              timeout-minutes: 5
+              shell: bash
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
+              env:
+                  MONGO_CI_SSH_KEY:      ${{ secrets.MONGO_CI_SSH_KEY }}
+                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
+
+            - name: Record ${{ inputs.country }}'s corpus
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              timeout-minutes: 10
+              shell: bash
+              run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"
+              env:
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+
+            - name: Close the tunnel to prod Mongo
+              if: always() && inputs.mode == 'record' && matrix.phase == 'convergence'
+              shell: bash
+              run: scripts/ci/close-mongo-tunnel.sh 27018
+
+            # Corpus, baseline and the sample pair all travel in ONE archive. They are captured
+            # from a single connection at a single instant and only mean anything together — the
+            # convergence band compares this run's coverage of the corpus against what prod had
+            # achieved on that same repertoire, so a corpus arriving beside a staler baseline
+            # would be comparing two different days.
+            - name: Pack ${{ inputs.country }}'s corpus
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  mkdir -p scrape-archive
+                  tar -czf "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
+                      "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}.json.gz" \
+                      "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}.json" \
+                      "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}-sample.json.gz" \
+                      "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}-sample.json"
+                  ls -l scrape-archive/
+
+            # Run-id-suffixed so each capture is a new entry; readers restore by prefix and so
+            # always take the newest.
+            - uses: actions/cache/save@v5
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              with:
+                  # The directory, as the recorder job always saved it: a cache entry's version
+                  # hashes its paths, so a restore naming `scrape-archive` misses any other spelling.
+                  path: scrape-archive
+                  key: scrape-fixtures-${{ inputs.code }}-${{ github.run_id }}
+
+            # Every later leg's corpus: the hermetic legs replay a pinned run's
+            # `scrape-fixtures-<code>`, and the provenance diff the last green one's.
+            - uses: actions/upload-artifact@v6
+              if: inputs.mode == 'record' && matrix.phase == 'convergence'
+              with:
+                  name: scrape-fixtures-${{ inputs.code }}
+                  path: scrape-archive/scrapes-${{ inputs.code }}.tar.gz
+                  # 14 days, not 3. This artifact is the ONLY durable copy a convergence leg
+                  # reads — the cache entry beside it is evicted within hours by 7 GB of
+                  # sbt-target builds, which is how the UK corpus went missing and the leg
+                  # silently replayed invented films instead. Three days is two nights of slack
+                  # on a nightly job: one failed run over a weekend and every country's corpus
+                  # expires at once. The tarballs together are ~12 MB, so the margin costs nothing.
+                  retention-days: 14
+                  overwrite: true
+                  if-no-files-found: warn
+
             # A RECORDING leg's sample, first, over the tree this job then records the whole
             # corpus into — the order the two jobs ran in, without the release in between: the
             # sample records into the tree on disk, the full suite replays and extends it, and

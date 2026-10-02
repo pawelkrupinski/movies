@@ -118,12 +118,19 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The full job now holds the sample's budget too, so its ceiling must clear both step ceilings —
-  // a cancelled job runs its publish only inside a short grace window — and GitHub's 360.
-  it should "give each recording job a ceiling over its sample and its suite together" in {
+  // The full job now holds the corpus capture's and the sample's budgets too, so its ceiling must
+  // clear every step ceiling — a cancelled job runs its publish only inside a short grace window —
+  // and GitHub's 360.
+  it should "give each recording job a ceiling over its corpus capture, its sample and its suite together" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    val corpus = Seq("Tunnel to prod Mongo", "Record ${{ inputs.country }}'s corpus").map { name =>
+      RepoFile.step(convergence, name).linesIterator.map(_.trim)
+        .collectFirst { case s"timeout-minutes: $n" => n.toInt }
+        .getOrElse(fail(s"the `$name` step has no ceiling of its own"))
+    }.sum
     RepoFile.matrixRows(RepoFile.block(recorder, "enrichment")).foreach { row =>
       withClue(s"${row("country")}: ") {
-        row("job").toInt - row("suite").toInt - row("sampleSuite").toInt should be >= 10
+        row("job").toInt - corpus - row("suite").toInt - row("sampleSuite").toInt should be >= 10
         row("job").toInt should be <= 360
       }
     }

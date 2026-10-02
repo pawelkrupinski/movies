@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually
-# flow through it — then hold it open for the rest of the job, and export the URI
-# the recorder should dial.
+# flow through it — then hold it open until close-mongo-tunnel.sh tears it down, and
+# export the URI the recorder should dial.
 #
 # WHAT CHANGED AND WHY. This used to run `flyctl proxy 27017 --app kinowo-mongo`.
 # Prod Mongo moved off Fly onto the Hetzner host mongo-1 and that app is STOPPED,
@@ -61,7 +61,7 @@ ATTEMPTS="${TUNNEL_ATTEMPTS:-3}"
 PROBE_TRIES="${TUNNEL_PROBE_TRIES:-30}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROBE="$HERE/mongo-ping.py"
-WORK="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+. "$HERE/mongo-tunnel-paths.sh"
 
 [ -f "$PROBE" ] || { echo "[tunnel] missing probe script at $PROBE" >&2; exit 1; }
 [ -n "${MONGO_CI_SSH_KEY:-}" ] || { echo "[tunnel] MONGO_CI_SSH_KEY is not set — see mongo-ci-read.nix" >&2; exit 1; }
@@ -77,8 +77,8 @@ if [ -z "${MONGO_CI_SSH_HOST_KEY:-}" ]; then
   exit 1
 fi
 
-KEY="$WORK/mongo-ci-read.key"
-KNOWN="$WORK/mongo-ci-read.known_hosts"
+KEY="$TUNNEL_KEY"
+KNOWN="$TUNNEL_KNOWN_HOSTS"
 umask 077
 printf '%s\n' "$MONGO_CI_SSH_KEY" > "$KEY"
 printf '%s\n' "$MONGO_CI_SSH_HOST_KEY" > "$KNOWN"
@@ -139,8 +139,8 @@ if ! command -v socat >/dev/null 2>&1; then
 fi
 
 LOG="${TUNNEL_LOG:-/tmp/mongo-tunnel.log}"
-RELAY="$WORK/mongo-relay.sh"
-SUPERVISOR="$WORK/mongo-tunnel-supervisor.sh"
+RELAY="$TUNNEL_RELAY"
+SUPERVISOR="$TUNNEL_SUPERVISOR"
 
 # ONE RELAY PER CONNECTION. `connect` is the verb; the endpoint decides what it means,
 # and this side deliberately cannot say more than that.

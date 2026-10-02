@@ -169,15 +169,6 @@ runs:
           echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree" >> "$GITHUB_ENV"
           echo "pair=$pair" >> "$GITHUB_OUTPUT"
 
-    # A recorder's own run: its artifact is from THIS run, which `gh run download` cannot
-    # read until the run is over, and `download-artifact` can.
-    - name: Restore the corpus this recorder run just captured
-      if: inputs.corpus-run == github.run_id
-      uses: actions/download-artifact@v6
-      with:
-          name: scrape-fixtures-${{ inputs.code }}
-          path: scrape-archive
-
     # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
     # pinned one, else the newest) — not from the actions cache it also writes.
     #
@@ -200,11 +191,13 @@ runs:
           set -uo pipefail
           mkdir -p scrape-archive
           pinned="${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}"
+          # A recording leg's own run: the leg records the corpus itself, in a step after this
+          # action ("Record <country>'s corpus" in country-convergence-leg.yml), so there is
+          # nothing to download — only the provenance to name.
           if [ -n "$pinned" ] && [ "$pinned" = "${{ github.run_id }}" ]; then
-              echo "scrape corpus from this recorder run $pinned"
+              echo "scrape corpus recorded by this job, in recorder run $pinned"
               echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
               echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-              ls -l scrape-archive/
               exit 0
           fi
           if [ -n "$pinned" ]; then

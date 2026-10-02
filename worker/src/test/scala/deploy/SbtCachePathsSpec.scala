@@ -21,7 +21,8 @@ import org.scalatest.matchers.should.Matchers
  * A cache that silently caches the wrong thing has no failing symptom, so this
  * spec is the symptom. It reads EVERY workflow and composite action rather than a
  * list: it once named three files, and the convergence legs' cache — five
- * recorder legs and ten convergence jobs a night, each spending ~100s compiling
+ * recorder legs and ten convergence jobs a night (the recorder's own scrape jobs
+ * since folded into its legs), each spending ~100s compiling
  * from cold behind a 74 KB "Cache restored" — was in none of them.
  */
 class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
@@ -44,7 +45,6 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   "the sbt caches" should "have been found at all (guards this spec's own reader)" in {
     sbtCachePaths.map(_._1).distinct should contain allOf (
       ".github/workflows/ci.yml",
-      ".github/workflows/record-scrape-fixtures.yml",
       ".github/actions/run-page-test/action.yml",
       ".github/actions/convergence-setup/action.yml",
     )

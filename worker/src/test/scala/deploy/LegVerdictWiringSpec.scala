@@ -20,13 +20,13 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
   private val Action  = "uses: ./.github/actions/leg-verdict"
   private val LegFile = ".github/workflows/country-convergence-leg.yml"
 
-  private lazy val recorder = RepoFile.jobs(RepoFile.read(".github/workflows/record-scrape-fixtures.yml"))
-  private lazy val leg      = RepoFile.jobs(RepoFile.read(LegFile))
+  private lazy val leg = RepoFile.jobs(RepoFile.read(LegFile))
 
-  /** The jobs that run steps and must each report themselves: the recorder's scrape legs,
-   *  and the leg workflow's sample and full jobs. */
+  /** The jobs that run steps and must each report themselves: the leg workflow's sample and
+   *  full jobs (a recording's corpus capture is a step of the full job, reported with it —
+   *  RecordCorpusInLegWiringSpec). */
   private lazy val legJobs: Seq[(String, String)] =
-    Seq("record" -> recorder("record"), "sample" -> leg("sample"), "convergence" -> leg("convergence"))
+    Seq("sample" -> leg("sample"), "convergence" -> leg("convergence"))
 
   "every recorder leg" should "post its verdict as its LAST step, whatever happened before it" in {
     val problems = legJobs.flatMap { case (name, body) =>

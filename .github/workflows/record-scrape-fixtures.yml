@@ -2,25 +2,29 @@
 # Nightly capture of every country's REAL `cinema_scrapes` into a fixture file,
 # stored in the actions cache for the convergence legs to replay.
 #
-# The enrichment capture follows it in the SAME run (the `enrichment` jobs below) but
-# stays out of its way: the corpus is recorded and uploaded in minutes by the `record`
-# jobs, and only then does each country's convergence leg run in RECORDING mode over that
-# exact corpus, filling its enrichment tree live and pinning corpus + tree as the pair the
-# hermetic verdict legs replay. The two only mean anything together, which is why they are
-# recorded in one run rather than on two schedules that drift.
+# The enrichment capture follows it in the SAME job: each country's convergence leg runs
+# in RECORDING mode (the `enrichment` jobs below), records that country's corpus as its
+# first step, then fills its enrichment tree live over that exact corpus and pins corpus +
+# tree as the pair the hermetic verdict legs replay. The two only mean anything together,
+# which is why they are recorded in one run rather than on two schedules that drift.
 #
-# Fetching the corpus INSIDE a leg is what every convergence failure traced back
+# The corpus used to be five `scrapes (<country>)` jobs ahead of the legs, and all five had
+# to finish before ANY leg started (`needs:` joins jobs, not matrix rows) — each paying a
+# runner, a checkout and a JDK/sbt setup only to hand a tarball over through an artifact.
+#
+# Fetching the corpus DURING a suite is what every convergence failure traced back
 # to: prod Mongo is not reachable from a runner without a hop, and the leg met pages
 # large enough to overflow the Mongo driver's completion chain, a proxy that exited
 # mid-run, a proxy that wedged while holding its port, and a driver that noticed
-# neither for 30s at a time. Recording out of band leaves the legs reading local
-# files.
+# neither for 30s at a time. So the leg records it in a step of its own, BEFORE the suite,
+# through a tunnel it closes straight afterwards; the suites only ever read local files.
 #
 # The hop is no longer `flyctl proxy --app kinowo-mongo`: prod Mongo lives on the
 # Hetzner host mongo-1 and that Fly app is stopped. It is now an ssh key pinned to a
 # forced command there, which is the narrowest route in that a driver-side read can
 # use — infra/nix/modules/roles/mongo-ci-read.nix argues the case, and
-# scripts/ci/wait-for-mongo-tunnel.sh holds this end of it.
+# scripts/ci/wait-for-mongo-tunnel.sh / close-mongo-tunnel.sh hold this end of it (the
+# leg's "Tunnel to prod Mongo" step is the only one that sees the key).
 #
 # It also pins the corpus. Prod drifts under a running test — the same Polish
 # corpus measured 7,044, then 7,055, then 7,063 listings inside an hour as venues
@@ -67,7 +71,7 @@ permissions:
 
 jobs:
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
-    # rather than hours into a leg. The tunnel key for the scrape capture, the TMDB key for the enrichment recording. scripts/ci/preflight.sh never prints a value.
+    # rather than hours into a leg. The tunnel key for each leg's corpus capture, the TMDB key for its enrichment recording. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
         runs-on: ubuntu-latest
@@ -84,133 +88,14 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY
 
-    record:
-        needs: preflight
-        name: scrapes (${{ matrix.country }})
-        strategy:
-            # Parallel and independent: one country's tunnel trouble must not cost
-            # the other two their capture.
-            fail-fast: false
-            matrix:
-                include:
-                    - { country: poland,         code: pl }
-                    - { country: germany,        code: de }
-                    - { country: united-kingdom, code: uk }
-                    - { country: united-states,  code: us }
-                    - { country: spain,          code: es }
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
-        permissions:
-            contents: read
-            statuses: write
-        steps:
-            - uses: actions/checkout@v5
-
-            - uses: ./.github/actions/setup-jdk
-              with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-            - uses: sbt/setup-sbt@v1
-            - uses: actions/cache@v5
-              with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                      !*/target/scala-*/*.jar
-                  key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
-                  restore-keys: |
-                      sbt-target-convergence-${{ runner.os }}-
-                      sbt-target-${{ runner.os }}-
-
-            # Refuses an empty read rather than writing a fixture from one, and
-            # `findAll` discards an incomplete keyset scan — a fixture is
-            # AUTHORITATIVE, and a truncated one already slipped through once at 236
-            # of 281 Polish venues.
-            # Opened LAST, immediately before the step that uses it. A tunnel wedges
-            # while idle (see wait-for-mongo-tunnel.sh), and establishing it before a
-            # JDK install and a possibly-cold sbt compile left it rotting for 5-10
-            # minutes before anything touched it.
-            #
-            # THE CONNECTION STRING IS NOT A SECRET OF THIS WORKFLOW. The step asks
-            # mongo-1's forced-command endpoint for the read-only credential and exports
-            # KINOWO_CONVERGENCE_SCRAPES_URI itself, so the only thing GitHub holds is an
-            # ssh key that can do exactly two read-only things — and rotating the
-            # database password is a sops edit on one host rather than a repository
-            # secret nobody remembers exists.
-            - name: Tunnel to prod Mongo
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
-              env:
-                  MONGO_CI_SSH_KEY:      ${{ secrets.MONGO_CI_SSH_KEY }}
-                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
-
-            - name: Record ${{ matrix.country }}'s corpus
-              run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ matrix.code }}"
-              env:
-                  KINOWO_COUNTRY:   ${{ matrix.code }}
-                  KINOWO_COUNTRIES: ${{ matrix.code }}
-
-            - name: Pack
-              run: |
-                  set -euo pipefail
-                  mkdir -p scrape-archive
-                  # The baseline travels WITH the corpus, in the same archive. They are
-                  # captured from one connection at one instant and only mean anything
-                  # together — the convergence band compares this run's coverage of the
-                  # corpus against what prod had achieved on that same repertoire, so a
-                  # corpus arriving without its baseline (or beside a staler one) would
-                  # be comparing two different days.
-                  # Corpus, baseline and the sample pair all travel in ONE archive.
-                  # They are captured from a single connection at a single instant and
-                  # only mean anything together — a corpus arriving beside a staler
-                  # baseline would be comparing two different days.
-                  tar -czf "scrape-archive/scrapes-${{ matrix.code }}.tar.gz" \
-                      "test/resources/fixtures/corpus/cinema-scrapes-${{ matrix.code }}.json.gz" \
-                      "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}.json" \
-                      "test/resources/fixtures/corpus/cinema-scrapes-${{ matrix.code }}-sample.json.gz" \
-                      "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}-sample.json" \
-                      "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}.json"
-                  ls -l scrape-archive/
-
-            # Run-id-suffixed so each capture is a new entry; the legs restore by
-            # prefix and so always take the newest.
-            - uses: actions/cache/save@v5
-              with:
-                  path: scrape-archive
-                  key: scrape-fixtures-${{ matrix.code }}-${{ github.run_id }}
-
-            - uses: actions/upload-artifact@v6
-              with:
-                  name: scrape-fixtures-${{ matrix.code }}
-                  path: scrape-archive/scrapes-${{ matrix.code }}.tar.gz
-                  # 14 days, not 3. This artifact is now the ONLY durable copy a
-                  # convergence leg reads — the cache entry beside it is evicted within
-                  # hours by 7 GB of sbt-target builds, which is how the UK corpus went
-                  # missing and the leg silently replayed invented films instead. Three
-                  # days is two nights of slack on a nightly job: one failed run over a
-                  # weekend and every country's corpus expires at once. The three
-                  # tarballs together are ~12 MB, so the margin costs nothing.
-                  retention-days: 14
-                  overwrite: true
-                  if-no-files-found: warn
-
-            # Last, and whatever happened: this leg's verdict, now rather than when the
-            # slowest leg of the run ends (scripts/ci/leg-verdict.sh).
-            - uses: ./.github/actions/leg-verdict
-              if: always()
-              with:
-                  leg:    scrapes (${{ matrix.country }})
-                  status: ${{ job.status }}
-                  token:  ${{ secrets.GITHUB_TOKEN }}
-
-    # THE ENRICHMENT RECORDING — the only place the convergence fixture trees grow.
+    # THE CORPUS AND ENRICHMENT RECORDING — the only place the convergence fixtures grow.
     #
     # Every convergence leg that renders a verdict is HERMETIC (`country-convergence-leg.yml`,
     # `mode`): it replays a recorded corpus and the enrichment tree recorded against it, and
-    # never touches the network. Something still has to fill that tree for each night's new
-    # corpus, and it is this: the same leg in `record` mode, over the corpus the job above
-    # just captured — expire what is past its lifetime, fill every gap live, remember every
+    # never touches the network. Something still has to record both for each night, and it is
+    # this: the same leg in `record` mode, which first captures its country's corpus from prod
+    # (and uploads it as the `scrape-fixtures-<code>` artifact every later leg reads), then
+    # over that corpus — expire what is past its lifetime, fill every gap live, remember every
     # failure, publish the working tree, and once the full leg's boot is complete pin
     # corpus + tree as the PAIR the hermetic legs replay from then on.
     #
@@ -221,28 +106,27 @@ jobs:
     # The United States runs without its split-out order-independence row: a recording
     # needs the boot, which is where every request is made; the replays re-ask nothing.
     #
-    # Each country's sample runs as the FIRST STEP of its full leg's job here (the leg skips
-    # its separate sample job in `record` mode), so `job` is that one job's ceiling over both
-    # suite steps: the full leg's `suite` plus the sample's `sampleSuite` plus ten minutes for
-    # setup and the publish (HermeticConvergenceWiringSpec). The United States' sample gets 30
-    # rather than a verdict leg's 60 so the sum stays under GitHub's 360: whatever a cold
+    # Each country's corpus capture and sample run as the FIRST STEPS of its full leg's job
+    # here (the leg skips its separate sample job in `record` mode), so `job` is that one job's
+    # ceiling over all of them: the corpus steps' own fifteen (tunnel and read), the sample's
+    # `sampleSuite`, the full leg's `suite`, plus ten minutes for setup and the publish
+    # (HermeticConvergenceWiringSpec). The United States' sample gets the same 20 as everyone
+    # else rather than a verdict leg's 60 so the sum stays under GitHub's 360: whatever a cold
     # sample leaves unfetched, the full leg behind it fetches over the same tree anyway.
     enrichment:
         name: enrichment (${{ matrix.country }})
-        needs: [preflight, record]
-        # Past a failed `record` leg (the other countries' corpora are still worth a tree), but
-        # never past a failed preflight: that skips `record` too, and `!cancelled()` alone would
-        # start five legs of up to 330 minutes without the TMDB key or a corpus.
-        if: ${{ !cancelled() && needs.preflight.result == 'success' }}
+        # Behind the preflight alone: each leg records its own corpus, so one country's tunnel
+        # trouble fails only that country's leg (`fail-fast: false`).
+        needs: preflight
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 355, suite: 315, sampleSuite: 30, heap: 10g }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -263,7 +147,9 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
             heap:                          ${{ matrix.heap }}
-        # TMDB_API_KEY / OMDB_API_KEY for the live fills, and the GITHUB_TOKEN the setup reads.
+        # TMDB_API_KEY / OMDB_API_KEY for the live fills, the GITHUB_TOKEN the setup reads, and
+        # MONGO_CI_SSH_KEY / MONGO_CI_SSH_HOST_KEY — which the leg maps into its "Tunnel to prod
+        # Mongo" step's env and no other.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
@@ -271,7 +157,7 @@ jobs:
     # and it waits for the slowest leg; each leg has already posted its own verdict as a
     # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
-        needs: [preflight, record, enrichment]
+        needs: [preflight, enrichment]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5
