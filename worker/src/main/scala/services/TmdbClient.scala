@@ -1,7 +1,7 @@
 package clients
 
 import play.api.libs.json._
-import tools.{HttpFetch, HttpStatusException, RetryWithBackoff}
+import _root_.tools.{HttpFetch, HttpStatusException, RetryWithBackoff}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -50,7 +50,7 @@ class TmdbClient(
   retrySleep: Long => Unit = Thread.sleep,
   // How a film record's responses are parsed: shared with the identity store's normalizer, which
   // parsed the same bodies a moment before on this thread (`tools.JsonBodies`).
-  bodies: tools.JsonBodies = new tools.JsonBodies,
+  bodies: _root_.tools.JsonBodies = new _root_.tools.JsonBodies,
 ) {
 
   import TmdbClient.{ApiBase, urlEncode}
