@@ -215,15 +215,27 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  standing for the whole ([[IdentityMeasures.standsForTheWhole]]: not "Bhutan" of "Bhutan – Trails of
    *  Happiness") — no other candidate the title names may stand beside it, and a double bill is neither film. */
   def soleResult(ranked: Seq[Scored]): Option[Accepted] = soleResultWhy(ranked).toOption
+  /** Is every word of the listing's whole title one of the film's title's — two words at least, or the film's title
+   *  before its dash or colon — as the old pipeline took a whole title's only search result: "Dzień Dziecka księdza
+   *  Kaczkowskiego" is "Dzień Dziecka księdza Jana Kaczkowskiego", "TAFITI" is "Tafiti – Ab durch die Wüste". */
+  private def wordsOfIts(scored: Scored): Boolean = {
+    val own = IdentityMeasures.yearlessTokens(scored.listing.title)
+    own.nonEmpty && (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists { title =>
+      own.forall(IdentityMeasures.yearlessTokens(title).contains) &&
+        (own.sizeIs >= 2 || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
+    }
+  }
+  private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
       any   <- ranked.headOption.toRight("no candidate")
       sole  <- one(eligible.filter(_.soleResult), "no search of its returned a single film", "its searches returned different single films")
-      _     <- need(sole.titleNamesIt, "the title does not name its search's only film")
+      _     <- need(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film")
       _     <- need(!contradicted(sole), "a published fact contradicts it")
       _     <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
-      _     <- need(sole.category("title").exists(IdentityMeasures.Rivalling) || IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),
+      _     <- need(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
+                   IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),
                  "its piece cannot stand for the whole title")
       _     <- need(!eligible.exists(other => (other ne sole) && other.titleNamesIt), "the title names another film")
       _     <- need(!sole.category("numeral").exists(IdentityMeasures.OtherInstalment), "the title numbers another instalment")

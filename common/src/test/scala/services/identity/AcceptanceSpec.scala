@@ -154,6 +154,12 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     bySole(sole(ranked(Listing("Bhutan - Trails of Happiness"), (5, Film("Bhutan", year = Some(1928)), Some(1))), 5)) shouldBe None
     bySole(sole(ranked(karma, record, (7, Film("Loving Karma", year = Some(1990)), None)), 1563699)) shouldBe None
     bySole(sole(ranked(Listing("Loving Karma + Kocia Szajka"), record), 1563699)) shouldBe None
+    // a whole title every word of which the film's title carries — two words at least, or its main title — as the old
+    // pipeline took a whole title's only result: PL "Dzień Dziecka księdza Kaczkowskiego", "TAFITI"
+    bySole(sole(ranked(Listing("Dzień Dziecka księdza Kaczkowskiego"), (1707378, Film("Dzień Dziecka księdza Jana Kaczkowskiego", year = Some(2026)), Some(1))), 1707378)) shouldBe Some(1707378)
+    bySole(sole(ranked(Listing("TAFITI"), (1437198, Film("Tafiti - Ab durch die Wüste", year = Some(2025)), Some(1))), 1437198)) shouldBe Some(1437198)
+    // a word that is no main title of the film's is not it
+    bySole(sole(ranked(Listing("Wüste"), (1437198, Film("Tafiti - Ab durch die Wüste", year = Some(2025)), Some(1))), 1437198)) shouldBe None
   }
 
   "a programme dating a one-word film's title" should "take that film by its year" in {
