@@ -64,7 +64,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
   // — which gates nothing in a recording and whose recordings no row would publish — skipped.
   it should "replay a recording's order row gap-filled, without a sample of its own" in {
-    RepoFile.step(convergence, Sample) should include("if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))\n")
+    RepoFile.step(convergence, Sample) should include("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
       "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}")
   }
@@ -91,11 +91,12 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     ordered.map(_.contains("code: us,")) shouldBe Seq(true)
     RepoFile.block(recorder, "enrichment") should include("sample-row:     ${{ matrix.sampleRow == true }}")
     RepoFile.step(convergence, "Mark the tree before the sample records into it") should include(
-      "if: inputs.mode == 'record' && matrix.phase == 'sample'\n")
+      "if: matrix.phase == 'sample'\n")
     RepoFile.step(convergence, "Pack the sample's recordings") should include(
       ".github/scripts/sample-recordings.sh pack \"test/resources/fixtures/enrichment-${{ inputs.code }}\" \"$RUNNER_TEMP/sample-stamp\"")
     val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
-    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
+    merge should include("if: always() && inputs.sample-row && matrix.phase == 'convergence'\n")
+    merge should include("PRODUCER: ${{ inputs.mode == 'record' && format('({0}) / sample', inputs.country) || format('{0} / sample', inputs.country) }}")
     merge should include(""".github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"""")
     withClue("merged before the tree is packed and published: ") {
       at("- name: Merge the sample row's recordings") should be < at("uses: ./.github/actions/convergence-publish")

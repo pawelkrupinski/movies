@@ -7,8 +7,10 @@
 # without that job's second checkout and setup (~1 minute on every leg's critical path,
 # and one more runner per country per push). A RECORDING is the one exception to the
 # gate, and only to its stopping power: there the sample carries `continue-on-error`, so
-# the whole corpus is recorded past a red sample (see the sample step below) — and a recording
-# may run it as a `sample` row of its own instead (`sample-row`), beside the boot it gates nothing of.
+# the whole corpus is recorded past a red sample (see the sample step below). A recording or an
+# overlay leg may also run the sample as a `sample` row of its own (`sample-row`), beside the suite
+# rather than in front of it — the suite then runs ungated, and a red sample costs its runner, not
+# wall time.
 #
 # Order-independence is part of the standard run and belongs inside it; the one country
 # whose corpus outgrew a single job (the United States, whose boot and replays are 5.5
@@ -172,14 +174,18 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # A RECORDING's sample in a row of its own, beside the boot instead of ahead of it. In a
-            # recording the sample gates nothing — it records, and its verdict fails the leg after
-            # the publish — so the minute it held the convergence row's critical path bought
-            # nothing there; the United States' leg, the run's longest once the UK's replays moved
-            # out, sets it (run 37105119296). Its recordings reach the convergence row's publish
-            # through `.github/scripts/sample-recordings.sh`. Ignored outside `record` mode.
+            # The sample in a row of its own, beside the suite instead of ahead of it. In a recording
+            # the sample gates nothing — it records, and its verdict fails the leg after the publish —
+            # so the minute it held the convergence row's critical path bought nothing there; the
+            # United States' leg, the run's longest once the UK's replays moved out, sets it (run
+            # 37105119296). The identity lane's US leg sets it too: its sample was 79 s of that
+            # lane's 10-minute critical path (run 37150307201), and an ungated suite costs a runner
+            # on a red sample, never wall time. Either way its recordings — a recording's tree
+            # entries, an overlay leg's live gap fills — reach the convergence row's one publish
+            # through `.github/scripts/sample-recordings.sh`. A hermetic leg (which records nothing)
+            # never sets it.
             sample-row:
-                description: In a recording, run the sample as a row of its own and merge what it records into the convergence row's publish.
+                description: Run the sample as a row of its own and merge what it records into the convergence row's publish (record and overlay modes).
                 required: false
                 type: boolean
                 default: false
@@ -226,14 +232,13 @@ jobs:
     # ~45 s, before the full leg's own) and one more runner per country per push. Recordings
     # had already folded it in, for ~4 minutes of their critical path.
     #
-    # BOTH ROWS RUN THE SAMPLE, the order-independence row included. There is no way to
-    # make one matrix row wait on a step of another — `needs:` joins jobs — so the choice
-    # was a sample in each row or the order row running ungated. Run in parallel it costs no
-    # wall time (a hermetic sample is ~70 s against a row of hours), and it is the stronger
-    # gate: each row's sample replays the very pair that row's suite then replays. Only the
-    # `convergence` row speaks FOR the sample (its commit status, ratchet and overlay
-    # publish), so the two rows never race each other for one name; the order row's red
-    # sample still ends that row, and its verdict says so.
+    # ONE ROW RUNS THE SAMPLE. There is no way to make one matrix row wait on a step of
+    # another — `needs:` joins jobs — so a row that does not run the sample itself runs
+    # ungated. The order-independence row never does: its own copy sat 97 s in front of the
+    # identity lane's critical path (run 37144949783). With `sample-row` the convergence row
+    # doesn't either: the sample is a `sample` row of its own, which speaks for it (its row
+    # verdict, its ratchet) and hands its recordings to the convergence row's one publish. A red
+    # sample then costs the ungated rows their runners, never wall time.
     #
     # A ROW rather than a job of its own, because "a job that exists only sometimes" is
     # not something GitHub can express. A job carrying `if: inputs.order-command != ''`
@@ -264,7 +269,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', (inputs.mode == 'record' && inputs.sample-row) && ',"sample"' || '')) }}
+                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', inputs.sample-row && ',"sample"' || '')) }}
         runs-on: ubuntu-latest
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -424,10 +429,11 @@ jobs:
                   gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
                   .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
 
-            # A recording's SAMPLE row hands on only what its sample records: every file under the
-            # tree newer than this (an unpacked file keeps its archived mtime).
+            # A SAMPLE row hands on only what its sample records: every file under the tree newer
+            # than this (an unpacked file keeps its archived mtime) — a recording's entries, an
+            # overlay leg's live gap fills.
             - name: Mark the tree before the sample records into it
-              if: inputs.mode == 'record' && matrix.phase == 'sample'
+              if: matrix.phase == 'sample'
               shell: bash
               run: touch "$RUNNER_TEMP/sample-stamp" && sleep 1
 
@@ -459,16 +465,15 @@ jobs:
             # cold is a state this gate has to survive, not one to be timed out of. Every job
             # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
             # HermeticConvergenceWiringSpec).
-            # In a RECORDING it runs in exactly one row: the sample row when there is one, else the
-            # convergence row — never the order row, whose recordings no one publishes. A recording's
-            # sample gates nothing either way.
-            # NEVER in the order-independence row, in any mode: it sat in front of that row's suite —
-            # the identity lane's critical path — for 97 s (run 37144949783). The convergence row
-            # still runs it, gates its own suite on it and posts the sample verdict; the order row
-            # just runs ungated, which costs a runner on a red sample, never wall time.
+            # It runs in exactly one row, in every mode: the sample row when there is one, else the
+            # convergence row — NEVER the order-independence row, where it sat in front of that row's
+            # suite — the identity lane's critical path — for 97 s (run 37144949783). The row that
+            # runs it speaks for it (its verdict, its ratchet); every other row runs ungated, which
+            # costs a runner on a red sample, never wall time. A recording's sample gates nothing
+            # either way.
             - name: Run the ${{ inputs.country }} sample ahead of the suite
               id: sample
-              if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))
+              if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)
               continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
@@ -489,7 +494,8 @@ jobs:
             # The sample's own verdict, the moment it ends — as the sample job posted it when
             # IT ended, minutes before the full leg behind it reports (scripts/ci/leg-verdict.sh,
             # LegVerdictWiringSpec). The `convergence` row speaks for the sample, so two rows
-            # never race for one status. Not in a recording, which never posted one.
+            # never race for one status. Not in a recording, which never posted one. A `sample`
+            # row's own verdict, last, already carries this name.
             - uses: ./.github/actions/leg-verdict
               if: always() && inputs.mode != 'record' && matrix.phase == 'convergence' && steps.sample.outcome != 'skipped'
               with:
@@ -497,16 +503,25 @@ jobs:
                   status: ${{ steps.sample.outcome }}
                   token:  ${{ secrets.GITHUB_TOKEN }}
 
-            # A recording's SAMPLE row: what the sample recorded, for the convergence row to merge
-            # before it publishes (sample-recordings.sh). `always()`, as the publish is: a red sample
-            # still recorded what it fetched.
+            # A SAMPLE row: what the sample recorded, for the convergence row to merge before it
+            # publishes (sample-recordings.sh). `always()`, as the publish is: a red sample still
+            # recorded what it fetched.
+            #
+            # An OVERLAY leg needs this as much as a recording does. The sample's corpus is a slice
+            # of the full one, but the model clusters a slice differently and asks for what its
+            # clusters are called: on the first overlay run over pin 37121141759 (run 37123700230)
+            # the US sample live-filled Metacritic and Rotten Tomatoes slugs for "Met Opera 2026-27:
+            # Silent Night (2027)" — 2 of the overlay's 183 new files, both in the sample's window —
+            # that the full corpus, where those listings join "The Metropolitan Opera: Silent
+            # Night", has no reason to ask. Unpublished, every later sample would fetch them live
+            # again rather than replay them.
             - name: Pack the sample's recordings
-              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
+              if: always() && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
               shell: bash
               run: .github/scripts/sample-recordings.sh pack "test/resources/fixtures/enrichment-${{ inputs.code }}" "$RUNNER_TEMP/sample-stamp" "sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst"
 
             - uses: actions/upload-artifact@v6
-              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
+              if: always() && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
               with:
                   name: enrichment-sample-${{ inputs.code }}
                   path: sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst
@@ -643,24 +658,34 @@ jobs:
                   title: ${{ matrix.phase }} (${{ inputs.country }})
                   log:   ${{ matrix.phase == 'sample' && 'convergence-sample.log' || 'convergence.log' }}
 
-            # A recording whose sample ran in a row of its own: its recordings, merged into this tree
-            # before it is packed — a hermetic sample leg replays the pair this publish pins, so the
-            # sample's requests have to be in it. The sample row is done minutes before this row
-            # gets here; one that ended without uploading leaves the tree without them, and says so.
+            # A leg whose sample ran in a row of its own: its recordings, merged into this tree
+            # before it is packed — a hermetic sample leg replays the pair a recording's publish pins,
+            # and an overlay leg's next sample replays the overlay, so the sample's requests have to
+            # be in what this row publishes. The sample row is done minutes before this row gets
+            # here; one that ended without uploading leaves the tree without them, and says so.
+            #
+            # The PRODUCER is the sample row's job name as each caller renders it: `enrichment
+            # (<country>) / sample` in the recorder, `<country> / sample` in the identity lane.
+            # An overlay merge passes its overlay stamp: the two rows' setups run side by side, so
+            # a sample's fill can predate this row's stamp, and the overlay publish takes only
+            # files newer than it.
             - name: Merge the sample row's recordings
-              if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'
+              if: always() && inputs.sample-row && matrix.phase == 'convergence'
               timeout-minutes: 30
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PRODUCER: ${{ inputs.mode == 'record' && format('({0}) / sample', inputs.country) || format('{0} / sample', inputs.country) }}
+                  MODE: ${{ inputs.mode }}
               run: |
                   set -uo pipefail
-                  if ! scripts/ci/wait-for-run-artifact.sh "enrichment-sample-${{ inputs.code }}" "(${{ inputs.country }}) / sample" 1500; then
+                  if ! scripts/ci/wait-for-run-artifact.sh "enrichment-sample-${{ inputs.code }}" "$PRODUCER" 1500; then
                       echo "::warning::no recordings from the ${{ inputs.country }} sample row — the published tree lacks them"
                       exit 0
                   fi
                   gh run download "$GITHUB_RUN_ID" --name "enrichment-sample-${{ inputs.code }}" --dir sample-download
-                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"
+                  fresh=(); [ "$MODE" = overlay ] && fresh=("$RUNNER_TEMP/overlay-stamp")
+                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst" "${fresh[@]}"
 
             # The capture this leg just spent an hour building — a recording's sample's
             # included, which ran first in this job — back to the release it was restored from.
@@ -690,10 +715,11 @@ jobs:
 
             # OVERLAY legs: what the identity model needed and the pipeline's tree lacked, fetched
             # live and recorded, published beside the pair — never into it. The sample's and the
-            # full row's recordings together, both made in this job; `always()`, so a red sample,
-            # which ended the job before the suite, still publishes what it fetched (as the
-            # sample job's own publish did). One publisher: the order row replays the same tree,
-            # and a sibling row's upload would clobber this one.
+            # full row's recordings together — made in this job, or merged in above from a `sample`
+            # row; `always()`, so a red sample, which ended the job before the suite, still
+            # publishes what it fetched (as the sample job's own publish did). One publisher: the
+            # order and sample rows replay the same tree, and a sibling row's upload would clobber
+            # this one.
             - uses: ./.github/actions/convergence-overlay-publish
               if: always() && matrix.phase == 'convergence' && inputs.mode == 'overlay'
               with:

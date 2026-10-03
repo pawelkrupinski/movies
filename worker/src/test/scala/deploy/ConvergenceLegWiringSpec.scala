@@ -207,10 +207,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val sample = RepoFile.step(convergence, SampleStep)
     convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(s"- name: $SuiteStep")
     sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
-    withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated — only a " +
-             "RECORDING places its sample (which gates nothing there) in one row of its choosing: ") {
+    withClue("a convergence row whose sample is skipped runs its suite ungated — only a leg that asks for a " +
+             "`sample` row of its own (`sample-row`) may move the sample out of it: ") {
       sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))")
+        Seq("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
     }
     withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
              "implicit success(), and this one only spares a recording's sample row: ") {
@@ -437,7 +437,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', """ +
-        """(inputs.mode == 'record' && inputs.sample-row) && ',"sample"' || '')) }}""")
+        """inputs.sample-row && ',"sample"' || '')) }}""")
   }
 
   /**
@@ -482,7 +482,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val block = RepoFile.block(leg, "convergence")
     block should include("fail-fast: false")
     RepoFile.step(block, SampleStep) should include(
-      "if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))")
+      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
   }
 
   /** ONE writer to the rolling release per leg.

@@ -2,9 +2,9 @@
 # Hand what a RECORDING's sample row recorded to the convergence row that publishes the tree.
 #
 #   sample-recordings.sh pack  <tree dir> <stamp> <archive>   # the files the sample wrote
-#   sample-recordings.sh merge <archive>                       # laid into this workspace's tree
+#   sample-recordings.sh merge <archive> [<fresh-after>]       # laid into this workspace's tree
 #
-# WHY. A recording's sample used to run in its convergence row, ahead of the suite, and record
+# WHY. A recording's (or an identity-overlay leg's) sample used to run in its convergence row, ahead of the suite, and record
 # into the tree the suite then extended: ~1 minute of the longest leg's critical path (the United
 # States', run 37105119296) for a step that gates nothing in a recording. In a row of its own it
 # runs beside the boot, over the same corpus and the same restored tree, and its recordings reach
@@ -19,6 +19,10 @@
 #     untouched file in the convergence row still carries its archived, older mtime);
 #   - the identity lookups' marker is the UNION of both, exactly as `IdentityLookupSweep
 #     .markRecorded` keeps the names already there when a second leg records into one tree.
+#
+# <fresh-after> (an overlay leg's `overlay-stamp`): every file taken ends up newer than it. The
+# overlay publish packs only files newer than that stamp, which the convergence row touched in a
+# setup running side by side with the sample row's — so a sample's fill can predate it.
 set -euo pipefail
 
 Marker=".identity-lookups-v3"
@@ -35,7 +39,7 @@ case "${1:-}" in
     tar -cf - -T "$list" | zstd -q -T0 -3 -c > "$archive"
     ;;
   merge)
-    archive="${2:?archive}"
+    archive="${2:?archive}"; fresh_after="${3:-}"
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
     "$here/unpack-fixture-archive.sh" "$archive" "$work"
@@ -48,6 +52,7 @@ case "${1:-}" in
         mv "$dest.merged" "$dest"
       elif [ ! -e "$dest" ] || [ "$file" -nt "$dest" ]; then
         cp -p "$file" "$dest"; taken=$((taken + 1))
+        if [ -n "$fresh_after" ] && [ ! "$dest" -nt "$fresh_after" ]; then touch "$dest"; fi
       else
         kept=$((kept + 1))
       fi
@@ -55,5 +60,5 @@ case "${1:-}" in
     echo "merged the sample's recordings: $taken taken, $kept already newer here"
     ;;
   *)
-    echo "usage: $0 pack <tree dir> <stamp> <archive> | merge <archive>" >&2; exit 64 ;;
+    echo "usage: $0 pack <tree dir> <stamp> <archive> | merge <archive> [<fresh-after>]" >&2; exit 64 ;;
 esac

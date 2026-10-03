@@ -80,6 +80,35 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
   }
 
+  /** The US sample was 79 s in front of the lane's critical path, its convergence row (run
+   *  37150307201). In a row of its own it runs beside the suite: the convergence row runs ungated, the
+   *  sample row speaks for the sample (its verdict, its red-sample ratchet), and its live fills — which
+   *  a slice of the corpus can ask and the whole cannot (run 37123700230's two Silent Night slugs) —
+   *  are merged into the convergence row's one overlay publish rather than published a second time. */
+  it should "run the US sample in a row of its own and publish its fills through the convergence row" in {
+    RepoFile.matrixRows(workflow).filter(_.get("sampleRow").contains("true")).map(_("country")) shouldBe
+      Seq("united-states")
+    RepoFile.jobs(workflow)("leg") should include("sample-row:                    ${{ matrix.sampleRow == true }}")
+    val convergence = RepoFile.block(leg, "convergence")
+    convergence should include("""inputs.sample-row && ',"sample"' || ''""")
+    RepoFile.step(convergence, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
+      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
+    Seq("Mark the tree before the sample records into it", "Pack the sample's recordings").foreach { name =>
+      withClue(s"$name, in an overlay leg's sample row too: ")(RepoFile.step(convergence, name) should not include "inputs.mode == 'record'")
+    }
+    val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
+    merge should include("if: always() && inputs.sample-row && matrix.phase == 'convergence'\n")
+    withClue("the identity lane renders the sample row as `<country> / sample`: ") {
+      merge should include("format('{0} / sample', inputs.country)")
+    }
+    merge should include("""[ "$MODE" = overlay ] && fresh=("$RUNNER_TEMP/overlay-stamp")""")
+    convergence.indexOf("- name: Merge the sample row's recordings") should be <
+      convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
+    withClue("a red sample row ratchets its findings: ") {
+      convergence should include("if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'")
+    }
+  }
+
   it should "never mark a corpus green from an overlay leg" in {
     val conditions = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-publish") => cond }.toSeq
     conditions should not be empty

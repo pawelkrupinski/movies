@@ -53,7 +53,10 @@ jobs:
     # One row per country, each carrying its own sample → convergence chain, so a country's full leg
     # waits on ITS OWN sample and nothing else; `fail-fast: false`, so every country reports on its
     # own. Germany and the United States run their order-independence replay in a row of their own,
-    # so their replays no longer bound the lane. `heap` is the sbt JVM's `-Xmx`: the US holds its
+    # so their replays no longer bound the lane. The United States runs its sample in a row of its
+    # own too (`sampleRow`), beside its suite rather than in front of it: 79 s of the lane's 10.0-minute
+    # critical path (run 37150307201), its convergence row then ungated — a red sample costs a
+    # runner, not wall time — and the sample's live fills merged into that row's one overlay publish. `heap` is the sbt JVM's `-Xmx`: the US holds its
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
     leg:
         needs: preflight
@@ -66,7 +69,7 @@ jobs:
                     - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120 }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315 }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -84,6 +87,7 @@ jobs:
             order-command:                 ${{ matrix.order }}
             order-job-timeout-minutes:     ${{ matrix.orderJob || 155 }}
             order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
+            sample-row:                    ${{ matrix.sampleRow == true }}
             heap:                          ${{ matrix.heap }}
             # Replay the pipeline's pair plus the model's overlay, and record and publish what the
             # model still needs on top — so the next run of this build replays it all.
