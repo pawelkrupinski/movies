@@ -50,6 +50,20 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
     gunzip(ResponseBody.html(page).gzipped) shouldBe expected
   }
 
+  // `measured` is how a render's cost reaches `kinowo_web_page_render_allocated_bytes`:
+  // it must report what producing the bytes allocated — the render it wraps included —
+  // once per production, and hand the bytes back untouched.
+  it should "report what producing its bytes allocated, and change none of them" in {
+    var recorded = Vector.empty[Long]
+    val body = ResponseBody.measured(ResponseBody.html(bigPage), bytes => recorded :+= bytes)
+    val plain = body.plain
+    plain shouldBe ResponseBody.html(bigPage).plain
+    recorded should have size 1
+    recorded.head should be > plain.length.toLong          // the page rendered, then its bytes
+    body.gzipped
+    recorded should have size 2
+  }
+
   it should "say the same of a text body" in {
     val json = """{"title":"Łódź ↗"}"""
     ResponseBody.text(json).plain.utf8String shouldBe json

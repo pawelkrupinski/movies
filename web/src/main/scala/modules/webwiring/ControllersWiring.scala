@@ -36,7 +36,8 @@ trait ControllersWiring { self: Wiring =>
     servingCountry = country, normalizer = titleNormalizer, minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
-    filmCards = filmCards)
+    filmCards = filmCards,
+    recordRender = webRenderMetrics.record)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

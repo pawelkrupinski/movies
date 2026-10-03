@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
+import services.metrics.{LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
@@ -26,6 +26,7 @@ trait MetricsWiring { self: Wiring =>
   // /metrics body with no new endpoint. Replaces the dead Fly-proxy panels
   // (`fly_app_http_*`); see WebHttpMetrics for the cardinality rules.
   lazy val webHttpMetrics = new WebHttpMetrics(webJvmMetrics.registry, metricsCountry.code)
+  lazy val webRenderMetrics = new WebRenderMetrics(webJvmMetrics.registry, metricsCountry.code)
   // The MACHINE's free RAM and free disk, read from the process's own kernel.
   // Same registry again, same reason — and same cause: Fly's host metrics
   // (`fly_instance_memory_*`, `fly_volume_*`) died with the managed-Prometheus

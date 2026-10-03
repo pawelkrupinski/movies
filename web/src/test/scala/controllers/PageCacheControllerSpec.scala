@@ -418,4 +418,16 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val stamp = java.time.Instant.parse("2020-01-01T00:00:00Z")
     ConditionalResponse.dayFlooredValidator(stamp, None, now = stamp.plusSeconds(86400 * 3)) shouldBe stamp
   }
+
+  // A render is what `kinowo_web_page_render_allocated_bytes` measures: a listing
+  // rendered is one `listing` observation, and one served from the blob is none.
+  "a listing render" should "report its allocation once, and a cached listing none" in {
+    var recorded = Vector.empty[(String, Long)]
+    val (ctrl, _) = TestMovieController.build(Seq(cacheTestFilm), recordRender = (page, bytes) => recorded :+= (page -> bytes))
+    status(ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe OK
+    recorded.map(_._1) shouldBe Vector("listing")
+    recorded.head._2 should be > 0L
+    status(ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe OK
+    recorded should have size 1
+  }
 }

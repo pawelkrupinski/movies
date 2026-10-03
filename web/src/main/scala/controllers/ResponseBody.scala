@@ -33,6 +33,29 @@ object ResponseBody {
     def plain: ByteString   = ByteString.fromString(render, StandardCharsets.UTF_8)
   }
 
+  /** `body`, recording to `record` how much heap producing its bytes allocated on this
+   *  thread — the render it wraps included, since a body renders when its bytes are
+   *  first asked for. Where the JVM cannot say, it records nothing. */
+  def measured(body: ResponseBody, record: Long => Unit): ResponseBody = new ResponseBody {
+    def gzipped: ByteString = measure(body.gzipped)
+    def plain: ByteString   = measure(body.plain)
+    private def measure(bytes: => ByteString): ByteString = threads match {
+      case Some(mx) =>
+        val thread = Thread.currentThread.threadId
+        val before = mx.getThreadAllocatedBytes(thread)
+        val result = bytes
+        record(mx.getThreadAllocatedBytes(thread) - before)
+        result
+      case None => bytes
+    }
+  }
+
+  private val threads: Option[com.sun.management.ThreadMXBean] =
+    java.lang.management.ManagementFactory.getThreadMXBean match {
+      case mx: com.sun.management.ThreadMXBean if mx.isThreadAllocatedMemorySupported && mx.isThreadAllocatedMemoryEnabled => Some(mx)
+      case _ => None
+    }
+
   /** A rendered Twirl page, written fragment by fragment. */
   def html(render: => Html): ResponseBody = new ResponseBody {
     def gzipped: ByteString = gzip(out => write(render, out))

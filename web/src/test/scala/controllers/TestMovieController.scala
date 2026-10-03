@@ -62,6 +62,8 @@ object TestMovieController {
     clock: java.time.Clock = clock,
     // The deployment's third-party page tags, read per render — none by default.
     pageTags: () => PageTags = () => PageTags.none,
+    // Where a listing render's allocation is reported — nowhere by default.
+    recordRender: (String, Long) => Unit = (_, _) => (),
   ): (MovieController, WebReadModel) = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
@@ -79,6 +81,7 @@ object TestMovieController {
       normalizer             = services.movies.TitleNormalizer.forCountry(servingCountry),
       minifier               = tools.Minifier.forMode(mode),
       pageTags               = pageTags,
+      recordRender           = recordRender,
     )
     (ctrl, readModel_)
   }

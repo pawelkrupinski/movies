@@ -178,6 +178,9 @@ class MovieController( cc: ControllerComponents,
                        // Rendered film cards kept across renders of a listing (see
                        // `FilmCardFragments`); the templates find it as their implicit.
                        filmCards: FilmCardFragments = FilmCardFragments.Uncached,
+                       // Where each listing render's allocation is reported (`WebRenderMetrics`);
+                       // nowhere unless the composition root says.
+                       recordRender: (String, Long) => Unit = (_, _) => (),
                      ) extends AbstractController(cc) with Logging {
 
   private implicit val fragments: FilmCardFragments = filmCards
@@ -294,7 +297,7 @@ class MovieController( cc: ControllerComponents,
       // branch below is `private, no-cache`, so it keeps setting it server-side
       // and a visitor with no JS is still remembered.
       conditionalResponse.serve(request, HtmlContentType, CachePolicy.RevalidatedAnywhere,
-                                city = Some(city))(ResponseBody.html(renderIndexHtml(city, request)))
+                                city = Some(city))(ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender("listing", _)))
     } else {
       // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
       //
@@ -330,7 +333,7 @@ class MovieController( cc: ControllerComponents,
       // -- and `private, no-cache` is exactly the instruction that none may.
       conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
                                 cacheKey = "|q=" + request.rawQueryString, city = Some(city),
-                                cacheBody = false)(ResponseBody.html(renderIndexHtml(city, request)))
+                                cacheBody = false)(ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender("listing", _)))
         .withCookies(cityCookie(city))
     }
   }
