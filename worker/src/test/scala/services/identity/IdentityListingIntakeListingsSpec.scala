@@ -4,7 +4,8 @@ import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multiki
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, SingleCountryNormalizer}
-import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository, SuccessfulScrape}
+import services.scrapes.{ArchivedScrape, ForwardingScrapeArchive, InMemoryScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt,
+  SuccessfulScrape}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
@@ -65,5 +66,43 @@ class IdentityListingIntakeListingsSpec extends AnyFlatSpec with Matchers {
       wholeArchiveListings(Nil, archiveRows)
     intake(new PagedScrapeArchive(acceptedRows, 1), new PagedScrapeArchive(archiveRows, 1, completes = false)).listings(live) shouldBe
       wholeArchiveListings(acceptedRows, Nil)
+  }
+
+  /** An in-memory archive that counts the rows each kind of read hands over. */
+  private final class CountingArchive extends ForwardingScrapeArchive(new InMemoryScrapeArchiveRepository) {
+    var scanned = 0
+    var keyed   = 0
+    override def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = super.scan { rows => scanned += rows.size; consume(rows) }
+    override def scanKeys(keys: Seq[String], consume: Seq[ArchivedScrape] => Unit): Boolean =
+      super.scanKeys(keys, rows => { keyed += rows.size; consume(rows) })
+    def store(cinema: Cinema, at: Instant, titles: String*): Unit =
+      record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), at, listingComplete = true, titles.map(film(cinema, _)), error = None))
+  }
+
+  // Read whole every projection, the two archives were ~1.35 MB/s out of Mongo across the countries,
+  // while about one venue in twelve re-scrapes between projections.
+  it should "read again only the venues whose listing changed since the last read, and give what a whole read gives" in {
+    val (accepted, archive) = (new CountingArchive, new CountingArchive)
+    val t0 = clock.instant()
+    accepted.store(Multikino, t0, "Lalka")
+    archive.store(Multikino, t0, "Stara Lalka"); archive.store(Helios, t0, "Diuna", "Obcy"); archive.store(KinoApollo, t0, "Lalka")
+    val reader = intake(accepted, archive)
+    val first  = reader.listings(live)
+    first.toMap.keySet shouldBe Set(Multikino, Helios, KinoApollo)
+
+    // Helios re-scrapes; KinoApollo is now accepted; nothing else moves.
+    val (scannedBefore, keyedBefore) = (accepted.scanned + archive.scanned, accepted.keyed + archive.keyed)
+    archive.store(Helios, t0.plusSeconds(60), "Diuna")
+    accepted.store(KinoApollo, t0.plusSeconds(60), "Lalka 2")
+    val second = reader.listings(live)
+    (accepted.scanned + archive.scanned) shouldBe scannedBefore
+    (accepted.keyed + archive.keyed - keyedBefore) shouldBe 2
+    second shouldBe intake(accepted, archive).listings(live)
+    second.toMap.apply(Helios).map(_.movie.title) shouldBe Seq("Diuna")
+    second.toMap.apply(KinoApollo).map(_.movie.title) shouldBe Seq("Lalka 2")
+
+    // A venue no longer live is dropped, and asked for again is read again.
+    reader.listings(Seq(Multikino)).map(_._1) shouldBe Seq(Multikino)
+    reader.listings(live) shouldBe second
   }
 }

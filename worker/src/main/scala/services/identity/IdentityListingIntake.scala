@@ -32,16 +32,20 @@ final class IdentityListingIntake(
   def listingOf(cinema: Cinema): Seq[CinemaMovie] =
     accepted.find(cinema).flatMap(_.lastSuccess).orElse(archive.find(cinema).flatMap(_.lastSuccess)).map(_.films).getOrElse(Nil)
 
-  /** Every venue of `live` with the listing it is taken to publish, venues publishing nothing left out.
-   *
-   *  Both archives are read a page at a time, each page reduced to the live venues' listings before
-   *  the next: the rows of venues no longer live, and the
-   *  archive's copy of a venue that already has an accepted listing, are never held. An archive that
-   *  could not be read whole counts as empty — a partial read is not a smaller archive. */
+  // Each archive's listings, held between projections: a projection reads only what changed.
+  private val acceptedListings = new HeldListings(accepted)
+  private val archivedListings = new HeldListings(archive)
+
+  /** Every venue of `live` with the listing it is taken to publish now — its accepted listing, else the
+   *  archive's — venues publishing nothing left out. Each archive is read by [[HeldListings]]: only the
+   *  venues whose listing changed since the last read, and only the venues asked for (the archive's copy
+   *  of a venue that has an accepted listing is never held). An archive that could not be read whole
+   *  counts as empty — a partial read is not a smaller archive. */
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
-    val wanted          = live.toSet
-    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted)
-    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c))
+    val wanted          = live.map(_.displayName).toSet
+    val acceptedByVenue = acceptedListings(wanted)
+    val acceptedNames   = acceptedByVenue.keySet.map(_.displayName)
+    val archivedByVenue = archivedListings(name => wanted(name) && !acceptedNames(name))
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).map(c -> _)).filter(_._2.nonEmpty)
   }
 
@@ -51,6 +55,8 @@ final class IdentityListingIntake(
 
   override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie], listingIsComplete: Boolean, sourceKey: Option[String],
                                   viaFallback: Boolean): Seq[(CinemaMovie, CacheKey, Boolean)] = venueLocks.locking(Seq(cinema.displayName)) {
+    // The archive has just filed this scrape, and the intake may file it below: both are read again.
+    acceptedListings.forget(cinema.displayName); archivedListings.forget(cinema.displayName)
     val stored = guards.get(cinema)
     val guard  = stored.getOrElse(ScrapeGuardState.Fresh)
     val known  = listingOf(cinema)
@@ -73,12 +79,4 @@ final class IdentityListingIntake(
 object IdentityListingIntake {
   /** Where a cut-over country keeps its venues' accepted listings. */
   val Collection = "identity_listings"
-
-  /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time; empty
-   *  when the scan could not complete. */
-  private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean): Map[Cinema, Seq[CinemaMovie]] = {
-    val byVenue  = Map.newBuilder[Cinema, Seq[CinemaMovie]]
-    val complete = repository.scan(_.foreach(row => if (keep(row.cinema)) row.lastSuccess.foreach(s => byVenue += row.cinema -> s.films)))
-    if (complete) byVenue.result() else Map.empty
-  }
 }

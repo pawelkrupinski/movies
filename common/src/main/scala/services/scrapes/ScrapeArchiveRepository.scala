@@ -186,6 +186,16 @@ trait ScrapeArchiveRepository {
    *  mistake them for a smaller one — a failed read is not data ([[findAll]]). */
   def scan(consume: Seq[ArchivedScrape] => Unit): Boolean
 
+  /** The archived scrapes of the venues named in `keys` (display names), handed to `consume` a page at a
+   *  time, in no promised order; `true` when every one of them was read — a venue the archive does not
+   *  hold is read as absent, not as a failure. On `false` the pages handed over are partial, as for
+   *  [[scan]]. By default a filtered [[scan]]; a store that can read rows by key overrides it, so a
+   *  caller that knows which few venues changed (the identity intake) reads only those. */
+  def scanKeys(keys: Seq[String], consume: Seq[ArchivedScrape] => Unit): Boolean = {
+    val wanted = keys.toSet
+    scan(rows => consume(rows.filter(r => wanted(r.cinema.displayName))))
+  }
+
   /** Every archived scrape, all at once — the replay/repopulate entry point, for a caller that
    *  needs the rows themselves; one that only reduces them should [[scan]]. Empty on an
    *  INCOMPLETE read, not the rows it managed to get: a partial archive looks exactly like a
