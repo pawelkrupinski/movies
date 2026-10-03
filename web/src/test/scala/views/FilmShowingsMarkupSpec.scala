@@ -77,6 +77,25 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     all (days) should not include regex (""">\s+<""")
   }
 
+  // A booking or cinema-page URL is scraped off someone else's site; only a web
+  // address may become a link on ours, whatever scheme the upstream wrote.
+  it should "never link a scraped URL that is not http(s)" in {
+    val hostile = Seq("javascript:alert(document.cookie)", " JavaScript:alert(1)", "data:text/html,<script>alert(1)</script>")
+    val slots   = hostile.zipWithIndex.map { case (url, i) => Showtime(day.atTime(18, i), Some(url), None, Nil) }
+    val html    = views.html._filmShowings(scheduleWith(Seq(Helios -> "javascript:alert(2)"), day -> slots)).body
+    html.toLowerCase should (not include "javascript:" and not include "data:text")
+    // Still listed, just not as links.
+    """<span class="badge-time"""".r.findAllIn(html).size shouldBe hostile.size
+  }
+
+  it should "keep linking http and https URLs" in {
+    val slots = Seq(Showtime(day.atTime(18, 0), Some("http://kino.example/b/1"), None, Nil),
+                    Showtime(day.atTime(20, 0), Some("HTTPS://kino.example/b/2"), None, Nil))
+    val html  = views.html._filmShowings(scheduleWith(Seq(Helios -> "https://helios.pl/film"), day -> slots)).body
+    pills(html) should have size 2
+    html should include ("""href="https://helios.pl/film"""")
+  }
+
   // ── What the browser puts back (`_showingsHydrate`) ─────────────────────────
 
   it should "send a group's shared booking-URL prefix once, and each pill only the rest" in {

@@ -54,7 +54,7 @@
       @for(t <- page.traces) {
         <tr class="trace">
           <td>@t.listing.venue — @t.listing.rawTitle</td>
-          <td>@t.film.fold(Html("<span class=\"muted\">none</span>"))(id => Html(s"""<a href="?film=$id">tmdb $id</a>"""))</td>
+          <td>@t.film match { case Some(id) => {<a href="?film=@id">tmdb @id</a>} case None => {<span class="muted">none</span>} }</td>
           <td>@t.basis @t.vetoedBy.map { by => <div class="veto">vetoed by @by</div> }</td>
           <td>@for(rule <- t.rules if t.refusals.isEmpty || !rule.startsWith("refused:")) { @ruleLink(rule) }
             @for(r <- t.refusals) { <div class="refusal">@ruleLink(r.ruleId)@r.film.map { id => <a href="?film=@id">tmdb @id</a> }@if(r.detail.nonEmpty) { <span class="muted">— @r.detail</span> }</div> }</td>

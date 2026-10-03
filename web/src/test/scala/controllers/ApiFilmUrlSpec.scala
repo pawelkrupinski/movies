@@ -78,4 +78,18 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
     val json = Json.toJson(ApiFilm.from(film, java.util.Locale.ENGLISH))
     (json \ "fallbackPosterURLs").as[Seq[String]] should contain("https://image.tmdb.org/t/p/original/ok.jpg")
   }
+
+  // Both apps hand these URLs to the system (iOS `openURL`, Android `ACTION_VIEW`), so a
+  // scraped custom-scheme or `intent:` URL would deep-link into another app on a tap.
+  it should "send no booking or cinema URL that is not http(s)" in {
+    val hostile = film.copy(
+      cinemaFilmUrls = Seq(Helios -> "intent://helios#Intent;scheme=x;end"),
+      showings = Seq(LocalDate.of(2026, 6, 4) -> Seq(CinemaShowtimes(Helios, Seq(
+        Showtime(LocalDateTime.of(2026, 6, 4, 18, 0), Some("javascript:alert(1)"), Some("Sala 1"), List("2D"))))))
+    )
+    val cinema = (Json.toJson(ApiFilm.from(hostile, java.util.Locale.ENGLISH)) \ "showings" \ 0 \ "cinemas" \ 0)
+    (cinema \ "cinemaURL").toOption shouldBe None
+    (cinema \ "showtimes" \ 0 \ "bookingURL").toOption shouldBe None
+    (cinema \ "showtimes" \ 0 \ "time").toOption should not be None
+  }
 }

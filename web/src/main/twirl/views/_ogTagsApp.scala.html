@@ -59,7 +59,7 @@
     disallowed paths without fetching robots.txt once. Do not "simplify" the two
     into one: they address different crawlers.
 *@
-@_favicon()@Html(if(canonicalUrl.nonEmpty || pageUrl.nonEmpty) s"""<link rel="canonical" href="${if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">""" else "")@Html(if(robots.nonEmpty) s"""<meta name="robots" content="$robots">""" else "")
+@_favicon()@if(canonicalUrl.nonEmpty || pageUrl.nonEmpty){<link rel="canonical" href="@{if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">}@if(robots.nonEmpty){<meta name="robots" content="@robots">}
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="@country.brandName">

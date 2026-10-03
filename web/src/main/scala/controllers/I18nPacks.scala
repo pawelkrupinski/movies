@@ -19,4 +19,9 @@ object I18nPacks {
     try Source.fromInputStream(stream, "UTF-8").mkString
     finally stream.close()
   }
+
+  /** [[json]] for an inline `<script type="application/json">` block: the packs carry
+   *  markup (`data-i18n-html` messages), so their `<` is escaped ([[ScriptJson]]) — once,
+   *  not per render. */
+  lazy val scriptJson: play.twirl.api.Html = ScriptJson.embedSerialized(json)
 }

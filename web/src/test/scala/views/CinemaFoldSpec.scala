@@ -96,6 +96,20 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     html should include ("function unfoldCinemas(btn)")
   }
 
+  // A cinema-page URL is scraped off the venue's site: only a web address may become a
+  // link on ours, or one `javascript:` URL would run as our origin on a click.
+  it should "never link a cinema page that is not http(s), nor count it towards the fold" in {
+    val cinemas = Cinema.all.distinct
+    val hostile = Seq("javascript:alert(document.cookie)", " JavaScript:alert(1)", "data:text/html,<b>x</b>")
+    val urls    = cinemas.take(11).map(c => c -> s"https://example.test/${c.pillName}") ++
+                  cinemas.slice(11, 14).zip(hostile)
+    val html    = views.html._filmDetailContent(schedule(3)(0).copy(cinemaFilmUrls = urls)).body
+
+    html.toLowerCase(java.util.Locale.ROOT) should (not include "javascript:" and not include "data:text")
+    linkPills(html) + foldedPills(html) shouldBe 11
+    html should include ("""data-i18n-arg0="1"""")
+  }
+
   it should "tag every pill with the display name the filter matches on" in {
     val expected = Cinema.all.distinct.take(12).map(_.displayName)
     val html     = views.html._filmDetailContent(schedule(3)(12)).body

@@ -47,6 +47,8 @@
     <div class="tune-scope" id="scope">
       @_filmDetailContent(film)
     </div>
+    @* Pills render class-less until hydrated (`ShowingsMarkup`). *@
+    @_showingsHydrate(tools.PassThroughMinifier)
 
     <script>
       window.TUNE_CONTROLS = [

@@ -290,7 +290,7 @@
       roster OOM'd the page; then ~70k server-rendered bars made every load ~1 s).
       `data` holds only buckets that recorded something, so a bar with no entry is
       the "no data" case.  *@
-  <script type="application/json" id="uptime-bars">@Html(controllers.UptimeBarPayload(
+  <script type="application/json" id="uptime-bars">@controllers.ScriptJson.embedSerialized(controllers.UptimeBarPayload(
     failing.map(_.row) ++ gone.map(_.row) ++ zero.map(_.row) ++ thin.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
 
   <script>

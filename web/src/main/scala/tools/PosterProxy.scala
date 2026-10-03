@@ -119,6 +119,10 @@ object PosterProxy {
   def proxy(url: String): String =
     weserv(url).getOrElse(url)
 
+  /** [[proxy]] for a vetted poster: the weserv address is https, so the answer stays one. */
+  def proxyPoster(poster: controllers.WebHref): controllers.WebHref =
+    controllers.WebHref.of(proxy(poster.url)).getOrElse(poster)
+
   /** True when `host` is, or sits under, a [[SkipDomains]] entry. The `.`
    *  boundary is what stops a lookalike like `notacsta.net` matching
    *  `acsta.net` on a bare `endsWith`. */

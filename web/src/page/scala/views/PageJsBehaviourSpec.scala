@@ -5357,6 +5357,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath(s"/movie/${tools.Slugify(firstFixtureTitle)}") { page => page.evalBool(HydratedShowings) shouldBe true }
   }
 
+  // `browse.scala.html` renders the same `_filmCards` showings tree as the listing —
+  // without `_showingsHydrate` its pills had no `href` at all.
+  it should "come back whole on the facet listing too" in {
+    onPath("/filmy?country=Polska") { page => page.evalBool(HydratedShowings) shouldBe true }
+  }
+
   // A pill carries no `data-expires` of its own unless its day's base would get it
   // wrong (`ShowingsMarkup`): it lapses at `.date-group[data-expires-from]` plus its
   // clock time, so moving the day's base is what expires it — and only it and the

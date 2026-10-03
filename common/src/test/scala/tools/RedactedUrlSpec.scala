@@ -42,6 +42,19 @@ class RedactedUrlSpec extends AnyFlatSpec with Matchers {
     RedactedUrl("https://x/y?language=pl-PL&include_adult=false") shouldBe "https://x/y?language=pl-PL&include_adult=false"
   }
 
+  it should "mask the OAuth credentials the sign-in providers send in a query string" in {
+    // Facebook's code exchange is a GET carrying the app secret; its debug_token and
+    // Google's tokeninfo carry a visitor's own bearer token. A failed call (an expired
+    // code is a routine 400) logs the URL through HttpStatusException.
+    RedactedUrl("https://graph.facebook.com/v19.0/oauth/access_token?client_id=1&client_secret=s3cr3t&code=c") shouldBe
+      "https://graph.facebook.com/v19.0/oauth/access_token?client_id=1&client_secret=***&code=***"
+    RedactedUrl("https://graph.facebook.com/debug_token?input_token=user&access_token=app") shouldBe
+      "https://graph.facebook.com/debug_token?input_token=***&access_token=***"
+    RedactedUrl("https://oauth2.googleapis.com/tokeninfo?id_token=jwt") shouldBe
+      "https://oauth2.googleapis.com/tokeninfo?id_token=***"
+    RedactedUrl("https://x/token?refresh_token=r") shouldBe "https://x/token?refresh_token=***"
+  }
+
   it should "not sweep a fragment into the last parameter's value" in {
     RedactedUrl("https://x/y?api_key=abc#section") shouldBe "https://x/y?api_key=***#section"
   }

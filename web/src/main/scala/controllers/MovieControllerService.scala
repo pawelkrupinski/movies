@@ -39,6 +39,17 @@ case class FilmSchedule(
                          // (`CardFormat.date`). From the service's clock, never the system's.
                          asOf: LocalDate
                        ) {
+  /** [[cinemaFilmUrls]] a page may link — the http(s) ones ([[WebHref]]); every
+   *  real listing's whole list. */
+  lazy val linkableCinemaFilmUrls: Seq[(Cinema, WebHref)] =
+    cinemaFilmUrls.flatMap { case (cinema, url) => WebHref.of(url).map(cinema -> _) }
+
+  /** [[posterUrl]] when a page may load it ([[WebHref]]). */
+  lazy val posterHref: Option[WebHref] = posterUrl.flatMap(WebHref.of)
+
+  /** The resolved fallback posters a page may load ([[WebHref]]), in their order. */
+  lazy val fallbackPosterHrefs: Seq[WebHref] = resolved.fallbackPosterUrls.flatMap(WebHref.of)
+
   // Hashed once per schedule, not per lookup: it keys the card cache (`FilmCardFragments`)
   // on every listing render, a deep hash of every showtime, and a reused schedule
   // (`MovieControllerService.Built`) is the same immutable object render after render.
@@ -133,11 +144,16 @@ class MovieControllerService(
       }
       .foreach(films += _)
     }
-    // Earliest showtime, then title: compared field by field, not as a tuple built per
-    // comparison.
+    // Earliest showtime, then title, then film id — a total order, so two same-titled films
+    // tied on their earliest showing never take the grouping map's iteration order, which moves
+    // with the city's row count. Compared field by field, not as a tuple built per comparison.
     films.sortInPlaceWith { case ((e1, f1), (e2, f2)) =>
       val byTime = e1.compareTo(e2)
-      if (byTime != 0) byTime < 0 else f1.movie.title < f2.movie.title
+      if (byTime != 0) byTime < 0
+      else {
+        val byTitle = f1.movie.title.compareTo(f2.movie.title)
+        if (byTitle != 0) byTitle < 0 else f1.resolved._id.compareTo(f2.resolved._id) < 0
+      }
     }
     films.iterator.map(_._2).toList
   }

@@ -85,7 +85,7 @@ object ShowingsMarkup {
                         zone: ZoneId, locale: java.util.Locale, out: java.lang.StringBuilder, flush: () => Unit): Unit = {
     val rules = zone.getRules
     // Looked up once per cinema group: the first URL listed for a cinema, as `find` took.
-    val filmUrlOf = film.cinemaFilmUrls.groupMapReduce(_._1)(_._2)((first, _) => first)
+    val filmUrlOf = film.linkableCinemaFilmUrls.groupMapReduce(_._1)(_._2)((first, _) => first)
     for ((date, cinemas) <- film.showings) {
       val day = Day(date, expiresFrom(date, zone), rules.getOffset(date.atStartOfDay.plus(Showtime.Grace)))
       out.append("<div class=\"date-group\" data-date=\"").append(date)
@@ -94,13 +94,14 @@ object ShowingsMarkup {
       out.append("</div>")
       for (cinemaShowtimes <- cinemas) {
         val cinema = cinemaShowtimes.cinema
-        val prefix = Showtime.commonUrlPrefix(cinemaShowtimes.showtimes)
+        val slots  = linkableOnly(cinemaShowtimes.showtimes)
+        val prefix = Showtime.commonUrlPrefix(slots)
         out.append("<div class=\"cinema-group\"")
         if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
         out.append("><div class=\"cinema-label\">")
         filmUrlOf.get(cinema) match {
           case Some(url) if firstListing.get(cinema).contains(date) =>
-            out.append("<a href=\""); escapeInto(out, url)
+            out.append("<a href=\""); escapeInto(out, url.url)
             out.append("\" target=\"_blank\" rel=\"nofollow\" class=\"cinema-label-link\">")
             escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
           case Some(_) =>
@@ -109,13 +110,19 @@ object ShowingsMarkup {
             escapeInto(out, cinema.displayName)
         }
         out.append("</div><div>")
-        for (slot <- cinemaShowtimes.showtimes) badgeInto(out, slot, day, zone, commonToks, prefix)
+        for (slot <- slots) badgeInto(out, slot, day, zone, commonToks, prefix)
         out.append("</div></div>")
         flush()
       }
       out.append("</div>")
     }
   }
+
+  /** `slots` with any booking URL that is not a [[WebHref]] dropped — the pill stays, as
+   *  a plain time. The same `Seq` when every URL passes, which is every real listing. */
+  private def linkableOnly(slots: Seq[Showtime]): Seq[Showtime] =
+    if (slots.forall(_.bookingUrl.forall(WebHref.accepts))) slots
+    else slots.map(slot => if (slot.bookingUrl.forall(WebHref.accepts)) slot else slot.copy(bookingUrl = None))
 
   /** One `.date-group`'s day: its date, its [[expiresFrom]], and the zone offset that
    *  base was taken at — what lets a pill on an ordinary day skip the zone arithmetic. */

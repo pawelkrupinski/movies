@@ -187,7 +187,7 @@
     const KINOWO_LOCALE = { lang: "@messages.lang.code" };
     @if(isApex) { window.KINOWO_NO_AUTO_LANG = true; }
   </script>
-  <script id="i18n-packs" type="application/json">@Html(controllers.I18nPacks.json)</script>
+  <script id="i18n-packs" type="application/json">@controllers.I18nPacks.scriptJson</script>
   <script src="@routes.Assets.versioned("js/i18n.js")"></script>
 </head>
 <body>
@@ -267,7 +267,7 @@
   </main>
   @_geoDistance()
   <script>
-    const KINOWO_CATALOG = @Html(models.Catalog.json);
+    const KINOWO_CATALOG = @controllers.ScriptJson.embedSerialized(models.Catalog.json);
     // Country names in the VISITOR's chosen UI language — `Catalog.json`'s own
     // `name` field is each country's fixed native/English label (baked into the
     // static, cacheable `/api/catalog` JSON), so it can't carry per-request

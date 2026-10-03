@@ -51,6 +51,8 @@
     <div class="tune-scope" id="scope">
       @_filmCards(films)
     </div>
+    @* Pills render class-less until hydrated (`ShowingsMarkup`). *@
+    @_showingsHydrate(tools.PassThroughMinifier)
 
     @* `TUNE_CONTROLS` must be defined before `_tunePanel`'s builder runs. *@
     <script>

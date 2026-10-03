@@ -41,4 +41,16 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
     val firstDayCinemas = schedules.head.showings.head._2.map(_.cinema.displayName)
     firstDayCinemas shouldBe Seq("Helios Posnania", "Kino Apollo", "Kino Rialto")
   }
+
+  // Two same-titled films (a remake beside its original) tied on their earliest showing were ordered by the
+  // grouping map's iteration, which depends on the ids' hashes and the city's row count, not on the films.
+  it should "order same-titled films tied on their earliest showing by film id" in {
+    val films = Seq(1948, 1996, 2009, 2015, 2021).map(year =>
+      ("Hamlet", Some(year), MovieRecord(data = Map[Source, SourceData](KinoApollo -> SourceData(title = Some("Hamlet"),
+        showtimes = Seq(Showtime(showAt, bookingUrl = None)))))))
+    val schedules = new MovieControllerService(TestReadModel.fromRecords(films), clock = TestMovieController.clock).toSchedules(Poznan, now)
+    schedules.map(_.movie.title).distinct shouldBe Seq("Hamlet")
+    schedules should have size 5
+    schedules.map(_.resolved._id) shouldBe schedules.map(_.resolved._id).sorted
+  }
 }

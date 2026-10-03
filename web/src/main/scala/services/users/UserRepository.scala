@@ -67,9 +67,11 @@ trait UserRepository {
 class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepository with Logging {
 
   private lazy val coll: Option[MongoCollection[User]] = database.map { db =>
-    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
-    Try(Await.result(c.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds))
-    c
+    // Lookup speed only — the store serves without it — so a failed build is logged
+    // (`MongoIndex` warns) rather than failing the boot.
+    services.MongoIndex.ensure(db, "users", org.mongodb.scala.model.Indexes.ascending("id"),
+      new org.mongodb.scala.model.IndexOptions(), "users")
+    db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
   }
 
   def enabled: Boolean = coll.isDefined

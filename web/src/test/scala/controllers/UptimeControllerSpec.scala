@@ -596,4 +596,11 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     sections.gone    shouldBe empty
     sections.failing shouldBe empty
   }
+
+  // A default-locale "MMM" rendered "wrz" on a pl_PL JVM and "Sept" on en_GB.
+  "the uptime page's timestamps" should "name months in English whatever the JVM's default locale" in {
+    Seq(UptimeController.timeFmt, UptimeController.dateFmt, UptimeController.tsFmt)
+      .foreach(_.getLocale shouldBe java.util.Locale.ENGLISH)
+    UptimeController.tsFmt.format(java.time.Instant.parse("2026-09-28T10:15:00Z")) shouldBe "28 Sep 12:15"
+  }
 }

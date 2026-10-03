@@ -147,7 +147,7 @@ object StructuredData {
     // out cleanly when their data is absent.
     val movie = Json.obj("@context" -> Ctx, "@type" -> "Movie", "name" -> m.title, "url" -> canonicalUrl)
       .++(optStr("description", fs.synopsis))
-      .++(optStr("image", absoluteImage(origin, fs)))
+      .++(optStr("image", fs.posterHref.map(_.url)))
       .++(seqObj("genre", m.genres))
       .++(seqPersons("director", fs.director))
       .++(seqPersons("actor", fs.cast.take(15)))
@@ -162,7 +162,7 @@ object StructuredData {
             "@context" -> Ctx, "@type" -> "ScreeningEvent",
             "name" -> m.title,
             "startDate" -> start,
-            "url" -> st.bookingUrl.getOrElse(canonicalUrl),
+            "url" -> st.bookingUrl.flatMap(WebHref.of).fold(canonicalUrl)(_.url),
             "location" -> Json.obj(
               "@type" -> "MovieTheater", "name" -> cs.cinema.displayName,
               "address" -> Json.obj(
@@ -194,12 +194,6 @@ object StructuredData {
       },
     )
 
-  private def absoluteImage(origin: String, fs: FilmSchedule): Option[String] =
-    fs.posterUrl.map { p =>
-      if (p.startsWith("http://") || p.startsWith("https://")) p
-      else origin + (if (p.startsWith("/")) p else "/" + p)
-    }
-
   private def optStr(key: String, v: Option[String]) =
     v.filter(_.nonEmpty).fold(Json.obj())(s => Json.obj(key -> s))
 
@@ -210,9 +204,7 @@ object StructuredData {
     if (names.isEmpty) Json.obj()
     else Json.obj(key -> names.map(n => Json.obj("@type" -> "Person", "name" -> n)))
 
-  /** Compact JSON, made safe to embed in a `<script>` block: a `</script>` (or
-   *  any `</…`) inside a synopsis/title would otherwise close the tag early, so
-   *  escape `<` — `<\/` is still valid JSON and renders identically. */
-  private def render(v: JsValue): String =
-    Json.stringify(v).replace("<", "\\u003c")
+  /** Compact JSON, safe inside the `<script type="application/ld+json">` block — a
+   *  `</script>` in a synopsis or title cannot close it (see [[ScriptJson]]). */
+  private def render(v: JsValue): String = ScriptJson.stringify(v)
 }

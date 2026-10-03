@@ -83,7 +83,7 @@
            /uptime shows — when known, else to this slot's own scraped page
            (`filmUrl`, e.g. the TMDB/IMDB page). Plain text only when neither
            exists. No separate "page ↗" chip — the name carries it. *@
-        @_serviceNameLink(label, sourceUrl.orElse(slot.filmUrl), "cinema-name-link")
+        @_serviceNameLink(label, sourceUrl.orElse(slot.filmUrl).flatMap(controllers.WebHref.of), "cinema-name-link")
         @* A cinema lists a film under one shown title per slot; its `titleKey`
            (= `sanitize(title)`) is the Mongo sub-document discriminator the
            read-model card split keys on. Surface it so two title-slots of the

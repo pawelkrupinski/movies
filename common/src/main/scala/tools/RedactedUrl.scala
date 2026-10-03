@@ -6,9 +6,9 @@ import java.util.Locale
  * Renders a URL safe to LOG by masking the value of any query parameter that
  * carries a credential.
  *
- * Three of our upstreams authenticate in the query string rather than a header —
- * TMDB (`api_key=`), OMDb (`apikey=`) and the Firestore endpoint Kino Aurum
- * reads (`key=`) — so every place that writes a URL into a log line or an
+ * Several of our upstreams authenticate in the query string rather than a header —
+ * TMDB (`api_key=`), OMDb (`apikey=`), the Firestore endpoint Kino Aurum reads
+ * (`key=`) and the sign-in providers (`client_secret=`, `id_token=`, …) — so every place that writes a URL into a log line or an
  * exception message publishes the key with it. That is not theoretical: a dead
  * TMDB id (`/movie/1715017/external_ids`) reschedules forever, and each attempt
  * wrote the full v3 key into `/data/logs/worker.log`, which is kept on the Fly
@@ -27,7 +27,11 @@ object RedactedUrl {
    *  parameter we actually spell that way IS a Google API key, and over-masking
    *  a benign field in a log line costs nothing next to leaking a real one. */
   private val SecretParameters: Set[String] =
-    Set("api_key", "apikey", "key", "token", "access_token", "auth", "password", "secret", "signature", "sig")
+    Set("api_key", "apikey", "key", "token", "access_token", "auth", "password", "secret", "signature", "sig",
+      // OAuth: Facebook's code exchange is a GET carrying the app secret, and the
+      // token checks carry a visitor's own bearer token; `code` is the authorization
+      // code that exchange redeems.
+      "client_secret", "id_token", "input_token", "refresh_token", "code")
 
   val Mask = "***"
 

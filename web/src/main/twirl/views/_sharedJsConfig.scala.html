@@ -21,13 +21,13 @@
 *@
 <script>
   const HAS_OAUTH_PROVIDERS = @oauthProviders.nonEmpty;
-  const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
-  const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
+  const ALL_CINEMAS         = @controllers.ScriptJson.embed(play.api.libs.json.Json.toJson(allCinemas));
+  const CINEMA_PILLS        = @controllers.ScriptJson.embed(play.api.libs.json.Json.toJson(cinemaPills));
   @* Cinema areas for a split city — London's compass areas, a big US metro's
      districts; empty for a flat city, in which case the picker renders one plain
      list. `window.`-scoped (not a lexical const) so buildCinemaPanel reads it and
      tests can override. *@
-  window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
+  window.CINEMA_AREAS       = @controllers.ScriptJson.embed(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))));
   const CURRENT_CITY        = "@city.slug";
   @* The clock every day boundary this page draws is measured on — the city's,
      never the visitor's device. It matches what the server already resolves in
@@ -45,7 +45,7 @@
      picker, which embeds its own copy — see `landing.scala.html`); embedded
      here so `AreaRoutingSpec` can assert a city's region/subregion grouping
      straight off the rendered page rather than re-deriving it. *@
-  const KINOWO_CATALOG      = @Html(models.Catalog.json);
+  const KINOWO_CATALOG      = @controllers.ScriptJson.embedSerialized(models.Catalog.json);
   @* Per-deployment locale for shared.js: weekday/month arrays and the
      showtime plural rule + forms — for EVERY deployed language (`locales`),
      not just this deployment's default, so `i18n.js`'s `applyLanguage` can
@@ -53,12 +53,12 @@
      Replaces the Polish literals shared.js used to hardcode
      (DAY2/MONTHS/_showtimeNoun). Translated UI strings live in the pack
      below instead — see `JsLocale`'s own doc. *@
-  const KINOWO_LOCALE       = @Html(controllers.JsLocale.json(messages));
+  const KINOWO_LOCALE       = @controllers.ScriptJson.embedSerialized(controllers.JsLocale.json(messages));
   @* Page-test ONLY (never emitted in prod): a fixture render passes its corpus's
      capture date as `pinnedToday`, pinning shared.js "today" so the `#date-filter`
      day assertions don't age out as the real clock advances past the recorded
      corpus. None in prod → shared.js falls back to `new Date()`. *@
-  @Html(pinnedToday.map(d => s"""window.KINOWO_PINNED_TODAY = "$d";""").getOrElse(""))
+  @for(d <- pinnedToday){window.KINOWO_PINNED_TODAY = "@d";}
 </script>
 @* All four `messages*` bundles, flattened to one JSON object, generated at
    build time from the bundles themselves (`I18nPackGenerator`, wired into
@@ -67,4 +67,4 @@
    visible UI language client-side, with no server round trip — see
    `controllers.I18nPacks`. `type="application/json"`, not `text/javascript`:
    this is data the script below parses, never executed itself. *@
-<script id="i18n-packs" type="application/json">@Html(controllers.I18nPacks.json)</script>
+<script id="i18n-packs" type="application/json">@controllers.I18nPacks.scriptJson</script>

@@ -11,6 +11,7 @@ import services.fallback.{FallbackState, FallbackStore}
 
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -92,9 +93,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private case object Thin    extends Health
   private case object Healthy extends Health
 
-  private val warsawZone = ZoneId.of("Europe/Warsaw")
-  private val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(warsawZone)
-  private val dateFmt = DateTimeFormatter.ofPattern("d MMM").withZone(warsawZone)
+  import UptimeController.{dateFmt, timeFmt, tsFmt}
 
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
@@ -385,7 +384,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     NoContent
   }
 
-  private val tsFmt = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(warsawZone)
   private def fmtInstant(i: Instant): String = tsFmt.format(i)
 
   private def fallbackRow(s: FallbackState): FallbackRow = FallbackRow(
@@ -504,7 +502,7 @@ object UptimeBarPayload {
     out ++= ",\"errors\":"
     quoteAll(out, errors.values)
     out += '}'
-    out.toString.replace("<", "\\u003c")
+    ScriptJson.escape(out.toString)
   }
 
   /** Each distinct string once, in first-seen order, referenced by its index. */
@@ -543,10 +541,16 @@ case class ServiceRow(
 ) {
   /** The venue's public source-page URL, parsed out of the `url:` tag — the
    *  href the name links to. Same extractor /debug uses (one source of truth). */
-  def url: Option[String] = UptimeMonitor.urlFromTags(tags)
+  def url: Option[WebHref] = UptimeMonitor.urlFromTags(tags).flatMap(WebHref.of)
 }
 
 object UptimeController {
+  private val warsawZone = ZoneId.of("Europe/Warsaw")
+  // Month names in English whatever the JVM's default locale: a default-locale "MMM" reads
+  // "wrz" under pl_PL and "Sept" under en_GB on the same English page.
+  private[controllers] val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).withZone(warsawZone)
+  private[controllers] val dateFmt = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH).withZone(warsawZone)
+  private[controllers] val tsFmt   = DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH).withZone(warsawZone)
   /** Distinguishes a non-primary poster attempt's row from its origin's primary
    *  row (`img: m.media-amazon.com · fallback`). Mirrors the `·` separator the
    *  page already uses for a triage row's cinema/city hover title. */

@@ -7,23 +7,22 @@ import play.api.mvc._
 import play.api.Mode
 import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
-import tools.AsciiUrl
 
 import java.time.LocalDate
 
 
 // ── JSON API types ──────────────────────────────────────────────────────
-case class ApiShowtime(time: String, format: String, room: Option[String], bookingURL: Option[String])
-case class ApiCinemaShowings(cinema: String, cinemaURL: Option[String], showtimes: Seq[ApiShowtime])
+case class ApiShowtime(time: String, format: String, room: Option[String], bookingURL: Option[WebHref])
+case class ApiCinemaShowings(cinema: String, cinemaURL: Option[WebHref], showtimes: Seq[ApiShowtime])
 case class ApiDayShowings(date: String, label: String, cinemas: Seq[ApiCinemaShowings])
 case class ApiRatings(
-  imdb: Option[Double], imdbURL: Option[String],
-  metascore: Option[Int], metacriticURL: Option[String],
-  rottenTomatoes: Option[Int], rottenTomatoesURL: Option[String],
-  filmweb: Option[Double], filmwebURL: Option[String]
+  imdb: Option[Double], imdbURL: Option[WebHref],
+  metascore: Option[Int], metacriticURL: Option[WebHref],
+  rottenTomatoes: Option[Int], rottenTomatoesURL: Option[WebHref],
+  filmweb: Option[Double], filmwebURL: Option[WebHref]
 )
 case class ApiFilm(
-  title: String, slug: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
+  title: String, slug: String, posterURL: Option[WebHref], fallbackPosterURLs: Seq[WebHref],
   runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
   // Age rating / certificate (UK BBFC "15"/"PG"/…); omitted when the film has none.
   ageRating: Option[String],
@@ -38,7 +37,7 @@ case class ApiFilm(
  *  parallel and merge by `title`. Only films carrying a synopsis or at least
  *  one trailer are emitted. */
 case class ApiFilmDetails(
-  title: String, originalTitle: Option[String], synopsis: Option[String], trailerURLs: Seq[String]
+  title: String, originalTitle: Option[String], synopsis: Option[String], trailerURLs: Seq[WebHref]
 )
 
 object ApiFilmDetails {
@@ -51,7 +50,7 @@ object ApiFilmDetails {
     // ran at projection time), so clients render them unconditionally.
     originalTitle = fs.resolved.originalTitle,
     synopsis      = fs.synopsis,
-    trailerURLs   = fs.resolved.trailerUrls.map(AsciiUrl.encode),
+    trailerURLs   = fs.resolved.trailerUrls.flatMap(WebHref.of).map(_.asciiEncoded),
   )
 
   def hasContent(d: ApiFilmDetails): Boolean =
@@ -89,7 +88,7 @@ object ApiFilm {
   /** `language` is the city's: the day labels are spelled in it. */
   def from(fs: FilmSchedule, language: java.util.Locale): ApiFilm = {
     val resolved = fs.resolved
-    val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
+    val cinemaUrlMap = fs.linkableCinemaFilmUrls.map { case (c, href) => c.displayName -> href }.toMap
     ApiFilm(
       title            = fs.movie.title,
       // The film's canonical path segment on the web (`/{city}/movie/{slug}`).
@@ -97,24 +96,26 @@ object ApiFilm {
       // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
       // would be two more places for it to drift from `tools.Slugify`.
       slug             = fs.slug.getOrElse(""),
-      // Every URL below goes through AsciiUrl: the mobile models decode these
+      // Every URL below is a [[WebHref]], http(s) only — both apps hand the links
+      // to the system, where a scraped custom-scheme or `intent:` URL would open
+      // another app — and goes through AsciiUrl: the mobile models decode these
       // fields as `URL`, and a strict parser fails the whole listing on one
       // scraped poster link with a Polish letter in it.
-      posterURL        = fs.posterUrl.map(AsciiUrl.encode),
-      fallbackPosterURLs = resolved.fallbackPosterUrls.map(AsciiUrl.encode),
+      posterURL        = fs.posterHref.map(_.asciiEncoded),
+      fallbackPosterURLs = fs.fallbackPosterHrefs.map(_.asciiEncoded),
       runtimeMinutes   = fs.movie.runtimeMinutes,
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ageRating        = resolved.ageRating,
       ratings          = ApiRatings(
         imdb              = resolved.ratings.imdb,
-        imdbURL           = resolved.ratings.imdbUrl.map(AsciiUrl.encode),
+        imdbURL           = resolved.ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
         metascore         = resolved.ratings.metascore,
-        metacriticURL     = Some(AsciiUrl.encode(resolved.ratings.metacriticUrl)),
+        metacriticURL     = WebHref.of(resolved.ratings.metacriticUrl).map(_.asciiEncoded),
         rottenTomatoes    = resolved.ratings.rottenTomatoes,
-        rottenTomatoesURL = Some(AsciiUrl.encode(resolved.ratings.rottenTomatoesUrl)),
+        rottenTomatoesURL = WebHref.of(resolved.ratings.rottenTomatoesUrl).map(_.asciiEncoded),
         filmweb           = resolved.ratings.filmweb,
-        filmwebURL        = Some(AsciiUrl.encode(resolved.ratings.filmwebUrl))
+        filmwebURL        = WebHref.of(resolved.ratings.filmwebUrl).map(_.asciiEncoded)
       ),
       countries        = fs.movie.countries,
       directors        = fs.director,
@@ -126,13 +127,13 @@ object ApiFilm {
           cinemas = cinemas.map { cs =>
             ApiCinemaShowings(
               cinema    = cs.cinema.displayName,
-              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(AsciiUrl.encode),
+              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
               showtimes = cs.showtimes.map { st =>
                 ApiShowtime(
                   time       = CardFormat.time(st.dateTime),
                   format     = st.format.mkString(" "),
                   room       = st.room,
-                  bookingURL = st.bookingUrl.map(AsciiUrl.encode)
+                  bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
                 )
               }
             )

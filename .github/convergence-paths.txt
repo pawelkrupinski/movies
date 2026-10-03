@@ -15,6 +15,7 @@ testkit/src/main/**
 # nothing else of the web. Its file and every web source it reaches, which
 # ConvergenceDispatchGateSpec recomputes, so a new dependency cannot go unlisted.
 web/src/main/scala/controllers/MovieControllerService.scala
+web/src/main/scala/controllers/WebHref.scala
 e2e/**
 build.sbt
 project/**

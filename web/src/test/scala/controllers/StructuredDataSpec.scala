@@ -199,6 +199,14 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     (events(1) \ "url").as[String] shouldBe canonical            // else the film page
   }
 
+  it should "point a ScreeningEvent whose booking URL is not http(s) at the film page instead" in {
+    val arr = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq(
+      (Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), Some("javascript:alert(1)")),
+      (Multikino, LocalDateTime.of(2026, 5, 17, 20, 30), Some("intent://book#Intent;end")),
+    ))))
+    byType(arr, "ScreeningEvent").map(e => (e \ "url").as[String]) shouldBe Seq(canonical, canonical)
+  }
+
   it should "carry a Home › City › Film breadcrumb" in {
     val crumb = byType(parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))), "BreadcrumbList").head
     (crumb \ "itemListElement").as[JsArray].value.map(i => (i \ "name").as[String]) shouldBe Seq("Kinowo", "Poznań", "Diuna")

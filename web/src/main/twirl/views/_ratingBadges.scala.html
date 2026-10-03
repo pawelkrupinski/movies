@@ -1,4 +1,5 @@
 @import models.ResolvedRatings
+@import controllers.WebHref
 @(ratings: Option[ResolvedRatings])
 @* No per-pill `onclick` — the /debug data-row's expand-on-click handler
    bails on clicks that originated inside an `<a>` or `<button>` (see
@@ -9,7 +10,8 @@
    37 bytes = ~17 KB raw off the / page.
 
    The click-through URLs are pre-resolved on the read-model doc, so this
-   partial renders them verbatim (no per-call href computation). Wrapped
+   partial renders them verbatim (no per-call href computation) — each only
+   when it is http(s) (`WebHref`); a pill whose stored URL is not stays, unlinked. Wrapped
    in `Option` purely so the live pages — which always carry ratings —
    emit byte-identical markup to before the read-model split.
 
@@ -19,20 +21,20 @@
 @ratings.map { e =>
   <div class="ratings">
     @e.imdb.map { r =>
-      <a href="@e.imdbUrl" target="_blank" rel="nofollow noopener" class="rating-imdb" title="IMDb">
+      <a@for(href <- e.imdbUrl.flatMap(WebHref.of)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-imdb" title="IMDb">
         <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{f"$r%.1f"}</span>
       </a>
     }
     @e.metascore.map { m =>
-      <a href="@e.metacriticUrl" target="_blank" rel="nofollow noopener" class="rating-meta" title="Metacritic">@m</a>
+      <a@for(href <- WebHref.of(e.metacriticUrl)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-meta" title="Metacritic">@m</a>
     }
     @e.rottenTomatoes.map { rt =>
-      <a href="@e.rottenTomatoesUrl" target="_blank" rel="nofollow noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
+      <a@for(href <- WebHref.of(e.rottenTomatoesUrl)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
         <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
       </a>
     }
     @e.filmweb.map { r =>
-      <a href="@e.filmwebUrl" target="_blank" rel="nofollow noopener" class="rating-fw" title="Filmweb">
+      <a@for(href <- WebHref.of(e.filmwebUrl)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-fw" title="Filmweb">
         <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{f"$r%.1f"}</span>
       </a>
     }
