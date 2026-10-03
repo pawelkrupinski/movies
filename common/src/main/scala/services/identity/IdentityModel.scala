@@ -69,13 +69,24 @@ object Listing {
     title         = cm.movie.title,
     cleanTitle    = ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
     year          = cm.movie.releaseYear,
-    directors     = cm.director.map(_.trim).filter(_.nonEmpty).distinct.sorted,
+    directors     = cm.director.flatMap(credited).filter(_.nonEmpty).distinct.sorted,
     runtime       = cm.movie.runtimeMinutes.filter(_ > 0),
     page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
     catalogueIds  = CatalogueId.of(cm),
     searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim))
+
+  /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
+   *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only
+   *  when every part reads as a name — two words or more, no colon — so a credit line ("… scenografia i animacje:
+   *  Agata Kurzak") stays as it is. */
+  private[identity] def credited(credit: String): Seq[String] = {
+    val whole = credit.trim
+    val parts = CreditJoin.split(whole).toSeq.map(_.trim)
+    if (parts.sizeIs >= 2 && parts.forall(part => !part.contains(':') && part.split("\\s+").lengthIs >= 2)) parts else Seq(whole)
+  }
+  private val CreditJoin = java.util.regex.Pattern.compile("\\s+(?:&|and|i)\\s+|\\s*,\\s+")
 
   /** [[Listing.sortKey]]'s fields, in its order. */
   private val SortFields: IndexedSeq[Listing => String] = IndexedSeq(
@@ -142,7 +153,8 @@ object Evidence {
     cleanTitle    = listing.cleanTitle,
     rawTitle      = listing.rawTitle,
     year          = listing.year.orElse(detail.flatMap(_.year)),
-    directors     = (if (listing.directors.nonEmpty) listing.directors else detail.map(_.directors).getOrElse(Nil)).sorted,
+    directors     = (if (listing.directors.nonEmpty) listing.directors
+                     else detail.map(_.directors.flatMap(Listing.credited).filter(_.nonEmpty).distinct).getOrElse(Nil)).sorted,
     runtime       = listing.runtime.orElse(detail.flatMap(_.runtime).filter(_ > 0)),
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
