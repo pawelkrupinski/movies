@@ -1613,16 +1613,16 @@ abstract class CountryConvergenceBehaviour(
       val renamed  = country.cities.filter(c => City.formerSlugs(c.slug).nonEmpty).sortBy(_.slug)
       def filmsIn(c: City) = service.toSchedules(c, renderAt).map(_.resolved._id).toSet
       val servedBefore = renamed.map(c => c -> filmsIn(c)).toMap
-      // The read model read ONCE and kept in step with the moves (a city's moved rows are what a
-      // later city's read would see), rather than re-read whole for each renamed city.
-      renamed.foldLeft(if (renamed.isEmpty) Seq.empty else w.readModelRepository.findAllScreenings()) { (screenings, c) =>
-        val former = City.formerSlugs(c.slug).head
-        val (moving, staying) = screenings.partition(_.city == c.slug)
-        staying ++ moving.map { sc =>
-          val moved = sc.copy(_id = sc._id.replace(s"|${c.slug}|", s"|$former|"), city = former)
-          w.readModelRepository.deleteScreening(sc._id)
-          w.readModelRepository.upsertScreening(moved)
-          moved
+      // The read model read ONCE, the moves worked out in memory and written as their net effect:
+      // one bulk upsert and the deletes, where row by row it was two round trips a row
+      // (CityRenameRefile).
+      val renamedRows = step("city rename") {
+        if (renamed.isEmpty) 0 else {
+          val refile = CityRenameRefile.of(w.readModelRepository.findAllScreenings(),
+            renamed.map(c => c.slug -> City.formerSlugs(c.slug).head))
+          w.readModelRepository.upsertScreenings(refile.upserts)
+          refile.deletes.foreach(w.readModelRepository.deleteScreening)
+          refile.upserts.size
         }
       }
       // The rename reaches production as a DEPLOY: the next worker boots over rows it did not
@@ -1636,7 +1636,8 @@ abstract class CountryConvergenceBehaviour(
           lost.toSeq.sorted.take(6).map(id => w.webReadModel.movie(id).fold(id)(m => s"'${m.title}' ($id)")).mkString(", "))
       }
       info(s"${country.displayName}: city rename — ${if (renamed.isEmpty) "no city with a former slug" else
-        renamed.map(c => s"${c.slug} ← ${City.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ")}")
+        renamed.map(c => s"${c.slug} ← ${City.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ") +
+          s"; $renamedRows screening row(s) refiled"}")
 
       clock.advance(java.time.Duration.between(clock.instant(),
         cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
