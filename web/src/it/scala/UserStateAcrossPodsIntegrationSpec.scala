@@ -43,8 +43,16 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
     case Language(_, code)  => state.copy(language = Some(code))
   }
 
+  /** Wait for the spec's OWN Mongo calls — arranging a collection, reading it back. None of them
+   *  is under test, so none may fail on latency: in itAll's parallel run on 2026-10-03 the server
+   *  spent 19.3 s on the boot case's setup `createIndex` (7.2 s creating the collection, 11.9 s
+   *  waiting for majority write concern), and the 10 s each of these used to allow failed the case
+   *  before a pod had booted. The code under test keeps its own budget (`MongoIndex`'s). */
+  private def await[A](operation: scala.concurrent.Future[A]): A = Await.result(operation, SpecBudget)
+  private val SpecBudget = 2.minutes
+
   private def rowsFor(db: MongoDatabase, userId: String): Long =
-    Await.result(db.getCollection(UserStateRepository.Collection).countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds)
+    await(db.getCollection(UserStateRepository.Collection).countDocuments(Filters.eq("userId", userId)).toFuture())
 
   "two web pods writing one user's state at once" should
     "leave exactly one row, and one that some serial order of the writes produces" in
@@ -88,14 +96,36 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
       new UserStatePod(instance.database, new InMemoryUserRepository, clock, indexHealth = (present: Boolean) => { health.add(present); () })
     }
     try {
-      successes(race(pods.map(pod => () => pod.states.enabled), Some(round))).distinct shouldBe Seq(true)
+      // Joined past `MongoIndex`'s own 30 s, so a slow boot reports what IT decided rather than
+      // the race giving up on it at the same instant.
+      successes(race(pods.map(pod => () => pod.states.enabled), Some(round), joinTimeout = SpecBudget)).distinct shouldBe Seq(true)
       (reported.map(_.asScala.toList), instances.map(drops).zip(before).map { case (after, was) => after - was })
     } finally pods.foreach(_.close())
   }
 
   private def userIdIndex(db: MongoDatabase): Option[Document] =
-    Await.result(db.getCollection[Document](UserStateRepository.Collection).listIndexes().toFuture(), 10.seconds)
+    await(db.getCollection[Document](UserStateRepository.Collection).listIndexes().toFuture())
       .find(_.get("name").exists(_.asString().getValue == "userId_1"))
+
+  /** Keep `userStates` locked from `instance` for `duration`, as a slow neighbour in a loaded run
+   *  does: a transaction that has written to the collection holds it until it ends, and an index
+   *  build waits for that. Closing the hold ends it early — it must end before the instance's
+   *  client closes, or the server keeps the transaction (and the lock) for its whole lifetime. */
+  private def holdCollection(instance: ConcurrentInstances.Instance, duration: FiniteDuration): AutoCloseable = {
+    await(instance.database.createCollection(UserStateRepository.Collection).toFuture())
+    val session = await(instance.client.startSession().toFuture())
+    session.startTransaction()
+    await(instance.database.getCollection[Document](UserStateRepository.Collection)
+      .insertOne(session, Document("userId" -> "held-by-a-neighbour")).toFuture())
+    val released = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val hold: AutoCloseable = () => if (released.compareAndSet(false, true)) {
+      try services.staging.MongoStagingFolder.abortTransaction(session) finally session.close()
+    }
+    val timer = new Thread(() => { Thread.sleep(duration.toMillis); hold.close() }, "userstate-hold")
+    timer.setDaemon(true)
+    timer.start()
+    hold
+  }
 
   // Every web pod builds the unique `userId` index on boot, and a rolling deploy boots the new pod
   // while the old one serves. Finding the index already there, a boot must leave it alone: the boot
@@ -103,8 +133,11 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
   // uniqueness at all between the drop and the create — exactly while the old pod was writing.
   "a web pod booting while another serves" should "find the unique userId index and drop nothing" in
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-boot") { instances =>
-      Await.result(instances.head.database.getCollection[Document](UserStateRepository.Collection)
-        .createIndex(Indexes.ascending("userId"), IndexOptions().unique(true)).toFuture(), 10.seconds)
+      // The setup's index build, made to wait 12 s the way a loaded itAll mongod made it wait.
+      val held = holdCollection(instances.last, 12.seconds)
+      try await(instances.head.database.getCollection[Document](UserStateRepository.Collection)
+        .createIndex(Indexes.ascending("userId"), IndexOptions().unique(true)).toFuture())
+      finally held.close()
       rounds(3, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         val (reported, drops) = bootTogether(instances, round)
         reported shouldBe Seq(List(true), List(true))
@@ -124,8 +157,8 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-legacy") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
       rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
-        Await.result(coll.drop().toFuture(), 10.seconds)
-        Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
+        await(coll.drop().toFuture())
+        await(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture())
         val (reported, drops) = bootTogether(instances, round)
         withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
         withClue("both pods must find the index unique once they are done: ") { reported shouldBe Seq(List(true), List(true)) }
@@ -139,9 +172,9 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-duplicates") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
       rounds(2, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
-        Await.result(coll.drop().toFuture(), 10.seconds)
-        Await.result(coll.insertMany(Seq(Document("userId" -> "twice"), Document("userId" -> "twice"))).toFuture(), 10.seconds)
-        Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
+        await(coll.drop().toFuture())
+        await(coll.insertMany(Seq(Document("userId" -> "twice"), Document("userId" -> "twice"))).toFuture())
+        await(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture())
         val (reported, drops) = bootTogether(instances, round)
         withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
         reported shouldBe Seq(List(false), List(false))
