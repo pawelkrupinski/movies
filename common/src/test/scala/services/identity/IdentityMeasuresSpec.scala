@@ -512,6 +512,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.directorRelation(Seq("Кира Муратова"), Seq("Кира Муратова")) shouldBe Category("same_person")
   }
 
+  "a credited director naming the film's own house" should "be no director at all, not a different one" in {
+    // UK venues' "Met Opera 2026-27: Così fan tutte" ×97 credit "The Metropolitan Opera", which TMDB's record names
+    // in its title, not as its director (Phelim McDermott): read as a different person, it vetoed the film.
+    val met = Film("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Some(Seq("Phelim McDermott")))
+    measures(Listing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera")), met)("director") shouldBe IdentityMeasures.MissingListing
+    // beside a person the venue credits too, the person is compared
+    measures(Listing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera", "Phelim McDermott")), met)("director") shouldBe
+      Category("same_person")
+    // a director the title names who directed it stays a person: "Guillermo del Toro's Pinocchio"
+    val pinocchio = Film("Guillermo del Toro's Pinocchio", year = Some(2022), directors = Some(Seq("Guillermo del Toro", "Mark Gustafson")))
+    measures(Listing("Pinocchio", directors = Seq("Guillermo del Toro")), pinocchio)("director") shouldBe Category("same_person")
+  }
+
   "a director's name" should "be the same person whatever its order, case and splitting" in {
     // BTS São Paulo: the venue writes the given name joined and the surname last in capitals.
     IdentityMeasures.directorRelation(Seq("Jungjae HA"), Seq("Ha Jung-jae")) shouldBe Category("same_person")

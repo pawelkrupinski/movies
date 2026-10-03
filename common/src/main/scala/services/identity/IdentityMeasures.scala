@@ -535,6 +535,17 @@ object IdentityMeasures {
 
   /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
    *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
+  /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
+   *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
+   *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and
+   *  vetoed the film. "Guillermo del Toro" of "Guillermo del Toro's Pinocchio" directed it, and stays a person. */
+  private def namesItsHouse(name: String, f: Film): Boolean = {
+    val words = services.movies.TitleContainment.tokens(name)
+    words.sizeIs >= 2 &&
+      (Seq(f.title) ++ f.originalTitle).exists(title => services.movies.TitleContainment.tokens(title).containsSlice(words)) &&
+      !f.directorCredits.exists(credits => creditRelation(new Credits(Seq(name)), credits) == Category("same_person"))
+  }
+
   private def creditRelation(ca: Credits, cb: Credits): Measure = {
     if (ca.isEmpty) MissingListing
     else if (cb.isEmpty) MissingFilm
@@ -1239,8 +1250,11 @@ object IdentityMeasures {
       "year.distance"  -> absDelta(l.year, f.year),
       "titleYear.delta" -> filmMinus(f.year, l.titleYear),
       "season.delta"   -> filmMinus(f.year, l.seasonYear),
-      "director"       -> f.directorCredits.fold[Measure](if (l.directors.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
-                            creditRelation(l.directorCredits, _)),
+      "director"       -> {
+                            val persons = l.directors.filterNot(namesItsHouse(_, f))
+                            f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
+                              creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
+                          },
       "runtime.delta"  -> absDelta(l.statedRuntime, f.runtime.filter(_ > 0)),
       "country"        -> countryRelation(l.countries, f.countries),
       "search.rank"    -> searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble)),
