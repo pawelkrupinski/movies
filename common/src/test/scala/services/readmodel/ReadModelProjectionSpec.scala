@@ -97,6 +97,15 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A census pass asks one venue view for its showtimes three times over (the films served, the upcoming
+  // showtimes and the projector's learning, which builds its row): each venue derives them, and its row, once.
+  it should "derive a venue's showtime set and its row once, however often a census asks" in {
+    ReadModelProjection.partition(stored, titleNormalizer).venuesAll.flatten.foreach { venue =>
+      venue.showtimes should be theSameInstanceAs venue.showtimes
+      venue.screening should be theSameInstanceAs venue.screening
+    }
+  }
+
   // The identity migration's dual write into the read model (§16): the row names every listing
   // its showtimes come from — here two, since the venue's two slots are unioned into one row —
   // by the same key the slots' side rows are stamped with, whatever order the record holds them in.

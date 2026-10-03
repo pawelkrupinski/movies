@@ -186,12 +186,14 @@ object ReadModelProjection {
     def citySlug: String = city.slug
 
     /** The venue's showtimes across its slots, each once — the SET its row lists, before the
-     *  row's canonical ordering. What a census counts, without building the row. */
-    def showtimes: Seq[Showtime] = slots.flatMap(_.showtimes).distinct
+     *  row's canonical ordering. What a census counts, without building the row. Derived once: a
+     *  census pass asks it of every venue three times over, and its row a fourth. */
+    lazy val showtimes: Seq[Showtime] = slots.flatMap(_.showtimes).distinct
 
     /** Showtimes are sorted into a canonical order so the row is a pure function of the
-     *  showtime SET, not of upstream scrape order. */
-    def screening: CityScreening = CityScreening(
+     *  showtime SET, not of upstream scrape order. Each showtime's sort key is built once, not on
+     *  every comparison as `sortBy` would; the sort is stable either way, so the order is the same. */
+    lazy val screening: CityScreening = CityScreening(
       _id       = _id,
       filmId    = fid,
       city      = city.slug,
@@ -199,7 +201,8 @@ object ReadModelProjection {
       // The first slot that names one, in the slots' own order, so a rename that drops
       // the link does not blank an address the other slot still carries.
       filmUrl   = slots.iterator.flatMap(_.filmUrl).nextOption(),
-      showtimes = showtimes.sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(","))),
+      showtimes = showtimes.map(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(",")) -> st)
+        .sortBy(_._1).map(_._2),
       listingKeys = listingKeys
     )
   }
