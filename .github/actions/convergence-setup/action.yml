@@ -181,11 +181,17 @@ runs:
     # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
     # inputs for its post-job save, and by then the restored fixture trees put 127k files
     # (US) under the `**` globs — 17 s to restore and 21 s to save, hashing sources that
-    # tree holds none of.
+    # tree holds none of. And off git's index rather than `hashFiles`: the same sources' content
+    # (a blob's id is its content's hash), read from the index instead of by walking and reading
+    # the workspace — which still cost 8.8 s of the US recording's setup with the tree staged
+    # elsewhere (run 37111868620).
     - name: Key the sbt build cache
       id: sbt-key
       shell: bash
-      run: echo "key=sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}" >> "$GITHUB_OUTPUT"
+      run: |
+          sources=$(git ls-files -s -- build.sbt project/build.properties project/plugins.sbt \
+              ':(glob)**/src/main/**/*.scala' ':(glob)**/src/test/**/*.scala' ':(glob)**/src/fixtures/**/*.scala' | sha256sum)
+          echo "key=sbt-target-convergence-${{ runner.os }}-${sources%% *}" >> "$GITHUB_OUTPUT"
     # NOT the root `target/`: every module writes its JUnit XML into the one root-level
     # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
     # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report

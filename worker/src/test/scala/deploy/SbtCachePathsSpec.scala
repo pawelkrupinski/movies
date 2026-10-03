@@ -57,4 +57,14 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   it should "not carry the root target, which is test reports and sbt scratch" in {
     sbtCachePaths.collect { case (file, paths) if paths.contains("target") => file } shouldBe empty
   }
+
+  /** `hashFiles` walks and reads the workspace to hash the sources, 8.8 s of the US recording's
+   *  setup even with its fixture tree staged outside the workspace (run 37111868620); git's index
+   *  already holds each source's content hash. */
+  "the convergence legs' build cache key" should "come from git's index, not a hashFiles walk of the workspace" in {
+    val step = RepoFile.read(".github/actions/convergence-setup/action.yml").linesIterator
+      .dropWhile(!_.contains("id: sbt-key")).takeWhile(!_.trim.startsWith("- uses:")).mkString("\n")
+    step should include("git ls-files -s")
+    step should not include "hashFiles("
+  }
 }
