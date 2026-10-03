@@ -126,11 +126,14 @@ jobs:
             fail-fast: false
             matrix:
                 include:
+                    # The US first: the longest leg (run 37111868620: 11.8 min against the next 9.0) and
+                    # so the critical path. Matrix rows are queued in this order, and when runners are
+                    # short (the convergence lanes, measure runs) the last row waited 1.7 min for one.
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g, sampleRow: true }
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, order: convergenceUkOrder, sample: convergenceUkSample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write

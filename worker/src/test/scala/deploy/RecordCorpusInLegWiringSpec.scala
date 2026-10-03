@@ -149,4 +149,13 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "not try to download a corpus from its own run, which no job uploads before it" in {
     setup should not include "uses: actions/download-artifact"
   }
+
+  /** Matrix rows are queued in the order they are listed, so with runners short the LAST row waits
+   *  longest; the US, the longest leg and so the critical path, waited 1.7 min as the last row
+   *  (run 37111868620). */
+  "the recorder's matrix" should "list the longest leg, the United States, first" in {
+    val countries = """(?m)^\s+- \{ country: ([a-z-]+),""".r.findAllMatchIn(recorder).map(_.group(1)).toList
+    countries should not be empty
+    countries.head shouldBe "united-states"
+  }
 }
