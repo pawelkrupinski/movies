@@ -295,6 +295,12 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (736526, Film("Troll", year = Some(2022), popularity = Some(10.0)), Some(2)), (33061, Film("Troll", year = Some(1986)), Some(3)))
     acceptance.acceptedBy(ranked(Listing("Troll (1986)"), troll *), 33061) shouldBe Some("dated-title")
     acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 1693710) shouldBe Some("house-production")
+    // never a record from another year than the title dates: US "MetOpera: Carmen (2009)" ×513 took the Met's 2024
+    // Carmen this way, though Eyre's 2009 staging is another record
+    val dated = Listing("NT Live: The Misanthrope (2009)", runtime = Some(180))
+    acceptance.houseProduction(ranked(dated, bare :+ national *)) shouldBe None
+    acceptance.refusals(ranked(dated, bare :+ national *)).find(_.rule == "house-production").map(_.why) shouldBe
+      Some("its house's record is from another year than its title dates")
     // A film no rule takes names none.
     acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 511684) shouldBe None
   }

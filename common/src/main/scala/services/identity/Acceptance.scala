@@ -479,8 +479,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def houseProductionWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
-      house <- one(eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate)),
-                 "no record bills its work under its house", "two records bill its work under its house")
+      // nor one from another year than the title dates the production: US "MetOpera: Carmen (2009)" ×513 is Eyre's
+      // 2009 staging, not the Met's 2024 record its house bills
+      house <- { val billed = eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate))
+                 one(billed.filter(_.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency)),
+                   if (billed.isEmpty) "no record bills its work under its house" else "its house's record is from another year than its title dates",
+                   "two records bill its work under its house", billed.map(Acceptance.named).mkString("; ")) }
       _     <- noneOf(eligible.find(other => (other ne house) &&
                  (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
                    (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
