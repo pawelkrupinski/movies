@@ -117,6 +117,59 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     store.rulesVersion shouldBe Some("v2")
   }
 
+  /** A model store and a trace store that remember every id a replace dropped. */
+  private final class RecordingStores {
+    val familiesDropped = scala.collection.mutable.ListBuffer.empty[Set[String]]
+    val tracesDropped   = scala.collection.mutable.ListBuffer.empty[Set[String]]
+    private val keptFamilies = new InMemoryIdentityModelStore
+    private val keptTraces   = new InMemoryIdentityTraceStore
+    val families: IdentityModelStore = new IdentityModelStore {
+      def families(): Seq[StoredFamily] = keptFamilies.families()
+      def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = { familiesDropped += removed; keptFamilies.replace(removed, added) }
+      def rulesVersion: Option[String] = keptFamilies.rulesVersion
+      def recordRulesVersion(version: String): Unit = keptFamilies.recordRulesVersion(version)
+    }
+    val traces: IdentityTraceStore = (removed: Set[String], added: () => IterableOnce[ListingTrace]) => {
+      tracesDropped += removed; keptTraces.replace(removed, added)
+    }
+    def clear(): Unit = { familiesDropped.clear(); tracesDropped.clear() }
+  }
+
+  // A rules change re-resolves every family, and most decide what they decided before: dropping every
+  // stored family and trace FIRST left nothing for the re-resolve to compare with, so all ~165k US
+  // traces and every family were deleted and written again on each such boot, for unchanged decisions.
+  it should "drop, after a rules change, only the families and traces it did not decide again" in {
+    val corpus = GeneratedIdentityCorpus.generate(13L, normalizer, films = 12, listings = 48)
+    val stores = new RecordingStores
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
+      rules = "v1", traces = stores.traces).seed(corpus.listings)
+    stores.clear()
+    val next = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
+      rules = "v2", traces = stores.traces)
+    next.restore(corpus.listings)
+    val decided = stores.families.families().map(_.id).toSet
+    decided should not be empty
+    stores.familiesDropped.flatten.toSet intersect decided shouldBe empty
+    stores.tracesDropped.flatten.toSet intersect decided shouldBe empty
+    ResolutionSignature.of(next) shouldBe
+      ResolutionSignature.of(IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None))
+  }
+
+  it should "drop, when answers moved while it was down, only the families and traces it did not decide again" in {
+    val corpus  = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
+    val lookups = new FillingLookups(corpus.lookups, new Random(7L * 31))
+    val stores  = new RecordingStores
+    new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
+      traces = stores.traces).seed(corpus.listings)
+    lookups.answer(); lookups.answer()
+    stores.clear()
+    new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
+      traces = stores.traces).restore(corpus.listings)
+    val decided = stores.families.families().map(_.id).toSet
+    stores.familiesDropped.flatten.toSet intersect decided shouldBe empty
+    stores.tracesDropped.flatten.toSet intersect decided shouldBe empty
+  }
+
   "the resolver's code version" should "be the build's digest of what the resolver is built from" in {
     IdentityRules.codeVersion should fullyMatch regex "[0-9a-f]{64}"
   }

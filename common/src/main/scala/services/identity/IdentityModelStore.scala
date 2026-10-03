@@ -2,7 +2,7 @@ package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString}
-import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.model.{Filters, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
@@ -53,15 +53,31 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
 
   def families(): Seq[StoredFamily] = Await.result(collection.find().batchSize(tools.MongoReplies.Families).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
 
+  private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
+  /** How many family documents this store has written — those whose content moved. */
+  def written: Long = documentsWritten.get
+
   /** One bulk write for `added`, not an awaited `replaceOne` each: a take-up writes every family of
    *  the country (~2,200 US), and one round trip apiece was ~30 s of a US boot's projection. The
-   *  driver splits the batch to the server's message limits itself. */
+   *  driver splits the batch to the server's message limits itself.
+   *
+   *  Only what moved is written: a family whose content digest matches the stored one is left alone.
+   *  A rules change re-resolves every family and nearly all decide what they did before; written
+   *  whole, each such boot rewrote every family document (~101 MB of oplog per rollout). */
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)
-    if (added.nonEmpty)
-      Await.result(collection.bulkWrite(added.map(family =>
-        ReplaceOneModel(Filters.equal("_id", family.id), Document(encode(family)), ReplaceOptions().upsert(true)))).toFuture(), Timeout)
-    ()
+    added.grouped(WriteBatch).foreach { batch =>
+      val docs   = batch.map(family => family.id -> MongoIdentityTraceStore.digested(encode(family), ContentField))
+      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(ContentField))
+        .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
+        .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(ContentField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
+      val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(ContentField).getValue) }
+      if (moved.nonEmpty) {
+        Await.result(collection.bulkWrite(moved.map { case (id, doc) =>
+          ReplaceOneModel(Filters.equal("_id", id), Document(doc), ReplaceOptions().upsert(true)) }).toFuture(), Timeout)
+        documentsWritten.addAndGet(moved.size.toLong)
+      }
+    }
   }
 
   def rulesVersion: Option[String] =
@@ -77,6 +93,10 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
 object MongoIdentityModelStore {
   val FamiliesCollection = "identity_model_families"
   val MetaCollection     = "identity_model_meta"
+  /** A family document's content digest, which a rewrite of an unchanged family is skipped by. */
+  val ContentField       = "content"
+  /** How many families one read of stored digests and one bulk write carry. */
+  val WriteBatch         = 500
   private val RulesDocument = "rules"
 
   private def strings(values: Iterable[String]) = BsonArray.fromIterable(values.toSeq.sorted.map(BsonString(_)))

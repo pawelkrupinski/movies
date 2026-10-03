@@ -102,10 +102,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     listings.foreach(hold)
     clock.context(corpus.seen(listings))
     // Families decided under other rules stand for nothing: every one is re-resolved.
-    val stored  = if (store.rulesVersion.contains(rules)) store.families() else {
-      val all = store.families().map(_.id).toSet
-      store.replace(all, Nil); traces.replace(all, () => Nil); Nil
-    }
+    val (stored, outruled) =
+      if (store.rulesVersion.contains(rules)) (store.families(), Set.empty[String]) else (Nil, store.families().map(_.id).toSet)
     val claimed = stored.flatMap(_.family.listings).groupBy(identity).collect { case (key, claims) if claims.sizeIs > 1 => key }.toSet
     val (standing, fallen) = stored.partition { family =>
       family.family.listings.forall(key => isHeld(key) && !claimed(key)) &&
@@ -115,9 +113,17 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // A standing family's slice digests to what it stored — the check above just computed it — so it
     // is kept, not digested again (half a UK take-up's hashing when it was).
     standing.foreach(family => remember(family.family, family.digest))
-    store.replace(fallen.map(_.id).toSet, Nil)
-    traces.replace(fallen.map(_.id).toSet, () => Nil)
-    update(Set.empty, byKey.collect { case (key, k) if k.listing != null && k.family < 0 => key }.toSet, CorpusContext.Changed.None)
+    // Dropped only AFTER the re-resolve, and only where it decided no family under the same id: most
+    // re-resolved families decide what they did before, and their stored family and traces are then
+    // compared and kept rather than deleted and written again (all ~165k US traces, every boot after
+    // a rules change, when they were dropped first). In a `finally`, so a failed resolve still drops them.
+    val dropped = outruled ++ fallen.map(_.id)
+    try update(Set.empty, byKey.collect { case (key, k) if k.listing != null && k.family < 0 => key }.toSet, CorpusContext.Changed.None)
+    finally {
+      val gone = dropped -- families.valuesIterator.map(_.storeId)
+      store.replace(gone, Nil)
+      traces.replace(gone, () => Nil)
+    }
     ruled()
   }
 

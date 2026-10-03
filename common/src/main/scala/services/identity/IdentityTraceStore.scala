@@ -153,9 +153,8 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   //
   // Only what moved is written: a trace whose content digest matches the stored one is left alone, and a removed
   // family's documents are deleted only where no new trace names them. A rules change re-resolves every family on
-  // the next boot — and the rules are a digest of all of common, so most pushes are one — and rewrote all ~165k
-  // traces as a delete and an upsert each, 500-1,100 Mongo writes a second for minutes, for decisions that had
-  // not changed.
+  // the next boot, and rewrote all ~165k traces as a delete and an upsert each, 500-1,100 Mongo writes a second for
+  // minutes, for decisions that had not changed (`IncrementalResolver.restore` drops only what it did not decide again).
   private def write(removed: Set[String], added: IterableOnce[ListingTrace]): Unit = {
     val before = if (removed.isEmpty) Set.empty[String] else
       Await.result(collection.find(Filters.in("family", removed.toSeq*)).projection(Projections.include("_id"))
@@ -222,12 +221,12 @@ object MongoIdentityTraceStore {
   /** A trace document's content digest, which a rewrite of an unchanged trace is skipped by. */
   val DigestField = "digest"
 
-  /** `doc` with its content digest: 64 bits from its canonical JSON, two MurmurHash3 seeds. */
-  private[identity] def digested(doc: BsonDocument): BsonDocument = {
+  /** `doc` with its content digest under `field`: 64 bits from its canonical JSON, two MurmurHash3 seeds. */
+  private[identity] def digested(doc: BsonDocument, field: String = DigestField): BsonDocument = {
     val json = doc.toJson
     val high = scala.util.hashing.MurmurHash3.stringHash(json, 0x2f1d7a3b).toLong
     val low  = scala.util.hashing.MurmurHash3.stringHash(json, 0x6c8e9cf5).toLong & 0xffffffffL
-    doc.clone().append(DigestField, BsonInt64((high << 32) | low))
+    doc.clone().append(field, BsonInt64((high << 32) | low))
   }
   /** How many traces one bulk write carries. */
   val WriteBatch = 1000

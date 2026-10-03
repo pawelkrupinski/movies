@@ -55,4 +55,20 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
     commands().count(_ == "update") shouldBe 1
     store.families() should have size 200
   }
+
+  // A rules change re-resolves every family and nearly all decide what they did before: written
+  // whole, a take-up rewrote every family document (~101 MB of oplog per rollout) for no change.
+  it should "rewrite only the families whose content moved" in withStore("model-store-moved") { (store, commands) =>
+    val families = (1 to 200).map(family)
+    store.replace(Set.empty, families)
+    store.written shouldBe 200L
+    val moved = families.map(f => if (f.family.films.exists(_ <= 3)) f.copy(digest = f.digest + 1000) else f)
+    store.replace(Set.empty, moved)
+    store.written shouldBe 203L
+    store.families().sortBy(_.id) shouldBe moved.sortBy(_.id)
+    val updatesBefore = commands().count(_ == "update")
+    store.replace(Set.empty, moved)
+    commands().count(_ == "update") shouldBe updatesBefore
+    store.written shouldBe 203L
+  }
 }
