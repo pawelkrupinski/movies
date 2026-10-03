@@ -49,7 +49,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       rules.filter(_.startsWith("accept:")) shouldBe empty
       rules should contain ("refused:dated-title:no-film-of-its-title-from-the-year-its-title-dates")
       rules should contain ("refused:exact-top-hit:no-evidence-class-measured-for-it")
-      rules.count(_.startsWith("refused:")) shouldBe 11
+      rules.count(_.startsWith("refused:")) shouldBe 13
     }
     // and what stopped it, about which candidate: the rival it lost to, the two films its title names, the facts it lacks
     val refusals = r.decisionOf(bare.key).trace.nodes(bare.key).refusals.map(refusal => refusal.rule -> refusal).toMap

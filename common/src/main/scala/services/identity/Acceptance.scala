@@ -32,6 +32,13 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** No candidate of `found` may stand: the first that does refuses `about`, named in the detail. */
   private def noneOf(found: Option[Scored], refusal: => String, about: Scored): Either[Refused, Unit] =
     found.fold[Either[Refused, Unit]](Right(()))(other => Left(Refused(refusal, Some(about.candidate.tmdbId), Acceptance.named(other))))
+  /** `found` without its HOLLOW records — no year, no running time — when it holds a full one beside them: TMDB's empty
+   *  duplicate of a film ("Solo", 1450958, beside Sophie Dupuis's 2023 "Solo") is no second film of its director. */
+  private def withoutHollow(found: Seq[Scored]): Seq[Scored] = {
+    def hollow(scored: Scored) = scored.candidate.film.year.isEmpty && scored.candidate.film.runtime.forall(_ <= 0)
+    val full = found.filterNot(hollow)
+    if (full.nonEmpty && full.size < found.size) full else found
+  }
   private def one(found: Seq[Scored], none: => String, many: => String, noneDetail: => String = ""): Either[Refused, Scored] = found match {
     case Seq(only) => Right(only)
     case Seq()     => Left(Refused(none, None, noneDetail))
@@ -62,7 +69,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private val aloneRules = Seq(Rule("sole-work", soleWorkWhy), Rule("favoured-calibrated", favouredCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("segment-top-hit", segmentTopHitWhy), Rule("sole-result", soleResultWhy), Rule("imdb-suggested", imdbSuggestedWhy),
     Rule("directors-work", directorsWorkWhy), Rule("directors-title", directorsTitleWhy), Rule("dated-title", datedTitleWhy),
-    Rule("house-production", houseProductionWhy), Rule("model-proposed", modelProposedWhy))
+    Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy),
+    Rule("model-proposed", modelProposedWhy))
 
   /** What [[alone]] takes, with the rule that took it. */
   private def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
@@ -252,8 +260,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  (BALLET LIVE)" ×7 is TMDB's "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE", the one film its search returns, denied
    *  at 2.4% for its original title "Manon" reading as a fragment of that. */
   private def cutOnly(scored: Scored): Boolean =
-    !scored.deniedByPin && !scored.suggestedOnly && scored.denial.exists(_.contains(ProbabilityCut)) && wordsOfIts(scored)
-  private val ProbabilityCut = "probability below the cannot-link cut"
+    !scored.suggestedOnly && scored.deniedByCutOnly && wordsOfIts(scored)
   private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
@@ -421,7 +428,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       scored.number("runtime.delta").exists(_ <= BilledRuntime)
     eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored)) match {
-      case found => one(found, "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
+      case found => one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
     }
   }
 
@@ -432,8 +439,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  records are no answer. */
   def directorsTitle(ranked: Seq[Scored]): Option[Accepted] = directorsTitleWhy(ranked).toOption
   private def directorsTitleWhy(ranked: Seq[Scored]): Verdict =
-    one(eligibleOf(ranked).filter(candidate => candidate.category("title").contains("exact") &&
-      IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate)),
+    one(withoutHollow(eligibleOf(ranked).filter(candidate => candidate.category("title").contains("exact") &&
+      IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate))),
       "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(f => f -> f.probability)
 
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
@@ -489,6 +496,46 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                  (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
                    (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
     } yield house -> house.probability
+  }
+
+  /** A stage broadcast billed with no season but with its year: the one eligible SEASON record naming the same stage
+   *  work ([[StageWorks]], in any language), whose banner meets the listing's ([[IdentityMeasures.bannersMeetOf]]),
+   *  from the very year the venue publishes, that no running time contradicts. DE "Royal Ballet & Opera im Kino: Manon"
+   *  [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon" (October 2026), not the Met's 2026/27
+   *  Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is. */
+  def stageProduction(ranked: Seq[Scored]): Option[Accepted] = stageProductionWhy(ranked).toOption
+  private def stageProductionWhy(ranked: Seq[Scored]): Verdict =
+    for {
+      any    <- ranked.headOption.toRight(Refused("no candidate"))
+      _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
+      year   <- any.listing.year.toRight(Refused("the listing publishes no year"))
+      works   = IdentityMeasures.stageWorks(any.listing)
+      _      <- need(works.nonEmpty, "the title names no stage work")
+      record <- one(eligibleOf(ranked).filter(scored => IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
+                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.bannersMeetOf(any.listing, scored.candidate.film) &&
+                  scored.candidate.film.year.contains(year) && !contradicted(scored)),
+                  "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
+    } yield record -> record.probability
+
+  /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
+   *  the listing names no season: UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening
+   *  May–June 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet" — the cut alone denied it, the season marker
+   *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are the
+   *  season's to tell apart, not this rule's; a fact contradicting it, or another director, refuses it. */
+  def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecordWhy(ranked).toOption
+  private def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
+    def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
+    for {
+      any    <- ranked.headOption.toRight(Refused("no candidate"))
+      _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
+      own     = (Seq(any.listing.title) ++ any.listing.rawTitle).map(plain).toSet
+      record <- one(ranked.filter(scored => (eligibleOf(ranked).contains(scored) || scored.deniedByCutOnly) &&
+                  IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
+                  scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t))))),
+                  "no season record carries its title", "two seasons' records carry its title")
+      _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
+      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
+    } yield record -> record.probability
   }
 
   /** The one eligible candidate a language model's PROPOSAL for the listing names ([[Proposal]]) — its own or

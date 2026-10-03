@@ -113,8 +113,24 @@ object IdentityMeasures {
    *  season's production of one work, however each spells the house. Segments are the listing's
    *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
    *  the banner, never the work. */
-  def namesSeasonProduction(l: Listing, f: Film): Boolean =
-    seasonWorks(l).exists(seasonWorks(f))
+  def namesSeasonProduction(l: Listing, f: Film): Boolean = {
+    val shared = seasonWorks(l) intersect seasonWorks(f)
+    shared.exists { case (work, _) => !work.startsWith("work:") } || (shared.nonEmpty && bannersMeet(l.title +: l.rawTitle.toSeq, f.titles))
+  }
+
+  /** A season production met only through a work named in two languages ([[StageWorks]]) is the record's only when
+   *  the two titles' banners — the pieces naming no work — share a word: PL "Balet z Opery Paryskiej 2026-2027:
+   *  Jezioro łabędzie" ×16 is the Paris Opera Ballet's Swan Lake, which TMDB has no record of, not "Royal Ballet & Opera
+   *  2026/27: Swan Lake"; "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów" shares "royal", "ballet",
+   *  "opera" with its record. Words of four letters or more, so "the" or "and" meets nothing. */
+  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
+  private val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
+  private def bannersMeet(listingTitles: Seq[String], filmTitles: Seq[String]): Boolean = {
+    def bannerWords(titles: Seq[String]) = titles.flatMap(t => PieceBreak.split(withoutYears(t)).toSeq)
+      .filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
+      .flatMap(TitleContainment.tokens).filter(word => word.length >= 4 && !word.forall(_.isDigit)).toSet
+    (bannerWords(listingTitles) intersect bannerWords(filmTitles)).nonEmpty
+  }
 
   /** The (work, season) pairs a listing's title names: each whole segment outside its season, keyed,
    *  beside the season. [[namesSeasonProduction]] is exactly two sides' pairs meeting, so a record
@@ -128,9 +144,13 @@ object IdentityMeasures {
 
   /** Each segment's key — and each stage work it names, in whatever language ([[StageWorks]]): PL's "Royal Ballet and
    *  Opera Sezon Kinowy 2026-27: Dziadek do orzechów" is the season's "Royal Ballet & Opera 2026/27: The Nutcracker". */
+  private val SentenceStop = java.util.regex.Pattern.compile("""\.\s+""")
   private def seasonlessWorks(titles: Seq[String]): Set[String] = {
-    val keys = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
-    keys ++ keys.flatMap(StageWorks.resolver.named).map(work => s"work:$work")
+    val seasonless = titles.filter(t => seasonYear(Seq(t)).isEmpty)
+    val keys = seasonless.map(key).filter(_.nonEmpty).toSet
+    // a work's name may run on into a translated subtitle after a full stop: "Cosi fan tutte. Tak czynią wszystkie"
+    val named = keys ++ seasonless.map(t => key(SentenceStop.split(t, 2).head)).filter(_.nonEmpty)
+    keys ++ named.flatMap(StageWorks.resolver.named).map(work => s"work:$work")
   }
 
   /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
@@ -1023,7 +1043,7 @@ object IdentityMeasures {
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
   def searchQueries(l: Listing): Seq[String] = {
-    val asked = titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ billedWorks(l) ++ uncredited(l)
+    val asked = titleShapes(l) ++ l.originalTitle ++ seasonProductionQueries(l) ++ stageWorkQueries(l) ++ billedWorks(l) ++ uncredited(l)
     (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
   }
 
@@ -1073,6 +1093,23 @@ object IdentityMeasures {
    *  is neither of its works, which is why its family keys leave them out. */
   private def billedWorks(l: Listing): Seq[String] =
     (Seq(l.title) ++ l.rawTitle).map(BillJoin.split(_).toSeq.map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
+
+  /** The stage works ([[StageWorks]]) a listing's title pieces name, in whatever language. */
+  def stageWorks(l: Listing): Set[String] =
+    (Seq(l.title) ++ l.rawTitle).flatMap(t => PieceBreak.split(withoutYears(t)).toSeq :+ t).map(key).filter(_.nonEmpty)
+      .flatMap(StageWorks.resolver.named).toSet
+  /** The stage works a film's own titles name, as [[stageWorks]] reads a listing's. */
+  def stageWorks(f: Film): Set[String] =
+    f.titles.flatMap(t => PieceBreak.split(withoutYears(t)).toSeq).map(key).filter(_.nonEmpty).flatMap(StageWorks.resolver.named).toSet
+  /** A stage broadcast a venue bills with no season but with its year — DE "Royal Ballet & Opera im Kino: Manon"
+   *  [2026] — searched as its work's name and that year ("Manon 2026"): the house's season record carries both, while
+   *  the work alone ranks it below every namesake film. */
+  private def stageWorkQueries(l: Listing): Seq[String] =
+    if (l.seasonYear.isDefined) Nil
+    else l.year.toSeq.flatMap(year => stageWorks(l).toSeq.sorted.flatMap(StageWorks.resolver.searchName).map(name => s"$name $year"))
+
+  /** Do the two titles' banners — their pieces naming no work — share a word ([[bannersMeet]])? */
+  def bannersMeetOf(l: Listing, f: Film): Boolean = bannersMeet(l.title +: l.rawTitle.toSeq, f.titles)
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
    *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,

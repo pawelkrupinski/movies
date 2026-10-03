@@ -1,3 +1,5 @@
-# Names venues bill a stage work by that Wikidata lacks: <wikidata id>\t<name>|<name>… — hand-kept, read beside identity-stage-works.tsv
+# Names venues bill a stage work by that Wikidata lacks: <wikidata id>\t<name>|<name>…, or <wikidata id>\t<English name>\t<name>|<name>…
+# for a work the generated table leaves out (under five sitelinks) — hand-kept, read beside identity-stage-works.tsv
 Q5064	Zaczarowany flet
 Q460319	Dziewczyna z Dzikiego Zachodu
+Q4725679	Alice's Adventures in Wonderland	Alicja w Krainie Czarów|Alice's Adventures in Wonderland

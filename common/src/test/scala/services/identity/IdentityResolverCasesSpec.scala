@@ -390,6 +390,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     pl.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702790)))
   }
 
+  it should "take its house's season record of its work from its year, when the title names no season" in {
+    // DE "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 and "MET Opera Live im Kino: Manon" [2027]
+    // {Laurent Pelly} ×4: two houses' 2026/27 Manon, told apart by the year each venue publishes; neither title names
+    // the season, and "Manon" alone ranks a dozen namesake films first
+    val films = Seq(F(1702757, "Royal Ballet & Opera 2026/27: Manon", 2026, "", 0, 2), F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 2),
+      F(132332, "Manon", 1949, "Henri-Georges Clouzot", 100, 9), F(370009, "Manon", 1986, "Someone", 135, 4))
+    val rbo = Seq(Multikino, Helios).map(listing(_, "Royal Ballet & Opera im Kino: Manon", Some(2026), Some("Kenneth MacMillan"), Some(190)))
+    val met = listing(KinoApollo, "MET Opera Live im Kino: Manon", Some(2027), Some("Laurent Pelly"), Some(264))
+    val r = resolve(rbo :+ met, films)
+    rbo.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702757)))
+    withClue(r.decisionOf(met.key).render)(r.decisionOf(met.key).film shouldBe Some(1703631))
+  }
+
+  it should "take the one season record whose title is its own but for the season, and not choose between two seasons" in {
+    // UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} [170′] ×127 screens May–June 2027: TMDB's
+    // "Royal Ballet & Opera 2026/27: Romeo and Juliet", which the cut alone denied for its season marker
+    val films = Seq(F(1702789, "Royal Ballet & Opera 2026/27: Romeo and Juliet", 2027, "", 0, 1),
+      F(6003, "Romeo and Juliet", 1968, "Franco Zeffirelli", 138, 30))
+    val ls = Seq(Multikino, Helios).map(listing(_, "Royal Ballet and Opera: Romeo and Juliet", None, Some("Kenneth MacMillan"), Some(170)))
+    val r = resolve(ls, films)
+    ls.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702789)))
+  }
+
   it should "stay apart from another season's broadcast of the same work, and not take its record" in {
     // The Royal Ballet's 2024/25 "The Nutcracker" has a record; its 2026/27 one does not yet. A
     // bare "The Nutcracker" is a segment of both seasons' titles.

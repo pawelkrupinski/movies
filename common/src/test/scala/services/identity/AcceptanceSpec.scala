@@ -32,6 +32,28 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     (700002, Film("The Misanthrope", year = Some(2011), runtime = Some(125)), Some(4)))
   private val national = (1693710, Film("National Theatre Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
 
+  "directors-title" should "not count TMDB's hollow duplicate of a film as its director's second film" in {
+    // DE Anker-Filmtheater's "Solo" [2024] {Sophie Dupuis}: her 2023 "Solo" (102′), and 1450958, an empty "Solo" record
+    // of hers with no date or running time
+    val solo  = Listing("Solo", year = Some(2024), runtime = Some(102), directors = Seq("Sophie Dupuis"))
+    val full  = (952200, Film("Solo", year = Some(2023), runtime = Some(102), directors = Some(Seq("Sophie Dupuis"))), Some(5))
+    val empty = (1450958, Film("Solo", directors = Some(Seq("Sophie Dupuis"))), None)
+    acceptance.directorsTitle(ranked(solo, full, empty)).map(_._1.candidate.tmdbId) shouldBe Some(952200)
+    // two full records of hers stay two films
+    val remake = (999, Film("Solo", year = Some(2025), runtime = Some(95), directors = Some(Seq("Sophie Dupuis"))), None)
+    acceptance.directorsTitle(ranked(solo, full, remake)) shouldBe None
+  }
+
+  "season-record" should "take the one season record carrying the listing's title, and leave two seasons to the season" in {
+    // UK "Royal Ballet and Opera: Romeo and Juliet" ×127 is the RBO's 2026/27 record; "…: Tosca" has 2025/26 and 2026/27
+    val rj = Listing("Royal Ballet and Opera: Romeo and Juliet", runtime = Some(170))
+    acceptance.seasonRecord(ranked(rj, (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(1))))
+      .map(_._1.candidate.tmdbId) shouldBe Some(1702789)
+    val tosca = Listing("Royal Ballet and Opera: Tosca", runtime = Some(195))
+    acceptance.seasonRecord(ranked(tosca, (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025)), None),
+      (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), None))) shouldBe None
+  }
+
   "directors-work" should "leave two seasons of one staging, both billing the work, to the season" in {
     // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123 screens in May 2027 — the 2026/27 record, which
     // credits nobody yet; the 2025/26 one is his with the running time. Billed alike, the rule takes neither.

@@ -41,6 +41,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
+    // one work, another house: PL "Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie" ×16 is the Paris Opera Ballet's
+    // Swan Lake, which TMDB has no record of — not the Royal Ballet's (recording 37116030016 took it)
+    val rboSwanLake = Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2026))
+    IdentityMeasures.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
+    IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
+      Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe true
+    // Wheeldon's Alice, under five sitelinks, from the extra; a work's name running on into a translated subtitle
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów"),
+      Film("Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", year = Some(2027))) shouldBe true
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
+      Film("Royal Ballet & Opera 2026/27: Così fan tutte", year = Some(2027))) shouldBe true
     // a venue's spelling Wikidata lacks, from the hand-kept extra: "Zaczarowany flet" is The Magic Flute
     IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
       Film("The Metropolitan Opera 2026/27: The Magic Flute", year = Some(2026))) shouldBe true
