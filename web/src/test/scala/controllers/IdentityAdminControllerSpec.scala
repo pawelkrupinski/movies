@@ -41,7 +41,9 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
         Seq("director=same_person +4.22", "title=exact +1.50"), Some(23220)),
       ListingTrace(camino, "f2", None, "Vetoed", Seq("veto:learned-listing-film-probability-below-the-cannot-link-cut"), Some("'Camino dla opornych - KNT'"),
         Seq("originalTitle=fragment -4.53"), Some(1404604)),
-      ListingTrace(quill, "f3", None, "BelowThreshold", Seq(quillRefused.ruleId), None, Nil, Some(49258), Seq(quillRefused))))
+      ListingTrace(quill, "f3", None, "BelowThreshold", Seq(quillRefused.ruleId), None, Nil, Some(49258), Seq(quillRefused),
+        Seq("title \"Ein Hund namens Quill\": 0 film(s)"), Seq("49258 26.6% rank - 'Quill - Ein Freund für´s Leben' (2004)"),
+        Some("rule:below-the-rating-cut"))))
     val c = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository,
       new Pins(new InMemoryPinStore, Now), Shadow, store)
     val byRule = contentAsString(c.traces(Some("accept:favoured-calibrated"), None, None).apply(admin))
@@ -57,7 +59,14 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     refused should include ("refused:favoured-calibrated:below-the-rating-cut")
     refused should include ("tmdb 49258")
     refused should include ("26.6% &lt; 40.0%")
+    // what it searched and weighed, and the blocker that stopped it, linked to every listing it stopped
+    refused should include ("title &quot;Ein Hund namens Quill&quot;: 0 film(s)")
+    refused should include ("Quill - Ein Freund für´s Leben")
+    contentAsString(c.traces(None, None, None, Some("rule:below-the-rating-cut")).apply(admin)) should include ("Ein Hund namens Quill")
     val counts = contentAsString(c.traces(None, None, None).apply(admin))
+    // asked nothing: the next wins, the blocker stopping most listings first
+    counts should include ("Next wins")
+    counts should include ("?blocker=rule%3Abelow-the-rating-cut")
     counts should include ("accept:favoured-calibrated")
     counts should include ("join:same-film")
     // admins only

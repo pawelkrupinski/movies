@@ -242,7 +242,7 @@ POST    /admin/config/reset              controllers.EnvConfigController.reset()
 # docs/design/identity-resolver.md). Same login + ADMIN_ALLOWLIST gate; nocsrf
 # because the page POSTs JSON via fetch (the AdminAction gate is the auth check).
 GET     /admin/identity                  controllers.IdentityAdminController.index()
-GET     /admin/identity/traces           controllers.IdentityAdminController.traces(rule: Option[String] ?= None, film: Option[Int] ?= None, title: Option[String] ?= None)
+GET     /admin/identity/traces           controllers.IdentityAdminController.traces(rule: Option[String] ?= None, film: Option[Int] ?= None, title: Option[String] ?= None, blocker: Option[String] ?= None)
 + nocsrf
 POST    /admin/identity/pins             controllers.IdentityAdminController.createPin()
 + nocsrf

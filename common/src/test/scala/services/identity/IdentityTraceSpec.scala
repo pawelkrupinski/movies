@@ -61,10 +61,42 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       refusals("dated-title").detail shouldBe "the title dates no year"
       refusals("sole-work").detail should startWith ("first hit ")
     }
+    // what stopped it, what it searched and what it weighed
+    val node = r.decisionOf(bare.key).trace.nodes(bare.key)
+    if (r.decisionOf(bare.key).film.isEmpty) node.blocker shouldBe Some("rule:its-own-facts-do-not-favour-it-over-the-runner-up")
+    node.searched should contain ("title \"Tatarak\": 2 film(s)")
+    node.candidates.map(_.takeWhile(_ != ' ')).toSet shouldBe Set("1", "2")
     // a listing a rule took names no refusal
     val credited2 = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
     val taken = IdentityResolver.resolve(Seq(credited2), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
     taken.decisionOf(credited2.key).trace.rulesOf(credited2.key).filter(_.startsWith("refused:")) shouldBe empty
+  }
+
+  "a listing left with no film" should "say whether its searches found nothing, or every candidate was vetoed" in {
+    val nothing = listing(Rialto, "Zupełnie nieznany tytuł")
+    val none = IdentityResolver.resolve(Seq(nothing), new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(nothing.key)
+    none.film shouldBe None
+    none.trace.nodes(nothing.key).blocker shouldBe Some("search:found-nothing")
+    none.trace.nodes(nothing.key).candidates shouldBe empty
+    val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
+    val vetoed = IdentityResolver.resolve(Seq(wrongDirector), new FilmTable(lynch.take(1), normalizer), normalizer, IdentityCalibration.resolver)
+      .decisionOf(wrongDirector.key)
+    withClue(vetoed.render)(vetoed.trace.nodes(wrongDirector.key).blocker.getOrElse("") should startWith ("veto:"))
+    // and a listing a rule took names no blocker, only the runner-up it beat
+    val tatarak  = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
+    val wajdas   = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
+    val taken = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(wajdas.key)
+    taken.film shouldBe Some(1)
+    taken.trace.nodes(wajdas.key).blocker shouldBe None
+    taken.trace.nodes(wajdas.key).candidates.map(_.takeWhile(_ != ' ')) shouldBe Seq("2")
+  }
+
+  "the unresolved listings" should "rank by blocker, the one stopping most listings first" in {
+    def trace(n: Int, blocker: Option[String]) =
+      ListingTrace(ListingKey.Published(s"Venue $n", s"Film ${n % 3}", None, Nil), "f", None, "BelowThreshold", Nil, None, blocker = blocker)
+    BlockerCount.of(Seq(trace(1, Some("search:found-nothing")), trace(2, Some("veto:x")), trace(3, Some("search:found-nothing")),
+      trace(4, Some("search:found-nothing")), trace(5, None))) shouldBe Seq(
+      BlockerCount("search:found-nothing", 3, 2, Seq("Film 0", "Film 1")), BlockerCount("veto:x", 1, 1, Seq("Film 2")))
   }
 
   "a title" should "name the title rules it took and the formats peeled off it" in {

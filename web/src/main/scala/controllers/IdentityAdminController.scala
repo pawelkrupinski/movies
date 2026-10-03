@@ -29,8 +29,9 @@ class IdentityAdminController(cc: ControllerComponents, adminAction: AdminAction
 
   /** `/admin/identity/traces` — the identity trace both ways: a rule's listings (`rule`), a film's (`film`), a title's
    *  (`title`), each with its rules and weighed evidence; asked nothing, every rule's count. */
-  def traces(rule: Option[String], film: Option[Int], title: Option[String]): Action[AnyContent] = adminAction {
-    Ok(views.html.admin.identityTraces(tracesPage(traces, rule.map(_.trim).filter(_.nonEmpty), film, title.map(_.trim).filter(_.nonEmpty))))
+  def traces(rule: Option[String], film: Option[Int], title: Option[String], blocker: Option[String] = None): Action[AnyContent] = adminAction {
+    Ok(views.html.admin.identityTraces(tracesPage(traces, rule.map(_.trim).filter(_.nonEmpty), film, title.map(_.trim).filter(_.nonEmpty),
+      blocker.map(_.trim).filter(_.nonEmpty))))
   }
 
   def index: Action[AnyContent] = adminAction { Ok(views.html.admin.identity(page(shadow, pins.all()))) }
@@ -63,16 +64,21 @@ object IdentityAdminController {
   /** How many listings a trace query shows. */
   val TraceLimit = 500
 
-  /** What the trace page renders: the query, its listings — or, asked nothing, every rule's count. */
+  /** What the trace page renders: the query, its listings — or, asked nothing, what keeps listings unresolved (the
+   *  next wins, most listings first) and every rule's count. */
   final case class TracesPage(rule: Option[String], film: Option[Int], title: Option[String],
-                              traces: Seq[services.identity.ListingTrace], counts: Seq[(String, Int)], limit: Int = TraceLimit) {
-    def asked: Boolean = rule.isDefined || film.isDefined || title.isDefined
+                              traces: Seq[services.identity.ListingTrace], counts: Seq[(String, Int)], limit: Int = TraceLimit,
+                              blocker: Option[String] = None, blockers: Seq[services.identity.BlockerCount] = Nil) {
+    def asked: Boolean = rule.isDefined || film.isDefined || title.isDefined || blocker.isDefined
   }
 
-  def tracesPage(reads: services.identity.IdentityTraceReads, rule: Option[String], film: Option[Int], title: Option[String]): TracesPage = {
+  def tracesPage(reads: services.identity.IdentityTraceReads, rule: Option[String], film: Option[Int], title: Option[String],
+                 blocker: Option[String] = None): TracesPage = {
     val shown = rule.map(reads.byRule(_, TraceLimit)).orElse(film.map(reads.byFilm(_, TraceLimit)))
-      .orElse(title.map(reads.byTitle(_, TraceLimit))).getOrElse(Nil)
-    TracesPage(rule, film, title, shown, if (rule.isEmpty && film.isEmpty && title.isEmpty) reads.ruleCounts() else Nil)
+      .orElse(title.map(reads.byTitle(_, TraceLimit))).orElse(blocker.map(reads.byBlocker(_, TraceLimit))).getOrElse(Nil)
+    val asked = rule.isDefined || film.isDefined || title.isDefined || blocker.isDefined
+    TracesPage(rule, film, title, shown, if (asked) Nil else reads.ruleCounts(), blocker = blocker,
+      blockers = if (asked) Nil else reads.blockers())
   }
 
   /** What the page renders. */

@@ -27,7 +27,10 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       val store = new MongoIdentityTraceStore(db)
       store.replace(Set.empty, () => Seq(trace(1, "f1", Seq("accept:imdb-suggested", "title:xtra-pokaz-filmu")),
         trace(2, "f1", Seq("join:same-film")), trace(3, "f3", Seq("accept:imdb-suggested")),
-        trace(4, "f4", Seq(Refused.ruleId)).copy(film = None, refusals = Seq(Refused))))
+        trace(4, "f4", Seq(Refused.ruleId)).copy(film = None, refusals = Seq(Refused), blocker = Some("search:found-nothing"),
+          searched = Seq("title \"Film 4\": 0 film(s)")),
+        trace(5, "f4", Nil).copy(film = None, blocker = Some("search:found-nothing")),
+        trace(6, "f4", Nil).copy(film = None, blocker = Some("veto:x"), candidates = Seq("9 2.4% rank 1 DENIED (x) 'Nine'"))))
       store.flush()
       val c = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), 30.seconds).map(_.toBsonDocument.getString("_id").getValue).toSet
@@ -51,6 +54,13 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       reads.byRule("accept:imdb-suggested", 10).find(_.listing == key(1)).map(_.evidence) shouldBe Some(Seq("director=same_person +4.22", "title=exact +1.50"))
       // why a listing no rule took was refused, by each rule: the condition, the candidate weighed, what it said
       reads.byRule(Refused.ruleId, 10).map(_.refusals) shouldBe Seq(Seq(Refused))
+      // what keeps listings unresolved, ranked, through the sparse blocker index — and each blocker's listings
+      reads.blockers() shouldBe Seq(BlockerCount("search:found-nothing", 2, 2, Seq("Film 4", "Film 5")), BlockerCount("veto:x", 1, 1, Seq("Film 6")))
+      reads.byBlocker("veto:x", 10).map(_.candidates) shouldBe Seq(Seq("9 2.4% rank 1 DENIED (x) 'Nine'"))
+      reads.byBlocker("search:found-nothing", 10).flatMap(_.searched) shouldBe Seq("title \"Film 4\": 0 film(s)")
+      withClue("blocker: ")(Await.result(c.find(Filters.equal("blocker", "veto:x")).explain[Document]().toFuture(), 30.seconds).toJson() should include ("IXSCAN"))
+      // a resolved listing carries no blocker field at all, so the sparse index holds only the unresolved
+      Await.result(c.countDocuments(Filters.exists("blocker")).toFuture(), 30.seconds) shouldBe 3L
       reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1, Refused.ruleId -> 1)
       // re-resolving family f1 replaces its traces: listing 2 left it
       store.replace(Set("f1"), () => Seq(trace(1, "f1", Seq("accept:sole-result"))))

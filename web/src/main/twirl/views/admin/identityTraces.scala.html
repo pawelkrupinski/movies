@@ -2,6 +2,7 @@
 @(page: TracesPage)
 
 @ruleLink(rule: String) = { <a class="rule" href="?rule=@helper.urlEncode(rule)">@rule</a> }
+@blockerLink(blocker: String) = { <a class="blocker" href="?blocker=@helper.urlEncode(blocker)">@blocker</a> }
 
 <!DOCTYPE html>
 <html lang="en">
@@ -41,13 +42,14 @@
     <input name="title" placeholder="listing title contains…" value="@page.title.getOrElse("")" size="40">
     <input name="film" placeholder="tmdb id" value="@page.film.fold("")(_.toString)" size="10">
     <input name="rule" placeholder="rule id (accept:imdb-suggested)" value="@page.rule.getOrElse("")" size="36">
+    <input name="blocker" placeholder="blocker (search:found-nothing)" value="@page.blocker.getOrElse("")" size="30">
     <button type="submit">Show</button>
   </form>
 
   @if(page.asked) {
     <h2>@page.traces.size listing(s)@if(page.traces.size >= page.limit) { (first @page.limit)}</h2>
     <table id="traces">
-      <thead><tr><th>Listing</th><th>Film</th><th>Basis</th><th>Rules</th><th>Evidence</th></tr></thead>
+      <thead><tr><th>Listing</th><th>Film</th><th>Basis</th><th>Rules</th><th>Evidence</th><th>Searched and weighed</th></tr></thead>
       <tbody>
       @for(t <- page.traces) {
         <tr class="trace">
@@ -57,12 +59,30 @@
           <td>@for(rule <- t.rules if t.refusals.isEmpty || !rule.startsWith("refused:")) { @ruleLink(rule) }
             @for(r <- t.refusals) { <div class="refusal">@ruleLink(r.ruleId)@r.film.map { id => <a href="?film=@id">tmdb @id</a> }@if(r.detail.nonEmpty) { <span class="muted">— @r.detail</span> }</div> }</td>
           <td>@t.weighedFilm.map { id => <div class="muted">against tmdb @id</div> }@for(e <- t.evidence) { <div>@e</div> }</td>
+          <td>@t.blocker.map { b => <div class="veto">blocked: @blockerLink(b)</div> }
+            @for(q <- t.searched) { <div class="muted">@q</div> }
+            @for(c <- t.candidates) { <div>@c</div> }</td>
         </tr>
       }
       </tbody>
     </table>
     @if(page.traces.isEmpty) { <div class="empty">None.</div> }
   } else {
+    <h2>Next wins — what keeps listings unresolved</h2>
+    <div class="sub">
+      Every listing left with no film, by what stopped it: <b>search:found-nothing</b> — no search of its found a
+      candidate (a search-form gap); <b>search:unanswered</b> — a lookup went unanswered; <b>veto:…</b> — candidates
+      were found and every one was vetoed; <b>rule:…</b> — a candidate stood and no rule took it, by why the
+      calibrated rule refused it; <b>pooled:no-film</b> — its cluster took no film. Most listings first: the top row
+      is the next investigation. Click a blocker for its listings, their searches and candidates.
+    </div>
+    <table id="blockers">
+      <thead><tr><th>Blocker</th><th>Listings</th><th>Titles</th><th>e.g.</th></tr></thead>
+      <tbody>
+      @for(b <- page.blockers) { <tr><td>@blockerLink(b.blocker)</td><td>@b.listings</td><td>@b.titles</td><td class="muted">@b.examples.mkString(" · ")</td></tr> }
+      </tbody>
+    </table>
+    @if(page.blockers.isEmpty) { <div class="empty">Nothing unresolved, or no traces yet.</div> }
     <h2>Rules</h2>
     <table id="rules">
       <thead><tr><th>Rule</th><th>Listings</th></tr></thead>

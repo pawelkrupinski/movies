@@ -120,7 +120,8 @@ object DecisionTrace {
    *  none) — the same map its scoring holds, rendered into weights only when a trace is written. */
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
                         measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
-                        refusals: Seq[Refusal] = Nil)
+                        refusals: Seq[Refusal] = Nil, searched: Seq[String] = Nil, candidates: Seq[String] = Nil,
+                        blocker: Option[String] = None)
   /** Why `rule` refused a node no rule took alone: the condition that stopped it (`why`, a fixed phrase), the
    *  candidate it was weighing then, and what that candidate's evidence said ("p 26.6% < 40.0%", the facts against
    *  it, the rival it lost to). `ruleId` is the indexed `refused:<rule>:<why>`. */
@@ -129,6 +130,27 @@ object DecisionTrace {
   }
   final case class Veto(reason: String, by: Option[String])
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
+
+  /** A query as a trace shows it: `title "Manon (Ballet Live)"`, `director Polly Findlay`, `imdb "Manon"`. */
+  def renderQuery(query: CandidateQuery): String = query match {
+    case CandidateQuery.Title(text)    => s"title \"$text\""
+    case CandidateQuery.Director(name) => s"director $name"
+    case CandidateQuery.Imdb(title)    => s"imdb \"$title\""
+  }
+  /** A scored candidate as a trace shows it: `471328 2.4% rank 1 DENIED (…) 'BALLET LIVE. MANON. ROYAL ÓPERA HOUSE'`. */
+  private[identity] def renderCandidate(scored: Scored): String =
+    s"${scored.candidate.tmdbId} ${ResolverDecision.percent(scored.probability)} rank ${scored.rank.fold("-")(_.toString)}" +
+      s"${scored.denial.fold("")(why => s" DENIED ($why)")} '${scored.candidate.film.title}'${scored.candidate.film.year.fold("")(year => s" ($year)")}"
+
+  /** What stopped a node no rule took alone, as one id the next investigation can be ranked by: its searches found
+   *  no candidate (`search:found-nothing`, or `search:unanswered` when a lookup went unanswered), every candidate
+   *  was vetoed (`veto:<the best one's veto>`), or one stood and no rule took it (`rule:<why the calibrated rule
+   *  refused it>` — below the cut, a runner-up its facts do not beat, a closer record). */
+  private[identity] def blockerOf(own: Seq[Scored], unanswered: Boolean, refusals: Seq[Refusal]): String =
+    if (own.isEmpty) if (unanswered) "search:unanswered" else "search:found-nothing"
+    else if (own.forall(scored => scored.denied || scored.suggestedOnly))
+      s"veto:${id(own.flatMap(_.denial).headOption.getOrElse("imdb-suggested only"))}"
+    else refusals.find(_.rule == "favoured-calibrated").orElse(refusals.headOption).fold("rule:none")(refusal => s"rule:${id(refusal.why)}")
   /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */
   def id(reason: String): String = reason.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "-").stripPrefix("-").stripSuffix("-")
 }

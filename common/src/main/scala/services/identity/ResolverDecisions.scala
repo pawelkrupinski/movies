@@ -67,8 +67,15 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       // Computed here, not when the trace is written: a thunk would keep `own` — every scored candidate of the
       // node — alive until the trace writer got to it, and a restore hands the whole corpus over at once.
       val refusals = if (accepted.isDefined) Nil else acceptance.refusals(own)
+      // What it searched and what it weighed: for a node no rule took, each query with what it found and its five
+      // best candidates — enough to tell a search that found nothing from a veto from a rule that would not take it;
+      // for one a rule took, the runner-up it beat. Strings, like the refusals, so nothing scored is kept.
+      val searched = if (accepted.isDefined) Nil else queriesOf(node.id).map(query => s"${DecisionTrace.renderQuery(query)}: " +
+        answers.get(query).flatMap(_.toOption).fold("unanswered")(hits => s"${hits.size} film(s)"))
+      val shown    = if (accepted.isDefined) own.filterNot(scored => weighed.exists(_ eq scored)).take(1) else own.take(5)
+      val blocker  = Option.when(accepted.isEmpty)(DecisionTrace.blockerOf(own, searched.exists(_.endsWith(": unanswered")), refusals))
       val traced   = DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, IdentityMeasures.Measure])(_.measures),
-        weighed.map(_.candidate.tmdbId), refusals)
+        weighed.map(_.candidate.tmdbId), refusals, searched, shown.map(DecisionTrace.renderCandidate), blocker)
       node.listings.map(_.key -> traced)
     }.toMap
     val pooled = Option.when(basis == ResolverDecision.Basis.PooledMatch)(acceptance.pooledNamed(scored).collect {
