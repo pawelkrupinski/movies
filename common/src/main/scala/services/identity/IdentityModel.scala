@@ -121,21 +121,40 @@ object Listing {
 final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime: Option[Int], originalTitle: Option[String],
                              countries: Seq[String] = Nil)
 
+/** What a language model, asked about a listing no rule took, says it is (`IdentityLookups.proposal`): its
+ *  `category` — "film", "compilation" (a package of shorts), "event" (no film: a concert, a play, a workshop),
+ *  "stage" (an opera, ballet or theatre broadcast) or "unclear" — and for a film its original title, year and
+ *  directors. A PROPOSAL, never a fact: it adds one title search, and the `model-proposed` rule takes a film only
+ *  when that search finds its exact title in its year and nothing the venue published contradicts it. */
+final case class Proposal(category: String, originalTitle: Option[String] = None, year: Option[Int] = None,
+                          directors: Seq[String] = Nil) {
+  def isFilm: Boolean = category == Proposal.Film
+  def notAFilm: Boolean = Proposal.NotAFilm(category)
+  def key: String = Seq(category, originalTitle.getOrElse(""), year.fold("")(_.toString), directors.mkString(",")).mkString("\u0001")
+}
+object Proposal {
+  val Film = "film"
+  /** What no film record is: a package of shorts, a live event. */
+  val NotAFilm: Set[String] = Set("compilation", "event")
+}
+
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
  *  question, and the resolver treats them as one node. */
 final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
                           runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil,
-                          decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None) {
+                          decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None,
+                          proposal: Option[Proposal] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
-      runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000")
+      runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
+      proposal.fold("")(p => "\u0000" + p.key)
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq)
+      decorations = decorations, searchTitles = searchTitle.toSeq, proposal = proposal)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -148,7 +167,8 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 }
 
 object Evidence {
-  def of(listing: Listing, detail: Option[DetailFacts], decorations: TitleDecorations = TitleDecorations.None): Evidence = Evidence(
+  def of(listing: Listing, detail: Option[DetailFacts], decorations: TitleDecorations = TitleDecorations.None,
+         proposal: Option[Proposal] = None): Evidence = Evidence(
     title         = listing.title,
     cleanTitle    = listing.cleanTitle,
     rawTitle      = listing.rawTitle,
@@ -159,7 +179,8 @@ object Evidence {
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
     decorations   = decorations,
-    searchTitle   = listing.searchTitle)
+    searchTitle   = listing.searchTitle,
+    proposal      = proposal)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
@@ -245,6 +266,8 @@ trait IdentityLookups {
   def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit = ()
   /** The venue's own detail page for the listing. */
   def detail(listing: Listing): Answer[Option[DetailFacts]]
+  /** What a language model proposed the listing is ([[Proposal]]) — none unless a source holds one. */
+  def proposal(listing: Listing): Option[Proposal] = None
   /** Every film a query names. */
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]
   /** A film's own record (`TmdbFilmRecord`). */

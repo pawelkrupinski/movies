@@ -28,7 +28,8 @@ object IdentityMeasures {
   final case class Listing(title: String, rawTitle: Option[String] = None, originalTitle: Option[String] = None,
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                            countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
-                           decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil) {
+                           decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
+                           proposal: Option[Proposal] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
