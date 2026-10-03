@@ -330,7 +330,9 @@ object MovieControllerService {
    *  panel offers its "IMAX only" checkbox only then -- in a city without an
    *  IMAX screen the filter could only ever blank the listing. */
   def hasImaxShowtime(schedules: Seq[FilmSchedule]): Boolean =
-    schedules.iterator.flatMap(_.showings).flatMap(_._2).flatMap(_.showtimes).exists(_.format.contains("IMAX"))
+    // Nested `exists` rather than an iterator chain, which allocated an iterator per
+    // list it crossed: 1.6 MB a New York render, for one boolean.
+    schedules.exists(_.showings.exists(_._2.exists(_.showtimes.exists(_.format.contains("IMAX")))))
 
   /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
   private def cinemaByName(name: String): Option[Cinema] =
