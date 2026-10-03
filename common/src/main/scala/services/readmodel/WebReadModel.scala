@@ -258,11 +258,17 @@ class WebReadModel(
    *  addressed here, a venue that moved pages is served from its new page the
    *  moment this tier starts, and never again from the one it left. A venue the
    *  roster no longer knows keeps the slug it was projected under. */
-  private def onCurrentPage(s: CityScreening): CityScreening =
-    Cinema.byDisplayName.get(s.cinema).flatMap(City.forCinema).map(_.slug) match {
+  private def onCurrentPage(s: CityScreening): CityScreening = {
+    val paged = Cinema.byDisplayName.get(s.cinema).flatMap(City.forCinema).map(_.slug) match {
       case Some(page) if page != s.city => s.copy(city = page)
       case _                            => s
     }
+    // Every row enters through here (boot load, backstop reload, change stream), so this
+    // is where its showtimes join the shared instants — see `LocalDateTimePool`.
+    instants.showtimes(paged)
+  }
+
+  private val instants = new services.movies.LocalDateTimePool
 
   private def applyScreeningUpsert(projected: CityScreening): Unit = {
     val s        = onCurrentPage(projected)

@@ -260,6 +260,25 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   // buckets still held the previous ~400 MB, which a 1 GiB heap cannot hold. Streamed a page
   // at a time and written over the live rows, the reload's transient is one page.
 
+  // ── One object per distinct showtime instant ─────────────────────────────────
+  //
+  // A decoded row carries a fresh LocalDateTime (and its LocalDate and LocalTime) per
+  // showtime, though a city's showtimes repeat a few thousand instants: New York's
+  // 50,289 hold 6,793 distinct ones. Shared, a showtime costs ~211 bytes instead of ~311,
+  // ~165 MB of web-us's resting heap.
+
+  "a row entering the model" should "share one date-time object with every equal showtime" in {
+    def at() = java.time.LocalDateTime.of(2026, 6, 10, 18, 30)     // a fresh object per call
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw").copy(showtimes = Seq(models.Showtime(at(), None))))
+    repository.upsertScreening(screening("s2", "belle|2021", "krakow").copy(showtimes = Seq(models.Showtime(at(), None))))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+    val Seq(a, b) = rm.allScreenings().map(_.showtimes.head.dateTime)
+    a should be theSameInstanceAs b
+  }
+
   "reload" should "stream the screenings rather than buffer the whole collection" in {
     val buffered = new java.util.concurrent.atomic.AtomicInteger(0)
     val repository = new InMemoryReadModelRepository {
