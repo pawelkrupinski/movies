@@ -32,6 +32,7 @@ Unit=(
 )
 It=(
     "web/IntegrationTest integration.HiddenFilmsConcurrentWritesIntegrationSpec"
+    "worker/IntegrationTest integration.TaskClaimsAcrossWorkersIntegrationSpec"
 )
 
 case "$scope" in
