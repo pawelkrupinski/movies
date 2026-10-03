@@ -54,9 +54,10 @@ last_green() {
         [ -z "$run" ] && continue
         [ "$run" = "${RUN_ID:-}" ] && continue
         # The FULL leg's job, green — a sample alone passing says nothing about the full leg.
-        if gh run view "$run" --json jobs \
-               --jq ".jobs[] | select(.name == \"$COUNTRY / convergence\" and .conclusion == \"success\") | .name" \
-               2>/dev/null | grep -q .; then
+        # A run that cannot be read is not a red one: stop rather than bisect from an older base.
+        green=$(gh run view "$run" --json jobs \
+               --jq ".jobs[] | select(.name == \"$COUNTRY / convergence\" and .conclusion == \"success\") | .name") || return 1
+        if [ -n "$green" ]; then
             echo "$sha"
             return 0
         fi

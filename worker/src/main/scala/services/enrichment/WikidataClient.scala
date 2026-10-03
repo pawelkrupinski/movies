@@ -4,11 +4,10 @@ import java.util.Locale
 
 import play.api.libs.json._
 import services.resolution.YearWindow
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.Try
 
 /**
  * Harvests film-database cross-reference ids from a Filmweb entity id via
@@ -32,23 +31,26 @@ import scala.util.Try
  *
  * Wikimedia's User-Agent policy requires a meaningful UA; `HttpFetch.get(url,
  * headers)` passes it through — test fakes safely ignore the extra headers.
+ *
+ * "No item" is an answer (`None`); a read that failed — a throttle, a 5xx, Wikimedia's
+ * 200 `{"error":…}` document (maxlag), a body that is not the API's JSON — throws, so the
+ * resolver ladders never read an outage as "Wikidata has no such film".
  */
 class WikidataClient(http: HttpFetch) {
   import WikidataClient._
 
   /** IMDb tt-id for the given Filmweb entity id, or None when Wikidata has no
-   *  cross-reference or a network call fails. Never throws. Thin accessor over
+   *  cross-reference; a failed read throws. Thin accessor over
    *  [[findIdsByFilmwebId]] for callers that only want the IMDb id. */
   def findImdbIdByFilmwebId(filmwebId: String): Option[String] =
     findIdsByFilmwebId(filmwebId).flatMap(_.imdbId)
 
   /** Every film-database id Wikidata records for the given Filmweb entity id, or
-   *  None when no item matches or the network call fails. Never throws. */
-  def findIdsByFilmwebId(filmwebId: String): Option[WikidataIds] =
-    Try {
-      val qids = searchByFilmwebId(filmwebId)
-      if (qids.isEmpty) None else harvest(qids)
-    }.toOption.flatten
+   *  None when no item matches; a failed read throws. */
+  def findIdsByFilmwebId(filmwebId: String): Option[WikidataIds] = {
+    val qids = searchByFilmwebId(filmwebId)
+    if (qids.isEmpty) None else harvest(qids)
+  }
 
   /** IMDb id for a film found by TITLE (not a Filmweb id) — the direct-title rung
    *  in [[ImdbIdResolver]] for a TMDB-less film with no Filmweb entity page. Two
@@ -56,32 +58,46 @@ class WikidataClient(http: HttpFetch) {
    *  the title text, then bind the first whose English label corroborates (exact,
    *  or contains + a P577 publication year within one of the queried year). A year
    *  gap of >1 vetoes even an exact label — two films share a title often enough
-   *  that a title-only lookup must not cross a year gap. Never throws. */
-  def findImdbIdByTitle(title: String, year: Option[Int]): Option[String] =
-    Try {
-      val qids = searchFilmsByTitle(title)
-      if (qids.isEmpty) None
-      else {
-        val body = http.get(entitiesUrl(qids, Seq("claims", "labels"), languages = Seq("en")), UserAgentHeader)
-        val entities = (Json.parse(body) \ "entities").asOpt[JsObject].map(_.value).getOrElse(Map.empty)
-        qids.iterator.flatMap { qid =>
-          entities.get(qid).flatMap { e =>
-            val label   = (e \ "labels" \ "en" \ "value").asOpt[String]
-            val imdbId  = firstClaim(e, PImdb).filter(_.startsWith("tt"))
-            val pubYear = firstPublicationYear(e)
-            imdbId.filter(_ => titleCorroborates(title, label, year, pubYear))
-          }
-        }.nextOption()
-      }
-    }.toOption.flatten
+   *  that a title-only lookup must not cross a year gap. A failed read throws. */
+  def findImdbIdByTitle(title: String, year: Option[Int]): Option[String] = {
+    val qids = searchFilmsByTitle(title)
+    if (qids.isEmpty) None
+    else {
+      val entities = entitiesOf(entitiesUrl(qids, Seq("claims", "labels"), languages = Seq("en")))
+      qids.iterator.flatMap { qid =>
+        entities.get(qid).flatMap { e =>
+          val label   = (e \ "labels" \ "en" \ "value").asOpt[String]
+          val imdbId  = firstClaim(e, PImdb).filter(_.startsWith("tt"))
+          val pubYear = firstPublicationYear(e)
+          imdbId.filter(_ => titleCorroborates(title, label, year, pubYear))
+        }
+      }.nextOption()
+    }
+  }
 
   private def searchFilmsByTitle(title: String): Seq[String] = {
-    val query   = URLEncoder.encode(s"$title haswbstatement:P31=$QFilm", StandardCharsets.UTF_8)
-    val url     = s"$ActionBase?action=query&list=search&srsearch=$query&srnamespace=0&srlimit=5&format=json"
-    val body    = http.get(url, UserAgentHeader)
-    (Json.parse(body) \ "query" \ "search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap(entry => (entry \ "title").asOpt[String]).filter(_.startsWith("Q"))
+    val query = URLEncoder.encode(s"$title haswbstatement:P31=$QFilm", StandardCharsets.UTF_8)
+    searchHits(s"$ActionBase?action=query&list=search&srsearch=$query&srnamespace=0&srlimit=5&format=json")
   }
+
+  /** The item ids a `list=search` query returned — empty when nothing matched. */
+  private def searchHits(url: String): Seq[String] =
+    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+      (js \ "query" \ "search").asOpt[JsArray] match {
+        case Some(hits) =>
+          ReadOutcome.Answered(hits.value.toSeq.flatMap(entry => (entry \ "title").asOpt[String]).filter(_.startsWith("Q")))
+        case None => ReadOutcome.unexpectedBody(url, "no query.search", js.toString)
+      }
+    }.required
+
+  /** The `entities` a `wbgetentities` call returned, by item id. */
+  private def entitiesOf(url: String): collection.Map[String, JsValue] =
+    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+      (js \ "entities").asOpt[JsObject] match {
+        case Some(entities) => ReadOutcome.Answered(entities.value)
+        case None           => ReadOutcome.unexpectedBody(url, "no entities", js.toString)
+      }
+    }.required
 
   private def firstClaim(entity: JsValue, property: String): Option[String] =
     (entity \ "claims" \ property).asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -108,16 +124,11 @@ class WikidataClient(http: HttpFetch) {
 
   private def searchByFilmwebId(filmwebId: String): Seq[String] = {
     val encoded = URLEncoder.encode(s"haswbstatement:P5032=$filmwebId", StandardCharsets.UTF_8)
-    val url     = s"$ActionBase?action=query&list=search&srsearch=$encoded&srnamespace=0&srlimit=3&format=json"
-    val body    = http.get(url, UserAgentHeader)
-    (Json.parse(body) \ "query" \ "search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap(entry => (entry \ "title").asOpt[String])
-      .filter(_.startsWith("Q"))
+    searchHits(s"$ActionBase?action=query&list=search&srsearch=$encoded&srnamespace=0&srlimit=3&format=json")
   }
 
   private def harvest(qids: Seq[String]): Option[WikidataIds] = {
-    val body     = http.get(entitiesUrl(qids, Seq("claims")), UserAgentHeader)
-    val entities = (Json.parse(body) \ "entities").asOpt[JsObject].map(_.value).getOrElse(Map.empty)
+    val entities = entitiesOf(entitiesUrl(qids, Seq("claims")))
     // Extract each id independently, each from the first Q-ID (by search rank)
     // that carries that property. Keeping the id-types independent preserves the
     // original imdbId behaviour ("first Q-ID with a P345 claim") while letting a

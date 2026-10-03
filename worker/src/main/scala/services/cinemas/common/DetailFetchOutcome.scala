@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.HttpStatusException
+import tools.{AbsentReason, ReadOutcome}
 
 import scala.util.{Failure, Success, Try}
 
@@ -36,14 +36,14 @@ object DetailFetchOutcome {
 
   /** Classify the result of a detail fetch. `None` and a thrown transient are
    *  both [[Failed]] — the every-tick retry every client has always had; only a
-   *  durable [[HttpStatusException]] that a client lets ESCAPE becomes [[Gone]].
+   *  failure [[ReadOutcome.classify]] calls absent (a typed 404/410) that a client
+   *  lets ESCAPE becomes [[Gone]].
    *  So a client that still swallows its status keeps today's behaviour exactly,
    *  and opting in is a one-line change at that client's fetch. */
   def of(attempt: Try[Option[FilmDetail]]): DetailFetchOutcome = attempt match {
     case Success(Some(detail)) => Fetched(detail)
     case Success(None)         => Failed
-    case Failure(failure: HttpStatusException) if HttpStatusException.isDurable(failure.code) => Gone(failure.code)
-    case Failure(_)            => Failed
+    case Failure(failure)      => notFoundCode(failure).fold[DetailFetchOutcome](Failed)(Gone(_))
   }
 
   /** Run a detail-page fetch, swallowing a TRANSIENT failure into `None` — the
@@ -52,7 +52,12 @@ object DetailFetchOutcome {
    *  classification; it replaces a bare `Try(...).toOption` around the fetch. */
   def transientToNone[A](fetch: => A): Option[A] = Try(fetch) match {
     case Success(value) => Some(value)
-    case Failure(failure: HttpStatusException) if HttpStatusException.isDurable(failure.code) => throw failure
+    case Failure(failure) if notFoundCode(failure).isDefined => throw failure
     case Failure(_)     => None
+  }
+
+  private def notFoundCode(failure: Throwable): Option[Int] = ReadOutcome.classify(failure) match {
+    case Left(notFound: AbsentReason.NotFound) => Some(notFound.code)
+    case _                                     => None
   }
 }

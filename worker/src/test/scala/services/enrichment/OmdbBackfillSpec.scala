@@ -35,7 +35,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
           s"""{"Title":"$t","imdbID":"tt0133093","Response":"True"}"""
         } else if (url.contains("?i="))
           s"""{"tomatoURL":"$RtUrl","Response":"True"}"""
-        else """{"Response":"False"}"""
+        else """{"Response":"False","Error":"Movie not found!"}"""
     },
     apiKey = Some(settings.OmdbApiKey("test-key"))
   )
@@ -89,7 +89,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     repository.upserts.clear()
     // ?t= returns no match → nothing to write.
     val omdb = new OMDbClient(
-      http = new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False"}""" },
+      http = new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False","Error":"Movie not found!"}""" },
       apiKey = Some(settings.OmdbApiKey("test-key"))
     )
     new OmdbBackfill(cache, omdb).refreshOneSync(keyOf(cache))
@@ -130,6 +130,16 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     val result = new OmdbBackfill(cache, failing, attempts).refreshAll()
     result.failed shouldBe Some(1)
     attempts.all() shouldBe empty
+    cache.get(keyOf(cache)).get.imdbId shouldBe None
+  }
+
+  it should "propagate an OMDb failure to the task (its retry sees it) and leave the row untouched" in {
+    val cache = cacheWith(MovieRecord())
+    val failing = new OMDbClient(
+      http = new GetOnlyHttpFetch { def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None) },
+      apiKey = Some(settings.OmdbApiKey("test-key"))
+    )
+    a[tools.HttpStatusException] should be thrownBy new OmdbBackfill(cache, failing).refreshOneSync(keyOf(cache))
     cache.get(keyOf(cache)).get.imdbId shouldBe None
   }
 
@@ -192,7 +202,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     val attempts = new InMemoryOmdbAttemptStore
     attempts.record(filmKey(cache), 1, T0) // missed at T0, level 1 → 2-day window
     var httpCalls = 0
-    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = { httpCalls += 1; """{"Response":"False"}""" } }, apiKey = Some(settings.OmdbApiKey("k")))
+    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = { httpCalls += 1; """{"Response":"False","Error":"Movie not found!"}""" } }, apiKey = Some(settings.OmdbApiKey("k")))
     val clock = Clock.fixed(T0.plusMillis(1.hour.toMillis), ZoneOffset.UTC) // 1h later — inside the 2d window
 
     new OmdbBackfill(cache, omdb, attempts, clock).refreshOneSync(keyOf(cache))
@@ -203,7 +213,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   it should "record a miss (level 1) when OMDb resolves nothing" in {
     val cache = cacheWith(MovieRecord())
     val attempts = new InMemoryOmdbAttemptStore
-    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False"}""" }, apiKey = Some(settings.OmdbApiKey("k")))
+    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False","Error":"Movie not found!"}""" }, apiKey = Some(settings.OmdbApiKey("k")))
 
     new OmdbBackfill(cache, omdb, attempts, Clock.fixed(T0, ZoneOffset.UTC)).refreshOneSync(keyOf(cache))
     attempts.get(filmKey(cache)).map(_.level) shouldBe Some(1)

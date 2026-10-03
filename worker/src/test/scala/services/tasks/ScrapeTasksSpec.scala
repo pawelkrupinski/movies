@@ -237,7 +237,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // window, so the healthy ones behind it finally get their turn.
   it should "stop a permanently failing cinema from monopolising the per-tick cap and starving healthy cinemas" in {
     val now     = Instant.parse("2026-07-26T12:00:00Z")
-    val broken  = new StubCinemaScraper(Multikino, throw new RuntimeException("HTTP 404 for GET https://x"))
+    val broken  = new StubCinemaScraper(Multikino, throw new tools.HttpStatusException(404, "GET", "https://x", None))
     val healthy = new StubCinemaScraper(KinoApollo, movieAt(KinoApollo))
     val fresh   = new InMemoryFreshnessStore
     val queue   = new InMemoryTaskQueue

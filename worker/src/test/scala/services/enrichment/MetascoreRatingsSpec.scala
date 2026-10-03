@@ -199,7 +199,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
           """<html><head><script type="application/ld+json">
             |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":64,"bestRating":100,"worstRating":0,"reviewCount":10}}
             |</script></head><body></body></html>""".stripMargin
-        else if (url == philosophers || url.contains("/search/") || url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else if (url == philosophers || url.contains("/search/") || url.contains("/movie/")) UpstreamNotFound(url)
         else UpstreamNotFound(url)
       }
     })
@@ -255,7 +255,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = {
         gets.incrementAndGet()
-        if (url.stripSuffix("/") == TheSting) throw new RuntimeException("HTTP 404")
+        if (url.stripSuffix("/") == TheSting) UpstreamNotFound(url)
         else scorePage(70)   // /movie/sting (and any score re-fetch of it)
       }
     })

@@ -5,7 +5,7 @@ import java.util.Locale
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{HttpFetch, TextNormalization}
+import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -38,10 +38,9 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
    *  original/English title first — OMDb is an English DB). None when the key is
-   *  unset (no HTTP) or OMDb answered and nothing is corroborated. A call that
-   *  fails — refused, an exhausted daily quota (OMDb answers that with a 401), a
-   *  body that is not JSON — THROWS: it is no answer, so it must not read as
-   *  "OMDb has no such film" and back the film off for days. */
+   *  unset (no HTTP) or nothing is corroborated. A read that FAILED — a block, a 5xx,
+   *  OMDb's own "Request limit reached!" document, a body that is not OMDb's JSON —
+   *  throws, so a dead source is never booked as a miss and backed off for days. */
   def findImdbId(titles: Seq[String], year: Option[Int], directors: Set[String]): Option[String] =
     apiKey.map(_.value).flatMap { key =>
       titles.map(_.trim).filter(_.nonEmpty).distinct.iterator
@@ -58,13 +57,12 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
   }
 
   /** OMDb's single best `type=movie` match (`?t=`), with its director credits. */
-  private def byTitle(title: String, year: Option[Int], key: String): Option[Candidate] = {
-    candidateFrom(Json.parse(http.get(titleUrl(title, year, key))))
-  }
+  private def byTitle(title: String, year: Option[Int], key: String): Option[Candidate] =
+    record(titleUrl(title, year, key)).flatMap(candidateFrom)
 
   private def directorWalk(title: String, year: Option[Int], directors: Set[String], key: String): Option[String] = {
-    val js   = Json.parse(http.get(searchUrl(title, year, key)))
-    val hits = (js \ "Search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    val hits = record(searchUrl(title, year, key)).toSeq
+      .flatMap(js => (js \ "Search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
       .flatMap(h => (h \ "imdbID").asOpt[String].filter(_.startsWith("tt"))).distinct.take(MaxCandidates)
     val matches = hits
       .flatMap(id => detail(id, key))
@@ -77,7 +75,12 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** Full record for an imdb id (director credits + title + year). */
   private def detail(imdbId: String, key: String): Option[Candidate] =
-    candidateFrom(Json.parse(http.get(idUrl(imdbId, key))))
+    record(idUrl(imdbId, key)).flatMap(candidateFrom)
+
+  /** One OMDb answer: its record, `None` when OMDb says it has none, and a throw for
+   *  anything else (see [[OMDbClient.answer]]). */
+  private def record(url: String): Option[JsObject] =
+    HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a
    *  year off by >1 with no exact title) AND a positive signal corroborates it:
@@ -107,6 +110,22 @@ object OMDbClient {
   private val MaxCandidates = 5
   private val YearTolerance = 1
 
+
+  /** OMDb answers every query with HTTP 200 and says "none" inside the JSON:
+   *  `{"Response":"False","Error":"Movie not found!"}`. Only the errors that mean
+   *  "nothing matches" are an absence; any other error document — "Request limit
+   *  reached!", "Invalid API key!", or one with no error at all — is a failed read. */
+  private val NoneErrors: Set[String] = Set("Movie not found!", "Incorrect IMDb ID.", "Too many results.")
+
+  private[enrichment] def answer(url: String, js: JsObject): ReadOutcome[JsObject] =
+    (js \ "Response").asOpt[String] match {
+      case Some("True") => ReadOutcome.Answered(js)
+      case _ =>
+        (js \ "Error").asOpt[String] match {
+          case Some(error) if NoneErrors.contains(error) => ReadOutcome.none(s"OMDb: $error")
+          case error => ReadOutcome.unexpectedBody(url, s"OMDb error ${error.getOrElse("(none given)")}", js.toString)
+        }
+    }
 
   /** One OMDb film candidate — imdb id + (normalised-later) title, year, directors. */
   private[enrichment] case class Candidate(imdbId: String, title: String, year: Option[Int], directors: Set[String])

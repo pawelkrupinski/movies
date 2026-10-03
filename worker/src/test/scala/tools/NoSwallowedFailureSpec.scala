@@ -28,6 +28,13 @@ import scala.util.matching.Regex
  *     `_: Throwable`/`Exception`/`…Exception`, or `_` inside `catch`/`recover`, whose body
  *     ENDS in `<empty>` — logging first does not make it any less of a swallow.
  *
+ *  3. In client code (cinema scrapers, enrichment clients, `TmdbClient`, common `tools`):
+ *     a `Try(...)` around an HTTP read or a parse — `http.get`, `fetch.post`, `httpGet`,
+ *     `Json.parse`, `Jsoup.parse`, any `parse…(` — answered with `.toOption` or
+ *     `.getOrElse(…)`, whatever the fallback. A failed read or a changed page format is
+ *     not "no data"; read through `tools.HttpRead` / `ReadOutcome` instead. (`"[]"` and
+ *     `"{}"` count as empty for shapes 1 and 2: they are an empty JSON body.)
+ *
  * Where the empty answer is genuinely right — an optional field's default while decoding,
  * a probe whose failure means "not available here", a retry loop's "not yet" — add the
  * site to [[Allowlist]] with WHY. The reason is the review: "defensive" is not one. Where
@@ -40,7 +47,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   private val TypeArgs = """(?:\[(?:[^\[\]]|\[[^\]]*\])*\])?"""
   private val BareEmpty: String =
     """(?:(?:Seq|List|Vector|Map|Set|Iterable|Option)\.empty""" + TypeArgs + """|Nil|(?:Seq|List|Vector|Map|Set)\(\)|""" +
-      """0|0L|0\.0|false|None|""|Json\.obj\(\))"""
+      """0|0L|0\.0|false|None|""|"\[\]"|"\{\}"|Json\.obj\(\))"""
   // …or that value already completed, as a `recoverWith` answers: `Future.successful(Nil)`.
   private val Empty: String = """(?:""" + BareEmpty + """|Future\.successful\(\s*""" + BareEmpty + """\s*\))"""
 
@@ -358,18 +365,20 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   // indentation: at most one level in from its class.
   private val Def: Regex = """(?m)(?:\bdef\s+([\w$]+)|^ {0,2}(?:(?:private|protected|override|final|lazy|implicit)(?:\[\w+\])?\s+)*(?:val|var)\s+([\w$]+))""".r
 
+  private def siteAt(file: String, src: String, lines: Array[String], at: Int): Site = {
+    val before = src.substring(0, at)
+    val n      = before.count(_ == '\n')
+    // The site's method, near enough to key on: the `def` its own line declares
+    // (`def usable: Boolean = Try {`), else the last one above it.
+    val owner  = Def.findFirstMatchIn(lines(n)).orElse(Def.findAllMatchIn(before).toSeq.lastOption)
+      .map(m => Option(m.group(1)).getOrElse(m.group(2))).getOrElse("<class body>")
+    Site(file, n + 1, owner, lines(n).trim)
+  }
+
   private def swallows(file: String, raw: String): Seq[Site] = {
     val src = withoutComments(raw)
     val lines = raw.split("\n", -1)
-    def site(at: Int): Site = {
-      val before = src.substring(0, at)
-      val n      = before.count(_ == '\n')
-      // The site's method, near enough to key on: the `def` its own line declares
-      // (`def usable: Boolean = Try {`), else the last one above it.
-      val owner  = Def.findFirstMatchIn(lines(n)).orElse(Def.findAllMatchIn(before).toSeq.lastOption)
-        .map(m => Option(m.group(1)).getOrElse(m.group(2))).getOrElse("<class body>")
-      Site(file, n + 1, owner, lines(n).trim)
-    }
+    def site(at: Int): Site = siteAt(file, src, lines, at)
     val tries = TryOpen.findAllMatchIn(src).flatMap { m =>
       val close = closing(src, m.end - 1)
       Option.when(close > 0 && EmptyOnFailure.findPrefixOf(src.substring(afterChain(src, close + 1))).isDefined)(site(m.start))
@@ -381,15 +390,46 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       val last    = caseBody(src, m.end).split("[\n;]").map(_.trim).filter(_.nonEmpty).lastOption
       Option.when(handler && last.exists(l => EmptyLine.matches(l)))(site(m.start))
     }
-    (tries ++ handlers).toSeq.sortBy(_.line)
+    (tries ++ handlers ++ swallowedReads(file, raw)).toSeq.distinct.sortBy(_.line)
   }
 
   private lazy val found: Seq[Site] = scalaFiles(MainRoots).flatMap { p =>
     swallows(p.toString, read(p))
   }
 
+  /** Where shape 3 applies: code that reads an upstream. */
+  private val ClientRoots: Seq[String] = Seq(
+    "worker/src/main/scala/services/cinemas/", "worker/src/main/scala/services/enrichment/",
+    "worker/src/main/scala/services/TmdbClient.scala", "common/src/main/scala/tools/")
+  private def isClient(file: String): Boolean = ClientRoots.exists(file.startsWith)
+
+  // An HTTP read (a receiver named like a fetch: `http`, `httpFetch`, `bnFetch`…), TmdbClient's
+  // `httpGet`, or a parse.
+  private val ReadCall: Regex =
+    """\b\w*(?:[Hh]ttp|[Ff]etch)\w*\s*\.\s*(?:get|getBytes|post|getAsync)\s*\(|\bhttpGet\s*\(|\b(?:Json|Jsoup)\s*\.\s*parse\w*\s*\(|\bparse\w*\s*\(""".r
+  // Parses of one scalar field — a date, a number — are a field's default, not a read.
+  private val ScalarParse: Regex =
+    """\b(?:LocalDate|LocalTime|LocalDateTime|Instant|ZonedDateTime|OffsetDateTime|YearMonth|Year|MonthDay|Duration|Period)\s*\.\s*parse\s*\(|\bparse(?:Int|Long|Double|Float|Boolean)\s*\(""".r
+  private val SwallowingAnswer: Regex = """^\s*\.\s*(?:toOption|getOrElse)\b""".r
+
+  /** Shape 3: a `Try` around a read or parse, answered with `.toOption` / `.getOrElse`. */
+  private def swallowedReads(file: String, raw: String): Seq[Site] =
+    if (!isClient(file)) Nil
+    else {
+      val src = withoutComments(raw)
+      val lines = raw.split("\n", -1)
+      TryOpen.findAllMatchIn(src).flatMap { m =>
+        val close = closing(src, m.end - 1)
+        val body  = if (close > 0) ScalarParse.replaceAllIn(src.substring(m.end, close), "") else ""
+        Option.when(close > 0 && ReadCall.findFirstIn(body).isDefined &&
+          SwallowingAnswer.findPrefixOf(src.substring(afterChain(src, close + 1))).isDefined)(siteAt(file, src, lines, m.start))
+      }.toSeq
+    }
+
+  private val Allowed: Map[(String, String, String), String] = Allowlist ++ HttpReadBacklog.Swallows
+
   "Main sources" should "not answer a failed fetch, read or decode with an empty value, outside the allowlist" in {
-    val offenders = found.filterNot(s => Allowlist.contains(s.key))
+    val offenders = found.filterNot(s => Allowed.contains(s.key))
     withClue(s"${offenders.size} site(s) turn a failure into data. Propagate it, or give the result a way to " +
       s"say 'unknown' — or, if empty really is right here, allowlist the site with the reason:\n  " +
       offenders.mkString("\n  ") + "\n") {
@@ -399,7 +439,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
 
   "The allowlist" should "name only sites that still exist" in {
     val live  = found.map(_.key).toSet
-    val stale = Allowlist.keySet.filterNot(live)
+    val stale = Allowed.keySet.filterNot(live)
     withClue(s"stale entries (the site was fixed or moved — drop or re-key them): ${stale.mkString(", ")} — ") {
       stale shouldBe empty
     }
@@ -447,5 +487,24 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
         |  val q = rows match { case row => row }
         |}""".stripMargin
     swallows("A.scala", src).map(_.line) shouldBe Seq(2, 3, 4, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+  }
+
+  "Shape 3" should "flag a read or parse inside a swallowing Try in client code, and only there" in {
+    val src =
+      """object A {
+        |  val a = Try(http.get(url)).toOption
+        |  val b = Try(Json.parse(body)).getOrElse(JsNull)
+        |  val c = Try(parseInfo(b)).toOption.flatten
+        |  val d = Try(LocalDate.parse(s)).toOption
+        |  val e = Try(s.toInt).toOption
+        |  val f = Try(Jsoup.parse(http.get(u))).toOption
+        |  val g = Try(bnFetch.post(u, b)).map(identity).getOrElse(fallback)
+        |  val h = Try(http.get(url))
+        |  val i = Try(http.get(url)).getOrElse("[]")
+        |  val j = Try(Integer.parseInt(s)).getOrElse(fallback)
+        |}""".stripMargin
+    swallows("worker/src/main/scala/services/cinemas/pl/A.scala", src).map(_.line) shouldBe Seq(2, 3, 4, 7, 8, 10)
+    // Outside client code only the empty-JSON-body answer (shape 1) is flagged.
+    swallows("worker/src/main/scala/services/movies/A.scala", src).map(_.line) shouldBe Seq(10)
   }
 }

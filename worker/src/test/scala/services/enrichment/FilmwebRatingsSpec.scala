@@ -16,7 +16,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   // Filmweb's fake speaks the real site's vocabulary: a URL it doesn't serve is
   // a 404 ("no such film"), not a generic error ("the site is broken"). The
-  // clients now tell those apart — see tools.EnrichmentRead.
+  // clients now tell those apart — see tools.ReadOutcome.
   private def filmwebSite(routes: Map[String, String]) =
     new RoutingHttpFetch(routes, unroutedIsNotFound = true)
 
@@ -334,7 +334,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   // Was "swallow Filmweb fetch failures without throwing". A failed read is not
   // an answer of "no rating": it now reaches RatingHandler so the attempt is
   // recorded, freshness and the cadence are left alone, and the queue retries.
-  // The stored rating must still survive untouched. See tools.EnrichmentRead.
+  // The stored rating must still survive untouched. See tools.ReadOutcome.
   it should "propagate a Filmweb fetch failure while leaving the stored rating intact" in {
     val url  = "https://www.filmweb.pl/film/Foo-7"
     val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))), normalizer = titleNormalizer)

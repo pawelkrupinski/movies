@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters._
  * `mutable.ListBuffer`, whose append is a three-step read-modify-write — under
  * concurrency that dropped entries and, worse, could throw an NPE out of `get`
  * itself. An exception from `get` is a FAILED READ to every enrichment client
- * (`EnrichmentRead` only turns 404/410 into `None`), so `FilmwebRatings.refreshAll`
+ * (`ReadOutcome` only turns 404/410 into `None`), so `FilmwebRatings.refreshAll`
  * swallowed it as a per-row failure and the row silently kept no `filmwebUrl` —
  * the `FilmwebRatingsSpec` "cheap rating-only path" flake, which only ever bit in
  * a loaded full-suite run.

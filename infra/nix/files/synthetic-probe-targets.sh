@@ -64,6 +64,7 @@ fetch() {
     args+=(--resolve "$host:443:$PROBE_ORIGIN_ADDRESS" --cacert "$PROBE_ORIGIN_CA")
   fi
   : > "$work/body"
+  # allow-silenced: a probe — curl's failure IS the measurement, recorded below as status 000.
   status="$(curl "${args[@]}" "$url")" || true
   status="${status:-000}"
   [ "${status:0:1}" = 2 ]

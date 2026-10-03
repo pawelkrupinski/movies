@@ -200,10 +200,24 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions(body, "Same Title", None) shouldBe Some("tt2026")
   }
 
-  it should "return None for empty / malformed bodies" in {
+  it should "return None for bodies with no suggestions" in {
     client.parseSuggestions("""{}""",            "anything", None) shouldBe None
     client.parseSuggestions("""{"d":[]}""",     "anything", None) shouldBe None
-    client.parseSuggestions("not even json",    "anything", None) shouldBe None
+  }
+
+  "findId" should "read IMDb's recorded empty suggestion list as no match" in {
+    val noResults = loadFixture("/fixtures/imdb/suggestion_no_results.json")
+    new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = noResults })
+      .findId("zzqqxxnotafilmqq", None) shouldBe None
+  }
+
+  it should "THROW, not answer no match, on a suggestion body that is not IMDb's JSON" in {
+    // A malformed body was parsed in Try(...).toOption and read as "IMDb knows no such film".
+    val forbidden = loadFixture("/fixtures/imdb/graphql_403_forbidden.html")
+    a[tools.UnexpectedBodyException] should be thrownBy
+      new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = forbidden }).findId("Aftersun", None)
+    a[tools.UnexpectedBodyException] should be thrownBy
+      new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = "{}" }).suggestedIds("Aftersun")
   }
 
   // Regression: cinema title carries an en-dash, IMDb stores a plain hyphen.
@@ -231,9 +245,9 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = "<html><body>Request blocked</body></html>"
       def post(url: String, body: String, contentType: String): String = get(url)
     })
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.lookup("tt0468569")
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.details("tt0468569")
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.suggestedIds("The Dark Knight")
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.lookup("tt0468569")
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.details("tt0468569")
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.suggestedIds("The Dark Knight")
   }
 
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
@@ -245,7 +259,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // Was "swallow network / HTTP failures and return None" — the behaviour the
   // 2026-07-30 IMDb outage proved wrong. A failed read is not an answer of "no
   // id"; it now propagates so the caller can retry rather than book a healthy
-  // refresh over a dead source. See tools.EnrichmentRead.
+  // refresh over a dead source. See tools.ReadOutcome.
   it should "propagate a network / HTTP failure rather than reporting 'no id'" in {
     val c = new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("HTTP 503")))
     a[RuntimeException] should be thrownBy c.findId("anything", None)
@@ -351,7 +365,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // None, so every worker logged the ordinary-looking "→ rating none" and
   // RatingHandler booked a healthy "checked, unchanged" refresh. ~47h invisible.
   // A 403/429/5xx/timeout must now reach the caller; only a real "not found" is
-  // still an answer. See tools.EnrichmentRead.
+  // still an answer. See tools.ReadOutcome.
 
   private def failingWith(exception: Throwable) = new ImdbClient(http = new FailingHttpFetch((_, _) => exception))
 
@@ -370,6 +384,20 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "still report None when IMDb genuinely has no such title" in {
     failingWith(statusError(404)).lookup("tt0000000") shouldBe None
+  }
+
+  it should "THROW when a proxy relays IMDb's CDN error page as a 200 (recorded body)" in {
+    // parseRating ran in Try(...).toOption, so the 403 page read as "no rating".
+    val page = loadFixture("/fixtures/imdb/graphql_403_forbidden.html")
+    val c = new ImdbClient(http = new RoutingHttpFetch(Seq(GraphQlHost -> page)))
+    a[tools.UnexpectedBodyException] should be thrownBy c.lookup("tt0816692")
+    a[tools.UnexpectedBodyException] should be thrownBy c.details("tt0816692")
+  }
+
+  it should "report None when IMDb's GraphQL answers that the title does not exist" in {
+    val c = new ImdbClient(http = new RoutingHttpFetch(Seq(GraphQlHost -> """{"data":{"title":null}}""")))
+    c.lookup("tt0000000") shouldBe None
+    c.details("tt0000000") shouldBe None
   }
 
   it should "still report None when the title exists but carries no rating" in {

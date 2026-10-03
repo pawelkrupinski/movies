@@ -36,4 +36,21 @@ class CinemetaClientSpec extends AnyFlatSpec with Matchers {
   it should "return None on an empty catalogue" in {
     client("""{"metas":[]}""").findImdbId(Seq("Nothing Here"), Some(2026)) shouldBe None
   }
+
+  // Recorded from v3-cinemeta.strem.io (test/resources/fixtures/cinemeta/).
+  private def recorded(name: String): String = clients.tools.FixtureFile.read(s"test/resources/fixtures/cinemeta/$name")
+
+  it should "bind the recorded Aftersun search and read the recorded empty search as none" in {
+    client(recorded("search_aftersun.json")).findImdbId(Seq("Aftersun"), Some(2022)) shouldBe Some("tt19770238")
+    client(recorded("search_no_results.json")).findImdbId(Seq("zzqqxxnotafilmqq"), None) shouldBe None
+  }
+
+  it should "THROW, not answer none, when the read failed or the body is not the catalogue" in {
+    // Was Try { ... }.toOption.flatten: an outage read as "Cinemeta has no such film".
+    a[tools.UnexpectedBodyException] should be thrownBy client("<html><body>502 Bad Gateway</body></html>").findImdbId(Seq("Aftersun"), None)
+    a[tools.UnexpectedBodyException] should be thrownBy client("""{"err":"rate limited"}""").findImdbId(Seq("Aftersun"), None)
+    a[tools.HttpStatusException] should be thrownBy new CinemetaClient(new GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
+    }).findImdbId(Seq("Aftersun"), None)
+  }
 }

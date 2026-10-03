@@ -32,4 +32,14 @@ class FakeHttpFetchSpec extends AnyFlatSpec with Matchers {
     val fetch = new FakeHttpFetch("enrichment-xx", strict = true, foldYear = false, root = settings.FixtureRoot(link))
     a[java.io.FileNotFoundException] should be thrownBy fetch.get("https://api.example.com/3/SEARCH/person?query=Ridley+Scott")
   }
+
+  "an unrecorded id-crosswalk search" should "replay the empty answer production gives, not a recording gap" in {
+    val (real, _) = tree()
+    val fetch = new FakeHttpFetch("enrichment-xx", strict = false, foldYear = false, root = settings.FixtureRoot(real))
+    fetch.get("https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=Normal&format=json") should include("\"search\":[]")
+    fetch.get("https://v3-cinemeta.strem.io/catalog/movie/top/search=Normal.json") shouldBe """{"metas":[]}"""
+    (the[tools.HttpStatusException] thrownBy fetch.get("https://letterboxd.com/tmdb/1659440/")).code shouldBe 404
+    // A Wikidata ENTITIES read is a detail read: still a recording gap.
+    a[java.io.FileNotFoundException] should be thrownBy fetch.get("https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1&format=json")
+  }
 }

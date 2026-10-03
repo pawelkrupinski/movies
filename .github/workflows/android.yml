@@ -123,6 +123,7 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
               run: |
+                  # allow-silenced: an unreadable last run leaves no base, so the emulator lane RUNS — the safe direction.
                   sha=$(gh run list --workflow android.yml --branch main --status success --limit 1 \
                             --json headSha --jq '.[0].headSha // ""' || true)
                   if [ -n "$sha" ] && git fetch --no-tags --depth=1 --filter=blob:none origin "$sha"; then
@@ -227,6 +228,7 @@ jobs:
                   scripts/mobile-release-test.sh
                   scripts/tag-mobile-release-test.sh
                   scripts/ci/gh-release-test.sh
+                  scripts/ci/gh-optional-test.sh
                   scripts/seeded-order-test.sh
                   ios/scripts/swift-test-shuffled-test.sh
                   android/scripts/devtest-shuffled-test.sh

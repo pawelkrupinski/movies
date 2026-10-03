@@ -62,7 +62,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // no-throw half asserted the behaviour that hid the 2026-07-30 outage; its
   // rating-preserved half is now covered by "leave the previously stored rating
   // untouched when the source is blocked" below, alongside the propagation it
-  // must have. See tools.EnrichmentRead.
+  // must have. See tools.ReadOutcome.
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
     val tmdbOnly = MovieRecord(tmdbId = Some(42))

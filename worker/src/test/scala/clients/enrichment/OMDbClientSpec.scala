@@ -33,7 +33,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "restrict the search to type=movie (never a series)" in {
-    val fetch = new FnFetch(_ => """{"Response":"False"}""")
+    val fetch = new FnFetch(_ => """{"Response":"False","Error":"Movie not found!"}""")
     new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Bodyguard"), None, Set.empty)
     fetch.urls.head should include ("type=movie")
   }
@@ -88,7 +88,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "REFUSE the director walk when more than one candidate's director matches" in {
     val omdb = client { url =>
-      if (url.contains("?t=")) """{"Response":"False"}"""
+      if (url.contains("?t=")) """{"Response":"False","Error":"Movie not found!"}"""
       else if (url.contains("?s=")) """{"Search":[{"imdbID":"ttAAA"},{"imdbID":"ttBBB"}],"Response":"True"}"""
       else if (url.contains("i=ttAAA")) """{"Title":"Dup A","Year":"2024","Director":"Jane Director","imdbID":"ttAAA","Response":"True"}"""
       else """{"Title":"Dup B","Year":"2024","Director":"Jane Director","imdbID":"ttBBB","Response":"True"}"""
@@ -97,7 +97,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT walk (no ?s= call) when we have no director to corroborate with" in {
-    val fetch = new FnFetch(url => if (url.contains("?s=")) fail("must not search without a director") else """{"Response":"False"}""")
+    val fetch = new FnFetch(url => if (url.contains("?s=")) fail("must not search without a director") else """{"Response":"False","Error":"Movie not found!"}""")
     new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
   }
 
@@ -110,9 +110,41 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "try the next title spelling when the first abstains" in {
     val omdb = client { url =>
-      if (tParam(url).startsWith("Mawka")) """{"Response":"False"}"""
+      if (tParam(url).startsWith("Mawka")) """{"Response":"False","Error":"Movie not found!"}"""
       else """{"Title":"Mavka","Year":"2026","Director":"N/A","imdbID":"tt11808706","Response":"True"}"""
     }
     omdb.findImdbId(Seq("Mawka", "Mavka"), Some(2026), Set.empty) shouldBe Some("tt11808706")
+  }
+
+  // ── a failed read is not a miss ──────────────────────────────────────────────
+  // Recorded from omdbapi.com (test/resources/fixtures/omdb/): OMDb answers HTTP 200 and
+  // says "none" inside the JSON, so the client must tell "nothing matches" from an error.
+
+  private def recorded(name: String): String = clients.tools.FixtureFile.read(s"test/resources/fixtures/omdb/$name")
+
+  "an OMDb answer" should "read its recorded 'Movie not found!', 'Too many results.' and 'Incorrect IMDb ID.' as none" in {
+    client(url => if (url.contains("?t=")) recorded("title_not_found.json") else recorded("search_too_many_results.json"))
+      .findImdbId(Seq("zzqqxxnotafilm"), None, Set("Somebody")) shouldBe None
+    client(url => if (url.contains("?s=")) """{"Search":[{"imdbID":"tt0000000"}],"Response":"True"}""" else
+      if (url.contains("?i=")) recorded("id_incorrect.json") else recorded("title_not_found.json"))
+      .findImdbId(Seq("zzqqxxnotafilm"), None, Set("Somebody")) shouldBe None
+  }
+
+  it should "accept the recorded Aftersun record" in {
+    client(_ => recorded("title_aftersun_2022.json")).findImdbId(Seq("Aftersun"), Some(2022), Set("Charlotte Wells")) shouldBe Some("tt19770238")
+  }
+
+  it should "THROW on an OMDb error document rather than answer none" in {
+    // Was Try(Json.parse(...)).getOrElse(JsNull): a spent key read as "no film", backed off for days.
+    val failure = the[tools.UnexpectedBodyException] thrownBy client(_ => recorded("invalid_api_key.json"))
+      .findImdbId(Seq("Aftersun"), Some(2022), Set.empty)
+    failure.getMessage should (include("OMDb error Invalid API key!") and include("apikey=***"))
+  }
+
+  it should "THROW when the read itself failed" in {
+    a[tools.HttpStatusException] should be thrownBy
+      client(url => throw new tools.HttpStatusException(503, "GET", url, None)).findImdbId(Seq("Aftersun"), Some(2022), Set.empty)
+    a[tools.UnexpectedBodyException] should be thrownBy
+      client(_ => "<html><body>502 Bad Gateway</body></html>").findImdbId(Seq("Aftersun"), Some(2022), Set.empty)
   }
 }

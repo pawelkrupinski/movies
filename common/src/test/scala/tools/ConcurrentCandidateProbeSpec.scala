@@ -54,7 +54,7 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
     winner shouldBe Some("correct")
   }
 
-  // A hard failure (a block/throttle/5xx, not an absence — see EnrichmentRead)
+  // A hard failure (a block/throttle/5xx, not an absence — see ReadOutcome)
   // must propagate once its candidate's turn comes, exactly as a sequential
   // probe would abort there — even though a LOWER-priority candidate's future
   // may already have completed with what looks like a match.

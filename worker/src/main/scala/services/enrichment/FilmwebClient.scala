@@ -5,11 +5,10 @@ import java.util.Locale
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
+import tools.{HttpFetch, HttpRead, MemoizedHttpFetch, ReadOutcome, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.Try
 
 /**
  * Looks up Filmweb metadata (canonical page URL + 1–10 user rating) for a Polish
@@ -82,7 +81,7 @@ class FilmwebClient(http: HttpFetch) {
 
   // No blanket `Try` around this body: a failed read is not an answer of "Filmweb
   // doesn't have this film". Filmweb ANSWERING that — a 404 on a candidate's
-  // /info, an empty search — still yields None through EnrichmentRead; a block,
+  // /info, an empty search — still yields None through ReadOutcome; a block,
   // throttle or 5xx propagates so the caller retries instead of persisting the
   // miss (these link caches use UnresolvedPolicy.Remember, which would otherwise
   // store "no page for this film" for 24h off the back of an outage).
@@ -149,26 +148,36 @@ class FilmwebClient(http: HttpFetch) {
     // re-spells `minSpelling`→`displayTitle` no longer changes which fixture is hit.
     // A 404 here is Filmweb saying "nothing matches", which is the same answer as
     // an empty result list; anything else is a failed read and propagates.
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}"))
-      .map(parseSearch).getOrElse(Seq.empty)
+    api(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}") { (url, js) =>
+      if ((js \ "searchHits").asOpt[JsArray].isDefined) ReadOutcome.Answered(searchHitsOf(js))
+      else ReadOutcome.unexpectedBody(url, "no searchHits", js.toString)
+    }.getOrElse(Seq.empty)
 
-  // A body that is not JSON (a block or error page served as 200) throws like any failed read: as None
-  // it read as "Filmweb has no rating for this film".
   def info(id: Int): Option[FilmInfo] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/info")).flatMap(parseInfo)
+    api(s"$ApiBase/film/$id/info")((_, js) => ReadOutcome.Answered(infoOf(js))).flatten
 
   def preview(id: Int): Option[FilmPreview] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/preview")).map(parsePreview)
+    api(s"$ApiBase/film/$id/preview")((_, js) => ReadOutcome.Answered(previewOf(js)))
 
   def rating(id: Int): Option[Double] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/rating")).flatMap(parseRating)
+    api(s"$ApiBase/film/$id/rating")((_, js) => ReadOutcome.Answered(ratingOf(js))).flatten
+
+  /** One Filmweb API read. Filmweb answers an unknown film id with **204 and an empty
+   *  body** (recorded), and an unknown path with 404: both are "no such film". Any other
+   *  body must be a JSON object — these were parsed in `Try(...).toOption`, which read a
+   *  Cloudflare page or an error document as "Filmweb has no such film / no rating". */
+  private def api[A](url: String)(parse: (String, JsObject) => ReadOutcome[A]): Option[A] =
+    HttpRead.text(http, url) { body =>
+      if (body.isEmpty) ReadOutcome.none("Filmweb: no content for this id")
+      else HttpRead.checkJsonObject(url, body)(parse(url, _))
+    }.toOptionOrThrow
 
   /** Refresh just the rating for a stored canonical Filmweb URL. The URL ends
    *  in `-{id}` (or `-{id}/`); we parse the trailing id and hit only the
    *  rating endpoint — no search + info round-trips. Used by the hourly
    *  `FilmwebRatings` refresh, which has already paid for the URL discovery
    *  on first enrichment. Returns None when the URL doesn't look like a
-   *  Filmweb canonical or the rating fetch fails. */
+   *  Filmweb canonical or the film has no rating; a failed read throws. */
   def ratingFor(url: String): Option[Double] =
     idFromUrl(url).flatMap(rating)
 
@@ -200,17 +209,20 @@ class FilmwebClient(http: HttpFetch) {
     }
 
   private def idFromUrl(url: String): Option[Int] =
-    FilmwebClient.IdFromUrl.findFirstMatchIn(url).flatMap(m => Try(m.group(1).toInt).toOption)
+    FilmwebClient.IdFromUrl.findFirstMatchIn(url).flatMap(_.group(1).toIntOption)
 
-  def parseSearch(body: String): Seq[SearchHit] =
-    (Json.parse(body) \ "searchHits").asOpt[JsArray].map(_.value).getOrElse(Nil).flatMap { js =>
+  def parseSearch(body: String): Seq[SearchHit] = searchHitsOf(Json.parse(body))
+
+  private def searchHitsOf(json: JsValue): Seq[SearchHit] =
+    (json \ "searchHits").asOpt[JsArray].map(_.value).getOrElse(Nil).flatMap { js =>
       val kind = (js \ "type").asOpt[String]
       val id   = (js \ "id").asOpt[Int]
       for { k <- kind if k == "film" || k == "serial"; i <- id } yield SearchHit(i, k)
     }.toSeq
 
-  def parseInfo(body: String): Option[FilmInfo] = {
-    val json = Json.parse(body)
+  def parseInfo(body: String): Option[FilmInfo] = infoOf(Json.parse(body))
+
+  private def infoOf(json: JsValue): Option[FilmInfo] =
     (json \ "title").asOpt[String].map { t =>
       FilmInfo(
         title         = t,
@@ -218,10 +230,10 @@ class FilmwebClient(http: HttpFetch) {
         year          = (json \ "year").asOpt[Int]
       )
     }
-  }
 
-  def parsePreview(body: String): FilmPreview = {
-    val json = Json.parse(body)
+  def parsePreview(body: String): FilmPreview = previewOf(Json.parse(body))
+
+  private def previewOf(json: JsValue): FilmPreview = {
     val directors = (json \ "directors").asOpt[JsArray].map(_.value).getOrElse(Nil)
       .flatMap(j => (j \ "name").asOpt[String].filter(_.nonEmpty))
       .toSet
@@ -237,8 +249,9 @@ class FilmwebClient(http: HttpFetch) {
     FilmPreview(directors, genres, plot)
   }
 
-  def parseRating(body: String): Option[Double] =
-    (Json.parse(body) \ "rate").asOpt[Double]
+  def parseRating(body: String): Option[Double] = ratingOf(Json.parse(body))
+
+  private def ratingOf(json: JsValue): Option[Double] = (json \ "rate").asOpt[Double]
 
   /** Pick the best candidate from /info (+ optional /preview) data.
    *

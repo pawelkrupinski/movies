@@ -10,7 +10,7 @@ package tools
  *
  * It costs something now. The clients draw a line between an upstream that
  * ANSWERED "no such page" (data — keep probing the next candidate) and a read
- * that FAILED (not data — propagate, see [[EnrichmentRead]]). A fake that
+ * that FAILED (not data — propagate, see [[ReadOutcome]]). A fake that
  * reports a nonexistent slug as a generic error is claiming the site is broken,
  * which aborts the ladder. Fakes have to speak the same failure vocabulary as
  * the real thing or they test a different system.

@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{LetterboxdClient, LetterboxdIdResolver}
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 class LetterboxdIdResolverSpec extends AnyFlatSpec with Matchers {
 
@@ -44,7 +44,7 @@ class LetterboxdIdResolverSpec extends AnyFlatSpec with Matchers {
 
   "resolveTmdbId" should "return None when the film page is unknown (404)" in {
     val resolver = new LetterboxdIdResolver(new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("HTTP 404")
+      def get(url: String): String = UpstreamNotFound(url)
     }))
     resolver.resolveTmdbId("tt0000000") shouldBe None
   }

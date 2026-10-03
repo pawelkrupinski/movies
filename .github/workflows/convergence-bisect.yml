@@ -95,6 +95,10 @@ jobs:
             head-sha: ${{ steps.requests.outputs.head-sha }}
             red-run:  ${{ steps.requests.outputs.red-run }}
         steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
             - id: requests
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,7 +121,9 @@ jobs:
                       exit 0
                   fi
                   mkdir -p requests
-                  gh run download "$RUN" --pattern 'bisect-request-*' --dir requests 2>/dev/null || true
+                  # A red leg that filed no request has no artifact (absent); a failed download fails the step.
+                  present=$(scripts/ci/gh-optional.sh run download "$RUN" --pattern 'bisect-request-*' --dir requests)
+                  echo "bisect requests artifact: $present"
                   requests=$(find requests -name '*.json' -exec cat {} + | jq -sc '.')
                   echo "bisect requests: $requests"
                   echo "requests=${requests:-[]}" >> "$GITHUB_OUTPUT"

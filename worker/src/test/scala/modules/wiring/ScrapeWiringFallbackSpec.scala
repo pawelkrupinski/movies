@@ -18,7 +18,7 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
   private val failing: CinemaScraper = new CinemaScraper {
     val cinema = KinoMikro
     def scrapeHosts: Set[String] = Set("example.test")
-    def fetch(): Seq[CinemaMovie] = throw new RuntimeException("HTTP 404")
+    def fetch(): Seq[CinemaMovie] = throw new tools.HttpStatusException(404, "GET", "https://example.test/", None)
   }
 
   private class Wiring(filmweb: Boolean, kinoprogramm: Map[Cinema, String] = Map.empty) {

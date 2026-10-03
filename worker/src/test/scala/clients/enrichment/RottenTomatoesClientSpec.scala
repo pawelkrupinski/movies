@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
-import tools.{GetOnlyHttpFetch, RendezvousHttpFetch}
+import tools.{GetOnlyHttpFetch, RendezvousHttpFetch, UpstreamNotFound}
 
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
@@ -25,7 +25,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
     def get(url: String): String =
-      if (notFound.exists(url.contains)) throw new RuntimeException("HTTP 404")
+      if (notFound.exists(url.contains)) UpstreamNotFound(url)
       else "OK"
   }
 
@@ -122,7 +122,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.endsWith("/m/north")) rtMoviePage(1994)
-        else throw new RuntimeException("HTTP 404")
+        else UpstreamNotFound(url)
     })
     c.canonicalUrl("North", Some(2026)) shouldBe None
   }
@@ -131,7 +131,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.endsWith("/m/the_north")) rtMoviePage(2025)
-        else throw new RuntimeException("HTTP 404")
+        else UpstreamNotFound(url)
     })
     // slug_year (the_north_2026) 404s, plain the_north 200s with a 2025 page —
     // one year off, inside tolerance → accepted.
@@ -269,7 +269,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     val fixture = loadFixture(SearchTopGunFixture)
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/m/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/m/")) UpstreamNotFound(url)
         else if (url.contains("/search")) fixture
         else throw new RuntimeException(s"unexpected URL: $url")
     })
@@ -289,7 +289,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   it should "return None when neither primary nor fallback resolve and the search yields nothing" in {
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/m/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/m/")) UpstreamNotFound(url)
         else "<html><body></body></html>"
     })
     c.urlFor("foo", Some("bar")) shouldBe None
@@ -349,11 +349,14 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.scoreFor("https://www.rottentomatoes.com/m/the_dark_knight") shouldBe Some(94)
   }
 
-  it should "return None for a page that is gone (404)" in {
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("HTTP 404")
-    })
-    c.scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
+  it should "return None when the page is gone, and THROW when the read failed" in {
+    new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String = UpstreamNotFound(url)
+    }).scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
+    // Was Try(http.get(url)).toOption: a 503 read as "no Tomatometer".
+    a[tools.HttpStatusException] should be thrownBy new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
+    }).scoreFor("https://www.rottentomatoes.com/m/whatever")
   }
 
   it should "throw, not answer None, when the read fails — a blocked RT is no verdict on the score" in {
@@ -387,7 +390,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     def get(url: String): String = { recorded.add(url); respond(url) }
   }
 
-  private def notFound: String => String = url => throw new RuntimeException(s"HTTP 404 for $url")
+  private def notFound: String => String = url => UpstreamNotFound(url)
 
   "a resolution attempt" should "probe a slug shared by two candidate titles only once" in {
     val fetch = new RecordingFetch(notFound)
@@ -408,7 +411,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   it should "return the first title that resolves and stop there" in {
     val fetch = new RecordingFetch(url =>
       if (url.endsWith("/m/inception")) rtMoviePage(2010)
-      else throw new RuntimeException("HTTP 404"))
+      else UpstreamNotFound(url))
     val c = new RottenTomatoesClient(fetch)
 
     c.urlForAny(Seq("Poczatek", "Inception", "Never Reached")) shouldBe
@@ -487,7 +490,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
         }
         else if (url.endsWith("/m/the_north"))
           try """<html><body><script>{"mediaType":"movie"}</script></body></html>""" finally undatedAnswered.countDown()
-        else throw new RuntimeException("HTTP 404")
+        else UpstreamNotFound(url)
     })
     c.canonicalUrl("The North", Some(2026)) shouldBe
       Some("https://www.rottentomatoes.com/m/the_north_2026")

@@ -44,7 +44,8 @@ STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 ASSET="enrichment-$CODE.tar.*"   # zstd, or gzip from before the move
 HERMETIC=false
-if gh release download "$RELEASE_TAG" --pattern "hermetic-$CODE.txt" --dir "$STAGE" --clobber 2>/dev/null; then
+present=$("$(dirname "$0")/ci/gh-optional.sh" release download "$RELEASE_TAG" --pattern "hermetic-$CODE.txt" --dir "$STAGE" --clobber) || exit 1
+if [ "$present" = present ]; then
     read -r CORPUS_RUN RECORDED_AT PINNED < "$STAGE/hermetic-$CODE.txt"
     echo "==> replaying the pinned pair: corpus from recording run $CORPUS_RUN ($RECORDED_AT), tree $PINNED"
     gh run download "$CORPUS_RUN" --name "scrape-fixtures-$CODE" --dir "$STAGE"

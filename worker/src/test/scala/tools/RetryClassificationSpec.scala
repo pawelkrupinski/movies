@@ -19,7 +19,7 @@ import scala.util.{Failure, Try}
  * row by row. The verdict is DERIVED from what the production code does with the failure,
  * never restated here:
  *
- *  - permanent — the origin said the page is gone (`EnrichmentRead.isAbsent`, which the
+ *  - permanent — the origin said the page is gone (`ReadOutcome.isAbsent`, which the
  *    detail caches, the egress chain and the slug ladders all read), a task failure the
  *    pool drops without retry (`TaskWorker.isDeterministic`), or a duplicate key.
  *  - transient — anything the origin's own signals count: an origin status, a failure that
@@ -54,7 +54,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
   for (row <- table.rows if Set("origin", "origin-via-zyte", "zyte").contains(row.source)) {
     it should s"have every gone-reader agree on $row" in {
       val failure = RetryClassificationFailures.of(row)
-      val absent  = EnrichmentRead.isAbsent(failure)
+      val absent  = ReadOutcome.isAbsent(failure)
       withClue("FallbackHttpFetch.OriginAnswered: ")(FallbackHttpFetch.OriginAnswered(failure) shouldBe absent)
       withClue("DetailFetchOutcome.of: ")(DetailFetchOutcome.of(Failure(failure)).isInstanceOf[DetailFetchOutcome.Gone] shouldBe absent)
       withClue("GoneUpstream.saysPageIsGone: ")(GoneUpstream.saysPageIsGone(failure.getMessage) shouldBe absent)
@@ -77,7 +77,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
   }
 
   private def httpVerdict(failure: Throwable): Verdict =
-    if (EnrichmentRead.isAbsent(failure)) Verdict.Permanent
+    if (ReadOutcome.isAbsent(failure)) Verdict.Permanent
     else if (countsAgainstOrigin(failure)) Verdict.Transient
     else Verdict.Provider
 
@@ -100,7 +100,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
     val chain   = EgressWiring.proxyPrimary(IndexedSeq(throwing(failure)), fallback)
     val answers = (1 to 10).map(_ => Try(chain.get(Url)).toOption)
     answers.forall(_.contains("ok")) && fallback.calls.size == 10 &&
-      !failure.isInstanceOf[HttpStatusException] && !EnrichmentRead.isAbsent(failure)
+      !failure.isInstanceOf[HttpStatusException] && !ReadOutcome.isAbsent(failure)
   }
 
   private def throwing(failure: Throwable): HttpFetch = new FailingHttpFetch((_, _) => failure)

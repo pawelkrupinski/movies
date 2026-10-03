@@ -84,9 +84,8 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
    * A definitive 404 from the last backend must reach the caller AS a 404.
    *
    * Wrapped in the composite `RuntimeException`, it stopped looking like one:
-   * `EnrichmentRead` tests the message for a leading `HTTP <code>`, and
-   * "All 2 backends failed for ..." does not match, so an answer was booked as a
-   * failed read. Metacritic and Rotten Tomatoes probe ~20 candidate slugs of which
+   * `ReadOutcome.classify` keys on the typed `HttpStatusException`, which the
+   * composite is not, so an answer was booked as a failed read. Metacritic and Rotten Tomatoes probe ~20 candidate slugs of which
    * at most one exists, so the first losing probe then aborted the whole ladder --
    * a convergence leg came out with Metacritic 17 and RT 73 against production's
    * 308 and 354.
@@ -101,11 +100,11 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
       }))
 
     // The shape the slug ladders depend on: absent, not broken.
-    EnrichmentRead.absentOnNotFound(chain.get("https://www.metacritic.com/movie/nope")) shouldBe None
+    ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow shouldBe None
   }
 
   // ...while a genuine outage still reads as one, so a dead upstream can never be
-  // mistaken for "this film has no page" -- the distinction EnrichmentRead exists for.
+  // mistaken for "this film has no page" -- the distinction ReadOutcome exists for.
   it should "still report a composite failure when the last backend did not answer" in {
     val chain = new FallbackHttpFetch(Seq(
       "fixtures" -> new GetOnlyHttpFetch {
@@ -116,7 +115,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
       }))
 
     a [RuntimeException] should be thrownBy
-      EnrichmentRead.absentOnNotFound(chain.get("https://www.metacritic.com/movie/nope"))
+      ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow
   }
 
   // ---- A URL failing the same way on every ask is warned ONCE, not once per ask ----

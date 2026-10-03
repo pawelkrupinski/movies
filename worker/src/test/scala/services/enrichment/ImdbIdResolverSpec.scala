@@ -245,6 +245,28 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
   }
 
+  // ── a failed rung is not a "no match" ───────────────────────────────────────
+
+  private def imdbDown: ImdbClient = new ImdbClient(http = new tools.GetOnlyHttpFetch {
+    def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
+  })
+
+  "the ladder" should "throw, not conclude 'no match', when IMDb's read failed and no backstop answered" in {
+    // IMDb's suggestion endpoint blocked used to come back as None and be logged (and,
+    // on the staging path, stamped done for good) as "no match".
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val resolver = new ImdbIdResolver(cache, imdbDown)
+    a[tools.HttpStatusException] should be thrownBy resolver.findIdFor("Mortal Kombat II", Some(2026))
+  }
+
+  it should "still take a later rung's answer when an earlier rung failed" in {
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
+      """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
+    val resolver = new ImdbIdResolver(cache, imdbDown, cinemeta = Some(cinemeta))
+    resolver.findIdFor("Cactus Pears", Some(2026)) shouldBe Some("tt31000001")
+  }
+
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
 
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =

@@ -45,7 +45,7 @@ class StrictFixtureFallbackSpec extends AnyFlatSpec with Matchers {
   // exists, so the recorder can only ever capture that one. Every losing
   // candidate is unrecorded BY CONSTRUCTION and answers 404 in production. The
   // clients now tell a 404 ("no such page, try the next candidate") apart from a
-  // failed read ("upstream is down, stop") — see tools.EnrichmentRead — so the
+  // failed read ("upstream is down, stop") — see tools.ReadOutcome — so the
   // fake has to draw the same line or the first losing probe aborts the ladder.
   it should "replay a 404 for an unrecorded page on a probed rating host" in {
     val lenient = new FakeHttpFetch("does-not-exist-anywhere")

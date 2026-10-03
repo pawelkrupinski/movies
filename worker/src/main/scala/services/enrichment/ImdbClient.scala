@@ -3,11 +3,10 @@ package services.enrichment
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.TitleMatch
-import tools.{EnrichmentRead, HttpFetch}
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.Try
 
 /**
  * Direct IMDb ratings via the public CDN GraphQL endpoint that imdb.com itself
@@ -28,13 +27,28 @@ class ImdbClient(http: HttpFetch) {
    *  rating (no such title, or a title carrying none). A read that failed — the
    *  CDN block, a throttle, a server error, a timeout — throws, because the
    *  caller must be able to tell "no rating" from "we never found out": see
-   *  [[tools.EnrichmentRead]] and the 2026-07-30 IMDb outage it documents. */
+   *  [[tools.ReadOutcome]] and the 2026-07-30 IMDb outage it documents. */
   def lookup(imdbId: String): Option[Double] =
-    EnrichmentRead.absentOnNotFound(http.post(Endpoint, queryBody(imdbId), "application/json"))
-      .flatMap(parseRating)   // a body that is not JSON (a CDN challenge page served as 200) throws, too
+    graphQl(queryBody(imdbId)).flatMap(ratingOf)
 
-  def parseRating(body: String): Option[Double] = {
-    val js = Json.parse(body)
+  /** POST one GraphQL query and return its response. `None` when IMDb answered that it
+   *  has no such title (a 404, or `data.title` null); a response that is not GraphQL's
+   *  `{"data":…}` object — a CDN error page relayed as a 200, a bare `{"errors":…}` —
+   *  throws: it used to be parsed in `Try(...).toOption`, which read a page that is not
+   *  IMDb's answer as "no rating". */
+  private def graphQl(query: String): Option[JsObject] =
+    HttpRead.postJsonObject(http, Endpoint, query)(titleAnswer).toOptionOrThrow
+
+  private def titleAnswer(js: JsObject): ReadOutcome[JsObject] =
+    (js \ "data").asOpt[JsObject] match {
+      case Some(data) if (data \ "title").asOpt[JsObject].isDefined => ReadOutcome.Answered(js)
+      case Some(_) => ReadOutcome.none("IMDb has no such title")
+      case None    => ReadOutcome.unexpectedBody(Endpoint, "no GraphQL data", js.toString)
+    }
+
+  def parseRating(body: String): Option[Double] = ratingOf(Json.parse(body))
+
+  private def ratingOf(js: JsValue): Option[Double] = {
     val summary = js \ "data" \ "title" \ "ratingsSummary"
     for {
       r <- (summary \ "aggregateRating").asOpt[JsValue].flatMap {
@@ -65,12 +79,13 @@ class ImdbClient(http: HttpFetch) {
    *  rows where the cinema-side synopsis was short or missing, producing
    *  inappropriate English blurbs for Polish films. */
   def details(imdbId: String): Option[ImdbClient.Details] =
-    EnrichmentRead.absentOnNotFound(http.post(Endpoint, detailsQueryBody(imdbId), "application/json"))
-      .map(parseDetails)
+    graphQl(detailsQueryBody(imdbId)).map(detailsOf)
 
-  def parseDetails(body: String): ImdbClient.Details = {
-    val title = Json.parse(body) \ "data" \ "title"
-    val rating = parseRating(body)
+  def parseDetails(body: String): ImdbClient.Details = detailsOf(Json.parse(body))
+
+  private def detailsOf(js: JsValue): ImdbClient.Details = {
+    val title = js \ "data" \ "title"
+    val rating = ratingOf(js)
     val titleText  = (title \ "titleText" \ "text").asOpt[String].filter(_.nonEmpty)
     val originalT  = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.nonEmpty)
     val releaseYr  = (title \ "releaseYear" \ "year").asOpt[Int]
@@ -162,9 +177,9 @@ class ImdbClient(http: HttpFetch) {
   def findId(title: String, year: Option[Int], directors: Set[String]): Option[String] = {
     if (title.trim.isEmpty) None
     else {
-      EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).flatMap { body =>
-        parseSuggestions(body, title, year).orElse(
-          if (directors.nonEmpty) disambiguateByDirector(body, directors) else None
+      suggestions(title).flatMap { js =>
+        bestSuggestion(js, title, year).orElse(
+          if (directors.nonEmpty) disambiguateByDirector(js, directors) else None
         )
       }
     }
@@ -179,9 +194,17 @@ class ImdbClient(http: HttpFetch) {
    *  that is not JSON — it is no answer, and an empty list here is stored as one. */
   def suggestedIds(title: String): Seq[String] =
     if (title.trim.isEmpty) Nil
-    else EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).toSeq.flatMap { body =>
-      ImdbClient.suggested(movieSuggestions(Json.parse(body)))
-    }
+    else suggestions(title).toSeq.flatMap(js => ImdbClient.suggested(movieSuggestions(js)))
+
+  /** The suggestion endpoint's answer for `title`: an object carrying its `d` array
+   *  (empty when IMDb knows nothing by that name). Anything else is a failed read. */
+  private def suggestions(title: String): Option[JsObject] = {
+    val url = suggestionUrl(title)
+    HttpRead.jsonObject(http, url) { js =>
+      if ((js \ "d").asOpt[JsArray].isDefined) ReadOutcome.Answered(js)
+      else ReadOutcome.unexpectedBody(url, "no suggestion array 'd'", js.toString)
+    }.toOptionOrThrow
+  }
 
   /** Director-based fallback: when `parseSuggestions` finds no title match (the
    *  film may be listed under a different or international title on IMDb), consider
@@ -193,9 +216,8 @@ class ImdbClient(http: HttpFetch) {
    *  Returns None when 0 or multiple candidates match — never guesses.
    *  Requires director data on the IMDb side; skips candidates with empty director
    *  lists so an undocumented entry doesn't accidentally match. */
-  private def disambiguateByDirector(body: String, directors: Set[String]): Option[String] = {
-    val candidates = Try(Json.parse(body)).toOption.toSeq
-      .flatMap(js => (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
+  private def disambiguateByDirector(js: JsValue, directors: Set[String]): Option[String] = {
+    val candidates = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap { entry =>
         for {
           id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
@@ -219,39 +241,40 @@ class ImdbClient(http: HttpFetch) {
    *  Public for testability — the parsing has enough corner cases (non-tt
    *  ids, video games sharing the title, missing optional fields) that we
    *  want fixture-driven assertions independent of HTTP. */
-  def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
-    Try(Json.parse(body)).toOption.flatMap { js =>
-      val movies       = movieSuggestions(js)
-      val titleMatches = ImdbClient.titleMatches(movies, title)
-      val ranked = titleMatches.sortBy { s =>
-        val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
-        (yearDistance, s.rank)
-      }
-      // With a YEAR the ranking above is evidence and the closest year wins. WITHOUT one,
-      // several title matches are indistinguishable — refuse rather than let `rank` (IMDb's
-      // own popularity ordering) decide, the same discipline `TmdbClient.searchUnique`
-      // applies to a multi-hit yearless search on the TMDB side. A wrong id here is not a
-      // wrong rating, it is the wrong FILM: it drives the year, director, cast and every
-      // rating lookup downstream.
-      //
-      // One title match is not "unambiguous" either when IMDb itself ranks a DIFFERENT
-      // film above it: the endpoint matches the query against AKAs too, and never shows
-      // them, so a local title that is another film's AKA looks like one exact hit further
-      // down. "Opętanie" answers Żuławski's "Possession" (1981) first — its Polish title —
-      // and a 1973 TV film of that exact name at rank ~1M; binding the latter misnamed a
-      // 4K revival of the former.
-      val exact =
-        if (year.isDefined) ranked.headOption.map(_.id)
-        else if (titleMatches.sizeIs == 1 && movies.headOption.contains(titleMatches.head)) titleMatches.headOption.map(_.id)
-        else None
-      // Foreign-title fallback: when nothing matches the local title, accept
-      // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
-      // gave us. That pair of signals (query relevance + exact year) is enough
-      // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing.
-      exact.orElse(year.flatMap(request => movies.headOption.collect {
-        case s if s.year.contains(request) => s.id
-      }))
+  def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] =
+    bestSuggestion(Json.parse(body), title, year)
+
+  private def bestSuggestion(js: JsValue, title: String, year: Option[Int]): Option[String] = {
+    val movies       = movieSuggestions(js)
+    val titleMatches = ImdbClient.titleMatches(movies, title)
+    val ranked = titleMatches.sortBy { s =>
+      val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
+      (yearDistance, s.rank)
     }
+    // With a YEAR the ranking above is evidence and the closest year wins. WITHOUT one,
+    // several title matches are indistinguishable — refuse rather than let `rank` (IMDb's
+    // own popularity ordering) decide, the same discipline `TmdbClient.searchUnique`
+    // applies to a multi-hit yearless search on the TMDB side. A wrong id here is not a
+    // wrong rating, it is the wrong FILM: it drives the year, director, cast and every
+    // rating lookup downstream.
+    //
+    // One title match is not "unambiguous" either when IMDb itself ranks a DIFFERENT
+    // film above it: the endpoint matches the query against AKAs too, and never shows
+    // them, so a local title that is another film's AKA looks like one exact hit further
+    // down. "Opętanie" answers Żuławski's "Possession" (1981) first — its Polish title —
+    // and a 1973 TV film of that exact name at rank ~1M; binding the latter misnamed a
+    // 4K revival of the former.
+    val exact =
+      if (year.isDefined) ranked.headOption.map(_.id)
+      else if (titleMatches.sizeIs == 1 && movies.headOption.contains(titleMatches.head)) titleMatches.headOption.map(_.id)
+      else None
+    // Foreign-title fallback: when nothing matches the local title, accept
+    // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
+    // gave us. That pair of signals (query relevance + exact year) is enough
+    // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing.
+    exact.orElse(year.flatMap(request => movies.headOption.collect {
+      case s if s.year.contains(request) => s.id
+    }))
   }
 }
 

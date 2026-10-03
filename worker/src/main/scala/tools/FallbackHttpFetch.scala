@@ -103,9 +103,8 @@ class FallbackHttpFetch(
       val detail = s"All ${backends.size} backends failed for $verb $url:\n  " + failures.mkString("\n  ")
       // A definitive "not found" from the LAST backend is an ANSWER, and it has to
       // reach the caller as one. Wrapping it in a composite `RuntimeException` hid
-      // it twice over: the message now begins "All N backends failed", so
-      // `EnrichmentRead`'s `^HTTP <code>` test cannot see the 404 and books it as a
-      // failed read. That is fatal to a slug-probe ladder — Metacritic and Rotten
+      // it: the composite is not an `HttpStatusException`, so `ReadOutcome.classify`
+      // (keyed on the typed status) cannot see the 404 and books it as a failed read. That is fatal to a slug-probe ladder — Metacritic and Rotten
       // Tomatoes try ~20 candidates of which at most one exists, so treating the
       // first losing probe as an outage aborts the whole ladder. A convergence leg
       // measured it exactly: Metacritic 17 and RT 73 against production's 308 and
@@ -114,7 +113,7 @@ class FallbackHttpFetch(
       // Only the LAST backend's verdict qualifies. An earlier leg missing (no
       // fixture recorded) says nothing about the resource; the leg that actually
       // reached the upstream is the one whose answer this is.
-      lastFailure.filter(EnrichmentRead.isAbsent).foreach { absent =>
+      lastFailure.filter(ReadOutcome.isAbsent).foreach { absent =>
         logger.debug(s"FallbackHttpFetch $verb $url — every backend failed and the last says NOT FOUND; " +
                      s"propagating that rather than a composite failure")
         failureLog.cleared(key, s"answered not found (${absent.getMessage})")
@@ -147,5 +146,5 @@ object FallbackHttpFetch {
    *  `ScrapeChunk` retried a permanent answer to exhaustion on paid egress (UK
    *  2026-09-21/22). An egress provider's OWN 404 is not an `HttpStatusException`
    *  (see `EgressProviderException`), so it still falls through. */
-  val OriginAnswered: Throwable => Boolean = EnrichmentRead.isAbsent
+  val OriginAnswered: Throwable => Boolean = ReadOutcome.isAbsent
 }

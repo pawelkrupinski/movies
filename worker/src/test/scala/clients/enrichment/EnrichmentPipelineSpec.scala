@@ -19,7 +19,7 @@ import tools.RoutingHttpFetch
 class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
 
   // An unrouted URL is the 404 a real site returns for a page it doesn't have,
-  // NOT a generic error — the clients tell those apart now (tools.EnrichmentRead),
+  // NOT a generic error — the clients tell those apart now (tools.ReadOutcome),
   // and a probe ladder must be able to move on to its next candidate.
   private def stubFetch(routes: Map[String, String]) = new RoutingHttpFetch(routes, unroutedIsNotFound = true)
 

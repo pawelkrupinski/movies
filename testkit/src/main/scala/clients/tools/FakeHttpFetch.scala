@@ -155,7 +155,7 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
    *  fixture" means 404, not "the recording is broken". This used to be masked:
    *  the clients swallowed the FileNotFoundException into `None` and the ladder
    *  walked on regardless. Now that a failed read propagates
-   *  ([[tools.EnrichmentRead]]), the fake has to state the distinction itself or
+   *  ([[tools.ReadOutcome]]), the fake has to state the distinction itself or
    *  the first losing probe aborts the whole ladder.
    *
    *  A genuinely missing fixture for the WINNING slug still surfaces — as the
@@ -182,6 +182,17 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
     // already read it as "no rating".
     else if (!strict && host == "caching.graphql.imdb.com")
       """{"data":{"title":null}}""".getBytes("UTF-8")
+    // The id-crosswalk SEARCHES the IMDb-id and TMDB ladders end on — Wikidata's
+    // `list=search` and Cinemeta's catalogue search — take the same rule: an unrecorded
+    // query was never asked during recording, and production answers an unknown one
+    // with an empty result (HTTP 200; bodies as recorded). These were invisible while
+    // the clients swallowed every failure into None; now that a rung's failure is
+    // remembered (`AnswerLadder`), a recording gap here would read as an outage and
+    // leave every unidentified film's lookup "not concluded".
+    else if (!strict && host == "www.wikidata.org" && url.contains("list=search"))
+      """{"batchcomplete":"","query":{"searchinfo":{"totalhits":0},"search":[]}}""".getBytes("UTF-8")
+    else if (!strict && host == "v3-cinemeta.strem.io" && path.contains("/search="))
+      """{"metas":[]}""".getBytes("UTF-8")
     else if (!strict && FakeHttpFetch.ProbedRatingHosts.exists(h => host == h || host.endsWith("." + h)))
       throw new tools.HttpStatusException(404, "GET", url, None)
     else throw new java.io.FileNotFoundException(
@@ -189,8 +200,11 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
 }
 
 object FakeHttpFetch {
-  /** Hosts whose resolvers find a page by PROBING candidate slugs, so an
+  /** Hosts whose resolvers find a page by PROBING candidate slugs or ids, so an
    *  unrecorded URL is a 404 rather than a recording gap. See `missingFixture`. */
   private[tools] val ProbedRatingHosts: Set[String] =
-    Set("metacritic.com", "rottentomatoes.com", "filmweb.pl")
+    Set("metacritic.com", "rottentomatoes.com", "filmweb.pl",
+      // Letterboxd's `/tmdb/{id}/` is probed for every tmdbId the IMDb-id ladder reaches;
+      // an id it doesn't know is "no such film" (`LetterboxdClient`), never a gap.
+      "letterboxd.com")
 }

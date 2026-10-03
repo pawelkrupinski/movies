@@ -135,7 +135,8 @@ runs:
           pair="$GIVEN"
           if [ -z "$pair" ]; then
               marker="hermetic-${{ inputs.code }}.txt"
-              if gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir hermetic-marker --clobber 2>/dev/null; then
+              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir hermetic-marker --clobber)
+              if [ "$present" = present ]; then
                   pair=$(head -1 "hermetic-marker/$marker")
               fi
           fi
@@ -249,7 +250,9 @@ runs:
               exit 0
           fi
           if [ -n "$pinned" ]; then
-              if gh run download "$pinned" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive 2>/dev/null; then
+              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh run download "$pinned" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive)
+              if [ "$present" = present ]; then
+                  # allow-silenced: the recording date only labels the log line and the provenance env.
                   recorded=$(gh run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
                   echo "scrape corpus from PINNED recording run $pinned ($recorded)"
                   echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
@@ -264,8 +267,8 @@ runs:
           # `id recordedAt` per line; the pair is exported so the spec can say WHICH
           # corpus it replayed (`CorpusProvenance`) and a green leg can record it.
           while read -r run recorded; do
-              if gh run download "$run" --name "scrape-fixtures-${{ inputs.code }}" \
-                 --dir scrape-archive 2>/dev/null; then
+              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh run download "$run" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive)
+              if [ "$present" = present ]; then
                   echo "scrape corpus from recording run $run ($recorded)"
                   echo "KINOWO_CONVERGENCE_CORPUS_RUN=$run" >> "$GITHUB_ENV"
                   echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
@@ -273,7 +276,7 @@ runs:
                   exit 0
               fi
           done < <(gh run list --workflow "Record scrape fixtures" --status success \
-                       --limit 10 --json databaseId,createdAt --jq '.[] | "\(.databaseId) \(.createdAt)"' 2>/dev/null)
+                       --limit 10 --json databaseId,createdAt --jq '.[] | "\(.databaseId) \(.createdAt)"')
           echo "no recorded scrape corpus for ${{ inputs.code }} — the leg will fail and say so"
 
     # The corpus this country's last GREEN full leg replayed — recorded by that leg as
@@ -290,14 +293,15 @@ runs:
       run: |
           set -uo pipefail
           marker="corpus-green-${{ inputs.code }}.txt"
-          gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir green-marker --clobber 2>/dev/null \
-              || { echo "no $marker yet — no last-green corpus to compare against"; exit 0; }
+          present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir green-marker --clobber) || exit 1
+          [ "$present" = present ] || { echo "no $marker yet — no last-green corpus to compare against"; exit 0; }
           read -r green recorded < "green-marker/$marker"
           echo "last green ${{ inputs.code }} leg replayed recording run $green ($recorded)"
           echo "KINOWO_CONVERGENCE_GREEN_CORPUS_RUN=$green" >> "$GITHUB_ENV"
           echo "KINOWO_CONVERGENCE_GREEN_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
           [ "$green" = "${KINOWO_CONVERGENCE_CORPUS_RUN:-}" ] && { echo "same corpus as today"; exit 0; }
-          if gh run download "$green" --name "scrape-fixtures-${{ inputs.code }}" --dir green-archive 2>/dev/null; then
+          present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh run download "$green" --name "scrape-fixtures-${{ inputs.code }}" --dir green-archive) || exit 1
+          if [ "$present" = present ]; then
               mkdir -p green-corpus
               tar -xzf "green-archive/scrapes-${{ inputs.code }}.tar.gz" -C green-corpus
               echo "KINOWO_CONVERGENCE_GREEN_CORPUS_DIR=$PWD/green-corpus/test/resources/fixtures/corpus" >> "$GITHUB_ENV"

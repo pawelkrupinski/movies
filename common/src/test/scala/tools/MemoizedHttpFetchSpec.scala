@@ -8,7 +8,7 @@ class MemoizedHttpFetchSpec extends AnyFlatSpec with Matchers {
   /** Records every URL the decorator actually forwards, and answers per URL:
    *  a `404` prefix throws, anything else comes back as the body. */
   private def recordingFetch = new RecordingHttpFetch(url =>
-    if (url.startsWith("404")) throw new RuntimeException(s"HTTP 404 for $url") else s"body of $url")
+    if (url.startsWith("404")) throw new HttpStatusException(404, "GET", url, None) else s"body of $url")
 
   "MemoizedHttpFetch" should "fetch a repeated URL once and replay the body" in {
     val underlying = recordingFetch

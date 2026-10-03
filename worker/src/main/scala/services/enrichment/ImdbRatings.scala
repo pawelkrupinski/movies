@@ -45,7 +45,7 @@ class ImdbRatings(
   // records the attempt for /debug, leaves freshness and the cadence alone, and
   // lets the queue retry with backoff. Swallowing it here is what made IMDb's
   // 2026-07-30 CDN block look like ~47h of films that simply have no rating.
-  // A film IMDb genuinely doesn't rate still returns None — see EnrichmentRead.
+  // A film IMDb genuinely doesn't rate still returns None — see tools.ReadOutcome.
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
       val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"

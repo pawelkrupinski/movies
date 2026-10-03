@@ -130,7 +130,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val failing = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
-      def get(u: String): String = throw new RuntimeException("HTTP 503")
+      def get(u: String): String = throw new tools.HttpStatusException(503, "GET", u, None)
     })
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), failing)
 
@@ -334,7 +334,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val asked = scala.collection.mutable.Set.empty[String]
     val client = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String = { asked += url; throw new RuntimeException("HTTP 404") }
+      def get(url: String): String = { asked += url; UpstreamNotFound(url) }
     })
 
     new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), client).refreshAll()

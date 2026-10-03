@@ -15,7 +15,7 @@ import scala.concurrent.{Await, Future}
  * would 200 just as readily as the correct `/movie/the-odyssey-2026`).
  *
  * `probe` follows the same contract candidates already use via
- * [[EnrichmentRead.absentOnNotFound]]: returning `None` means "this candidate
+ * [[ReadOutcome.toOptionOrThrow]]: returning `None` means "this candidate
  * isn't a match, try the next"; throwing means the read itself failed (a
  * block, a timeout, a 5xx — not an absence) and must not be swallowed.
  *

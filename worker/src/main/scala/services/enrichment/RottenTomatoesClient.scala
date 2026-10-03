@@ -3,12 +3,11 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import services.resolution.TitleMatch
-import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch}
+import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead, MemoizedHttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Tries to resolve a film title to its canonical Rotten Tomatoes page URL and,
@@ -98,7 +97,7 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  one year apart; the page names its own director. Unreadable or uncredited is not
    *  a contradiction ([[MetacriticClient.directorsCompatible]]). */
   private def creditsAllow(url: String, directors: Set[String]): Boolean =
-    directors.isEmpty || EnrichmentRead.absentOnNotFound(http.get(url))
+    directors.isEmpty || HttpRead.pageOrNone(http, url)
       .forall(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
 
   /** Canonical URL ONLY if any candidate returns 200 AND its page year is
@@ -124,7 +123,7 @@ class RottenTomatoesClient(http: HttpFetch) {
     // shape and [[ConcurrentCandidateProbe]]'s priority-preserving guarantee.
     ConcurrentCandidateProbe.firstMatch("rt-slug-probe", candidateSlugs(title, year)) { slug =>
       val url = s"$Site/m/$slug"
-      EnrichmentRead.absentOnNotFound(http.get(url))
+      HttpRead.pageOrNone(http, url)
         .filter(body => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)))
         // An undated bare slug is waved through by the year guard, so the page's own
         // director is the check that bites: /m/sacrifice is Umberto Lenzi's 1972
@@ -154,7 +153,7 @@ class RottenTomatoesClient(http: HttpFetch) {
     if (title.trim.isEmpty) return None
     val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
     val searchUrl = s"$Site/search?search=$encoded"
-    EnrichmentRead.absentOnNotFound(http.get(searchUrl)).flatMap { html =>
+    HttpRead.pageOrNone(http, searchUrl).flatMap { html =>
       val hits = parseSearchResults(html)
       pickBestSearchHit(hits, title, year).map(h => s"$Site/m/${h.slug}")
     }
@@ -172,8 +171,8 @@ class RottenTomatoesClient(http: HttpFetch) {
       val href = link.map(_.attr("href")).getOrElse("")
       val slug = MoviePathSlug.findFirstMatchIn(href).map(_.group(1))
       val title = link.map(_.text().trim).getOrElse("")
-      val year = Try(row.attr("release-year").toInt).toOption
-      val score = Try(row.attr("tomatometer-score").toInt).toOption.filter(s => s >= 0 && s <= 100)
+      val year = row.attr("release-year").trim.toIntOption
+      val score = row.attr("tomatometer-score").trim.toIntOption.filter(s => s >= 0 && s <= 100)
       slug.filter(_.nonEmpty).filter(_ => title.nonEmpty).map(s => SearchHit(s, title, year, score))
     }
   }
@@ -252,10 +251,8 @@ class RottenTomatoesClient(http: HttpFetch) {
     }
   }
 
-  /** Tomatometer percentage for a canonical /m/ page, or None for a page with
-   *  none, a page that is gone (404/410) or a non-canonical URL. A read that
-   *  FAILED throws ([[tools.EnrichmentRead]]): a blocked or throttled RT must
-   *  not be booked as a checked, unchanged refresh. Refuses search URLs explicitly —
+  /** Tomatometer percentage for a canonical /m/ page, or None when the page is
+   *  gone (404), carries no score, or the URL is not canonical; a failed read throws. Refuses search URLs explicitly —
    *  scoring a search-result page makes no sense and would silently return
    *  nonsense if RT ever started embedding aggregate ratings there. */
   def scoreFor(url: String): Option[Int] = pageFor(url).flatMap(_.score)
@@ -267,7 +264,7 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  See `RottenTomatoesRatings`. */
   def pageFor(url: String): Option[Page] = {
     if (!url.contains("/m/")) None
-    else EnrichmentRead.absentOnNotFound(http.get(url)).map(body =>
+    else HttpRead.pageOrNone(http, url).map(body =>
       Page(parseScore(body), RottenTomatoesClient.parseReleaseYear(body), JsonLdAggregateRating.directorNames(body)))
   }
 

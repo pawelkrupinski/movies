@@ -200,6 +200,7 @@ runs:
           # Keep the newest FIVE pairs: with recordings landing every ~15 min, keeping two evicted a
           # pair before an identity measure dispatched on it could restore it (measure 37114004953).
           # Either compressor's: the pairs pinned before the move to zstd are gzip.
+          # allow-silenced: pruning old pairs is housekeeping; one that fails to delete is pruned next time.
           gh release view "$FIXTURE_RELEASE_TAG" --json assets \
                   --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
               | sort -r | tail -n +6 | cut -f2 \

@@ -250,7 +250,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // written to the durable store as "this site has no page for this film" and
   // replayed for a full day — turning a transient upstream outage into a day of
   // missing rating links. The clients now throw instead of returning None on a
-  // failed read (tools.EnrichmentRead); this pins the other half of the
+  // failed read (tools.ReadOutcome); this pins the other half of the
   // contract, that a throwing chain leaves the cache empty.
   it should "remember NOTHING when the probe chain fails, so an outage isn't stored as 'no page'" in {
     val store = new InMemoryResolutionStore(normalizer = titleNormalizer)

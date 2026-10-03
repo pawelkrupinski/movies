@@ -1,7 +1,7 @@
 package services.enrichment
 
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -34,8 +34,17 @@ class LetterboxdClient(http: HttpFetch) {
   def byTmdbId(tmdbId: Int): Option[FilmIds] =
     fetchAndParse(s"$Site/tmdb/$tmdbId/")
 
+  /** `None` when Letterboxd knows no film by that id — a 404, or the 200 "TMDB Import
+   *  Result" / "IMDb ID Not found" page its redirect endpoints serve for an unknown id.
+   *  A read that failed, or a page that is neither a film nor that answer (a challenge),
+   *  throws: it was `Try(...).toOption`, which read a Cloudflare block as "no such film". */
   private def fetchAndParse(url: String): Option[FilmIds] =
-    Try(http.get(url)).toOption.map(parse)
+    HttpRead.text(http, url)(page => answer(url, page)).toOptionOrThrow
+
+  private def answer(url: String, page: String): ReadOutcome[FilmIds] =
+    if (FilmPageMarkers.exists(page.contains)) ReadOutcome.Answered(parse(page))
+    else if (UnknownIdTitles.exists(page.contains)) ReadOutcome.none("Letterboxd knows no film by this id")
+    else ReadOutcome.unexpectedBody(url, "neither a film page nor Letterboxd's unknown-id page", page)
 
   /** Pure parse of a Letterboxd film page. Returns whichever ids are present.
    *  A `data-tmdb-type` other than "movie" (Letterboxd also catalogues TV)
@@ -56,6 +65,10 @@ class LetterboxdClient(http: HttpFetch) {
 object LetterboxdClient {
   private val Site         = "https://letterboxd.com"
   private val ImdbIdPattern = """tt\d+""".r
+  /** Every film (or TV) page's `<body>` carries these. */
+  private val FilmPageMarkers = Seq("data-tmdb-type=", "data-type=\"film\"")
+  /** The page titles Letterboxd's `/tmdb/{id}/` and `/imdb/{id}/` serve, with a 200, for an id it doesn't know. */
+  private val UnknownIdTitles = Seq("TMDB Import Result &bull; Letterboxd", "IMDb ID Not found &bull; Letterboxd")
 
   /** The two external ids Letterboxd publishes on a film page. */
   case class FilmIds(tmdbId: Option[Int], imdbId: Option[String])

@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch}
+import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead, MemoizedHttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -116,15 +116,15 @@ class MetacriticClient(http: HttpFetch) {
    *  Metascore, which this path previously left as None. */
   private def verified(url: String, directors: Set[String]): Option[Resolved] =
     if (directors.isEmpty) Some(Resolved(url, None))   // nothing to check it against
-    else EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(url))) match {
+    else HttpRead.pageOrNone(http, MetacriticClient.requestUrl(url)) match {
       case Some(body) =>
         val page = JsonLdAggregateRating.of(body)
         // Read and CONTRADICTED — a different film, drop it; consistent — keep it, and take the
         // Metascore while we have the page.
         Option.when(MetacriticClient.directorsCompatible(directors, page.directorNames))(Resolved(url, page.rating))
-      // Could not read it. Silence is not contradiction: the search already
-      // matched this page on title and year, so keep it exactly as before rather
-      // than letting an unreadable page throw a good link away.
+      // The page 404s. Silence is not contradiction: the search already matched
+      // this page on title and year, so keep it exactly as before rather than
+      // letting a missing page throw a good link away. (A failed read throws.)
       case None => Some(Resolved(url, None))
     }
 
@@ -159,8 +159,8 @@ class MetacriticClient(http: HttpFetch) {
       // 404 = "that slug isn't a film", which is what the ladder probes for, so
       // it drops through to the next candidate. A block/throttle/5xx aborts the
       // ladder instead of quietly reporting "no Metacritic page" — a failed read
-      // is not an answer. See tools.EnrichmentRead.
-      EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
+      // is not an answer. See tools.ReadOutcome.
+      HttpRead.pageOrNone(http, MetacriticClient.requestUrl(s"$Site/movie/$slug"))
         .map(JsonLdAggregateRating.of)
         .filter(page => MetacriticClient.yearsCompatible(year, page.datePublishedYear))
         // Title and year are not always enough to name a film: Metacritic
@@ -191,7 +191,7 @@ class MetacriticClient(http: HttpFetch) {
     if (title.trim.isEmpty) return None
     val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
     val searchUrl = s"$Site/search/$encoded/?category=2"
-    EnrichmentRead.absentOnNotFound(http.get(searchUrl)).flatMap { html =>
+    HttpRead.pageOrNone(http, searchUrl).flatMap { html =>
       val hits = parseSearchResults(html)
       pickBestSearchHit(hits, title, year).map(h => s"$Site/movie/${h.slug}")
     }
@@ -282,7 +282,7 @@ class MetacriticClient(http: HttpFetch) {
   /** The Metascore and the directors the page credits, off ONE fetch — the credit is
    *  what tells a refresh that a STORED url is another film's (`RatingPageIdentity`). */
   def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
-    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).map(JsonLdAggregateRating.of).map(page =>
+    HttpRead.pageOrNone(http, MetacriticClient.requestUrl(movieUrl)).map(JsonLdAggregateRating.of).map(page =>
       MetacriticClient.Page(page.rating, page.directorNames, page.datePublishedYear))
 }
 

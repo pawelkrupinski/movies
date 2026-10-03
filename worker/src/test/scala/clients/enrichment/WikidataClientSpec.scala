@@ -74,13 +74,19 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     client.findImdbIdByFilmwebId("99") shouldBe None
   }
 
-  it should "return None (not throw) when the HTTP call fails" in {
+  it should "THROW, not answer None, when the HTTP call fails" in {
+    // It answered None, so the resolver ladders read a Wikidata outage as "no such film".
     val client = new WikidataClient(new HttpFetch {
       def get(url: String): String = throw new java.io.IOException("network error")
       override def get(url: String, headers: Map[String, String]): String = get(url)
       override def post(url: String, body: String, contentType: String): String = ???
     })
-    client.findImdbIdByFilmwebId("1118") shouldBe None
+    a[java.io.IOException] should be thrownBy client.findImdbIdByFilmwebId("1118")
+  }
+
+  it should "THROW on Wikimedia's 200 maxlag error document (recorded) rather than read it as no hits" in {
+    val client = wikidataStub(Map("srsearch=" -> loadFixture("/fixtures/wikidata/search_maxlag_error.json")))
+    (the[tools.UnexpectedBodyException] thrownBy client.findImdbIdByFilmwebId("1118")).getMessage should include("no query.search")
   }
 
   // ── findIdsByFilmwebId (full external-id harvest) ───────────────────────────

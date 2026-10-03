@@ -34,6 +34,7 @@ dispatch() {
 }
 
 for workflow in "$@"; do
+    # allow-silenced: an unreadable last run leaves no base, which DISPATCHES — the safe direction.
     base=$(gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
     if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
         echo "$workflow: no earlier run to diff against (base '${base:-none}') — dispatching"

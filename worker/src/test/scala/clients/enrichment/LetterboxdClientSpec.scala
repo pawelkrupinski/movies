@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.LetterboxdClient
 import services.enrichment.LetterboxdClient.FilmIds
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
 
@@ -23,7 +23,7 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
     def get(url: String): String = body
   }
   private def notFound = new GetOnlyHttpFetch {
-    def get(url: String): String = throw new RuntimeException("HTTP 404")
+    def get(url: String): String = UpstreamNotFound(url)
   }
 
   "parse" should "extract both the TMDB id (body attr) and the IMDb id (footer link)" in {
@@ -68,5 +68,24 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
     val c = new LetterboxdClient(notFound)
     c.byImdbId("tt0000000") shouldBe None
     c.byTmdbId(999999999) shouldBe None
+  }
+
+  it should "return None for the 200 unknown-id pages Letterboxd serves (recorded)" in {
+    val c = new LetterboxdClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/tmdb/")) loadFixture("/fixtures/letterboxd/tmdb_import_result_unknown_id.html")
+        else loadFixture("/fixtures/letterboxd/imdb_id_not_found.html")
+    })
+    c.byTmdbId(999999999) shouldBe None
+    c.byImdbId("tt0000000") shouldBe None
+  }
+
+  it should "THROW, not answer None, when the read failed or the page is not Letterboxd's" in {
+    // Was Try(http.get(url)).toOption: a Cloudflare block read as "no such film".
+    a[tools.HttpStatusException] should be thrownBy new LetterboxdClient(new GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(403, "GET", url, None)
+    }).byTmdbId(27205)
+    a[tools.UnexpectedBodyException] should be thrownBy
+      new LetterboxdClient(stub("<html><body>Service temporarily unavailable</body></html>")).byTmdbId(27205)
   }
 }

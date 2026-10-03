@@ -13,7 +13,7 @@
  * a version that has not gone live; replacing it would throw away an approval, so that is a
  * decision for a person, not for this script.
  */
-import { HttpError } from "../mobile/network.js";
+import { HttpError } from "../http.js";
 import { IOS_APP_ID, type AscApi, type Sleep } from "../mobile/stores.js";
 import type { Notes } from "./notes.js";
 

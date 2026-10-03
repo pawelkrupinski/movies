@@ -35,7 +35,7 @@ import scala.jdk.CollectionConverters._
  * stub. A `ListBuffer` append is not atomic (`last0.next = …` then `len += 1`),
  * so concurrent callers not only lost entries but could read `last0` as null
  * with a non-zero `len` and throw an NPE *out of `get`* — which the enrichment
- * clients correctly treat as a failed read (`EnrichmentRead`), so the row under
+ * clients correctly treat as a failed read (`ReadOutcome`), so the row under
  * test silently kept no URL. That was the `FilmwebRatingsSpec.refreshAll` flake.
  *
  * For dependencies the test should never reach, use
@@ -45,7 +45,7 @@ import scala.jdk.CollectionConverters._
  *
  * `unroutedIsNotFound` picks what an unrouted URL MEANS, a distinction that
  * only started to matter once the enrichment clients stopped swallowing every
- * failure into `None` (see [[EnrichmentRead]]):
+ * failure into `None` (see [[ReadOutcome]]):
  *
  *   - `false` (default) — a loud non-HTTP error: "this test wired something
  *     wrong / issued a call it shouldn't have". Several specs lean on that as a

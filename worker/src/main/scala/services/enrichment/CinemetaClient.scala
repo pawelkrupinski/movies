@@ -4,11 +4,10 @@ import java.util.Locale
 
 import play.api.libs.json._
 import services.resolution.{TitleMatch, YearWindow}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.Try
 
 /**
  * Cinemeta (Stremio's public catalogue addon) as an IMDb-id resolver of last
@@ -26,7 +25,8 @@ import scala.util.Try
  * when its name matches the query EXACTLY (deburred, case-folded), OR its name
  * contains/starts-with the query AND its `releaseInfo` year is within one of the
  * queried year. A bare fuzzy hit is refused so a wrong film can't get bound.
- * Never throws — any network/parse failure yields None.
+ * An empty `metas` is "no such film"; a read that failed — a 5xx, a body that is not
+ * the catalogue's JSON — throws, so the resolver ladder knows it learned nothing.
  */
 class CinemetaClient(http: HttpFetch) {
   import CinemetaClient._
@@ -38,12 +38,12 @@ class CinemetaClient(http: HttpFetch) {
       .flatMap(t => resolveTitle(t, year).iterator)
       .nextOption()
 
-  private def resolveTitle(title: String, year: Option[Int]): Option[String] =
-    Try {
-      val body  = http.get(searchUrl(title))
-      val metas = (Json.parse(body) \ "metas").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+  private def resolveTitle(title: String, year: Option[Int]): Option[String] = {
+    val url = searchUrl(title)
+    HttpRead.jsonObject(http, url)(metasOf(url, _)).toOptionOrThrow.flatMap { metas =>
       metas.iterator.flatMap(m => candidate(m)).find(c => corroborated(c, title, year)).map(_.imdbId)
-    }.toOption.flatten
+    }
+  }
 
   private def candidate(meta: JsValue): Option[Candidate] =
     for {
@@ -69,6 +69,15 @@ object CinemetaClient {
   private val YearTolerance = 1
 
   private final case class Candidate(imdbId: String, name: String, year: Option[Int])
+
+  /** The catalogue's `metas`: an empty array is Cinemeta's "no such film"; a document
+   *  without one is not the catalogue answering. */
+  private def metasOf(url: String, js: JsObject): ReadOutcome[Seq[JsValue]] =
+    (js \ "metas").asOpt[JsArray] match {
+      case Some(metas) if metas.value.isEmpty => ReadOutcome.none("Cinemeta: no metas")
+      case Some(metas)                        => ReadOutcome.Answered(metas.value.toSeq)
+      case None                               => ReadOutcome.unexpectedBody(url, "no 'metas' array", js.toString)
+    }
 
   def searchUrl(title: String): String =
     s"$Base/search=${URLEncoder.encode(title, StandardCharsets.UTF_8)}.json"

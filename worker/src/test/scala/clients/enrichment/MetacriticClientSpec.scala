@@ -46,7 +46,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // Stub fetch that throws for any URL containing one of the 404 fragments.
   private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
     def get(url: String): String =
-      if (notFound.exists(url.contains)) throw new RuntimeException("HTTP 404")
+      if (notFound.exists(url.contains)) UpstreamNotFound(url)
       else "OK"
   }
 
@@ -102,7 +102,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   "urlFor with a year" should "reject a de-articled slug whose page year conflicts with the film's" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/movie/the-north/")) throw new RuntimeException("HTTP 404")
+        if (url.endsWith("/movie/the-north/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
         else if (url.contains("/search/")) "<html><body></body></html>"
         else UpstreamNotFound(url)
@@ -115,7 +115,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     // agrees, so the de-articled slug is accepted.
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/movie/the-north/")) throw new RuntimeException("HTTP 404")
+        if (url.endsWith("/movie/the-north/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
         else UpstreamNotFound(url)
     })
@@ -191,7 +191,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   it should "fall back to the bare slug when no year-suffixed page exists" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/movie/the-dark-knight-2008/")) throw new RuntimeException("HTTP 404")
+        if (url.endsWith("/movie/the-dark-knight-2008/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/the-dark-knight/")) moviePage("The Dark Knight", 2008, 84)
         else UpstreamNotFound(url)
     })
@@ -215,7 +215,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   "search fallback" should "reject an exact-title hit whose year is beyond tolerance, not merely rank it last" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else searchPage(Seq(("the-trial-el-juicio", "The Trial", 2023)))
     })
     c.urlFor("The Trial", year = Some(1962)) shouldBe None
@@ -224,7 +224,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   it should "still accept an exact-title hit inside tolerance" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else searchPage(Seq(("the-trial", "The Trial", 1963)))
     })
     c.urlFor("The Trial", year = Some(1962)) shouldBe
@@ -234,7 +234,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   it should "keep an undated hit — an unknown year is not grounds to reject" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else searchPage(Seq(("some-film", "Some Film", 0)))
     })
     c.urlFor("Some Film", year = Some(2026)) shouldBe
@@ -244,7 +244,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   it should "prefer the closest year among several compatible hits" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else searchPage(Seq(("far", "Twins", 2035), ("near", "Twins", 2027)))
     })
     c.urlFor("Twins", year = Some(2026)) shouldBe
@@ -305,7 +305,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     // Stub 404s every probe AND returns an empty search page → no fallback path.
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else "<html><body></body></html>"  // search page with no items
     })
     c.urlFor("foo", Some("bar")) shouldBe None
@@ -413,7 +413,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     val fixture = loadFixture(SearchTopGunFixture)
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else if (url.contains("/search/")) fixture
         else UpstreamNotFound(url)
     })
@@ -438,7 +438,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         |</body></html>""".stripMargin
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        if (url.contains("/movie/")) UpstreamNotFound(url)
         else if (url.contains("/search/")) html
         else UpstreamNotFound(url)
     })
@@ -516,7 +516,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return None when the HTTP fetch fails" in {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("HTTP 404")
+      def get(url: String): String = UpstreamNotFound(url)
     })
     c.metascoreFor("https://www.metacritic.com/movie/whatever") shouldBe None
   }
@@ -539,7 +539,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     def get(url: String): String = { recorded.add(url); respond(url) }
   }
 
-  private def notFound: String => String = url => throw new RuntimeException(s"HTTP 404 for $url")
+  private def notFound: String => String = url => UpstreamNotFound(url)
 
   // Metacritic 301-redirects /movie/<slug> to /movie/<slug>/, so probing the
   // slash-less form costs two round trips per candidate — on a ladder that
@@ -593,7 +593,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   it should "return the first title that resolves and stop there" in {
     val fetch = new RecordingFetch(url =>
       if (url.contains("/movie/inception/")) moviePage("Inception", 2010, 74)
-      else throw new RuntimeException("HTTP 404"))
+      else UpstreamNotFound(url))
     val c = new MetacriticClient(fetch)
     c.resolveAcross(Seq("Poczatek", "Inception", "Never Reached"), None, None).map(_.url) shouldBe
       Some("https://www.metacritic.com/movie/inception")

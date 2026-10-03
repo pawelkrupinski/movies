@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.{Candidate, SearchHit}
-import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch}
+import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch, UpstreamNotFound}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
@@ -13,6 +13,26 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     new RoutingHttpFetch(routes, getOnly = true, unroutedIsNotFound = true)
 
   private val client = new FilmwebClient(new RealHttpFetch)
+
+  // ── an absent film vs a failed read ──────────────────────────────────────────
+
+  "the API reads" should "read Filmweb's 204-empty answer for an unknown film id (recorded) as no film" in {
+    // `curl https://www.filmweb.pl/api/v1/film/999999999/info` → HTTP 204, empty body.
+    val c = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = "" })
+    c.info(999999999) shouldBe None
+    c.rating(999999999) shouldBe None
+    c.preview(999999999) shouldBe None
+  }
+
+  it should "THROW, not answer no film, when a page that is not the API's JSON comes back" in {
+    // These were parsed in Try(...).toOption: a Filmweb HTML page (recorded, the site's
+    // own front page, trimmed) read as "no such film" / "no rating".
+    val page = clients.tools.FixtureFile.read("test/resources/fixtures/filmweb/homepage-head.html")
+    val c = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = page })
+    a[tools.UnexpectedBodyException] should be thrownBy c.info(1)
+    a[tools.UnexpectedBodyException] should be thrownBy c.rating(1)
+    a[tools.UnexpectedBodyException] should be thrownBy c.search("Aftersun")
+  }
 
   // ── search query normalisation ───────────────────────────────────────────────
 
@@ -177,9 +197,9 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   "a /film read that answered no JSON" should "throw, not read as no rating / no info / no preview" in {
     // A block or error page served with HTTP 200 is no answer: as None it booked Filmweb as "no rating".
     val blocked = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = "<html>Access denied</html>" })
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.rating(30940)
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.info(30940)
-    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.preview(30940)
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.rating(30940)
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.info(30940)
+    a [tools.UnexpectedBodyException] should be thrownBy blocked.preview(30940)
   }
 
   "pickBest" should "accept an exact title match (case-insensitive)" in {
@@ -604,7 +624,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
           else """{"searchHits":[{"id":7,"type":"film","matchedTitle":"Reze Arc"}]}"""
         else if (url.contains("/film/7/info"))   """{"title":"Reze Arc","year":2025}"""
         else if (url.contains("/film/7/rating")) """{"rate":7.5,"count":10}"""
-        else throw new RuntimeException(s"HTTP 404 for $url")
+        else UpstreamNotFound(url)
     })
     val r = fw.lookup("Reze Arc | 26. Festiwal Filmowy", Some(2025))
     r should not be empty
@@ -625,7 +645,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
         if (url.contains("/live/search"))       """{"searchHits":[{"id":7,"type":"film","matchedTitle":"Something Else"}]}"""
         else if (url.contains("/film/7/info"))  """{"title":"Something Else","year":2015}"""
         else if (url.contains("/film/7/preview")) """{"directors":[{"name":"Nobody"}]}"""
-        else throw new RuntimeException(s"HTTP 404 for $url")
+        else UpstreamNotFound(url)
       }
     })
 

@@ -3,13 +3,7 @@
  * floor and the self-restart all key off.
  */
 
-/** The store answered, with a status that is not 2xx. */
-export class HttpError extends Error {
-  constructor(readonly url: string, readonly status: number, body: string) {
-    super(`HTTP ${status} from ${url}${body.trim() ? `: ${body.trim().slice(0, 300)}` : ""}`);
-    this.name = "HttpError";
-  }
-}
+import { HttpError } from "../http.js";
 
 /** Codes Node and undici give a round trip the network refused before any server answered. */
 const TRANSIENT_CODES = new Set([

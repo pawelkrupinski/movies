@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, PagedChunkScraper}
-import tools.{CircuitOpenException, EnrichmentRead}
+import tools.{CircuitOpenException, ReadOutcome}
 
 import java.time.Clock
 
@@ -59,7 +59,7 @@ class ScrapeChunkHandler(
           // plan advertised — Odeon's empty business dates, UK 2026-09-21/22). That is
           // an answer, not a failure: a retry only replays it, holding the run open
           // until the chunk exhausts. Land it empty so the run can complete.
-          case e: Exception if EnrichmentRead.isAbsent(e) =>
+          case e: Exception if ReadOutcome.isAbsent(e) =>
             logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
             store.storeChunk(cinema, runId, key, CinemaMovieJson.encode(Nil), clock.instant())
             Done

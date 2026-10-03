@@ -3,8 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setHttpClient, type HttpClient, type HttpRequest } from "../../src/http.js";
-import { HttpError } from "../../src/mobile/network.js";
+import { HttpError, setHttpClient, type HttpClient, type HttpRequest } from "../../src/http.js";
 import {
   androidReleaseState,
   ascApi,

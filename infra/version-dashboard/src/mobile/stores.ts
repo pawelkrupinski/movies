@@ -14,7 +14,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { httpRequest, type HttpRequest } from "../http.js";
 import type { Pending } from "./model.js";
-import { describeError, HttpError, isTransientNetworkError, withNetworkRetries } from "./network.js";
+import { describeError, isTransientNetworkError, withNetworkRetries } from "./network.js";
 
 export const IOS_APP_ID = "6792566321";
 export const ANDROID_PACKAGE = "net.pawel.kinowo";
@@ -38,7 +38,6 @@ function failed(error: unknown): StoreState {
 /** The parsed JSON answer; null for an empty 2xx body (a 204 relationship PATCH, a Play edit DELETE). */
 async function requestJson(url: string, init: Omit<HttpRequest, "timeoutMs">): Promise<unknown> {
   const response = await httpRequest(url, { ...init, timeoutMs: REQUEST_TIMEOUT_MS });
-  if (response.status < 200 || response.status >= 300) throw new HttpError(url, response.status, response.body);
   return response.body.trim() ? (JSON.parse(response.body) as unknown) : null;
 }
 
