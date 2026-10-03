@@ -88,4 +88,32 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       storedWhenBuilt shouldBe MongoIdentityTraceStore.WriteBatch.toLong
     } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
   }
+
+  // Every rules change re-resolves every family at the next boot — and the rules are a digest of all of common —
+  // which rewrote all ~165k traces each time as a delete and an upsert, 500-1,100 Mongo writes a second for minutes.
+  it should "write only the traces that moved when a family is re-resolved, and delete only those no trace names any more" in {
+    val client = MongoClient(mongoTarget.uri.value)
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "traces-unchanged"))
+    try {
+      val store = new MongoIdentityTraceStore(db)
+      val c     = db.getCollection[Document](MongoIdentityTraceStore.Collection)
+      val first = (0 until 2500).map(n => trace(n, s"f${n / 10}", Seq("accept:sole-result")))
+      store.replace(Set.empty, () => first)
+      store.flush()
+      store.written shouldBe 2500L
+      // The same families re-resolved to the same decisions: nothing to write.
+      val families = first.map(_.family).toSet
+      store.replace(families, () => first)
+      store.flush()
+      store.written shouldBe 2500L
+      // One trace's rules moved and one listing left its family: one replace, one delete.
+      val moved = first.updated(7, trace(7, "f0", Seq("accept:exact-top-hit"))).filterNot(_.listing == key(8))
+      store.replace(families, () => moved)
+      store.flush()
+      store.written shouldBe 2502L
+      Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2499L
+      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(7)))).toFuture(), 30.seconds).head
+        .get("rules").get.asArray.getValues.toString should include ("accept:exact-top-hit")
+    } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+  }
 }

@@ -1,8 +1,8 @@
 package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.{Filters, IndexModel, Indexes, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
@@ -136,6 +136,10 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
 
   /** Waits for every handed-over write: for a test, or a shutdown that wants them in. */
   def flush(): Unit = { writer.submit(new Runnable { def run(): Unit = () }).get(); () }
+
+  private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
+  /** How many trace documents this store has replaced or deleted — those whose content moved. */
+  def written: Long = documentsWritten.get
   private lazy val collection: MongoCollection[Document] = {
     val c = db.getCollection[Document](Collection)
     Await.result(c.createIndexes(Seq(IndexModel(Indexes.ascending("rules")), IndexModel(Indexes.ascending("film")),
@@ -146,11 +150,33 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
 
   // A batch at a time: a restore hands over every listing's trace (~100k on worker-us), and one bulk write of them all
   // held every document at once and ran into its own timeout.
+  //
+  // Only what moved is written: a trace whose content digest matches the stored one is left alone, and a removed
+  // family's documents are deleted only where no new trace names them. A rules change re-resolves every family on
+  // the next boot — and the rules are a digest of all of common, so most pushes are one — and rewrote all ~165k
+  // traces as a delete and an upsert each, 500-1,100 Mongo writes a second for minutes, for decisions that had
+  // not changed.
   private def write(removed: Set[String], added: IterableOnce[ListingTrace]): Unit = {
-    if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("family", removed.toSeq*)).toFuture(), Timeout)
-    added.iterator.grouped(WriteBatch).foreach(batch =>
-      Await.result(collection.bulkWrite(batch.map(trace =>
-        ReplaceOneModel(Filters.equal("_id", ListingKey.serialised(trace.listing)), Document(encode(trace)), ReplaceOptions().upsert(true)))).toFuture(), Timeout))
+    val before = if (removed.isEmpty) Set.empty[String] else
+      Await.result(collection.find(Filters.in("family", removed.toSeq*)).projection(Projections.include("_id")).toFuture(), Timeout)
+        .flatMap(_.get("_id").collect { case id if id.isString => id.asString.getValue }).toSet
+    val kept = scala.collection.mutable.HashSet.empty[String]
+    added.iterator.grouped(WriteBatch).foreach { batch =>
+      val docs   = batch.map(trace => ListingKey.serialised(trace.listing) -> digested(encode(trace)))
+      kept ++= docs.map(_._1)
+      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(DigestField)).toFuture(), Timeout)
+        .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(DigestField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
+      val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(DigestField).getValue) }
+      if (moved.nonEmpty) {
+        Await.result(collection.bulkWrite(moved.map { case (id, doc) =>
+          ReplaceOneModel(Filters.equal("_id", id), Document(doc), ReplaceOptions().upsert(true)) }).toFuture(), Timeout)
+        documentsWritten.addAndGet(moved.size.toLong)
+      }
+    }
+    (before -- kept).grouped(WriteBatch).foreach { gone =>
+      Await.result(collection.deleteMany(Filters.in("_id", gone.toSeq*)).toFuture(), Timeout)
+      documentsWritten.addAndGet(gone.size.toLong)
+    }
   }
 }
 
@@ -191,6 +217,16 @@ final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceRead
 
 object MongoIdentityTraceStore {
   val Collection = "identity_traces"
+  /** A trace document's content digest, which a rewrite of an unchanged trace is skipped by. */
+  val DigestField = "digest"
+
+  /** `doc` with its content digest: 64 bits from its canonical JSON, two MurmurHash3 seeds. */
+  private[identity] def digested(doc: BsonDocument): BsonDocument = {
+    val json = doc.toJson
+    val high = scala.util.hashing.MurmurHash3.stringHash(json, 0x2f1d7a3b).toLong
+    val low  = scala.util.hashing.MurmurHash3.stringHash(json, 0x6c8e9cf5).toLong & 0xffffffffL
+    doc.clone().append(DigestField, BsonInt64((high << 32) | low))
+  }
   /** How many traces one bulk write carries. */
   val WriteBatch = 1000
 
