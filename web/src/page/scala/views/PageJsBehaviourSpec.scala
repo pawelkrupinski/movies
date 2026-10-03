@@ -60,6 +60,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // `/debug-slots`' single row, plus the two change-stream frames the no-op-guard
   // test replays through it (built in beforeAll, alongside the row itself).
   private var slotsRowId: String = _
+  // The /debug/readmodel fixture page and its per-film screenings fragment.
+  private var readModelPage: String = _
+  private var readModelScreenings: String => String = _ => ""
   private var slotsUnchangedFrame: String = _
   private var slotsChangedFrame: String = _
   // Every film the city will ever show, counted off the fixture corpus the index
@@ -297,7 +300,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
           MovieRecord(detailPending = false, tmdbId = Some(550)), titleNormalizer))
-      val debugHtml: String = views.html.debug(debugRows, titleNormalizer, debugStaging, current = models.Country.Poland).body
+      val debugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(debugRows, titleNormalizer), titleNormalizer, debugStaging, current = models.Country.Poland).body
       // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
       // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
       // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
@@ -309,8 +312,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         data = Map(
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))), services.movies.SingleCountryNormalizer.titleNormalizer)
-      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty, current = models.Country.Poland).body
+      val slotsDebugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(Seq(slotsRow), titleNormalizer), titleNormalizer, Seq.empty, current = models.Country.Poland).body
       slotsRowId = slotsRow.id.value
+      // The /debug/readmodel page: one film with one showtime, whose booking URL is
+      // the marker the lazy-screenings test looks for — in the fetched fragment,
+      // never in the page itself.
+      val readModelFixture = services.readmodel.TestReadModel.fromRecords(Seq(("Readmodel Film", Some(2024),
+        MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Readmodel Film"),
+          showtimes = Seq(Showtime(LocalDate.now.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
+      val readModelHtml: String =
+        views.html.debugReadModel(controllers.ReadModelDump.of(readModelFixture), current = models.Country.Poland).body
+      readModelScreenings = id => controllers.ReadModelDump.screeningsOf(readModelFixture)(id)
+        .map(views.html.debugReadModelScreenings(id, _).body).getOrElse("")
+      readModelPage = readModelHtml
       // Change-stream frames for the no-op-guard test, rendered by the SAME
       // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`
       // UNCHANGED (the common scrape-tick write, which bumps only `updatedAt`);
@@ -374,6 +388,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case "/debug" => debugHtml
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
           case "/debug-slots" => slotsDebugHtml
+          // The read-model dump, and one film's screenings fetched on row expand,
+          // mirroring DebugController.debugReadModelScreenings.
+          case "/debug/readmodel" => readModelPage
+          case p if p.startsWith("/debug/readmodel/screenings?") =>
+            readModelScreenings(URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8"))
           // A corpus row's per-source breakdown, fetched lazily when its /debug
           // table row is expanded (the heavy subtree is no longer rendered inline).
           // The `id` query param is the row's `_id`; serve the matching row's
@@ -6062,6 +6081,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("""document.querySelector('#t tbody tr.data').click()""")
       page.waitFor(
         """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""")
+    }
+  }
+
+  // The read-model dump ships per-film COUNTS; a film's screening docs are fetched
+  // on first expand — inlining every showtime of the US read model (~100k screening
+  // docs) OOM'd the dev server.
+  "the /debug/readmodel table" should "fetch a film's screenings lazily on expand, not ship them in the page" in {
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/debug/readmodel") { page =>
+        page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
+        page.evalBool("""document.body.innerHTML.indexOf('book.example/readmodel') === -1""") shouldBe true
+        page.eval("""document.querySelector('#t tbody tr.data').click()""")
+        page.waitFor(
+          """[...document.querySelectorAll('.screenings-slot')].some(s => s.innerHTML.indexOf('book.example/readmodel') !== -1)""")
+      }
+      case None => cancel("Chrome not installed — skipping JS behaviour test")
     }
   }
 

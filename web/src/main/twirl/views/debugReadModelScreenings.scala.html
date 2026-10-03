@@ -1,0 +1,29 @@
+@import models.CityScreening
+@(id: String, screenings: Seq[CityScreening])
+@*
+ * One read-model film's screening docs, every field of every showtime — the
+ * fragment `/debug/readmodel` fetches into a row's details on first expand.
+ *@
+@if(screenings.isEmpty) {
+  <div class="no-screenings">No screenings in the read cache for this film (id @id).</div>
+} else {
+  <div class="meta-section">Screenings — @screenings.map(_.cinema).distinct.size cinema(s), @screenings.size doc(s), @screenings.map(_.showtimes.size).sum showtime(s)</div>
+  <div class="screenings">
+    @for(s <- screenings.sortBy(x => (x.city, x.cinema))) {
+      <div class="screening">
+        <div class="screening-head">
+          <span class="cinema">@s.cinema</span>
+          <span class="city">@s.city</span>
+          <span class="count">@s.showtimes.size showtimes</span>
+          @s.filmUrl.map { u => <a href="@u" target="_blank" rel="noopener">link ↗</a> <span class="filmurl">@u</span> }
+        </div>
+        <div class="showtimes">
+          @for(t <- s.showtimes.sortBy(_.dateTime)) {
+            <span class="showtime">@t.dateTime.toString.replace("T", " ")@if(t.format.nonEmpty){<span class="fmt">@t.format.mkString("/")</span>}@t.room.map { r => <span class="room">@r</span> }@t.bookingUrl.map { b => <a class="book" href="@b" target="_blank" rel="noopener">book ↗</a> }</span>
+          }
+        </div>
+        <div class="sid">@s._id</div>
+      </div>
+    }
+  </div>
+}

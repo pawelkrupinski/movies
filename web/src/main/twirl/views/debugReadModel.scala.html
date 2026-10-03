@@ -1,5 +1,5 @@
-@import models.{CityScreening, ResolvedMovie}
-@(movies: Seq[ResolvedMovie], screeningsByFilm: Map[String, Seq[CityScreening]], lastModified: java.time.Instant, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
+@import controllers.{ReadModelDump, ScreeningCounts}
+@(dump: ReadModelDump, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 @*
  * Dev-only dump of the warm read cache (`WebReadModel`) the web actually serves
  * from: the in-memory `web_movies` (ResolvedMovie) + `web_screenings`
@@ -7,9 +7,13 @@
  * corpus from Mongo on demand, this reflects exactly what a live request would
  * resolve against — so a film present in the corpus but missing here is a
  * read-model projection / change-stream gap, not a scrape gap.
+ *
+ * Rows carry per-film COUNTS; a row's screening docs are fetched from
+ * `/debug/readmodel/screenings` on first expand. Inlining every showtime built
+ * a page the size of the whole read model and OOM'd the dev server on the US
+ * one (~100k screening docs).
  *@
-@screeningCount = @{ screeningsByFilm.values.map(_.size).sum }
-@showtimeCount  = @{ screeningsByFilm.values.flatten.map(_.showtimes.size).sum }
+@movies = @{ dump.movies }
 @* Render one `<dd>` for an optional scalar field — the value, or a dim em-dash. *@
 @metaOpt(value: Option[String]) = {@value match { case Some(v) => {<dd>@v</dd>} case None => {<dd class="miss">—</dd>} }}
 @* Render one `<dd>` for a list field — comma-joined, or a dim em-dash when empty. *@
@@ -109,8 +113,8 @@
 @_debugNavbar("readmodel", current, sameOrigin, mirror)
 <h1>Read cache</h1>
 <div class="summary">
-  <b>@movies.size</b> movies · <b>@screeningCount</b> screenings · <b>@showtimeCount</b> showtimes ·
-  cache mtime <b>@lastModified.toString</b> ·
+  <b>@movies.size</b> movies · <b>@dump.screeningCount</b> screenings · <b>@dump.showtimeCount</b> showtimes ·
+  cache mtime <b>@dump.lastModified.toString</b> ·
   click a row for its screenings · filter is case-insensitive
   @if(movies.isEmpty){<span class="warn"> · read cache is EMPTY — boot hydrate may still be running or the read model has no docs</span>}
 </div>
@@ -134,9 +138,7 @@
   </thead>
   <tbody>
     @for(m <- movies) {
-      @defining(screeningsByFilm.getOrElse(m._id, Seq.empty)) { sc =>
-        @defining(sc.map(_.showtimes.size).sum) { showtimes =>
-          @defining(sc.map(_.cinema).distinct.size) { cinemaCount =>
+      @defining(dump.counts.getOrElse(m._id, ScreeningCounts(0, 0, 0))) { counts =>
           <tr class="data" data-row-id="@m._id"
               data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase)">
             <td class="title">@m.title</td>
@@ -144,9 +146,9 @@
             <td class="year">@m.releaseYear.map(_.toString).getOrElse("")</td>
             <td class="meta-cell">@{(m.genres ++ m.directors).mkString(", ")}</td>
             <td>@_ratingBadges(Some(m.ratings))</td>
-            <td class="num cinemas @if(cinemaCount == 0){zero}">@cinemaCount</td>
-            <td class="num @if(sc.isEmpty){zero}">@sc.size</td>
-            <td class="num @if(showtimes == 0){zero}">@showtimes</td>
+            <td class="num cinemas @if(counts.cinemas == 0){zero}">@counts.cinemas</td>
+            <td class="num @if(counts.docs == 0){zero}">@counts.docs</td>
+            <td class="num @if(counts.showtimes == 0){zero}">@counts.showtimes</td>
           </tr>
           <tr class="details hidden" data-row-id="@m._id">
             <td colspan="8">
@@ -190,34 +192,11 @@
                 }
               </dl>
 
-              @* Every per-(city, cinema) screening doc + every field of its showtimes. *@
-              @if(sc.isEmpty) {
-                <div class="no-screenings">No screenings in the read cache for this film (id @m._id).</div>
-              } else {
-                <div class="meta-section">Screenings — @cinemaCount cinema(s), @sc.size doc(s), @showtimes showtime(s)</div>
-                <div class="screenings">
-                  @for(s <- sc.sortBy(x => (x.city, x.cinema))) {
-                    <div class="screening">
-                      <div class="screening-head">
-                        <span class="cinema">@s.cinema</span>
-                        <span class="city">@s.city</span>
-                        <span class="count">@s.showtimes.size showtimes</span>
-                        @s.filmUrl.map { u => <a href="@u" target="_blank" rel="noopener">link ↗</a> <span class="filmurl">@u</span> }
-                      </div>
-                      <div class="showtimes">
-                        @for(t <- s.showtimes.sortBy(_.dateTime)) {
-                          <span class="showtime">@t.dateTime.toString.replace("T", " ")@if(t.format.nonEmpty){<span class="fmt">@t.format.mkString("/")</span>}@t.room.map { r => <span class="room">@r</span> }@t.bookingUrl.map { b => <a class="book" href="@b" target="_blank" rel="noopener">book ↗</a> }</span>
-                        }
-                      </div>
-                      <div class="sid">@s._id</div>
-                    </div>
-                  }
-                </div>
-              }
+              @* Every per-(city, cinema) screening doc + every field of its showtimes —
+                 fetched on first expand into this placeholder. *@
+              <div class="screenings-slot" data-film-id="@m._id"></div>
             </td>
           </tr>
-          }
-        }
       }
     }
   </tbody>
@@ -225,17 +204,29 @@
 
 <script>
   // "Expanding a row" here means unhiding its `tr.details` DOM SIBLING (found
-  // by a `[data-row-id]` attribute selector) — unlike `debug.scala.html`,
-  // there's no lazy fetch and no off-DOM parking, so no Map to look one up
-  // in. `debugTable.js`'s `wireExpandableTable` owns the shared click/
+  // by a `[data-row-id]` attribute selector) and filling its screenings slot —
+  // unlike `debug.scala.html` there's no off-DOM parking, so no Map to look one
+  // up in. `debugTable.js`'s `wireExpandableTable` owns the shared click/
   // expanded/filter state machine both /debug tables share.
   function detailsFor(tr) {
     const sel = window.CSS && CSS.escape ? CSS.escape(tr.dataset.rowId) : tr.dataset.rowId;
     return document.querySelector('#t tbody tr.details[data-row-id="' + sel + '"]');
   }
+  // The screenings section is fetched once, on the row's first expand (see the
+  // template comment for why it is not in the page).
   function showDetails(tr) {
     const d = detailsFor(tr);
-    if (d) d.classList.remove('hidden');
+    if (!d) return;
+    d.classList.remove('hidden');
+    const slot = d.querySelector('.screenings-slot');
+    if (slot && !slot.dataset.loaded) {
+      slot.dataset.loaded = '1';
+      slot.textContent = 'loading screenings…';
+      fetch('@routes.DebugController.debugReadModelScreenings("")' + encodeURIComponent(slot.dataset.filmId))
+        .then(r => r.ok ? r.text() : r.text().then(t => { throw new Error(t || r.status); }))
+        .then(html => { slot.innerHTML = html; })
+        .catch(e => { slot.textContent = 'could not load screenings: ' + e.message; delete slot.dataset.loaded; });
+    }
   }
   function hideDetails(tr) {
     const d = detailsFor(tr);

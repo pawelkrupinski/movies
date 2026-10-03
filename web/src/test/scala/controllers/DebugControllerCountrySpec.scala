@@ -7,7 +7,6 @@ import play.api.Mode
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.Instant
 
 /**
  * The Dev-only `/debug` country switch: with per-country debug stacks wired, a
@@ -27,7 +26,7 @@ class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
     new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,
     services.attempts.EnrichmentAttemptReader.empty,
-    () => Seq.empty, () => Seq.empty, () => Instant.EPOCH)
+    () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty))
 
   private val plStack = corpusStack(Country.Poland, "Pl Only Film")
   private val ukStack = corpusStack(Country.UnitedKingdom, "Uk Only Film")

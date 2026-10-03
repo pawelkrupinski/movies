@@ -7,7 +7,6 @@ import play.api.mvc.Cookie
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.Instant
 
 /**
  * The per-request country resolution behind the Dev-only `/debug` country switch:
@@ -24,7 +23,7 @@ class DebugCountriesSpec extends AnyFlatSpec with Matchers {
     new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,
     services.attempts.EnrichmentAttemptReader.empty,
-    () => Seq.empty, () => Seq.empty, () => Instant.EPOCH)
+    () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty))
 
   private val switching = DebugCountries.of(
     stack(Country.Poland), Map(Country.UnitedKingdom -> stack(Country.UnitedKingdom)), devMode = true)

@@ -317,8 +317,10 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
 
   // The read-cache dump surfaces a per-film "Cinemas" count (distinct venues
   // screening the film) AND, on expand, every field the read model holds for a
-  // film + every field its per-cinema screenings hold — so a dev can see exactly
-  // what the web serves without cross-referencing Mongo.
+  // film + (fetched lazily) every field its per-cinema screenings hold — so a dev
+  // can see exactly what the web serves without cross-referencing Mongo. The
+  // screenings are NOT in the page: inlining every showtime of the US read model
+  // (~100k screening docs) OOM'd the dev server.
   it should "show a Cinemas column and every resolved movie/screening field on expand" in {
     import java.time.LocalDateTime
     import models.{HeliosMagnolia, Showtime}
@@ -371,14 +373,38 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     html should include("https://img.example/belle.jpg")         // posterUrl
     html should include("youtube.com/embed/abcdef12345")         // trailerUrls (embed-mapped)
 
-    // Every per-cinema / per-showtime field surfaced on expand.
-    html should include("https://cinema-city.pl/belle")          // filmUrl
-    html should include("https://book.example/cc")               // showtime bookingUrl
-    html should include("Sala 4")                                // showtime room
-    html should include("NAP")                                   // showtime format token
+    // The screening counts are in the row; the screenings themselves are not.
+    html should include("""<b>2</b> screenings""")
+    html should not include ("https://book.example/cc")
+    html should include("""class="screenings-slot" data-film-id=""")
+
+    // Every per-cinema / per-showtime field, from the endpoint the row fetches on expand.
+    val filmId = """data-film-id="([^"]+)"""".r.findFirstMatchIn(html).map(_.group(1)).getOrElse(fail("no screenings slot"))
+    val fragment = ctrl.debugReadModelScreenings(filmId).apply(FakeRequest(GET, s"/debug/readmodel/screenings?id=$filmId"))
+    status(fragment) shouldBe OK
+    val screenings = contentAsString(fragment)
+    screenings should include("https://cinema-city.pl/belle")    // filmUrl
+    screenings should include("https://book.example/cc")         // showtime bookingUrl
+    screenings should include("Sala 4")                          // showtime room
+    screenings should include("NAP")                             // showtime format token
   }
 
-  it should "404 in production like the rest of /debug" in {
+  it should "503 a film whose screenings could not be read, rather than list it as screening nowhere" in {
+    val stack = new DebugStack(models.Country.default,
+      new services.movies.InMemoryMovieRepository(Seq.empty, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer),
+      services.staging.StagingRepository.empty(services.movies.SingleCountryNormalizer.titleNormalizer),
+      new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
+      services.attempts.EnrichmentAttemptReader.empty,
+      () => DebugSnapshot(ReadModelDump.empty, None), _ => None)
+    val ctrl = TestDebugController.build(Seq.empty, Mode.Dev, debugCountries = Some(DebugCountries.single(stack)))._1
+    status(ctrl.debugReadModelScreenings("x").apply(FakeRequest(GET, "/debug/readmodel/screenings?id=x"))) shouldBe SERVICE_UNAVAILABLE
+  }
+
+  "GET /debug/readmodel/screenings" should "404 in production like the rest of /debug" in {
+    status(buildController(Mode.Prod).debugReadModelScreenings("x").apply(FakeRequest(GET, "/debug/readmodel/screenings?id=x"))) shouldBe NOT_FOUND
+  }
+
+  "GET /debug/readmodel (prod)" should "404 in production like the rest of /debug" in {
     val result = buildController(Mode.Prod).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
     status(result) shouldBe NOT_FOUND
   }

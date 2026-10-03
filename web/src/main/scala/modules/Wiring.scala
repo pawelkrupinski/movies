@@ -95,6 +95,8 @@ trait Wiring
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
+    // Before the clients below: a snapshot re-read in flight would otherwise fail on a closed one.
+    stopDebugSnapshots()
     // Dev-only per-country debug stacks share ONE client (built in DebugWiring);
     // their connections' own close() is a no-op, so close the shared client once.
     debugExtraClient.foreach(_.close())

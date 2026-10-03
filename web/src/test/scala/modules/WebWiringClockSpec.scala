@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{DebugCountries, DebugStack, TestAdminAction}
+import controllers.{DebugCountries, DebugSnapshot, DebugStack, ReadModelDump, TestAdminAction}
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -71,7 +71,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     val wiring = new ClockedWiring {
       override lazy val debugCountries: DebugCountries = DebugCountries.of(
         new DebugStack(models.Country.default, movieRepository, stagingRepository, taskQueue, ratingCadenceReader,
-          enrichmentAttemptReader, () => Seq.empty, () => Seq.empty, () => Pinned,
+          enrichmentAttemptReader, () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty),
           mirrorFreshness = () => Some(Pinned.minusSeconds(300))),
         Map.empty, devMode = true)
     }

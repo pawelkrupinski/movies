@@ -1,8 +1,7 @@
-@import services.movies.StoredMovieRecord
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.DebugController
-@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
+@(table: controllers.DebugCorpusTable, normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -168,7 +167,7 @@
   <tbody id="staging-folded"></tbody>
 </table>
 <h1>Debug</h1>
-<div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
+<div class="summary">@table.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
 
 <input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
 
@@ -189,9 +188,7 @@
     </tr>
   </thead>
   <tbody>
-    @for(row <- rows) {
-      @_debugRow(row, normalizer)
-    }
+    @table.rows
   </tbody>
 </table>
 

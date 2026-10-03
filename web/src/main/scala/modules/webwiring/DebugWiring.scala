@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{DebugController, DebugCountries, DebugStack, DebugStreamController}
+import controllers.{CorpusListing, DebugController, DebugCountries, DebugSnapshot, DebugStack, DebugStreamController, ReadModelDump, RefreshingSnapshot}
 import modules.Wiring
 import play.api.Mode
 import services.{MongoConnection, UptimeMonitor}
@@ -56,12 +56,32 @@ trait DebugWiring { self: Wiring =>
   // doesn't carry reads as permanently EMPTY — a blank page, no error. POINTING A
   // NEW READER HERE MEANS ADDING ITS COLLECTION TO `services.DebugMirror`, which
   // `MongoConnectionSpec` diffs against the sync's own list.
+  //
+  // Each stack's whole-collection reads (the corpus listing; for a switched-to
+  // country also its read-model dump) are `RefreshingSnapshot`s: re-reading them
+  // per request made every country switch 4–10 s (US: 105k slots, 100k read-model
+  // screenings, measured off the local mirror). In Dev a ticker keeps them warm —
+  // first one shortly after boot, then every `DebugSnapshotRefresh` — so a switch is
+  // a map lookup and what it shows is at most about a minute behind the mirror, an
+  // age the navbar badge states.
+  private val DebugSnapshotRefresh = scala.concurrent.duration.DurationInt(60).seconds
+  private lazy val debugSnapshotPool = tools.DaemonExecutors.virtualThreadEC("debug-snapshots")
+  private def debugSnapshot[A](label: String, freshness: services.MirrorFreshness)(read: => A): RefreshingSnapshot[A] =
+    new RefreshingSnapshot(label, () => read, freshness, refreshAfter = scala.concurrent.duration.DurationInt(15).seconds, clock)(using debugSnapshotPool)
+
+  private lazy val bootDebugListing = debugSnapshot(s"/debug listing ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
+    CorpusListing.read(movieRepository))
+  private lazy val bootDebugCadence = debugSnapshot(s"/debug/cadence ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
+    ratingCadenceReader.all())
   private lazy val bootDebugStack: DebugStack = new DebugStack(
     country, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
-    readModelMovies       = () => webReadModel.allMovies(),
-    readModelScreenings   = () => webReadModel.allScreenings(),
-    readModelLastModified = () => webReadModel.lastModified,
-    mirrorFreshness       = mirrorFreshnessOf(movieMirrorConnection))
+    // The WARM in-memory model the app actually serves from, read per request so
+    // `/debug/readmodel` shows exactly what a request would resolve against.
+    readModel              = DebugSnapshot.readNow(mirrorFreshnessOf(movieMirrorConnection))(ReadModelDump.of(webReadModel)),
+    readModelScreeningsFor = ReadModelDump.screeningsOf(webReadModel),
+    mirrorFreshness        = mirrorFreshnessOf(movieMirrorConnection),
+    corpusListing          = Some(() => bootDebugListing.get()),
+    ratingCadenceSnapshot  = Some(() => bootDebugCadence.get()))
   // One shared client for the extra countries: None in prod, when only one country
   // is deployed, or when MONGODB_URI is unset — then there are no extras and the
   // debug switch stays off. The root's `stop()` closes it.
@@ -70,7 +90,7 @@ trait DebugWiring { self: Wiring =>
     else processConfiguration.mirrorMongoUri
       .map(mirror => MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)), mongoTuning.maxPoolSize))
       .orElse(MongoConnection.sharedClientAt(mongoAddress, mongoTuning))
-  private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
+  private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack, Seq[RefreshingSnapshot[?]])] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
@@ -84,28 +104,60 @@ trait DebugWiring { self: Wiring =>
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
         val normalizer = services.movies.TitleNormalizer.forCountry(country)
-        val stack = new DebugStack(country,
-          new MongoMovieRepository(conn.database,
-            screenings = Some(screenings), slots = Some(slots), normalizer = normalizer),
+        val repository = new MongoMovieRepository(conn.database,
+          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer)
+        val freshness  = mirrorFreshnessOf(conn)
+        val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(repository))
+        val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(
+          new services.cadence.MongoRatingCadenceReader(conn.database).all())
+        // No warm model for a switched-to country: its `web_movies` / `web_screenings`
+        // straight from Mongo, `now` for the mtime. A partial read THROWS rather than
+        // listing as a smaller read model.
+        val readModel  = debugSnapshot(s"/debug/readmodel ${country.code}", freshness) {
+          val (movies, moviesRead) = reader.findAllMoviesChecked()
+          ReadModelDump.of(movies, f => {
+            if (!moviesRead || !reader.foreachScreening(f))
+              throw new IllegalStateException(s"${country.code} read model read incomplete")
+          }, clock.instant())
+        }
+        val stack = new DebugStack(country, repository,
           new services.staging.MongoStagingRepository(conn.database, normalizer = normalizer),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),
-          readModelMovies       = () => reader.findAllMovies(),
-          readModelScreenings   = () => reader.findAllScreenings(),
-          readModelLastModified = () => clock.instant(),
-          mirrorFreshness       = mirrorFreshnessOf(conn))
-        (country, conn, stack)
+          readModel              = () => readModel.get(),
+          ratingCadenceSnapshot  = Some(() => cadence.get()),
+          readModelScreeningsFor = id => reader.findCard(id).map(_.screenings),
+          mirrorFreshness        = freshness,
+          corpusListing          = Some(() => listing.get()))
+        (country, conn, stack, Seq(listing, readModel, cadence))
       }
     }
   lazy val debugCountries: DebugCountries =
     DebugCountries.of(bootDebugStack,
-      debugExtraStacks.map { case (country, _, stack) => country -> stack }.toMap,
+      debugExtraStacks.map { case (country, _, stack, _) => country -> stack }.toMap,
       devMode = environmentMode != Mode.Prod)
 
-  lazy val debugController  = new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
+  // The warm-up ticker: Dev only — prod 404s every /debug route, and a spec's
+  // wiring must not start reading Mongo behind its back. `stop()` shuts it down, so
+  // a dev reload doesn't leave the previous app's ticker reading.
+  protected lazy val debugSnapshotTicker: Option[java.util.concurrent.ScheduledExecutorService] =
+    Option.when(environmentMode == Mode.Dev) {
+      val snapshots = Seq(bootDebugListing, bootDebugCadence) ++ debugExtraStacks.flatMap(_._4)
+      val ticker    = tools.DaemonExecutors.scheduler("debug-snapshot-ticker")
+      ticker.scheduleWithFixedDelay(() => snapshots.foreach(_.refreshIfOlderThan(DebugSnapshotRefresh)),
+        10, DebugSnapshotRefresh.toSeconds, java.util.concurrent.TimeUnit.SECONDS)
+      ticker
+    }
+  protected def stopDebugSnapshots(): Unit = {
+    debugSnapshotTicker.foreach(_.shutdownNow())
+    debugSnapshotPool.shutdownNow()
+    ()
+  }
+
+  lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    servingCountry = country, clock = clock, normalizer = titleNormalizer)
+    servingCountry = country, clock = clock, normalizer = titleNormalizer) }
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

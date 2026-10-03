@@ -35,7 +35,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))), titleNormalizer)
 
   "debug view" should "render the empty staging table (header + both tbodies) when nothing is incubating" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.Poland).body
+    val html = views.html.debug(controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer, current = models.Country.Poland).body
     html should include ("Pending enrichment (staging)")
     html should include ("<th>Cinemas</th>")
     html should include ("""<th class="tick">Detail</th>""")
@@ -51,7 +51,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "emit a hidden per-cinema source row carrying the fold data model" in {
     val html = views.html.debug(
-      Seq.empty, titleNormalizer,
+      controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer,
       staging = Seq(stagingRow("Brand New Film", Some(2026), detailPending = true)), current = models.Country.Poland).body
     // The section appears before the main corpus heading.
     html.indexOf("Pending enrichment") should be < html.indexOf("<h1>Debug</h1>")
@@ -68,7 +68,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "carry the concluded-stage flags (detail done, tmdb resolved) on the source row" in {
     val html = views.html.debug(
-      Seq.empty, titleNormalizer,
+      controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer,
       staging = Seq(stagingRow("Kumotry", Some(2026),
         tmdbId = Some(1454157), detailPending = false, imdbId = None)), current = models.Country.Poland).body
     html should include ("""data-detail-done="true"""")
@@ -80,7 +80,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "flag a no-match TMDB conclusion as a done stage" in {
     val html = views.html.debug(
-      Seq.empty, titleNormalizer,
+      controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer,
       staging = Seq(StagingRecord(Helios, "Obscure One", Some(2026),
         MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
           data = Map[Source, SourceData](Helios -> SourceData(title = Some("Obscure One")))), titleNormalizer)), current = models.Country.Poland).body
@@ -93,7 +93,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       stagingRow("Shared Film", Some(2026), cinema = Helios),
       stagingRow("Shared Film", Some(2026), cinema = Multikino),
       stagingRow("Solo Film",   Some(2026), cinema = Helios))
-    val html = views.html.debug(Seq.empty, titleNormalizer, staging = rows, current = models.Country.Poland).body
+    val html = views.html.debug(controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer, staging = rows, current = models.Country.Poland).body
     // Every cinema gets its own (hidden) source row…
     """<tr class="data" hidden""".r.findAllMatchIn(html).size shouldBe 3
     """data-anchor="sharedfilm"""".r.findAllMatchIn(html).size shouldBe 2

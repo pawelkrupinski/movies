@@ -68,6 +68,9 @@ GET     /debug/details              controllers.DebugController.debugDetails(id:
 # (`web_movies` + `web_screenings`), not the source `movies` corpus /debug shows.
 # 404 in prod like the rest of /debug.
 GET     /debug/readmodel            controllers.DebugController.debugReadModel()
+# Dev-only: one read-model film's screening docs, fetched lazily when a
+# /debug/readmodel row is expanded. 404 in prod like the rest of /debug.
+GET     /debug/readmodel/screenings controllers.DebugController.debugReadModelScreenings(id: String)
 # Dev-only: per-(rating source, film) adaptive refresh cadence — films grouped by
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.

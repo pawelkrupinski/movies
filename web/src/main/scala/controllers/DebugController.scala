@@ -74,67 +74,62 @@ class DebugController(cc: ControllerComponents,
       // to that country's Mongo db.
       val country = debugCountries.resolve(request)
       val stack   = debugCountries.stackFor(country)
-      // Pulled on demand from Mongo: the web doesn't keep the `movies` model
-      // warm, so the corpus dump reads the source rows the read model is
-      // projected from directly. `findAllForListing` drops each row's per-cinema
-      // `showtimes` (~58% of the corpus bytes, measured) server-side — the table
-      // renders only metadata + counts; the showtimes are fetched per-row on
-      // expand via `/debug/details`.
+      // The corpus listing is a SNAPSHOT (see `RefreshingSnapshot`): re-reading
+      // `movies` + every `movie_slots` row per load cost 4–10 s a country switch
+      // even off the local mirror. `findAllForListing` drops each row's per-cinema
+      // `showtimes` server-side — the table renders only metadata + counts; the
+      // showtimes are fetched per-row on expand via `/debug/details`.
       //
-      // Both `movies` and `pending_movies` are full-collection scans. `/debug`
-      // is dev-only, so it is ALWAYS served over the local→prod Mongo tunnel,
-      // where a single such cursor runs ~6 s (see `MovieRepository.findAll`).
-      // Reading the two collections one after the other made every reload ~12 s;
-      // firing them concurrently brings a cold load back down to a single scan's
-      // latency. The 70 s outer wait sits just above each read's own 60 s
-      // timeout so an inner timeout fires (and logs) first.
+      // Staging + the queue stay per-request reads: both are small and bounded,
+      // and the queue is what the staging rows are ORDERED by (the page renders only
+      // the first `StagingRowLimit`, so the most imminent rows must sort to the top
+      // server-side; the client poll then repaints the live badge in place, but does
+      // not reorder). Fired concurrently with the listing, which only waits on its
+      // very first read.
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val moviesFuture  = Future(stack.movieRepository.findAllForListing())
+      val listingFuture = Future(stack.listing())
       val stagingFuture = Future(stack.stagingRepository.findAll())
-      // The same bounded, index-backed queue snapshot `/debug/queue` serves —
-      // read here too so the staging rows can be ORDERED by their place in the
-      // queue (the page renders only the first `StagingRowLimit`, so the most
-      // imminent rows must sort to the top server-side; the client poll then
-      // repaints the live badge in place, but does not reorder).
       val queueFuture   = Future(stack.taskQueue.monitor(DebugController.DebugQueueActiveLimit))
-      val (movies, (staging, queue)) =
-        Await.result(moviesFuture.zip(stagingFuture.zip(queueFuture)), 70.seconds)
+      val (listing, (staging, queue)) =
+        Await.result(listingFuture.zip(stagingFuture.zip(queueFuture)), 70.seconds)
       val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
       Ok(views.html.debug(
-        movies.sortBy(_.title.toLowerCase),
+        listing.value.table,
         // The SELECTED country's rules, not the deployment's: /debug can switch
         // countries, and a row's display title must read as its own corpus keyed it.
         stack.movieRepository.normalizer,
         DebugController.orderStagingByQueue(staged, queue.active, normalizer),
-        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
+        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(listing)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
 
-  /** How far behind the local read-mirror this stack reads through is, for the
-   *  debug navbar's badge. Read per render rather than cached: it is two bounded
-   *  queries against a loopback Mongo (~12–26ms), and a number that can itself go
-   *  stale is exactly the thing this exists to stop. `None` in prod, where the
-   *  pages read the source and there is no copy to be behind. */
-  private def mirrorAge(stack: DebugStack): Option[services.MirrorFreshness.Age] =
-    services.MirrorFreshness.describe(stack.mirrorFreshness.newestUpdate(), clock.instant())
+  /** How far behind the mirror the data ON SCREEN is, for the debug navbar's badge:
+   *  the mirror's newest stamp as of the snapshot's read, against now — so a
+   *  snapshot taken a minute ago over a live mirror reads "1m behind", which is what
+   *  it is. `None` in prod, where the pages read the source and there is no copy to
+   *  be behind. */
+  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.MirrorFreshness.Age] =
+    services.MirrorFreshness.describe(snapshot.mirrorNewest, clock.instant())
 
   /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
    *  grouped by their current refresh interval, slowest (most backed-off / stable)
    *  first, with the last two displayed-value changes shown on hover. Reads the
-   *  worker-written `rating_cadence` collection + resolves titles from the corpus. */
+   *  worker-written `rating_cadence` collection + names the films from the same
+   *  corpus-listing snapshot `/debug` renders. */
   def cadence(): Action[AnyContent] = Action { request =>
     devOnly {
       val country = debugCountries.resolve(request)
       val stack   = debugCountries.stackFor(country)
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val recordsFuture = Future(stack.ratingCadenceReader.all())
-      val titlesFuture  = Future(stack.movieRepository.findAllForListing())
-      val (records, rows) = Await.result(recordsFuture.zip(titlesFuture), 70.seconds)
-      val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
+      val recordsFuture = Future(stack.ratingCadence())
+      val listingFuture = Future(stack.listing())
+      val (records, listing) = Await.result(recordsFuture.zip(listingFuture), 70.seconds)
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), clock.instant(),
-        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
+      Ok(views.html.cadence(services.cadence.CadenceReport.build(records.value, listing.value.titleByTmdb.get), clock.instant(),
+        // The OLDER of the two snapshots' stamps: the page is as behind as its stalest half.
+        current = country, sameOrigin = debugCountries.switchable,
+        mirror = mirrorAge(Seq(records, listing).minBy(_.mirrorNewest.getOrElse(java.time.Instant.MAX)))))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
@@ -194,20 +189,31 @@ class DebugController(cc: ControllerComponents,
     }
   }
 
-  /** Dev-only: dump the warm read cache the web actually serves from — the
-   *  `WebReadModel`'s in-memory `web_movies` + `web_screenings` views — so you
-   *  can see exactly what a request would resolve against (vs `/debug`, which
-   *  pulls the source `movies` corpus from Mongo on demand). */
+  /** Dev-only: dump the read cache the web actually serves from — `web_movies` plus
+   *  per-film `web_screenings` counts — so you can see exactly what a request would
+   *  resolve against (vs `/debug`, which shows the source `movies` corpus). A row's
+   *  screenings come from [[debugReadModelScreenings]] on expand: inlining every
+   *  showtime of the US read model (~100k screening docs) OOM'd the dev server. */
   def debugReadModel(): Action[AnyContent] = Action { request =>
     devOnly {
       implicit val c: City = City.all.head
-      val country    = debugCountries.resolve(request)
-      val stack      = debugCountries.stackFor(country)
-      val movies     = stack.readModelMovies().sortBy(_.title.toLowerCase)
-      val screenings = stack.readModelScreenings().groupBy(_.filmId)
-      Ok(views.html.debugReadModel(movies, screenings, stack.readModelLastModified(),
-        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
+      val country = debugCountries.resolve(request)
+      val dump    = debugCountries.stackFor(country).readModel()
+      Ok(views.html.debugReadModel(dump.value,
+        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(dump)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
+    }
+  }
+
+  /** Dev-only: ONE read-model film's screening docs, every field of every showtime —
+   *  fetched lazily by the `/debug/readmodel` table when a row is expanded. */
+  def debugReadModelScreenings(id: String): Action[AnyContent] = Action { request =>
+    devOnly {
+      debugCountries.stackFor(debugCountries.resolve(request)).readModelScreeningsFor(id) match {
+        case Some(screenings) => Ok(views.html.debugReadModelScreenings(id, screenings))
+        // Not an empty list: that reads as "this film has no screenings".
+        case None             => ServiceUnavailable(s"could not read the screenings of $id")
+      }
     }
   }
 
