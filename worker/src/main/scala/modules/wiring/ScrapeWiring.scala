@@ -27,11 +27,11 @@ trait ScrapeWiring { self: WorkerWiring =>
   // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
   // diagnostic like tools.FilmwebDiff can build the real scrapers without the
   // worker's write machinery). WorkerWiring supplies the seams it varies —
-  // `httoFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
+  // `httpFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
   // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
   // (record the outcome) for production ticks.
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
-    httoFetch, multikinoFetch, biletynaFetch, heliosToday,
+    httpFetch, multikinoFetch, biletynaFetch, scrapeCalendar,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process: one `detail_cache` collection for
     // every chain, each document expiring on its own chain's TTL (see the class doc).
@@ -66,16 +66,11 @@ trait ScrapeWiring { self: WorkerWiring =>
   protected def scrapeCities: Set[String] =
     configuration.scrapeCitySlugs.fold(scrapeCitiesDefault)(_.value)
 
-  // The date Helios bakes into its REST URLs. Production uses the real Warsaw
-  // date; fixture-replay test wirings override with the fixture's capture date.
-  // TODO(multi-country): Helios is a Poland-only chain, so its REST date is
-  // inherently Europe/Warsaw. There's no single country-level zone to key this
-  // off (a country can span cities in different zones — `City.zoneId` carries the
-  // per-city zone), and no non-PL date-baked chain exists yet, so this stays
-  // Warsaw rather than being widened here. When a second country grows a
-  // date-baked chain, lift a primary zone onto `Country` and read it here.
-  protected def heliosToday: java.time.LocalDate =
-    java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
+  // Which day each venue is on, asked per scrape in the venue's own zone (Poland's is
+  // the date Helios bakes into its REST URLs). Fixture-replay wirings pin it to the
+  // capture day.
+  protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
+    new services.cinemas.common.ScrapeCalendar(clock)
 
   // Upper bound on how many times a cinema scrape is attempted before giving up.
   // Each scraper declares its own `maxFetchAttempts` (default 3; a flaky upstream
@@ -98,14 +93,14 @@ trait ScrapeWiring { self: WorkerWiring =>
   // is off gets no Filmweb wrapper at all (`recordingScraper`), not merely an empty map.
   protected lazy val filmwebFallbackIds: Map[Cinema, Int] =
     if (!filmwebEnabled) Map.empty
-    else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())
+    else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())
       .toOption.getOrElse(Nil)
       .collect { case r if r.resolved => r.cinema -> r.filmwebId.get }
       .toMap
 
   protected def filmwebFallbackFor(cinema: Cinema): Option[CinemaScraper] =
     filmwebFallbackIds.get(cinema).map(id =>
-      new FilmwebShowtimesClient(httoFetch, id, cinema, today = heliosToday))
+      new FilmwebShowtimesClient(httpFetch, id, cinema, today = scrapeCalendar.todayInPoland))
 
   lazy val filmwebFallbackStore: FallbackStore =
     new MongoFallbackStore(mongoConnection.database)
@@ -206,11 +201,11 @@ trait ScrapeWiring { self: WorkerWiring =>
     flicksFallbackSlugs.get(cinema).map { case ChainFlicksFallback.FlicksFallback(market, slug) =>
       // The market comes from the map, not a constant: a US chain venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
-      FallbackPlan("Flicks", () => Some(slug), () => Some(new FlicksClient(flicksFetch, slug, cinema, market)), sixHours)
+      FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, slug, cinema, market, scrapeCalendar)), sixHours)
     }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
       FallbackPlan("Kinoprogramm", () => Some(path),
-        () => Some(new KinoprogrammClient(httoFetch, path, cinema,
-          today = Some(java.time.LocalDate.now(clock.withZone(KinoprogrammClient.Zone))))),
+        () => Some(new KinoprogrammClient(httpFetch, path, cinema,
+          today = Some(scrapeCalendar.today(KinoprogrammClient.Zone)))),
         FallbackAfter.FailedRuns(KinoprogrammFailedRuns))
     }).orElse(Option.when(eligible && filmwebEnabled)(
       FallbackPlan("Filmweb", () => filmwebFallbackIds.get(cinema).map(_.toString), () => filmwebFallbackFor(cinema), sixHours)))
@@ -231,7 +226,7 @@ trait ScrapeWiring { self: WorkerWiring =>
       new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener, clock)
     )(plan =>
       new SourceFallbackScraper(inner,
-        fallback = plan.client, fallbackName = plan.name, fallbackRef = plan.ref,
+        fallback = () => plan.client().map(boundedFallback), fallbackName = plan.name, fallbackRef = plan.ref,
         uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(),
         fallbackAfter = plan.after, onEvent = filmwebFallbackOnEvent))
 
@@ -250,6 +245,16 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  In-memory by design — it adds no Mongo write load (the throttle this guards
    *  against IS write/CPU pressure) and rebuilds within a few refresh ticks. */
   lazy val hostScrapeStats: HostScrapeStats = new HostScrapeStats()
+
+  /** Fallback fetches' own duration stats: a fallback feed walks a venue's whole programme in
+   *  one call (a Flicks fallback, every day tab in turn, through the shared pace gate), so it
+   *  is held to minutes, not the per-host seconds a primary scrape gets. */
+  lazy val fallbackScrapeStats: HostScrapeStats = new HostScrapeStats(floor = 1.minute, ceiling = 10.minutes)
+
+  /** A fallback feed bounded like a primary scrape — cut and interrupted past its adaptive
+   *  budget, so a stalling feed fails the fallback instead of holding the scrape's slot. */
+  private def boundedFallback(fallback: CinemaScraper): CinemaScraper =
+    new AdaptiveTimeoutScraper(fallback, fallbackScrapeStats, adaptiveTimeoutExecutor)
 
   /** Runs each scrape so [[AdaptiveTimeoutScraper]] can time it out and interrupt
    *  it. Virtual threads (cheap, daemon) in production; the test harness
@@ -352,7 +357,7 @@ trait ScrapeWiring { self: WorkerWiring =>
       initialDelay = initialScrapeDelay,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
-      chunkSpread = settings.ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread),
+      chunkSpread = scrapeChunkSpread,
       inFlight = chunkRunInFlight,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
 }

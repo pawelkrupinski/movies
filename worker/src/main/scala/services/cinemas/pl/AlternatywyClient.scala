@@ -38,7 +38,7 @@ import services.movies.TitleNormalizer
  */
 class AlternatywyClient(
   http:  HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   titles: TitleNormalizer
 ) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
   import AlternatywyClient._

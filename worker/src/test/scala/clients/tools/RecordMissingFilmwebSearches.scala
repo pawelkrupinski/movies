@@ -29,7 +29,7 @@ object RecordMissingFilmwebSearches {
     val dir = _root_.settings.ProcessConfiguration.resolve().localStackFixtureDirectory.fold("08-06-2026")(_.value)
     val recording = new RecordMissingFetch(dir, Set("filmweb.pl"), new RealHttpFetch())
     val w = new FixtureTestWiring(dir) {
-      override lazy val httoFetch:      HttpFetch = recording
+      override lazy val httpFetch:      HttpFetch = recording
       override lazy val multikinoFetch: HttpFetch = recording
       override lazy val biletynaFetch:  HttpFetch = recording
     }

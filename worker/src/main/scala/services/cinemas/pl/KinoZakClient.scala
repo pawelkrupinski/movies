@@ -33,7 +33,7 @@ import scala.util.Try
  * real Warsaw date; fixture-replay tests pin it to the capture date.
  */
 class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
-                    today: LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Warsaw")))
+                    today: => LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Warsaw")))
     extends CinemaScraper {
 
   import KinoZakClient._

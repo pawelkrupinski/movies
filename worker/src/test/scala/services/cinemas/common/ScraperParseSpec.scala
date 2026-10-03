@@ -147,6 +147,25 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.upcomingDate(MonthDay.of(8, 25), today, grace = Period.ofWeeks(1)) shouldBe Some(LocalDate.of(2027, 8, 25))
   }
 
+  // A January page still listing last week's December rows: those are last December's — read as this
+  // year's they were showtimes 11 months ahead, which no past-row filter drops.
+  it should "date a leftover December row read in early January to the December just gone" in {
+    val today = LocalDate.of(2027, 1, 2)
+    ScraperParse.upcomingDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2026, 12, 30))
+    ScraperParse.upcomingDate(MonthDay.of(1, 20), today)  shouldBe Some(LocalDate.of(2027, 1, 20))
+    ScraperParse.upcomingDate(MonthDay.of(10, 1), today)  shouldBe Some(LocalDate.of(2027, 10, 1))
+    ScraperParse.upcomingMonthDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2027, 12, 30))
+  }
+
+  // A long grace (KinoBulgarska's six months) must not cap the horizon: in February an October date
+  // is the October ahead, not last October's — only a row from the last month is read as the past.
+  it should "keep a date months ahead in the year ahead under a long grace" in {
+    val today = LocalDate.of(2027, 2, 10)
+    ScraperParse.upcomingDate(MonthDay.of(10, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 10, 1))
+    ScraperParse.upcomingDate(MonthDay.of(12, 20), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 12, 20))
+    ScraperParse.upcomingDate(MonthDay.of(1, 25), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 1, 25))
+  }
+
   "upcomingMonthDate" should "keep the current month this year and roll any earlier month forward" in {
     val today = LocalDate.of(2026, 9, 20)
     ScraperParse.upcomingMonthDate(MonthDay.of(9, 1), today)  shouldBe Some(LocalDate.of(2026, 9, 1))
@@ -157,6 +176,14 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
 
   it should "return None for 29 February in a non-leap year rather than clamp it" in {
     ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2026, 1, 10)) shouldBe None
+  }
+
+  // December 2027 listing "29 lutego": 2027 has no 29 February, but the date it means is next
+  // year's leap day, not a non-date — dropping it would lose a real screening two months out.
+  it should "place 29 February in next year's leap year when this year has none" in {
+    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
+    ScraperParse.upcomingMonthDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
+    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 3, 1)) shouldBe None
   }
 
   "cssUrl" should "unwrap a plain url()" in {

@@ -77,4 +77,20 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "propagate a fetch failure instead of reporting an empty (white) scrape" in {
     a[HttpStatusException] should be thrownBy new KinoIskraClient(new FailingHttpFetch(503), KinoIskra, today).fetch()
   }
+
+  // A film's record adds metadata only — its showtimes are the listing's. One record that failed
+  // to load used to fail the whole scrape, turning the venue red over one film's genres.
+  it should "list a film whose record failed to load, just without its metadata" in {
+    val replay = new FakeHttpFetch("kino-iskra")
+    val marsupilamiRecord = KinoIskraClient.movieUrl(film("Marsupilami").filmUrl.value.dropWhile(_ != '#').drop(1))
+    val oneDown = new tools.HttpFetch {
+      def get(url: String): String = if (url == marsupilamiRecord) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val partial = new KinoIskraClient(oneDown, KinoIskra, today).fetch()
+    partial should have size 16
+    val marsupilami = partial.find(_.movie.title == "Marsupilami").value
+    marsupilami.showtimes shouldBe film("Marsupilami").showtimes
+    marsupilami.movie.runtimeMinutes shouldBe None
+  }
 }

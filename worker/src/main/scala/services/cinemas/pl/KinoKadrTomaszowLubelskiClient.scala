@@ -50,7 +50,7 @@ import scala.jdk.CollectionConverters._
 class KinoKadrTomaszowLubelskiClient(
   http:                HttpFetch,
   override val cinema: Cinema    = KinoKadrTomaszowLubelski,
-  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper {
 
   import KinoKadrTomaszowLubelskiClient._

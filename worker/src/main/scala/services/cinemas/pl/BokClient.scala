@@ -31,7 +31,7 @@ import services.movies.TitleNormalizer
  * runtime / poster) and to recover the biletyna booking links the day cards omit.
  */
 class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
-                today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+                today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
                 titles: TitleNormalizer) extends CinemaScraper {
 
   private val BaseUrl  = "https://bok.waw.pl"

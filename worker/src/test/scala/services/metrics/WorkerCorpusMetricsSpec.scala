@@ -4,7 +4,10 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.CorpusMetricsFixtures.{clock, now, past, ready, repositoryOf, row, slot, tomorrow}
+import services.metrics.CorpusMetricsFixtures.{clock, past, ready, repositoryOf, row, slot, tomorrow}
+import org.scalatest.prop.TableDrivenPropertyChecks.*
+
+import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
 import services.metrics.WorkerCorpusMetrics.{CorpusCounts, Subset}
 
 /**
@@ -49,13 +52,13 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
         models.Tmdb -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(162)),
         models.KinoApollo -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(147))))
 
-    val c = CorpusCounts.from(Seq(misresolved, corroborated), now)
+    val c = CorpusCounts.from(Seq(misresolved, corroborated), clock)
     c.bySubset.toMap.apply(Subset.Misresolved) shouldBe 1
     c.total shouldBe 2
   }
 
   "CorpusCounts" should "tally each subset independently" in {
-    val c = CorpusCounts.from(corpus, now)
+    val c = CorpusCounts.from(corpus, clock)
     c.total         shouldBe 5
     c.withTmdbId    shouldBe 3
     c.withImdbId    shouldBe 2
@@ -78,9 +81,46 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     // Unresolved too, but every showing has passed — legitimately gone, not invisible.
     val playedOut  = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(past)))
 
-    val c = CorpusCounts.from(Seq(invisible, resolved, playedOut), now)
+    val c = CorpusCounts.from(Seq(invisible, resolved, playedOut), clock)
     c.bySubset.toMap.apply(Subset.UnresolvedWithShowtimes) shouldBe 1
     c.total shouldBe 3
+  }
+
+  // A showtime is the venue's wall clock. Judged in the pod's zone (UTC) a Los Angeles
+  // row playing only tonight read as played out 7 hours early. Pinned to each zone's
+  // next DST change, where a fixed offset would be wrong by an hour on top.
+  private def cinemaIn(zone: String): models.Cinema =
+    models.City.all.find(_.zoneId == ZoneId.of(zone)).flatMap(_.cinemas.headOption)
+      .getOrElse(fail(s"no cinema in $zone"))
+
+  // Showing counts while it started under Showtime.Grace (30 min) ago, in VENUE time.
+  private val venueLocal = Table(
+    ("zone",                "now (UTC instant)",    "showtime (venue-local)", "still screening"),
+    // 2026-11-01 19:00 PST, after the fall-back: a UTC reading (03:00 next day) drops it,
+    // a fixed PDT offset (20:00) would too.
+    ("America/Los_Angeles", "2026-11-02T03:00:00Z", "2026-11-01T19:20",       true),
+    ("America/Los_Angeles", "2026-11-02T03:00:00Z", "2026-11-01T18:20",       false),
+    // 01:45 EST, inside the repeated hour: the 01:30 show began 15 min ago.
+    ("America/New_York",    "2026-11-01T06:45:00Z", "2026-11-01T01:30",       true),
+    // 03:00 CET just after Europe's fall-back; a CEST reading (04:00) would drop it.
+    ("Europe/Warsaw",       "2026-10-25T02:00:00Z", "2026-10-25T02:40",       true),
+    // 19:00 CET: began 40 min ago — a UTC reading (18:00) still counted it.
+    ("Europe/Warsaw",       "2026-10-25T18:00:00Z", "2026-10-25T18:20",       false),
+    // 19:00 BST the evening before the change; 18:00 GMT the evening after.
+    ("Europe/London",       "2026-10-24T18:00:00Z", "2026-10-24T18:20",       false),
+    ("Europe/London",       "2026-10-25T18:00:00Z", "2026-10-25T17:45",       true),
+    // 22:00 CEST: began 40 min ago — a UTC reading (20:00) still counted it.
+    ("Europe/Madrid",       "2026-10-24T20:00:00Z", "2026-10-24T21:20",       false),
+  )
+
+  "CorpusCounts" should "judge each slot's showtimes in its own venue's zone, across DST changes" in {
+    forAll(venueLocal) { (zone, nowUtc, showtime, screening) =>
+      val at      = Clock.fixed(java.time.Instant.parse(nowUtc), ZoneOffset.UTC)
+      val record  = MovieRecord(data = Map[models.Source, models.SourceData](cinemaIn(zone) -> slot(LocalDateTime.parse(showtime))))
+      withClue(s"$zone at $nowUtc, show $showtime: ") {
+        WorkerCorpusMetrics.unresolvedYetScreening(record, at) shouldBe screening
+      }
+    }
   }
 
   it should "publish the unresolved-yet-screening series through a real scan" in {
@@ -94,12 +134,12 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   "an empty corpus" should "count zero everywhere" in {
-    CorpusCounts.from(Nil, now) shouldBe CorpusCounts.empty
+    CorpusCounts.from(Nil, clock) shouldBe CorpusCounts.empty
   }
 
   "WorkerCorpusMetrics.sample" should "publish every subset onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
+    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock)
 
     new WorkerCorpusScan(repositoryOf(rows(corpus)*), Seq(metrics)).sample()
     val text = render(registry)
@@ -120,7 +160,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   // census is the truth — the same reason an incomplete pass publishes nothing.
   it should "publish no series before the first complete census" in {
     val registry = new PrometheusRegistry()
-    new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl") // constructed, not yet sampled
+    new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock) // constructed, not yet sampled
     val text = render(registry)
 
     Subset.all.foreach(s => gauge(text, s) shouldBe None)

@@ -139,7 +139,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       ".recover { case exception: Throwable =>") ->
       "None is \"not revoked\", and the caller answers 503 (AuthController.revokeAllSessions)",
     ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "filmwebFallbackIds",
-      "else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())") ->
+      "else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())") ->
       "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
     ("worker/src/main/scala/services/cinemas/pl/FilmwebCinemaIdResolver.scala", "resolveAll",
       "Try(parseTowns(http.get(TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)") ->

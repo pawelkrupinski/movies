@@ -36,7 +36,7 @@ class ArchiveReplayWiring(
   // beside it and the freshness prune can never be looking at different directories, and
   // a spec points a wiring at a scratch tree without touching the process's properties.
   // A constructor parameter rather than a member for a second reason: `WorkerWiring`'s own
-  // initialisation forces `httoFetch`, which is this subclass's override, which reads it —
+  // initialisation forces `httpFetch`, which is this subclass's override, which reads it —
   // a parameter is already set by then, where a strict `val` would still be `null` and bind
   // both chains to `test/resources/fixtures/null`.
   fixtureDirectory: String,
@@ -99,7 +99,7 @@ class ArchiveReplayWiring(
    * run saw for it, and a hermetic replay of the UK sample stopped on exactly that request.
    * Remembered, it replays the way it failed.
    */
-  override lazy val httoFetch: HttpFetch =
+  override lazy val httpFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
       live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
   // Every cinema-egress route (Multikino, biletyna, Zyte, Flicks, Vue, Odeon) is this chain

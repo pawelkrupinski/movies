@@ -8,7 +8,6 @@ import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Cyfrowe Kino Roma HD (Rawa Mazowiecka), run by the town's MDK on a bespoke
@@ -36,7 +35,7 @@ import scala.util.Try
 class KinoRomaRawaClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoRomaRawa,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoRomaRawaClient._
@@ -45,9 +44,9 @@ class KinoRomaRawaClient(
   override def sourceUrl: Option[String] = Some(PlanUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val posts = filmPostUrls(http.get(PlanUrl)).map(url => url -> Try(http.get(url)))
-    ListingPages.requireAnyReached(posts.map(_._2))
-    posts.flatMap { case (url, page) => page.toOption.flatMap(parseFilmPost(_, url, today, cinema)) }
+    val day = today
+    ListingPages.readEach("kino-roma-rawa", filmPostUrls(http.get(PlanUrl)), identity[String])(http.get)
+      .flatMap { case (url, page) => parseFilmPost(page, url, day, cinema) }
       .sortBy(_.movie.title)
   }
 }
@@ -108,9 +107,6 @@ object KinoRomaRawaClient {
 
   /** The description minus the venue's box-office notices: paragraphs set
    *  entirely in `<strong>` (pre-sale dates, prices, group bookings). */
-  private def plot(description: Element): String = {
-    val kept = description.clone()
-    kept.select("p").asScala.filter(p => p.select("strong").text.trim == p.text.trim).foreach(_.remove())
-    ScraperParse.cleanSynopsis(kept)
-  }
+  private def plot(description: Element): String =
+    ScraperParse.cleanSynopsisWithout(description)(ScraperParse.isAllBold)
 }

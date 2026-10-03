@@ -131,7 +131,7 @@ class ScrapeReaper(
   // is. Throughput is concurrent-venues / spread, which makes the spread a term in
   // how big the outstanding budget must be — see `spreadAwareOutstandingBudget`.
   // Default zero = no spread, leaving unchunked callers and tests unaffected.
-  chunkSpread: ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
+  val chunkSpread: ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —

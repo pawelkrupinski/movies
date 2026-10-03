@@ -1,13 +1,12 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import tools.HttpFetch
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
 
-import java.time.{LocalDate, LocalDateTime, Period, ZoneId}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -61,7 +60,7 @@ class EkobiletClient(
   http:   HttpFetch,
   slug:   String,
   override val cinema: Cinema,
-  today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:  => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   import EkobiletClient._
@@ -101,12 +100,12 @@ class EkobiletClient(
         s"$ChronoMarker$title$KeySep$dateTime$KeySep${booking.getOrElse("")}"
       }
     else {
-      val dates = availableDates(landing)
-      // Per-date discovery is best-effort (a failed day just contributes no films),
-      // matching the old swallow-and-continue; the landing fetch is essential.
-      val films = (parseLanding(landing) ++ dates.flatMap(d =>
-        Try(http.get(s"$BaseUrl/$slug?date=$d")).toOption.map(parseLanding).getOrElse(Nil)))
-        .distinctBy(_._2)
+      // Per-date discovery is best-effort — a failed day just contributes no films —
+      // unless every day failed: then the strip is down, and the landing alone (often
+      // today's films only, or none) must not read as the venue's whole programme.
+      val days = availableDates(landing).map(d => Try(parseLanding(http.get(s"$BaseUrl/$slug?date=$d"))))
+      ListingPages.requireAnyReached(days)
+      val films = (parseLanding(landing) ++ days.flatMap(_.getOrElse(Nil))).distinctBy(_._2)
       films.map { case (title, url) => s"$title$KeySep$url" }
     }
   }
@@ -236,13 +235,12 @@ object EkobiletClient {
   /** (listing title, detail-page URL) for each film card on the venue landing,
    *  de-duplicated (cards render twice for desktop/mobile). */
   private[cinemas] def parseLanding(html: String): Seq[(String, String)] = {
-    val document = Jsoup.parse(html, BaseUrl)
-    document.select("div.event-card a[href]").asScala.toSeq.flatMap { a =>
+    Jsoup.parse(html, BaseUrl).select("div.event-card a[href]").asScala.toSeq.flatMap { a =>
       val url = a.attr("abs:href").takeWhile(_ != '?')
-      // The card's title is the nearest following `p.overme`.
+      // The card's title is the `p.overme` in its own wrapper. A card without one is
+      // dropped: falling back to the page's first title lent it another film's name.
       val titleElement = Option(a.closest("div.event-card")).flatMap(c =>
         Option(c.parent).flatMap(p => Option(p.selectFirst("p.overme"))))
-        .orElse(Option(document.selectFirst("p.overme")))
       for {
         t <- titleElement.map(e => listingTitle(e.text)).filter(_.nonEmpty)
         if url.nonEmpty
@@ -257,9 +255,10 @@ object EkobiletClient {
         dateStr <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
         dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "10 cze"
         time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-        // The next date with that month/day on or after `today`, so a December
-        // listing seen in January resolves to this year, not last.
-        date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ZERO)
+        // This year's date unless it lies past the grace before `today`: "5 sty" seen
+        // in December is next January, while a row left on the page the day after it
+        // screened stays in the past instead of becoming a phantom a year out.
+        date     <- ScraperParse.upcomingDate(dayMonth, today)
       } yield Showtime(date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
     }.distinctBy(s => (s.dateTime, s.bookingUrl))
 
@@ -279,7 +278,7 @@ object EkobiletClient {
         dateStr  <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
         dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "25 wrz"
         time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-        date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ZERO)
+        date     <- ScraperParse.upcomingDate(dayMonth, today)
       } yield (title, date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
     }.distinctBy(identity)
 

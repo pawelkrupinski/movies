@@ -4,7 +4,7 @@ import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 import tools.HttpFetch
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 /**
  * AMC Theatres — the largest US chain (523 theatres on its own roster, 519 of
@@ -85,7 +85,11 @@ class AmcClient(
   marketSlug:  String,
   theatreSlug: String,
   override val cinema: Cinema,
-  today:       Option[LocalDate] = None
+  /** The VENUE's calendar day, asked per scrape — wire it as
+   *  `calendar.todayAt(cinema, …)`. Required: AMC spans six US zones, and the old
+   *  market-wide default (New York) was the LATEST of them, so between midnight and
+   *  03:00 Eastern it filtered a western venue's still-running evening out of the plan. */
+  today:       => LocalDate
 ) extends ChunkedCinemaScraper {
 
   import AmcClient._
@@ -96,12 +100,6 @@ class AmcClient(
   /** The venue's public page — the same URL `planChunks` reads its day list
    *  from, so the /uptime link and the scrape cannot drift. */
   override def sourceUrl: Option[String] = Some(venueUrl(marketSlug, theatreSlug))
-
-  // An absent `today` means the MARKET's current calendar day, not the JVM's: a
-  // worker in Europe planning US venues must not start from a date those venues
-  // have not reached. Resolved in the body rather than as a default argument
-  // because a Scala default cannot read an earlier parameter of the same list.
-  private val referenceDay: LocalDate = today.getOrElse(LocalDate.now(MarketZone))
 
   /** The days to scrape, read off the venue page's own day picker — the exact
    *  days AMC advertises, so no request is spent on a day the venue never
@@ -122,8 +120,9 @@ class AmcClient(
    *     EXPECTED DATA, so it returns empty. */
   def planChunks(): Seq[String] = {
     val html  = http.get(venueUrl(marketSlug, theatreSlug))
+    val day   = today
     val dates = AmcParser.parseDates(html)
-      .filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
+      .filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
     if (dates.isEmpty && !AmcParser.hasDatePicker(html))
       throw new IllegalStateException(
         s"AMC venue page for '$theatreSlug' carried no date picker")
@@ -144,12 +143,6 @@ object AmcClient {
 
   val SiteUrl  = "https://www.amctheatres.com"
   val GraphUrl = "https://graph.amctheatres.com/"
-
-  /** The zone `referenceDay` falls back to when no `today` is injected. AMC is a
-   *  US chain spanning six zones; Eastern is the EARLIEST of them, so starting
-   *  from its calendar day can never skip a day a more-western venue is still
-   *  on. The per-venue day list then names the real days regardless. */
-  private val MarketZone = ZoneId.of("America/New_York")
 
   /** The shared scrape horizon — see [[ScrapeHorizon]] for why it is a sanity
    *  bound rather than a budget, and what capping it cost. AMC's picker names

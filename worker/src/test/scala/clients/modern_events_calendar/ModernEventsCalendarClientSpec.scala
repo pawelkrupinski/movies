@@ -80,6 +80,35 @@ class ModernEventsCalendarClientSpec extends AnyFlatSpec with Matchers with Opti
     detail.genres shouldBe Seq("Dokumentalny")
   }
 
+  it should "walk past a dark month to the programme that resumes after it" in {
+    // October served as dark (November's empty load) and October's real load served
+    // as December's: a venue on a break that sells the months after it.
+    val replay = new FakeHttpFetch("kino-ck-zambrow")
+    val dark = new tools.HttpFetch {
+      def get(url: String): String = replay.get(url)
+      def post(url: String, body: String, contentType: String): String =
+        if (body.contains("mec_month=10")) replay.post(url, body.replace("mec_month=10", "mec_month=11"), contentType)
+        else if (body.contains("mec_month=12")) replay.post(url, body.replace("mec_month=12", "mec_month=10"), contentType)
+        else replay.post(url, body, contentType)
+    }
+    val movies = new ModernEventsCalendarClient(dark, ModernEventsCalendarPage("https://kino.mokzambrow.pl/"),
+      KinoCKZambrow, today).fetch()
+    movies.flatMap(_.showtimes).map(_.dateTime.getMonthValue).toSet should contain (10)
+  }
+
+  it should "read a runtime with words before the number, in any case" in {
+    def runtime(line: String) = {
+      val page = new tools.HttpFetch {
+        def get(url: String): String = s"""<div class="entry-content"><p>$line</p></div>"""
+        def post(url: String, body: String, contentType: String): String = ""
+      }
+      new ModernEventsCalendarClient(page, ModernEventsCalendarPage("https://kino.mokzambrow.pl/"), KinoCKZambrow, today)
+        .fetchFilmDetail("https://kino.mokzambrow.pl/odzyskany/").flatMap(_.runtimeMinutes)
+    }
+    runtime("Czas trwania: ok. 85 min").value shouldBe 85
+    runtime("Czas trwania: 1 GODZ. 30 MIN").value shouldBe 90
+  }
+
   "ModernEventsCalendarClient on the monthly skin (Nisko)" should "read the category-filtered calendar, tags peeled into badges" in {
     niskoMovies.map(_.cinema).toSet shouldBe Set(KinoSokolNisko)
     niskoMovies.map(_.movie.title) should contain theSameElementsAs Seq("Lalka", "Obcy", "Tedi i magiczna lampa")

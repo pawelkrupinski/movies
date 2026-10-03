@@ -24,7 +24,7 @@ import scala.util.Try
  * The detail page is then fetched per unique film for the metadata the listing
  * doesn't expose — runtime, director, countries, synopsis, original title.
  */
-class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class IluzjonClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher {
 
 

@@ -154,7 +154,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       try {
         wiring.forceBoot()
         // Drive one call through each phase chain so the per-call series exist too.
-        scala.util.Try(wiring.httoFetch.get("https://cinema.example/listing"))
+        scala.util.Try(wiring.httpFetch.get("https://cinema.example/listing"))
         scala.util.Try(wiring.enrichmentFetch.get("https://api.themoviedb.org/3/movie/1"))
         val labels = CountryLabel.findAllMatchIn(PrometheusExposition.render(wiring.workerMetrics.registry))
           .map(_.group(1)).toSet

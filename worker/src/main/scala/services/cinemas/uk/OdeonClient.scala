@@ -43,7 +43,7 @@ class OdeonClient(
   val siteId:          String,
   override val cinema: Cinema,
   authToken:           () => Option[String],
-  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
+  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
 ) extends ChunkedCinemaScraper {
 
   import OdeonClient._

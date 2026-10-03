@@ -96,6 +96,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: settings.ZyteApiKey) extends Lo
       .header("Authorization", basicAuth(apiKey))
       .header("Content-Type",  "application/json")
       .header("Accept",        "application/json")
+      .timeout(RequestTimeout)
       .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
       .build()
 
@@ -106,6 +107,12 @@ class ZyteClient(httpClient: HttpClient, apiKey: settings.ZyteApiKey) extends Lo
 
 object ZyteClient {
   private val Endpoint = "https://api.zyte.com/v1/extract"
+
+  /** The longest one extract call may take. Zyte retries a hard upstream inside the
+   *  call, so a slow answer is normal — but with no bound, an API that accepted the
+   *  connection and never answered parked the calling scrape thread forever (the
+   *  client sets only a connect timeout). */
+  private val RequestTimeout = java.time.Duration.ofMinutes(3)
 
   /** The Zyte `/extract` request body. The `session` field is included ONLY for
    *  the cookie-carryover path ([[ZyteClient.warm]] + [[ZyteClient.fetchWithSession]]),

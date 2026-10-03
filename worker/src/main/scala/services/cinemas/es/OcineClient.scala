@@ -42,13 +42,13 @@ class OcineClient(
   http:        HttpFetch,
   ticketingServer: String,
   override val cinema: Cinema,
-  today:       Option[LocalDate] = None
+  today:       => Option[LocalDate] = None
 ) extends ChunkedCinemaScraper {
 
   import OcineClient._
 
   private val baseUrl      = OcineClient.baseUrl(ticketingServer)
-  private val referenceDay = today.getOrElse(LocalDate.now(Zone))
+  private def referenceDay = today.getOrElse(LocalDate.now(Zone))
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
 

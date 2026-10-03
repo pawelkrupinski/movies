@@ -41,7 +41,7 @@ class Cinema1Client(
   http:     HttpFetch,
   override val cinema: Cinema,
   cinemaId: String,
-  today:    LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:    => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import Cinema1Client._

@@ -44,7 +44,7 @@ import scala.util.Try
 class KinoMoskwaClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoMoskwa,
-  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper {
 
   import KinoMoskwaClient._

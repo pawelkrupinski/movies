@@ -296,6 +296,24 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.state.map(_.history.last.event) shouldBe Some(FallbackEvent.Uncovered)   // the old spell's record is kept
   }
 
+  // A Filmweb spell still marked active when kinoprogramm.com took over must not outlive a
+  // healthy primary: the fresh spell reads it as inactive, so the recovery path wrote nothing
+  // and the row kept reading `active` to /metrics, /uptime and the boot's fallback tags.
+  it should "clear another fallback's active state on the first healthy primary tick" in {
+    val h = new Harness(Seq(Right(OneMovie)), Some(filmwebWith(OneMovie)), name = "Kinoprogramm")
+    val longAgo = h.clock.minusMillis(30.days.toMillis)
+    h.store.put(FallbackState(
+      cinema = Service, active = true, fallbackSource = "Filmweb", fallbackRef = None,
+      failingSince = Some(longAgo), since = Some(longAgo), lastReason = Some("HTTP 503"),
+      consecutiveFailures = 2, lastPrimaryProbeAt = Some(longAgo), nextPrimaryProbeAt = None,
+      updatedAt = longAgo, history = List(FallbackEvent(longAgo, FallbackEvent.Enter, "HTTP 503"))
+    ))
+    h.scraper.fetch() shouldBe OneMovie
+    h.state.map(_.active) shouldBe Some(false)
+    h.state.map(_.fallbackSource) shouldBe Some("Kinoprogramm")
+    h.state.map(_.history.last.event) shouldBe Some(FallbackEvent.Enter)   // the old spell's record is kept
+  }
+
   // ---- empty-primary handling ----
 
   it should "treat an empty scrape with Filmweb data as a grace failure (keep the empty until the window elapses)" in {

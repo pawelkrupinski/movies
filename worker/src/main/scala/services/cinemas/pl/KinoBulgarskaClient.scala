@@ -11,7 +11,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, Period, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
+class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"

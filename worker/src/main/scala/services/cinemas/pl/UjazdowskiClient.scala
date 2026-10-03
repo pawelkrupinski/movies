@@ -27,7 +27,7 @@ import scala.util.Try
  */
 class UjazdowskiClient(
   http:  HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher {
 
 

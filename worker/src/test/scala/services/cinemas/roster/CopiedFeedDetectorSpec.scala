@@ -82,6 +82,17 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     w.detector.copiedPairs shouldBe empty
   }
 
+  // A copy scraped clean took the shared sessions out of the index although the original still listed
+  // them, so the next venue to copy the original went unflagged until the original was scraped again.
+  it should "still flag a second copy of a venue whose first copy was scraped clean" in {
+    val w = new World
+    w.detector.venueScraped(parkRidge, feed(parkRidge, "parkridge"))
+    w.detector.venueScraped(pickwick, feed(pickwick, "parkridge"))
+    w.detector.venueScraped(pickwick, feed(pickwick, "pickwick"))
+    w.detector.venueScraped(chainMate, feed(chainMate, "parkridge"))
+    w.detector.copiedPairs shouldBe Set(Seq(chainMate, parkRidge).map(_.displayName).sorted match { case Seq(a, b) => (a, b) })
+  }
+
   // Only the venues read through an upstream known to copy feeds are watched (KnownToCopy).
   it should "neither check nor index a venue it does not watch" in {
     val w = new World

@@ -17,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
  *  See reference_fallback_telegram_channel. */
 trait AlertingWiring { self: WorkerWiring =>
 
-  private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httoFetch, route, country.code, workerMetrics.telegramNotifications.recorderFor(country.code))
+  private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httpFetch, route, country.code, workerMetrics.telegramNotifications.recorderFor(country.code))
 
   // Telegram alerter for fallback ENTER / RECOVERED events. Posts to the dedicated
   // "Fallback to Filmweb" topic when a topic id is set.

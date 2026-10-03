@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import services.movies.FormatTags
 import tools.HttpFetch
 
@@ -62,7 +62,7 @@ class ModernEventsCalendarClient(
   http:  HttpFetch,
   page:  ModernEventsCalendarPage,
   override val cinema: Cinema,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   import ModernEventsCalendarClient._
@@ -77,15 +77,18 @@ class ModernEventsCalendarClient(
     val calendar = calendarOf(html).getOrElse(
       throw new IllegalStateException(s"no Modern Events Calendar skin initialised on ${page.url}"))
 
-    val later = Iterator.iterate(calendar.month.plusMonths(1))(_.plusMonths(1))
-      .take(MaxMonthsAhead)
-      .map(month => month -> slotsIn(monthFragments(http.post(calendar.ajaxUrl, calendar.loadMonthBody(month),
-        "application/x-www-form-urlencoded"))))
-      .takeWhile { case (month, slots) => slots.exists(slot => YearMonth.from(slot.dateTime) == month) }
-      .flatMap(_._2)
-      .toSeq
+    // The months after the page's own, walked by the shared stop rule, so a dark month
+    // (a summer break) does not hide the programme that resumes after it. A month counts
+    // as live by slots IN it — a load also carries the edge weeks of its neighbours.
+    val later = Seq.newBuilder[Slot]
+    ScrapeHorizon.liveMonths(calendar.month.plusMonths(1)) { month =>
+      val slots = slotsIn(monthFragments(http.post(calendar.ajaxUrl, calendar.loadMonthBody(month),
+        "application/x-www-form-urlencoded")))
+      later ++= slots
+      slots.exists(slot => YearMonth.from(slot.dateTime) == month)
+    }
 
-    toMovies((slotsIn(html) ++ later).filterNot(_.dateTime.toLocalDate.isBefore(today)), cinema)
+    toMovies((slotsIn(html) ++ later.result()).filterNot(_.dateTime.toLocalDate.isBefore(today)), cinema)
   }
 
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
@@ -93,10 +96,6 @@ class ModernEventsCalendarClient(
 }
 
 object ModernEventsCalendarClient {
-
-  /** A loop guard, not a horizon: loading stops at the first month with no
-   *  screenings, which a small cinema reaches within two or three. */
-  private val MaxMonthsAhead = 12
 
   /** The skin's init call: `.mecDailyView({ … })` — its options object. */
   private val InitScript = """(?s)\.mec\w+View\(\s*\{(.*?)\}\s*\);""".r
@@ -186,7 +185,6 @@ object ModernEventsCalendarClient {
    *  only the known labels are ever looked up. The field lines are all shorter
    *  than [[SynopsisMinLength]], which is what keeps them out of the synopsis. */
   private val LabelledLine = """^\s*([\p{L} ]{2,25}?)\s*(?::|\s[-–]\s)\s*(.+?)\s*$""".r
-  private val HoursMinutes = """(?i)(?:(\d+)\s*godz\.?)?\s*(?:(\d+)\s*min)?""".r
   private val SynopsisMinLength = 60
 
   private def labelled(lines: Seq[String]): Map[String, String] =
@@ -194,13 +192,6 @@ object ModernEventsCalendarClient {
       case LabelledLine(label, value) => Some(label.trim.toLowerCase(java.util.Locale.ROOT) -> value)
       case _                          => None
     }.reverse.toMap
-
-  private def runtimeOf(value: String): Option[Int] =
-    HoursMinutes.findFirstMatchIn(value.trim).flatMap { m =>
-      val hours   = Option(m.group(1)).map(_.toInt)
-      val minutes = Option(m.group(2)).map(_.toInt)
-      if (hours.isEmpty && minutes.isEmpty) None else Some(hours.getOrElse(0) * 60 + minutes.getOrElse(0))
-    }.filter(_ > 0)
 
   private def listOf(value: String): Seq[String] =
     value.split("[,/]").iterator.map(_.trim).filter(_.nonEmpty).toSeq
@@ -223,7 +214,7 @@ object ModernEventsCalendarClient {
     FilmDetail(
       synopsis       = Some(paragraphs.filter(_.length >= SynopsisMinLength).mkString("\n\n")).filter(_.nonEmpty),
       director       = field("reżyseria", "reżyser").toSeq.flatMap(listOf),
-      runtimeMinutes = field("czas trwania").flatMap(runtimeOf),
+      runtimeMinutes = field("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
       releaseYear    = production.flatMap(_._2),
       countries      = production.toSeq.flatMap(_._1),
       genres         = field("gatunek").toSeq.flatMap(listOf),

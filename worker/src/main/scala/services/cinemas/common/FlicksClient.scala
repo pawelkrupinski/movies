@@ -49,7 +49,7 @@ class FlicksClient(
   cinemaSlug: String,
   override val cinema: Cinema,
   market:     FlicksMarket,
-  today:      Option[LocalDate] = None
+  today:      => Option[LocalDate] = None
 ) extends PagedChunkScraper {
 
   import FlicksClient._
@@ -59,7 +59,7 @@ class FlicksClient(
   // worker in Europe planning US venues must not start from a date those venues
   // have not reached. Resolved in the body rather than as a default argument
   // because a Scala default cannot read an earlier parameter of the same list.
-  private val referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
+  private def referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
 
   private val programmeUrl = s"$baseUrl/cinema/$cinemaSlug/"
 
@@ -130,7 +130,7 @@ class FlicksClient(
     moviesFor(parseDay(page, date, market))
   }
 
-  def pageParserVersion: Int = PageParserVersion
+  def pageParser: String = FlicksClient.PageParser
 
   /** Merge every day's films into the venue's listing: one row per film (grouped
    *  by its stable `/movie/<slug>` `filmUrl`), showtimes unioned, deduped by
@@ -139,15 +139,8 @@ class FlicksClient(
    *  Overrides the identity default only to keep the exact (time, booking) dedup
    *  key and the by-title final ordering. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    chunks.toSeq.sortBy(_._1).flatMap(_._2)
-      .groupBy(m => m.filmUrl.getOrElse(m.movie.title))
-      .toSeq.sortBy(_._1)
-      .flatMap { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes)
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
-      }
+    ChunkedCinemaScraper.mergeByIdentity(chunks.toSeq.sortBy(_._1).flatMap(_._2), s => (s.dateTime, s.bookingUrl))
+      .filter(_.showtimes.nonEmpty)
       .sortBy(_.movie.title)
 
   /** Build one film row per stable `/movie/<slug>` from a day's session slots,
@@ -179,6 +172,13 @@ class FlicksClient(
 }
 
 object FlicksClient {
+
+  /** A venue's client, planning from the venue's OWN calendar day (its city's zone) per
+   *  scrape — the catalogue's primary and a chain venue's fallback both build it here, so
+   *  neither can fall back to the market-wide zone a multi-zone country gets wrong. */
+  def forVenue(http: HttpFetch, cinemaSlug: String, cinema: Cinema, market: FlicksMarket,
+               calendar: ScrapeCalendar): FlicksClient =
+    new FlicksClient(http, cinemaSlug, cinema, market, today = Some(calendar.todayAt(cinema, market.zoneId)))
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]]. Flicks
    *  advertises a venue's whole booking horizon as day tabs and we fetch every advertised
@@ -390,6 +390,15 @@ object FlicksClient {
   /** What [[parseChunkPage]] makes of a day page — pinned against the recorded pages by
    *  `FlicksPageParserVersionSpec`, which fails when the parse changes and this does not. */
   val PageParserVersion = 1
+
+  /** The code a day page's parse runs through beyond this file — the encoder of its slice, the name
+   *  helper, the models it builds — whose change the recorded pages may not exercise. */
+  private[common] val ParseClasses: Seq[Class[?]] = Seq(classOf[FlicksClient], getClass, CinemaMovieJson.getClass,
+    PersonName.getClass, classOf[CinemaMovie], classOf[Movie], classOf[Showtime], classOf[org.jsoup.parser.Parser])
+
+  /** The memo's name for this parse: the hand version, and a fingerprint of the classes it runs through,
+   *  so a change to any of them re-parses every remembered page whether or not the version was bumped. */
+  lazy val PageParser: String = s"$PageParserVersion:${tools.Digest.classesHex(ParseClasses)}"
 
   /** The path of the image Flicks shows for a film it has no poster for. */
   private val PlaceholderPoster = "/images/others/not_available/"

@@ -6,12 +6,12 @@ import services.movies.{CountingScreeningsRepository, CountingSlotsRepository, I
 import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
-  override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
+  override lazy val httpFetch: HttpFetch = new FakeHttpFetch(fixture)
   // Enrichment (TMDB/IMDb/RT/…) now draws from a SEPARATE phase-labelled chain in
   // production; in fixture replay it must replay from the SAME `FakeHttpFetch`, or
   // the metadata clients would fall through to the real network. Point it at the
   // one fake so every cinema-site AND enrichment call is served from the fixtures.
-  override lazy val enrichmentFetch: HttpFetch = httoFetch
+  override lazy val enrichmentFetch: HttpFetch = httpFetch
   // PRODUCTION'S STORAGE SHAPE, not the simplified one. A film's showtimes live in
   // `screenings` and its per-cinema slots in `movie_slots`, both keyed by film id, and the
   // `movies` row keeps neither once they land. Every end-to-end spec that goes through this
@@ -46,7 +46,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // The fixture's capture day, parsed from a `dd-MM-yyyy` directory name (e.g.
   // "08-06-2026" → 2026-06-08). `None` for fixtures named for something else
   // ("multikino"), which aren't date-keyed. MUST be `lazy` — the super
-  // constructor reads it via the `heliosToday` override (WorkerWiring builds
+  // constructor reads it via the `scrapeCalendar` override (WorkerWiring builds
   // `cinemaScraperCatalog` during init) BEFORE this subclass's fields would
   // otherwise initialize; a plain `val` reads as null there (NPE).
   lazy val fixtureDate: Option[java.time.LocalDate] =
@@ -59,8 +59,8 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // `LocalDate.now` makes those URLs miss the recorded fixtures, dropping Helios
   // room/format enrichment and breaking the whole-corpus snapshot on every day
   // after capture.
-  override protected def heliosToday: java.time.LocalDate =
-    fixtureDate.getOrElse(super.heliosToday)
+  override protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
+    fixtureDate.fold(super.scrapeCalendar)(services.cinemas.common.ScrapeCalendar.fixedOn)
 
   // The CLIENT's notion of "today" (shared.js `dateBounds()`) for every page-test
   // render off this wiring — the in-JVM PageJsBehaviourSpec / PageSnapshotSpec
@@ -77,7 +77,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // Every cinema-egress route (Multikino, biletyna, ck105's Zyte seam, Flicks, Vue,
   // Odeon) replays from this same `FakeHttpFetch` without an override of its own:
   // `TestWiring` refuses their paid legs, and a route with neither a proxy nor a Zyte
-  // leg IS its direct leg — `httoFetch`.
+  // leg IS its direct leg — `httpFetch`.
 
   /** Convenience: scrape every cinema once into the identity model's intake and project its films
    *  until a projection writes nothing — the rest production's projection interval reaches, as the

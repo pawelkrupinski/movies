@@ -29,4 +29,12 @@ class FlicksPageParserVersionSpec extends AnyFlatSpec with Matchers {
       Pinned.get(FlicksClient.PageParserVersion) shouldBe Some(_root_.tools.Digest.sha256Hex(parses.mkString("\n")))
     }
   }
+
+  // The recorded pages exercise only what they hold: a change to the encoder, the name helper or the models
+  // they never reach kept serving remembered parses. The memo's name for the parse covers that code's bytes.
+  "FlicksClient.PageParser" should "name the hand version and the code the parse runs through beyond FlicksClient" in {
+    FlicksClient.ParseClasses should contain allOf (CinemaMovieJson.getClass, _root_.tools.PersonName.getClass, classOf[models.CinemaMovie])
+    FlicksClient.PageParser shouldBe s"${FlicksClient.PageParserVersion}:${_root_.tools.Digest.classesHex(FlicksClient.ParseClasses)}"
+    _root_.tools.Digest.classesHex(Seq(classOf[models.CinemaMovie])) should not be _root_.tools.Digest.classesHex(Seq(classOf[models.Movie]))
+  }
 }

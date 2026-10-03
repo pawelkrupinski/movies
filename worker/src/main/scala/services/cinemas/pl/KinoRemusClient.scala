@@ -140,14 +140,11 @@ object KinoRemusClient {
   /** The page body minus its boilerplate paragraphs: the all-bold header lines
    *  (title/genre/age/version, runtime, and on event-style pages the date and
    *  the `godz. … cena biletu` line) and the closing "Bilety do nabycia" note. */
-  private def synopsisOf(content: Element): String = {
-    val body = content.clone()
-    body.select("p").asScala.filter { p =>
+  private def synopsisOf(content: Element): String =
+    ScraperParse.cleanSynopsisWithout(content) { p =>
       val own = p.text.trim
-      own.isEmpty || own.startsWith("Bilety do nabycia") || p.select("strong").text.trim == own
-    }.foreach(_.remove())
-    ScraperParse.cleanSynopsis(body)
-  }
+      own.isEmpty || own.startsWith("Bilety do nabycia") || ScraperParse.isAllBold(p)
+    }
 
   private def ogImage(doc: Document): Option[String] =
     Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content").trim).filter(_.nonEmpty)

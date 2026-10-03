@@ -9,7 +9,7 @@ import tools.{CountingHttpFetch, FallbackHttpFetch, HostCircuitBreakerHttpFetch,
 
 /** Cinema-site egress routes: the residential-proxy and Zyte chains the
  *  Cloudflare-blocked venues scrape through, each a seam the fixture wirings
- *  collapse back onto `httoFetch`. */
+ *  collapse back onto `httpFetch`. */
 trait EgressWiring { self: WorkerWiring =>
   import EgressWiring.ResidentialProxyService
 
@@ -107,17 +107,17 @@ trait EgressWiring { self: WorkerWiring =>
     ZyteFallback.fetchFor(direct, zyteHttpClient, zyteApiKey, configuration, cookieSource, zyteMeter)
 
   lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(zyteThenDirect(httoFetch, Some(MultikinoClient.HomeUrl)), warmUrl = Some(MultikinoClient.HomeUrl))
+    proxyPrimary(zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl)), warmUrl = Some(MultikinoClient.HomeUrl))
   // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
   // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch = {
-    val fallback = zyteThenDirect(httoFetch, Some(MultikinoClient.HomeUrl))
+    val fallback = zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl))
     proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
   }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = zyteThenDirect(httoFetch)
+  lazy val zyteFetch: HttpFetch = zyteThenDirect(httpFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
@@ -145,7 +145,7 @@ trait EgressWiring { self: WorkerWiring =>
   // the proxy is down. Cineworld reuses flicksFetch (GET-only, no cookie, so
   // per-venue stickiness is fine), Zyte fallback included. Showcase/Everyman still
   // reach their origins directly.
-  lazy val vueFetch: HttpFetch = proxyPrimary(httoFetch, keyOf = StickyShardHttpFetch.hostOnly)
+  lazy val vueFetch: HttpFetch = proxyPrimary(httpFetch, keyOf = StickyShardHttpFetch.hostOnly)
 
   // vwc.odeon.co.uk — Odeon's Vista ocapi backend — is Cloudflare-403'd too. It was
   // NOT when the client was written: it answered our Fly egress directly, and only

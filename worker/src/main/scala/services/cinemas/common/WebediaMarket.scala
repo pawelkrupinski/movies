@@ -26,11 +26,11 @@ sealed abstract class WebediaMarket(
   /** The hostname this market is served from — the key the pace gate and the
    *  429 back-off bucket by, and the value a `HostPolicy` row must name. */
   val host: String,
-  /** The market's reference time zone, used only to resolve "today" when a
-   *  client is built without an explicit date. A per-market DEFAULT, not a claim
-   *  that the country has one zone (Spain has two); getting it wrong costs at
-   *  most a day-boundary, never a wrong showtime — Webedia prints each session in
-   *  the venue's own local time and we store it as a `LocalDateTime`. */
+  /** The market's reference time zone: the fallback "today" for a venue no city lists
+   *  (`WebediaShowtimesClient.forVenue` otherwise reads the venue's city zone). Not a
+   *  claim that the country has one zone (Spain has two), and getting it wrong is not
+   *  free: a "today" a venue has not reached drops that evening's day from a listing
+   *  marked complete. Webedia prints each session in the venue's own local time. */
   val zoneId: ZoneId,
   /** Hour + minute markers in this market's `runtime` string ("1 Std. 56 Min."
    *  in German, "1h 56min" in Spanish). Matched case-insensitively against the

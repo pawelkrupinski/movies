@@ -60,7 +60,7 @@ class MsiClient(
   http:    HttpFetch,
   baseUrl: String,
   override val cinema: Cinema,
-  today:   LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:   => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   // The month-page route. Almost every venue serves it at `/MSI/mvc/pl`, but a
   // few VisualTicket installs expose the identical page under a different prefix
   // (e.g. Kino Planeta Brzesko at `/Rezerwacja/mvc/pl`); override for those.

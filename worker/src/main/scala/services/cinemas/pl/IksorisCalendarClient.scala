@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
-import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
@@ -37,7 +37,7 @@ class IksorisCalendarClient(
   http:  HttpFetch,
   page:  IksorisBookingPage,
   override val cinema: Cinema,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import IksorisCalendarClient._
@@ -45,29 +45,30 @@ class IksorisCalendarClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page.origin.value)
   override def sourceUrl: Option[String] = Some(page.url)
 
-  // A calendar failing propagates — without it no day is known, so a swallowed
-  // failure would read as a white "0 films". A day failing drops only that day,
-  // unless every one did.
+  // This month's calendar failing propagates — without it no day is known, so a
+  // swallowed failure would read as a white "0 films". The months after it are
+  // walked by [[ScrapeHorizon.liveMonths]], so a dark month (a summer break) does
+  // not hide the programme that resumes after it. A day failing drops only that
+  // day, unless every one did.
   def fetch(): Seq[CinemaMovie] = {
-    val first = YearMonth.from(today)
-    val days = Iterator.iterate(first)(_.plusMonths(1))
-      .take(RunawayMonths)
-      .map(month => month -> scheduledDays(http.get(calendarUrl(page, month))))
-      .takeWhile { case (month, days) => month == first || days.nonEmpty }
-      .flatMap(_._2)
-      .filterNot(_.isBefore(today))
-      .toSeq
-    val attempts = days.map(day => Try(http.get(dayUrl(page, day))))
+    val first     = YearMonth.from(today)
+    val thisMonth = scheduledDays(http.get(calendarUrl(page, first)))
+    val later     = Seq.newBuilder[LocalDate]
+    ScrapeHorizon.liveMonths(first.plusMonths(1)) { month =>
+      val days = scheduledDays(http.get(calendarUrl(page, month)))
+      later ++= days
+      days.nonEmpty
+    }
+    val days = (thisMonth ++ later.result()).filterNot(_.isBefore(today))
+    // Parsed inside the day's Try: a day answering 200 with an HTML session page
+    // drops that day, not the whole scrape.
+    val attempts = days.map(day => Try(Json.parse(http.get(dayUrl(page, day)))))
     ListingPages.requireAnyReached(attempts)
     parse(attempts.flatMap(_.toOption), cinema)
   }
 }
 
 object IksorisCalendarClient {
-
-  /** Only a guard against a calendar that marks every month (a markup change
-   *  read wrong) looping forever — two years is past any venue's real horizon. */
-  private val RunawayMonths = 24
 
   def calendarUrl(page: IksorisBookingPage, month: YearMonth): String =
     s"${page.origin.value}/index/ajax.html?ajax=pobierzKalendarz&idg=${page.eventGroup}&year=${month.getYear}&month=${month.getMonthValue}"
@@ -90,15 +91,18 @@ object IksorisCalendarClient {
     synopsis: Option[String]
   )
 
-  /** The days a month's calendar marks as having screenings. */
-  private[pl] def scheduledDays(calendarJson: String): Seq[LocalDate] =
-    (Json.parse(calendarJson) \ "kalendarzHtml").asOpt[String].toSeq.flatMap { html =>
-      Jsoup.parse(html).select("button.kalendarz-terminow-dzien.dzien-z-terminami[data-day]").asScala.toSeq
-        .flatMap(button => Try(LocalDate.parse(button.attr("data-day"))).toOption)
-    }.distinct
+  /** The days a month's calendar marks as having screenings. A reply with no
+   *  calendar at all (`{"status":"error"}`) throws: read as a month without
+   *  screenings, this month's would turn a failed scrape into a white one. */
+  private[pl] def scheduledDays(calendarJson: String): Seq[LocalDate] = {
+    val html = (Json.parse(calendarJson) \ "kalendarzHtml").asOpt[String].getOrElse(
+      throw new IllegalStateException(s"iKsoris calendar reply carries no kalendarzHtml: ${calendarJson.take(200)}"))
+    Jsoup.parse(html).select("button.kalendarz-terminow-dzien.dzien-z-terminami[data-day]").asScala.toSeq
+      .flatMap(button => Try(LocalDate.parse(button.attr("data-day"))).toOption).distinct
+  }
 
-  def parse(dayJsons: Seq[String], cinema: Cinema): Seq[CinemaMovie] = {
-    val slots = dayJsons.flatMap(body => (Json.parse(body) \ "data").asOpt[Seq[JsValue]].getOrElse(Seq.empty)).flatMap(showing)
+  def parse(dayJsons: Seq[JsValue], cinema: Cinema): Seq[CinemaMovie] = {
+    val slots = dayJsons.flatMap(day => (day \ "data").asOpt[Seq[JsValue]].getOrElse(Seq.empty)).flatMap(showing)
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
       CinemaMovie(
         movie     = Movie(title, rawTitle = Some(group.head.rawTitle).filter(_ != title)),

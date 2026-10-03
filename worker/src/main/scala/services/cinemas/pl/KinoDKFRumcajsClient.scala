@@ -34,7 +34,7 @@ import scala.util.Try
 class KinoDKFRumcajsClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoDKFRumcajs,
-  today: LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoDKFRumcajsClient._

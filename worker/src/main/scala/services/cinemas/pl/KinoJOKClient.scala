@@ -34,7 +34,7 @@ import scala.util.Try
 class KinoJOKClient(
   http:                HttpFetch,
   override val cinema: Cinema    = KinoJOK,
-  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoJOKClient.BaseUrl)

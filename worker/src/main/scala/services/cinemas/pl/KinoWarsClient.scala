@@ -66,7 +66,9 @@ class KinoWarsClient(http: HttpFetch, override val cinema: Cinema = KinoWars) ex
   private def pages(url: String, read: Vector[Document]): Seq[Document] = {
     val document = Jsoup.parse(http.get(url), BaseUrl)
     val all      = read :+ document
-    nextPageUrl(document).filterNot(_ => all.size >= MaxPages) match {
+    nextPageUrl(document) match {
+      case Some(_) if all.size >= MaxPages =>
+        throw new IllegalStateException(s"$RepertoireUrl did not end after $MaxPages pages")
       case Some(next) => pages(next, all)
       case None       => all
     }
@@ -78,7 +80,8 @@ object KinoWarsClient {
   val BaseUrl       = "https://kino.wysokiemazowieckie.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar"
 
-  /** A runaway-pagination backstop; the live programme spans two pages. */
+  /** A runaway-pagination backstop; the live programme spans two pages. Hitting it
+   *  fails the scrape: a programme cut here would have its later pages pruned. */
   private val MaxPages = 10
 
   /** A screening-day line opens with `DD.MM.YYYY r.`; its `HH:MM` tokens are

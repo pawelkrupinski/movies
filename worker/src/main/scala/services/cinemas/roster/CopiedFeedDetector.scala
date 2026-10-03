@@ -38,7 +38,9 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
   import CopiedFeedDetector._
 
   private val countryCode = country.code
-  private val owners      = mutable.LongMap.empty[Cinema]
+  // Every venue whose latest scrape holds a fingerprint — the original and its copy both, so a copy
+  // scraped clean leaves the original's sessions indexed for the next venue that copies them.
+  private val owners      = mutable.LongMap.empty[List[Cinema]]
   private val held        = mutable.HashMap.empty[Cinema, Array[Long]]
   // Each venue's latest scrape: the venues whose sessions it lists. A pair lasts until the venue
   // that lists the other's sessions is scraped clean.
@@ -82,13 +84,15 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
   def copiedPairs: Set[(String, String)] = synchronized(pairsNow)
 
   private def land(cinema: Cinema, fingerprints: Array[Long]): Unit = {
-    val shared       = fingerprints.iterator.flatMap(owners.get).filter(other => other != cinema && watched(other))
+    val shared       = fingerprints.iterator.flatMap(owners.get).flatMap(_.iterator).filter(other => other != cinema && watched(other))
       .toSeq.groupMapReduce(identity)(_ => 1)(_ + _)
     val copied = shared.collect {
       case (other, n) if n >= MinListings && n >= MinShare * fingerprints.length && !DistinctVenuePairs.contains(cinema, other) => other
     }.toSet
-    held.remove(cinema).foreach(_.foreach(fp => if (owners.get(fp).contains(cinema)) owners.remove(fp)))
-    fingerprints.foreach(owners.update(_, cinema))
+    held.remove(cinema).foreach(_.foreach { fp =>
+      owners.get(fp).map(_.filterNot(_ == cinema)).foreach(rest => if (rest.isEmpty) owners.remove(fp) else owners.update(fp, rest))
+    })
+    fingerprints.foreach(fp => owners.update(fp, cinema :: owners.getOrElse(fp, Nil)))
     held.update(cinema, fingerprints)
     val before = copying.getOrElse(cinema, Set.empty)
     if (copied != before) {

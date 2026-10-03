@@ -30,7 +30,7 @@ class ChunkPageMemoSpec extends AnyFlatSpec with Matchers {
       Seq(CinemaMovie(Movie(title = s"$key:$page"), cinema, posterUrl = None, filmUrl = None, synopsis = None,
         cast = Nil, director = Nil, showtimes = Nil))
     }
-    def pageParserVersion: Int = version
+    def pageParser: String = version.toString
   }
 
   private final class World {

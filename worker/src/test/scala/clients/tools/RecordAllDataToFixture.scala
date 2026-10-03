@@ -66,7 +66,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // Env-driven (not a sed-rewritten literal) so neither workflow mutates this
   // source — a stale zinc class once shipped a wrong directory and failed the job.
   //
-  // A `def`, NOT a `val`: httoFetch (a lazy val) is forced during super-
+  // A `def`, NOT a `val`: httpFetch (a lazy val) is forced during super-
   // construction, before a subclass `val` would initialise — it would then read
   // captureDate as null and write the whole corpus to `fixtures/null` (the
   // 323-byte-artifact bug). A literal `val` only worked because the compiler
@@ -75,7 +75,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   def captureDate: String = configuration.localStackFixtureDirectory.fold("today")(_.value)
 
   override lazy val movieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-  override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
+  override lazy val httpFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
 
   // Multikino and Kino Kameralne (biletyna) sit behind a WAF that blocks a datacenter IP,
   // so production fetches them residential-proxy first (Decodo), Zyte only behind it, direct
@@ -103,7 +103,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // 401s and no enrichment is captured. The recorded filename is still
   // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httoFetch, apiKey = configuration.tmdbApiKey)
+    new clients.TmdbClient(httpFetch, apiKey = configuration.tmdbApiKey)
 
   def run(): Unit = {
     // 1. Production-shape pass: every cinema scrape lands in the identity intake, one
@@ -176,8 +176,8 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
 
     // 4. Stamp the real capture date into the corpus. The directory name is `today`
     //    (dateless), but Helios bakes the scrape day into its REST URLs, so a
-    //    replay must pin `heliosToday` to this exact date or every Helios fixture
-    //    misses. `heliosToday` is the date this run actually used.
+    //    replay must pin `scrapeCalendar` to this exact date or every Helios fixture
+    //    misses. Poland's day on it is the date this run actually used.
     writeCaptureDate()
 
     // 5. Close remaining schedulers + Mongo.
@@ -186,10 +186,10 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   }
 
   /** Write `test/resources/fixtures/$captureDate/CAPTURE_DATE` recording the
-   *  scrape day (`heliosToday`) so a fixture replay can reconstruct the date
+   *  scrape day (`scrapeCalendar`'s Polish day) so a fixture replay can reconstruct the date
    *  the dateless `today` directory no longer carries. */
   private def writeCaptureDate(): Unit = {
-    val date = heliosToday.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+    val date = scrapeCalendar.todayInPoland.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
     val file = new java.io.File(s"test/resources/fixtures/$captureDate/CAPTURE_DATE")
     file.getParentFile.mkdirs()
     java.nio.file.Files.write(

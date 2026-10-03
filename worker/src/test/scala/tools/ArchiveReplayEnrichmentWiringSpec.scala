@@ -168,7 +168,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val leaf = new CountingLeaf
     val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
 
-    wiring.httoFetch.get("https://cinema.test/film/dune") shouldBe "body for https://cinema.test/film/dune"
+    wiring.httpFetch.get("https://cinema.test/film/dune") shouldBe "body for https://cinema.test/film/dune"
     leaf.calls shouldBe 1
     withClue("and be recorded, so the next run replays it: ") { recordedFiles should be > 0L }
   }
@@ -320,7 +320,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val missing = new MissingFixtures
     val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
 
-    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/dune")
+    an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/dune")
 
     missing.keys.map(_._1) shouldBe Seq("cinema.test/film/dune")
   }
@@ -349,7 +349,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     }
     val recording = wiringWith(Some(new EnrichmentCache(store, persistSuccesses = false,
       transients = EnrichmentCache.Transients.Recorded)), throwing)
-    an [Exception] should be thrownBy recording.httoFetch.get("https://www.cineworld.test/api/movies?ids=1")
+    an [Exception] should be thrownBy recording.httpFetch.get("https://www.cineworld.test/api/movies?ids=1")
     an [Exception] should be thrownBy recording.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune")
     throwing.calls shouldBe 2
 
@@ -359,7 +359,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val hermetic = hermeticWiring(Some(replayed), missing)
 
     // Failing the way the recording saw them fail — the remembered 403, not a refusal.
-    (the [Exception] thrownBy hermetic.httoFetch.get("https://www.cineworld.test/api/movies?ids=1"))
+    (the [Exception] thrownBy hermetic.httpFetch.get("https://www.cineworld.test/api/movies?ids=1"))
       .getMessage should include("HTTP 403")
     (the [Exception] thrownBy hermetic.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune"))
       .getMessage should include("HTTP 403")
@@ -375,8 +375,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     }
     val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), throwing)
 
-    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/gone")
-    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/gone")
+    an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/gone")
+    an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/gone")
 
     throwing.calls shouldBe 1
   }

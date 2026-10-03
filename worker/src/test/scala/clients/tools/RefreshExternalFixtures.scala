@@ -39,7 +39,7 @@ object RefreshExternalFixtures {
 final class RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026") {
   // Live-record on a fixture miss ONLY for these external-metadata hosts; every
   // cinema host stays strict replay (a miss throws), pinning the corpus.
-  // A `def`, not a `val`: `httoFetch` (overriding the parent's lazy val) is forced
+  // A `def`, not a `val`: `httpFetch` (overriding the parent's lazy val) is forced
   // during the parent `WorkerWiring` construction — before this subclass's vals
   // initialize — so a `val` here would still be null when `RecordMissingFetch`
   // captures it, and `recordable` would NPE on the first fixture miss.
@@ -47,11 +47,11 @@ final class RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026"
     "themoviedb.org", "filmweb.pl", "rottentomatoes.com", "imdb.com", "metacritic.com"
   )
 
-  override lazy val httoFetch: HttpFetch      = new RecordMissingFetch(fixture, ExternalHosts)
-  override lazy val multikinoFetch: HttpFetch = httoFetch
-  override lazy val biletynaFetch: HttpFetch  = httoFetch
+  override lazy val httpFetch: HttpFetch      = new RecordMissingFetch(fixture, ExternalHosts)
+  override lazy val multikinoFetch: HttpFetch = httpFetch
+  override lazy val biletynaFetch: HttpFetch  = httpFetch
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httoFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
+    new clients.TmdbClient(httpFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   def run(): Unit = {
     bootCutover()

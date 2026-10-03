@@ -12,7 +12,7 @@ import tools.{CountingHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, Monitor
 trait HttpWiring { self: WorkerWiring =>
 
   // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
-  // through this very `httoFetch`, so eager evaluation would cycle). It's forced
+  // through this very `httpFetch`, so eager evaluation would cycle). It's forced
   // once on the first request and tells the monitor which hosts are cinema
   // scrapes — suppressed, since RetryingCinemaScraper already tracks each cinema
   // under its displayName.
@@ -41,7 +41,7 @@ trait HttpWiring { self: WorkerWiring =>
   //
   // ── Phase split ───────────────────────────────────────────────────────────
   // We build the SAME chain twice, once per call phase (see WorkerHttpMetrics.Phase),
-  // differing ONLY at the innermost counter's `phase` label: `httoFetch` tags every
+  // differing ONLY at the innermost counter's `phase` label: `httpFetch` tags every
   // cinema-site call `scrape`, `enrichmentFetch` tags every third-party
   // metadata/rating/resolution call `enrich`. Both wrap ONE shared RealHttpFetch
   // leaf, so there is still one connection pool / cookie jar exactly as before —
@@ -76,7 +76,7 @@ trait HttpWiring { self: WorkerWiring =>
   // fetch. The `scrape` phase; dominates volume and is what the scrape-health panel
   // isolates. The catalog + Multikino/biletyna/Zyte proxy chains + detail cache all
   // draw from this fetch, so they all tally under `scrape`.
-  lazy val httoFetch: HttpFetch =
+  lazy val httpFetch: HttpFetch =
     phaseFetch(WorkerHttpMetrics.Phase.Scrape)
   // Third-party metadata/rating/resolution APIs. The `enrich` phase; separated so
   // its by-design 404 slug-probing and API 429s don't blur the cinema-scrape
@@ -94,7 +94,7 @@ trait HttpWiring { self: WorkerWiring =>
 
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from the `enrich` phase (the TMDB client through `identityLookupFetch`), apart from
-  // the cinema-facing scrapers/resolvers which use `httoFetch`.
+  // the cinema-facing scrapers/resolvers which use `httpFetch`.
   lazy val tmdbClient: TmdbClient = tmdbClientOver(identityLookupFetch)
   /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `identityLookupFetch`,
    *  and the identity shadow run's over the observation store, so the two ask the same requests. */

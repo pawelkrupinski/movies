@@ -219,7 +219,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     new DetailProbe(Country.UnitedKingdom).detailEnricherClassNames should contain ("CineworldClient")
   }
 
-  // The phase split: cinema-site HTTP (`httoFetch`) and third-party metadata/rating
+  // The phase split: cinema-site HTTP (`httpFetch`) and third-party metadata/rating
   // HTTP (`enrichmentFetch`) are separate chains sharing one wire leaf, differing
   // ONLY at the innermost counter's `phase` label. This is what lets a Grafana
   // panel read the cinema-scrape failure budget without the enrichment APIs' 404
@@ -244,8 +244,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
   "The phase-split fetch chains" should "tally cinema-site calls under `scrape` and metadata calls under `enrich`" in {
     val wiring = new PhaseLeafProbe
-    (wiring.enrichmentFetch eq wiring.httoFetch) shouldBe false
-    wiring.httoFetch.get("https://cinema.example/listing")
+    (wiring.enrichmentFetch eq wiring.httpFetch) shouldBe false
+    wiring.httpFetch.get("https://cinema.example/listing")
     wiring.enrichmentFetch.get("https://api.themoviedb.org/3/movie/1")
 
     val text = PrometheusExposition.render(wiring.workerMetrics.registry)

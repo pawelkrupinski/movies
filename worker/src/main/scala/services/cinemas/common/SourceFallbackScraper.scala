@@ -374,8 +374,11 @@ class SourceFallbackScraper(
       )
       store.put(next)
       onEvent(next, event)
-    } else if (p.failingSince.isDefined || p.emptyFallback.isDefined) {
-      store.put(p.copy(failingSince = None, failedRuns = 0, emptyFallback = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI))
+    } else if (p.failingSince.isDefined || p.emptyFallback.isDefined || p.fallbackSource != fallbackName) {
+      // A row another fallback wrote reads inactive through `ownSpell` but may still be stored
+      // `active`: claim it now, or the stale spell keeps counting as live until a failure.
+      store.put(p.copy(failingSince = None, failedRuns = 0, emptyFallback = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI,
+        fallbackSource = fallbackName, fallbackRef = fallbackRef()))
     }
   }
 

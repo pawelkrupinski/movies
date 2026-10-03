@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -37,7 +37,7 @@ import scala.util.Try
 class KinoStylowyClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoStylowy,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher {
 
   import KinoStylowyClient._
@@ -45,15 +45,8 @@ class KinoStylowyClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl, BookingBaseUrl)
   override def sourceUrl: Option[String] = Some(dayUrl(today))
 
-  def fetch(): Seq[CinemaMovie] = {
-    // Today's page must answer: it is the one that names the other days.
-    val first     = Jsoup.parse(http.get(dayUrl(today)), BaseUrl)
-    val otherDays = programmedDays(first).filter(_.isAfter(today))
-    val others    = otherDays.map(day => day -> Try(Jsoup.parse(http.get(dayUrl(day)), BaseUrl)))
-    ListingPages.requireAnyReached(others.map(_._2))
-    val pages = (today -> first) +: others.flatMap { case (day, page) => page.toOption.map(day -> _) }
-    parse(pages, cinema)
-  }
+  def fetch(): Seq[CinemaMovie] =
+    parse(DayPickerProgramme.read("kino-stylowy", http, BaseUrl, today, dayUrl)(programmedDays), cinema)
 
   override val detailGroup: String = "kino-stylowy"
 

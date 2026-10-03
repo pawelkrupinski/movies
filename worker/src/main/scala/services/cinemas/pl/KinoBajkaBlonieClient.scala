@@ -40,7 +40,7 @@ import scala.util.Try
 class KinoBajkaBlonieClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoBajkaBlonie,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoBajkaBlonieClient._
@@ -76,9 +76,7 @@ object KinoBajkaBlonieClient {
   private val FormContentType = "application/x-www-form-urlencoded"
 
   private val FilmLink = """^https://kino\.blonie\.pl/film/[^/]+/?$""".r
-  private val Runtime  = """(?:(\d+)\s*godz\.?)?\s*(?:(\d+)\s*min)""".r
   private val AgeFrom  = """(?i)od\s+lat:?\s*(\d+)""".r
-  private val DayDate  = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
 
   /** The film-dates POST: every upcoming day after yesterday, up to the shared horizon. */
   def datesBody(filmId: String, today: LocalDate): String =
@@ -98,10 +96,7 @@ object KinoBajkaBlonieClient {
   def showtimesOf(json: String): Seq[LocalDateTime] = {
     val html = (Json.parse(json) \ "data" \ "html").asOpt[String].getOrElse("")
     Jsoup.parse(html).select("article.film-showtime-day-card").asScala.toSeq.flatMap { card =>
-      val date = DayDate.findFirstMatchIn(card.select(".film-showtime-day-card__date").text).flatMap { m =>
-        Try(LocalDate.of(m.group(3).toInt, m.group(2).toInt, m.group(1).toInt)).toOption
-      }
-      date.toSeq.flatMap { d =>
+      ScraperParse.parseDate(card.select(".film-showtime-day-card__date").text).toSeq.flatMap { d =>
         card.select("span.showtime-pill").asScala.toSeq.flatMap(p => ScraperParse.parseHHmm(p.text.trim)).map(LocalDateTime.of(d, _))
       }
     }.distinct.sorted
@@ -110,7 +105,7 @@ object KinoBajkaBlonieClient {
   def parseFilm(page: Document, url: String, dateTimes: Seq[LocalDateTime], cinema: Cinema): Option[CinemaMovie] =
     Option(page.selectFirst("h1")).map(_.text.trim).filter(_.nonEmpty).map { rawTitle =>
       val facts    = page.select("ul.film-meta-list .film-meta-list__text").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
-      val runtimeAt = facts.indexWhere(f => runtimeOf(f).isDefined)
+      val runtimeAt = facts.indexWhere(f => ScraperParse.hoursMinutesRuntime(f).isDefined)
       // The age slot follows the runtime: "Od lat: 12", or "Bez ograniczeń" (no rating).
       val ageAt     = if (runtimeAt < 0) -1 else runtimeAt + 1
       val format    = facts.headOption.map(ScraperParse.formatTokensIn).getOrElse(Nil)
@@ -125,7 +120,7 @@ object KinoBajkaBlonieClient {
       CinemaMovie(
         movie       = Movie(
           title          = title,
-          runtimeMinutes = facts.lift(runtimeAt).flatMap(runtimeOf),
+          runtimeMinutes = facts.lift(runtimeAt).flatMap(ScraperParse.hoursMinutesRuntime),
           countries      = countries,
           genres         = genres,
           rawTitle       = Option(rawTitle).filter(_ != title)
@@ -140,12 +135,6 @@ object KinoBajkaBlonieClient {
         trailerUrl  = trailerOf(page),
         ageRating   = facts.lift(ageAt).flatMap(AgeFrom.findFirstMatchIn).map(m => s"${m.group(1)}+")
       )
-    }
-
-  /** "2 godz. 42 min." → 162; "96 min." → 96. */
-  private def runtimeOf(fact: String): Option[Int] =
-    Runtime.findFirstMatchIn(fact).map { m =>
-      Option(m.group(1)).map(_.toInt * 60).getOrElse(0) + m.group(2).toInt
     }
 
   private def trailerOf(page: Element): Option[String] =

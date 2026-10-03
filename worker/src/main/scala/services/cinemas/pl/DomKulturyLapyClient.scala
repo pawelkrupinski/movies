@@ -29,7 +29,7 @@ import scala.jdk.CollectionConverters._
  * dedicated non-film filter; it never has a real title to show anyway.
  */
 class DomKulturyLapyClient(http: HttpFetch, override val cinema: Cinema = DomKulturyLapy,
-                 today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+                 today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(DomKulturyLapyClient.RepertoireUrl)

@@ -80,14 +80,14 @@ class ScrapeChunkHandler(
       val digest = ChunkPageMemo.digest(page)
       val known  = pageMemo.recall(cinema, key)
       known match {
-        case Some(entry) if entry.page == digest && entry.parser == paged.pageParserVersion =>
+        case Some(entry) if entry.page == digest && entry.parser == paged.pageParser =>
           memoMetrics.recordPage(ChunkPageMemoMetrics.Hit)
           entry.slice
         case _ =>
           memoMetrics.recordPage(known.fold(ChunkPageMemoMetrics.New)(e =>
             if (e.page != digest) ChunkPageMemoMetrics.Changed else ChunkPageMemoMetrics.Parser))
           val slice = CinemaMovieJson.encode(paged.parseChunkPage(key, page))
-          pageMemo.remember(cinema, key, ChunkPageMemo.Entry(digest, paged.pageParserVersion, slice))
+          pageMemo.remember(cinema, key, ChunkPageMemo.Entry(digest, paged.pageParser, slice))
           slice
       }
     case other => CinemaMovieJson.encode(other.fetchChunk(key))

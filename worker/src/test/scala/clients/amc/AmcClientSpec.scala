@@ -129,7 +129,7 @@ class AmcClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def clientOn(http: tools.HttpFetch) =
     new AmcClient(http, "kansas-city", "amc-town-center-20", cinema,
-      today = Some(LocalDate.of(2026, 8, 30)))
+      today = LocalDate.of(2026, 8, 30))
 
   "planChunks" should "plan one chunk per advertised day" in {
     val chunks = clientOn(UrlFragmentHttpFetch("amc-town-center-20/showtimes" -> venuePage)).planChunks()

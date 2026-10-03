@@ -54,7 +54,7 @@ class CineworldClient(
   // parameter, so the venue map has one column to drift, not two.
   slug: String,
   override val cinema: Cinema,
-  today: LocalDate = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone))
+  today: => LocalDate = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone))
 ) extends CinemaScraper with DetailEnricher {
 
   import CineworldClient._

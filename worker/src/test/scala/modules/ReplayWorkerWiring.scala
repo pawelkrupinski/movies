@@ -23,17 +23,21 @@ class ReplayWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fix
   // EVERY fetch seam replays from the corpus — `ReplayWorkerWiringSpec` holds the list to
   // production's. A seam left alone keeps production's chain (the enrichment phase fetch, the Zyte
   // fallback, the residential proxy), and that chain reaches the live site.
-  override lazy val httoFetch: HttpFetch            = new FakeHttpFetch(fixtureDirectory, root = fixtureRoot)
-  override protected def realHttpLeaf: HttpFetch    = httoFetch
-  override lazy val enrichmentFetch: HttpFetch      = httoFetch
-  override lazy val identityLookupFetch: HttpFetch  = httoFetch
-  override lazy val multikinoFetch: HttpFetch       = httoFetch
-  override lazy val multikinoPosterFetch: HttpFetch = httoFetch
-  override lazy val zyteFetch: HttpFetch            = httoFetch
-  override lazy val biletynaFetch: HttpFetch        = httoFetch
-  override lazy val flicksFetch: HttpFetch          = httoFetch
-  override lazy val vueFetch: HttpFetch             = httoFetch
-  override lazy val odeonFetch: HttpFetch           = httoFetch
+  override lazy val httpFetch: HttpFetch            = new FakeHttpFetch(fixtureDirectory, root = fixtureRoot)
+  override protected def realHttpLeaf: HttpFetch    = httpFetch
+  override lazy val enrichmentFetch: HttpFetch      = httpFetch
+  override lazy val identityLookupFetch: HttpFetch  = httpFetch
+  override lazy val multikinoFetch: HttpFetch       = httpFetch
+  override lazy val multikinoPosterFetch: HttpFetch = httpFetch
+  override lazy val zyteFetch: HttpFetch            = httpFetch
+  override lazy val biletynaFetch: HttpFetch        = httpFetch
+  override lazy val flicksFetch: HttpFetch          = httpFetch
+  override lazy val vueFetch: HttpFetch             = httpFetch
+  override lazy val odeonFetch: HttpFetch           = httpFetch
+  // The paid legs that are no HttpFetch: the Odeon token harvest calls Zyte with this key directly, and
+  // a laptop's environment may well carry one.
+  override protected def zyteApiKey: Option[settings.ZyteApiKey]                  = None
+  override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] = None
 
   // A missing fixture is a permanent local miss — one attempt, no retry storm.
   override protected def scrapeAttemptCeiling: Int = 1
@@ -56,8 +60,9 @@ class ReplayWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fix
   // day or every Helios fixture misses. Prefer <directory>/CAPTURE_DATE (written by
   // the recorder), fall back to the directory name if it's dd-MM-yyyy, else the real
   // date (FakeHttpFetch then returns its empty fallback for the day's URLs).
-  override protected def heliosToday: LocalDate =
-    ReplayWorkerWiring.captureDate(fixtureDirectory, fixtureRoot).getOrElse(super.heliosToday)
+  override protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
+    ReplayWorkerWiring.captureDate(fixtureDirectory, fixtureRoot)
+      .fold(super.scrapeCalendar)(services.cinemas.common.ScrapeCalendar.fixedOn)
 }
 
 object ReplayWorkerWiring {

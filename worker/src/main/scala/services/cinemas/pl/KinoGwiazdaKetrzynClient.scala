@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
@@ -49,10 +49,12 @@ class KinoGwiazdaKetrzynClient(http: HttpFetch, override val cinema: Cinema = Ki
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  // A failed listing or film-page fetch propagates: swallowed, it would read as a
-  // venue with no screenings — a white scrape instead of a red one.
+  // A failed listing propagates: swallowed, it would read as a venue with no
+  // screenings — a white scrape instead of a red one. The film pages load side by
+  // side; one that fails drops only its film, unless every one did.
   def fetch(): Seq[CinemaMovie] =
-    cards(http.get(RepertoireUrl)).flatMap(card => film(card, http.get(card.filmUrl), cinema))
+    ListingPages.readEach("kino-gwiazda-ketrzyn", cards(http.get(RepertoireUrl)), (_: Card).filmUrl)(http.get)
+      .flatMap { case (card, html) => film(card, html, cinema) }
 }
 
 object KinoGwiazdaKetrzynClient {

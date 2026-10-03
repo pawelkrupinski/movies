@@ -52,6 +52,20 @@ class KinoBajkaBlonieClientSpec extends AnyFlatSpec with Matchers with OptionVal
     film.filmUrl.value shouldBe "https://kino.blonie.pl/film/lalka/"
   }
 
+  it should "read a whole-hours runtime with no minutes part, keeping the facts around it" in {
+    val page = org.jsoup.Jsoup.parse(
+      """<h1>DWIE GODZINY</h1><ul class="film-meta-list">""" +
+        Seq("2D napisy", "Dramat", "2 godz.", "Od lat: 12", "Francja", "Bilety: 20 zł")
+          .map(f => s"""<li><span class="film-meta-list__text">$f</span></li>""").mkString + "</ul>",
+      KinoBajkaBlonieClient.HomeUrl)
+    val film = KinoBajkaBlonieClient.parseFilm(page, "https://kino.blonie.pl/film/dwie-godziny/",
+      Seq(LocalDateTime.of(2026, 10, 3, 19, 0)), KinoBajkaBlonie).value
+    film.movie.runtimeMinutes.value shouldBe 120
+    film.movie.genres shouldBe Seq("Dramat")
+    film.movie.countries shouldBe Seq("Francja")
+    film.ageRating.value shouldBe "12+"
+  }
+
   it should "leave countries empty when the page lists none" in {
     val film = movies.find(_.movie.title == "Tedi i magiczna lampa").value
     film.showtimes should have size 6

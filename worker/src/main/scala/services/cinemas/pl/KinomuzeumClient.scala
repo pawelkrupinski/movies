@@ -18,7 +18,7 @@ import scala.util.Try
  * booking). Per-film detail pages add year / countries / director / synopsis.
  * Section headers omit the year, so `today` supplies it.
  */
-class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class KinomuzeumClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
 

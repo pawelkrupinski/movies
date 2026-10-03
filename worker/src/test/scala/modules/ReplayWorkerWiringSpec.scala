@@ -28,4 +28,11 @@ class ReplayWorkerWiringSpec extends AnyFlatSpec with Matchers {
     production should contain("realHttpLeaf")
     (production -- replayed) shouldBe empty
   }
+
+  // Not every paid leg is an HttpFetch seam: the Odeon token harvest takes the Zyte key itself, so a
+  // replay with ZYTE_API_KEY in its environment minted tokens through the live, paid API.
+  it should "refuse the Zyte key and the residential proxy, as every test wiring does" in {
+    val replayed = classOf[ReplayWorkerWiring].getDeclaredMethods.map(_.getName).toSet
+    replayed should contain allOf ("zyteApiKey", "residentialProxyShards")
+  }
 }

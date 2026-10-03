@@ -16,7 +16,7 @@ import java.time.LocalDate
 class CinemaScraperCoverageSpec extends AnyFlatSpec with Matchers {
 
   // Constructing the catalogue does no network I/O — fetch() is never called here.
-  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("multikino"), LocalDate.of(2026, 6, 8))
+  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("multikino"), services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 6, 8)))
 
   // `byCity` wires EVERY modelled city's cinemas — including the UK cities
   // currently disabled, which drop out of the live `City.all` / `catalog.all`

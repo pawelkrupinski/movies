@@ -20,12 +20,12 @@ import java.time.ZoneId
  * market needs its OWN `HostPolicy` row in [[tools.RealHttpFetch]] — a host with
  * no row is not paced at all, and the UK's row does not match the US host.
  *
- * `zoneId` is the market's reference time zone, used only to resolve "today"
- * when a client is built without an explicit date. It is a per-market DEFAULT,
- * not a claim that the country has one zone: the US spans six, so a US venue's
- * scraper is handed its city's own zone by the catalog. Getting it wrong costs
- * at most a day-boundary tab, never a wrong showtime — Flicks prints each
- * session in the venue's own local time and we store it as a `LocalDateTime`.
+ * `zoneId` is the market's reference time zone: the fallback "today" for a venue
+ * no city lists. It is not a claim that the country has one zone — the US spans
+ * six, so `FlicksClient.forVenue` hands each venue its city's own zone. Getting
+ * it wrong is not free: a "today" the venue has not reached drops that evening's
+ * day tab from a listing marked complete. Flicks prints each session in the
+ * venue's own local time and we store it as a `LocalDateTime`.
  */
 sealed abstract class FlicksMarket(
   val baseUrl: String,

@@ -135,15 +135,31 @@ private[cinemas] object ScraperParse {
     }
 
   /** The year a yearless page date belongs to: this year's, unless that lies
-    * more than `grace` before `today`, in which case next year's. A
-    * late-December page listing "13 stycznia" means January of the coming
-    * year, while a page still showing last week's screenings means this one;
-    * each scraper picks the grace its page's staleness warrants. `None` when
-    * the day doesn't exist in that year (29 lutego). */
-  def upcomingDate(dayMonth: MonthDay, today: LocalDate, grace: TemporalAmount = Period.ofDays(60)): Option[LocalDate] =
-    Try(LocalDate.of(today.getYear, dayMonth.getMonthValue, dayMonth.getDayOfMonth)).toOption.map { candidate =>
-      if (candidate.isBefore(today.minus(grace))) candidate.plusYears(1) else candidate
-    }
+    * more than `grace` before `today`, in which case next year's — a
+    * late-December page listing "13 stycznia" means January of the coming year,
+    * while a page still showing last week's screenings means this one. Each
+    * scraper picks the grace its page's staleness warrants. The one roll BACK
+    * is a leftover row: in early January a "30 grudnia" still on the page is
+    * last December's when that lies within [[LeftoverRow]] (and the grace) of
+    * `today`, not one 11 months ahead. Nothing else is pulled back, so a date
+    * up to a year out keeps its place however long the grace: the horizon is
+    * never capped. The year is chosen with a 29 lutego this year lacks placed on
+    * the 28th, so one listed in December lands on next year's leap day; `None`
+    * when the day doesn't exist in the year chosen. */
+  def upcomingDate(dayMonth: MonthDay, today: LocalDate, grace: TemporalAmount = Period.ofDays(60)): Option[LocalDate] = {
+    val leftoverFrom = Seq(today.minus(grace), today.minus(LeftoverRow)).maxBy(_.toEpochDay)
+    val candidate    = dayMonth.atYear(today.getYear)
+    val year =
+      if (candidate.isBefore(today.minus(grace))) today.getYear + 1
+      else if (candidate.isAfter(today) && candidate.minusYears(1).isBefore(today) && !candidate.minusYears(1).isBefore(leftoverFrom))
+        today.getYear - 1
+      else today.getYear
+    Option.when(dayMonth.isValidYear(year))(dayMonth.atYear(year))
+  }
+
+  /** How long a past screening can linger on a page: the only span a yearless
+    * date is read as last year's in. */
+  private val LeftoverRow: Period = Period.ofDays(31)
 
   /** [[upcomingDate]] at month granularity: this year for the current month
     * and any later one, next year for an earlier month — for a calendar that
@@ -216,11 +232,11 @@ private[cinemas] object ScraperParse {
   def extractFormatTags(raw: String): (String, List[String]) = FormatTags.extractFormatTags(raw)
   def formatTokensIn(text: String): List[String] = FormatTags.formatTokensIn(text)
 
-  private val RuntimeHours   = """(\d+)\s*godz""".r
-  private val RuntimeMinutes = """(\d+)\s*min""".r
+  private val RuntimeHours   = """(?i)(\d+)\s*godz""".r
+  private val RuntimeMinutes = """(?i)(\d+)\s*min""".r
 
   /** A runtime spelled in hours and minutes — "1 godz. 53 min", "3 godz 03 min",
-   *  "95 min" — in minutes; `None` when neither part is present. */
+   *  "95 min", "ok. 85 MIN" — in minutes; `None` when neither part is present. */
   def hoursMinutesRuntime(s: String): Option[Int] = {
     val hours   = RuntimeHours.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
     val minutes = RuntimeMinutes.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
@@ -363,6 +379,18 @@ private[cinemas] object ScraperParse {
     dropSelectors.foreach(sel => el.select(sel).remove())
     normalizeBlocks(stripUrls(blockText(el)))
   }
+  /** [[cleanSynopsis]] minus the paragraphs `drop` picks — a venue's boilerplate
+   *  lines that no selector names. The container is cloned, as there. */
+  def cleanSynopsisWithout(container: Element)(drop: Element => Boolean): String = {
+    val kept = container.clone()
+    kept.select("p").asScala.filter(drop).foreach(_.remove())
+    cleanSynopsis(kept)
+  }
+
+  /** A paragraph set entirely in `<strong>` — a header line or a box-office notice,
+   *  never the film's prose. */
+  def isAllBold(paragraph: Element): Boolean = paragraph.select("strong").text.trim == paragraph.text.trim
+
 
   /** Tidy block-text after URL stripping: drop spaces hugging a newline and
    *  cap blank-line runs at one, so an empty (URL-only) paragraph collapses

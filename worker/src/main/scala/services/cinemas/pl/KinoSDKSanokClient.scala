@@ -4,8 +4,7 @@ import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.HttpFetch
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DayPickerProgramme, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -47,24 +46,16 @@ import scala.util.Try
 class KinoSDKSanokClient(
   http:   HttpFetch,
   override val cinema: Cinema = KinoSDK,
-  today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:  => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSDKSanokClient.BaseUrl)
   override def sourceUrl: Option[String] = Some(KinoSDKSanokClient.listingUrl(today))
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val entry = Jsoup.parse(http.get(KinoSDKSanokClient.listingUrl(today)), KinoSDKSanokClient.BaseUrl)
-    val dates = (today +: KinoSDKSanokClient.pickerDates(entry)).distinct.sorted
-
-    val slots = dates.flatMap { date =>
-      // The entry listing is already fetched; re-parse it rather than re-fetch.
-      val doc = if (date == today) entry
-                else Jsoup.parse(http.get(KinoSDKSanokClient.listingUrl(date)), KinoSDKSanokClient.BaseUrl)
-      KinoSDKSanokClient.parseDay(doc, date)
-    }
-
-    KinoSDKSanokClient.group(slots, cinema)
+    val days = DayPickerProgramme.read("kino-sdk-sanok", http, KinoSDKSanokClient.BaseUrl, today,
+      KinoSDKSanokClient.listingUrl)(KinoSDKSanokClient.pickerDates)
+    KinoSDKSanokClient.group(days.flatMap { case (date, doc) => KinoSDKSanokClient.parseDay(doc, date) }, cinema)
   }
 }
 

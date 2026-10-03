@@ -5,10 +5,12 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 /**
  * Kino Iskra (Augustów). The venue's own site replaced Filmweb as the source:
@@ -47,7 +49,7 @@ import scala.jdk.CollectionConverters._
 class KinoIskraClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoIskra,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoIskraClient._
@@ -55,13 +57,16 @@ class KinoIskraClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  // A failed listing or record fetch propagates: swallowed, it would read as a
-  // venue with no screenings — a white scrape instead of a red one.
+  // A failed listing propagates: swallowed, it would read as a venue with no
+  // screenings — a white scrape instead of a red one. A film's record only adds
+  // metadata to what the listing already shows, so one that fails to load leaves
+  // that film bare rather than failing the venue. Records load side by side.
   def fetch(): Seq[CinemaMovie] = {
     val slots   = listing(http.get(RepertoireUrl), today)
-    val records = slots.map(_.movieId).distinct.map(id => id -> record(http.get(movieUrl(id)))).toMap
+    val records = ParallelDetailFetch.keyed("kino-iskra", slots.map(_.movieId), 30.seconds)(movieUrl)(url =>
+      Try(record(http.get(url))).toOption).flatMap((id, r) => r.map(id -> _))
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
-      val record = group.map(_.movieId).distinct.flatMap(records.get).reduce(_.orElse(_))
+      val record = group.map(_.movieId).distinct.flatMap(records.get).foldLeft(Record())((known, next) => known.orElse(next))
       CinemaMovie(
         movie = Movie(
           title          = title,

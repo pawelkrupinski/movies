@@ -100,4 +100,15 @@ class KinoWarsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "propagate a fetch failure instead of reporting an empty (white) scrape" in {
     a[HttpStatusException] should be thrownBy new KinoWarsClient(new FailingHttpFetch(503)).fetch()
   }
+
+  it should "fail rather than truncate when the pagination never ends" in {
+    // Every page links a next one: a runaway that must read red, not as a
+    // programme cut at the backstop with the rest pruned.
+    val endless = new _root_.tools.HttpFetch {
+      def get(url: String): String =
+        s"""<div class="pagination-next"><a href="${KinoWarsClient.RepertoireUrl}?start=${url.length}">dalej</a></div>"""
+      def post(url: String, body: String, contentType: String): String = ""
+    }
+    an[IllegalStateException] should be thrownBy new KinoWarsClient(endless).fetch()
+  }
 }

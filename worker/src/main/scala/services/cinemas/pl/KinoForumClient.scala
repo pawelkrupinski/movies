@@ -33,7 +33,7 @@ import scala.util.Try
  */
 class KinoForumClient(
   http:  tools.HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoForumClient._

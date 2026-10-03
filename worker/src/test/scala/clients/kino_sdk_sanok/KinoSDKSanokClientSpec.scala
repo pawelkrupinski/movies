@@ -33,4 +33,18 @@ class KinoSDKSanokClientSpec extends AnyFlatSpec with Matchers with OptionValues
     film.cinema shouldBe KinoSDK
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 21, 16, 30))
   }
+
+  // One later day that failed to load threw the whole scrape — every other day lost with it.
+  it should "drop only a later day that fails to load, keeping the rest" in {
+    val replay  = new FakeHttpFetch("kino-sdk-sanok")
+    val brokenDay = KinoSDKSanokClient.listingUrl(LocalDate.of(2026, 6, 21))
+    val oneDown = new tools.HttpFetch {
+      def get(url: String): String = if (url == brokenDay) throw new java.io.IOException("reset") else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val partial = new KinoSDKSanokClient(oneDown, KinoSDK, today = LocalDate.of(2026, 6, 16)).fetch()
+    val days    = partial.flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet
+    days should not contain LocalDate.of(2026, 6, 21)
+    days shouldBe movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet - LocalDate.of(2026, 6, 21)
+  }
 }

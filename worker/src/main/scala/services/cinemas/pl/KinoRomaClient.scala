@@ -31,7 +31,7 @@ import scala.jdk.CollectionConverters._
 class KinoRomaClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoRomaClient._

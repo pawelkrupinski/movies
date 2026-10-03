@@ -32,7 +32,7 @@ class DiagnosticCatalogEgressSpec extends AnyFlatSpec with Matchers {
   private val RefusingHosts = Set("www.multikino.pl", "biletyna.pl", "bilety.ck105.koszalin.pl")
 
   private def scrapeRefusing(http: HostLog, proxy: Option[HostLog]): Unit = {
-    val catalog = new CinemaScraperCatalog(http, LocalDate.of(2026, 10, 2),
+    val catalog = new CinemaScraperCatalog(http, services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 10, 2)),
       titles = services.movies.TitleNormalizer.forCountry(Country.Poland), proxyShards = proxy.map(IndexedSeq(_)))
     catalog.all.filter(s => Refusing.contains(s.cinema)).foreach(s => Try(s.fetch()))
   }

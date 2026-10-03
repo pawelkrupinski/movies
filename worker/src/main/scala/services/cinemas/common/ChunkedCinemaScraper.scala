@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.CinemaMovie
+import models.{CinemaMovie, Showtime}
 
 /**
  * A cinema whose scrape fans out over many independent chunks (per-day pages,
@@ -59,28 +59,28 @@ trait ChunkedCinemaScraper extends CinemaScraper {
 
 /** A chunked scraper whose chunk is ONE fetched page, so fetching and parsing come apart: a page
  *  identical to the one it parsed last time need not be parsed again (`ScrapeChunkHandler`, through
- *  [[services.tasks.ChunkPageMemo]]). `pageParserVersion` names what [[parseChunkPage]] makes of a
- *  page — bump it with any change to that, or a remembered parse outlives the code that made it. */
+ *  [[services.tasks.ChunkPageMemo]]). `pageParser` names what [[parseChunkPage]] makes of a page — it
+ *  must change with any change to that, or a remembered parse outlives the code that made it. */
 trait PagedChunkScraper extends ChunkedCinemaScraper {
   /** The chunk's page. Throws as [[fetchChunk]] does. */
   def fetchChunkPage(key: String): String
   /** What a page of chunk `key` holds. */
   def parseChunkPage(key: String, page: String): Seq[CinemaMovie]
-  def pageParserVersion: Int
+  def pageParser: String
   final def fetchChunk(key: String): Seq[CinemaMovie] = parseChunkPage(key, fetchChunkPage(key))
 }
 
 object ChunkedCinemaScraper {
   /** Group films by `filmUrl` (falling back to title), union + dedupe + sort
    *  their showtimes, keep the first occurrence's film metadata. Deterministic
-   *  (sorted by the grouping key) so the in-process and task paths agree. */
-  def mergeByIdentity(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
+   *  (sorted by the grouping key) so the in-process and task paths agree.
+   *  `sameShowtime` is what makes two showtimes one; by default everything a
+   *  showtime carries. */
+  def mergeByIdentity(movies: Seq[CinemaMovie],
+                      sameShowtime: Showtime => Any = s => (s.dateTime, s.bookingUrl, s.room, s.format)): Seq[CinemaMovie] =
     movies.groupBy(m => m.filmUrl.getOrElse(m.movie.title)).toSeq
       .sortBy(_._1)
       .map { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes)
-          .distinctBy(s => (s.dateTime, s.bookingUrl, s.room, s.format))
-          .sortBy(_.dateTime)
-        group.head.copy(showtimes = showtimes)
+        group.head.copy(showtimes = group.flatMap(_.showtimes).distinctBy(sameShowtime).sortBy(_.dateTime))
       }
 }

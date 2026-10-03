@@ -29,7 +29,7 @@ object FetchReplayWiring {
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.
       override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
-      override lazy val httoFetch: HttpFetch       = fetch
+      override lazy val httpFetch: HttpFetch       = fetch
       override lazy val enrichmentFetch: HttpFetch = fetch
       // Held in memory: its daemon flusher outlives the pass and would re-create the
       // pass's database after `afterAll` dropped it. Uptime has no part in the claims.

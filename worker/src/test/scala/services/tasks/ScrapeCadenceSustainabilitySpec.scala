@@ -39,7 +39,7 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   // drain the global sum — only one country's roster, within that country's own
   // window. Both halves are read from the repo rather than assumed: the corpus
   // from the live catalogue, the window from the overlay that deploys the worker.
-  private val catalog = new CinemaScraperCatalog(NoFetch, LocalDate.of(2026, 6, 21))
+  private val catalog = new CinemaScraperCatalog(NoFetch, services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 6, 21)))
 
   private def corpusOf(country: models.Country): Int =
     country.cities.flatMap(city => catalog.byCity.getOrElse(city.slug, Nil)).size

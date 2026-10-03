@@ -40,7 +40,7 @@ import scala.util.Try
 class KinoPromienClient(
   http:        HttpFetch,
   override val cinema: Cinema = KinoPromien,
-  today:       LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:       => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import KinoPromienClient._

@@ -15,7 +15,7 @@ trait UsersWiring { self: Wiring =>
 
   // OAuth providers + token validators make outbound HTTP; the monitoring
   // wrapper records their latency on the same /uptime surface the worker feeds.
-  lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
+  lazy val httpFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
   // The SHARED users database, read by every pod directly — nothing between it
   // and the controllers. One person is served by several processes at once:
@@ -50,25 +50,25 @@ trait UsersWiring { self: Wiring =>
     val google = for {
       id     <- processConfiguration.googleClientId
       secret <- processConfiguration.googleClientSecret
-    } yield new GoogleOauthProvider(httoFetch, id, secret)
+    } yield new GoogleOauthProvider(httpFetch, id, secret)
     val facebook = for {
       id     <- processConfiguration.facebookAppId
       secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookOauthProvider(httoFetch, id, secret)
+    } yield new FacebookOauthProvider(httpFetch, id, secret)
     Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
   }
 
   lazy val googleTokenValidator: Option[GoogleTokenValidator] =
-    processConfiguration.googleClientId.map(id => new GoogleTokenValidator(httoFetch, id))
+    processConfiguration.googleClientId.map(id => new GoogleTokenValidator(httpFetch, id))
 
   lazy val facebookTokenValidator: Option[FacebookTokenValidator] =
     for {
       id     <- processConfiguration.facebookAppId
       secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookTokenValidator(httoFetch, id, secret)
+    } yield new FacebookTokenValidator(httpFetch, id, secret)
 
   lazy val appleTokenValidator: Option[AppleTokenValidator] =
-    Some(new AppleTokenValidator(httoFetch, processConfiguration.appleBundleId, clock))
+    Some(new AppleTokenValidator(httpFetch, processConfiguration.appleBundleId, clock))
 
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
   // the native apps' `kinowo://` deep link, and the country switch across the

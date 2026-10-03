@@ -4,8 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{FallbackHttpFetch, GetOnlyHttpFetch, HttpFetch, HttpOutcome, HttpOutcomeRecorder, HttpStatusException}
 
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.util.Optional
+import java.net.http.HttpClient
 import scala.collection.mutable
 import services.cinemas.common.ZyteFallback
 
@@ -21,26 +20,6 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
 
   private val direct: HttpFetch = new GetOnlyHttpFetch {
     override def get(url: String): String = "direct-body"
-  }
-
-  /** A JDK client that refuses every call and counts it — standing in for the Zyte API. */
-  private class RefusingHttpClient extends HttpClient {
-    val sends = new java.util.concurrent.atomic.AtomicInteger(0)
-    override def send[T](request: HttpRequest, handler: HttpResponse.BodyHandler[T]): HttpResponse[T] = {
-      sends.incrementAndGet(); throw new java.io.IOException("refused by the spec's client")
-    }
-    override def sendAsync[T](request: HttpRequest, handler: HttpResponse.BodyHandler[T]) = ???
-    override def sendAsync[T](request: HttpRequest, handler: HttpResponse.BodyHandler[T],
-                              push: HttpResponse.PushPromiseHandler[T]) = ???
-    override def cookieHandler()   = Optional.empty()
-    override def connectTimeout()  = Optional.empty()
-    override def followRedirects() = HttpClient.Redirect.NEVER
-    override def proxy()           = Optional.empty()
-    override def sslContext()      = ???
-    override def sslParameters()   = ???
-    override def authenticator()   = Optional.empty()
-    override def version()         = HttpClient.Version.HTTP_1_1
-    override def executor()        = Optional.empty()
   }
 
   private def unbuilt: HttpClient = fail("the Zyte client was built for a chain with no Zyte leg")

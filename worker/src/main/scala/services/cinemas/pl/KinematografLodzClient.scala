@@ -52,7 +52,7 @@ import services.movies.TitleNormalizer
 class KinematografLodzClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   titles:           TitleNormalizer
 ) extends CinemaScraper {
 

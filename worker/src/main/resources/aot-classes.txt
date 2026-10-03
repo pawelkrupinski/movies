@@ -9572,6 +9572,8 @@ services.cinemas.common.CinemaScraper$Scraped
 services.cinemas.common.CinemaScraper$Scraped$
 services.cinemas.common.DayChunks
 services.cinemas.common.DayChunks$
+services.cinemas.common.DayPickerProgramme
+services.cinemas.common.DayPickerProgramme$
 services.cinemas.common.DelegatingCinemaScraper
 services.cinemas.common.DetailEnricher
 services.cinemas.common.DetailEnricher$
@@ -9626,6 +9628,8 @@ services.cinemas.common.PreScrapedCinemaScraper$Anonymous
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous$
 services.cinemas.common.RetryingCinemaScraper
 services.cinemas.common.RetryingCinemaScraper$
+services.cinemas.common.ScrapeCalendar
+services.cinemas.common.ScrapeCalendar$
 services.cinemas.common.ScrapeErrors
 services.cinemas.common.ScrapeErrors$
 services.cinemas.common.ScrapeHorizon

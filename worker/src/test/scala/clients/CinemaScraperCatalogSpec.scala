@@ -55,7 +55,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
                       odeon:      HttpFetch = http,
                       odeonToken: Option[String] = None): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      direct, mkFetch = direct, bnFetch = new FakeHttpFetch(biletyna), today = today,
+      direct, mkFetch = direct, bnFetch = new FakeHttpFetch(biletyna), calendar = services.cinemas.common.ScrapeCalendar.fixedOn(today),
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
       odeonFetch = odeon, odeonAuthToken = () => odeonToken, titles = titleNormalizer
@@ -792,7 +792,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       .getOrElse(fail("DetailEnrich lost its TTL; the chain detail TTLs are defined against it"))
     val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
+      http, mkFetch = http, bnFetch = http, calendar = services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 6, 6)),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
       zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http,
       odeonAuthToken = () => None, titles = titleNormalizer)
@@ -808,7 +808,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "never let two chains with different detail TTLs share one cache" in {
     val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
+      http, mkFetch = http, bnFetch = http, calendar = services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 6, 6)),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
       zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
 

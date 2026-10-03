@@ -39,7 +39,7 @@ import scala.util.Try
  */
 class KinoAwangarda2Client(
   http:  HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   override val cinema: Cinema = KinoAwangarda2
 ) extends CinemaScraper {
 

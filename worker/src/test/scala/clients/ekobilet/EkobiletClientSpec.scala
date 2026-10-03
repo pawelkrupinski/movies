@@ -65,6 +65,24 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     new EkobiletClient(new FakeHttpFetch("ekobilet-jaworzyna"), "kino-jaworzyna", KinoJaworzyna,
       today = LocalDate.of(2026, 6, 11))
 
+  it should "fail, not report an empty listing, when every date-strip page fails behind an empty landing" in {
+    val replay = new FakeHttpFetch("ekobilet-jaworzyna")
+    val stripDown = new tools.HttpFetch {
+      def get(url: String): String =
+        if (url.contains("?date=")) throw new java.io.IOException(s"proxy: Tunnel failed ($url)") else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    a[java.io.IOException] should be thrownBy
+      new EkobiletClient(stripDown, "kino-jaworzyna", KinoJaworzyna, today = LocalDate.of(2026, 6, 11)).fetch()
+  }
+
+  it should "read a row still on the page the day after it screened as past, not as next year" in {
+    // Captured 11 June; read on 13 June, the 12 June rows must stay in 2026.
+    val dayLate = new EkobiletClient(new FakeHttpFetch("ekobilet-jaworzyna"), "kino-jaworzyna", KinoJaworzyna,
+      today = LocalDate.of(2026, 6, 13)).fetch()
+    dayLate.flatMap(_.showtimes).map(_.dateTime.getYear).toSet shouldBe Set(2026)
+  }
+
   it should "expose each film's detail page as filmUrl for deferred enrichment" in {
     jaworzyna.flatMap(_.filmUrl) should not be empty
     all(jaworzyna.flatMap(_.filmUrl).map(_.startsWith("https://ekobilet.pl/kino-jaworzyna/"))) shouldBe true

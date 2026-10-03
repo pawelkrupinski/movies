@@ -127,8 +127,8 @@ object RecordDirectorWalkFixtures {
       sys.error("TMDB_API_KEY not set — add it to .env.local (this script records against live TMDB)."))
 
     val wiring = new FixtureTestWiring(Fixture) {
-      override lazy val httoFetch: HttpFetch       = new PersonRecordingFetch(Fixture)
-      override lazy val enrichmentFetch: HttpFetch = httoFetch
+      override lazy val httpFetch: HttpFetch       = new PersonRecordingFetch(Fixture)
+      override lazy val enrichmentFetch: HttpFetch = httpFetch
       override lazy val tmdbClient: clients.TmdbClient =
         new clients.TmdbClient(enrichmentFetch, apiKey = Some(realKey))
     }

@@ -44,7 +44,7 @@ trait TestWiring extends WorkerWiring {
   // TMDB key, and that Env carries CI's secrets or a developer's `.env.local` — which is how a
   // replay could reach Zyte (billed per request) or the Decodo proxy without anyone asking.
   // No key means no Zyte leg on any route and no Odeon token; no shards means no proxy leg —
-  // so every cinema-egress route collapses onto the wiring's own `httoFetch`.
+  // so every cinema-egress route collapses onto the wiring's own `httpFetch`.
   override protected def zyteApiKey: Option[settings.ZyteApiKey] = None
   override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] = None
 

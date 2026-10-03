@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 
-import java.time.{Clock, LocalDateTime}
+import java.time.{Clock, ZoneOffset}
 
 /**
  * A periodic census of the live `movies` corpus, exposed as Prometheus gauges on
@@ -31,7 +31,7 @@ import java.time.{Clock, LocalDateTime}
  * Between samples the gauge just re-reads its cached value. Mirrors the web app's
  * [[controllers.WebMovieMetrics]] sample-and-cache shape.
  */
-class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clock.systemDefaultZone())
+class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clock.systemUTC())
   extends CorpusMetricsCollector {
   import WorkerCorpusMetrics._
 
@@ -39,10 +39,10 @@ class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clo
   // chart to 0 and back. Each series appears with the first complete census instead.
 
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
-    // One "now" for the whole pass, so `unresolved_with_showtimes` cannot count a row
+    // One instant for the whole pass, so `unresolved_with_showtimes` cannot count a row
     // as still-screening and its neighbour as expired because the scan crossed a
-    // showtime's start while walking the corpus.
-    private val now    = LocalDateTime.now(clock)
+    // showtime's start while walking the corpus. Each slot reads it in its own venue's zone.
+    private val now    = Clock.fixed(clock.instant(), ZoneOffset.UTC)
     private var counts = CorpusCounts.empty
 
     def accept(row: CorpusRow): Unit = counts = counts.add(row.stored.record, now)
@@ -115,10 +115,10 @@ object WorkerCorpusMetrics {
     imdbRating: Int, rtRating: Int, mcRating: Int, fwRating: Int, misresolved: Int,
     unresolvedWithShowtimes: Int
   ) {
-    /** `now` is the pass's single reading of the clock — only
+    /** `now` is the pass's single (fixed) reading of the clock — only
      *  `unresolved_with_showtimes` needs it, to tell a row still screening from one
      *  whose retained showtimes have all passed. */
-    def add(r: MovieRecord, now: LocalDateTime): CorpusCounts = CorpusCounts(
+    def add(r: MovieRecord, now: Clock): CorpusCounts = CorpusCounts(
       total         = total + 1,
       withAnyRating = withAnyRating + bool(hasAnyRating(r)),
       withTmdbId    = withTmdbId + bool(r.tmdbId.isDefined),
@@ -144,7 +144,7 @@ object WorkerCorpusMetrics {
 
   object CorpusCounts {
     val empty: CorpusCounts = CorpusCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    def from(records: IterableOnce[MovieRecord], now: LocalDateTime): CorpusCounts =
+    def from(records: IterableOnce[MovieRecord], now: Clock): CorpusCounts =
       records.iterator.foldLeft(empty)((acc, r) => acc.add(r, now))
   }
 
@@ -163,9 +163,19 @@ object WorkerCorpusMetrics {
    *
    *  Only meaningful over the STITCHED rows [[WorkerCorpusScan]] walks: the worker's
    *  cache strips `showtimes` to a digest, so the same predicate over a cache record
-   *  would read every row as not-screening. */
-  def unresolvedYetScreening(r: MovieRecord, now: LocalDateTime): Boolean =
-    !r.readyToProject && r.cinemaSlots.exists { case (_, slot) => slot.showtimes.exists(_.isUpcoming(now)) }
+   *  would read every row as not-screening.
+   *
+   *  A showtime is venue-local wall-clock, so each slot is judged against `now` in its
+   *  own venue's zone: read in the pod's zone (UTC), a Los Angeles row playing only
+   *  tonight read as played out 7 hours early, and a Warsaw showing as upcoming for 2
+   *  hours after it began. */
+  def unresolvedYetScreening(r: MovieRecord, now: Clock): Boolean =
+    !r.readyToProject && r.cinemaSlots.exists { case (source, slot) =>
+      models.Source.cinemaOf(source).exists { cinema =>
+        val local = models.City.localNow(cinema, now)
+        slot.showtimes.exists(_.isUpcoming(local))
+      }
+    }
 
   private def bool(b: Boolean): Int = if (b) 1 else 0
 }

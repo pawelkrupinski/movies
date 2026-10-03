@@ -17,6 +17,12 @@ import java.util.Base64
  */
 class ZyteClientSpec extends AnyFlatSpec with Matchers {
 
+  "a Zyte API call" should "carry a request timeout, so an API that accepts and never answers cannot hang a scrape" in {
+    val client = new RefusingHttpClient
+    an[Exception] should be thrownBy new ZyteClient(client, _root_.settings.ZyteApiKey("test-key")).get("https://example.com/")
+    client.requests.map(_.timeout().isPresent) shouldBe Seq(true)
+  }
+
   "extractStatus" should "read the upstream HTTP status from a Zyte response" in {
     val json =
       """{"url":"https://example.com","statusCode":200,"httpResponseBody":""}"""

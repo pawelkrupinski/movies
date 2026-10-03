@@ -42,7 +42,7 @@ import scala.jdk.CollectionConverters._
 class OkfIluzjaClient(
   http:              HttpFetch,
   override val cinema: Cinema = OkfIluzja,
-  today:             LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:             => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import OkfIluzjaClient._

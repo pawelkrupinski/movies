@@ -66,8 +66,9 @@ object GatsbyBoxOfficeParser {
     }.sortBy(_.movie.title)
   }
 
+  // A body that is not JSON throws: a failed read, never an empty programme.
   private def scheduleOf(scheduleJson: String, theaterId: String): Seq[(String, JsValue)] =
-    (Try(Json.parse(scheduleJson)).getOrElse(JsNull) \ theaterId \ "schedule")
+    (Json.parse(scheduleJson) \ theaterId \ "schedule")
       .asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty)
 
   /** The film ids a venue's schedule lists: what the details request asks about. */
@@ -111,8 +112,10 @@ object GatsbyBoxOfficeParser {
    *  Pure + public so a spec can assert the catalogue independently of any
    *  schedule. */
   def parseCatalogue(json: String): Map[String, CatalogueFilm] =
-    (Try(Json.parse(json)).getOrElse(JsNull) \ "data" \ "allMovie" \ "nodes")
-      .asOpt[Seq[JsValue]].getOrElse(Nil)
+    // Not JSON, or JSON without the node list (a GraphQL error answer), throws: with
+    // no catalogue every scheduled film would drop and the venue read empty.
+    (Json.parse(json) \ "data" \ "allMovie" \ "nodes").asOpt[Seq[JsValue]]
+      .getOrElse(throw new IllegalStateException(s"the catalogue answer has no data.allMovie.nodes: ${json.take(200)}"))
       .flatMap { n =>
         for {
           id    <- (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty)

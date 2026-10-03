@@ -64,4 +64,16 @@ class KinoGwiazdaKetrzynClientSpec extends AnyFlatSpec with Matchers with Option
     a[HttpStatusException] should be thrownBy
       new KinoGwiazdaKetrzynClient(new FailingHttpFetch(503), KinoGwiazdaKetrzyn).fetch()
   }
+
+  // One film page that failed to load threw the whole scrape, turning the venue red over one film.
+  it should "drop only a film whose page fails to load, keeping the rest" in {
+    val replay  = new FakeHttpFetch("kino-gwiazda-ketrzyn")
+    val lalka   = film("LALKA").filmUrl.value
+    val oneDown = new tools.HttpFetch {
+      def get(url: String): String = if (url == lalka) throw new java.io.IOException("reset") else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val partial = new KinoGwiazdaKetrzynClient(oneDown).fetch()
+    partial.map(_.movie.title) should contain theSameElementsAs movies.map(_.movie.title).filterNot(_ == "LALKA")
+  }
 }

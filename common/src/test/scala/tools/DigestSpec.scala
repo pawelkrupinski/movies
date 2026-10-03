@@ -12,4 +12,11 @@ class DigestSpec extends AnyFlatSpec with Matchers {
     Digest.sha1Hex("Łódź|2026") shouldBe java.security.MessageDigest.getInstance("SHA-1")
       .digest("Łódź|2026".getBytes("UTF-8")).map(b => f"${b & 0xff}%02x").mkString
   }
+
+  "classesHex" should "fingerprint a class by its compiled bytes, not its name alone" in {
+    val cls = classOf[DigestSpec]
+    Digest.classesHex(Seq(cls)) shouldBe Digest.classesHex(Seq(cls))
+    Digest.classesHex(Seq(cls)) should not be Digest.sha1Hex(cls.getName)
+    Digest.classesHex(Seq(cls, classOf[Digest.type])) should not be Digest.classesHex(Seq(cls))
+  }
 }

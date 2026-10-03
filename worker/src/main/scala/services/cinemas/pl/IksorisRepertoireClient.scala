@@ -1,9 +1,8 @@
 package services.cinemas.pl
 
 import models._
-import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -41,7 +40,7 @@ class IksorisRepertoireClient(
   http:   HttpFetch,
   origin: IksorisOrigin,
   override val cinema: Cinema,
-  today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:  => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import IksorisRepertoireClient._
@@ -49,15 +48,8 @@ class IksorisRepertoireClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(origin.value)
   override def sourceUrl: Option[String] = Some(dayUrl(origin, today))
 
-  // Today's page (the day-picker) failing propagates — a red scrape, not a
-  // white "0 films". A later day failing drops only that day, unless every one did.
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val first     = Jsoup.parse(http.get(dayUrl(origin, today)), origin.value)
-    val otherDays = pickerDays(first).filterNot(_ == today)
-    val attempts  = otherDays.map(day => Try(day -> Jsoup.parse(http.get(dayUrl(origin, day)), origin.value)))
-    ListingPages.requireAnyReached(attempts)
-    parse((today -> first) +: attempts.flatMap(_.toOption), cinema)
-  }
+  protected def fetchUnfiltered(): Seq[CinemaMovie] =
+    parse(DayPickerProgramme.read(s"iksoris-${cinema.slug}", http, origin.value, today, dayUrl(origin, _))(pickerDays), cinema)
 }
 
 object IksorisRepertoireClient {

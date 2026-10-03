@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import services.movies.TitleNormalizer
 
-class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+class KinoMuzaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
                      titles: TitleNormalizer)
   extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 

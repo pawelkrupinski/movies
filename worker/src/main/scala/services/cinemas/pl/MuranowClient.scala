@@ -19,7 +19,7 @@ import scala.util.Try
  * by that slug; the per-film detail page is fetched for runtime / director /
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
-class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class MuranowClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher {
 
 

@@ -63,7 +63,7 @@ class RegalClient(
   http:        HttpFetch,
   theatreCode: String,
   override val cinema: Cinema,
-  today:       LocalDate
+  today:       => LocalDate
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   import RegalClient._

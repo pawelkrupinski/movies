@@ -29,7 +29,7 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoNoweHoryzonty

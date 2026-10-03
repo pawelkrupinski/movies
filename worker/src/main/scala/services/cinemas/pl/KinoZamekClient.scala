@@ -79,7 +79,7 @@ import scala.util.{Success, Try}
 class KinoZamekClient(
   http:                HttpFetch,
   override val cinema: Cinema,
-  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoZamekClient._

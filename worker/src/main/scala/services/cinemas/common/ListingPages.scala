@@ -1,6 +1,10 @@
 package services.cinemas.common
 
-import scala.util.Try
+import tools.ParallelDetailFetch
+
+import java.util.concurrent.TimeoutException
+import scala.concurrent.duration._
+import scala.util.{Failure, Try}
 
 /**
  * The failure rule for a listing spread over several pages (one per day, month,
@@ -17,4 +21,17 @@ object ListingPages {
   def requireAnyReached(attempts: Iterable[Try[?]]): Unit =
     if (attempts.nonEmpty && attempts.forall(_.isFailure)) attempts.head.failed.foreach(throw _)
 
+
+  /** Each of `keys`' pages read side by side ([[ParallelDetailFetch]], a few at a time), under
+   *  [[requireAnyReached]]: the reads that answered, in `keys` order. One that failed or timed
+   *  out drops only itself, unless every one did. */
+  def readEach[K, T](label: String, keys: Seq[K], urlOf: K => String)(read: String => T): Seq[(K, T)] = {
+    val distinct = keys.distinct
+    val fetched  = ParallelDetailFetch.keyed(label, distinct, PageTimeout)(urlOf)(url => Try(read(url)))
+    val attempts = distinct.map(key => key -> fetched.getOrElse(key, Failure(new TimeoutException(s"$label: ${urlOf(key)} timed out"))))
+    requireAnyReached(attempts.map(_._2))
+    attempts.flatMap { case (key, attempt) => attempt.toOption.map(key -> _) }
+  }
+
+  private val PageTimeout: FiniteDuration = 30.seconds
 }

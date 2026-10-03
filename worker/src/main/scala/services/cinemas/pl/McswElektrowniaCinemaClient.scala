@@ -50,7 +50,7 @@ import scala.util.Try
 class McswElektrowniaCinemaClient(
   http:              HttpFetch,
   override val cinema: Cinema = McswElektrowniaCinema,
-  today:             LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:             => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
   import McswElektrowniaCinemaClient._

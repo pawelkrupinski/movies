@@ -51,7 +51,7 @@ class FilmwebShowtimesClient(
   cinemaId: Int,
   override val cinema: Cinema,
   daysAhead: Int       = 6,
-  today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:     => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   // How long one day's seances page may take before it counts as failed.
   pageTimeout: FiniteDuration = 1.minute
 ) extends CinemaScraper {

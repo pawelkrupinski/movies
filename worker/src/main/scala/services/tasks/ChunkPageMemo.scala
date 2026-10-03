@@ -18,8 +18,8 @@ trait ChunkPageMemo {
 }
 
 object ChunkPageMemo {
-  /** `page` is the page's fingerprint ([[digest]]), `parser` the version that parsed it, `slice` the parse, encoded. */
-  final case class Entry(page: String, parser: Int, slice: String)
+  /** `page` is the page's fingerprint ([[digest]]), `parser` what parsed it (`PagedChunkScraper.pageParser`), `slice` the parse, encoded. */
+  final case class Entry(page: String, parser: String, slice: String)
 
   /** No memo: every page parsed. */
   val none: ChunkPageMemo = new ChunkPageMemo {
@@ -52,7 +52,7 @@ final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: java.time.Clock
 
   def recall(cinema: String, key: String): Option[ChunkPageMemo.Entry] = pages.flatMap { c =>
     Try(Await.result(c.find(Filters.eq("_id", id(cinema, key))).first().headOption(), 10.seconds)).toOption.flatten.flatMap { d =>
-      for { page <- d.get("page").map(_.asString.getValue); parser <- d.get("parser").map(_.asInt32.getValue)
+      for { page <- d.get("page").map(_.asString.getValue); parser <- d.get("parser").filter(_.isString).map(_.asString.getValue)
             slice <- d.get("slice").map(_.asString.getValue) } yield ChunkPageMemo.Entry(page, parser, slice)
     }
   }
