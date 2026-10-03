@@ -67,4 +67,33 @@ class ListingKeySpec extends AnyFlatSpec with Matchers {
     rows.map(r => r -> ListingKey.isVenueRow(r)) shouldBe rows.map(r => r -> ListingKey.ofSlotRow(r, slot).isDefined)
     rows.filter(ListingKey.isVenueRow) shouldBe rows.take(2)
   }
+
+  // The order every projection and resolve sorts listings by, as the tuple it used to build per comparison gave it.
+  "the listing order" should "be the (venue, kind, page, raw, year as text, directors joined by NUL) order, building nothing per comparison" in {
+    def legacy(k: ListingKey) = k match {
+      case ListingKey.Native(v, id, raw)          => (v, 0, id, raw, "", "")
+      case ListingKey.Published(v, raw, year, ds) => (v, 1, "", raw, year.fold("")(_.toString), ds.mkString("\u0000"))
+    }
+    val venues = Seq("Helios", "Kino Muza")
+    val keys = for {
+      v <- venues
+      k <- Seq[ListingKey](ListingKey.Native(v, "p/1", "Lalka"), ListingKey.Native(v, "p/1", "Diuna"), ListingKey.Native(v, "p/2", "A"),
+        ListingKey.Published(v, "Lalka", None, Nil), ListingKey.Published(v, "Lalka", Some(2026), Nil), ListingKey.Published(v, "Lalka", Some(999), Nil),
+        ListingKey.Published(v, "Lalka", Some(2026), Seq("Ab")), ListingKey.Published(v, "Lalka", Some(2026), Seq("Ab", "C")),
+        ListingKey.Published(v, "Lalka", Some(2026), Seq("Abc")), ListingKey.Published(v, "", None, Nil))
+    } yield k
+    val rnd = new scala.util.Random(7)
+    (1 to 20).foreach { _ =>
+      val shuffled = rnd.shuffle(keys)
+      shuffled.sorted shouldBe shuffled.sortBy(legacy)
+    }
+    // Allocation-free: a sort of many keys allocates the sort's own arrays, not an object per comparison.
+    val many    = (1 to 20000).map(i => ListingKey.Published("Helios", s"Film ${i % 500}", Some(2000 + i % 30), Seq("A", s"B$i")))
+    val threads = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
+    def allocated(sort: => Any): Long = { sort; val before = threads.getCurrentThreadAllocatedBytes; sort; threads.getCurrentThreadAllocatedBytes - before }
+    val byTuple = allocated(many.sortBy(legacy))
+    val byKey   = allocated(many.sorted)
+    info(s"sorting ${many.size} keys allocated ${byKey / 1000} kB, by the tuple ${byTuple / 1000} kB")
+    byKey should be < byTuple / 10
+  }
 }
