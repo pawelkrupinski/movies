@@ -276,10 +276,13 @@ class WorkerWiring(
   // the pipeline's own lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, and files the answers ONLY in the model's TMDB
   // store. The default cap is 60/min: about 2% of TMDB's ~50 req/s ceiling.
+  // A cut-over country runs it too, on its own schedule (`identityLookupRefreshSchedule`): its model asks
+  // live only what the store lacks, so an answer the store holds is renewed only here — a search that
+  // found nothing before TMDB had the film (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`).
   lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
     for {
-      _          <- shadowIdentityReaper
-      normalizer <- identityTmdbNormalizer if configuration.identityShadowLookups.value
+      normalizer <- identityTmdbNormalizer
+      if identityCutover || (shadowIdentityReaper.isDefined && configuration.identityShadowLookups.value)
     } yield
       new services.identity.ShadowLookupFill(
         questions   = () => identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(services.identity.AnswersChanged.Empty)(_.gaps),
@@ -298,6 +301,12 @@ class WorkerWiring(
         metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
         executor    = shadowLookupExecutor,
         sleep       = shadowLookupSleep)
+
+  /** A cut-over country's fill rounds, at the shadow run's cadence: no shadow tick starts them there. */
+  lazy val identityLookupRefreshSchedule: Option[services.tasks.ClaimedPeriodicTask] =
+    shadowLookupFill.filter(_ => identityCutover).map(fill =>
+      new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => fill.start(), identityShadowInterval.value,
+        configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def shadowLookupSleep: Long => Unit = Thread.sleep
@@ -518,6 +527,7 @@ class WorkerWiring(
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity shadow")(identityShadowSchedule.foreach(_.start()))
+    boot.step("identity lookup refresh")(identityLookupRefreshSchedule.foreach(_.start()))
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
@@ -580,6 +590,7 @@ class WorkerWiring(
     detailReaper.stop()
     settleReaper.stop()
     identityShadowSchedule.foreach(_.stop())
+    identityLookupRefreshSchedule.foreach(_.stop())
     closureSchedule.stop()
     identityProposalSchedule.foreach(_.stop())
     omdbBackfillReaper.foreach(_.stop())

@@ -622,6 +622,26 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       .shadowLookupFill.get.effectiveRate shouldBe settings.IdentityShadowLookupRate(12)
   }
 
+  // A cut-over model asks live only what its store lacks: an answer it holds — a search that found
+  // nothing before TMDB had the film, a record TMDB has since changed — is renewed only by the fill's
+  // refreshes and change sweep, which the shadow tick no longer starts once a country is cut over.
+  it should "be wired for a cut-over country, on a claimed schedule of its own that starts a round" in {
+    val rounds = new java.util.concurrent.atomic.AtomicInteger()
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_CUTOVER" -> Country.Spain.code)) {
+      override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
+        def execute(command: Runnable): Unit = { rounds.incrementAndGet(); () }
+        def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
+        def isShutdown: Boolean = false; def isTerminated: Boolean = false
+        def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
+      }
+    }
+    wiring.shadowLookupFill shouldBe defined
+    val schedule = wiring.identityLookupRefreshSchedule.getOrElse(fail("the refresh is not scheduled"))
+    schedule.tickIfClaimed() shouldBe true
+    rounds.get shouldBe 1
+    wiring.stop()
+  }
+
   it should "start a round after each shadow tick" in {
     val rounds = new java.util.concurrent.atomic.AtomicInteger()
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
