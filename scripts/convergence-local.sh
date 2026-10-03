@@ -42,7 +42,7 @@ TREE="test/resources/fixtures/enrichment-$CODE"
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
-ASSET="enrichment-$CODE.tar.gz"
+ASSET="enrichment-$CODE.tar.*"   # zstd, or gzip from before the move
 HERMETIC=false
 if gh release download "$RELEASE_TAG" --pattern "hermetic-$CODE.txt" --dir "$STAGE" --clobber 2>/dev/null; then
     read -r CORPUS_RUN RECORDED_AT PINNED < "$STAGE/hermetic-$CODE.txt"
@@ -56,7 +56,7 @@ fi
 echo "==> fetching $RELEASE_TAG / $ASSET"
 if gh release download "$RELEASE_TAG" --pattern "$ASSET" --dir "$STAGE" --clobber; then
     rm -rf "$TREE"
-    tar -xzf "$STAGE/$ASSET"
+    .github/scripts/unpack-fixture-archive.sh "$(compgen -G "$STAGE/$ASSET" | head -1)"
     echo "    $(find "$TREE" -type f -not -path '*/.enrichment-cache/*' | wc -l | tr -d ' ') recorded responses, \
 $( { find "$TREE/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l | tr -d ' ') remembered verdicts"
 else

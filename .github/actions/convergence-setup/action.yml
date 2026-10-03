@@ -149,8 +149,10 @@ runs:
           set -uo pipefail
           if [ "$MODE" = "record" ]; then
               [ -n "$CORPUS_RUN" ] && echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$CORPUS_RUN" >> "$GITHUB_ENV"
-              echo "KINOWO_CONVERGENCE_TREE_ASSET=enrichment-${{ inputs.code }}.tar.gz" >> "$GITHUB_ENV"
-              echo "recording leg: corpus ${CORPUS_RUN:-newest}, working tree enrichment-${{ inputs.code }}.tar.gz"
+              # A glob: the working tree is `.tar.zst` since it moved off gzip, `.tar.gz` until a
+              # country's first zstd publish replaces (and deletes) it.
+              echo "KINOWO_CONVERGENCE_TREE_ASSET=enrichment-${{ inputs.code }}.tar.*" >> "$GITHUB_ENV"
+              echo "recording leg: corpus ${CORPUS_RUN:-newest}, working tree enrichment-${{ inputs.code }}.tar.*"
               exit 0
           fi
           pair="$GIVEN"
@@ -296,13 +298,14 @@ runs:
           # exported into every step's shell.
           TAG="$FIXTURE_RELEASE_TAG"
           # The pinned pair's tree for a hermetic leg, the working tree for a recording one
-          # (see "Resolve the recorded pair"). Unpacked under the working tree's name either
-          # way — the tarball's paths are what place it, not the asset's name.
-          ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-${{ inputs.code }}.tar.gz}"
+          # (see "Resolve the recorded pair"). Unpacked by whatever name it downloads under —
+          # the tarball's paths are what place it, and its magic what inflates it.
+          ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-${{ inputs.code }}.tar.*}"
           mkdir -p enrichment-archive
           if gh release download "$TAG" --pattern "$ASSET" --dir enrichment-archive --clobber 2>/dev/null; then
-              [ "$ASSET" = "enrichment-${{ inputs.code }}.tar.gz" ] || \
-                  mv "enrichment-archive/$ASSET" "enrichment-archive/enrichment-${{ inputs.code }}.tar.gz"
+              # Both spellings of the working tree only in the moment between a first zstd
+              # publish and its deleting the gzip it replaced: the zstd one is the newer.
+              if compgen -G "enrichment-archive/*.tar.zst" >/dev/null; then rm -f enrichment-archive/*.tar.gz; fi
               echo "enrichment tree $ASSET from release $TAG"
               ls -l enrichment-archive/
               exit 0
@@ -335,14 +338,13 @@ runs:
       shell: bash
       run: |
           set -euo pipefail
-          # pigz inflates on its own thread beside the read, write and check — about twice
-          # gzip's pace on a 586 MB US tree that took 18.5 s to unpack (run 36909637796).
-          inflate=gzip
-          command -v pigz >/dev/null 2>&1 && inflate=pigz
+          # By each archive's magic (`unpack-fixture-archive.sh`): the enrichment tree is zstd,
+          # an older pinned tree and the scrape corpus gzip.
+          tree=$(compgen -G "enrichment-archive/*" | head -1 || true)
           for archive in "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
-                         "enrichment-archive/enrichment-${{ inputs.code }}.tar.gz"; do
+                         "${tree:-enrichment-archive/enrichment-${{ inputs.code }}.tar.*}"; do
               if [ -f "$archive" ]; then
-                  "$inflate" -dc "$archive" | tar -xf -
+                  "$GITHUB_WORKSPACE/.github/scripts/unpack-fixture-archive.sh" "$archive"
                   echo "restored $archive ($(du -h "$archive" | cut -f1))"
               else
                   echo "no $archive — this leg fetches live for it and the recorder captures it next"

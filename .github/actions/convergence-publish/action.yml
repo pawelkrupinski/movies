@@ -79,7 +79,7 @@ runs:
       run: |
           .github/scripts/pack-enrichment-tree.sh \
               "test/resources/fixtures/enrichment-${{ inputs.code }}" \
-              "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
+              "enrichment-upload/enrichment-${{ inputs.code }}.tar.zst"
 
     # Replaces the country's asset IN PLACE, so the release holds one copy per country
     # and never a history — the newest capture is the only one anyone reads, and
@@ -107,7 +107,7 @@ runs:
           # FIXTURE_RELEASE_TAG comes from the calling workflow's `env`, which is
           # exported into every step's shell, composite-action steps included.
           TAG="$FIXTURE_RELEASE_TAG"
-          ARCHIVE="enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
+          ARCHIVE="enrichment-upload/enrichment-${{ inputs.code }}.tar.zst"
           if [ ! -f "$ARCHIVE" ]; then
               echo "nothing to publish — no $ARCHIVE"
               exit 0
@@ -124,6 +124,13 @@ runs:
           Not a version of anything; do not treat as a release." || true
           "$RELEASE" upload "$TAG" "$ARCHIVE" --clobber
           echo "published $ARCHIVE to release $TAG"
+          # The gzip working tree this zstd one replaces: left beside it, readers' glob
+          # (`enrichment-<code>.tar.*`) would download both. Gone after a country's first
+          # zstd publish, so a no-op from then on.
+          legacy="enrichment-${{ inputs.code }}.tar.gz"
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qxF "$legacy"; then
+              "$RELEASE" delete-asset "$TAG" "$legacy" -y || true
+          fi
 
     # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the
     # tree — `convergence-setup` reads it back so the next leg can diff its corpus against
@@ -150,7 +157,7 @@ runs:
     # leaves the previous pin alone — a hermetic leg must never replay a half-recorded pair.
     #
     # A COPY under a name carrying the corpus run, never the working asset: the recorder
-    # keeps extending `enrichment-<code>.tar.gz` (a leg that ran out of time publishes it
+    # keeps extending `enrichment-<code>.tar.zst` (a leg that ran out of time publishes it
     # half-recorded), and a hermetic leg reading that mid-recording would replay a
     # tree the other half of its pair was never recorded into. The pin is written LAST, so a
     # reader sees either the old pair or the new one, and the previous pair's tree is kept
@@ -167,9 +174,9 @@ runs:
               echo "the boot did not finish — the pinned pair stays as it was"
               exit 0
           fi
-          archive="enrichment-upload/enrichment-$code.tar.gz"
+          archive="enrichment-upload/enrichment-$code.tar.zst"
           [ -f "$archive" ] || { echo "nothing packed — the pinned pair stays as it was"; exit 0; }
-          pinned="enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.gz"
+          pinned="enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.zst"
           cp "$archive" "enrichment-upload/$pinned"
           RELEASE=scripts/ci/gh-release.sh
           "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "enrichment-upload/$pinned" --clobber || exit 1
@@ -177,8 +184,9 @@ runs:
           echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
           "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || exit 1
           echo "pinned $pinned as $code's hermetic pair"
-          # Keep this pair and the one before it; older pinned trees are dead weight.
+          # Keep this pair and the one before it; older pinned trees are dead weight. Either
+          # compressor's: the pairs pinned before the move to zstd are gzip.
           gh release view "$FIXTURE_RELEASE_TAG" --json assets \
-                  --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.gz$\")) | [.createdAt, .name] | @tsv" \
+                  --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
               | sort -r | tail -n +3 | cut -f2 \
               | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done

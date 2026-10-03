@@ -14,7 +14,7 @@ class IdentityDecorationsWorkflowSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(workflow, "on") should include("workflow_dispatch:")
     RepoFile.block(workflow, "on") should not include "schedule:"
     workflow should include("required: true")
-    learn should include("enrichment-$cc-$RECORDING.tar.gz")
+    learn should include("enrichment-$cc-$RECORDING.tar.*")
   }
 
   it should "learn with the relearn tool's decorations-only mode, which reads no production data" in {

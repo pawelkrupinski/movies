@@ -583,7 +583,7 @@ jobs:
             # included, which ran first in this job — back to the release it was restored from.
             #
             # ONE writing row, and the phase test is what makes it one. Both rows finish
-            # into the same `enrichment-<code>.tar.gz`, and `gh release upload --clobber`
+            # into the same `enrichment-<code>.tar.zst`, and `gh release upload --clobber`
             # is a last-writer-wins overwrite of a 428 MB asset — two in flight is how the
             # next run restores a truncated tree. The replay row has nothing to publish
             # anyway: its replays share the preloaded cache, and the leg that recorded that

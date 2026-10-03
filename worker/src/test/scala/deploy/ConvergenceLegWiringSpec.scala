@@ -528,14 +528,37 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** Every leg unpacks its country's tree before the suite can start — 18.5 s single-threaded
-   *  for the US's 586 MB (run 36909637796) — so it inflates through pigz where the runner has it,
-   *  and gzip where it does not, rather than through `tar -z`'s one thread. */
-  "the convergence setup" should "inflate the fixture archives through pigz when the runner has it" in {
-    val unpack = RepoFile.step(RepoFile.read(".github/actions/convergence-setup/action.yml"), "Unpack whichever fixtures are present")
-    unpack should include("command -v pigz >/dev/null 2>&1 && inflate=pigz")
-    unpack should include(""""$inflate" -dc "$archive" | tar -xf -""")
+  /** The enrichment tree is zstd since the packer moved off gzip, but the release still holds gzip
+   *  pairs pinned before that (and the scrape corpus is gzip) — so every reader fetches the tree by
+   *  a `.tar.*` glob and unpacks by the archive's magic (`unpack-fixture-archive.sh`, which inflates
+   *  gzip through pigz). One `tar -xzf` left anywhere fails on the first zstd tree it meets. */
+  "the convergence setup" should "fetch the tree by either compressor's name and unpack it by its magic" in {
+    val setup  = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val unpack = RepoFile.step(setup, "Unpack whichever fixtures are present")
+    unpack should include(".github/scripts/unpack-fixture-archive.sh")
     unpack should include("set -euo pipefail")
+    unpack should not include "tar -xzf"
+    setup should include("KINOWO_CONVERGENCE_TREE_ASSET=enrichment-${{ inputs.code }}.tar.*")
+    setup should not include "enrichment-${{ inputs.code }}.tar.gz"
+    RepoFile.read(".github/scripts/unpack-fixture-archive.sh") should include("command -v pigz")
+  }
+
+  it should "leave no reader of the tree assuming gzip" in {
+    Seq(".github/workflows/identity-decorations.yml", "scripts/hard-clusters.sh", "scripts/convergence-local.sh").foreach { file =>
+      val text = RepoFile.read(file)
+      withClue(s"$file: ")(text should include("unpack-fixture-archive.sh"))
+      withClue(s"$file still names a gzip tree: ")(text should not include regex("""enrichment-\$[^ ]*\.tar\.gz"""))
+    }
+    RepoFile.read(".github/workflows/identity-measure.yml") should include("-$RECORDING.tar.*")
+  }
+
+  it should "publish the tree as zstd, retire the gzip working asset, and prune pinned pairs of either kind" in {
+    val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
+    publish should include("enrichment-upload/enrichment-${{ inputs.code }}.tar.zst")
+    publish should include("pinned=\"enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.zst\"")
+    publish should include("""legacy="enrichment-${{ inputs.code }}.tar.gz"""")
+    publish should include("delete-asset \"$TAG\" \"$legacy\"")
+    publish should include("""\\.tar\\\\.(gz|zst)$""")
   }
 
   /** The leg's MongoDB starts in the BACKGROUND (~20 s of image pull, boot and election that the JDK,

@@ -53,8 +53,8 @@ ensure_tree() {
     local code=$1
     [ -d "$fixture_root/enrichment-$code" ] && return 0
     echo "[hard-clusters] fetching the $code enrichment tree from the convergence-fixtures release"
-    gh release download convergence-fixtures --pattern "enrichment-$code.tar.gz" --dir "$scratch" --clobber
-    tar -xzf "$scratch/enrichment-$code.tar.gz" -C "$scratch"
+    gh release download convergence-fixtures --pattern "enrichment-$code.tar.*" --dir "$scratch" --clobber
+    "$(dirname "$0")/../.github/scripts/unpack-fixture-archive.sh" "$(compgen -G "$scratch/enrichment-$code.tar.*" | head -1)" "$scratch"
     # A real directory, not a symlink: FakeHttpFetch refuses a path whose real form differs.
     fixture_root="$scratch/test/resources/fixtures"
 }

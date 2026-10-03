@@ -28,16 +28,23 @@ echo "remembered enrichment answers: $remembered"
 
 mkdir -p "$(dirname "$ARCHIVE")"
 
-# Compressed on every core. Single-threaded gzip was 75 s of the US recording's critical
-# path (117k files, 586 MB packed — run 36909637796); the runner image ships pigz, whose
-# output is the same gzip every reader of the asset unpacks (`tar -xzf`). Plain gzip
-# where pigz is absent (a developer's machine), so the archive never depends on it.
-compress=gzip
-command -v pigz >/dev/null 2>&1 && compress=pigz
+# zstd on every core. It is both the fastest and the smallest of what was measured on the UK
+# tree (2.2 GB, 95k files, 4 threads — `pigz -6` was what this used before):
+#   pigz -6   9.4 s  410 MB     zstd -3   0.9 s  206 MB     (zstd -9: 3.1 s, 162 MB)
+# Half the bytes is what pays: the archive is uploaded TWICE per recording (the working asset
+# and its pinned copy, ~20 s each at the release's ~22 MB/s per stream) and downloaded by every
+# leg that replays it. Level 3 (zstd's default) needs no `--long` window on the reading side, so
+# any `zstd -d` / `tar -xf` unpacks it — `unpack-fixture-archive.sh` does, by the archive's magic.
+# No gzip fallback: the name says `.tar.zst`, and the runner image ships zstd.
+if ! command -v zstd >/dev/null 2>&1; then
+    echo "::error::zstd is not installed — the enrichment tree is packed as .tar.zst"
+    exit 1
+fi
+compress=(zstd -q -T0 -3 -c)
 
 # The listing tar prints as it streams (`-v`, to stderr when the archive is stdout — GNU
 # and BSD tar alike) is what the cache guard below counts: the paths that went INTO the
-# archive. Reading the finished archive back instead was a second full gunzip of it, 16 s
+# archive. Reading the finished archive back instead was a second full inflate of it, 16 s
 # of the same US publish, to recover a list tar had already printed.
 listing=$(mktemp)
 trap 'rm -f "$listing"' EXIT
@@ -59,7 +66,7 @@ trap 'rm -f "$listing"' EXIT
 #
 # 2 and above is a real tar failure (unwritable target, corrupt stream)
 # and still fails — as does any failure of the compressor.
-tar -cvf - "$DIR" 2>"$listing" | "$compress" > "$ARCHIVE"
+tar -cvf - "$DIR" 2>"$listing" | "${compress[@]}" > "$ARCHIVE"
 statuses=("${PIPESTATUS[@]}")
 packed=${statuses[0]}
 compressed=${statuses[1]}
@@ -70,7 +77,7 @@ if [ "$packed" -gt 1 ]; then
     exit "$packed"
 fi
 if [ "$compressed" -ne 0 ]; then
-    echo "::error::$compress failed with status $compressed"
+    echo "::error::zstd failed with status $compressed"
     exit "$compressed"
 fi
 if [ "$packed" -eq 1 ]; then

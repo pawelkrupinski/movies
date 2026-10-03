@@ -3,7 +3,7 @@
 # pipeline did not), keyed to the pinned pair it overlays — `identity-overlay-<code>-<corpus run>.tar.gz`.
 #
 # Separate from convergence-publish on purpose: it never touches the pipeline's `enrichment-<code>*`
-# trees or its `hermetic-<code>.txt` pin, and that action's prune (`^enrichment-<code>-[0-9]+\.tar\.gz$`)
+# trees or its `hermetic-<code>.txt` pin, and that action's prune (`^enrichment-<code>-[0-9]+\.tar\.(gz|zst)$`)
 # cannot match this name. A newer pin names a new overlay; the old one is dead weight nobody reads.
 # The overlay is CUMULATIVE: the files the leg restored from the last one, plus every file it wrote
 # since convergence-setup's stamp. Main only, as every write to the shared release.

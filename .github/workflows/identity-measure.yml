@@ -125,7 +125,7 @@ jobs:
                   RECORDING: ${{ inputs.recording }}
               run: |
                   set -euo pipefail
-                  [ -z "$RECORDING" ] || echo "pair=$RECORDING given enrichment-${{ matrix.code }}-$RECORDING.tar.gz" >> "$GITHUB_OUTPUT"
+                  [ -z "$RECORDING" ] || echo "pair=$RECORDING given enrichment-${{ matrix.code }}-$RECORDING.tar.*" >> "$GITHUB_OUTPUT"
 
             - uses: ./.github/actions/convergence-setup
               with:

@@ -41,7 +41,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.jobs(workflow)("leg") should include regex """mode:\s+overlay"""
     overlay should include("identity-overlay-")
     val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
-    Seq("enrichment-${{ inputs.code }}.tar.gz", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)
+    Seq("enrichment-${{ inputs.code }}.tar.", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)
     // ONE overlay publisher per leg, under `always()` and after the sample: the sample runs in the
     // full row's job, so a red sample — which ends that job before the suite — still publishes what
     // it fetched, as the separate sample job's own publish did.

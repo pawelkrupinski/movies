@@ -49,8 +49,9 @@ jobs:
                   for cc in pl uk de us es; do
                       gh run download "$RECORDING" --name "scrape-fixtures-$cc" --dir "scrape-$cc"
                       tar -xzf "scrape-$cc/scrapes-$cc.tar.gz" || true
-                      gh release download "$FIXTURE_RELEASE_TAG" --pattern "enrichment-$cc-$RECORDING.tar.gz" --dir tree --clobber
-                      tar -xzf "tree/enrichment-$cc-$RECORDING.tar.gz"
+                      # `.tar.*`: the pinned tree is zstd, or gzip when pinned before that.
+                      gh release download "$FIXTURE_RELEASE_TAG" --pattern "enrichment-$cc-$RECORDING.tar.*" --dir tree --clobber
+                      .github/scripts/unpack-fixture-archive.sh tree/enrichment-"$cc-$RECORDING".tar.*
                       rm -rf "scrape-$cc" tree
                   done
                   for f in test/resources/fixtures/corpus/cinema-scrapes-??.json.gz; do echo "corpus $f"; done
