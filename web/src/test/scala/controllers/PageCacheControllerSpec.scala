@@ -433,4 +433,17 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     status(ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe OK
     recorded should have size 2
   }
+
+  // The listing's JSON-LD is built from the page's origin, its city and the films it
+  // names — nothing about the request's query. So it is built once and kept: a filter
+  // variant of the same listing reuses the bare page's, byte for byte.
+  "a listing's JSON-LD" should "be built once for the listing and shared by its filter variants" in {
+    val (ctrl, _) = buildController()
+    def jsonLd(body: String) = "<script type=\"application/ld\\+json\">(.*?)</script>".r.findFirstMatchIn(body).map(_.group(1))
+    val bare    = gunzip(contentAsBytes(ctrl.index("poznan")(gzipRequest("/poznan/"))))
+    val variant = gunzip(contentAsBytes(ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))))
+    jsonLd(bare) should not be empty
+    jsonLd(variant) shouldBe jsonLd(bare)
+    ctrl.structuredDataHeld shouldBe 1
+  }
 }

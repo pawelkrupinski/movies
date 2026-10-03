@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages, fragments: controllers.FilmCardFragments = controllers.FilmCardFragments.Uncached)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None, structuredData: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages, fragments: controllers.FilmCardFragments = controllers.FilmCardFragments.Uncached)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -15,7 +15,7 @@
      permanently blank page. *@
   <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
   @_ogTagsApp(city.country)(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = pageTags.fbAppId, imageUrl = controllers.ShareCardUrl.city(city), canonicalUrl = canonicalUrl)
-  @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
+  @_jsonLd(structuredData.getOrElse(controllers.StructuredData.cityPage(pageUrl, city, films)))
   @_resourceHints()
   @_errorTracking(pageTags.sentryLoaderUrl)
   @_analytics(pageTags.gaMeasurementId)

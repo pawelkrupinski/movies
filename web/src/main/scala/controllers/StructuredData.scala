@@ -32,7 +32,7 @@ object StructuredData {
    *  `""`). The country's host, not a literal: a hardcoded Polish host put
    *  `kinowo.fly.dev` into the UK site's JSON-LD, telling Google the two were one
    *  site. */
-  private def originOf(pageUrl: String, city: City): String = {
+  def originOf(pageUrl: String, city: City): String = {
     val fallback = city.country.ogOrigin
     if (pageUrl.isEmpty) fallback
     else {
@@ -68,9 +68,16 @@ object StructuredData {
   /** A city listing (`/{slug}/` or `/{slug}/movies`): breadcrumb back to the
    *  landing plus an ItemList of the films currently on show, each linking to
    *  its detail page — a crawlable index of the city's long-tail URLs. */
-  def cityPage(pageUrl: String, city: City, films: Seq[FilmSchedule]): String = {
-    val origin   = originOf(pageUrl, city)
-    val cityUrl  = s"$origin/${city.slug}/"
+  def cityPage(pageUrl: String, city: City, films: Seq[FilmSchedule]): String =
+    cityPage(CityPageKey(originOf(pageUrl, city), city, cityEntries(films)))
+
+  /** Everything a city listing's JSON-LD is built from — and so a key it can be kept
+   *  under: the same key is the same JSON. Only the ORIGIN of the page URL is in it, so a
+   *  filter variant (`?date=tomorrow`) shares the bare listing's. */
+  final case class CityPageKey(origin: String, city: City, entries: Seq[(Option[String], String)])
+
+  /** The films a listing's ItemList names, as (assigned slug, title). */
+  def cityEntries(films: Seq[FilmSchedule]): Seq[(Option[String], String)] =
     // Distinct on the ASSIGNED slug rather than the title: same-titled films
     // are separate entries with separate URLs, and collapsing them by title
     // hid one of the two from the crawlable index.
@@ -79,7 +86,11 @@ object StructuredData {
     // stable sort then falls back to `films` order, which is by earliest showtime and
     // shifts through the day, so their `position` values swapped between renders of the
     // same page. The slug is unique and stable, which is why `SitemapBuilder` sorts on it.
-    val entries = films.map(f => (f.slug, f.movie.title)).distinct.sortBy(e => (e._2, e._1.getOrElse("")))
+    films.map(f => (f.slug, f.movie.title)).distinct.sortBy(e => (e._2, e._1.getOrElse("")))
+
+  def cityPage(key: CityPageKey): String = {
+    val CityPageKey(origin, city, entries) = key
+    val cityUrl  = s"$origin/${city.slug}/"
     val items = entries.zipWithIndex.map { case ((slug, title), i) =>
       Json.obj(
         "@type" -> "ListItem", "position" -> (i + 1),

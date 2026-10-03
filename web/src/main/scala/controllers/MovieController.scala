@@ -185,6 +185,15 @@ class MovieController( cc: ControllerComponents,
 
   private implicit val fragments: FilmCardFragments = filmCards
 
+  // A city listing's JSON-LD, kept under what it is built from (origin, city and the
+  // films it names): rebuilding its JSON tree for every film was ~1.3 MB a New York
+  // render, and it changes only when the city's films do.
+  private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
+    com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(512).build[StructuredData.CityPageKey, String]()
+
+  /** How many listings' JSON-LD this controller is holding — for the spec. */
+  private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
+
   // The deployment's own, and ONLY, language. Every visitor gets this same
   // rendered `Messages` regardless of `Accept-Language`, cookie, or anything
   // else about the request — an explicit language pick swaps the visible
@@ -348,6 +357,7 @@ class MovieController( cc: ControllerComponents,
     val schedules   = tools.ThreadAllocation.measure(recordRender("listing_schedules", _))(movieControllerService.toSchedules(city, now))
     val meta        = FilterDescription.forIndex(city, request.queryString, schedules)
     val isLargeCity = MovieControllerService.totalShowtimes(schedules) > MovieControllerService.LargeCityShowtimeThreshold
+    val pageUrl     = PageMeta.canonicalUrl(request)
     views.html.repertoire(
       schedules,
       city.cinemaDisplayNames,
@@ -356,12 +366,14 @@ class MovieController( cc: ControllerComponents,
       isLargeCity     = isLargeCity,
       pageTitle       = meta.title,
       pageDescription = meta.description,
-      pageUrl         = PageMeta.canonicalUrl(request),
+      pageUrl         = pageUrl,
       pageTags        = pageTags(),
       // og:url keeps the filtered request URL (so a shared filtered link
       // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
       canonicalUrl    = PageMeta.origin(request) + CityPath(city) + "/",
+      structuredData  = Some(cityStructuredData.get(StructuredData.CityPageKey(
+        StructuredData.originOf(pageUrl, city), city, StructuredData.cityEntries(schedules)), StructuredData.cityPage)),
     )
   }
 
