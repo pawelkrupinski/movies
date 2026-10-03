@@ -49,7 +49,7 @@ class FlicksClient(
   cinemaSlug: String,
   override val cinema: Cinema,
   market:     FlicksMarket,
-  today:      => Option[LocalDate] = None
+  today:      => LocalDate
 ) extends PagedChunkScraper {
 
   import FlicksClient._
@@ -59,7 +59,7 @@ class FlicksClient(
   // worker in Europe planning US venues must not start from a date those venues
   // have not reached. Resolved in the body rather than as a default argument
   // because a Scala default cannot read an earlier parameter of the same list.
-  private def referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
+  private def referenceDay: LocalDate = today
 
   private val programmeUrl = s"$baseUrl/cinema/$cinemaSlug/"
 
@@ -178,8 +178,8 @@ object FlicksClient {
    *  scrape — the catalogue's primary and a chain venue's fallback both build it here, so
    *  neither can fall back to the market-wide zone a multi-zone country gets wrong. */
   def forVenue(http: HttpFetch, cinemaSlug: String, cinema: Cinema, market: FlicksMarket,
-               calendar: ScrapeCalendar): FlicksClient =
-    new FlicksClient(http, cinemaSlug, cinema, market, today = Some(calendar.todayAt(cinema, market.zoneId)))
+               venueClock: VenueClock): FlicksClient =
+    new FlicksClient(http, cinemaSlug, cinema, market, today = venueClock.todayAt(cinema, market.zoneId))
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]]. Flicks
    *  advertises a venue's whole booking horizon as day tabs and we fetch every advertised

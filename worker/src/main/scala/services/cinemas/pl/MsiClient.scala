@@ -7,7 +7,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 
-import java.time.{LocalDate, YearMonth, ZoneId}
+import java.time.{LocalDate, YearMonth}
 import scala.util.Try
 
 /**
@@ -62,7 +62,7 @@ class MsiClient(
   http:    HttpFetch,
   baseUrl: String,
   override val cinema: Cinema,
-  today:   => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:   => LocalDate,
   // The month-page route. Almost every venue serves it at `/MSI/mvc/pl`, but a
   // few VisualTicket installs expose the identical page under a different prefix
   // (e.g. Kino Planeta Brzesko at `/Rezerwacja/mvc/pl`); override for those.

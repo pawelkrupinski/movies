@@ -6,7 +6,7 @@ import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -60,7 +60,7 @@ class EkobiletClient(
   http:   HttpFetch,
   slug:   String,
   override val cinema: Cinema,
-  today:  => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:  => LocalDate
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   import EkobiletClient._

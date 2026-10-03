@@ -6,7 +6,6 @@ import services.cinemas.roster.{ChainDirectory, RosterLocationAudit, RosterSourc
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
-import java.time.{LocalDate, ZoneId}
 import scala.util.{Failure, Success}
 
 /**
@@ -42,7 +41,7 @@ object RosterAudit {
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val http    = new RealHttpFetch()
-    val catalog = new CinemaScraperCatalog(http, configuration = process)
+    val catalog = new CinemaScraperCatalog(http, models.VenueClock.system, configuration = process)
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${venues.size} Polish venue source pages to read")
 
@@ -53,9 +52,9 @@ object RosterAudit {
       case (venue, Failure(e))       => venue -> SourceReading.Unreachable(s"gave up: ${e.getMessage}")
     }
 
-    val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
+    val today       = models.VenueClock.system.todayInPoland
+    val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil), today)
     println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
-    val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
     val chainEgress = ChainListEgress.fromConfiguration(http, process)
     val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
       RosterSourceReader.readDirectory(chainEgress.fetchFor(directory), today)(directory, venues).left.map(chainEgress.judged)

@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.{SharedZyteSession, ZyteClient}
 
 import java.net.http.HttpClient
-import java.time.{Clock, Instant, ZoneId, ZoneOffset}
+import java.time.Instant
 import scala.concurrent.duration._
 
 /**
@@ -17,14 +17,6 @@ import scala.concurrent.duration._
 class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
 
   private val Home = "https://www.multikino.pl/"
-
-  /** Clock the test advances by hand. */
-  private class MutableClock(var nowMillis: Long) extends Clock {
-    override def getZone: ZoneId            = ZoneOffset.UTC
-    override def withZone(z: ZoneId): Clock = this
-    override def instant: Instant           = Instant.ofEpochMilli(nowMillis)
-    override def millis(): Long             = nowMillis
-  }
 
   /** Records warm/fetch calls; `failFetchOnce` makes the first fetch throw to
    *  exercise the session-died path. */
@@ -44,7 +36,7 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
 
   "SharedZyteSession" should "warm once and reuse the session across many fetches within the ttl" in {
     val client  = new RecordingClient
-    val session = new SharedZyteSession(client, Home, 8.minutes, new MutableClock(0L))
+    val session = new SharedZyteSession(client, Home, 8.minutes, new tools.MutableClock(Instant.EPOCH))
 
     (1 to 5).foreach(i => session.get(s"$Home/api/$i") shouldBe "BODY")
 
@@ -54,12 +46,12 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-warm a fresh session once the ttl has elapsed" in {
-    val clock   = new MutableClock(0L)
+    val clock   = new tools.MutableClock(Instant.EPOCH)
     val client  = new RecordingClient
     val session = new SharedZyteSession(client, Home, 8.minutes, clock)
 
     session.get(s"$Home/api/a")
-    clock.nowMillis += (9.minutes).toMillis // past ttl
+    clock.advanceMillis(9.minutes.toMillis) // past ttl
     session.get(s"$Home/api/b")
 
     client.warms should have size 2
@@ -68,7 +60,7 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
 
   it should "drop the session, re-warm, and retry once when a fetch fails (session died upstream)" in {
     val client  = new RecordingClient(failFetchOnce = true)
-    val session = new SharedZyteSession(client, Home, 8.minutes, new MutableClock(0L))
+    val session = new SharedZyteSession(client, Home, 8.minutes, new tools.MutableClock(Instant.EPOCH))
 
     session.get(s"$Home/api/a") shouldBe "BODY" // recovered
 
@@ -83,7 +75,7 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
         throw new RuntimeException("Zyte warm-up returned upstream status=403")
       override def fetchWithSession(targetUrl: String, sessionId: String): String = "BODY"
     }
-    val session = new SharedZyteSession(client, Home, 8.minutes, new MutableClock(0L))
+    val session = new SharedZyteSession(client, Home, 8.minutes, new tools.MutableClock(Instant.EPOCH))
 
     a[RuntimeException] should be thrownBy session.get(s"$Home/api/a")
   }

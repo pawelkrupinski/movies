@@ -42,15 +42,10 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
    *  logback's logger, and a bare cast threw `ClassCastException` under
    *  `common/testOnly services.movies.*` on 2026-09-06. Once initialisation completes
    *  `getLogger` returns the real logger, so this waits for it; when it is already
-   *  done (every call but the first), the loop body never runs. */
+   *  done (every call but the first), the first probe already holds. */
   private def logbackLogger(name: String): LogbackLogger = {
-    val deadline = System.nanoTime() + 5L * 1000000000L
-    var logger   = LoggerFactory.getLogger(name)
-    while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {
-      Thread.sleep(10)
-      logger = LoggerFactory.getLogger(name)
-    }
-    logger.asInstanceOf[LogbackLogger]
+    tools.Eventually.poll(timeoutMs = 5000, pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
+    LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
   }
 
   private def capture(body: => Unit): Seq[ILoggingEvent] = {
@@ -72,9 +67,10 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
       // out below, so the first test read an empty capture (2026-09-07, under
       // `common/testOnly services.movies.*`). Log a warm-up line through the SAME path
       // and wait until it lands here on this thread; only then is a missing line a fact.
-      val deadline = System.nanoTime() + 5L * 1000000000L
-      def warmedUp = events.iterator().asScala.exists(e => e.getThreadName == thread && e.getFormattedMessage.contains("warm-up"))
-      while (!warmedUp && System.nanoTime() < deadline) { RemovalAudit.filmRemoved("warm-up", "warm-up", "warm-up"); Thread.sleep(10) }
+      tools.Eventually.poll(timeoutMs = 5000, pollMs = 10) {
+        RemovalAudit.filmRemoved("warm-up", "warm-up", "warm-up")
+        events.iterator().asScala.exists(e => e.getThreadName == thread && e.getFormattedMessage.contains("warm-up"))
+      }
       events.clear()
       body
       events.iterator().asScala.toSeq.filter(_.getThreadName == thread)

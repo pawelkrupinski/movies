@@ -71,7 +71,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics
-  )
+  , clock = clock)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

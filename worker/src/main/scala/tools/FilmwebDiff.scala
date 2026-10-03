@@ -9,7 +9,7 @@ import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import play.api.libs.json.Json
 
 import java.io.PrintWriter
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
@@ -94,7 +94,7 @@ object FilmwebDiff {
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
-    val now       = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
+    val now       = models.VenueClock.system.now(models.TimeZones.Poland)
     val today     = now.toLocalDate
     val windowEnd = today.plusDays(daysAhead.toLong)
 
@@ -116,7 +116,7 @@ object FilmwebDiff {
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy (Zyte behind it), as the worker reaches them, when the Decodo credentials are set.
     val shards   = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
-    val catalog  = new CinemaScraperCatalog(http, calendar = services.cinemas.common.ScrapeCalendar.fixedOn(today), titles = titles, configuration = process, proxyShards = shards)
+    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), titles = titles, configuration = process, proxyShards = shards)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder

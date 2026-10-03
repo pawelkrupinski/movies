@@ -24,7 +24,7 @@ class HeliosClientEventWindowSpec extends AnyFlatSpec with Matchers {
 
   "HeliosClient" should "request /event with the same date window as /screening" in {
     val fetch = recordingFetch()
-    new HeliosClient(fetch, titles = titleNormalizer).fetch()
+    new HeliosClient(fetch, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
 
     val eventUrl     = fetch.gets.find(u => u.contains("/event")).getOrElse(
       fail(s"client never requested /event; saw: ${fetch.gets.mkString(", ")}"))

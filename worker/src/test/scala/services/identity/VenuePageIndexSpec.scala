@@ -164,13 +164,13 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
   "The detail enrichment" should "make the page answer through venue_pages, and announce it" in {
     val world    = new World
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key      = cache.keyOf("Dune", None)
     cache.put(key, MovieRecord(data = Map(models.CinemaShowing.keyFor(KinoApollo, "Dune", titleNormalizer) -> SourceData(
       title = Some("Dune"), filmUrl = Some(Page),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val bus = new RecordingEventBus
-    new EnrichDetailsHandler(Map(Group -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, new DueWindow(6.hours),
+    new EnrichDetailsHandler(Map(Group -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, new DueWindow(6.hours),
       clock = clock, pages = world.pages).handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
       EnrichDetailsTasks.payload(enricher, key, Page), attempts = 1))
     bus.published should contain (VenueDetailRead(Group, Page))
@@ -178,7 +178,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     world.index.answer(enricher, Page) shouldBe Some(Some(Full))
 
     val gone = new FakeDetailEnricher(KinoApollo, Group, failure = Some(new HttpStatusException(404, "GET", "http://gone", None)))
-    new EnrichDetailsHandler(Map(Group -> gone), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, new DueWindow(6.hours),
+    new EnrichDetailsHandler(Map(Group -> gone), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, new DueWindow(6.hours),
       clock = clock, pages = world.pages).handle(Task("id2", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
       EnrichDetailsTasks.payload(gone, key, "http://gone"), attempts = 1))
     world.index.pageRead(Group, "http://gone"); world.index.settle()

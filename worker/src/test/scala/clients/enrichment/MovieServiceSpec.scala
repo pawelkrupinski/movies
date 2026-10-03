@@ -66,8 +66,8 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   import models.{MovieRecord, Source, SourceData, Tmdb}
 
   private def service(seed: (String, Option[Int], MovieRecord)*): MovieService = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed, normalizer = titleNormalizer), normalizer = titleNormalizer)
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed, normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None), clock = _root_.tools.SpecClock.Pinned)
   }
 
   // The projection fetches a film's TMDB details once — while its record lacks them. A 5xx on the
@@ -83,9 +83,9 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
       override def get(url: String, headers: Map[String, String]): String = { check(url); fixture.get(url, headers) }
       override def post(url: String, body: String, contentType: String): String = fixture.post(url, body, contentType)
     }
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val svc = new MovieService(cache, new InProcessEventBus(),
-      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()))
+      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()), clock = _root_.tools.SpecClock.Pinned)
     svc.withFilmDetails(MovieRecord(), 1018) shouldBe None
     failing.set(false)
     svc.withFilmDetails(MovieRecord(), 1018).flatMap(_.imdbId) shouldBe Some("tt0166924")

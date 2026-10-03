@@ -9,13 +9,13 @@ import services.UptimeMonitor
 import services.UptimeMonitor._
 import services.fallback.{FallbackState, FallbackStore}
 
-import java.time.{Instant, ZoneId}
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country, clock: java.time.Clock = java.time.Clock.systemUTC())(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country, clock: java.time.Clock)(using mat: Materializer) extends AbstractController(cc) {
 
   /** Bounds the rows an anonymous `imgEvent` caller can create — see the
    *  endpoint's own comment for why it is anonymous at all. */
@@ -545,7 +545,7 @@ case class ServiceRow(
 }
 
 object UptimeController {
-  private val warsawZone = ZoneId.of("Europe/Warsaw")
+  private val warsawZone = models.TimeZones.Poland
   // Month names in English whatever the JVM's default locale: a default-locale "MMM" reads
   // "wrz" under pl_PL and "Sept" under en_GB on the same English page.
   private[controllers] val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).withZone(warsawZone)

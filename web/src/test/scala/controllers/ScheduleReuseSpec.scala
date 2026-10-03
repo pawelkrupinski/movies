@@ -23,7 +23,7 @@ class ScheduleReuseSpec extends AnyFlatSpec with Matchers {
 
   private def fixture(hours: Int*) = {
     val repository = TestReadModel.store(Seq(("Milcząca przyjaciółka", Some(2026), record(hours*))))
-    val readModel  = new WebReadModel(repository)
+    val readModel  = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
     (repository, readModel, new MovieControllerService(readModel, clock = TestMovieController.clock))
   }

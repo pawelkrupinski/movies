@@ -182,13 +182,13 @@ object RosterSourceReader {
     } yield AuditedVenue(city.slug, scraper.cinema.displayName, url, city.townsOf(scraper.cinema))
 
   /** Every venue of these cities a [[ChainDirectory]] lists, with its id there. */
-  def chainVenuesOf(cities: Seq[models.City], scrapersOf: String => Seq[services.cinemas.common.CinemaScraper]): Seq[(ChainDirectory, String, AuditedVenue)] =
+  def chainVenuesOf(cities: Seq[models.City], scrapersOf: String => Seq[services.cinemas.common.CinemaScraper], today: LocalDate): Seq[(ChainDirectory, String, AuditedVenue)] =
     for {
       city          <- cities
       scraper       <- scrapersOf(city.slug)
       (directory, id) <- ChainDirectory.of(scraper).toSeq
     } yield (directory, id, AuditedVenue(city.slug, scraper.cinema.displayName,
-                                         scraper.sourceUrl.getOrElse(directory.listUrl(LocalDate.now())), city.townsOf(scraper.cinema)))
+                                         scraper.sourceUrl.getOrElse(directory.listUrl(today)), city.townsOf(scraper.cinema)))
 
   /** Read a chain's venue list once and look each of its venues up in it — or,
    *  when the list cannot be read, why not. */

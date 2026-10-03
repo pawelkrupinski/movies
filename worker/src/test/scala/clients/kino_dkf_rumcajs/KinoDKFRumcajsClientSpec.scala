@@ -19,7 +19,7 @@ import java.time.LocalDateTime
  *  is printed per line). */
 class KinoDKFRumcajsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new KinoDKFRumcajsClient(new FakeHttpFetch("kino-dkf-rumcajs"), KinoDKFRumcajs).fetch()
+  private val movies = new KinoDKFRumcajsClient(new FakeHttpFetch("kino-dkf-rumcajs"), KinoDKFRumcajs, today = _root_.tools.SpecClock.PinnedDay).fetch()
 
   "KinoDKFRumcajsClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty

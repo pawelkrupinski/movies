@@ -13,7 +13,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class HeliosClientEventPosterSpec extends AnyFlatSpec with Matchers {
 
   private val fakeHttp = new FakeHttpFetch("helios/event-radomiak")
-  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
+  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
   // Every case only reads the parsed result, so the fixture is replayed once per suite.
   private lazy val fetched = client.fetch()
 

@@ -6,7 +6,7 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -42,7 +42,7 @@ import scala.jdk.CollectionConverters._
 class OkfIluzjaClient(
   http:              HttpFetch,
   override val cinema: Cinema = OkfIluzja,
-  today:             => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:             => LocalDate
 ) extends CinemaScraper {
 
   import OkfIluzjaClient._

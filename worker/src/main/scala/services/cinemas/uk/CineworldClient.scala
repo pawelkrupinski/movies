@@ -6,7 +6,7 @@ import models.{Cinema, CinemaMovie, CineworldChain, Source}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 /**
  * Cineworld — the UK's second-largest chain (87 sites). Cineworld relaunched
@@ -56,7 +56,7 @@ class CineworldClient(
   // parameter, so the venue map has one column to drift, not two.
   slug: String,
   override val cinema: Cinema,
-  today: => LocalDate = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone))
+  today: => LocalDate
 ) extends CinemaScraper with DetailEnricher {
 
   import CineworldClient._

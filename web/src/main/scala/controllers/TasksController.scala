@@ -19,7 +19,7 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
                       // The deployment's country — the one the page's country switch marks current.
                       country: models.Country,
                       // The server time the page ticks task ages from.
-                      clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
+                      clock: java.time.Clock) extends AbstractController(cc) {
 
   /** Cap on the live rows returned per poll — enough to see the head of a
    *  backed-up queue without an unbounded scan. */

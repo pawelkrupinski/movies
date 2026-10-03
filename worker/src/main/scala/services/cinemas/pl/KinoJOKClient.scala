@@ -6,7 +6,7 @@ import tools.{HttpFetch, HttpRead}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.util.Try
 
@@ -34,7 +34,7 @@ import scala.util.Try
 class KinoJOKClient(
   http:                HttpFetch,
   override val cinema: Cinema    = KinoJOK,
-  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoJOKClient.BaseUrl)

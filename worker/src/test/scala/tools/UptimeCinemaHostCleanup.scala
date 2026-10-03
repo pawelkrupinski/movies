@@ -41,7 +41,7 @@ object UptimeCinemaHostCleanup {
    *  fine: building the catalog only constructs client objects — it fetches
    *  nothing — and `scrapeHosts` reads their declared hosts. */
   def cinemaHosts(configuration: _root_.settings.ProcessConfiguration): Set[String] =
-    new CinemaScraperCatalog(new RealHttpFetch(), configuration = configuration).scrapeHosts
+    new CinemaScraperCatalog(new RealHttpFetch(), models.VenueClock.system, configuration = configuration).scrapeHosts
 
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()

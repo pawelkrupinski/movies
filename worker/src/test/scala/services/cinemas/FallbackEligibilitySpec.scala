@@ -14,18 +14,18 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 
   "CinemaScraper.chain" should "be true for the chain clients and false by default" in {
     new MultikinoClient(noHttp, titles = titleNormalizer).chain                                                shouldBe true
-    new HeliosClient(titles = titleNormalizer).chain                                                         shouldBe true
+    new HeliosClient(titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).chain                                                         shouldBe true
     new CinemaCityScraper(new CinemaCityClient(noHttp, titles = titleNormalizer), "1907", Multikino).chain     shouldBe true
     ScriptedCinemaScraper(List(Right(Seq.empty))).chain                              shouldBe false
   }
 
   "FallbackEligibility" should "exclude chain scrapers" in {
     FallbackEligibility.eligible(new MultikinoClient(noHttp, titles = titleNormalizer)) shouldBe false
-    FallbackEligibility.eligible(new HeliosClient(titles = titleNormalizer))         shouldBe false
+    FallbackEligibility.eligible(new HeliosClient(titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay))         shouldBe false
   }
 
   it should "exclude a Filmweb-fed primary (falling Filmweb back to Filmweb is moot)" in {
-    val filmwebPrimary = new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino)
+    val filmwebPrimary = new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino, today = _root_.tools.SpecClock.PinnedDay)
     FallbackEligibility.eligible(filmwebPrimary) shouldBe false
   }
 

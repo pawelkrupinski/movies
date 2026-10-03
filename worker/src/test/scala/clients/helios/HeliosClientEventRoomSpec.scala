@@ -15,7 +15,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 // anime event, which rendered without a room.
 class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new HeliosClient(new FakeHttpFetch("helios/event-room"), titles = titleNormalizer)
+  private val client = new HeliosClient(new FakeHttpFetch("helios/event-room"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
 
   "HeliosClient.fetch" should "resolve the room for an event screening absent from /screening" in {
     val aynik = client.fetch().find(_.movie.title.contains("All You Need Is Kill"))

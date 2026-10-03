@@ -283,7 +283,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   private def fakeClient() =
     new WebediaShowtimesClient(
       new FakeHttpFetch("webedia-es"), WebediaMarket.Spain, "E0291", venue,
-      today = Some(LocalDate.of(2026, 9, 2)))
+      today = LocalDate.of(2026, 9, 2))
 
   "fetchChunk" should "parse one day's page into that day's films" in {
     val films = fakeClient().fetchChunk("2026-09-02")
@@ -296,5 +296,5 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
 
   private def clientOver(http: tools.HttpFetch) =
     new WebediaShowtimesClient(http, WebediaMarket.Spain, "E0291", venue,
-      today = Some(LocalDate.of(2026, 9, 1)))
+      today = LocalDate.of(2026, 9, 1))
 }

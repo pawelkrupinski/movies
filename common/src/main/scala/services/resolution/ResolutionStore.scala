@@ -66,7 +66,7 @@ object ResolutionStore {
 /** In-memory `ResolutionStore` for tests and Mongo-less local dev. Honours the
  *  same TTL expiry as the Mongo store via an injectable clock. */
 class InMemoryResolutionStore(
-  clock: Clock = Clock.systemUTC(),
+  clock: Clock,
   override val normalizer: services.movies.TitleNormalizer
 ) extends ResolutionStore {
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
@@ -108,7 +108,7 @@ class InMemoryResolutionStore(
 class MongoResolutionStore(
   db:             Option[MongoDatabase],
   collectionName: String,
-  clock:          Clock = Clock.systemUTC(),
+  clock:          Clock,
   // See `ResolutionStore.normalizer` — the rules that built the hint keys this
   // collection holds. The worker passes its country's; defaults to the
   // REQUIRED here: a hint key written under one country's rules and read under

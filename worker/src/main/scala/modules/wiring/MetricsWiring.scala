@@ -31,20 +31,20 @@ trait MetricsWiring { self: WorkerWiring =>
   // Periodic census of THIS country's movies corpus (counts of resolved/rated
   // rows), sampled off-band into the shared corpus gauge — see WorkerCorpusMetrics.
   lazy val corpusMetrics: WorkerCorpusMetrics =
-    new WorkerCorpusMetrics(workerMetrics.corpusGauge, country.code)
+    new WorkerCorpusMetrics(workerMetrics.corpusGauge, country.code, clock = clock)
 
   // Per-city count of films the SOURCE `movies` collection would serve in this
   // country — the worker-side mirror of the web's kinowo_web_movies_served (read
   // model), so a Grafana panel overlays the two and a divergence flags drift.
   lazy val sourceFilmsMetrics: WorkerSourceFilmsMetrics =
     new WorkerSourceFilmsMetrics(workerMetrics.servedGauge, country.code, cities = country.cities,
-      normalizer = titleNormalizer)
+      normalizer = titleNormalizer, clock = clock)
   // Per-city (and, summed, country total) count of individual upcoming SHOWTIMES
   // the source `movies` collection would serve — the slot-volume complement to
   // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
   lazy val showtimesMetrics: WorkerShowtimesMetrics =
     new WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities,
-      normalizer = titleNormalizer)
+      normalizer = titleNormalizer, clock = clock)
   // The widest film's slot count — the blast radius of one film's write, since every write
   // path is per-film and the screenings cursor rings once per row written (see
   // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.
@@ -68,23 +68,23 @@ trait MetricsWiring { self: WorkerWiring =>
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: RatingRunCensus =
-    new RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country)
+    new RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country, clock = clock)
   // Worst-case scrape staleness across this country's roster — the cinema that has
   // gone longest without a successful scrape, plus the never-scraped count. Reads
   // the SAME freshness stamps the ScrapeReaper schedules from, so the metric and
   // the scheduler can't disagree about how overdue a cinema is (see CinemaScrapeCensus).
   lazy val cinemaScrapeCensus: CinemaScrapeCensus =
     new CinemaScrapeCensus(cinemaScrapers, freshnessStore,
-      workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, country)
+      workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, country, clock = clock)
   // The other half of that picture: cinemas that scrape FINE and produce nothing.
   // A drifted selector keeps its scrape fresh, so the census above reads it as
   // healthy — only the archive remembers when a cinema last had real content.
   lazy val cinemaContentCensus: CinemaContentCensus =
     new CinemaContentCensus(cinemaScrapers, scrapeArchive,
-      workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, workerMetrics.contentStaleVenuesGauge, country)
+      workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, workerMetrics.contentStaleVenuesGauge, country, clock = clock)
   // Side rows a venue left behind when it was dropped from the roster — nothing serves them and
   // nothing deleted them (Kino Etiuda OBK, 2026-09). The watchdog for the cleanup that should.
   lazy val retiredVenueCensus: RetiredVenueCensus =
     new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
-      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country)
+      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country, clock = clock)
 }

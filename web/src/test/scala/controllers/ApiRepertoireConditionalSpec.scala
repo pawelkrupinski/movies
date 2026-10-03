@@ -15,7 +15,7 @@ import java.util.zip.GZIPInputStream
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, WebReadModel) = {
+  private def buildController(clock: java.time.Clock = TestMovieController.clock): (MovieController, WebReadModel) = {
     val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt999"),
@@ -31,7 +31,8 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
         Tmdb -> SourceData(originalTitle = Some("The Test Movie"))
       )
     )
-    TestMovieController.build(Seq(("Test Film", Some(2024), record)))
+    val rows = Seq(("Test Film", Some(2024), record))
+    TestMovieController.build(rows, readModel = Some(services.readmodel.TestReadModel.fromRecords(rows, clock)))
   }
 
   it should "keep the lean listing free of detail-only fields" in {
@@ -138,11 +139,12 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return 200 after a cache mutation even with the old If-Modified-Since" in {
-    val (ctrl, cache) = buildController()
+    val clock         = new tools.MutableClock(TestMovieController.clock.instant())
+    val (ctrl, cache) = buildController(clock)
     val first = ctrl.apiRepertoire("poznan")(FakeRequest())
     val lastMod = header("Last-Modified", first).get
 
-    Thread.sleep(1100)
+    clock.advanceSeconds(2) // past Last-Modified's one-second resolution
     cache.reload()
 
     val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
@@ -417,7 +419,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     store.upsertMovie(resolved("belle|2021", "Belle"))
     store.upsertScreening(models.CityScreening("s-waw", "belle|2021", "warszawa", "Muranow", None, Nil))
     store.upsertScreening(models.CityScreening("s-poz", "belle|2021", "poznan", "Malta", None, Nil))
-    val readModel = new WebReadModel(store)
+    val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.start()
     val (ctrl, _) = TestMovieController.build(Seq.empty, readModel = Some(readModel))
     (ctrl, store, readModel)

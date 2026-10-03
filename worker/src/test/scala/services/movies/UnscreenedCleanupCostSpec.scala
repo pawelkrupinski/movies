@@ -22,7 +22,7 @@ class UnscreenedCleanupCostSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(
       (1 to corpus).map(n => row(s"Screened $n", screened = true)) ++ (1 to 3).map(n => row(s"Gone $n", screened = false)),
       normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val work  = new Work
     new UnscreenedCleanup(cache, Work.counting(classOf[MovieRepository], repository, work)).removeUnscreened() shouldBe 3
     work.reads

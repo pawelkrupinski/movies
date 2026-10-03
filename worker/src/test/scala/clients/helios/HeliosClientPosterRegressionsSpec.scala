@@ -8,7 +8,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
   // Every case reads the same immutable result, so the fixture is parsed once.
-  private lazy val results = new HeliosClient(new FakeHttpFetch("helios/posters"), titles = titleNormalizer).fetch()
+  private lazy val results = new HeliosClient(new FakeHttpFetch("helios/posters"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
 
   // ── Smoke test ────────────────────────────────────────────────────────────
 

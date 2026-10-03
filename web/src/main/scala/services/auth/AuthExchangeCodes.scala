@@ -72,7 +72,7 @@ trait AuthExchangeCodeStore {
  */
 class AuthExchangeCodes(
   store: AuthExchangeCodeStore,
-  clock: Clock = Clock.systemUTC(),
+  clock: Clock,
   ttl:   Duration = AuthExchangeCodes.Ttl
 ) {
 

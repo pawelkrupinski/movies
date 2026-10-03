@@ -29,7 +29,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   private val fallbackStore = new InMemoryFallbackStore
   private def controllerFor(country: models.Country) =
-    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(), fallbackStore, country)
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, country, clock = _root_.tools.SpecClock.Pinned)
   private val controller = controllerFor(models.Country.Poland)
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
@@ -353,7 +353,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "403 a logged-in user whose email is not on the allowlist" in {
     val outsider = new UptimeController(Helpers.stubControllerComponents(),
-      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(), fallbackStore, models.Country.Poland)
+      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     status(outsider.index(adminSession)) shouldBe FORBIDDEN
   }
 
@@ -379,9 +379,9 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     FakeRequest().withBody(Json.obj("events" -> JsArray(events)))
 
   private def imgController = {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     (new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
-      fallbackStore, models.Country.Poland), monitor)
+      fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), monitor)
   }
 
   "the /uptime img-event endpoint" should "give each origin host its own service row" in {
@@ -437,9 +437,9 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   it should "stop an anonymous caller growing the monitor a row at a time" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val ctl = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
-      fallbackStore, models.Country.Poland)
+      fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     // The host is client-controlled and becomes a KEY — one bucket map and one
     // Mongo document per distinct value. Past the cap they all share a row.
     val flood = (1 to ImageOriginRoster.DefaultLimit + 50).map(i =>

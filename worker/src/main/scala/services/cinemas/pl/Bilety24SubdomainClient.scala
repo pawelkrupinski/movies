@@ -5,7 +5,7 @@ import models._
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 import services.movies.TitleNormalizer
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 import scala.util.Try
 
 /**
@@ -36,7 +36,7 @@ class Bilety24SubdomainClient(
   http:         HttpFetch,
   repertuarUrl: String,
   override val cinema: Cinema,
-  today:        => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:        => LocalDate,
   titles:       TitleNormalizer
 ) extends CinemaScraper {
 

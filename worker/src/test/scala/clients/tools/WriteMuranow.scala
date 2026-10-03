@@ -5,7 +5,7 @@ import services.cinemas.pl.MuranowClient
 
 object WriteMuranow {
   def main(args: Array[String]): Unit = {
-    val client = new MuranowClient(new RecordingHttpFetch("kino-muranow", new RealHttpFetch()))
+    val client = new MuranowClient(new RecordingHttpFetch("kino-muranow", new RealHttpFetch()), today = models.VenueClock.system.todayInPoland)
     client.fetch().foreach(println)
   }
 }

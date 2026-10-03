@@ -9,7 +9,7 @@ import play.api.libs.json.{JsValue, Json}
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -58,7 +58,7 @@ import scala.util.Try
 class KinoPortClient(
   http:  HttpFetch,
   override val cinema: Cinema,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper {
 
   import KinoPortClient._

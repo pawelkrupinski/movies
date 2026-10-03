@@ -88,7 +88,7 @@ class TaskWorker(
   // What "now" is for claims and a released task's back-off. It has to ADVANCE: a clock
   // that stands still (TestWiring's pinned one) would park every backed-off task forever,
   // which is why the worker wiring leaves this at the system clock.
-  clock:             java.time.Clock = java.time.Clock.systemUTC()
+  clock:             java.time.Clock
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._

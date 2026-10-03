@@ -10,7 +10,7 @@ import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, ZoneId, ZoneOffset}
+import java.time.{LocalDateTime, ZoneOffset}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -55,7 +55,7 @@ object KinoBielskClient {
 
   private val CalendarDate = """dates=(\d{8}T\d{6})Z""".r
   private val UtcStamp     = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
-  private val Warsaw       = ZoneId.of("Europe/Warsaw")
+  private val Warsaw       = models.TimeZones.Poland
 
   private val KlubFilmowyTitle = """Klub Filmowy\s*"Kino Znicz":\s*"([^"]+)"""".r
   // First delimiter (comma, or a hyphen with optional surrounding space) in

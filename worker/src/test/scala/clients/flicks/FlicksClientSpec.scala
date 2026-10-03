@@ -111,7 +111,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       new ScriptedByUrlHttpFetch(url =>
         if (url == NorwichProgrammeUrl) programmePage
         else throw new java.io.IOException("planChunks must not fetch per-day fragments")),
-      "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(LocalDate.of(2026, 7, 19)))
+      "odeon-cinema-norwich", OdeonNorwich, Uk, today = LocalDate.of(2026, 7, 19))
 
     val days = client.planChunks()
     days.size shouldBe 36
@@ -129,7 +129,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val capStr = today.plusDays(FlicksClient.MaxHorizonDays.toLong).toString
     val client = new FlicksClient(
       new ScriptedByUrlHttpFetch(_ => programmePage),
-      "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(today))
+      "odeon-cinema-norwich", OdeonNorwich, Uk, today = today)
 
     val days = client.planChunks()
     all(days) should be <= capStr          // ISO dates order lexicographically
@@ -144,7 +144,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val pageDown = new ScriptedByUrlHttpFetch(_ => throw new java.io.IOException("HTTP 500"))
     a[java.io.IOException] should be thrownBy
       new FlicksClient(pageDown, "odeon-cinema-norwich", OdeonNorwich, Uk,
-        today = Some(LocalDate.of(2026, 7, 11))).planChunks()
+        today = LocalDate.of(2026, 7, 11)).planChunks()
   }
 
   it should "THROW when the programme page carries no timetable block at all" in {
@@ -153,7 +153,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val noTimetable = new ScriptedByUrlHttpFetch(_ => "<html><body>no timetable here</body></html>")
     an[IllegalStateException] should be thrownBy
       new FlicksClient(noTimetable, "odeon-cinema-norwich", OdeonNorwich, Uk,
-        today = Some(LocalDate.of(2026, 7, 11))).planChunks()
+        today = LocalDate.of(2026, 7, 11)).planChunks()
   }
 
   /** A real Flicks programme page for a venue with NOTHING on (Woolton Picture
@@ -174,7 +174,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "return empty (not throw) when the timetable block is present but holds no day tabs" in {
     val emptyVenue = new ScriptedByUrlHttpFetch(_ => emptyProgrammePage)
     new FlicksClient(emptyVenue, "woolton-picture-house", OdeonNorwich, Uk,
-      today = Some(LocalDate.of(2026, 7, 27))).planChunks() shouldBe empty
+      today = LocalDate.of(2026, 7, 27)).planChunks() shouldBe empty
   }
 
   /** A real Flicks programme page for a US drive-in CLOSED FOR THE SEASON (Jericho
@@ -186,7 +186,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def planOf(page: String, slug: String = "jericho-drive-in") =
     new FlicksClient(new ScriptedByUrlHttpFetch(_ => page), slug, OdeonNorwich, FlicksMarket.UnitedStates,
-      today = Some(LocalDate.of(2026, 10, 1))).planSchedule()
+      today = LocalDate.of(2026, 10, 1)).planSchedule()
 
   // 2026-09-27..29: 17 such drive-ins held CinemaContentStaleVenuesGrowing (us) firing for 44
   // hours, because an empty plan read the same as a parser that stopped matching. The page says
@@ -214,7 +214,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "not claim no schedule for a venue with day tabs" in {
     val withDays = new FlicksClient(new ScriptedByUrlHttpFetch(_ => programmePage),
-      "odeon-cinema-norwich", OdeonNorwich, Uk, today = Some(LocalDate.of(2026, 7, 11))).planSchedule()
+      "odeon-cinema-norwich", OdeonNorwich, Uk, today = LocalDate.of(2026, 7, 11)).planSchedule()
     withDays.keys should not be empty
     withDays.noScheduleListed shouldBe false
   }
@@ -233,7 +233,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "fetchChunk" should "fetch + parse a single day's sessions fragment into films" in {
     val movies = new FlicksClient(fake, "odeon-cinema-norwich", OdeonNorwich, Uk,
-      today = Some(LocalDate.of(2026, 7, 11))).fetchChunk("2026-07-11")
+      today = LocalDate.of(2026, 7, 11)).fetchChunk("2026-07-11")
     movies.map(_.movie.title) should contain("Minions & Monsters")
     movies.map(_.filmUrl).flatten should contain(s"${Uk.baseUrl}/movie/minions-3/")
   }
@@ -241,7 +241,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // ── fetch() (trait-composed planChunks → fetchChunk → reduceChunks) ───────
   "fetch" should "assemble films for the venue via the programme + sessions endpoints" in {
     val movies = new FlicksClient(programmeListing("2026-07-11"), "odeon-cinema-norwich",
-      OdeonNorwich, Uk, today = Some(LocalDate.of(2026, 7, 11))).fetch()
+      OdeonNorwich, Uk, today = LocalDate.of(2026, 7, 11)).fetch()
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
@@ -299,7 +299,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // The card renders each session twice (a desktop-only and a mobile block);
     // the (time, booking) dedup in moviesFor must leave one showtime per screening.
     val movies = new FlicksClient(fake, "dartington-art-centre-totnes",
-      BarnCinemaDartingtonArtCentre, Uk, today = Some(dartingtonDate)).fetchChunk("2026-07-28")
+      BarnCinemaDartingtonArtCentre, Uk, today = dartingtonDate).fetchChunk("2026-07-28")
     movies.map(_.movie.title) should contain theSameElementsAs Seq("The Odyssey", "Minions & Monsters")
     movies.find(_.movie.title == "The Odyssey").value.showtimes.map(_.dateTime) shouldBe
       Seq(LocalDateTime.of(2026, 7, 28, 16, 0), LocalDateTime.of(2026, 7, 28, 19, 30))

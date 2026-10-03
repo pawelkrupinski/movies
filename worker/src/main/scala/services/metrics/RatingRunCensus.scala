@@ -40,7 +40,7 @@ class RatingRunCensus(
   notRun:         Gauge,
   oldestAge:      Gauge,
   country:        Country,
-  clock:          Clock = Clock.systemUTC(),
+  clock:          Clock,
   override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
 ) extends SampledCensus {
   import RatingRunCensus._

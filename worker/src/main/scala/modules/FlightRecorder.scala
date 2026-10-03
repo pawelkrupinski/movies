@@ -21,7 +21,7 @@ trait FlightRecorder {
  *
  * One recording at a time: a second is refused while the first runs.
  */
-final class JfrFlightRecorder(dir: HeapDumpDirectory, clock: Clock = Clock.systemUTC()) extends FlightRecorder {
+final class JfrFlightRecorder(dir: HeapDumpDirectory, clock: Clock) extends FlightRecorder {
   private var running: Option[jdk.jfr.Recording] = None
 
   def record(duration: FiniteDuration): Either[String, String] = synchronized {

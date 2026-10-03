@@ -9,7 +9,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 import services.movies.TitleNormalizer
 
@@ -52,7 +52,7 @@ import services.movies.TitleNormalizer
 class KinematografLodzClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:            => LocalDate,
   titles:           TitleNormalizer
 ) extends CinemaScraper {
 

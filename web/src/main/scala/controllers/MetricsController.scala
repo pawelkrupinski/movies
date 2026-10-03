@@ -54,7 +54,7 @@ import services.metrics.WebJvmMetrics
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallbackStore: FallbackStore,
   movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String,
-  clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
+  clock: java.time.Clock) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     // Windowed AND summed by the monitor, not here. Pulling each service's full
     // `history` to sum it in the controller is what OOM-killed `web-us` on a

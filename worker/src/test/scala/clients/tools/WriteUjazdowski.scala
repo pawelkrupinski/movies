@@ -5,7 +5,7 @@ import services.cinemas.pl.UjazdowskiClient
 
 object WriteUjazdowski {
   def main(args: Array[String]): Unit = {
-    val client = new UjazdowskiClient(new RecordingHttpFetch("ujazdowski", new RealHttpFetch()))
+    val client = new UjazdowskiClient(new RecordingHttpFetch("ujazdowski", new RealHttpFetch()), today = models.VenueClock.system.todayInPoland)
     val movies = client.fetch()
     movies.foreach(println)
     // Also record each film's detail page so the spec's fetchFilmDetail

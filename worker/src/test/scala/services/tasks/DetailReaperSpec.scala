@@ -34,7 +34,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -82,7 +82,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   private def splitCacheWith(filmUrl: Option[String]) = {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots      = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -113,7 +113,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
    *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
   private def cacheWithMany(n: Int) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val films = (1 to n).map { i =>
       CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
         synopsis = None, cast = Seq.empty, director = Seq.empty,
@@ -168,7 +168,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  pipeline keeps one page per venue and film. */
   it should "ask one page per venue and film by default, and every page a venue slot names per page" in {
     def cacheWithTwoPages = {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
       cache.put(cache.keyOf("Dune", None), MovieRecord(data = Map(
         CinemaShowing(KinoApollo, "dune")         -> SourceData(title = Some("Dune"), filmUrl = Some("http://ref/dune")),
         CinemaShowing(KinoApollo, "dunesingalong") -> SourceData(title = Some("Dune sing-along"), filmUrl = Some("http://ref/dune-sing-along")))))
@@ -349,7 +349,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val r = new DetailReaper(Seq(gone), cache, queue, fresh, new InProcessEventBus(), dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
-      new services.UptimeMonitor(), new InProcessEventBus(), window)
+      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned)
 
     r.tick() shouldBe 1
     // Run the task the way the worker does, so the queue is clear for the next tick
@@ -371,7 +371,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val bus = new RecordingEventBus
     val r = new DetailReaper(Seq(gone), cache, queue, fresh, bus, dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
-      new services.UptimeMonitor(), new InProcessEventBus(), window)
+      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned)
 
     // Before the detail is even attempted the row is legitimately outstanding.
     r.reapStuckPending() shouldBe 0

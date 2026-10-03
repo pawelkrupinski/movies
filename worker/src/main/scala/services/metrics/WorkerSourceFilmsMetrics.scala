@@ -33,7 +33,7 @@ import java.time.{Clock, LocalDateTime}
 class WorkerSourceFilmsMetrics(
   served:      Gauge,
   countryCode: String,
-  clock:       Clock     = Clock.systemDefaultZone(),
+  clock:       Clock,
   cities:      Seq[City] = City.all,
   // The corpus this collector counts belongs to `countryCode`, so the film ids it
   // projects must fold titles with THAT country's rules — otherwise the gauge
@@ -96,7 +96,7 @@ object WorkerSourceFilmsMetrics {
   class FilmTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
     // Each city's "now" and local tomorrow, read once a pass rather than once per card and city.
     private val clocks = cities.map { c =>
-      val now = LocalDateTime.now(clock.withZone(c.zoneId)); c.slug -> (now, now.toLocalDate.plusDays(1)) }.toMap
+      val now = new models.VenueClock(clock).nowIn(c); c.slug -> (now, now.toLocalDate.plusDays(1)) }.toMap
     private val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
 
     // Only the venues' showtimes are needed to count qualifying cards per city — `venuesAll`

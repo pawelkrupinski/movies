@@ -31,7 +31,7 @@ import java.time.{Clock, ZoneOffset}
  * Between samples the gauge just re-reads its cached value. Mirrors the web app's
  * [[controllers.WebMovieMetrics]] sample-and-cache shape.
  */
-class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clock.systemUTC())
+class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock)
   extends CorpusMetricsCollector {
   import WorkerCorpusMetrics._
 
@@ -172,7 +172,7 @@ object WorkerCorpusMetrics {
   def unresolvedYetScreening(r: MovieRecord, now: Clock): Boolean =
     !r.readyToProject && r.cinemaSlots.exists { case (source, slot) =>
       models.Source.cinemaOf(source).exists { cinema =>
-        val local = models.City.localNow(cinema, now)
+        val local = new models.VenueClock(now).nowAt(cinema, now.getZone)
         slot.showtimes.exists(_.isUpcoming(local))
       }
     }

@@ -9,7 +9,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -33,11 +33,11 @@ import services.movies.TitleNormalizer
  * runtime / poster) and to recover the biletyna booking links the day cards omit.
  */
 class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
-                today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+                today: => LocalDate,
                 titles: TitleNormalizer) extends CinemaScraper {
 
   private val BaseUrl  = "https://bok.waw.pl"
-  private val Warsaw   = ZoneId.of("Europe/Warsaw")
+  private val Warsaw   = models.TimeZones.Poland
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)

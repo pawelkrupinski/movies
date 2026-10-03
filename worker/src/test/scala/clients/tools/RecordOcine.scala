@@ -31,7 +31,7 @@ object RecordOcine {
     val venue = SpanishRoster.theaterIdByCinema.collectFirst { case (c, "E0362") => c }
       .getOrElse(sys.error("no Spanish roster venue with SensaCine id E0362 (Ocine Girona)"))
     val client = new OcineClient(new RecordingHttpFetch("ocine", new RealHttpFetch()), "tickets.ocinegirona.es", venue,
-      today = Some(LocalDate.now(OcineClient.Zone)))
+      today = LocalDate.now(OcineClient.Zone))
     val films     = client.fetch()
     val showtimes = films.flatMap(_.showtimes)
     val days      = showtimes.map(_.dateTime.toLocalDate).distinct.sorted

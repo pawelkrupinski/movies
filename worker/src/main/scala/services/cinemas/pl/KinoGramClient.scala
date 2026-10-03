@@ -7,7 +7,7 @@ import play.api.libs.json._
 import services.movies.TrailerEmbed
 import services.cinemas.common.CinemaScraper
 
-import java.time.{Instant, ZoneId}
+import java.time.Instant
 import scala.util.Try
 
 /**
@@ -22,7 +22,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
 
   private val ApiUrl  = "https://bilety.kinogram.pl/api/graphql"
   private val BookingBase = "https://bilety.kinogram.pl/screening/"
-  private val WarsawZone  = ZoneId.of("Europe/Warsaw")
+  private val WarsawZone  = models.TimeZones.Poland
 
   private val Query =
     """{ getScreeningList(query: {}) { id screeningTimeFrom screen { name } movie { id title originalTitle duration description director country yearOfProduction genres { name } posters trailers } } }"""

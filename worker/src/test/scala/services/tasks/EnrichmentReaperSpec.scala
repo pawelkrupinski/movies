@@ -15,7 +15,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
 
   private val t0 = Instant.parse("2026-06-18T00:00:00Z").toEpochMilli
 
-  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
   private def seedRow(cache: CaffeineMovieCache, title: String)(edit: MovieRecord => MovieRecord): Unit = {
     services.movies.ListingSeed.land(cache, KinoApollo, Seq(CinemaMovie(
@@ -29,7 +29,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   "EnrichmentReaper.tick" should "enqueue a task per source for a fully-resolved row, and dedup on a re-tick" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2))) // eligible for all 4 sources
-    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore)
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned)
     reaper.tick(t0) shouldBe 4
     reaper.tick(t0) shouldBe 0 // same instant, tasks still waiting → deduped
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
@@ -38,13 +38,13 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "enqueue only the non-IMDb ratings for a TMDB-resolved row without an imdbId" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "TmdbOnly")(_.copy(tmdbId = Some(2)))
-    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore).tick(t0) shouldBe 3
+    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned).tick(t0) shouldBe 3
   }
 
   it should "enqueue nothing for an unresolved row" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Bare")(identity)
-    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore).tick(t0) shouldBe 0
+    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned).tick(t0) shouldBe 0
   }
 
   // ── due / freshness boundary ─────────────────────────────────────────────────
@@ -52,7 +52,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "treat a never-refreshed eligible row as due immediately" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Fresh")(_.copy(imdbId = Some("tt1"))) // IMDb-only eligible
-    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore).tick(t0) shouldBe 1
+    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned).tick(t0) shouldBe 1
   }
 
   it should "not re-enqueue a row refreshed inside the current window, but does once a period boundary passes" in {
@@ -60,7 +60,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     seedRow(cache, "Stamped")(_.copy(imdbId = Some("tt1")))
     fresh.markFresh(RatingTasks.dedupKey(FreshnessKind.ImdbRating, cache.keyOf("Stamped", None)),
       FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
-    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new DueWindow(4.hours))
+    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new DueWindow(4.hours), clock = _root_.tools.SpecClock.Pinned)
     reaper.tick(t0) shouldBe 0                           // same window as the stamp
     reaper.tick(t0 + 2 * 4.hours.toMillis) shouldBe 1    // two periods later → crossed a boundary
   }
@@ -68,7 +68,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "keep a row's rating freshness across a TITLE re-key (same tmdbId) and not re-enqueue" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue; val fresh = new InMemoryFreshnessStore
     seedRow(cache, "Tangled")(_.copy(imdbId = Some("tt0398286"), tmdbId = Some(38757)))
-    val reaper = new EnrichmentReaper(cache, queue, fresh)
+    val reaper = new EnrichmentReaper(cache, queue, fresh, clock = _root_.tools.SpecClock.Pinned)
     reaper.tick(t0) shouldBe 4
     // Simulate the four handlers refreshing: stamp each enqueued task's key fresh.
     Iterator.continually(queue.claim("w", 1.minute, Instant.ofEpochMilli(t0)))
@@ -93,7 +93,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     // reaper must treat the row as fresh under the new tmdbId key via the fallback.
     Seq(FreshnessKind.ImdbRating, FreshnessKind.RtRating, FreshnessKind.McRating, FreshnessKind.FilmwebRating)
       .foreach(k => fresh.markFresh(RatingTasks.dedupKey(k, cache.keyOf("Resolved", None)), k, Instant.ofEpochMilli(t0)))
-    new EnrichmentReaper(cache, queue, fresh).tick(t0) shouldBe 0
+    new EnrichmentReaper(cache, queue, fresh, clock = _root_.tools.SpecClock.Pinned).tick(t0) shouldBe 0
   }
 
   // ── the spread property ──────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
       fresh.markFresh(RatingTasks.dedupKey(FreshnessKind.ImdbRating, cache.keyOf(title, None)),
         FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
     }
-    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new DueWindow(period))
+    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new DueWindow(period), clock = _root_.tools.SpecClock.Pinned)
     val ticks  = (period.toMillis / delta.toMillis).toInt
     (1 to ticks).map(k => reaper.tick(t0 + k * delta.toMillis))
   }
@@ -145,7 +145,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     (0 until 10).foreach(i => seedRow(cache, f"Live$i%03d")(_.copy(imdbId = Some(s"tt$i")))) // 10 cold → due
     var cap = 1
-    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(cap))
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(cap), clock = _root_.tools.SpecClock.Pinned)
     reaper.tick(t0) shouldBe 1   // cap = 1
     cap = 5
     reaper.tick(t0) shouldBe 5   // live re-read picks up the new cap (a captured Int would still be 1)
@@ -154,7 +154,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "cap enqueues per tick so a cold corpus drains over several ticks instead of all at once" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     (0 until 50).foreach(i => seedRow(cache, f"Cold$i%03d")(_.copy(imdbId = Some(s"tt$i")))) // all never-refreshed → due
-    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(10))
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(10), clock = _root_.tools.SpecClock.Pinned)
     reaper.tick(t0) shouldBe 10                   // first batch only
     reaper.tick(t0) shouldBe 10                   // next batch (first 10 still waiting → deduped)
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 20L
@@ -165,7 +165,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   "EnrichmentReaper.tickIfClaimed" should "not enqueue when another machine has claimed the tick window" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
-    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, runStore = NeverClaimScheduledRunStore)
+    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, runStore = NeverClaimScheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
       .tickIfClaimed() shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
@@ -173,7 +173,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "tick when it wins the claim" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
-    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, runStore = new InMemoryScheduledRunStore)
+    new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, runStore = new InMemoryScheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
       .tickIfClaimed() shouldBe 4
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
   }
@@ -188,7 +188,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     val hydrating = new InMemoryFreshnessStore {
       override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
     }
-    new EnrichmentReaper(cache, queue, hydrating, runStore = new InMemoryScheduledRunStore)
+    new EnrichmentReaper(cache, queue, hydrating, runStore = new InMemoryScheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
       .tickIfClaimed() shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }

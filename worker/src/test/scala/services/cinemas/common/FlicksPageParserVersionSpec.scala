@@ -20,7 +20,7 @@ class FlicksPageParserVersionSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = fail(s"unexpected request $url")
       def post(url: String, body: String, contentType: String): String = fail(s"unexpected request $url")
     }
-    val client = new FlicksClient(noNetwork, "pinned", models.OdeonNorwich, FlicksMarket.UnitedKingdom)
+    val client = new FlicksClient(noNetwork, "pinned", models.OdeonNorwich, FlicksMarket.UnitedKingdom, today = _root_.tools.SpecClock.PinnedDay)
     val parses = days.map { path =>
       val date = path.split('/').last.stripSuffix(".html")
       s"$path\n${CinemaMovieJson.encode(client.parseChunkPage(date, clients.tools.FixtureFile.read(path)))}"

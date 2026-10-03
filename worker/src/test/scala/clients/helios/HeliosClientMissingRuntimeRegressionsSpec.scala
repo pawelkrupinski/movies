@@ -8,7 +8,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientMissingRuntimeRegressionsSpec extends AnyFlatSpec with Matchers {
   private val fakeHttp = new FakeHttpFetch("helios/missing-runtime")
-  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
+  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
 
   private def fetch() = client.fetch()
 

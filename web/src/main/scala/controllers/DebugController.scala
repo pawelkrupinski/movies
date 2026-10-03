@@ -52,7 +52,7 @@ class DebugController(cc: ControllerComponents,
                       // the process-global env that parallel suites share.
                       servingCountry: models.Country,
                       // What "now" is for the pages' own age readings (the mirror badge, cadence).
-                      clock: java.time.Clock = java.time.Clock.systemUTC(),
+                      clock: java.time.Clock,
                       // The serving country's title rules — the wiring's one instance.
                       normalizer: TitleNormalizer,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {

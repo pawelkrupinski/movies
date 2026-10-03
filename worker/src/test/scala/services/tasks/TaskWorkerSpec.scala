@@ -279,11 +279,11 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
     // A worker claims it then "crashes": never completes, lease expires in 1ms.
-    q.claim("crashed-worker", 1.millisecond).get
+    q.claim("crashed-worker", 1.minute, now = t0).get
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 1L
-    Thread.sleep(5) // let the 1ms lease expire in real time
+    q.reapExpiredLeases(now = t0.plusSeconds(59)) shouldBe 0 // still leased
 
-    q.reapExpiredLeases() shouldBe 1 // reaped back to waiting (the shared reaper's job)
+    q.reapExpiredLeases(now = t0.plusSeconds(61)) shouldBe 1 // reaped back to waiting (the shared reaper's job)
     val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)
     worker(q, Seq(h)).claimAndRun("w0") shouldBe PollResult.Completed
     h.seen.map(_.dedupKey) shouldBe List("scrape|x")
@@ -340,7 +340,14 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   }
 
   "a running pool" should "pick up a task pushed after start via the doorbell, without waiting out the idle backstop" in {
-    val q = new InMemoryTaskQueue
+    val emptyClaims = new AtomicInteger(0)
+    val q = new InMemoryTaskQueue {
+      override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = {
+        val claimed = super.claim(workerId, lease, now)
+        if (claimed.isEmpty) emptyClaims.incrementAndGet()
+        claimed
+      }
+    }
     val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)
     // idleBackstop a full minute: the ONLY way this task runs inside the
     // assertion window is the watchWaiting doorbell ringing the parked worker.
@@ -348,7 +355,9 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       retryBackoff = services.tasks.TaskWorker.RetryBackoff(1.second), idleBackstop = services.tasks.TaskWorker.IdleBackstop(1.minute), poolSize = settings.WorkerPoolSize(1), clock = specClock)
     w.start()
     try {
-      Thread.sleep(100) // let the lone worker reach its idle park
+      // The lone worker found nothing and is parking: it read the doorbell's generation BEFORE that
+      // claim, so the enqueue's ring wakes it however the park and the ring interleave.
+      eventually(timeout(Span(10, Seconds)), interval(Span(5, Millis)))(emptyClaims.get should be >= 1)
       q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
       eventually(timeout(Span(3, Seconds)), interval(Span(20, Millis))) {
         q.countByState() shouldBe empty // picked up + completed (removed) via the doorbell

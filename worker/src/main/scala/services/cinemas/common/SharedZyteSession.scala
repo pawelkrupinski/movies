@@ -35,7 +35,7 @@ class SharedZyteSession(
   client:          ZyteClient,
   cookieSourceUrl: String,
   ttl:             FiniteDuration,
-  clock:           Clock = Clock.systemUTC()
+  clock:           Clock
 ) extends GetOnlyHttpFetch {
 
   // (sessionId, warmedAtMillis) — None until the first warm / after invalidation.

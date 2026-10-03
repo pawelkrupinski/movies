@@ -9,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
+import java.time.{LocalDate, LocalDateTime, YearMonth}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -42,7 +42,7 @@ import scala.util.Try
 class KinoKijowClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today:            => LocalDate,
   titles:           TitleNormalizer
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 

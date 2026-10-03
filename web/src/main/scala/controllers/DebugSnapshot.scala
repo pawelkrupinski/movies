@@ -146,25 +146,26 @@ final class RefreshingSnapshot[A](
     val promise = Promise[DebugSnapshot[A]]()
     if (inFlight.compareAndSet(None, Some(promise.future))) {
       promise.completeWith(Future {
-        // Read the mirror's newest stamp and the clock BEFORE the data: the badge may
-        // then overstate the data's age by the read's duration, but never understate it.
-        val newest   = freshness.newestUpdate()
-        val started  = clock.instant()
-        val snapshot = DebugSnapshot(read(), newest, Some(started))
-        // Published before the future completes, so a caller woken by it already sees it.
-        current.set(Some(snapshot))
-        logger.info(s"$label: read in ${JDuration.between(started, clock.instant()).toMillis} ms")
-        snapshot
+        // Over before the future completes, on the read's own thread: a callback queued after
+        // completion left a window in which a stale ask joined the FINISHED read and started none.
+        try {
+          // Read the mirror's newest stamp and the clock BEFORE the data: the badge may
+          // then overstate the data's age by the read's duration, but never understate it.
+          val newest   = freshness.newestUpdate()
+          val started  = clock.instant()
+          val snapshot = DebugSnapshot(read(), newest, Some(started))
+          // Published before the future completes, so a caller woken by it already sees it.
+          current.set(Some(snapshot))
+          logger.info(s"$label: read in ${JDuration.between(started, clock.instant()).toMillis} ms")
+          snapshot
+        } finally inFlight.set(None)
       })
-      promise.future.onComplete { result =>
-        result match {
-          // Stored after the waiting caller is released, not on its time.
-          case Success(snapshot)  => store.save(label, snapshot)
-          case Failure(exception) =>
-            logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
-              s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
-        }
-        inFlight.set(None)
+      promise.future.onComplete {
+        // Stored after the waiting caller is released, not on its time.
+        case Success(snapshot)  => store.save(label, snapshot)
+        case Failure(exception) =>
+          logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
       }
       promise.future
     } else inFlight.get().getOrElse(refresh())

@@ -36,7 +36,7 @@ class WebReadModel(
     coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval,
     driftSettle:       WebReadModel.DriftSettle   = WebReadModel.DefaultDriftSettle,
     // What the change stamps are read from; the system clock outside specs.
-    clock:             java.time.Clock            = java.time.Clock.systemUTC()) extends Stoppable with Logging {
+    clock:             java.time.Clock) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -94,13 +94,7 @@ class WebReadModel(
   private def laterOf(current: java.time.Instant, candidate: java.time.Instant): java.time.Instant =
     if (candidate != null && candidate.isAfter(current)) candidate else current
 
-  /** Strictly monotonic. The stamp is a wall clock and a coarse one hands out the
-   *  same `Instant` twice; a repeated validator is a 304 for changed bytes. A
-   *  clock that steps backwards must not stall invalidation either. */
-  private def advance(previous: java.time.Instant): java.time.Instant = {
-    val now = clock.instant()
-    if (now.isAfter(previous)) now else previous.plusNanos(1)
-  }
+  private def advance(previous: java.time.Instant): java.time.Instant = tools.MonotonicStamp.after(previous, clock)
 
   private def touch(): Unit = { _lastModified.updateAndGet(previous => advance(previous)); () }
 

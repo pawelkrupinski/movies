@@ -588,7 +588,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
     // The system clock on purpose: the Mongo repositories stamp with it too.
-    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val title  = "__integration-test-cache-delete__"
     val year   = Some(1910)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)

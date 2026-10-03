@@ -90,7 +90,7 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // really is model-wide.
     //
     // AND THE CITY'S CALENDAR DAY FLOORS IT. Every city-scoped payload here is
-    // anchored on `LocalDate.now(city.zoneId)`: the listing renders that day's
+    // anchored on the city's own day (`VenueClock.todayIn`): the listing renders that day's
     // `data-next-day` (the midnight the document retires itself at) and the
     // expiry stamps the client prunes forward from, and `/api/repertoire` cuts
     // its window from the same date. The read-model stamp knows nothing about

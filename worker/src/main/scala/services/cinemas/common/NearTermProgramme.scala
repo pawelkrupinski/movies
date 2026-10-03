@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, City}
+import models.{Cinema, CinemaMovie, VenueClock}
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -32,7 +32,7 @@ object NearTermProgramme {
    *  [[Window]] from now. An empty listing is not thin — the white bar already
    *  says it. */
   def isThin(cinema: Cinema, movies: Seq[CinemaMovie], clock: Clock): Boolean = {
-    val now   = City.localNow(cinema, clock)
+    val now   = new VenueClock(clock).nowAt(cinema, clock.getZone)
     val until = now.plusSeconds(Window.toSeconds)
     val times = movies.iterator.flatMap(_.showtimes).map(_.dateTime).toSeq
     times.nonEmpty && !times.exists(t => !t.isBefore(now) && t.isBefore(until))

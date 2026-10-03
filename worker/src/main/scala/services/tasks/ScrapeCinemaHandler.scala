@@ -31,7 +31,7 @@ class ScrapeCinemaHandler(
   runner:        CinemaScrapeRunner,
   freshness:     FreshnessStore,
   dueWindow:     DueWindow = new DueWindow(Freshness.DefaultScrapeTtl),
-  clock:         Clock = Clock.systemUTC(),
+  clock:         Clock,
   chunkPlanner:  Option[ChunkScrapePlanner] = None,
   // Production passes the SHARED policy, so a venue's failure streak is counted once
   // however it happens to be scraped. None → a private one over this handler's own

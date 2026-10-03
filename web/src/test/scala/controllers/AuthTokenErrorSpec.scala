@@ -14,7 +14,7 @@ import services.users.InMemoryUserRepository
 class AuthTokenErrorSpec extends AnyFlatSpec with Matchers {
 
   private val ctl = new AuthController(Helpers.stubControllerComponents(), Map.empty, new InMemoryUserRepository,
-    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore), models.Country.Poland)
+    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   private def token(provider: String) =
     ctl.token()(FakeRequest("POST", "/auth/token").withBody(Json.obj("provider" -> provider, "token" -> "t")))

@@ -49,11 +49,11 @@ object RecordNewCities {
     }
 
     Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
-      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer).fetch().size)
+      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland).fetch().size)
     }
 
     report("Kino Zorza (Rzeszów)")(
-      new KinoZorzaClient(new RecordingHttpFetch("kino-zorza", real), KinoZorza).fetch().size
+      new KinoZorzaClient(new RecordingHttpFetch("kino-zorza", real), KinoZorza, today = models.VenueClock.system.todayInPoland).fetch().size
     )
   }
 }

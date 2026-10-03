@@ -30,7 +30,7 @@ class UptimeRecordingScraper(
   delegate: CinemaScraper,
   monitor:  UptimeMonitor,
   listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp,
-  clock:    Clock = Clock.systemUTC()
+  clock:    Clock
 ) extends DelegatingCinemaScraper(delegate) {
 
   // Forward the tick's outcome to the listener alongside the monitor stamp,

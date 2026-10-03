@@ -3,6 +3,7 @@ package services.readmodel
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.MovieRecord
+import java.time.Clock
 import services.movies.StoredMovieRecord
 
 /**
@@ -22,14 +23,16 @@ object TestReadModel {
   def ratings(title: String, record: MovieRecord): models.ResolvedRatings =
     ReadModelProjection.ratingsFor(record, title)
 
-  def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel =
-    fromRows(records.map { case (title, year, record) => StoredMovieRecord.synthesised(title, year, record, titleNormalizer) })
+  /** `clock` stamps the model's change versions (`lastModified`): pass a [[tools.MutableClock]] to move a
+   *  conditional GET's validator forward by hand rather than by sleeping past a second. */
+  def fromRecords(records: Seq[(String, Option[Int], MovieRecord)], clock: Clock = Clock.systemUTC()): WebReadModel =
+    fromRows(records.map { case (title, year, record) => StoredMovieRecord.synthesised(title, year, record, titleNormalizer) }, clock)
 
   /** From stored rows AS THEY ARE — ids included. A card is keyed by its row's
    *  `FilmId`, so a spec that matches rendered rows back to cache rows must project
    *  the cache's own rows, not rebuild them from (title, year, record). */
-  def fromRows(rows: Seq[StoredMovieRecord]): WebReadModel = {
-    val readModel = new WebReadModel(storeRows(rows))
+  def fromRows(rows: Seq[StoredMovieRecord], clock: Clock = Clock.systemUTC()): WebReadModel = {
+    val readModel = new WebReadModel(storeRows(rows), clock = clock)
     readModel.reload()
     readModel
   }

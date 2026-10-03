@@ -46,9 +46,9 @@ trait RatingsWiring { self: WorkerWiring =>
   // drives it, and its `orElse` write-back never overrides.
   // No cadence recorder: recording OMDb's id writes under another source's
   // key would corrupt that source's change history; the default no-op is correct.
-  lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
+  lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database, clock = clock)
   lazy val omdbBackfill: Option[OmdbBackfill] =
-    configuration.omdbApiKey.map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore))
+    configuration.omdbApiKey.map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore, clock = clock))
 
   // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
   // handled by the BulkRefreshHandler in OperatorWiring). This reaper is just the
@@ -61,7 +61,7 @@ trait RatingsWiring { self: WorkerWiring =>
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] =
     omdbBackfill.map(_ => new OmdbBackfillReaper(
       () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb)); () },
-      interval = omdbBackfillInterval, runStore = scheduledRunStore))
+      interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock))
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the EnrichmentReaper is the SOLE enqueue path — it
@@ -115,5 +115,5 @@ trait RatingsWiring { self: WorkerWiring =>
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
-    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer))
+    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer), clock = clock)
 }

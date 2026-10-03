@@ -42,7 +42,7 @@ class UptimeMonitor(
   surfaceExternalWrites: Boolean = false,
   tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs,
   // What "now" is for bucketing and the averaging windows; a spec pins it.
-  clock: java.time.Clock = java.time.Clock.systemUTC(),
+  clock: java.time.Clock,
   // Where a bucket TTL index this monitor could not bring into line is recorded — the
   // worker passes its process's one set, which its gauge reads.
   ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches

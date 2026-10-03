@@ -61,12 +61,12 @@ class AlamoDrafthouseClient(
   // sanity bound. The US spans six zones, so the catalog hands each venue its
   // own rather than letting a worker in Europe decide.
   zone:      ZoneId   = AlamoDrafthouseClient.DefaultZone,
-  today:     => Option[LocalDate] = None
+  today:     => LocalDate
 ) extends CinemaScraper {
 
   import AlamoDrafthouseClient._
 
-  private def referenceDay: LocalDate = today.getOrElse(LocalDate.now(zone))
+  private def referenceDay: LocalDate = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
@@ -119,5 +119,5 @@ object AlamoDrafthouseClient {
 
   /** Only ever the default for resolving "today" when a venue is built without
    *  an explicit zone; every catalogued venue is handed its own. */
-  val DefaultZone: ZoneId = ZoneId.of("America/Chicago")
+  val DefaultZone: ZoneId = models.TimeZones.UsCentral
 }

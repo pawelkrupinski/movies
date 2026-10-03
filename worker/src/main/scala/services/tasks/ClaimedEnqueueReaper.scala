@@ -29,7 +29,7 @@ class ClaimedEnqueueReaper(
   interval:     => FiniteDuration,
   initialDelay: FiniteDuration,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock = Clock.systemUTC(),
+  clock:        Clock,
   timing:       ClaimedEnqueueReaper.Timing = ClaimedEnqueueReaper.Timing.FromBoot
 ) extends Stoppable with Logging {
 

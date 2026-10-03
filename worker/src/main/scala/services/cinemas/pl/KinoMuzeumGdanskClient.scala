@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies, ListingPages}
 
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -63,7 +63,7 @@ object KinoMuzeumGdanskClient {
   val BaseUrl       = "https://www.muzeum1939.pl"
   val RepertoireUrl = s"$BaseUrl/kino-muzeum/repertuar"
 
-  private val Warsaw = ZoneId.of("Europe/Warsaw")
+  private val Warsaw = models.TimeZones.Poland
 
   // `<a href="/kino-muzeum/repertuar,ts:1780610400,te:1780696799" class="day has-events…"`
   // — group(1) is the relative href, group(2) the day-start epoch.

@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -29,7 +29,7 @@ import scala.jdk.CollectionConverters._
  * dedicated non-film filter; it never has a real title to show anyway.
  */
 class DomKulturyLapyClient(http: HttpFetch, override val cinema: Cinema = DomKulturyLapy,
-                 today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+                 today: => LocalDate
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(DomKulturyLapyClient.RepertoireUrl)

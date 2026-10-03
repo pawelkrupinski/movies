@@ -9,7 +9,7 @@ import services.cinemas.pl.PrahaClient
  *  for replay by PrahaNoYearSpec. See that spec for the root cause. */
 object WriteKinoPrahaNoYear {
   def main(args: Array[String]): Unit = {
-    val client = new PrahaClient(new RecordingHttpFetch("kino-praha-no-year-2026-09", new RealHttpFetch()))
+    val client = new PrahaClient(new RecordingHttpFetch("kino-praha-no-year-2026-09", new RealHttpFetch()), today = models.VenueClock.system.todayInPoland)
     val movies = client.fetch()
     movies.foreach(println)
     println(s"\n=== ${movies.size} films, ${movies.flatMap(_.showtimes).size} showtimes recorded ===")

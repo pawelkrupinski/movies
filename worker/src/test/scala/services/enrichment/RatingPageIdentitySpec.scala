@@ -35,7 +35,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Bogaci i martwi"), originalTitle = Some("Sacrifice"),
         releaseYear = Some(2026), director = Seq("Romain Gavras"))))
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Bogaci i martwi", Some(2026), row)),
-      normalizer = titleNormalizer), normalizer = titleNormalizer)
+      normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     (cache, cache.keyOf("Bogaci i martwi", Some(2026)))
   }
 

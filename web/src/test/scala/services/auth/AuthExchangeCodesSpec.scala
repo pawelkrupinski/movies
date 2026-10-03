@@ -18,13 +18,6 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
 
   private val Now = Instant.parse("2026-08-30T12:00:00Z")
 
-  /** A clock the test moves by hand, so the TTL is asserted rather than waited out. */
-  private class MovableClock(var now: Instant) extends Clock {
-    def getZone: java.time.ZoneId                        = ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): Clock = this
-    def instant(): Instant                               = now
-  }
-
   private def fixture(clock: Clock = Clock.fixed(Now, ZoneOffset.UTC)) =
     new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
 
@@ -97,20 +90,20 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
   // hop and a slow phone — not a browser tab someone comes back to tomorrow.
 
   "A code inside the TTL" should "still redeem at the last moment" in {
-    val clock = new MovableClock(Now)
+    val clock = new tools.MutableClock(Now)
     val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
     val code  = codes.mint("alice@example.com")
 
-    clock.now = Now.plus(AuthExchangeCodes.Ttl)
+    clock.setTo(Now.plus(AuthExchangeCodes.Ttl))
     codes.redeem(code).value shouldBe "alice@example.com"
   }
 
   "A code past the TTL" should "redeem to nothing" in {
-    val clock = new MovableClock(Now)
+    val clock = new tools.MutableClock(Now)
     val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
     val code  = codes.mint("alice@example.com")
 
-    clock.now = Now.plus(AuthExchangeCodes.Ttl).plusSeconds(1)
+    clock.setTo(Now.plus(AuthExchangeCodes.Ttl).plusSeconds(1))
     codes.redeem(code) shouldBe empty
   }
 
@@ -119,18 +112,18 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
   // work again — and would let Mongo's TTL sweep be the only thing that ever
   // cleared it.
   it should "be consumed by the failed redemption rather than left in the store" in {
-    val clock = new MovableClock(Now)
+    val clock = new tools.MutableClock(Now)
     val store = new InMemoryAuthExchangeCodeStore
     val codes = new AuthExchangeCodes(store, clock)
     val code  = codes.mint("alice@example.com")
     store.size shouldBe 1
 
-    clock.now = Now.plus(AuthExchangeCodes.Ttl).plusSeconds(1)
+    clock.setTo(Now.plus(AuthExchangeCodes.Ttl).plusSeconds(1))
     codes.redeem(code) shouldBe empty
     store.size shouldBe 0
 
     // And winding the clock back cannot resurrect it.
-    clock.now = Now
+    clock.setTo(Now)
     codes.redeem(code) shouldBe empty
   }
 

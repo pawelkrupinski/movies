@@ -69,7 +69,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       ("With",    Some(2026), withCinema),
       ("Without", Some(2025), withoutCinema)
     ))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 
@@ -88,7 +88,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       ("Drama",   Some(2026), mkRecord("tt1", Map(Helios -> cinemaSlot("Drama")))),
       ("Erupcja", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot("Erupcja"))))
     ))
-    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val cleanup = new UnscreenedCleanup(cache, repository)
 
     cleanup.removeUnscreened()                 shouldBe 0
@@ -103,7 +103,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   it should "delete a row whose cinema slot kept its key but lost its title and showtimes" in {
     val husk = mkRecord("tt9", Map(Helios -> huskSlot))
     val (repository, _) = splitRepository(Seq(("Husk", Some(2025), husk)))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Husk", Some(2025)), husk)
 
     new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 1
@@ -116,7 +116,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   it should "KEEP an untitled slot that still carries showtimes" in {
     val showing = mkRecord("tt10", Map(Helios -> untitledButShowing))
     val (repository, _) = splitRepository(Seq(("Showing", Some(2025), showing)))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Showing", Some(2025)), showing)
 
     new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
@@ -125,7 +125,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
   it should "count rows correctly when called on an empty cache" in {
     val (repository, _) = splitRepository()
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
   }
 
@@ -135,7 +135,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // screening and must survive. The slot lands AFTER the cache hydrates, which is what
     // makes the two views disagree.
     val (repository, slots) = splitRepository(Seq(("Filipinana", Some(2026), mkRecord("tt9", Map.empty))))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     slots.upsertSlot(filmId("Filipinana", Some(2026)), Helios.displayName, cinemaSlot("Filipinana"))
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
@@ -152,7 +152,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // an honest, successful, EMPTY answer and convicts a film that is playing tonight —
     // the guard has to read the union, which is what every serving reader already reads.
     val (repository, _) = splitRepository(Seq(("Clarissa", Some(2026), mkRecord("tt8", Map.empty))))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.putEmbeddedOutOfBand("Clarissa", Some(2026), mkRecord("tt8", Map(Helios -> cinemaSlot("Clarissa"))))
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
@@ -168,7 +168,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // `findByIdChecked`/`findByKeyChecked` answer `readOk = false` — "I could not tell
     // you" — while the row is genuinely there and `findAll` still sees it.
     val repository = new UnreadableByIdMovieRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))), titleNormalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 
@@ -180,7 +180,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   it should "still delete a row both the cache AND a healthy durable read call empty" in {
     // Genuine expiry — the one case that legitimately removes a row.
     val (repository, _) = splitRepository(Seq(("Dkfzakopeta", Some(2026), mkRecord("tt6", Map.empty))))
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 

@@ -2,7 +2,7 @@ package services.tasks
 
 import settings.ScrapeFreshness
 
-import models.{Cinema, CinemaMovie, City}
+import models.{Cinema, CinemaMovie, VenueClock}
 
 import java.time.{Clock, Duration => JDuration}
 import scala.concurrent.duration._
@@ -58,10 +58,10 @@ object VenueScrapeCadence {
    *  the venue's OWN city clock — `Showtime.dateTime` is city-local wall-clock
    *  time (the same assumption `WebMovieMetrics.countsFor` makes), so comparing
    *  it against a UTC "now" would misjudge every non-Polish venue by its zone
-   *  offset ([[City.localNow]]). Zero for an empty listing or one whose latest
+   *  offset ([[models.VenueClock.nowAt]]). Zero for an empty listing or one whose latest
    *  showtime has already passed — the most urgent case, not a "no data" one. */
   def remainingHorizonOf(cinema: Cinema, movies: Seq[CinemaMovie], clock: Clock): FiniteDuration = {
-    val now = City.localNow(cinema, clock)
+    val now = new VenueClock(clock).nowAt(cinema, clock.getZone)
     movies.iterator.flatMap(_.showtimes).map(_.dateTime).maxOption match {
       case None     => Duration.Zero
       case Some(dt) =>

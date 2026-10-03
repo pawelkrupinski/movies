@@ -44,7 +44,7 @@ class OmdbBackfill(
   // every daily sweep (which would burn the free 1000/day quota). Default no-op
   // = no backoff (tests / Mongo-less wiring).
   attempts: OmdbAttemptStore = OmdbAttemptStore.noop,
-  clock:    Clock = Clock.systemUTC(),
+  clock:    Clock,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
 

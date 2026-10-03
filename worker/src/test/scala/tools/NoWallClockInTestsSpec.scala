@@ -36,10 +36,6 @@ import java.time.{LocalDate, ZoneOffset}
  */
 class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
-  private val TestRoots = Seq(
-    "common/src/test", "testkit/src", "web/src/test", "web/src/it", "web/src/page",
-    "worker/src/test", "worker/src/it", "worker/src/fixtures", "e2e/src/test")
-
   // Why a file may still read the wall clock. Each reason names the production code that reads
   // it without a Clock seam — the spec's data has to be relative to that same clock — so the
   // way to shrink this list is to give that code a Clock, not to widen the list.
@@ -56,6 +52,8 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "quotes main-source lines verbatim as allowlist keys for NoSwallowedFailureSpec; it reads no clock",
     "worker/src/test/scala/tools/NoWallClockInTestsSpec.scala" ->
       "rule 2 compares literals with today on purpose (see the class doc)",
+    "worker/src/test/scala/tools/NoDefaultZoneSpec.scala" ->
+      "its self-test feeds the zone matcher these reads as string literals",
     "common/src/test/scala/tools/TlsTrustSpec.scala" ->
       "documents that a pinned certificate really is expired — a statement about today by design",
     "worker/src/fixtures/scala/tools/FileEnrichmentCacheStore.scala"    -> FileAges,
@@ -70,7 +68,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "UnreadyRoundTripProjectionIntegrationSpec"
   ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
 
-  import ScalaSourceScan.{argumentsAt, code, read, scalaFiles}
+  import ScalaSourceScan.{TestRoots, argumentsAt, code, read, scalaFiles}
 
   private val Now = """\b(?:Instant|LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|Year|YearMonth)\.now\(""".r
   private val OtherReads = """System\.currentTimeMillis\(|Clock\.system(?:UTC|DefaultZone)\(|new (?:java\.util\.)?Date\(\)""".r
@@ -121,8 +119,9 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // Instant.now()`) lets a caller who holds the injected clock forget to pass it, and nothing
   // notices until two components judge one stamp on different clocks — the detail reaper and
   // handler disagreed about "fresh" exactly that way, and a harness pinned to 2026-06-08 then
-  // re-asked for work a system-clock stamp said was done. A `clock: Clock = Clock.systemUTC()`
-  // default is a SEAM, not a read, and stays allowed — as does a `() => Instant` function one.
+  // re-asked for work a system-clock stamp said was done. A `() => Instant` function default is a
+  // seam and stays allowed here; a `clock: Clock = Clock.systemUTC()` default is refused by
+  // NoDefaultZoneSpec rule 4.
 
   /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
   private val MainDefaultAllowlist: Map[String, String] = Map(
@@ -200,7 +199,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       }
     }.toMap
 
-    clockDefaulted should contain ("EnrichDetailsHandler")
+    clockDefaulted should contain ("ChangeStreamLiveness") // the scan still finds a defaulted clock (the NoDefaultZoneSpec backlog)
     val constructions = clockDefaulted.toSeq.sorted.map(name => name -> s"""\\bnew\\s+$name\\b\\s*(?:\\[[^\\]]*\\])?\\s*\\(""".r)
     val offenders = held.toSeq.sortBy(_._1.toString).flatMap { case (path, why) =>
       val src = sources(path)

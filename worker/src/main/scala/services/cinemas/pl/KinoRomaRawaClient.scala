@@ -6,7 +6,7 @@ import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -35,7 +35,7 @@ import scala.jdk.CollectionConverters._
 class KinoRomaRawaClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoRomaRawa,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper {
 
   import KinoRomaRawaClient._

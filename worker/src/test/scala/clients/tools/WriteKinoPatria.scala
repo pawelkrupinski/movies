@@ -8,7 +8,7 @@ import services.cinemas.pl.KinoPatriaClient
  *  test/resources/fixtures/kino-patria/ for replay by KinoPatriaClientSpec. */
 object WriteKinoPatria {
   def main(args: Array[String]): Unit = {
-    val client = new KinoPatriaClient(new RecordingHttpFetch("kino-patria", new RealHttpFetch()), KinoPatria)
+    val client = new KinoPatriaClient(new RecordingHttpFetch("kino-patria", new RealHttpFetch()), KinoPatria, today = models.VenueClock.system.todayInPoland)
     val movies = client.fetch()
     movies.foreach(println)
     println(s"\n=== ${movies.size} films, ${movies.flatMap(_.showtimes).size} showtimes recorded ===")

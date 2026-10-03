@@ -24,7 +24,7 @@ object RecordPlanetCinema {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
     venues.filter { case (key, _, _, _) => args.isEmpty || args.contains(key) }.foreach { case (key, directory, baseUrl, cinema) =>
-      val n = Try(new MsiClient(new RecordingHttpFetch(directory, real), baseUrl, cinema).fetch().size)
+      val n = Try(new MsiClient(new RecordingHttpFetch(directory, real), baseUrl, cinema, today = models.VenueClock.system.todayInPoland).fetch().size)
       println(f"$key%-10s ${n.fold(e => s"FAIL ${e.getClass.getSimpleName} ${e.getMessage}", x => s"$x films")}")
     }
   }

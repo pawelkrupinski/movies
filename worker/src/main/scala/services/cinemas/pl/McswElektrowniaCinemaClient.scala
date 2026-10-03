@@ -8,7 +8,7 @@ import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -52,7 +52,7 @@ import scala.util.Try
 class McswElektrowniaCinemaClient(
   http:              HttpFetch,
   override val cinema: Cinema = McswElektrowniaCinema,
-  today:             => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:             => LocalDate
 ) extends CinemaScraper {
 
   import McswElektrowniaCinemaClient._

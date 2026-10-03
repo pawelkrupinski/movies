@@ -176,7 +176,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
 
     // 4. Stamp the real capture date into the corpus. The directory name is `today`
     //    (dateless), but Helios bakes the scrape day into its REST URLs, so a
-    //    replay must pin `scrapeCalendar` to this exact date or every Helios fixture
+    //    replay must pin `venueClock` to this exact date or every Helios fixture
     //    misses. Poland's day on it is the date this run actually used.
     writeCaptureDate()
 
@@ -186,10 +186,10 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   }
 
   /** Write `test/resources/fixtures/$captureDate/CAPTURE_DATE` recording the
-   *  scrape day (`scrapeCalendar`'s Polish day) so a fixture replay can reconstruct the date
+   *  scrape day (`venueClock`'s Polish day) so a fixture replay can reconstruct the date
    *  the dateless `today` directory no longer carries. */
   private def writeCaptureDate(): Unit = {
-    val date = scrapeCalendar.todayInPoland.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+    val date = venueClock.todayInPoland.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
     val file = new java.io.File(s"test/resources/fixtures/$captureDate/CAPTURE_DATE")
     file.getParentFile.mkdirs()
     java.nio.file.Files.write(

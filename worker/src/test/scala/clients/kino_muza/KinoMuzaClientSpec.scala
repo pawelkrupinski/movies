@@ -12,7 +12,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer)
+  private val client  = new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
@@ -734,7 +734,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     val failing = new FakeHttpFetch("kino-muza") {
       override def get(url: String): String = throw new java.io.IOException("simulated fetch failure")
     }
-    new KinoMuzaClient(failing, titles = titleNormalizer).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/") shouldBe None
+    new KinoMuzaClient(failing, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/") shouldBe None
   }
 
   it should "fetchFilmDetail: return Some with no synopsis when the page lacks a synopsis paragraph (marks fresh, no spin)" in {
@@ -742,7 +742,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String =
         "<html><body><div class='col-11 paragraph'><p>not the synopsis div</p></div></body></html>"
     }
-    val detail = new KinoMuzaClient(noSynopsis, titles = titleNormalizer).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/")
+    val detail = new KinoMuzaClient(noSynopsis, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/")
     detail              should not be empty  // page fetched OK → Some, so the handler marks it fresh
     detail.get.synopsis shouldBe None
   }

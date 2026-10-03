@@ -27,7 +27,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     val store     = new InMemoryVenuePageStore
     val freshness = new InMemoryFreshnessStore
     val bus       = new RecordingEventBus
-    val uptime    = new UptimeMonitor()
+    val uptime    = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val handler   = new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, freshness, e => bus.publish(e), clock), uptime, freshness, clock)
 
     handler.handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
@@ -40,7 +40,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
   it should "leave a page that failed for now unread, and record the failure" in {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
     val store    = new InMemoryVenuePageStore
-    val uptime   = new UptimeMonitor()
+    val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, new InMemoryFreshnessStore, _ => (), clock), uptime, new InMemoryFreshnessStore, clock)
       .handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
     store.get(VenuePageKey("kino-apollo", Page)) shouldBe None
@@ -51,7 +51,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher  = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
     val freshness = new InMemoryFreshnessStore
     new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(new InMemoryVenuePageStore, freshness, _ => (), clock),
-      new UptimeMonitor(), freshness, clock).handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), freshness, clock).handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
     freshness.lastFetchedAt(EnrichDetailsTasks.pageAttempted("kino-apollo", Page)) shouldBe Some(clock.instant())
   }
 }

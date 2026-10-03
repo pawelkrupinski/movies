@@ -65,7 +65,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   "a stored URL whose page names a different film's year" should "be dropped rather than scored" in {
     val url = "https://www.rottentomatoes.com/m/the_invite"
     val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(96)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
 
@@ -79,7 +79,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "be kept when the page's year agrees with the film's" in {
     val url = "https://www.rottentomatoes.com/m/the_invite"
     val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(2026), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
 
@@ -93,7 +93,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "be kept when the page names no year at all — silence is not a contradiction" in {
     val url = "https://www.rottentomatoes.com/m/lalka_1969"
     val repository = new InMemoryMovieRepository(Seq(("Lalka", Some(1968), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScore(83))))
 
@@ -105,7 +105,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "fetch the score and write it back when it differs from the cached value" in {
     val url = "https://www.rottentomatoes.com/m/the_dark_knight"
     val repository  = new InMemoryMovieRepository(Seq(("Dark Knight", Some(2008), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rtClient(Map(url -> pageWithScore(94))))
 
     ratings.refreshOneSync(cache.keyOf("Dark Knight", Some(2008)))
@@ -116,7 +116,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "not write back when the fetched score equals the cached value (idempotent)" in {
     val url = "https://www.rottentomatoes.com/m/the_dark_knight"
     val repository  = new InMemoryMovieRepository(Seq(("Dark Knight", Some(2008), mkEnrichment(Some(url), score = Some(94)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rtClient(Map(url -> pageWithScore(94))))
 
@@ -128,7 +128,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "report an RT read failure (network blip, 503, Cloudflare challenge) as a failure, keeping the score" in {
     val url = "https://www.rottentomatoes.com/m/foo"
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val failing = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new tools.HttpStatusException(503, "GET", u, None)
     })
@@ -147,7 +147,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   // honestly: RT has no page for this film (every probe 404s), row left clean.
   it should "leave the row clean when RT has no page for the film" in {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment(None))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = UpstreamNotFound(u)
     }))
@@ -158,7 +158,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))
@@ -176,7 +176,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "persist a changed Tomatometer on the very first fetch (no confirmation gate)" in {
     val url        = "https://www.rottentomatoes.com/m/x"
     val repository = new InMemoryMovieRepository(Seq(("X", Some(2026), mkEnrichment(Some(url), score = Some(67)))), normalizer = titleNormalizer)
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings    = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScore(66))))
     val key = cache.keyOf("X", Some(2026))
@@ -200,7 +200,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment(Some(urls("B")), score = Some(60))),
       ("C", None, mkEnrichment(Some(urls("C")), score = Some(70)))
     ), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rtClient(Map(
       urls("A") -> pageWithScore(74),  // changed
       urls("B") -> pageWithScore(60),  // unchanged
@@ -221,7 +221,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
       ("A", None, MovieRecord(tmdbId = Some(201), rottenTomatoes = Some(50), rottenTomatoesUrl = Some(urlA))),
       ("B", None, MovieRecord(tmdbId = Some(202), rottenTomatoes = Some(60), rottenTomatoesUrl = Some(urlB)))
     ), normalizer = titleNormalizer)
-    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val cadence = new services.cadence.InMemoryRatingCadenceStore
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(urlA -> pageWithScore(74), urlB -> pageWithScore(60))),  // A moves, B unchanged
@@ -240,7 +240,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     // carrying Olivia Wilde's 2026 "The Invite" was re-scored by every bulk run.
     val url = "https://www.rottentomatoes.com/m/the_invite"
     val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
 
@@ -256,7 +256,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     // page as a score that moved to "none" and write that too, counting it as changed.
     val url = "https://www.rottentomatoes.com/m/the_invite"
     val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
     repository.upserts.clear()
@@ -274,7 +274,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
       // No RT URL — must not be fetched.
       ("B", None, mkEnrichment(None))
     ), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     // Stub only knows A; if the walk tries to fetch B-related anything, it throws.
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rtClient(Map(urlA -> pageWithScore(85))))
 
@@ -293,7 +293,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   private def twoFooRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
     ("Foo", Some(2024), MovieRecord(tmdbId = Some(42))),
     ("Foo", Some(2025), MovieRecord(tmdbId = Some(99)))
-  ), normalizer = titleNormalizer), normalizer = titleNormalizer)
+  ), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
   private def countingRt(gets: java.util.concurrent.atomic.AtomicInteger): RottenTomatoesClient =
     new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(url: String): String = { gets.incrementAndGet(); pageWithScore(80) }
@@ -303,7 +303,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = twoFooRows()
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingRt(gets),
-      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer)))
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2025)))
@@ -331,7 +331,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val stored = "https://www.rottentomatoes.com/m/the_odyssey"
     val repository = new InMemoryMovieRepository(Seq(
       ("The Odyssey", Some(2026), MovieRecord(tmdbId = Some(1368337), rottenTomatoesUrl = Some(stored)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val asked = scala.collection.mutable.Set.empty[String]
     val client = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(url: String): String = { asked += url; UpstreamNotFound(url) }
@@ -354,7 +354,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.rottentomatoes.com/m/a"
     val repository = new InMemoryMovieRepository(Seq(
       ("A", None, MovieRecord(rottenTomatoes = Some(50), rottenTomatoesUrl = Some(url)))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(url -> pageWithScore(74))))
 

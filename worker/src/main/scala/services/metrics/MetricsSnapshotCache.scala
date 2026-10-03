@@ -34,7 +34,7 @@ class MetricsSnapshotCache(
   // The fewest milliseconds between two renders, however often the endpoint is read.
   minRefresh: FiniteDuration           = 10.seconds,
   scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("worker-metrics-refresh"),
-  clock:      java.time.Clock          = java.time.Clock.systemUTC()
+  clock:      java.time.Clock
 ) extends Logging {
 
   private val latest     = new AtomicReference[Array[Byte]](Array.emptyByteArray)

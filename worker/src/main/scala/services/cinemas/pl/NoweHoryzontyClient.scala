@@ -10,7 +10,7 @@ import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -30,7 +30,7 @@ import scala.jdk.CollectionConverters._
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoNoweHoryzonty

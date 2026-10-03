@@ -74,7 +74,7 @@ class EnrichmentReaper(
   // BY-NAME: read live each tick, so an `/admin/config` flip applies mid-flight.
   maxEnqueuePerTick: => EnrichmentMaxEnqueuePerTick = EnrichmentMaxEnqueuePerTick(Int.MaxValue),
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:    Clock = Clock.systemUTC(),
+  clock:    Clock,
   // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate),
   // shared with the newcomer-fold path so the two can't drift. `None` builds one over
   // this reaper's own queue/freshness/dueWindow (tests are unaffected); the wiring

@@ -25,9 +25,9 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   private val users = new InMemoryUserRepository
-  private val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore)
+  private val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
   private val ctl   = new AuthController(Helpers.stubControllerComponents(), Map("google" -> Google), users, codes,
-    models.Country.Poland)
+    models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   "POST /auth/token" should "forbid keeping a copy of a successful sign-in" in {
     val result = ctl.token()(FakeRequest("POST", "/auth/token")

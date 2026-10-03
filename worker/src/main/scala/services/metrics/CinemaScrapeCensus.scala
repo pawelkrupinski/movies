@@ -56,7 +56,7 @@ class CinemaScrapeCensus(
   oldestAge:      Gauge,
   neverScraped:   Gauge,
   country:        Country,
-  clock:          Clock = Clock.systemUTC(),
+  clock:          Clock,
   override protected val sampleInterval: FiniteDuration = CinemaScrapeCensus.DefaultSampleInterval
 ) extends SampledCensus {
   import CinemaScrapeCensus._

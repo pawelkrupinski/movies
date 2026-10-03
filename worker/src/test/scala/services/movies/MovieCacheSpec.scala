@@ -16,7 +16,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // re-derives the display title from the record on read (like Mongo), so a
     // title-less record would surface its sanitized _id prefix, not "Drzewo Magii".
     val record   = mkEnrichment("tt1").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Drzewo Magii"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Drzewo Magii", Some(2024), record)), normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Drzewo Magii", Some(2024), record)), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
     cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(record)
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
@@ -28,7 +28,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // to its CacheKey by `idFor` — so the periodic backstop rehydrate is no longer the
   // ONLY thing that catches deletes. Pre-fix the cache ignored delete events entirely.
   it should "drop a cached row when its source _id is deleted on the change stream" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Foo", Some(2024))
     cache.put(key, mkEnrichment("tt-foo"))
     cache.get(key) should not be empty
@@ -50,7 +50,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "meter what the backstop rehydrate catches that the change stream missed" in {
     val repo  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt-foo"))), normalizer = titleNormalizer)
     val m     = new RecordingCacheMetrics
-    val cache = new CaffeineMovieCache(repo, cacheMetrics = m, normalizer = titleNormalizer) // boot hydrate counts Foo as changed
+    val cache = new CaffeineMovieCache(repo, cacheMetrics = m, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned) // boot hydrate counts Foo as changed
     m.reset()
     // The source diverged out-of-band while no stream applied it: Foo removed, Bar added.
     repo.delete("Foo", Some(2024))
@@ -68,7 +68,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "not write to the repository when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Dune", Some(2024))
     cache.put(key, mkEnrichment("tt-dune", rating = Some(8.1)))
     val writesAfterPut = repository.upserts.size
@@ -104,14 +104,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       ("Tangled",   Some(2010), MovieRecord(tmdbId = Some(38757), data = zaplSlots)), // → _id tangled|2010, displays "Zaplątani"
       ("Zaplątani", Some(2010), MovieRecord(tmdbId = Some(38757), data = zaplSlots))  // → _id zaplatani|2010
     ), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.entries.map(_._1.normalized).toSet shouldBe Set("tangled", "zaplatani")     // keyed by the stored keys
     cache.entries.map(_._1.cleanTitle).toSet shouldBe Set("Zaplątani")               // labelled by the display title
   }
 
   it should "drop in-memory rows that aren't in the repository" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
     // Two rows in cache + repository; delete one from the repository behind the cache's
     // back so cache + repository diverge by exactly that row. Rehydrate should
@@ -142,7 +142,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // every cached row got evicted and the page rendered empty until the
     // next successful tick.
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)  // start empty
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
     // Mongo "lies" — write straight to the cache, then drop from the repository
     // so the next rehydrate's findAll returns empty.
@@ -166,7 +166,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         if (hiding) super.findAll().filterNot(_.title == "Ghost") else super.findAll()
     }
     val repository = new HidingRepository
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
     cache.put(cache.keyOf("Keeper", Some(2024)), mkEnrichment("tt2"))
     repository.hiding = true
@@ -179,7 +179,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "make repository-side edits visible" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1", rating = Some(7.0)))
 
     // Edit Mongo out-of-band: replace the rating.
@@ -196,7 +196,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // on every write.
   "a started MovieCache" should "apply an out-of-band upsert via the change-stream watch, without a rehydrate" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     cache.start()   // establishes the watch (the backstop interval won't fire in-test)
@@ -231,7 +231,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   ).foreach { case (path, write) =>
     it should s"not let a change-stream read taken before its own $path roll that write back" in {
       val repository = new HandDeliveredRepository
-      val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+      val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
       val key        = cache.keyOf("Erupcja", Some(2024))
       cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
       cache.start()
@@ -246,7 +246,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "not let a change-stream read taken before its own slot landing roll that landing back" in {
     val repository = new HandDeliveredRepository
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key        = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1").copy(data = Map(Multikino -> SourceData(title = Some("Erupcja")))))
     cache.start()
@@ -260,7 +260,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "still apply an out-of-band change-stream read taken after its own write" in {
     val repository = new HandDeliveredRepository
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key        = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     cache.start()
@@ -289,7 +289,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // was undone — and a row created after it was evicted as "gone from Mongo".
   "a MovieCache rehydrate" should "not roll back a local write that landed after its snapshot was read" in {
     val repository = new RacedSnapshotRepository
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key        = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     repository.afterRead = () => { cache.putIfPresent(key, _.copy(imdbRating = Some(9.5))); () }
@@ -299,7 +299,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "not evict a row created after its snapshot was read" in {
     val repository = new RacedSnapshotRepository
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val old        = cache.keyOf("Erupcja", Some(2024))
     val newcomer   = cache.keyOf("Kumotry", Some(2025))
     cache.put(old, mkEnrichment("tt1"))
@@ -310,7 +310,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "still apply a snapshot row no local write overtook, and evict a row Mongo no longer holds" in {
     val repository = new RacedSnapshotRepository
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val kept       = cache.keyOf("Erupcja", Some(2024))
     val gone       = cache.keyOf("Kumotry", Some(2025))
     cache.put(kept, mkEnrichment("tt1", rating = Some(7.0)))
@@ -324,7 +324,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "stop applying changes once the watch is closed by stop()" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     cache.start()
@@ -384,7 +384,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "treat case + diacritics + whitespace differences as the same key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Drzewo Magii", Some(2024)), mkEnrichment("tt9"))
 
     val expected = mkEnrichment("tt9")
@@ -403,7 +403,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // own. Decoration stripping still happens for external lookups (apiQuery),
   // just not for identity.
   it should "key a decoration edition separately from the base film (no searchTitle in the merge key)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.keyOf("Top Gun / 40th Anniversary", Some(2025)) should not be cache.keyOf("Top Gun",  Some(2025))
     cache.keyOf("Avatar - wersja polska",     Some(2025)) should not be cache.keyOf("Avatar",   Some(2025))
   }
@@ -412,14 +412,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // and " & "↔" i " still collapse, so the same film spelt differently across
   // cinemas keeps one identity. (`sanitize` applies `normalize` + `canonical`.)
   it should "still collapse global canonical folds (Roman numerals, & → i) into one key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.keyOf("Mortal Kombat 2", Some(2026)) shouldBe cache.keyOf("Mortal Kombat II", Some(2026))
     cache.keyOf("Pizza & Pasta",   Some(2026)) shouldBe cache.keyOf("Pizza i Pasta",    Some(2026))
   }
 
   "put" should "write through to the repository (cache + Mongo stay in lockstep)" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
 
     repository.upserts.toList shouldBe List(("X", Some(2024), mkEnrichment("tt1")))
@@ -427,7 +427,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   "put" should "squash zero ratings to None on the way into the cache" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Unrated", Some(2026))
 
     cache.put(key, MovieRecord(
@@ -453,7 +453,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "putIfPresent" should "squash zero ratings produced by the updater to None" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Unrated", Some(2026))
     cache.put(key, mkEnrichment("tt0", rating = Some(7.5)))
 
@@ -469,7 +469,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   "invalidate" should "remove from both positive cache and repository" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("X", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
     repository.upserts.clear()
@@ -484,7 +484,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   "putIfPresent" should "update an existing row and return true" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Existing", Some(2024)), mkEnrichment("tt1"))
 
     val landed = cache.putIfPresent(cache.keyOf("Existing", Some(2024)), _.copy(imdbRating = Some(8.5)))
@@ -495,7 +495,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op and return false when the row was deleted" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Gone", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
     cache.invalidate(key)
@@ -512,7 +512,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // A rating listener that captured the row at T0, made a slow network
     // call, and now wants to update one field shouldn't clobber concurrent
     // updates to other fields. putIfPresent's updater receives the live row.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Foo", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
 
@@ -535,7 +535,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // `filmwebRating` should be persisted.
   it should "only persist the fields the updater actually changed, leaving repository-side edits to other fields intact" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Audit Race", Some(2024))
 
     // Cache state: stale filmwebUrl + old rating. Mongo gets the same on
@@ -562,7 +562,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "snapshot" should "return rows sorted by title (case-insensitive)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Zorro", None),   mkEnrichment("tt3"))
     cache.put(cache.keyOf("alpha", None),   mkEnrichment("tt1"))
     cache.put(cache.keyOf("Beta", None),    mkEnrichment("tt2"))
@@ -570,29 +570,34 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().map(_.title) shouldBe Seq("alpha", "Beta", "Zorro")
   }
 
-  "lastModified" should "advance on put" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+  "lastModified" should "be stamped from the injected clock, not the wall clock" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val before = cache.lastModified
-    Thread.sleep(2)
+    before.truncatedTo(java.time.temporal.ChronoUnit.SECONDS) shouldBe _root_.tools.SpecClock.Pinned.instant()
+    cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
+    cache.lastModified shouldBe before.plusNanos(1)  // the clock did not move: the stamp still did
+  }
+
+  it should "advance on put" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val before = cache.lastModified
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
     cache.lastModified.isAfter(before) shouldBe true
   }
 
   it should "advance on putIfPresent" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key = cache.keyOf("X", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
     val before = cache.lastModified
-    Thread.sleep(2)
     cache.putIfPresent(key, _.copy(imdbRating = Some(9.0)))
     cache.lastModified.isAfter(before) shouldBe true
   }
 
   it should "advance on rehydrate" in {
     val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val before = cache.lastModified
-    Thread.sleep(2)
     cache.rehydrate()
     cache.lastModified.isAfter(before) shouldBe true
   }
@@ -605,7 +610,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       ("Sense and Sensibility", Some(1995), MovieRecord(data = Map[Source, SourceData](Helios -> slot("Sense and Sensibility")))),
       ("Rozważna i romantyczna", Some(1995), MovieRecord(data = Map[Source, SourceData](Helios -> slot("Rozważna i romantyczna"))))),
       normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val slots = cache.snapshot().flatMap(_.record.data.values)
     slots should have size 2
     val casts = slots.flatMap(_.cast)

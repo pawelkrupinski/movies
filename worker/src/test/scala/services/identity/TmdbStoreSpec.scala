@@ -115,7 +115,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val service = new IdentityModelService(
       () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads), reads,
         Some(java.util.concurrent.Executors.newFixedThreadPool(2))), titles, IdentityCalibration.resolver); model = Some(m); m },
-      reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor())
+      reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned)
     w.store.onChanged(service.observed)
     service.takeUp()
     model.get.decisions.flatMap(_.film) shouldBe empty

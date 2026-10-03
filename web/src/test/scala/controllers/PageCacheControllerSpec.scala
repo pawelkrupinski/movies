@@ -99,10 +99,12 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
   // process serves, and a client holding it is rightly told 304 under ITS validator
   // (stale-while-revalidate: see `StaleWhileRevalidateSpec`).
   it should "200 with a fresh body after the cache version advances and the page is re-rendered, despite an old If-Modified-Since" in {
-    val (ctrl, cache) = buildController()
+    val clock         = new tools.MutableClock(TestMovieController.clock.instant())
+    val (ctrl, cache) = TestMovieController.build(Seq(cacheTestFilm),
+      readModel = Some(services.readmodel.TestReadModel.fromRecords(Seq(cacheTestFilm), clock)))
     val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
 
-    Thread.sleep(1100)
+    clock.advanceSeconds(2) // past Last-Modified's one-second resolution
     cache.reload()
     val duringRefresh = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     withClue("the copy being served while it re-renders is the one this client holds: ")(

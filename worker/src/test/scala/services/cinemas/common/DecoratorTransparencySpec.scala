@@ -67,10 +67,10 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
   private val decorators: Map[Class[?], (CinemaScraper => CinemaScraper, Set[String])] = Map(
     classOf[RetryingCinemaScraper]  -> ((d: CinemaScraper) => new RetryingCinemaScraper(d), Set.empty[String]),
     classOf[AdaptiveTimeoutScraper] -> ((d: CinemaScraper) => new AdaptiveTimeoutScraper(d, new HostScrapeStats(), executor), Set.empty[String]),
-    classOf[UptimeRecordingScraper] -> ((d: CinemaScraper) => new UptimeRecordingScraper(d, new UptimeMonitor()), Set.empty[String]),
+    classOf[UptimeRecordingScraper] -> ((d: CinemaScraper) => new UptimeRecordingScraper(d, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned), Set.empty[String]),
     classOf[SourceFallbackScraper]  -> ((d: CinemaScraper) => new SourceFallbackScraper(d,
       fallback = () => None, fallbackName = "Flicks", fallbackRef = () => None,
-      new UptimeMonitor(), new InMemoryFallbackStore()), Set.empty[String]),
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InMemoryFallbackStore()), Set.empty[String]),
     // The chunked reduce publishes its listing as a stand-in for the live scraper; only
     // whether that listing is whole, and whether its emptiness is the source saying so, are
     // its own (checked on their own below).
@@ -116,6 +116,6 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     // End to end over the seam that broke: the reduce's PreScraped listing, wrapped the way
     // `publishScrape` wraps it, is what the runner reads the flag off.
     val partial = PreScrapedCinemaScraper.of(delegate, () => Seq.empty[CinemaMovie], listingComplete = false)
-    new UptimeRecordingScraper(partial, new UptimeMonitor()).listingIsComplete shouldBe false
+    new UptimeRecordingScraper(partial, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned).listingIsComplete shouldBe false
   }
 }

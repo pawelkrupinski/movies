@@ -18,15 +18,15 @@ class FormatTokensSpec extends AnyFlatSpec with Matchers {
     ms.flatMap(_.showtimes).flatMap(_.format)
 
   private val clients: Seq[(String, () => Seq[CinemaMovie])] = Seq(
-    "KinoBulgarska" -> (() => new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska")).fetch()),
-    "KinoMuza"      -> (() => new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer).fetch()),
+    "KinoBulgarska" -> (() => new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"), today = _root_.tools.SpecClock.PinnedDay).fetch()),
+    "KinoMuza"      -> (() => new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()),
     "KinoPalacowe"  -> (() => new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer).fetch()),
     "CharlieMonroe" -> (() => new CharlieMonroeClient(new FakeHttpFetch("charlie-monroe")).fetch()),
     "Multikino"     -> (() => new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()),
     "Rialto"        -> (() => new RialtoClient(new FakeHttpFetch("rialto")).fetch()),
     "CC Kinepolis"  -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"), titles = titleNormalizer).fetch("1081", CinemaCityKinepolis)),
     "CC Plaza"      -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer).fetch("1078", CinemaCityPoznanPlaza)),
-    "Helios"        -> (() => new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()),
+    "Helios"        -> (() => new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()),
   )
 
   for ((name, run) <- clients) {
@@ -55,7 +55,7 @@ class FormatTokensSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "produce '2D NAP ATMOS' when Helios joins multi-token formats for display" in {
-    val helios = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()
+    val helios = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
     val triple = helios.flatMap(_.showtimes).find(_.format == List("2D", "NAP", "ATMOS"))
     triple                              shouldBe defined
     triple.get.format.mkString(" ")     shouldBe "2D NAP ATMOS"

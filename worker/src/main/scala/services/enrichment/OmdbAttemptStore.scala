@@ -64,7 +64,7 @@ class InMemoryOmdbAttemptStore extends OmdbAttemptStore {
  * left the corpus, so the collection can't grow unbounded. A `null` db disables
  * persistence (every film eligible, no backoff).
  */
-class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock = Clock.systemUTC()) extends OmdbAttemptStore with Logging {
+class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock) extends OmdbAttemptStore with Logging {
   private val CollectionName = "omdb_attempts"
   private val TtlSeconds     = 90.days.toSeconds
 

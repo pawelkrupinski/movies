@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer)
+  private val client  = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 

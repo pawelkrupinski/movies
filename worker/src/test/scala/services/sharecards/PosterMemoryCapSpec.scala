@@ -42,9 +42,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin)), gate = gate).coverSlot(poster); () })
     holder.start()
     try {
-      val deadline = System.nanoTime() + 5_000_000_000L
-      while (!Files.exists(started) && System.nanoTime() < deadline) Thread.sleep(10)
-      Files.exists(started) shouldBe true
+      tools.Eventually.poll(timeoutMs = 5000, pollMs = 10)(Files.exists(started)) shouldBe true
       body
     } finally { Files.createFile(release); holder.join(15000) }
   }

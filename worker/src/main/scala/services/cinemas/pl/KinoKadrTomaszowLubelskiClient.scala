@@ -8,7 +8,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 
@@ -50,7 +50,7 @@ import scala.jdk.CollectionConverters._
 class KinoKadrTomaszowLubelskiClient(
   http:                HttpFetch,
   override val cinema: Cinema    = KinoKadrTomaszowLubelski,
-  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate
 ) extends ChunkedCinemaScraper {
 
   import KinoKadrTomaszowLubelskiClient._

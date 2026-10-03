@@ -28,7 +28,7 @@ class ChunkScrapeReaper(
   initialDelay: ChunkScrapeReaper.InitialDelay = ChunkScrapeReaper.InitialDelay(45.seconds),
   staleAfter:   ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock             = Clock.systemUTC()
+  clock:        Clock
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("chunk-scrape-reaper")

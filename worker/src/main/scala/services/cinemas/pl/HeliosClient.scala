@@ -9,7 +9,7 @@ import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ListingPages}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
 import services.movies.TitleNormalizer
@@ -21,7 +21,7 @@ import services.movies.TitleNormalizer
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
   config:   HeliosCinema = HeliosNuxt.Poznan,
-  today: => LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today: => LocalDate,
   // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
   // `http`; the composition root injects ONE CachingDetailFetch shared across
   // every Helios location, so a film's detail body is fetched once per chain per
@@ -38,7 +38,7 @@ class HeliosClient(
   private val sourceId   = config.sourceId
   private val PageUrl     = config.pageUrl
   private val ApiBase    = "https://restapi.helios.pl/api"
-  private val WarsawZone = ZoneId.of("Europe/Warsaw")
+  private val WarsawZone = models.TimeZones.Poland
   private val OffsetDtf  = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
   // ── Fetch ─────────────────────────────────────────────────────────────────

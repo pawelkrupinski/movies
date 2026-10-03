@@ -48,7 +48,7 @@ object RecordWroclawWarszawaChains {
 
     Seq(HeliosNuxt.Magnolia, HeliosNuxt.AlejaBielany, HeliosNuxt.BlueCity).foreach { config =>
       println(s"Helios ${config.cinema.displayName}…")
-      println(s"  ${Try(new HeliosClient(record, config, titles = titleNormalizer).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
+      println(s"  ${Try(new HeliosClient(record, config, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
   }
 }

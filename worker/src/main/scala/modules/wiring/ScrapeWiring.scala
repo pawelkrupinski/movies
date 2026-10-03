@@ -31,7 +31,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
   // (record the outcome) for production ticks.
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
-    httpFetch, multikinoFetch, biletynaFetch, scrapeCalendar,
+    httpFetch, multikinoFetch, biletynaFetch, venueClock,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process: one `detail_cache` collection for
     // every chain, each document expiring on its own chain's TTL (see the class doc).
@@ -69,8 +69,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // Which day each venue is on, asked per scrape in the venue's own zone (Poland's is
   // the date Helios bakes into its REST URLs). Fixture-replay wirings pin it to the
   // capture day.
-  protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
-    new services.cinemas.common.ScrapeCalendar(clock)
+  protected def venueClock: models.VenueClock =
+    new models.VenueClock(clock)
 
   // Upper bound on how many times a cinema scrape is attempted before giving up.
   // Each scraper declares its own `maxFetchAttempts` (default 3; a flaky upstream
@@ -100,7 +100,7 @@ trait ScrapeWiring { self: WorkerWiring =>
 
   protected def filmwebFallbackFor(cinema: Cinema): Option[CinemaScraper] =
     filmwebFallbackIds.get(cinema).map(id =>
-      new FilmwebShowtimesClient(httpFetch, id, cinema, today = scrapeCalendar.todayInPoland))
+      new FilmwebShowtimesClient(httpFetch, id, cinema, today = venueClock.todayInPoland))
 
   lazy val filmwebFallbackStore: FallbackStore =
     new MongoFallbackStore(mongoConnection.database)
@@ -201,11 +201,11 @@ trait ScrapeWiring { self: WorkerWiring =>
     flicksFallbackSlugs.get(cinema).map { case ChainFlicksFallback.FlicksFallback(market, slug) =>
       // The market comes from the map, not a constant: a US chain venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
-      FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, slug, cinema, market, scrapeCalendar)), sixHours)
+      FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, slug, cinema, market, venueClock)), sixHours)
     }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
       FallbackPlan("Kinoprogramm", () => Some(path),
         () => Some(new KinoprogrammClient(httpFetch, path, cinema,
-          today = Some(scrapeCalendar.today(KinoprogrammClient.Zone)))),
+          today = venueClock.today(KinoprogrammClient.Zone))),
         FallbackAfter.FailedRuns(KinoprogrammFailedRuns))
     }).orElse(Option.when(eligible && filmwebEnabled)(
       FallbackPlan("Filmweb", () => filmwebFallbackIds.get(cinema).map(_.toString), () => filmwebFallbackFor(cinema), sixHours)))
@@ -304,7 +304,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // due schedule by the same rule. See ScrapeFreshnessPolicy for why a broken venue
   // MUST eventually be stamped: un-stamped venues sort first in the reaper's
   // oldest-first order and otherwise camp on the whole per-tick budget forever.
-  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore))
+  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore), clock = clock)
 
   // ONE shared due schedule (`scrapeDueWindow`, an eager member of the root) backs
   // both the scrape reaper (enqueue) and the scrape handler (pickup re-gate), so
@@ -329,7 +329,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     // merely failing or has 404'd for over a day.
     scrapeArchive = scrapeArchive,
     costs = scrapeCostStore
-  )
+  , clock = clock)
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
@@ -360,5 +360,5 @@ trait ScrapeWiring { self: WorkerWiring =>
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
       chunkSpread = scrapeChunkSpread,
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock)
 }

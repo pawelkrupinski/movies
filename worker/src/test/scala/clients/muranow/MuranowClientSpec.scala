@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 class MuranowClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new MuranowClient(new FakeHttpFetch("kino-muranow"))
+  private val client  = new MuranowClient(new FakeHttpFetch("kino-muranow"), today = _root_.tools.SpecClock.PinnedDay)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 

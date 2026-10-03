@@ -2034,7 +2034,7 @@ object UsRoster {
       }
       State(slug, name, lat, lon, venues,
             metros.map { case (label, mlat, mlon, zone) =>
-              label -> MetroCentre(mlat, mlon, ZoneId.of(zone))
+              label -> MetroCentre(mlat, mlon, TimeZones.named(zone))
             }.toMap)
     }
 
@@ -2204,7 +2204,7 @@ object SpanishRoster {
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
         (new SpanishCinema(unique, pill), theaterId, ocineServer)
       }
-      (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), towns, venues.map(_._1)), venues)
+      (SpanishPlace(slug, name, community, lat, lon, TimeZones.named(zone), towns, venues.map(_._1)), venues)
     }
 
   val places: Seq[SpanishPlace]           = built.map(_._1)

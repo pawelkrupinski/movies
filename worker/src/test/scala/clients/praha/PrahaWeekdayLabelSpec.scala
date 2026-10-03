@@ -16,7 +16,7 @@ import java.time.LocalDateTime
   * parse and the venue went white: 0 films, 0 showtimes. */
 class PrahaWeekdayLabelSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new PrahaClient(new FakeHttpFetch("kino-praha-weekday-label-2026-09")).fetch()
+  private val movies = new PrahaClient(new FakeHttpFetch("kino-praha-weekday-label-2026-09"), today = _root_.tools.SpecClock.PinnedDay).fetch()
 
   "PrahaClient" should "not be empty against a stamp carrying a weekday abbreviation" in {
     movies should not be empty

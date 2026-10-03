@@ -32,19 +32,12 @@ class RatingCadenceReaderIntegrationSpec extends AnyFlatSpec with Matchers with 
   "MongoRatingCadenceReader.all" should "read every stored row" in {
     val store = new MongoRatingCadenceStore(Some(isolated.database))
     store.record("imdb|tmdb:1", Some("7.1"), Instant.parse("2026-10-01T00:00:00Z"))
-    eventually(reader.all().map(_._1) shouldBe Seq("imdb|tmdb:1"))
+    _root_.tools.Eventually.eventually(reader.all().map(_._1) shouldBe Seq("imdb|tmdb:1"), timeoutMs = 10000)
     store.close()
   }
 
   it should "throw, not answer part of the collection, when its scan stops short" in {
     await(collection.insertOne(Document("_id" -> 42, "backoffLevel" -> 0)).toFuture())
     an[Exception] should be thrownBy reader.all()
-  }
-
-  private def eventually(check: => Unit): Unit = {
-    val deadline = System.nanoTime() + 10.seconds.toNanos
-    var last: Option[Throwable] = None
-    while (System.nanoTime() < deadline && { last = scala.util.Try(check).failed.toOption; last.isDefined }) Thread.sleep(50)
-    last.foreach(throw _)
   }
 }

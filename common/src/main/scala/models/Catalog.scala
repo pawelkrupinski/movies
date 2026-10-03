@@ -33,7 +33,7 @@ object Catalog {
    *  city-less country. */
   private def countryTimezone(c: Country): String =
     c.cities.maxByOption(city => (city.cinemas.size, city.slug))
-      .map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+      .map(_.zoneId.getId).getOrElse(TimeZones.Poland.getId)
 
   /** The slugs whose URLs the web now 301s onto each city (`City.renamedSlugs`) — a
    *  retired page's, a renamed metro's — sorted, and absent for every city that never

@@ -26,7 +26,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   private def controller(): MovieController = {
     val store = TestReadModel.store(records)
     store.findAllMovies().filter(_.title == "Diuna").foreach(m => store.upsertMovie(m.copy(shareCard = Some(card))))
-    val readModel = new WebReadModel(store)
+    val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
     TestMovieController.build(records, readModel = Some(readModel))._1
   }

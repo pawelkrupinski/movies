@@ -4,7 +4,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 /**
  * ODEON (odeon.co.uk) — the UK's largest chain (100+ venues), scraped through
@@ -43,7 +43,7 @@ class OdeonClient(
   val siteId:          String,
   override val cinema: Cinema,
   authToken:           () => Option[String],
-  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
+  today:               => LocalDate
 ) extends ChunkedCinemaScraper {
 
   import OdeonClient._

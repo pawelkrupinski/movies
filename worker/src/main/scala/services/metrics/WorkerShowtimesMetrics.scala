@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import services.movies.StoredMovieRecord
 
-import java.time.{Clock, LocalDateTime}
+import java.time.Clock
 
 /**
  * Per-city census of how many INDIVIDUAL SHOWTIMES (single dated slots) the source
@@ -32,7 +32,7 @@ import java.time.{Clock, LocalDateTime}
 class WorkerShowtimesMetrics(
   showtimes:   Gauge,
   countryCode: String,
-  clock:       Clock     = Clock.systemDefaultZone(),
+  clock:       Clock,
   cities:      Seq[City] = City.all,
   // The corpus this collector counts belongs to `countryCode`, so the film ids it
   // projects must fold titles with THAT country's rules — otherwise the gauge
@@ -87,7 +87,7 @@ object WorkerShowtimesMetrics {
   class ShowtimeTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
     private val bySlug = cities.map(c => c.slug -> c).toMap
     // Each city's "now", read once a pass rather than once per card and city.
-    private val nowIn  = cities.map(c => c.slug -> LocalDateTime.now(clock.withZone(c.zoneId))).toMap
+    private val nowIn  = { val venueClock = new models.VenueClock(clock); cities.map(c => c.slug -> venueClock.nowIn(c)).toMap }
     private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
     def accept(row: CorpusRow): Unit =

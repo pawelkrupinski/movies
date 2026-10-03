@@ -52,11 +52,10 @@ class ProfileEndpointSpec extends AnyFlatSpec with Matchers {
 
   "JfrFlightRecorder" should "write its recording when it ends, and refuse a second while it runs" in {
     val dir      = HeapDumpDirectory(Files.createTempDirectory("profile"))
-    val recorder = new JfrFlightRecorder(dir)
+    val recorder = new JfrFlightRecorder(dir, clock = _root_.tools.SpecClock.Pinned)
     val file     = recorder.record(1.second).toOption.get
     recorder.record(1.second) shouldBe Left("a recording is already running")
-    val deadline = System.nanoTime() + 20.seconds.toNanos
-    while (!(Files.exists(java.nio.file.Path.of(file)) && Files.size(java.nio.file.Path.of(file)) > 0) && System.nanoTime() < deadline) Thread.sleep(200)
+    tools.Eventually.poll(timeoutMs = 20000, pollMs = 200)(Files.exists(java.nio.file.Path.of(file)) && Files.size(java.nio.file.Path.of(file)) > 0)
     Files.size(java.nio.file.Path.of(file)) should be > 0L
   }
 }

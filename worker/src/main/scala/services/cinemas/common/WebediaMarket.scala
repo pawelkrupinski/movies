@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import java.time.ZoneId
+import models.TimeZones
 
 /**
  * One national deployment of the Webedia (AlloCiné) listings platform.
@@ -90,7 +91,7 @@ object WebediaMarket {
   /** Germany — Filmstarts. Theater ids are `A####`. */
   case object Germany extends WebediaMarket(
     host                 = "www.filmstarts.de",
-    zoneId               = ZoneId.of("Europe/Berlin"),
+    zoneId               = TimeZones.Germany,
     hourMarker           = "Std",
     minuteMarker         = "Min",
     originalVersionToken  = "OV",
@@ -114,7 +115,7 @@ object WebediaMarket {
    *  zone, so a client for a Canary venue is handed that city's date. */
   case object Spain extends WebediaMarket(
     host                 = "www.sensacine.com",
-    zoneId               = ZoneId.of("Europe/Madrid"),
+    zoneId               = TimeZones.Spain,
     hourMarker           = "h",
     minuteMarker         = "min",
     originalVersionToken  = "VO",

@@ -35,8 +35,8 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     val users = new InMemoryUserRepository
     users.upsert(User(id = UserId, provider = "google", providerSub = "G-1", email = Some(UserId),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore)
-    (new AuthController(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland), codes)
+    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
+    (new AuthController(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
   }
 
   private val Bindings: Seq[Option[String]] = Seq(None, Some("browser-A"), Some("browser-B"))
@@ -136,7 +136,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     }
     forAll(Table(("challenge", "verifier"), (for { c <- Challenges; v <- Verifiers } yield (c, v))*)) { (challenge, verifier) =>
       val ctl = new AuthController(Helpers.stubControllerComponents(), Map("google" -> google), new InMemoryUserRepository,
-        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore), models.Country.Poland)
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
       val start = ctl.start("google")(FakeRequest("GET",
         s"/auth/google/start?platform=ios${challenge.fold("")(c => s"&challenge=$c")}"))
       val sess  = session(start)

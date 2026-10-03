@@ -18,7 +18,7 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
   "a write on a key the store cannot be asked about" should "be deferred, not written under a second id" in {
     val repository = new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
     repository.failing = false
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = CacheKey("Beta", Some(2026), titleNormalizer)
     repository.upsert("Beta", Some(2026), MovieRecord(imdbRating = Some(6.5), data = slot(KinoMuza, "Beta")))
     val stored = repository.findAll().map(_.id)

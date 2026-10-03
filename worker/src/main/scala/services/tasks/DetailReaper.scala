@@ -71,7 +71,7 @@ class DetailReaper(
   // unaffected; the wiring sets a finite cap. BY-NAME: read live each tick.
   maxEnqueuePerTick: => DetailMaxEnqueuePerTick = DetailMaxEnqueuePerTick(Int.MaxValue),
   runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:     Clock = Clock.systemUTC(),
+  clock:     Clock,
   // Which of a row's pages it asks for, under which key (`DetailPages`): one per venue and film for
   // the pipeline, every page a venue slot names for a cut-over country's identity model.
   pages:     DetailPages = DetailPages.PerVenue

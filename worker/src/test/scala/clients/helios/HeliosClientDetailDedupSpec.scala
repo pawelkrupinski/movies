@@ -25,8 +25,8 @@ class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
   "Two Helios locations sharing one detail cache" should "fetch each film's detail only once" in {
     val http         = logged()
     val sharedDetail = new CachingDetailFetch(http, 6.hours)
-    val locationA   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer)
-    val locationB   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer)
+    val locationA   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
+    val locationB   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
 
     locationA.fetch()
     val afterFirst = movieGets(http)
@@ -39,8 +39,8 @@ class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
 
   it should "re-fetch per location WITHOUT a shared cache (control — proves the cache is what dedups)" in {
     val http      = logged()
-    val locationA = new HeliosClient(http, titles = titleNormalizer) // detailHttp defaults to http — no caching
-    val locationB = new HeliosClient(http, titles = titleNormalizer)
+    val locationA = new HeliosClient(http, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay) // detailHttp defaults to http — no caching
+    val locationB = new HeliosClient(http, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay)
 
     locationA.fetch()
     val afterFirst = movieGets(http)

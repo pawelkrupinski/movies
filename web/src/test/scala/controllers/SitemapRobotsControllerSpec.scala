@@ -164,7 +164,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(TestMovieController.now.plusDays(1), None)))
 
   private class StubReadModel(repository: InMemoryReadModelRepository, stamps: Map[String, Instant])
-      extends WebReadModel(repository) {
+      extends WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned) {
     override def lastModifiedFor(citySlug: String): Instant = stamps.getOrElse(citySlug, Instant.EPOCH)
   }
 
@@ -227,7 +227,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
       repository.upsertScreening(
         CityScreening(s"s-$i", id, "poznan", Multikino.displayName, None, Seq(models.Showtime(now, None))))
     }
-    val readModel = new WebReadModel(repository)
+    val readModel = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
     TestMovieController.build(Nil, readModel = Some(readModel))._1
   }

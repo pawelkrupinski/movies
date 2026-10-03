@@ -42,13 +42,13 @@ class OcineClient(
   http:        HttpFetch,
   ticketingServer: String,
   override val cinema: Cinema,
-  today:       => Option[LocalDate] = None
+  today:       => LocalDate
 ) extends ChunkedCinemaScraper {
 
   import OcineClient._
 
   private val baseUrl      = OcineClient.baseUrl(ticketingServer)
-  private def referenceDay = today.getOrElse(LocalDate.now(Zone))
+  private def referenceDay = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
 
@@ -86,7 +86,7 @@ object OcineClient {
   /** Used only to resolve "today" for the far-date bound when none is injected,
    *  so one zone serves every venue — 7 Palmas, on Canary time an hour behind,
    *  included: an hour cannot move a bound set months out. */
-  val Zone: ZoneId = ZoneId.of("Europe/Madrid")
+  val Zone: ZoneId = models.TimeZones.Spain
 
   /** The body the site's own cartelera posts. An empty `token` asks the server
    *  for a fresh anonymous one (returned alongside the listing, unused by us);

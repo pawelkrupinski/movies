@@ -35,7 +35,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
                             venues: Seq[Cinema] = programme.keys.toSeq,
                             listingsRead: () => Unit = () => (), announceFails: Boolean = false) {
     val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
-    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
     val filmIds    = new InMemoryFilmIdCounterStore

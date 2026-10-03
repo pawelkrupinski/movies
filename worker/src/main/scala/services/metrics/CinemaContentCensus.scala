@@ -69,7 +69,7 @@ class CinemaContentCensus(
   neverContent: Gauge,
   staleVenues:  Gauge,
   country:      Country,
-  clock:        Clock = Clock.systemUTC(),
+  clock:        Clock,
   override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval
 ) extends SampledCensus {
   import CinemaContentCensus._

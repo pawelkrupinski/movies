@@ -113,11 +113,14 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "not trust an entry older than entryTtl even with no disconnect at all" in {
     val repository = new InMemoryUserStateRepository
-    val cache = new CaffeineUserChangeTimeCache(repository, entryTtl = 1.millisecond)
+    val clock = new tools.MutableClock(Now)
+    val cache = new CaffeineUserChangeTimeCache(repository, entryTtl = 1.minute, ticker = clock.ticker)
     cache.start()
 
     repository.upsert(UserState("u1", Set.empty, Set.empty, Now))
-    Thread.sleep(20)
+    clock.advanceSeconds(59)
+    cache.lastChangeAt("u1") shouldBe defined
+    clock.advanceSeconds(1)
     cache.lastChangeAt("u1") shouldBe empty
   }
 

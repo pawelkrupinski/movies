@@ -12,7 +12,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"))
+  private val client  = new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"), today = _root_.tools.SpecClock.PinnedDay)
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
     .map(cm => cm.copy(movie = cm.movie.copy(title = titleNormalizer.recase(cm.movie.title))))

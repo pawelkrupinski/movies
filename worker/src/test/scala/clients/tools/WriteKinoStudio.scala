@@ -5,7 +5,7 @@ import services.cinemas.pl.KinoStudioClient
 
 object WriteKinoStudio {
   def main(args: Array[String]): Unit = {
-    val client = new KinoStudioClient(new RecordingHttpFetch("kino-studio-opole", new RealHttpFetch()))
+    val client = new KinoStudioClient(new RecordingHttpFetch("kino-studio-opole", new RealHttpFetch()), today = models.VenueClock.system.todayInPoland)
     val films  = client.fetch()
     films.foreach(f => println(s"${f.movie.title}: ${f.showtimes.map(_.dateTime).mkString(", ")}"))
     println(s"Total: ${films.size} film(s)")

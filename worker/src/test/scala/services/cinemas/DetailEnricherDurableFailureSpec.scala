@@ -55,32 +55,32 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
   /** Every deferred-detail cinema, built against a fetch that always fails. The
    *  constructor args beyond `http` don't matter here — nothing is parsed. */
   private def enrichers(http: HttpFetch): Seq[(String, DetailEnricher)] = Seq(
-    "Alternatywy"        -> new AlternatywyClient(http, titles = titleNormalizer),
+    "Alternatywy"        -> new AlternatywyClient(http, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay),
     "Amondo"             -> new AmondoClient(http),
     "Bilety24Organizer"  -> new Bilety24OrganizerClient(http, "https://x/org", KinoApollo, titles = titleNormalizer),
     "CinemaCity"         -> new CinemaCityScraper(new CinemaCityClient(http, titles = titleNormalizer), "1081", CinemaCityKinepolis),
-    "Cineworld"          -> new CineworldClient(http, "x001-cineworld-cinema-test", KinoApollo),
+    "Cineworld"          -> new CineworldClient(http, "x001-cineworld-cinema-test", KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
     "Cytadela"           -> new CytadelaClient(http),
     "Dcf"                -> new DcfClient(http),
-    "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo),
+    "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
     "Falenica"           -> new FalenicaClient(http),
-    "Iluzjon"            -> new IluzjonClient(http),
+    "Iluzjon"            -> new IluzjonClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "KinoApollo"         -> new KinoApolloClient(http, titles = titleNormalizer),
-    "KinoBulgarska"      -> new KinoBulgarskaClient(http),
+    "KinoBulgarska"      -> new KinoBulgarskaClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "KinoFenomen"        -> new KinoFenomenClient(http),
-    "KinoMuza"           -> new KinoMuzaClient(http, titles = titleNormalizer),
+    "KinoMuza"           -> new KinoMuzaClient(http, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay),
     "KinoPalacowe"       -> new KinoPalacoweClient(http, titles = titleNormalizer),
     "KinoParadox"        -> new KinoParadoxClient(http, KinoApollo),
-    "KinoPodBaranami"    -> new KinoPodBaranamiClient(http, KinoApollo),
+    "KinoPodBaranami"    -> new KinoPodBaranamiClient(http, KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
     "KinoSfinks"         -> new KinoSfinksClient(http, KinoApollo),
-    "Kinomuzeum"         -> new KinomuzeumClient(http),
+    "Kinomuzeum"         -> new KinomuzeumClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "Kinoteka"           -> new KinotekaClient(http, titles = titleNormalizer),
-    "Muranow"            -> new MuranowClient(http),
+    "Muranow"            -> new MuranowClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "NoveKino"           -> new NoveKinoClient(http, "slug", KinoApollo),
-    "NoweHoryzonty"      -> new NoweHoryzontyClient(http),
+    "NoweHoryzonty"      -> new NoweHoryzontyClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "Pionier"            -> new PionierClient(http),
     "Rialto"             -> new RialtoClient(http),
-    "Ujazdowski"         -> new UjazdowskiClient(http)
+    "Ujazdowski"         -> new UjazdowskiClient(http, today = _root_.tools.SpecClock.PinnedDay)
   )
 
   "every deferred-detail cinema" should "report a 404 detail page as Gone, so the handler stamps it" in {

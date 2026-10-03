@@ -6,7 +6,7 @@ import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
+import java.time.{LocalDate, LocalDateTime, YearMonth}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -37,7 +37,7 @@ class IksorisCalendarClient(
   http:  HttpFetch,
   page:  IksorisBookingPage,
   override val cinema: Cinema,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper {
 
   import IksorisCalendarClient._

@@ -325,7 +325,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val map     = Map(cinemaName -> (new FakeChunkedScraper(slices): ChunkedCinemaScraper))
     val planner = new ChunkScrapePlanner(map, store, queue, _ => (),
-      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(6.minutes))
 
     planner.plan(cinemaName) shouldBe 6
@@ -345,7 +345,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val scraper = new FakeChunkedScraper(slices)
     val planner = new ChunkScrapePlanner(Map(cinemaName -> (scraper: ChunkedCinemaScraper)), new InMemoryChunkScrapeStore, queue, _ => (),
-      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), costs = costs)
 
     planner.plan(cinemaName) shouldBe 6
@@ -366,7 +366,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val newer   = new FakeChunkedScraper(slices(20), cinema = KinoApollo)
     def planAt(at: Instant, scraper: FakeChunkedScraper) =
       new ChunkScrapePlanner(Map(scraper.cinema.displayName -> (scraper: ChunkedCinemaScraper)), store, queue, _ => (),
-        new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+        new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
         Clock.fixed(at, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(5.minutes)).plan(scraper.cinema.displayName)
 
     planAt(now, older) shouldBe 2                   // chunks eligible at +0s and +150s

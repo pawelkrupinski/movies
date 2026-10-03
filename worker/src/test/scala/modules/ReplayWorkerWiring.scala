@@ -51,18 +51,18 @@ class ReplayWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fix
   // corpus is a localStack restart away.)
   override lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore,
-      interval = services.tasks.ScrapeReaper.TickInterval(24.hours), initialDelay = settings.ScrapeInitialDelay(initialScrapeDelay.value), runStore = scheduledRunStore)
+      interval = services.tasks.ScrapeReaper.TickInterval(24.hours), initialDelay = settings.ScrapeInitialDelay(initialScrapeDelay.value), runStore = scheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
   override lazy val detailReaper =
     new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-      tickInterval = settings.DetailTickInterval(24.hours), runStore = scheduledRunStore)
+      tickInterval = settings.DetailTickInterval(24.hours), runStore = scheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
 
   // Helios bakes the scrape day into its REST URLs, so pin it to the captured
   // day or every Helios fixture misses. Prefer <directory>/CAPTURE_DATE (written by
   // the recorder), fall back to the directory name if it's dd-MM-yyyy, else the real
   // date (FakeHttpFetch then returns its empty fallback for the day's URLs).
-  override protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
+  override protected def venueClock: models.VenueClock =
     ReplayWorkerWiring.captureDate(fixtureDirectory, fixtureRoot)
-      .fold(super.scrapeCalendar)(services.cinemas.common.ScrapeCalendar.fixedOn)
+      .fold(super.venueClock)(models.VenueClock.fixedOn)
 }
 
 object ReplayWorkerWiring {

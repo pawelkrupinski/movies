@@ -17,9 +17,12 @@ import scala.concurrent.duration._
  * schedule. The settle and the identity shadow run each ride their own.
  */
 class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDuration, initialDelay: FiniteDuration,
-                          runStore: ScheduledRunStore, clock: Clock) extends Stoppable with Logging {
+                          runStore: ScheduledRunStore, clock: Clock,
+                          // Builds the task's scheduler from its name; a spec hands in a stepped one.
+                          newScheduler: String => ScheduledExecutorService = DaemonExecutors.scheduler(_))
+    extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler(name)
+  private val scheduler: ScheduledExecutorService = newScheduler(name)
 
   def start(): Unit = {
     scheduleNext(initialDelay)

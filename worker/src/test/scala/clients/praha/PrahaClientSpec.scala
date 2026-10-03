@@ -18,7 +18,7 @@ import java.time.LocalDateTime
  *  its own site — the reason we scrape mteatr.pl rather than Filmweb id 2180. */
 class PrahaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new PrahaClient(new FakeHttpFetch("kino-praha")).fetch()
+  private val movies = new PrahaClient(new FakeHttpFetch("kino-praha"), today = _root_.tools.SpecClock.PinnedDay).fetch()
 
   "PrahaClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty

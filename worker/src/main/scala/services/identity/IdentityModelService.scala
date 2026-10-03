@@ -64,7 +64,7 @@ final class IdentityModelService(
   beforeDrain: () => Unit = () => (),
   /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,
-  clock:      java.time.Clock = java.time.Clock.systemUTC()
+  clock:      java.time.Clock
 ) extends Logging {
 
   // New listings waiting for their venue page, by venue, with when each began to wait. Touched only on

@@ -3,11 +3,12 @@ package controllers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.{Clock, Instant, ZoneOffset}
+import java.time.{Clock, Instant}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import tools.{Eventually, MutableClock}
 
 /**
  * The /debug snapshots: a country switch must be answered from memory, never wait
@@ -16,15 +17,6 @@ import scala.concurrent.duration._
 class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   private given ExecutionContext = ExecutionContext.global
-
-  /** A clock the spec moves by hand. */
-  private final class ManualClock(start: Instant) extends Clock {
-    val now = new AtomicReference(start)
-    def advance(by: FiniteDuration): Unit = { now.updateAndGet(_.plusMillis(by.toMillis)); () }
-    override def instant(): Instant = now.get()
-    override def getZone = ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): Clock = this
-  }
 
   /** A read the spec can hold open, counting how often it ran and answering 1, 2, 3… */
   private final class GatedRead {
@@ -38,11 +30,7 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private def eventually(cond: => Boolean): Unit = {
-    val deadline = System.nanoTime() + 5.seconds.toNanos
-    while (!cond && System.nanoTime() < deadline) Thread.sleep(5)
-    cond shouldBe true
-  }
+  private def eventually(cond: => Boolean): Unit = { Eventually.eventually(cond shouldBe true, timeoutMs = 10000, pollMs = 5); () }
 
   private val Start = Instant.parse("2026-10-03T12:00:00Z")
 
@@ -58,12 +46,12 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   "get" should "wait for the very first read" in {
     val read = new GatedRead
-    snapshotOf(read, new ManualClock(Start)).get().value shouldBe 1
+    snapshotOf(read, new MutableClock(Start)).get().value shouldBe 1
   }
 
   it should "answer from the current snapshot without re-reading while it is young" in {
     val read     = new GatedRead
-    val snapshot = snapshotOf(read, new ManualClock(Start))
+    val snapshot = snapshotOf(read, new MutableClock(Start))
     snapshot.get()
     (1 to 5).foreach(_ => snapshot.get().value shouldBe 1)
     read.reads.get() shouldBe 1
@@ -71,10 +59,10 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   it should "serve the old snapshot AT ONCE while a stale one's re-read is still running, then the new one" in {
     val read     = new GatedRead
-    val clock    = new ManualClock(Start)
+    val clock    = new MutableClock(Start)
     val snapshot = snapshotOf(read, clock)
     snapshot.get()
-    clock.advance(16.seconds)
+    clock.advanceSeconds(16)
     read.gate = new CountDownLatch(1)   // the re-read hangs until released
 
     val started = System.nanoTime()
@@ -87,10 +75,10 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   it should "start only ONE re-read however many stale gets arrive while it runs" in {
     val read     = new GatedRead
-    val clock    = new ManualClock(Start)
+    val clock    = new MutableClock(Start)
     val snapshot = snapshotOf(read, clock)
     snapshot.get()
-    clock.advance(16.seconds)
+    clock.advanceSeconds(16)
     read.gate = new CountDownLatch(1)
     (1 to 20).foreach(_ => snapshot.get())
     read.gate.countDown()
@@ -100,15 +88,14 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   it should "keep the previous snapshot when a re-read fails" in {
     val read     = new GatedRead
-    val clock    = new ManualClock(Start)
+    val clock    = new MutableClock(Start)
     val snapshot = snapshotOf(read, clock)
     snapshot.get()
-    clock.advance(16.seconds)
+    clock.advanceSeconds(16)
     read.failNext = true
     snapshot.get().value shouldBe 1
     // The failed re-read has finished: the next stale get may try again, and still shows 1 until it lands.
     eventually(!read.failNext)
-    Thread.sleep(50)
     snapshot.get().value shouldBe 1
     eventually(snapshot.get().value == 2)
   }
@@ -116,12 +103,12 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
   it should "throw when the FIRST read fails, so the page shows an error, not an empty table" in {
     val read = new GatedRead
     read.failNext = true
-    an[IllegalStateException] should be thrownBy snapshotOf(read, new ManualClock(Start)).get()
+    an[IllegalStateException] should be thrownBy snapshotOf(read, new MutableClock(Start)).get()
   }
 
   it should "carry the mirror's newest stamp as of the read" in {
     val stamp = Start.minusSeconds(42)
-    snapshotOf(new GatedRead, new ManualClock(Start), Some(stamp)).get().mirrorNewest shouldBe Some(stamp)
+    snapshotOf(new GatedRead, new MutableClock(Start), Some(stamp)).get().mirrorNewest shouldBe Some(stamp)
   }
 
   it should "serve what a previous run stored AT ONCE on its first get, and re-read it behind" in {
@@ -129,7 +116,7 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     store.saved("spec") = DebugSnapshot(41, None, Some(Start.minusSeconds(3600)))
     val read     = new GatedRead
     read.gate    = new CountDownLatch(1)          // the fresh read hangs until released
-    val snapshot = snapshotOf(read, new ManualClock(Start), store = store)
+    val snapshot = snapshotOf(read, new MutableClock(Start), store = store)
 
     val started = System.nanoTime()
     snapshot.get().value shouldBe 41
@@ -141,22 +128,40 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   it should "store every read, stamped with when it was taken" in {
     val store = new MapStore
-    snapshotOf(new GatedRead, new ManualClock(Start), store = store).get()
+    snapshotOf(new GatedRead, new MutableClock(Start), store = store).get()
     eventually(store.saved.contains("spec"))
     store.saved("spec") shouldBe DebugSnapshot(1, None, Some(Start))
   }
 
+  // The read's in-flight marker was cleared by a callback queued AFTER its future completed, so a
+  // stale ask landing between the two joined the finished read and started none. Stepped one task
+  // at a time, the ask lands exactly there.
+  it should "have finished a read before its future completes, so the next stale ask starts another" in {
+    val read     = new GatedRead
+    val clock    = new MutableClock(Start)
+    val steps    = new tools.ManualScheduler(clock)
+    val snapshot = new RefreshingSnapshot[Int]("spec", () => read(), () => None, refreshAfter = 15.seconds, clock)(
+      using ExecutionContext.fromExecutor(steps))
+    snapshot.refreshIfOlderThan(60.seconds)
+    steps.runUntil(read.reads.get() == 1)   // the read's own task has run; its callbacks have not
+    clock.advanceSeconds(61)
+    val second = snapshot.refreshIfOlderThan(60.seconds)
+    steps.runUntil(second.isCompleted)
+    steps.runDue()
+    read.reads.get() shouldBe 2
+  }
+
   "refreshIfOlderThan" should "re-read a snapshot past the threshold and leave a younger one alone" in {
     val read     = new GatedRead
-    val clock    = new ManualClock(Start)
+    val clock    = new MutableClock(Start)
     val snapshot = snapshotOf(read, clock)
     scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), 5.seconds)   // nothing read yet: warms it, and says when
     read.reads.get() shouldBe 1
-    clock.advance(30.seconds)
-    snapshot.refreshIfOlderThan(60.seconds)
-    Thread.sleep(50)
+    clock.advanceSeconds(30)
+    // Young: completes at once without a read — awaited, so "no read" is an answer, not a race lost.
+    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), 5.seconds)
     read.reads.get() shouldBe 1
-    clock.advance(31.seconds)
+    clock.advanceSeconds(31)
     snapshot.refreshIfOlderThan(60.seconds)
     eventually(read.reads.get() == 2)
   }

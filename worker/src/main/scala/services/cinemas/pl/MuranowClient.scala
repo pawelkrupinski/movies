@@ -9,7 +9,7 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -21,7 +21,7 @@ import scala.util.Try
  * by that slug; the per-film detail page is fetched for runtime / director /
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
-class MuranowClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+class MuranowClient(http: HttpFetch, today: => LocalDate
 ) extends CinemaScraper with DetailEnricher {
 
 
@@ -122,7 +122,7 @@ object MuranowClient {
    *  prose. Used to skip such lines when picking the synopsis paragraph. */
   private[cinemas] val CreditsLine = """(?i)\breż\.\s.*,\s*\d{4},\s*\d+\s*min\s*$""".r
 
-  def yearFromLabel(label: String, fallbackYear: Int = LocalDate.now(ZoneId.of("Europe/Warsaw")).getYear): Int =
+  def yearFromLabel(label: String, fallbackYear: Int): Int =
     YearPat.findFirstMatchIn(label).map(_.group(1).toInt).getOrElse(fallbackYear)
 
   def slugOf(href: String): Option[String] =

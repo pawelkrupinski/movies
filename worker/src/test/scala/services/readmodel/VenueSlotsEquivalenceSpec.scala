@@ -108,7 +108,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
       val rng = new Random(10000 + round)
       // Showtimes in their own collection, as in production: what the cache strips its slots for.
       def cache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer,
-        screenings = Some(new InMemoryScreeningsRepository)), normalizer = titleNormalizer)
+        screenings = Some(new InMemoryScreeningsRepository)), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
       val (whole, venue) = (cache(), cache())
       var record = film(rng)
       whole.applyUpsert(stored(record), FilmWriteFence.Unfenced); venue.applyUpsert(stored(record), FilmWriteFence.Unfenced)

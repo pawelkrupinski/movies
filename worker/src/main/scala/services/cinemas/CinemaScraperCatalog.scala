@@ -4,7 +4,7 @@ import models._
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl._
-import services.cinemas.common.{FlicksClient, FlicksMarket, KinoprogrammClient, ScrapeCalendar}
+import services.cinemas.common.{FlicksClient, FlicksMarket, KinoprogrammClient}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
 import services.cinemas.es.OcineClient
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
@@ -46,8 +46,8 @@ import scala.concurrent.duration._
  *                  Cloudflare 403s it from the Hetzner egress the worker moved to
  *                  on 2026-08-29, which took all 102 Odeon venues red at once.
  *                  Same shape (and same remedy) as `flicksFetch`.
- *   - `calendar` — which day each venue is on, asked per scrape in the venue's own
- *                  zone ([[ScrapeCalendar]]); Poland's is the date Helios bakes into
+ *   - `venueClock` — which day each venue is on, asked per scrape in the venue's own
+ *                  zone ([[VenueClock]]); Poland's is the date Helios bakes into
  *                  its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
@@ -58,7 +58,7 @@ class CinemaScraperCatalog(
   http:    HttpFetch,
   mkFetch: HttpFetch,
   bnFetch: HttpFetch,
-  calendar: ScrapeCalendar,
+  venueClock: VenueClock,
   // Builds the per-chain detail-page cache, taking the chain it is for. The worker
   // injects a Mongo-backed cache so chain detail is deduped across servers; the
   // diagnostic ctor + tests default to the in-process CachingDetailFetch. The chain name
@@ -99,8 +99,8 @@ class CinemaScraperCatalog(
 
   /** Today in Poland, asked afresh at every read: each client takes it by name, so a
    *  scraper built at boot still plans from the day it scrapes on. */
-  private def today: LocalDate = calendar.todayInPoland
-  private val UnitedKingdom: ZoneId = ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone)
+  private def today: LocalDate = venueClock.todayInPoland
+  private val UnitedKingdom: ZoneId = TimeZones.UnitedKingdom
 
   /** Diagnostic ctor (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
    *  biletyna's venue pages, the venues behind `zyteFetch` — is the residential proxy over
@@ -109,13 +109,13 @@ class CinemaScraperCatalog(
    *  ([[modules.wiring.EgressWiring.paidEgressChain]]). `WorkerWiring` uses the primary ctor
    *  to inject its own routes. `configuration` is the caller's: a tool's `main` passes the
    *  process's, a spec none. */
-  def this(http: HttpFetch, calendar: ScrapeCalendar = ScrapeCalendar.system,
+  def this(http: HttpFetch, venueClock: VenueClock,
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
            configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
     this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http),
       modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
-      calendar, (_, h, ttl) => new CachingDetailFetch(h, ttl),
+      venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
       // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
       flicksFetch = http, vueFetch = http, odeonFetch = http,
@@ -890,7 +890,7 @@ class CinemaScraperCatalog(
     flicksIn(FlicksMarket.UnitedStates, slug, cinema)
 
   private def flicksIn(market: FlicksMarket, slug: String, cinema: Cinema): FlicksClient =
-    FlicksClient.forVenue(flicksFetch, slug, cinema, market, calendar)
+    FlicksClient.forVenue(flicksFetch, slug, cinema, market, venueClock)
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +
@@ -901,13 +901,13 @@ class CinemaScraperCatalog(
   // Showcase/Everyman still reach the origin directly, so they use `http`. Any
   // proxy failure rolls to the flicks fallback.
   private def cineworld(slug: String, cinema: Cinema): CineworldClient =
-    new CineworldClient(flicksFetch, slug, cinema, today = calendar.today(UnitedKingdom))
+    new CineworldClient(flicksFetch, slug, cinema, today = venueClock.today(UnitedKingdom))
   private def vueUk(id: String, cinema: Cinema): VueCinemasPlatformClient =
     new VueCinemasPlatformClient(vueFetch, VueCinemasPlatformClient.MyVueBaseUrl, id, cinema)
   private def showcase(id: String, cinema: Cinema): GatsbyBoxOfficeClient =
-    new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.ShowcaseBaseUrl, id, cinema)
+    new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.ShowcaseBaseUrl, id, cinema, today = venueClock.today(UnitedKingdom))
   private def everyman(id: String, cinema: Cinema): GatsbyBoxOfficeClient =
-    new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.EverymanBaseUrl, id, cinema)
+    new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.EverymanBaseUrl, id, cinema, today = venueClock.today(UnitedKingdom))
   // Odeon pulls Vista `ocapi` over the injected JWT (harvested via Zyte); only the
   // token harvest needs a browser, the data fetch needs only the bearer. The ocapi
   // host DOES sit behind Cloudflare though — it answered our Fly IP but 403s the
@@ -915,7 +915,7 @@ class CinemaScraperCatalog(
   // the residential `odeonFetch`, not direct `http`. A missing token, or a proxy
   // that can't get through either, throws → flicks fallback.
   private def odeon(id: String, cinema: Cinema): OdeonClient =
-    new OdeonClient(odeonFetch, id, cinema, odeonAuthToken, today = calendar.today(UnitedKingdom))
+    new OdeonClient(odeonFetch, id, cinema, odeonAuthToken, today = venueClock.today(UnitedKingdom))
   private val londonScrapers: Seq[CinemaScraper] = Seq(
     flicks("act-one-acton", ActOneActon),
     flicks("arthouse-crouch-end", ArthouseCrouchEnd),
@@ -1140,7 +1140,7 @@ class CinemaScraperCatalog(
     // `sitemap-cinemas.xml`, and `the-screen-cinema-windsor` (the only Windsor
     // slug Flicks has) is a different venue, so this venue was reading someone
     // else's page and scraping to zero. Its own site carries the programme.
-    new TheOldCourtClient(http, TheOldCourtWindsor, calendar.today(UnitedKingdom)),
+    new TheOldCourtClient(http, TheOldCourtWindsor, venueClock.today(UnitedKingdom)),
     vueUk("10070", VueCinemasNewbury),
     vueUk("10020", VueCinemasReading),
   )
@@ -1923,7 +1923,7 @@ class CinemaScraperCatalog(
 
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
-    WebediaShowtimesClient.forVenue(http, WebediaMarket.Germany, theaterId, cinema, calendar)
+    WebediaShowtimesClient.forVenue(http, WebediaMarket.Germany, theaterId, cinema, venueClock)
   // Germany — data-driven from the full GermanRoster (158 regions / 1,515 cinemas):
   // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
   // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
@@ -1937,14 +1937,14 @@ class CinemaScraperCatalog(
   // which is what keeps the two countries' pace gates and 429 back-offs
   // independent of each other; see `WebediaMarket`.
   private def sensacine(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
-    WebediaShowtimesClient.forVenue(http, WebediaMarket.Spain, theaterId, cinema, calendar)
+    WebediaShowtimesClient.forVenue(http, WebediaMarket.Spain, theaterId, cinema, venueClock)
 
   // Ocine venues read the chain's own ticketing server instead — SensaCine had
   // no programme at all for most of them, and does not list some at all; see
   // `data/spain/ocine.json` for which and why. Plain `http`: the servers sit
   // behind no bot wall.
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
-    new OcineClient(http, ticketingSlug, cinema, today = Some(calendar.today(OcineClient.Zone)))
+    new OcineClient(http, ticketingSlug, cinema, today = venueClock.todayAt(cinema, OcineClient.Zone))
 
   // Spain — data-driven from the full SpanishRoster (52 provinces / 602 cinemas):
   // one scraper per cinema, keyed by the PROVINCE slug City.slug uses — the
@@ -1989,10 +1989,10 @@ class CinemaScraperCatalog(
   // on 2026-08-30), as do both Webedia hosts — so all three use `http`, not the
   // residential `flicksFetch` the Flicks leg needs.
   private def alamo(venue: UsChainVenues.AlamoVenue, cinema: Cinema): AlamoDrafthouseClient =
-    new AlamoDrafthouseClient(http, venue.slug, cinema, ZoneId.of(venue.zoneId), today = Some(calendar.today(ZoneId.of(venue.zoneId))))
+    new AlamoDrafthouseClient(http, venue.slug, cinema, TimeZones.named(venue.zoneId), today = venueClock.today(TimeZones.named(venue.zoneId)))
   private def webedia(baseUrl: String, venue: UsChainVenues.WebediaVenue, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
-      timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = calendar.today(ZoneId.of(venue.zoneId)),
+      timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = venueClock.today(TimeZones.named(venue.zoneId)),
       ageRatings = services.cinemas.common.GatsbyBoxOfficeParser.MpaCertificates)
 
   /** The chain-primary scraper for a US venue, or `None` when it stays on Flicks.

@@ -57,7 +57,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "the controller" should "serve recorded uptime health as Prometheus text" in {
-    val monitor = new UptimeMonitor() // no Mongo — purely in-memory record/history
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned) // no Mongo — purely in-memory record/history
     (1 to 4).foreach(_ => monitor.recordFailure("Residential proxy", "too many authentication attempts. Limit: 3"))
     monitor.recordSuccess("Residential proxy")
     val controller = newController(monitor)
@@ -75,7 +75,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   // way it does the worker's; that panel is empty unless these series ship in the
   // very same exposition the uptime gauges do.
   it should "append the JVM + process resource collectors to the same exposition" in {
-    val body = contentAsString(newController(new UptimeMonitor()).metrics(FakeRequest()))
+    val body = contentAsString(newController(new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)).metrics(FakeRequest()))
 
     body should include ("jvm_memory_used_bytes")
     body should include ("jvm_memory_max_bytes")
@@ -141,7 +141,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "the controller" should "append the fallback-saturation gauges to the /metrics exposition" in {
-    val monitor = new UptimeMonitor() // no Mongo — tagService still writes its in-memory snapshot
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned) // no Mongo — tagService still writes its in-memory snapshot
     monitor.tagService("Cineworld Leeds", Set("shared:CineworldClient"))
     val fallbackStore = new InMemoryFallbackStore
     fallbackStore.put(fallbackState("Cineworld Leeds", active = true))
@@ -169,6 +169,6 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
 
   private def newController(monitor: UptimeMonitor, fallbackStore: InMemoryFallbackStore = new InMemoryFallbackStore) = {
     val movieMetrics = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(Seq.empty), TestMovieController.clock), models.Country.Poland, TestMovieController.clock)
-    new MetricsController(Helpers.stubControllerComponents(), monitor, fallbackStore, movieMetrics, new WebJvmMetrics, models.Country.Poland.code)
+    new MetricsController(Helpers.stubControllerComponents(), monitor, fallbackStore, movieMetrics, new WebJvmMetrics, models.Country.Poland.code, clock = _root_.tools.SpecClock.Pinned)
   }
 }

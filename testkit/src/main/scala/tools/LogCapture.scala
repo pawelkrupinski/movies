@@ -56,15 +56,10 @@ object LogCapture {
    *  logback's logger, and a bare cast threw `ClassCastException` under
    *  `common/testOnly services.movies.*` on 2026-09-06. Once initialisation completes
    *  `getLogger` returns the real logger, so this waits for it; when it is already
-   *  done (every call but the first), the loop body never runs. */
+   *  done (every call but the first), the first probe already holds. */
   def logbackLogger(name: String): LogbackLogger = {
-    val deadline = System.nanoTime() + 5L * 1000000000L
-    var logger   = LoggerFactory.getLogger(name)
-    while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {
-      Thread.sleep(10)
-      logger = LoggerFactory.getLogger(name)
-    }
-    logger.asInstanceOf[LogbackLogger]
+    Eventually.poll(timeoutMs = 5000, pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
+    LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
   }
 
   def capture(loggerName: String, level: Option[Level] = None)(body: => Unit): Seq[ILoggingEvent] = {

@@ -66,7 +66,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
     val runner  = runnerWith(archive)
     runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune"))))
     val vouched = PreScrapedCinemaScraper.of(new StubCinemaScraper(Multikino), () => Seq.empty, noScheduleListed = true)
-    runner.run(new UptimeRecordingScraper(vouched, new services.UptimeMonitor()))
+    runner.run(new UptimeRecordingScraper(vouched, new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned))
 
     archive.find(Multikino).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)
   }

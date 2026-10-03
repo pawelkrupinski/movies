@@ -48,7 +48,7 @@ trait ResolutionWiring { self: WorkerWiring =>
   ): ResolutionCache =
     new WriteThroughResolutionCache(
       new MongoResolutionStore(mongoConnection.database, collection, normalizer = titleNormalizer,
-        ttlMismatches = workerMetrics.ttlIndexMismatches),
+        ttlMismatches = workerMetrics.ttlIndexMismatches, clock = clock),
       // Labels the counter with the source this collection serves (`resolve_rt` →
       // `rt`), so `kinowo_worker_resolution_total` breaks the saving down per
       // rating source rather than lumping all five together.
@@ -72,5 +72,5 @@ trait ResolutionWiring { self: WorkerWiring =>
   lazy val settleReaper = new SettleReaper(() => settleTick(),
     interval = SettleInterval(identityProjectionInterval.value),
     initialDelay = SettleReaper.InitialDelay(identityProjectionInterval.value),
-    runStore = scheduledRunStore)
+    runStore = scheduledRunStore, clock = clock)
 }

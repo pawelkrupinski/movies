@@ -5,7 +5,7 @@ import models._
 import play.api.libs.json._
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages}
 
-import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
 import scala.util.Try
@@ -41,7 +41,7 @@ class Cinema1Client(
   http:     HttpFetch,
   override val cinema: Cinema,
   cinemaId: String,
-  today:    => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:    => LocalDate
 ) extends CinemaScraper {
 
   import Cinema1Client._

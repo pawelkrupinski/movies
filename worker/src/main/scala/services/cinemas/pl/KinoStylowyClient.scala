@@ -8,7 +8,7 @@ import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,7 +39,7 @@ import scala.util.Try
 class KinoStylowyClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoStylowy,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper with DetailEnricher {
 
   import KinoStylowyClient._

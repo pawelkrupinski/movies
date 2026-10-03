@@ -28,7 +28,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   // reading whatever was ambient at the moment each key was built — which is
   // exactly the coupling that made a rule set impossible to scope per country.
   private def cacheUnder(rs: TitleRuleSet, rows: StoredMovieRecord*): CaffeineMovieCache =
-    new CaffeineMovieCache(repositoryOf(rows*), normalizer = new TitleNormalizer(rs))
+    new CaffeineMovieCache(repositoryOf(rows*), normalizer = new TitleNormalizer(rs), clock = _root_.tools.SpecClock.Pinned)
 
   private def row(title: String, cinema: Source): StoredMovieRecord =
     StoredMovieRecord.synthesised(title, Some(2025),
@@ -53,12 +53,13 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   }
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
-    val cache = new CaffeineMovieCache(flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5), bootHydrateRetry = settings.BootHydrateRetryInterval(20.millis), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(
+      flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5), bootHydrateRetry = settings.BootHydrateRetryInterval(20.millis), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.entries should have size 1   // boot retried past the empty first findAll
   }
 
   it should "give up after the configured attempts on a genuinely empty repository" in {
-    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.entries should have size 0  // no rows, and it didn't hang
   }
 }

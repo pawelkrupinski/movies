@@ -7,7 +7,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -35,7 +35,7 @@ import scala.jdk.CollectionConverters._
 class KinoAmokClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            => LocalDate
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoAmokClient._

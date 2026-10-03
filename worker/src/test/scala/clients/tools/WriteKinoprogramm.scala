@@ -20,7 +20,7 @@ object WriteKinoprogramm {
     val fetch = new RecordingHttpFetch("kinoprogramm", new RealHttpFetch())
     Venues.foreach { case (theaterId, path) =>
       val cinema = GermanRoster.theaterIdByCinema.collectFirst { case (c, id) if id == theaterId => c }.get
-      val movies = new KinoprogrammClient(fetch, path, cinema, today = Some(today)).fetch()
+      val movies = new KinoprogrammClient(fetch, path, cinema, today = today).fetch()
       println(s"${cinema.displayName}: ${movies.size} films, ${movies.flatMap(_.showtimes).size} showtimes, " +
         s"${movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate).maxOption.getOrElse("-")} last day")
     }

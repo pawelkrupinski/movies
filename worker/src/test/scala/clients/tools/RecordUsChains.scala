@@ -32,7 +32,7 @@ object RecordUsChains {
     // Alamo — Lakeline (Austin, 300 sessions over 44 days when captured).
     val alamo = new AlamoDrafthouseClient(
       new RecordingHttpFetch("alamo-drafthouse", new RealHttpFetch()),
-      "lakeline", cinema("Alamo Drafthouse Lakeline"), ZoneId.of("America/Chicago"), today = Some(today))
+      "lakeline", cinema("Alamo Drafthouse Lakeline"), ZoneId.of("America/Chicago"), today = today)
     report("Alamo Lakeline", alamo.fetch())
 
     // Showcase US — Legacy Place (Dedham MA), the deepest-horizon venue of the 13.

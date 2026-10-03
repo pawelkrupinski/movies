@@ -9,7 +9,7 @@ import services.cinemas.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -51,7 +51,7 @@ import scala.util.Try
 class KinoIskraClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoIskra,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper {
 
   import KinoIskraClient._

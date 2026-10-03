@@ -31,9 +31,9 @@ object CorpusCensusBench {
     val repo       = AmbientMovieRepository.over(conn.database, normalizer)
     val registry   = new PrometheusRegistry()
     val scan = new WorkerCorpusScan(repo, Seq(
-      new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), country.code),
-      new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), country.code, cities = country.cities, normalizer = normalizer),
-      new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), country.code, cities = country.cities, normalizer = normalizer),
+      new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), country.code, clock = _root_.tools.SpecClock.Pinned),
+      new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), country.code, cities = country.cities, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned),
+      new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), country.code, cities = country.cities, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned),
       new WorkerSlotFanoutMetrics(WorkerSlotFanoutMetrics.gauge(registry), country.code)))
     val os      = ManagementFactory.getOperatingSystemMXBean.asInstanceOf[com.sun.management.OperatingSystemMXBean]
     val threads = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]

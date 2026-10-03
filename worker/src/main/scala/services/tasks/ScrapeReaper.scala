@@ -144,10 +144,10 @@ class ScrapeReaper(
   // `tick()` directly — and the deterministic snapshot — unaffected.
   enqueueSpread: ScrapeEnqueueSpreadSlices = ScrapeEnqueueSpreadSlices(1),
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:    Clock = Clock.systemUTC()
+  clock:    Clock,
+  // Runs the readiness wait and the ticks; a spec hands in a stepped one to cross the delays by hand.
+  scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
 ) extends Stoppable with Logging {
-
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
 
   /** Venues this tick must admit for the roster to be swept once per freshness
    *  window — `corpus / ticksPerWindow`, rounded up. The floor under every bound

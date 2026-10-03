@@ -46,7 +46,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // The fixture's capture day, parsed from a `dd-MM-yyyy` directory name (e.g.
   // "08-06-2026" → 2026-06-08). `None` for fixtures named for something else
   // ("multikino"), which aren't date-keyed. MUST be `lazy` — the super
-  // constructor reads it via the `scrapeCalendar` override (WorkerWiring builds
+  // constructor reads it via the `venueClock` override (WorkerWiring builds
   // `cinemaScraperCatalog` during init) BEFORE this subclass's fields would
   // otherwise initialize; a plain `val` reads as null there (NPE).
   lazy val fixtureDate: Option[java.time.LocalDate] =
@@ -59,8 +59,8 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // `LocalDate.now` makes those URLs miss the recorded fixtures, dropping Helios
   // room/format enrichment and breaking the whole-corpus snapshot on every day
   // after capture.
-  override protected def scrapeCalendar: services.cinemas.common.ScrapeCalendar =
-    fixtureDate.fold(super.scrapeCalendar)(services.cinemas.common.ScrapeCalendar.fixedOn)
+  override protected def venueClock: models.VenueClock =
+    fixtureDate.fold(super.venueClock)(models.VenueClock.fixedOn)
 
   // The CLIENT's notion of "today" (shared.js `dateBounds()`) for every page-test
   // render off this wiring — the in-JVM PageJsBehaviourSpec / PageSnapshotSpec

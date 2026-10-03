@@ -10,7 +10,7 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -64,7 +64,7 @@ class ModernEventsCalendarClient(
   http:  HttpFetch,
   page:  ModernEventsCalendarPage,
   override val cinema: Cinema,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   import ModernEventsCalendarClient._

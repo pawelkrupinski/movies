@@ -4,7 +4,7 @@ import models.{City, Country}
 import play.api.Logging
 import tools.DaemonExecutors
 
-import java.time.{Clock, LocalDateTime}
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import scala.util.Try
@@ -51,7 +51,7 @@ class WebMovieMetrics(
   def sample(): Unit = latest.set(cities.map(countsFor))
 
   private def countsFor(city: City): WebMovieMetrics.CityCounts = {
-    val now       = LocalDateTime.now(clock.withZone(city.zoneId))
+    val now       = new models.VenueClock(clock).nowIn(city)
     val tomorrow  = now.toLocalDate.plusDays(1)
     val schedules = service.toSchedules(city, now)
     WebMovieMetrics.CityCounts(

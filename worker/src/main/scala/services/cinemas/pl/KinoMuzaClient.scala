@@ -7,12 +7,12 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import services.movies.TitleNormalizer
 
-class KinoMuzaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
                      titles: TitleNormalizer)
   extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 

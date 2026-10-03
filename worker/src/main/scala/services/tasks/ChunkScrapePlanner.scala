@@ -39,7 +39,7 @@ class ChunkScrapePlanner(
   // failed), so such a cinema still advances its due schedule.
   scrapeFreshness: ScrapeFreshnessPolicy,
   staleAfter:    ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
-  clock:         Clock          = Clock.systemUTC(),
+  clock:         Clock,
   // Stagger this run's `ScrapeChunk` fan-out evenly across this window (chunk k of
   // n becomes claimable at `+ chunkSpread·k/n`) instead of making all n claimable
   // at once — so a big full-horizon venue can't monopolise the pool and starve the

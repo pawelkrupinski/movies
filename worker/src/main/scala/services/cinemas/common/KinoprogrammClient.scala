@@ -31,11 +31,11 @@ class KinoprogrammClient(
   path: String,                 // the venue page's path, e.g. "/kino/hannover/kino-am-raschplatz-60676"
   override val cinema: Cinema,
   /** The day the horizon is measured from; `None` means today in Germany. */
-  today: => Option[LocalDate] = None
+  today: => LocalDate
 ) extends CinemaScraper {
   import KinoprogrammClient._
 
-  private def referenceDay: LocalDate = today.getOrElse(LocalDate.now(Zone))
+  private def referenceDay: LocalDate = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
@@ -61,7 +61,7 @@ class KinoprogrammClient(
 
 object KinoprogrammClient {
   val BaseUrl: String = "https://www.kinoprogramm.com"
-  val Zone: ZoneId    = ZoneId.of("Europe/Berlin")
+  val Zone: ZoneId    = TimeZones.Germany
 
   /** One film's screenings on one week page, before films are merged across weeks. */
   private[common] final case class Film(

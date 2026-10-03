@@ -42,7 +42,7 @@ class MovieService(
   // Default no-op; production passes the shared `RatingEnqueuer.enqueueDueFor(..., force = true)`.
   forceRatingRefresh: (CacheKey, MovieRecord) => Unit = (_, _) => (),
   // Stamps the resolution time the rating-latency metric reads.
-  clock:                java.time.Clock = java.time.Clock.systemUTC()
+  clock:                java.time.Clock
 ) extends Logging {
 
   /** Pure cache lookup — never blocks, never schedules. */

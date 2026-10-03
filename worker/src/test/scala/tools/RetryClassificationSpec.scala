@@ -83,7 +83,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
 
   private def countsAgainstOrigin(failure: Throwable): Boolean =
     failure.isInstanceOf[HttpStatusException] || tripsOriginBreaker(failure) ||
-      new MonitoringHttpFetch(throwing(failure), new UptimeMonitor()).isFailure(failure)
+      new MonitoringHttpFetch(throwing(failure), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)).isFailure(failure)
 
   /** Whether one such failure opens the host's breaker (threshold 1). */
   private def tripsOriginBreaker(failure: Throwable): Boolean = {

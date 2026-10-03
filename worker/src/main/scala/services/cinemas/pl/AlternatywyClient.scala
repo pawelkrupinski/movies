@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 import java.util.Locale
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -38,7 +38,7 @@ import services.movies.TitleNormalizer
  */
 class AlternatywyClient(
   http:  HttpFetch,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  today: => LocalDate,
   titles: TitleNormalizer
 ) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
   import AlternatywyClient._

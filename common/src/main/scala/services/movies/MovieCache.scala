@@ -206,6 +206,8 @@ class CaffeineMovieCache(
   // The silent-write-skip counter (`putIfPresent`) — see `ScrapeLandingMetrics`. No-op for
   // web/tests; the worker wires `WorkerTaskMetrics`.
   scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
+  // Stamps `lastModified`. System time in production; specs pin or step it.
+  val clock: java.time.Clock,
   // Where the cache interns the strings a slot repeats across cinemas. The worker hands every
   // country's cache the process's one pool (owned by `WorkerMetrics`, whose gauges read it); a
   // lone cache — tests included — gets its own.
@@ -308,9 +310,11 @@ class CaffeineMovieCache(
   def occupancy: services.metrics.CacheOccupancy =
     services.metrics.CacheOccupancy.of(positive, weighted = false)
 
-  @volatile private var _lastModified: java.time.Instant = java.time.Instant.now()
-  def lastModified: java.time.Instant = _lastModified
-  private def touch(): Unit = { _lastModified = java.time.Instant.now() }
+  // Read from the injected clock, like every other stamp this cache takes — strictly monotonic, so a
+  // put in the same instant as the last one still moves it.
+  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](clock.instant())
+  def lastModified: java.time.Instant = _lastModified.get()
+  private def touch(): Unit = { _lastModified.updateAndGet(tools.MonotonicStamp.after(_, clock)); () }
 
   // Per-normalised-title locks for `recordCinemaScrape`. Two cinemas
   // first-scraping the same brand-new film concurrently used to each see an

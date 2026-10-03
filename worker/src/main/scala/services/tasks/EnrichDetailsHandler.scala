@@ -106,7 +106,7 @@ class EnrichDetailsHandler(
   bus:              EventBus,
   // SAME instance the DetailReaper enqueues on — see the class doc / [[DueWindow]].
   dueWindow:        DueWindow,
-  clock:            Clock = Clock.systemUTC(),
+  clock:            Clock,
   // The country's badge vocabulary, for the detail-page `format` merged below.
   // Wired at the composition root beside the cache's own copy; defaulted like the
   // cache's, for the same reason — a wrong value mis-SPELLS a badge rather than

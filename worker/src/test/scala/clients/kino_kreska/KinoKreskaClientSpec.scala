@@ -16,7 +16,7 @@ import java.time.LocalDateTime
  *  inference is needed. */
 class KinoKreskaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska).fetch()
+  private val movies = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska, today = _root_.tools.SpecClock.PinnedDay).fetch()
 
   "KinoKreskaClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty

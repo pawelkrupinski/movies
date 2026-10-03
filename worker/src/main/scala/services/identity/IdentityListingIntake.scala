@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, City}
+import models.{Cinema, CinemaMovie, VenueClock}
 import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
@@ -108,7 +108,7 @@ final class IdentityListingIntake(
   private def land(cinema: Cinema, known: Seq[CinemaMovie], offer: ListingIntake.Offer): Unit = {
     val stored = guards.get(cinema)
     val guard  = stored.getOrElse(ScrapeGuardState.Fresh)
-    val verdict = ListingIntake.decide(cinema, known, offer, guard, City.localNow(cinema, clock), maxRejections, normalizer)
+    val verdict = ListingIntake.decide(cinema, known, offer, guard, new VenueClock(clock).nowAt(cinema, clock.getZone), maxRejections, normalizer)
     verdict.guarded.foreach(g => metrics.recordGuardVerdict(g.guard, g.verdict))
     // An unreadable ledger is judged as fresh, and its state is never written back over it.
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)

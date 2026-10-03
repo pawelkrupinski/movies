@@ -72,7 +72,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
     await(db.getCollection(MovieRepository.Collection).countDocuments().toFuture())
 
   "a new film whose movies write Mongo refuses" should "be counted, leave the cache, and land on the next identical write" in {
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf(title, Some(2026))
 
     cache.put(key, landed)

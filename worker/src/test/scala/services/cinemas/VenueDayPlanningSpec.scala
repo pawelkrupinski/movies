@@ -4,7 +4,8 @@ import clients.tools.ScriptedByUrlHttpFetch
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.{FlicksClient, ScrapeCalendar, WebediaShowtimesClient}
+import services.cinemas.common.{FlicksClient, WebediaShowtimesClient}
+import models.VenueClock
 import tools.MutableClock
 
 import org.scalatest.prop.TableDrivenPropertyChecks.*
@@ -13,7 +14,7 @@ import java.time.{Duration, Instant, ZoneId}
 
 /** Scrapers are built once, at boot, and asked for their day at each scrape — in the venue's
  *  own zone. Before, every client got the catalogue's Warsaw `LocalDate`, fixed at boot. */
-class ScrapeCalendarSpec extends AnyFlatSpec with Matchers with OptionValues {
+class VenueDayPlanningSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // A Flicks programme page whose day tabs run 1–4 August.
   private val programme = new ScriptedByUrlHttpFetch(_ =>
@@ -22,7 +23,7 @@ class ScrapeCalendarSpec extends AnyFlatSpec with Matchers with OptionValues {
         .map(d => s"""<div class="timetable__day" data-date="$d"></div>""").mkString + "</div>")
 
   private def usFlicksVenue(clock: MutableClock): FlicksClient =
-    new CinemaScraperCatalog(programme, calendar = new ScrapeCalendar(clock))
+    new CinemaScraperCatalog(programme, venueClock = new VenueClock(clock))
       .all.find(_.cinema.displayName == "AMC Town Center 20").value.asInstanceOf[FlicksClient]
 
   "a US venue scraped at 01:00 Warsaw" should "keep that US evening's screenings" in {
@@ -47,7 +48,7 @@ class ScrapeCalendarSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   /** The first flicks.us venue whose city keeps `zone`. */
   private def flicksVenueIn(zone: String, clock: MutableClock): FlicksClient =
-    new CinemaScraperCatalog(fallBackProgramme, calendar = new ScrapeCalendar(clock)).all.collect {
+    new CinemaScraperCatalog(fallBackProgramme, venueClock = new VenueClock(clock)).all.collect {
       case f: FlicksClient if f.sourceUrl.exists(_.contains("flicks.us")) &&
         models.City.forCinema(f.cinema).exists(_.zoneId == ZoneId.of(zone)) => f
     }.headOption.getOrElse(fail(s"no flicks.us venue in $zone"))
@@ -79,7 +80,7 @@ class ScrapeCalendarSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def sensacineVenueIn(zone: String, clock: MutableClock): WebediaShowtimesClient = {
     val page = new ScriptedByUrlHttpFetch(_ =>
       """<div data-showtimes-dates="[&quot;2026-10-24&quot;,&quot;2026-10-25&quot;,&quot;2026-10-26&quot;]"></div>""")
-    new CinemaScraperCatalog(page, calendar = new ScrapeCalendar(clock)).all.collect {
+    new CinemaScraperCatalog(page, venueClock = new VenueClock(clock)).all.collect {
       case w: WebediaShowtimesClient if w.sourceUrl.exists(_.contains("sensacine")) &&
         models.City.forCinema(w.cinema).exists(_.zoneId == ZoneId.of(zone)) => w
     }.headOption.getOrElse(fail(s"no SensaCine venue in $zone"))

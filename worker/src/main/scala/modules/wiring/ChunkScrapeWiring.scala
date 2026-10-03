@@ -38,15 +38,15 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore)
-  lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database)
+    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore, clock = clock)
+  lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
-    pageMemo = chunkPageMemo, memoMetrics = taskMetrics)
+    pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
-    scrapeFreshnessPolicy)
+    scrapeFreshnessPolicy, clock = clock)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue)
   lazy val chunkScrapeReaper        = new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
-    runStore = scheduledRunStore)
+    runStore = scheduledRunStore, clock = clock)
 
   /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
    *  Keeps the reaper from re-admitting it into a no-op — see [[ScrapeInFlight]]. */

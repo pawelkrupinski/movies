@@ -25,7 +25,7 @@ import scala.util.Using
 class OdeonVenueMapSpec extends AnyFlatSpec with Matchers {
 
   // Constructing the catalogue does no network I/O — fetch() is never called here.
-  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("multikino"), services.cinemas.common.ScrapeCalendar.fixedOn(LocalDate.of(2026, 6, 8)))
+  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("multikino"), models.VenueClock.fixedOn(LocalDate.of(2026, 6, 8)))
 
   private val wired: Map[String, Cinema] =
     catalog.byCity.values.flatten.collect { case o: OdeonClient => o.siteId -> o.cinema }.toMap

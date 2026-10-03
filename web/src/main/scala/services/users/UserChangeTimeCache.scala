@@ -1,6 +1,6 @@
 package services.users
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Ticker}
 import play.api.Logging
 
 import java.time.Instant
@@ -50,7 +50,9 @@ object NoUserChangeTimeCache extends UserChangeTimeCache {
 final class CaffeineUserChangeTimeCache(
   repository: UserStateRepository,
   maxEntries: Long = 1000,
-  entryTtl:   FiniteDuration = 10.minutes
+  entryTtl:   FiniteDuration = 10.minutes,
+  // What `entryTtl` is measured on: the system's nanosecond ticker outside specs.
+  ticker:     Ticker         = Ticker.systemTicker()
 ) extends UserChangeTimeCache with Logging {
 
   // A synchronous executor: Caffeine's default runs eviction/expiry MAINTENANCE
@@ -64,6 +66,7 @@ final class CaffeineUserChangeTimeCache(
     Caffeine.newBuilder()
       .maximumSize(maxEntries)
       .expireAfterWrite(entryTtl.toMillis, TimeUnit.MILLISECONDS)
+      .ticker(ticker)
       .executor((r: Runnable) => r.run())
       .build()
 

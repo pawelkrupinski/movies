@@ -6,20 +6,13 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.InMemoryMovieRepository
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import java.time.{Clock, Instant, LocalDateTime, ZoneId, ZoneOffset}
+import java.time.{Instant, LocalDateTime}
 import scala.concurrent.duration.*
 
 /** The projection's share-card seam: `shareCard` on `web_movies`, and the first-publish gate. */
 class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
 
   private val T0 = Instant.parse("2026-06-01T10:00:00Z")
-
-  /** A clock the spec moves by hand. */
-  private final class StepClock(var now: Instant) extends Clock {
-    def getZone: ZoneId = ZoneOffset.UTC
-    override def withZone(zone: ZoneId): Clock = this
-    def instant(): Instant = now
-  }
 
   /** The ledger as the projection sees it: which cards exist is set by the spec. */
   private final class ScriptedLedger extends ShareCardLedger {
@@ -42,7 +35,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(screened)))
 
   private class Setup(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) {
-    val clock      = new StepClock(T0)
+    val clock      = new tools.MutableClock(T0)
     val ledger     = new ScriptedLedger
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel, shareCards = ledger, firstCardHold = settings.ShareCardFirstHold(2.minutes), clock = clock)
@@ -70,11 +63,11 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
 
   it should "be published anyway, with the fallback and marked pending, once its hold runs out" in new Setup {
     val id = upsert(7.5)
-    clock.now = T0.plusSeconds(119)
+    clock.setTo(T0.plusSeconds(119))
     projector.releaseExpiredHolds()
     published(id) shouldBe None
 
-    clock.now = T0.plusSeconds(120)
+    clock.setTo(T0.plusSeconds(120))
     projector.releaseExpiredHolds()
     published(id).map(m => (m.shareCard, m.shareCardPending)) shouldBe Some((None, true))
   }
@@ -84,7 +77,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     unreadable.failing = false
     new Setup(unreadable) {
       val id = upsert(7.5)
-      clock.now = T0.plusSeconds(120)
+      clock.setTo(T0.plusSeconds(120))
       unreadable.failing = true
       // Unread is not gone: the task must fail (and retry), not forget the card.
       an[IllegalStateException] should be thrownBy projector.releaseExpiredHolds()
@@ -107,7 +100,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
 
   it should "lose its pending mark, and have the scrapers told, when its card finally lands" in new Setup {
     val id = upsert(7.5)
-    clock.now = T0.plusSeconds(121)
+    clock.setTo(T0.plusSeconds(121))
     projector.releaseExpiredHolds()
     upsert(7.6)                                              // still no card: stays pending
     published(id).map(_.shareCardPending) shouldBe Some(true)

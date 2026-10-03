@@ -6,7 +6,7 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
 
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -27,7 +27,7 @@ import scala.util.Try
  */
 class UjazdowskiClient(
   http:  HttpFetch,
-  today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: => LocalDate
 ) extends CinemaScraper with DetailEnricher {
 
 
@@ -38,7 +38,7 @@ class UjazdowskiClient(
   private val ListingUrl = s"$BaseUrl/kino/repertuar"
   private val UtPat      = """ut=(\d+)""".r
   private val SlugPat    = """/kino/repertuar/([a-z0-9-]+)""".r
-  private val WarsawZone = ZoneId.of("Europe/Warsaw")
+  private val WarsawZone = models.TimeZones.Poland
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, meta: Option[String], poster: Option[String])
 

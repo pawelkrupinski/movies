@@ -163,7 +163,7 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // bilety.zamek.szczecin.pl stopped accepting TCP on :443 and :80 between
     // 2026-08-04 and 2026-08-08. Pinned because a scraper still naming that host
     // spends its whole time budget waiting for a connection that never opens.
-    val client = new KinoZamekClient(new FakeHttpFetch("kino-zamek"), KinoZamekSzczecin)
+    val client = new KinoZamekClient(new FakeHttpFetch("kino-zamek"), KinoZamekSzczecin, today = _root_.tools.SpecClock.PinnedDay)
     client.scrapeHosts shouldBe Set("zamek.szczecin.pl")
     client.sourceUrl.value shouldBe "https://zamek.szczecin.pl/wydarzenia/kino/"
   }

@@ -6,7 +6,7 @@ import models._
 import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, DayPickerProgramme, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -46,7 +46,7 @@ import scala.util.Try
 class KinoSDKSanokClient(
   http:   HttpFetch,
   override val cinema: Cinema = KinoSDK,
-  today:  => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:  => LocalDate
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSDKSanokClient.BaseUrl)

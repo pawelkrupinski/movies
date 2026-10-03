@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
 
   /** A read model that counts corpus walks, and the films joined per lookup. */
-  private class CountingReadModel(store: InMemoryReadModelRepository) extends WebReadModel(store) {
+  private class CountingReadModel(store: InMemoryReadModelRepository) extends WebReadModel(store, clock = _root_.tools.SpecClock.Pinned) {
     val allMoviesCalls = new AtomicInteger(0)
     val movieCalls     = new AtomicInteger(0)
     override def allMovies(): Seq[ResolvedMovie] = { allMoviesCalls.incrementAndGet(); super.allMovies() }

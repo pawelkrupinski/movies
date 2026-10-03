@@ -139,6 +139,6 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
   }
 
   "FilmwebShowtimesClient.parseFilmInfo" should "throw on a body that is not JSON" in {
-    an[Exception] should be thrownBy new FilmwebShowtimesClient(new UrlFragmentHttpFetch(Nil), 1, KinoDiana).parseFilmInfo(ErrorPage)
+    an[Exception] should be thrownBy new FilmwebShowtimesClient(new UrlFragmentHttpFetch(Nil), 1, KinoDiana, today = _root_.tools.SpecClock.PinnedDay).parseFilmInfo(ErrorPage)
   }
 }

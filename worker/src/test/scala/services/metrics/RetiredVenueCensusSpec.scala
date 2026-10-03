@@ -54,6 +54,21 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
     future.labelValues("pl").get() shouldBe 2.0
   }
 
+  // A multi-zone country: the venue's own clock decides "future", not the country's first city's.
+  it should "judge a retired venue's showtimes on its own city's clock" in {
+    val losAngeles = models.City.allModelled.find(_.zoneId == java.time.ZoneId.of("America/Los_Angeles")).get
+    val venue      = losAngeles.cinemas.head.displayName
+    val screenings = new InMemoryScreeningsRepository
+    // 05:00 UTC on 2 November: 00:00 in New York, 21:00 on the 1st in Los Angeles — a 21:30 show is still ahead.
+    screenings.upsertSlot("foo|2026", s"$venue␟foo", ListedShowtimes(Seq(at("2026-11-01T21:30")), None))
+    val registry       = new PrometheusRegistry()
+    val (rows, future) = RetiredVenueCensus.gauges(registry)
+    new RetiredVenueCensus(screenings, new InMemorySlotsRepository, VenueRoster.venuesOf(Country.UnitedStates) - venue,
+      rows, future, Country.UnitedStates, Clock.fixed(Instant.parse("2026-11-02T05:00:00Z"), ZoneOffset.UTC)).sample()
+    Country.UnitedStates.cities.head.zoneId should not be losAngeles.zoneId // else the country's fallback would agree
+    future.labelValues("us").get() shouldBe 1.0
+  }
+
   // "Kino Etiuda" is live while "Kino Etiuda OBK" is not: a prefix match would read one as the
   // other and either hide the retired rows or convict the live ones.
   it should "compare a row's venue to the roster by equality, never by prefix" in {

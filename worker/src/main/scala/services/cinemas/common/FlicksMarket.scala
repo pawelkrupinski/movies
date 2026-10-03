@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import java.time.ZoneId
+import models.TimeZones
 
 /**
  * One national deployment of the Flicks (Vista) listings platform.
@@ -40,7 +41,7 @@ object FlicksMarket {
 
   case object UnitedKingdom extends FlicksMarket(
     baseUrl = "https://www.flicks.co.uk",
-    zoneId  = ZoneId.of("Europe/London"),
+    zoneId  = TimeZones.UnitedKingdom,
   )
 
   /** The US market. The same site as the UK's, but SIX TIMES the corpus —
@@ -51,7 +52,7 @@ object FlicksMarket {
    *  each US city carries its own zone. */
   case object UnitedStates extends FlicksMarket(
     baseUrl = "https://www.flicks.us",
-    zoneId  = ZoneId.of("America/New_York"),
+    zoneId  = TimeZones.UsEastern,
   )
 
   val all: Seq[FlicksMarket] = Seq(UnitedKingdom, UnitedStates)

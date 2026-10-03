@@ -37,7 +37,7 @@ object ChunkPageMemo {
 /** The memo in Mongo (`scrape_chunk_pages`), because a worker restarts on every deploy, many times
  *  between two scrapes of a venue: one small document per (cinema, chunk key), gone a week after it
  *  was last written — a day page outlives its date by that at most. */
-final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: java.time.Clock = java.time.Clock.systemUTC())
+final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: java.time.Clock)
     extends ChunkPageMemo with Logging {
   private val pages: Option[MongoCollection[Document]] = db.map(_.getCollection("scrape_chunk_pages"))
 

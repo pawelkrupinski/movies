@@ -30,13 +30,13 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     @volatile var projectionStarted = false
 
     override lazy val scrapeReaper: ScrapeReaper =
-      new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore) {
+      new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, clock = _root_.tools.SpecClock.Pinned) {
         override def start(): Unit = scrapeStarted = true
       }
 
     override lazy val settleReaper: services.tasks.SettleReaper = {
       val runs = scheduledRunStore
-      new services.tasks.SettleReaper(() => (), runStore = runs) {
+      new services.tasks.SettleReaper(() => (), runStore = runs, clock = _root_.tools.SpecClock.Pinned) {
         override def start(): Unit = projectionStarted = true
       }
     }

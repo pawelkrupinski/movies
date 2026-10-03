@@ -97,7 +97,7 @@ trait TestWiring extends WorkerWiring {
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, detailCaptureBus,
     detailDueWindow, screeningTokens = screeningTokens, pages = venuePageStore
-  )
+  , clock = clock)
   // The fixture pipeline drives ONE `detailReaper.tick()` per pass and expects it
   // to enqueue the whole deferred-detail corpus (the prod per-tick cap would
   // truncate the snapshot). The cap is a prod burst-shedding lever, not a
@@ -158,7 +158,7 @@ trait TestWiring extends WorkerWiring {
    *  rather than on one harness because every end-to-end shape — fixture replay
    *  and archive replay alike — has to be able to render through the SAME seam
    *  the web app serves from, not through the raw worker cache. */
-  lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository)
+  lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository, clock = clock)
 
   /** Every venue whose scrape THREW inside [[cutoverTick]], as `venue: exception`,
    *  over the wiring's life. The tick carries on past a throwing venue, as production's

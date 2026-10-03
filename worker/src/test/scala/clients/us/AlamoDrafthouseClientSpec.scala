@@ -27,7 +27,7 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   private def clientOn(fixtures: HttpFetch, venueSlug: String = "lakeline") =
     new AlamoDrafthouseClient(fixtures, venueSlug, Lakeline,
-      ZoneId.of("America/Chicago"), today = Some(Today))
+      ZoneId.of("America/Chicago"), today = Today)
 
   private val films: Seq[CinemaMovie] = clientOn(new FakeHttpFetch("alamo-drafthouse")).fetch()
 

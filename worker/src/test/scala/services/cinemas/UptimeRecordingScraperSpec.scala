@@ -18,8 +18,8 @@ import scala.concurrent.duration._
 class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
 
   "UptimeRecordingScraper" should "record a success (green) when the scrape returns screenings" in {
-    val monitor = new UptimeMonitor()
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor).fetch() shouldBe OneMovie
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor, clock = _root_.tools.SpecClock.Pinned).fetch() shouldBe OneMovie
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 1
     bucket.failures  shouldBe 0
@@ -27,8 +27,8 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record an empty (not a success) when the scrape returns no movies" in {
-    val monitor = new UptimeMonitor()
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(Seq.empty))), monitor).fetch() shouldBe empty
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(Seq.empty))), monitor, clock = _root_.tools.SpecClock.Pinned).fetch() shouldBe empty
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
     bucket.zeroes    shouldBe 1
@@ -36,16 +36,16 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record an empty when movies come back with zero showtimes" in {
-    val monitor = new UptimeMonitor()
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(NoShowtimes))), monitor).fetch() shouldBe NoShowtimes
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(NoShowtimes))), monitor, clock = _root_.tools.SpecClock.Pinned).fetch() shouldBe NoShowtimes
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
     bucket.zeroes    shouldBe 1
   }
 
   it should "record a failure (red) and rethrow when the scrape throws" in {
-    val monitor = new UptimeMonitor()
-    val s = new UptimeRecordingScraper(ScriptedCinemaScraper(List(Left(new RuntimeException("down")))), monitor)
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    val s = new UptimeRecordingScraper(ScriptedCinemaScraper(List(Left(new RuntimeException("down")))), monitor, clock = _root_.tools.SpecClock.Pinned)
     intercept[RuntimeException] { s.fetch() }.getMessage shouldBe "down"
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
@@ -58,7 +58,7 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
   // all sit past the next 72 hours is still green, but its bucket is marked `thin`
   // so /uptime can show it — the Polonez shape (four pre-sale slots, nothing near).
   it should "mark a green scrape thin when none of its showtimes fall in the next 72 hours" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val fourDaysBefore = java.time.Clock.fixed(java.time.Instant.parse("2026-06-06T10:00:00Z"), java.time.ZoneOffset.UTC)
     new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor, clock = fourDaysBefore).fetch()
     val bucket = monitor.history(Multikino.displayName).head
@@ -67,7 +67,7 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not mark a green scrape thin when a showtime falls in the next 72 hours" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val sameDay = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T08:00:00Z"), java.time.ZoneOffset.UTC)
     new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor, clock = sameDay).fetch()
     monitor.history(Multikino.displayName).head.thin shouldBe false
@@ -77,14 +77,14 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
   // so the recorder sees only the green outcome — no yellow bar for a recovered
   // tick, exactly as the pre-split single class did.
   it should "record only a success when an inner retry recovers within the tick" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val s = new UptimeRecordingScraper(
       new RetryingCinemaScraper(
         ScriptedCinemaScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
         initialBackoff = 1.millis
       ),
       monitor
-    )
+    , clock = _root_.tools.SpecClock.Pinned)
     s.fetch() shouldBe OneMovie
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 1
@@ -102,19 +102,19 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
 
   it should "forward a Success outcome to the listener" in {
     val l = new RecordingListener
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(), l).fetch()
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), l, clock = _root_.tools.SpecClock.Pinned).fetch()
     l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Success)
   }
 
   it should "forward an Empty outcome to the listener" in {
     val l = new RecordingListener
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(Seq.empty))), new UptimeMonitor(), l).fetch()
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(Seq.empty))), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), l, clock = _root_.tools.SpecClock.Pinned).fetch()
     l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Empty)
   }
 
   it should "forward a Failure outcome to the listener and still rethrow" in {
     val l = new RecordingListener
-    val s = new UptimeRecordingScraper(ScriptedCinemaScraper(List(Left(new RuntimeException("down")))), new UptimeMonitor(), l)
+    val s = new UptimeRecordingScraper(ScriptedCinemaScraper(List(Left(new RuntimeException("down")))), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), l, clock = _root_.tools.SpecClock.Pinned)
     intercept[RuntimeException] { s.fetch() }
     l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Failure)
   }
@@ -123,7 +123,7 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
     val boom = new ScrapeOutcomeListener {
       def onOutcome(cinema: Cinema, outcome: ScrapeOutcome): Unit = throw new RuntimeException("listener boom")
     }
-    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(), boom).fetch() shouldBe OneMovie
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), boom, clock = _root_.tools.SpecClock.Pinned).fetch() shouldBe OneMovie
   }
 
   // Regression for the Cineworld relaunch outage (2026-09-17..18): a

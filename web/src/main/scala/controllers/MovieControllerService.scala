@@ -72,7 +72,8 @@ class MovieControllerService(
   def now(): java.time.Instant = clock.instant()
 
   /** The current wall-clock time in `city`'s own zone, on [[clock]]. */
-  def nowIn(city: City): LocalDateTime = LocalDateTime.now(clock.withZone(city.zoneId))
+  def nowIn(city: City): LocalDateTime = venueClock.nowIn(city)
+  private val venueClock = new models.VenueClock(clock)
 
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, nowIn(city))

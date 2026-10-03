@@ -97,13 +97,8 @@ object WriteFailureTripwire {
 
   /** The logback root, or None when logging is not logback (nothing to trip on). */
   private def rootLogger(): Option[LogbackLogger] = {
-    val deadline = System.nanoTime() + 5L * 1000000000L
-    var factory  = LoggerFactory.getILoggerFactory
-    while (!factory.isInstanceOf[LoggerContext] && System.nanoTime() < deadline) {
-      Thread.sleep(10)
-      factory = LoggerFactory.getILoggerFactory
-    }
-    factory match {
+    Eventually.poll(timeoutMs = 5000, pollMs = 10)(LoggerFactory.getILoggerFactory.isInstanceOf[LoggerContext])
+    LoggerFactory.getILoggerFactory match {
       case context: LoggerContext => Some(context.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME))
       case _                      => None
     }

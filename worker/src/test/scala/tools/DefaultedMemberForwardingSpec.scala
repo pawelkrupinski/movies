@@ -47,7 +47,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[MemoizedHttpFetch]           -> ((d: HttpFetch) => new MemoizedHttpFetch(d)),
       classOf[CachingDetailFetch]          -> ((d: HttpFetch) => new CachingDetailFetch(d)),
       classOf[MongoCachingDetailFetch]     -> ((d: HttpFetch) => new MongoCachingDetailFetch(d, None, 1.hour, services.DetailCacheChain("decorator_probe"), new services.TtlIndexMismatches)),
-      classOf[MonitoringHttpFetch]         -> ((d: HttpFetch) => new MonitoringHttpFetch(d, new UptimeMonitor())),
+      classOf[MonitoringHttpFetch]         -> ((d: HttpFetch) => new MonitoringHttpFetch(d, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned))),
       classOf[CountingHttpFetch]           -> ((d: HttpFetch) => new CountingHttpFetch(d, HttpOutcomeRecorder.noop)),
       classOf[StickyShardHttpFetch]        -> ((d: HttpFetch) => new StickyShardHttpFetch(IndexedSeq(d))),
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),

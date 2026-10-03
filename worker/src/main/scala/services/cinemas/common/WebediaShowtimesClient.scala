@@ -51,10 +51,10 @@ class WebediaShowtimesClient(
    *  because Scala 3 will not let a default argument read another parameter of
    *  the same list, and the market is where the zone lives. Same shape as
    *  [[FlicksClient]]. */
-  today:     => Option[LocalDate] = None
+  today:     => LocalDate
 ) extends ChunkedCinemaScraper {
 
-  private def referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
+  private def referenceDay: LocalDate = today
 
   import WebediaShowtimesClient._
 
@@ -172,8 +172,8 @@ object WebediaShowtimesClient {
    *  scrape. Spain has two zones: on the peninsula's "today" a Canary venue (an hour
    *  behind) lost its still-running evening's day for the last hour before its midnight. */
   def forVenue(http: HttpFetch, market: WebediaMarket, theaterId: String, cinema: Cinema,
-               calendar: ScrapeCalendar): WebediaShowtimesClient =
-    new WebediaShowtimesClient(http, market, theaterId, cinema, today = Some(calendar.todayAt(cinema, market.zoneId)))
+               venueClock: VenueClock): WebediaShowtimesClient =
+    new WebediaShowtimesClient(http, market, theaterId, cinema, today = venueClock.todayAt(cinema, market.zoneId))
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]].
    *

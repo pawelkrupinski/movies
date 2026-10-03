@@ -18,7 +18,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
 
   "current()" should "serve the last rendered snapshot WITHOUT re-invoking the (slow) renderer" in {
     val renders = new AtomicInteger(0)
-    val cache = new MetricsSnapshotCache(render = () => s"snapshot-v${renders.incrementAndGet()}")
+    val cache = new MetricsSnapshotCache(render = () => s"snapshot-v${renders.incrementAndGet()}", clock = _root_.tools.SpecClock.Pinned)
 
     cache.refresh()
     renders.get() shouldBe 1
@@ -33,7 +33,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
   it should "keep serving the last good snapshot when a refresh fails" in {
     @volatile var fail = false
     val cache = new MetricsSnapshotCache(render = () =>
-      if (fail) throw new RuntimeException("mongo timeout") else "good")
+      if (fail) throw new RuntimeException("mongo timeout") else "good", clock = _root_.tools.SpecClock.Pinned)
 
     cache.refresh()
     new String(cache.current(), "UTF-8") shouldBe "good"
@@ -49,7 +49,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
     val calls    = new AtomicInteger(0)
     val cache = new MetricsSnapshotCache(render = () =>
       if (calls.incrementAndGet() == 1) "first"
-      else { inRender.countDown(); release.await(); "second" })
+      else { inRender.countDown(); release.await(); "second" }, clock = _root_.tools.SpecClock.Pinned)
 
     cache.refresh() // first render → "first"
     new String(cache.current(), "UTF-8") shouldBe "first"
@@ -66,41 +66,36 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
     new String(cache.current(), "UTF-8") shouldBe "second"
   }
 
-  /** A scheduler that runs what it is handed on the calling thread, and a clock a spec moves. */
+  /** A scheduler that runs what it is handed on the calling thread. */
   private final class Inline extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
     override def execute(command: Runnable): Unit = command.run()
-  }
-  private final class Clock(var at: Long) extends java.time.Clock {
-    def getZone = java.time.ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
-    def instant = java.time.Instant.ofEpochMilli(at)
   }
 
   // It re-rendered every 10 s under a 30 s scrape interval: two renders in three — each a thousand
   // active tasks read from Mongo — were never served.
   "serve()" should "render once per scrape, for the next one, and never on a timer" in {
     val renders = new AtomicInteger(0)
-    val clock   = new Clock(0L)
+    val clock   = new tools.MutableClock(java.time.Instant.EPOCH)
     val cache   = new MetricsSnapshotCache(render = () => s"v${renders.incrementAndGet()}",
       minRefresh = scala.concurrent.duration.Duration(10, "seconds"), scheduler = new Inline, clock = clock)
     cache.start()
     renders.get() shouldBe 1
-    clock.at += 60000                                       // a minute with nobody scraping: no render
+    clock.advanceMillis(60000)                                       // a minute with nobody scraping: no render
     renders.get() shouldBe 1
     new String(cache.serve(), "UTF-8") shouldBe "v1"        // served the last render, and asks for the next
     renders.get() shouldBe 2
-    clock.at += 30000
+    clock.advanceMillis(30000)
     new String(cache.serve(), "UTF-8") shouldBe "v2"
     renders.get() shouldBe 3
   }
 
   it should "not render again within its floor however often it is read" in {
     val renders = new AtomicInteger(0)
-    val clock   = new Clock(0L)
+    val clock   = new tools.MutableClock(java.time.Instant.EPOCH)
     val cache   = new MetricsSnapshotCache(render = () => s"v${renders.incrementAndGet()}",
       minRefresh = scala.concurrent.duration.Duration(10, "seconds"), scheduler = new Inline, clock = clock)
     cache.start()
-    clock.at += 10000
+    clock.advanceMillis(10000)
     (1 to 5).foreach(_ => cache.serve())
     renders.get() shouldBe 2
   }
@@ -109,7 +104,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
     val release  = new CountDownLatch(1)
     val inRender = new CountDownLatch(1)
     val renders  = new AtomicInteger(0)
-    val clock    = new Clock(0L)
+    val clock    = new tools.MutableClock(java.time.Instant.EPOCH)
     val cache    = new MetricsSnapshotCache(render = () =>
       if (renders.incrementAndGet() == 1) "first" else { inRender.countDown(); release.await(); "slow" },
       minRefresh = scala.concurrent.duration.Duration.Zero, scheduler = java.util.concurrent.Executors.newScheduledThreadPool(2), clock = clock)

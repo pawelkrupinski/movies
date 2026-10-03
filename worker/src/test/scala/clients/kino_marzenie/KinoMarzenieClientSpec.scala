@@ -73,7 +73,7 @@ class KinoMarzenieClientSpec extends AnyFlatSpec with Matchers with OptionValues
   }
 
   it should "declare the venue's own host as its scrape host" in {
-    new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie"), KinoMarzenie).scrapeHosts shouldBe
+    new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie"), KinoMarzenie, today = _root_.tools.SpecClock.PinnedDay).scrapeHosts shouldBe
       Set("www.kinomarzenie.pl")
   }
 }

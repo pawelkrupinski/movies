@@ -13,7 +13,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   // CinemaScraperCatalog.scrapeHosts), not hardcoded. Tests that exercise
   // suppression pass the set explicitly; the rest use the empty default.
   private def fixture(cinemaHosts: Set[String] = Set.empty) = {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val delegate = new RecordingHttpFetch(_ => "ok")
     val fetch = new MonitoringHttpFetch(delegate, monitor, cinemaHosts)
     (fetch, delegate, monitor)
@@ -64,7 +64,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "force the by-name cinemaHosts thunk only once across many calls" in {
     var evaluations = 0
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val fetch = new MonitoringHttpFetch(new RecordingHttpFetch(_ => "ok"), monitor, {
       evaluations += 1; Set("kinomuranow.pl")
     })
@@ -173,7 +173,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   "getBytes" should "pass the delegate's raw wire bytes through, not re-encode via get" in {
     // "Dzień" in ISO-8859-2 (ń = 0xF1) — a UTF-8 decode of these bytes is lossy.
     val rawIso88592 = Array[Byte](0x44, 0x7A, 0x69, 0x65, 0xF1.toByte)
-    val monitor  = new UptimeMonitor()
+    val monitor  = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val delegate = new HttpFetch {
       def get(url: String): String = "MANGLED"  // would lose the byte if re-encoded
       override def getBytes(url: String): Array[Byte] = rawIso88592

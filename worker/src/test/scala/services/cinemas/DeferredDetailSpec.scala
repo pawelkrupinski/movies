@@ -26,15 +26,15 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("DCF",            new DcfClient(new FakeHttpFetch("dcf"))),
     ("Kino Pałacowe",  new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer)),
     ("Amondo",         new AmondoClient(new FakeHttpFetch("kino-amondo"))),
-    ("Iluzjon",        new IluzjonClient(new FakeHttpFetch("iluzjon"))),
-    ("Muranów",        new MuranowClient(new FakeHttpFetch("kino-muranow"))),
+    ("Iluzjon",        new IluzjonClient(new FakeHttpFetch("iluzjon"), today = _root_.tools.SpecClock.PinnedDay)),
+    ("Muranów",        new MuranowClient(new FakeHttpFetch("kino-muranow"), today = _root_.tools.SpecClock.PinnedDay)),
     ("Rialto",         new RialtoClient(new FakeHttpFetch("rialto"))),
-    ("Kinomuzeum",     new KinomuzeumClient(new FakeHttpFetch("kinomuzeum"))),
+    ("Kinomuzeum",     new KinomuzeumClient(new FakeHttpFetch("kinomuzeum"), today = _root_.tools.SpecClock.PinnedDay)),
     ("Falenica",       new FalenicaClient(new FakeHttpFetch("kino-falenica"))),
-    ("Kino Bułgarska", new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"))),
+    ("Kino Bułgarska", new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"), today = _root_.tools.SpecClock.PinnedDay)),
     ("Nowe Horyzonty", new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6))),
     ("Nove Kino",      new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", models.KinoAtlantic)),
-    ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"), java.time.LocalDate.of(2026, 6, 13))),
+    ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"), today = java.time.LocalDate.of(2026, 6, 13))),
     ("Ekobilet",       new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy", models.KinoMeduza, LocalDate.of(2026, 6, 8))),
     ("Kino Wars",      new KinoWarsClient(new FakeHttpFetch("kino-wars"))),
     ("Cinema City",    new CinemaCityScraper(new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer), "1078", models.CinemaCityPoznanPlaza))
@@ -59,7 +59,7 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("Kino Pod Baranami", new KinoPodBaranamiClient(new FakeHttpFetch("kino-pod-baranami"),
                             models.KinoPodBaranami, LocalDate.of(2026, 6, 7))),
     ("Kino Paradox",      new KinoParadoxClient(new FakeHttpFetch("kino-paradox"), models.KinoParadox)),
-    ("Kino Muza",         new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer))
+    ("Kino Muza",         new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay))
   )
 
   // `defersTmdbResolution = false` says "resolve this row from its listing, don't

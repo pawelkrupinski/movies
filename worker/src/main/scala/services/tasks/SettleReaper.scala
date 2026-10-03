@@ -37,7 +37,7 @@ class SettleReaper(
   // `tickIfClaimed` directly.
   initialDelay: SettleReaper.InitialDelay = SettleReaper.InitialDelay(SettleReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock = Clock.systemUTC()
+  clock:        Clock
 ) extends ClaimedPeriodicTask("settle", settle, interval.value, initialDelay.value, runStore, clock)
 
 object SettleReaper {

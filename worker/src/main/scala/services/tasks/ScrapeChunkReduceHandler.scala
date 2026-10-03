@@ -30,7 +30,7 @@ class ScrapeChunkReduceHandler(
   publishScrape: CinemaScraper => Unit,
   // Shares the plain/planner path's rule (and failure streak) — see the class doc.
   scrapeFreshness: ScrapeFreshnessPolicy,
-  clock:           Clock = Clock.systemUTC()
+  clock:           Clock
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 

@@ -159,7 +159,7 @@ object ConvergenceStorage {
     override lazy val tasks: TaskQueue              = new MongoTaskQueue(shared)
     override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared)
     override lazy val chunkScrape: ChunkScrapeStore = new MongoChunkScrapeStore(shared)
-    override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared)
+    override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared, clock = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
 
     // Only OURS: the handle drops the one database it opened.
     override def close(): Unit = isolated.drop()

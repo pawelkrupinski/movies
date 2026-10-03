@@ -51,7 +51,7 @@ class ScrapeFreshnessPolicy(
   // retry within one attempt (`CinemaScraper.maxFetchAttempts`), so this is the
   // second, coarser layer — enough to ride out a blip, not enough to camp the queue.
   immediateRetries: Int   = 2,
-  clock:            Clock = Clock.systemUTC(),
+  clock:            Clock,
   // Where a landed scrape's remaining-showtime runway feeds a shortened next
   // interval for THIN venues (see `VenueScrapeCadence`) — `None` (the default)
   // leaves cadence untouched, so every existing caller/test that doesn't pass a

@@ -3,9 +3,9 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
-import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotKeyed, SlotsRepository}
+import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotKeyed, SlotsRepository, VenueRoster}
 
-import java.time.{Clock, LocalDateTime}
+import java.time.{Clock, ZoneId}
 import scala.concurrent.duration._
 
 /**
@@ -32,7 +32,7 @@ class RetiredVenueCensus(
   rows:            Gauge,
   futureShowtimes: Gauge,
   country:         Country,
-  clock:           Clock = Clock.systemUTC(),
+  clock:           Clock,
   override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval
 ) extends SampledCensus {
 
@@ -41,9 +41,15 @@ class RetiredVenueCensus(
 
   private val countryCode = country.code
 
-  // A retired venue sits in no city, so "future" is judged on the country's first city's clock —
-  // off by at most a zone's width in a multi-zone country, which a watchdog on a count can bear.
-  private val zone = country.cities.headOption.map(_.zoneId).getOrElse(java.time.ZoneOffset.UTC)
+  private val venueClock = new models.VenueClock(clock)
+
+  // "Future" is judged on each venue's OWN clock: a retired Los Angeles venue's 21:30 is still ahead
+  // when New York is past midnight. The live roster no longer lists a retired venue, so its city is
+  // found among every modelled city (disabled ones too); a venue none lists falls back to the
+  // country's first city.
+  private val fallbackZone: ZoneId = country.cities.headOption.map(_.zoneId).getOrElse(java.time.ZoneOffset.UTC)
+  private def zoneOf(venue: String): ZoneId =
+    models.City.allModelled.find(_.cinemas.exists(_.displayName == venue)).fold(fallbackZone)(_.zoneId)
 
   Collections.foreach(coll => rows.labelValues(countryCode, coll).set(0.0))
   futureShowtimes.labelValues(countryCode).set(0.0)
@@ -68,10 +74,14 @@ class RetiredVenueCensus(
     else {
       val slotKeysByFilm = retiredRows.groupMap(SlotKeyed.filmIdOf)(SlotKeyed.slotKeyOf)
       screenings.findForFilmsChecked(slotKeysByFilm.keySet).answered.map { byFilm =>
-        val now = LocalDateTime.now(clock.withZone(zone))
+        val nowAt = scala.collection.mutable.Map.empty[String, java.time.LocalDateTime]
+        def now(venue: String) = nowAt.getOrElseUpdate(venue, venueClock.now(zoneOf(venue)))
         slotKeysByFilm.iterator.map { case (filmId, keys) =>
           val showtimes = byFilm.getOrElse(filmId, Map.empty)
-          keys.iterator.map(key => showtimes.getOrElse(key, Nil).count(_.isUpcoming(now))).sum
+          keys.iterator.map { key =>
+            val venueNow = now(VenueRoster.venueOf(key))
+            showtimes.getOrElse(key, Nil).count(_.isUpcoming(venueNow))
+          }.sum
         }.sum
       }
     }

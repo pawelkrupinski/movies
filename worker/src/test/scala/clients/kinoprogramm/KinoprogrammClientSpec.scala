@@ -26,7 +26,7 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
 
   private def scrape(theaterId: String) = {
     val fetch  = new Counting(new FakeHttpFetch("kinoprogramm"))
-    val movies = new KinoprogrammClient(fetch, paths(theaterId), cinema(theaterId), today = Some(Today)).fetch()
+    val movies = new KinoprogrammClient(fetch, paths(theaterId), cinema(theaterId), today = Today).fetch()
     (movies, fetch.urls.toList)
   }
 
@@ -94,7 +94,7 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
         }
       }
     }
-    val movies = new KinoprogrammClient(twinned, paths("A0738"), cinema("A0738"), today = Some(Today)).fetch()
+    val movies = new KinoprogrammClient(twinned, paths("A0738"), cinema("A0738"), today = Today).fetch()
     val title  = movies.groupBy(_.movie.title).collectFirst { case (t, same) if same.size == 2 => t }
     title shouldBe defined
     movies.filter(m => title.contains(m.movie.title)).flatMap(_.filmUrl).exists(_.endsWith("-999999")) shouldBe true
@@ -106,6 +106,6 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
   it should "fail rather than read a page without its programme list as an empty venue" in {
     val blocked = new GetOnlyHttpFetch { def get(url: String): String = "<html><body><h1>Forbidden</h1></body></html>" }
     an[IllegalStateException] should be thrownBy
-      new KinoprogrammClient(blocked, paths("A0738"), cinema("A0738"), today = Some(Today)).fetch()
+      new KinoprogrammClient(blocked, paths("A0738"), cinema("A0738"), today = Today).fetch()
   }
 }

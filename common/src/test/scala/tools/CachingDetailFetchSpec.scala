@@ -1,6 +1,5 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.Ticker
 import services.freshness.{Freshness, FreshnessKind}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,11 +11,6 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   /** Each URL maps to a thunk so a response can flip. */
   private def countingFetch(responses: Map[String, () => String]) = new RecordingHttpFetch(url => responses(url)())
 
-  private class FakeTicker extends Ticker {
-    @volatile var nanos = 0L
-    override def read(): Long = nanos
-  }
-
   "CachingDetailFetch" should "fetch once and serve the cached body on repeat within the TTL" in {
     val under = countingFetch(Map("u" -> (() => "BODY")))
     val c = new CachingDetailFetch(under, ttl = 1.hour)
@@ -26,11 +20,11 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-fetch once the TTL has elapsed" in {
-    val tick = new FakeTicker
+    val tick = new MutableClock(java.time.Instant.EPOCH)
     val under = countingFetch(Map("u" -> (() => "BODY")))
-    val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick)
+    val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick.ticker)
     c.get("u")
-    tick.nanos = 2.hours.toNanos
+    tick.advanceSeconds(2.hours.toSeconds)
     c.get("u")
     under.calls shouldBe 2
   }
@@ -148,13 +142,13 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "let a remembered 404 expire with the TTL, so a restored page comes back" in {
-    val tick  = new FakeTicker
+    val tick  = new MutableClock(java.time.Instant.EPOCH)
     var fail  = true
     val under = countingFetch(Map("u" -> (() => if (fail) throw new HttpStatusException(404, "GET", "u", None) else "BACK")))
-    val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick)
+    val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick.ticker)
     a [HttpStatusException] should be thrownBy c.get("u")
     fail = false
-    tick.nanos = 2.hours.toNanos
+    tick.advanceSeconds(2.hours.toSeconds)
     c.get("u") shouldBe "BACK"
   }
 }

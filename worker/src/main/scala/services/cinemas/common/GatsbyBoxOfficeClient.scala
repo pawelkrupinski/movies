@@ -1,11 +1,11 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.{Cinema, CinemaMovie, TimeZones}
 import tools.{HttpFetch, HttpRead}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -69,7 +69,7 @@ class GatsbyBoxOfficeClient(
   // `theaterId` alone — the slug carries the venue name, and `/theaters/x06jr`
   // 404s — so the composition root supplies it or /uptime shows no source link.
   venuePath: Option[String] = None,
-  today:     => LocalDate      = LocalDate.now(ZoneId.of(GatsbyBoxOfficeClient.UkTimeZone)),
+  today:     => LocalDate,
   // The rating system the brand's `certificate` field speaks: BBFC for the UK brands, MPA for the US.
   ageRatings: Set[String]   = GatsbyBoxOfficeParser.BbfcCertificates
 ) extends CinemaScraper with play.api.Logging {
@@ -148,7 +148,7 @@ object GatsbyBoxOfficeClient {
    *  in `AlamoDrafthouseClient` for why that check gates every US chain here. */
   val LandmarkBaseUrl = "https://www.landmarktheatres.com"
 
-  val UkTimeZone = "Europe/London"
+  val UkTimeZone: String = TimeZones.UnitedKingdom.getId
 
   /** The shared scrape horizon — see [[ScrapeHorizon]]. This one bounds the PAYLOAD we
    *  parse rather than a request count, but the consequence of cutting it was the same:

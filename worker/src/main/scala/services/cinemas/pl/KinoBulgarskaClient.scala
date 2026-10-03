@@ -7,11 +7,11 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
+class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"

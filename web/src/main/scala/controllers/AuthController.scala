@@ -76,7 +76,7 @@ class AuthController(
   googleTokenValidator:   Option[GoogleTokenValidator] = None,
   facebookTokenValidator: Option[FacebookTokenValidator] = None,
   appleTokenValidator:    Option[AppleTokenValidator] = None,
-  clock:                  Clock = Clock.systemUTC()
+  clock:                  Clock
 ) extends AbstractController(cc) with Logging {
 
   // OAuth state cookie expires after this — long enough that the user

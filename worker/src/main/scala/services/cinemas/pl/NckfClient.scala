@@ -9,7 +9,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -48,7 +48,7 @@ import scala.util.Try
 class NckfClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            => LocalDate
 ) extends CinemaScraper {
 
   import NckfClient._

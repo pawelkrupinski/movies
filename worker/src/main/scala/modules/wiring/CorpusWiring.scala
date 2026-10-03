@@ -56,7 +56,7 @@ trait CorpusWiring { self: WorkerWiring =>
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository,
       retrigger = enrichmentRetrigger, cacheMetrics = taskMetrics,
-      normalizer = titleNormalizer,
+      normalizer = titleNormalizer, clock = clock,
       scrapeLandingMetrics = taskMetrics,
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,

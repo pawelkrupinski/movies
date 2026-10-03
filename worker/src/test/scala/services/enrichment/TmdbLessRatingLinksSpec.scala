@@ -21,7 +21,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
   /** A row TMDB was asked about and could not match, as one cinema published it. */
   private def unmatched(title: String, year: Option[Int], director: Seq[String]) = {
     val row = MovieRecord(tmdbAttempt = asked, data = Map(KinoMuza -> SourceData(title = Some(title), releaseYear = year, director = director)))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, year, row)), normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, year, row)), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     (cache, cache.keyOf(title, year), row)
   }
 

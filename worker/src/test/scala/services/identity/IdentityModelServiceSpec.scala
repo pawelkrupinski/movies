@@ -55,7 +55,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var scrapes = Map.empty[Cinema, Seq[CinemaMovie]]
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
-      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor())
+      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -128,7 +128,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val service  = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
       world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
-      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () })
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () }, clock = _root_.tools.SpecClock.Pinned)
     service.takeUp()
     reported.map(_.families) shouldBe Seq(2)
   }
@@ -140,7 +140,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val service  = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
       world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
-      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () })
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () }, clock = _root_.tools.SpecClock.Pinned)
     service.takeUp()
     val sizes = reported.loneElement.sizes
     sizes.largest.map(_.listings) shouldBe Seq(2, 1)
@@ -164,7 +164,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val scheduler = Executors.newSingleThreadScheduledExecutor()
     val service   = new IdentityModelService(
       () => throw new IllegalStateException("store unreachable"),
-      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+      world.reads, () => Nil, normalizer, 1.hour, scheduler, clock = _root_.tools.SpecClock.Pinned)
     try {
       service.takeUpSettled shouldBe false
       service.start()
@@ -216,7 +216,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val service   = new IdentityModelService(
       () => { built.incrementAndGet(); new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration,
         store = world.store) },
-      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+      world.reads, () => Nil, normalizer, 1.hour, scheduler, clock = _root_.tools.SpecClock.Pinned)
     val release = new java.util.concurrent.CountDownLatch(1)
     try {
       scheduler.execute(() => release.await())                  // the model's thread, busy (a take-up)
@@ -236,7 +236,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val built     = new java.util.concurrent.atomic.AtomicInteger()
     val service   = new IdentityModelService(
       () => { built.incrementAndGet(); throw new IllegalStateException("store unreachable") },
-      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+      world.reads, () => Nil, normalizer, 1.hour, scheduler, clock = _root_.tools.SpecClock.Pinned)
     try {
       service.current(10.seconds) shouldBe None
       built.get shouldBe 1
@@ -256,7 +256,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       () => { built.incrementAndGet(); new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration,
         store = world.store) },
       world.reads, () => listingsOf(world.scrapes), normalizer, 1.hour, scheduler,
-      beforeDrain = () => { settles += 1; if (settles == 1) throw new IllegalStateException("venue_pages read timed out") })
+      beforeDrain = () => { settles += 1; if (settles == 1) throw new IllegalStateException("venue_pages read timed out") }, clock = _root_.tools.SpecClock.Pinned)
     try {
       service.takeUp()
       world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
@@ -278,20 +278,15 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def request(listing: Listing): Unit = { requested += listing.key; () }
     val limit: FiniteDuration = 1.hour
   }
-  private final class Ticking extends java.time.Clock {
-    var now: java.time.Instant = java.time.Instant.parse("2026-10-01T10:00:00Z")
-    def getZone: java.time.ZoneId = java.time.ZoneOffset.UTC
-    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
-    override def instant(): java.time.Instant = now
-  }
-  private def waiting(world: World, pages: Pages, clock: Ticking) = new IdentityModelService(
+  private def ticking = new tools.MutableClock(java.time.Instant.parse("2026-10-01T10:00:00Z"))
+  private def waiting(world: World, pages: Pages, clock: java.time.Clock) = new IdentityModelService(
     () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
     world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
     pageWait = pages, clock = clock)
   private def held(service: IdentityModelService) = service.peek(10.seconds).get.resolution.decisions.flatMap(_.listings).toSet
 
   "a new listing whose venue page is unread" should "wait for the page, asked for once, and be taken in once it is read" in {
-    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val (world, pages, clock) = (new World, new Pages, ticking)
     val service = waiting(world, pages, clock)
     service.takeUp()
     val lalka = movie(Multikino, "Lalka", Some(2025))
@@ -309,7 +304,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
   }
 
   it should "be taken in after the limit even if its page is never read" in {
-    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val (world, pages, clock) = (new World, new Pages, ticking)
     val service = waiting(world, pages, clock)
     service.takeUp()
     val lalka = movie(Multikino, "Lalka", Some(2025))
@@ -317,13 +312,13 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.scrape(service, Multikino, Seq(lalka))
     service.drain()
     held(service) shouldBe empty
-    clock.now = clock.now.plusSeconds(61 * 60)
+    clock.advanceSeconds(61 * 60)
     service.drain()
     held(service) shouldBe pages.unread
   }
 
   it should "never hold back a listing the model already holds, and be forgotten when its venue stops listing it" in {
-    val (world, pages, clock) = (new World, new Pages, new Ticking)
+    val (world, pages, clock) = (new World, new Pages, ticking)
     val service = waiting(world, pages, clock)
     service.takeUp()
     val lalka   = movie(Multikino, "Lalka", Some(2025))

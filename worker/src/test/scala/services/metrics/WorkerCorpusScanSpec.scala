@@ -51,7 +51,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val repository = new CountingRepository(rows)
     val registry   = new PrometheusRegistry()
 
-    val corpus    = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
+    val corpus    = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock = _root_.tools.SpecClock.Pinned)
     val films     = new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
     val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
 
@@ -76,7 +76,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val repository = new CountingRepository(rows)
     val registry   = new PrometheusRegistry()
     val scan = new WorkerCorpusScan(repository, Seq(
-      new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl"),
+      new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock = _root_.tools.SpecClock.Pinned),
       new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer),
       new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)))
 
@@ -130,7 +130,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
   // that reads as a total corpus wipe.
   it should "not publish a zero census when the scan reads nothing at all" in {
     val registry = new PrometheusRegistry()
-    val corpus   = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
+    val corpus   = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock = _root_.tools.SpecClock.Pinned)
 
     new WorkerCorpusScan(repositoryOf(rows*), Seq(corpus)).sample()
     gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name,

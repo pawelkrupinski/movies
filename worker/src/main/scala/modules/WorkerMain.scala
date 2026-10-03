@@ -127,7 +127,7 @@ object WorkerMain extends Logging {
     logger.info(s"Worker metrics up on :$port/metrics")
 
     addHeapDumpEndpoint(health, heapDumpDir)
-    addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir))
+    addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
 
     // Now that the heartbeat + watchdog are running, let /health report real
     // liveness: it goes 503 (and the watchdog restarts the process) only once a
@@ -306,7 +306,7 @@ object WorkerMain extends Logging {
         wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
           w.movieRepository.changeStreamLiveness)),
-        Instant.now()))
+        Instant.now()), clock = wirings.head.clock)
     snapshot.start()
     server.createContext("/metrics", exchange => {
       val body = snapshot.serve()

@@ -34,7 +34,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
     repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
     repository.upsertScreening(screening("s3", "belle|2021", "wroclaw"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2", "s3")
@@ -43,7 +43,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be empty when the cache holds no screenings" in {
-    new WebReadModel(new InMemoryReadModelRepository).allScreenings() shouldBe empty
+    new WebReadModel(new InMemoryReadModelRepository, clock = _root_.tools.SpecClock.Pinned).allScreenings() shouldBe empty
   }
 
   // ── A renamed city keeps serving while the projection catches up ────────────
@@ -60,7 +60,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
     repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("s1")
@@ -73,7 +73,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("dune|2021"))
     repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco", "Roxie", None, Nil))
     repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("new")
@@ -90,7 +90,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(CityScreening("tur", "dune|2021", "konin", models.KinoTur.displayName, None, Nil))
     repository.upsertScreening(CityScreening("halszka", "dune|2021", "poznan", models.KinoHalszka.displayName, None, Nil))
     repository.upsertScreening(CityScreening("muza", "dune|2021", "poznan", models.KinoMuza.displayName, None, Nil))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("turek").map(_._id) shouldBe Seq("tur")
@@ -114,7 +114,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("dune|2021"))
     repository.upsertScreening(CityScreening("mine", "dune|2021", "alaska", mine, None, Nil))
     repository.upsertScreening(CityScreening("theirs", "dune|2021", "alaska", theirs, None, Nil))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("anchorage").map(_._id) shouldBe Seq("mine")
@@ -125,7 +125,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
     repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("los-angeles") shouldBe empty
@@ -161,7 +161,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     }
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wlodawa"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
 
     rm.start()
 
@@ -174,7 +174,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = writeDuringHydrate(_.deleteScreening("s1"))
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wlodawa"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
 
     rm.start()
 
@@ -185,7 +185,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
   private def started(repository: InMemoryReadModelRepository): WebReadModel = {
-    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero))
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = _root_.tools.SpecClock.Pinned)
     rm.start() // hydrates once + opens the watches; reset the counters so we only
     repository.findAllMoviesCalls.set(0)     // measure what the backstop tick itself does
     repository.findAllScreeningsCalls.set(0)
@@ -273,7 +273,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw").copy(showtimes = Seq(models.Showtime(at(), None))))
     repository.upsertScreening(screening("s2", "belle|2021", "krakow").copy(showtimes = Seq(models.Showtime(at(), None))))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
     val Seq(a, b) = rm.allScreenings().map(_.showtimes.head.dateTime)
     a should be theSameInstanceAs b
@@ -294,7 +294,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(stored)
     repository.upsertScreening(screening("s2", "belle|2021", "krakow").copy(showtimes = urls.map(url => models.Showtime(at, Some(url)))))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     val Seq(held, other) = rm.allScreenings().sortBy(_._id)
@@ -312,7 +312,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(row("old.example"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
     repository.upsertScreening(row("tickets.new.example"))
     rm.reload()
@@ -331,7 +331,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
     repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
 
     rm.reload()
 
@@ -345,7 +345,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
     repository.upsertScreening(screening("s2", "belle|2021", "wroclaw"))
     repository.upsertScreening(screening("s3", "belle|2021", "krakow"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     repository.deleteScreening("s2")
@@ -402,7 +402,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
     repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     screeningsFail = true
@@ -425,7 +425,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
 
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
     // The failure this pins: the read failed, so there is nothing to serve — while the
     // database demonstrably holds a film.
@@ -904,7 +904,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(CityScreening("fill", "dune|2021", "san-francisco", "Castro", None, Nil))
     repository.upsertScreening(CityScreening("other", "alien|1979", "san-francisco-bay-area", "Roxie", None, Nil))
     repository.upsertScreening(CityScreening("other-old", "alien|1979", "san-francisco", "Castro", None, Nil))
-    val rm = new WebReadModel(repository)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     for (films <- Seq(Set("dune|2021"), Set("alien|1979"), Set("dune|2021", "alien|1979"), Set("nope")))

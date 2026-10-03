@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
 
-import java.time.{LocalDate, LocalDateTime, MonthDay, ZoneId}
+import java.time.{LocalDate, LocalDateTime, MonthDay}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,7 +39,7 @@ import scala.util.Try
 class KinoSokolStrzyzowClient(
   http:                HttpFetch,
   override val cinema: Cinema    = KinoSokolStrzyzow,
-  today:               => LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:               => LocalDate
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSokolStrzyzowClient.RepertoireUrl)

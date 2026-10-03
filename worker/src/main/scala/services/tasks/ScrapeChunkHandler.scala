@@ -25,7 +25,7 @@ import java.time.Clock
 class ScrapeChunkHandler(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
-  clock:         Clock = Clock.systemUTC(),
+  clock:         Clock,
   // A chunk page's last parse, so an identical page is not parsed again — see `sliceOf`.
   pageMemo:      ChunkPageMemo = ChunkPageMemo.none,
   memoMetrics:   ChunkPageMemoMetrics = ChunkPageMemoMetrics.noop

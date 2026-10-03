@@ -52,7 +52,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
 
     def authPod(): AuthController =
       new AuthController(Helpers.stubControllerComponents(), Map.empty, users,
-        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore), models.Country.Poland)
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
   }
 
   private val aliceSession: Session = SignedInUser.establish(Session(), alice())
