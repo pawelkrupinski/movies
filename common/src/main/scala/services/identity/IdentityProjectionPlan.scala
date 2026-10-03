@@ -7,14 +7,14 @@ import services.resolution.TmdbAttempt
 
 import java.time.Instant
 
-/** One listing a venue publishes: the resolver's view of it, the row as scraped WITHOUT its showtimes, and a digest of
- *  those showtimes. A US projection held every listing's showtimes (1.7M, ~560 MB live with their rows) through each
- *  tick to build the slots of the few films that changed; a slot that must be built reads its venue's rows again
- *  (`IdentityProjectionPlan.draft`'s `rowsOf`), a batch of venues at a time. */
-final case class ProjectedListing(listing: Listing, row: CinemaMovie, showtimes: Int)
+/** One listing a venue publishes: the resolver's view of it, and digests of the row as scraped — of everything but
+ *  its showtimes (`row`), and of its showtimes. A US projection held every listing's row and showtimes (1.7M, ~560 MB
+ *  live) through each tick to build the slots of the few films that changed; a slot that must be built reads its
+ *  venue's rows again (`IdentityProjectionPlan.draft`'s `rowsOf`), a batch of venues at a time. */
+final case class ProjectedListing(listing: Listing, row: Int, showtimes: Int)
 
 object ProjectedListing {
-  def of(listing: Listing, row: CinemaMovie): ProjectedListing = ProjectedListing(listing, row.copy(showtimes = Nil), row.showtimes.##)
+  def of(listing: Listing, row: CinemaMovie): ProjectedListing = ProjectedListing(listing, row.copy(showtimes = Nil).##, row.showtimes.##)
 }
 
 /** How the films moved between two projections: previous films absorbed into another (`merges`),
@@ -354,7 +354,7 @@ object IdentityProjectionPlan {
     listed.forall { l =>
       byKey.get(l.listing.key).exists { rows =>
         val first = if (rows.sizeIs == 1) rows.head else rows.minBy(cm => Listing.of(cinema, cm, normalizer))
-        first.copy(showtimes = Nil) == l.row &&
+        first.copy(showtimes = Nil).## == l.row &&
           (if (rows.sizeIs == 1) rows.head.showtimes.## else rows.map(_.showtimes.##).sorted.##) == l.showtimes
       }
     }
