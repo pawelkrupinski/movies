@@ -1120,7 +1120,9 @@ object IdentityMeasures {
       val seasonTitles = (Seq(l.title) ++ l.rawTitle).filter(t => seasonYear(Seq(t)).isDefined)
       val works = shapes(seasonTitles).filter(t => seasonYear(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
       // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
-      val translated = works.flatMap(work => StageWorks.resolver.named(key(work)).toSeq.sorted.flatMap(StageWorks.resolver.searchName))
+      // — including one named before a translated subtitle ("Cosi fan tutte. Tak czynią wszystkie"), as the match reads it
+      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(SentenceStop.split(work, 2).head)))
+        .toSeq.sorted.flatMap(StageWorks.resolver.searchName))
       (works ++ translated).distinct.map(work => s"$work $season")
     }
 

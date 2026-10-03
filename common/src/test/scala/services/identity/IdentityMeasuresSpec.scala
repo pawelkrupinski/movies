@@ -53,6 +53,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", year = Some(2027))) shouldBe true
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte", year = Some(2027))) shouldBe true
+    // and is searched for by its own name in the season, not only by the whole subtitled piece
+    IdentityMeasures.searchQueries(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie")) should
+      contain ("Così fan tutte 2026")
     // a venue's spelling Wikidata lacks, from the hand-kept extra: "Zaczarowany flet" is The Magic Flute
     IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
       Film("The Metropolitan Opera 2026/27: The Magic Flute", year = Some(2026))) shouldBe true
