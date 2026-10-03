@@ -322,36 +322,45 @@
     // bar already renders grey for it. Keeps the payload to real activity only.
     var EMPTY_BUCKET = {status:'empty', successes:0, failures:0, zeroes:0, errors:[], fallback:false, thin:false};
 
-    function attachBarHover(el) {
-      el.addEventListener('mouseenter', function(ev) {
-        var ts = el.dataset.ts;
-        var row = el.closest('.row[data-service]');
-        if (!ts || !row) return;
-        var service = row.getAttribute('data-service');
-        var slot = barSlots[ts] || {timeFrom:'', timeTo:'', dateLabel:''};
-        var d = (barDetail[service] && barDetail[service][ts]) || EMPTY_BUCKET;
+    // ONE delegated hover for every bar — per-bar listeners on ~70k bars were most
+    // of the page's own load time. `mouseover` bubbles; a bar is a leaf, so the
+    // event's target is the bar itself.
+    function showBarDetail(el, ev) {
+      var ts = el.dataset.ts;
+      var row = el.closest('.row[data-service]');
+      if (!ts || !row) return;
+      var service = row.getAttribute('data-service');
+      var slot = barSlots[ts] || {timeFrom:'', timeTo:'', dateLabel:''};
+      var d = (barDetail[service] && barDetail[service][ts]) || EMPTY_BUCKET;
 
-        var html = '<div class="ov-service">' + esc(service) + '</div>'
-          + '<div class="ov-time">' + esc(slot.dateLabel) + ', ' + esc(slot.timeFrom) + ' – ' + esc(slot.timeTo) + '</div>'
-          + '<div class="ov-status ' + d.status + '">' + statusLabels[d.status] + '</div>'
-          + (d.fallback ? '<div class="ov-fallback">↳ served via Filmweb</div>' : '')
-          + (d.thin ? '<div class="ov-thin">↳ screenings, but nothing in the next 72h</div>' : '')
-          + '<div class="ov-counts"><span class="ov-ok">' + d.successes + ' ok</span>'
-          + '<span class="ov-fail">' + d.failures + ' failed</span>'
-          + (d.zeroes ? '<span class="ov-zero">' + d.zeroes + ' empty</span>' : '')
-          + '</div>';
-        if (d.errors && d.errors.length > 0) {
-          html += '<div class="ov-errors"><div class="ov-errors-label">Errors:</div>';
-          d.errors.forEach(function(e) { html += '<div class="ov-error">' + esc(e) + '</div>'; });
-          html += '</div>';
-        }
-        overlay.innerHTML = html;
-        overlay.classList.add('visible');
-        positionOverlay(ev);
-      });
-      el.addEventListener('mousemove', positionOverlay);
-      el.addEventListener('mouseleave', function() { overlay.classList.remove('visible'); });
+      var html = '<div class="ov-service">' + esc(service) + '</div>'
+        + '<div class="ov-time">' + esc(slot.dateLabel) + ', ' + esc(slot.timeFrom) + ' – ' + esc(slot.timeTo) + '</div>'
+        + '<div class="ov-status ' + d.status + '">' + statusLabels[d.status] + '</div>'
+        + (d.fallback ? '<div class="ov-fallback">↳ served via Filmweb</div>' : '')
+        + (d.thin ? '<div class="ov-thin">↳ screenings, but nothing in the next 72h</div>' : '')
+        + '<div class="ov-counts"><span class="ov-ok">' + d.successes + ' ok</span>'
+        + '<span class="ov-fail">' + d.failures + ' failed</span>'
+        + (d.zeroes ? '<span class="ov-zero">' + d.zeroes + ' empty</span>' : '')
+        + '</div>';
+      if (d.errors && d.errors.length > 0) {
+        html += '<div class="ov-errors"><div class="ov-errors-label">Errors:</div>';
+        d.errors.forEach(function(e) { html += '<div class="ov-error">' + esc(e) + '</div>'; });
+        html += '</div>';
+      }
+      overlay.innerHTML = html;
+      overlay.classList.add('visible');
+      positionOverlay(ev);
     }
+    document.addEventListener('mouseover', function(ev) {
+      var el = ev.target;
+      if (el.classList && el.classList.contains('bar') && el.dataset.ts) showBarDetail(el, ev);
+    });
+    document.addEventListener('mousemove', function(ev) {
+      if (overlay.classList.contains('visible')) positionOverlay(ev);
+    });
+    document.addEventListener('mouseout', function(ev) {
+      if (ev.target.classList && ev.target.classList.contains('bar')) overlay.classList.remove('visible');
+    });
 
     function positionOverlay(ev) {
       var x = ev.clientX + 12, y = ev.clientY - overlay.offsetHeight - 8;
@@ -365,15 +374,18 @@
       var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
     }
 
-    // Build every row's bars: one per slot, coloured by its recorded bucket.
+    // Build every row's bars: one per slot, coloured by its recorded bucket — as
+    // ONE markup string per row, which the browser parses far faster than ~70k
+    // element-by-element appends. Timestamps and class names are digits and
+    // letters, so nothing here needs escaping.
     document.querySelectorAll('.row[data-service] .bars').forEach(function(barsDiv) {
       var buckets = barDetail[barsDiv.parentNode.getAttribute('data-service')] || {};
-      var bars = document.createDocumentFragment();
-      slotTimestamps.forEach(function(ts) {
-        var d = buckets[ts];
-        bars.appendChild(makeBar(ts, d ? barClass(d) : 'bar empty'));
-      });
-      barsDiv.appendChild(bars);
+      var html = '';
+      for (var i = 0; i < slotTimestamps.length; i++) {
+        var ts = slotTimestamps[i], d = buckets[ts];
+        html += '<div class="' + (d ? barClass(d) : 'bar empty') + '" data-ts="' + ts + '"></div>';
+      }
+      barsDiv.innerHTML = html;
     });
 
     // Index rows by service once so a live update is an O(1) lookup, not a
@@ -393,7 +405,6 @@
       var b = document.createElement('div');
       b.className = cls;
       b.dataset.ts = String(ts);
-      attachBarHover(b);
       return b;
     }
 

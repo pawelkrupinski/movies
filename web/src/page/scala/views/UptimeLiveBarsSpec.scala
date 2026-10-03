@@ -112,7 +112,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
   private def hover(service: String, ts: Long): String =
     s"""document.querySelector('.row[data-service="$service"] .bar[data-ts="$ts"]')""" +
-      """.dispatchEvent(new MouseEvent('mouseenter'))"""
+      """.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))"""
   private val overlayText = "document.getElementById('overlay').textContent"
 
   // The per-bucket detail moved out of a per-bar `data-info` attribute and into
