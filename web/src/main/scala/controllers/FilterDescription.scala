@@ -215,13 +215,13 @@ object FilterDescription {
       case _          => ()
     }
 
-    val allRooms: Set[String] = schedules
+    lazy val allRooms: Set[String] = schedules
       .flatMap(_.showings.flatMap(_._2))
       .flatMap(cs => cs.showtimes.flatMap(_.room.map(r => s"${cs.cinema.displayName}|$r")))
       .toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "room"),
-      universe = allRooms,
+      universeOf = allRooms,
       // German venues name their own rooms "Saal 3" / "Kino 1", so the German
       // preposition is the bare "in " — "in Saal Saal 3" is what a caption noun
       // would produce here.
@@ -235,11 +235,11 @@ object FilterDescription {
       countNoun = tr("sal", "screens", "salas", "Säle"),
     )
 
-    val allCinemas: Set[String] = city.cinemaDisplayNames.toSet
+    lazy val allCinemas: Set[String] = city.cinemaDisplayNames.toSet
     val cityPills               = city.cinemaPillMap
     out ++= inclusionPhrase(
       included = maybeListOf(query, "cinema"),
-      universe = allCinemas,
+      universeOf = allCinemas,
       includedSingularPreposition = tr("w ", "at ", "en ", "im "),
       includedPluralPreposition   = tr("w ", "at ", "en ", "in "),
       excludedPreposition         = tr("bez ", "without ", "sin ", "ohne "),
@@ -263,10 +263,10 @@ object FilterDescription {
     if (parameterOf(query, "imax").contains("1") && MovieControllerService.hasImaxShowtime(schedules)) out += "IMAX"
     parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += tr(s"od $f", s"from $f", s"desde las $f", s"ab $f"))
 
-    val allCountries = schedules.flatMap(_.movie.countries).toSet
+    lazy val allCountries = schedules.flatMap(_.movie.countries).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "country"),
-      universe = allCountries,
+      universeOf = allCountries,
       includedSingularPreposition = tr("z ", "from ", "de ", "aus "),
       includedPluralPreposition   = tr("z ", "from ", "de ", "aus "),
       excludedPreposition         = tr("bez ", "without ", "sin ", "ohne "),
@@ -274,10 +274,10 @@ object FilterDescription {
       countNoun = tr("krajów", "countries", "países", "Länder"),
     )
 
-    val allGenres = schedules.flatMap(_.movie.genres).toSet
+    lazy val allGenres = schedules.flatMap(_.movie.genres).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "genre"),
-      universe = allGenres,
+      universeOf = allGenres,
       includedSingularPreposition = tr("gatunku ", "genre ", "del género ", "aus dem Genre "),
       includedPluralPreposition   = tr("z gatunków ", "genres ", "de los géneros ", "aus den Genres "),
       excludedPreposition         = tr("bez gatunków ", "without genres ", "sin los géneros ", "ohne die Genres "),
@@ -285,10 +285,10 @@ object FilterDescription {
       countNoun = tr("gatunków", "genres", "géneros", "Genres"),
     )
 
-    val allDirectors = schedules.flatMap(_.director).toSet
+    lazy val allDirectors = schedules.flatMap(_.director).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "director"),
-      universe = allDirectors,
+      universeOf = allDirectors,
       includedSingularPreposition = tr("reż. ", "dir. ", "dir. ", "Regie: "),
       includedPluralPreposition   = tr("reż. ", "dir. ", "dir. ", "Regie: "),
       excludedPreposition         = tr("bez reż. ", "without dir. ", "sin dir. ", "ohne Regie: "),
@@ -296,10 +296,10 @@ object FilterDescription {
       countNoun = tr("reżyserów", "directors", "directores", "Regisseure"),
     )
 
-    val allCast = schedules.flatMap(_.cast).toSet
+    lazy val allCast = schedules.flatMap(_.cast).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "cast"),
-      universe = allCast,
+      universeOf = allCast,
       includedSingularPreposition = tr("z ", "with ", "con ", "mit "),
       includedPluralPreposition   = tr("z ", "with ", "con ", "mit "),
       excludedPreposition         = tr("bez ", "without ", "sin ", "ohne "),
@@ -318,13 +318,16 @@ object FilterDescription {
    *  description (the page is empty, the OG would read oddly). */
   private def inclusionPhrase(
     included: Option[Set[String]],
-    universe: Set[String],
+    // By-name, with every caller's universe a `lazy val`: building them all was ~1 MB a
+    // New York render, and a listing without that filter in its URL never reads one.
+    universeOf: => Set[String],
     includedSingularPreposition: String,
     includedPluralPreposition: String,
     excludedPreposition: String,
     display: String => String,
     countNoun: String,
   ): Option[String] = included.flatMap { inc =>
+    val universe = universeOf
     if (inc.isEmpty || universe.isEmpty) None
     else {
       // Restrict to items we recognise — a URL listing a stale (dropped from
