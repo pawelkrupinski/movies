@@ -32,6 +32,17 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     (700002, Film("The Misanthrope", year = Some(2011), runtime = Some(125)), Some(4)))
   private val national = (1693710, Film("National Theatre Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
 
+  "directors-work" should "leave two seasons of one staging, both billing the work, to the season" in {
+    // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123 screens in May 2027 — the 2026/27 record, which
+    // credits nobody yet; the 2025/26 one is his with the running time. Billed alike, the rule takes neither.
+    val tosca   = Listing("Royal Ballet and Opera: Tosca", runtime = Some(195), directors = Seq("Oliver Mears"))
+    val season1 = (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025), runtime = Some(195), directors = Some(Seq("Oliver Mears"))), None)
+    val season2 = (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), None)
+    acceptance.directorsWork(ranked(tosca, season1, season2)) shouldBe None
+    // the one record billing the work alone is his staging, and taken
+    acceptance.directorsWork(ranked(tosca, season1)).map(_._1.candidate.tmdbId) shouldBe Some(1482356)
+  }
+
   "a listing crediting a director" should "take the one record its title names exactly by that director, however the database ranks it" in {
     // US "Man of Iron" {Andrzej Wajda}: TMDB's search ranks Wajda's 1981 film seventh, behind "Iron Man".
     val listing = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(153))

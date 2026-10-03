@@ -393,12 +393,23 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  candidates fitting alike (a director's sequels of one work) are no answer. A one-word work
    *  also needs the published year, a word being many films' title. */
   def directorsWork(ranked: Seq[Scored]): Option[Accepted] = directorsWorkWhy(ranked).toOption
+  /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */
+  private val BilledRuntime = 15
   private def directorsWorkWhy(ranked: Seq[Scored]): Verdict = {
     def bareWork(scored: Scored) =
       (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
         .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
+    // Both titles bill the work under a banner ("Royal Shakespeare Company: Macbeth", "RSC Live: Macbeth") and the
+    // running times agree: a staging the credited director made, not one of the word's many films — when it is the
+    // only record billing that work, whatever its running time: two seasons of one staging (Oliver Mears's Tosca,
+    // 2025/26 and 2026/27, the later with no credits or running time yet) are the season's to tell apart, not this rule's
+    // — counting every record billing it that credits no OTHER director: a season's record often credits nobody yet.
+    def bills(scored: Scored) = IdentityMeasures.billings(scored.listing, scored.candidate.film).nonEmpty
+    lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
+    def billedWork(scored: Scored) = IdentityMeasures.sameDirector(scored.measures) && bills(scored) && billedAlike == 1 &&
+      scored.number("runtime.delta").exists(_ <= BilledRuntime)
     eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
-      (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored)) && !contradicted(scored)) match {
+      (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored)) match {
       case found => one(found, "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
     }
   }

@@ -55,6 +55,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(49258))
   }
 
+  it should "take its director's staging both titles bill under a banner, when it is the only record billing the work" in {
+    // UK Flicks' "Royal Shakespeare Company: Macbeth" {Polly Findlay} [133′] ×9: TMDB's "RSC Live: Macbeth" (2018,
+    // 123′) is reached only by her filmography, the one-word work names it, and the listing publishes no year.
+    val films = Seq(F(512470, "RSC Live: Macbeth", 2018, "Polly Findlay", 123, 2, searched = false),
+      F(27883, "Macbeth", 1948, "Orson Welles", 107, 20), F(225728, "Macbeth", 2015, "Justin Kurzel", 113, 30))
+    val l = listing(Multikino, "Royal Shakespeare Company: Macbeth", None, Some("Polly Findlay"), Some(133))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(512470))
+  }
+
   it should "not take a one-word work's film when no year says which" in {
     val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
     val l = listing(Multikino, "Leonas", None, Some("Juan Manuel Cotelo"))
