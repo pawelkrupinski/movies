@@ -337,6 +337,28 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined
   }
 
+  it should "not evict a film an INCOMPLETE corpus read left out" in {
+    // A page of the corpus scan whose read failed is skipped, not handed on stripped
+    // (`MongoMovieRepository.scanStitched`), so an incomplete read is short by whole films.
+    // Missing is not deleted: evicting them would drop live films from the cache.
+    final class HidingRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
+      var hiding = false
+      override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) =
+        if (hiding) (super.findAll().filterNot(_.title == "Ghost"), false) else (super.findAll(), true)
+      override def findAll(): Seq[StoredMovieRecord] = findAllChecked()._1
+    }
+    val repository = new HidingRepository
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
+    cache.put(cache.keyOf("Keeper", Some(2024)), mkEnrichment("tt2"))
+    repository.hiding = true
+
+    cache.rehydrate()
+
+    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined
+    cache.get(cache.keyOf("Keeper", Some(2024))) shouldBe defined
+  }
+
   it should "make repository-side edits visible" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)

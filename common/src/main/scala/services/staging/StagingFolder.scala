@@ -76,7 +76,13 @@ class InMemoryStagingFolder(
     val stagingRows = StagingFold.selectStagingGroup(stagingRepository.findAll(), cleanTitle, normalizer)
     if (stagingRows.isEmpty) Seq.empty
     else {
-      val all        = movieRepository.findAll()
+      // A corpus read short of films would plan this group without the ones it missed and
+      // mint them again: like an unreadable id below, an incomplete read throws before any
+      // write, and the fold retries.
+      val all        = movieRepository.findAllChecked() match {
+        case (rows, true) => rows
+        case (_, false)   => throw new IllegalStateException(s"fold of '$cleanTitle': the movies corpus read was incomplete")
+      }
       val groupRows  = all.filter(r => normalizer.sanitize(r.title) == key)
       // Also pull cross-title same-tmdbId siblings (any title) so a cross-language
       // duplicate already in `movies` merges at fold time (see reconcileTmdbIds).

@@ -189,4 +189,27 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     withClue(s"rows: ${movies.findAll().map(r => (r.id, r.record.tmdbId))}\n") { holders should have size 1 }
     holders.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
   }
+
+  // A corpus read short of films (a page whose read failed is skipped) must not stand in for the
+  // corpus: the film it left out would look absent, and the fold would mint it a second time.
+  it should "abort, not mint a duplicate, when the corpus read is incomplete" in {
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    final class ShortReadRepository extends services.movies.InMemoryMovieRepository(normalizer = titleNormalizer) {
+      var incomplete = false
+      override def findAllChecked(): (Seq[services.movies.StoredMovieRecord], Boolean) =
+        if (incomplete) (Seq.empty, false) else (super.findAll(), true)
+      override def findAll(): Seq[services.movies.StoredMovieRecord] = findAllChecked()._1
+    }
+    val movies = new ShortReadRepository
+    staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
+    new InMemoryStagingFolder(staging, movies, normalizer = titleNormalizer).foldGroup("Kumotry")
+    movies.findAll() should have size 1
+    staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
+
+    movies.incomplete = true
+    an[Exception] should be thrownBy new InMemoryStagingFolder(staging, movies, normalizer = titleNormalizer).foldGroup("Kumotry")
+    movies.incomplete = false
+
+    movies.findAll() should have size 1    // no second "Kumotry"
+  }
 }

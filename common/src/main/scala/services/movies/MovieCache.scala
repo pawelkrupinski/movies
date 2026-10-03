@@ -1451,7 +1451,7 @@ class CaffeineMovieCache(
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
     val marks         = repository.writeFence.markAll()
-    val rows          = repository.findAll()
+    val (rows, complete) = repository.findAllChecked()
     val tFindAllMs    = findingAll.millis
     // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
@@ -1503,8 +1503,12 @@ class CaffeineMovieCache(
       }
     }
     // Only a key whose film nobody wrote since the snapshot: one this cache created or
-    // retitled meanwhile is absent from the snapshot because it is NEWER, not gone.
-    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
+    // retitled meanwhile is absent from the snapshot because it is NEWER, not gone. And only
+    // after a COMPLETE read: a page the scan could not read is skipped whole, so its films are
+    // missing from `rows` without being gone from Mongo.
+    if (!complete) logger.warn(s"MovieCache rehydrate: the corpus read was incomplete (${rows.size} row(s)) — " +
+      "refreshed what it read, evicted nothing.")
+    val removed = if (!complete) Seq.empty else positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
       corpusIndex.idOf(k).fold { evict(k); true }(id => repository.writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
     }
     cacheMetrics.recordRehydrate(changed, removed.size)
