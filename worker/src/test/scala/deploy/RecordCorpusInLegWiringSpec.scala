@@ -66,7 +66,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "replay a recording's order row gap-filled, without a sample of its own" in {
     RepoFile.step(convergence, Sample) should include("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
-      "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase == 'order-independence') }}")
+      "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}")
   }
 
   "a recording leg" should "record, close the tunnel and upload its corpus before the sample replays it" in {
@@ -78,8 +78,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // e2e depends on worker's fixtures, never its specs, so no leg's build cache holds worker's
   // test-classes current: recording from `worker/Test` recompiled up to all 744 of them first.
   it should "record from the Fixtures configuration, which every leg's build cache holds compiled" in {
-    RepoFile.step(convergence, Record) should include("scripts/ci/sbt-server.sh classpath worker/Fixtures/fullClasspath")
-    RepoFile.step(convergence, Record) should include("""java "${options[@]}" -cp "$classpath" scripts.RecordCorpusFixture ${{ inputs.code }}""")
+    RepoFile.step(convergence, Record) should include("""run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"""")
     RepoFile.exists("worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala") shouldBe true
     RepoFile.exists("worker/src/test/scala/scripts/RecordCorpusFixture.scala") shouldBe false
   }
@@ -157,13 +156,6 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     val countries = """(?m)^\s+- \{ country: ([a-z-]+),""".r.findAllMatchIn(recorder).map(_.group(1)).toList
     countries should not be empty
     countries.head shouldBe "united-states"
-  }
-
-  /** sbt's server portfile lives in `project/target`, which the leg's build cache saves; one saved
-   *  while a leg's server ran sent a later leg's client to a dead server, and Germany's corpus step
-   *  hung its whole 10 minutes (run 37112719910). */
-  "a leg's build cache" should "never carry sbt's server portfile into another leg" in {
-    setup should include("              project/target\n              !project/target/active.json\n")
   }
 
   /** Recordings land every ~15 min; keeping only the newest two pinned trees per country evicted a

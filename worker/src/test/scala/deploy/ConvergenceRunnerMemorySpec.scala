@@ -62,9 +62,7 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
   it should "apply the declared heap to the order-independence run as well as the full one" in {
     // The row that died had its own sbt invocation. A `-Xmx` threaded into only one of
     // the leg's two commands would leave the other on `.jvmopts`' 4g default.
-    // One server runs both now (scripts/ci/sbt-server.sh), and the heap rides on its start and on
-    // every run that could boot a fresh one.
-    val invocations = """scripts/ci/sbt-server\.sh (start|run) \$\{\{ inputs\.heap \}\}""".r.findAllIn(leg).size
-    invocations should be >= 3
+    val invocations = """sbt -J-Xmx\$\{\{ inputs\.heap \}\}""".r.findAllIn(leg).size
+    invocations should be >= 2
   }
 }

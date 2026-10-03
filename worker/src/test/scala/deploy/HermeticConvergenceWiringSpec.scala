@@ -113,7 +113,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.jobs(leg).keySet shouldBe Set("convergence")
     val convergence = RepoFile.block(leg, "convergence")
     val sample = RepoFile.step(convergence, SampleStep)
-    sample should include("scripts/ci/sbt-server.sh run ${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log")
+    sample should include("sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log")
     sample should include("timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}")
     sample should include(s"${tools.ArchiveReplayWiring.HermeticVar}: $${{ inputs.mode == 'hermetic' }}")
     sample should include("KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}")
