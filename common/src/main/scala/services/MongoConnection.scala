@@ -340,8 +340,25 @@ object MongoConnection extends Logging {
    *  read-mirror, whose several per-country database views share one pool the
    *  same way the prod per-country connections do. The caller OWNS `close()`. */
   def sharedClientFor(uri: MongoUri, serverSelectionTimeout: Option[ServerSelectionTimeout] = None,
-      maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(DefaultMaxPoolSize)): MongoClient =
-    MongoClient(clientSettings(uri.value, serverSelectionTimeout, maxPoolSize.value))
+      maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(DefaultMaxPoolSize)): MongoClient = {
+    val client = MongoClient(clientSettings(uri.value, serverSelectionTimeout, maxPoolSize.value))
+    authenticateOnce(client)
+    client
+  }
+
+  /** One round trip on a fresh client before anything else uses it. Its connection's SCRAM handshake
+   *  derives the password's key (PBKDF2, 15,000 iterations) into the client's credential cache, which every
+   *  later connection of the pool then reuses. A boot's first reads opened the whole pool at once, and each
+   *  connection, finding the cache still empty, derived the key for itself: mongod logged 25 authentications
+   *  in a us worker's first minute, ~4 s of CPU in `ScramShaSaslClient.hi` (JFR, 2026-10-03). Bounded and
+   *  best-effort — a server out of reach leaves the boot as it was, to the connection's own probe. */
+  private[services] def authenticateOnce(client: MongoClient, timeout: FiniteDuration = AuthenticateOnceTimeout): Unit =
+    Try(Await.result(client.getDatabase("admin").runCommand(org.mongodb.scala.Document("ping" -> 1)).toFuture(), timeout))
+      .failed.foreach(e => logger.warn(s"MongoConnection: the first round trip did not complete in $timeout " +
+        s"(${e.getClass.getSimpleName}); the pool will authenticate as it opens"))
+
+  /** How long a boot waits on [[authenticateOnce]] before carrying on without it. */
+  private[services] val AuthenticateOnceTimeout: FiniteDuration = 5.seconds
 
   /** The local mirror database holding `prodDb`'s synced copy.
    *
