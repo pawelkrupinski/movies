@@ -186,6 +186,24 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     draft.allocatedBytes should be < 4_000_000L   // 7.2 MB scanning the film per venue, 2.2 MB once
   }
 
+  it should "rebuild, writing a widely shown film that changed at one venue, only that venue — and serve every showtime" in {
+    val venues = Cinema.all.distinct.take(400)
+    // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
+    val split  = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer)
+    val w      = new World(split, venues = venues)
+    w.scrape(venues.map(c => c -> Seq(film(c, "Diuna", Some(2021), 1, 2, 3))).toMap)
+    w.projection.tick(); w.projection.tick()
+    w.scrape(Map(venues.head -> Seq(film(venues.head, "Diuna", Some(2021), 1, 2, 3, 4))))
+    val tick    = w.projection.tick()
+    val compare = tick.phases.find(_.name == "compare").get
+    info(f"compare, one of ${venues.size} venues changed: ${compare.seconds}%.2fs, ${compare.allocatedBytes / 1e6}%.1f MB")
+    compare.allocatedBytes should be < 1_000_000L   // 1.9 MB rebuilding all 400 venues, 0.1 MB the one
+    tick.written shouldBe 1
+    w.showtimes shouldBe venues.flatMap(c => Seq(1, 2, 3).map(h => c.displayName -> start.plusHours(h.toLong))).toSet +
+      (venues.head.displayName -> start.plusHours(4))
+  }
+
   "A second projection over the same listings" should "write nothing (P2)" in {
     val w = new World
     w.scrape(programme)

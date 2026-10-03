@@ -166,7 +166,7 @@ final class IdentityProjection(
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
     val changed = phases("compare")(plan.films.filter { f =>
       before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
-    }.map(detailed.complete))
+    }.map(f => detailed.complete(f, before.get(f.id).map(_.record))))
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer)))
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))

@@ -39,11 +39,23 @@ final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: O
  *  clusters relate to the films stored before it ran ([[ShadowDiff]]'s relations). */
 final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
                                  additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int],
-                                 fullSlots: Map[Long, () => Seq[(Source, SourceData)]] = Map.empty) {
-  /** `film` as it is written: a film whose venue slots were taken LEAN from the memo (no showtimes,
-   *  only their digest and starts — enough to compare and guard by) gets them built in full. */
-  def complete(film: ProjectedFilm): ProjectedFilm =
-    fullSlots.get(film.counter).fold(film)(slots => film.copy(record = film.record.copy(data = film.record.data ++ slots())))
+                                 fullSlots: Map[Long, Set[Cinema] => Seq[(Source, SourceData)]] = Map.empty) {
+  /** `film` as it is written over `stored`: a venue whose slot was taken LEAN from the memo (no showtimes, only
+   *  their digest and starts — enough to compare and guard by) and differs from the stored one is built in full.
+   *  One that matches a stored slot kept stripped is written lean — the write re-stitches a stripped slot from the
+   *  stored screenings, which are its own — so a film at hundreds of venues that changed at one rebuilds that one. */
+  def complete(film: ProjectedFilm, stored: Option[MovieRecord]): ProjectedFilm =
+    fullSlots.get(film.counter).fold(film) { rebuild =>
+      val differing = film.record.data.collect {
+        case (showing: CinemaShowing, slot) if slot.showtimes.isEmpty && slot.showtimesDigest.isDefined &&
+          !stored.flatMap(_.data.get(showing)).exists(held => isStripped(held) && ShowtimesDigest.slotLeanEqual(slot, held)) => showing.cinema
+      }.toSet
+      if (differing.isEmpty) film else film.copy(record = film.record.copy(data = film.record.data ++ rebuild(differing)))
+    }
+
+  // A stored slot whose showtimes are kept apart (`screenings`): what the write re-stitches a lean slot from. A store
+  // that keeps them on the slot re-stitches nothing, so a lean slot written there would lose them.
+  private def isStripped(slot: SourceData): Boolean = slot.showtimes.isEmpty && slot.showtimesDigest.isDefined
 }
 
 /**
@@ -195,7 +207,7 @@ object IdentityProjectionPlan {
     val previousIdOf: Long => Option[String] = c => Option.when(c < covered.nextCounter)(covered.filmIdOf(c)).flatten
 
     // 3. Each film's record.
-    val full = Map.newBuilder[Long, () => Seq[(Source, SourceData)]]
+    val full = Map.newBuilder[Long, Set[Cinema] => Seq[(Source, SourceData)]]
     // Each stored film's prior slots by venue, as the slot memo's key reads them: worked out once per film, not
     // once per venue of every film it lends a listing to — a US film showing at hundreds of venues was scanned
     // whole for each of them.
@@ -209,7 +221,8 @@ object IdentityProjectionPlan {
       val sorted   = members.toSeq.sorted
       val rows     = sorted.map(byKey)
       val (venueSlots, anchor, lean) = slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, memo, priorsOf)
-      if (lean) full += counter -> (() => slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, VenueSlotMemo.none, priorsOf)._1)
+      if (lean) full += counter -> (venues =>
+        slotsOf(rows.filter(r => venues(r.listing.cinema)), previousOf, storedById, normalizer, slots, tokens, VenueSlotMemo.none, priorsOf)._1)
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
