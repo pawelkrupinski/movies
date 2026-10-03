@@ -24,8 +24,12 @@ import scala.util.Try
  * `db` is `None` when there is no Mongo (local dev): the store then holds nothing
  * and every redemption misses, which is why Wiring runs
  * [[InMemoryAuthExchangeCodeStore]] there instead.
+ *
+ * `timeout` bounds each round-trip; a miss past it reads as no code. Production
+ * keeps [[MongoAuthExchangeCodeStore.Timeout]]; a spec checking what the store
+ * hands back, not how fast, passes a budget a loaded shared test Mongo can meet.
  */
-class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchangeCodeStore with Logging {
+class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDuration = MongoAuthExchangeCodeStore.Timeout) extends AuthExchangeCodeStore with Logging {
 
   private val coll: Option[MongoCollection[Document]] =
     db.map(_.getCollection(MongoAuthExchangeCodeStore.CollectionName))
@@ -46,7 +50,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
       .append("issuedAt", BsonDateTime(pending.issuedAt.toEpochMilli))
     pending.binding.foreach(binding => document.append("binding", BsonString(binding)))
     pending.challenge.foreach(challenge => document.append("challenge", BsonString(challenge)))
-    Try(Await.result(c.insertOne(Document(document)).toFuture(), MongoAuthExchangeCodeStore.Timeout))
+    Try(Await.result(c.insertOne(Document(document)).toFuture(), timeout))
       // WARN, not debug: the visitor lands signed out on the far side and has no
       // way to tell why, so this line is the only trace the handoff was even
       // attempted.
@@ -58,7 +62,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
    *  two browsers arriving with the same code at once, and only the server can
    *  make that one step. */
   override def remove(code: String): Option[PendingExchangeCode] = coll.flatMap { c =>
-    Try(Await.result(c.findOneAndDelete(Filters.eq("_id", code)).headOption(), MongoAuthExchangeCodeStore.Timeout))
+    Try(Await.result(c.findOneAndDelete(Filters.eq("_id", code)).headOption(), timeout))
       .recover { case exception =>
         logger.warn(s"Auth exchange code lookup failed: ${exception.getMessage}"); None }
       .toOption.flatten
