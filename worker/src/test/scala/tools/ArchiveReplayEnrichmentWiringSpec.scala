@@ -87,7 +87,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    * doubles is explicit; a default that anything can inherit is not.
    * One per wiring, so no test reads repositories another test wrote.
    */
-  private final class FetchOnlyStorage extends tools.ConvergenceStorage {
+  private class FetchOnlyStorage extends tools.ConvergenceStorage {
     override val describe = "unit-spec doubles (enrichment fetch only)"
     override lazy val connection  = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
     override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
@@ -400,5 +400,26 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
     new PaidKeyedWiring(new CountingLeaf, Seq("KINOWO_PROXY_USER" -> "user", "KINOWO_PROXY_PASS" -> "pass"))
       .proxyShardsBuilt shouldBe None
+  }
+
+  // A replay's identity model builds no traces and writes none: they are the admin page's diagnostics,
+  // and a US cut-over replay spent a tenth of its CPU deriving them and Mongo bulk writes that timed out
+  // filing them. Asked with a database present, where the production wiring files them into it.
+  "the archive replay wiring" should "discard the identity model's traces even when it has a database" in {
+    // Never connected: building a trace store only binds it to the database.
+    val client = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1")
+    try {
+      val storage = new FetchOnlyStorage {
+        override lazy val connection = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"),
+            required = services.MongoRequirement.Optional) {
+          override def database = Some(client.getDatabase("replay-traces-spec"))
+        }
+      }
+      final class Exposed extends ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, storage, fixtureTree,
+          settings.FixtureRoot.RepositoryRelative) {
+        def traces: services.identity.IdentityTraceStore = identityTraces
+      }
+      new Exposed().traces shouldBe services.identity.IdentityTraceStore.Discard
+    } finally client.close()
   }
 }

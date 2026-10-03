@@ -155,7 +155,7 @@ class WorkerWiring(
           new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
             store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
             rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
-            traces = mongoConnection.database.fold[IdentityTraceStore](IdentityTraceStore.Discard)(new MongoIdentityTraceStore(_)))
+            traces = identityTraces)
         },
         reads      = identityReads,
         archive    = listings,
@@ -194,6 +194,13 @@ class WorkerWiring(
   /** The venue detail pages read into venue_pages, as the identity model reads them. */
   lazy val venuePageIndex: services.identity.VenuePageIndex =
     new services.identity.VenuePageIndex(venuePageStore, changed = key => identityModel.foreach(_.observed(key)))
+
+  /** Where the model files which rules decided each listing (`identity_traces`, read by the admin
+   *  page only): beside its families in the country's database, or nowhere without one. A def, so each
+   *  model a rebuild makes gets its own writer, as it always has. */
+  protected def identityTraces: services.identity.IdentityTraceStore =
+    mongoConnection.database.fold[services.identity.IdentityTraceStore](services.identity.IdentityTraceStore.Discard)(
+      new services.identity.MongoIdentityTraceStore(_))
 
   /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
    *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
