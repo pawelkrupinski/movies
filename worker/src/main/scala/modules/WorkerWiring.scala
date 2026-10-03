@@ -178,7 +178,23 @@ class WorkerWiring(
    *  ([[venuePageIndex]]) — what the shadow model reads, and what a cut-over one reads first. */
   def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
     new services.identity.StoredTmdbLookups(identityTmdbStore.getOrElse(new services.identity.TmdbStore(new services.identity.InMemoryTmdbDocuments, clock)),
-      country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads)
+      country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads, Some(identityProposals))
+
+  /** What a language model proposed listings no rule took are (`identity_proposals`), as the model reads them: a new
+   *  proposal re-resolves exactly the listings of its title. Read whether or not this worker asks the model. */
+  lazy val identityProposals: services.identity.ProposalIndex =
+    new services.identity.ProposalIndex(mongoConnection.database.fold[services.identity.ProposalStore](new services.identity.InMemoryProposalStore)(
+      new services.identity.MongoProposalStore(_)), changed = key => identityModel.foreach(_.observed(key)))
+
+  /** Asks the model about the unresolved listings' titles each round (`ProposalFill`) — only with `ANTHROPIC_API_KEY`
+   *  set (`GatedIntegration.IdentityProposals`) and traces to read them from. */
+  lazy val identityProposalFill: Option[services.identity.ProposalFill] =
+    for { key <- configuration.anthropicApiKey; db <- mongoConnection.database }
+    yield new services.identity.ProposalFill(new services.identity.MongoIdentityTraceReads(db), identityProposals,
+      new services.identity.AnthropicProposer(key), clock)
+  lazy val identityProposalSchedule: Option[services.tasks.ClaimedPeriodicTask] = identityProposalFill.map(fill =>
+    new services.tasks.ClaimedPeriodicTask("identity-proposals", () => { fill.round(); () }, WorkerWiring.ProposalInterval,
+      WorkerWiring.ProposalInitialDelay, scheduledRunStore, clock))
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
@@ -503,6 +519,7 @@ class WorkerWiring(
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity shadow")(identityShadowSchedule.foreach(_.start()))
     boot.step("closure schedule")(closureSchedule.start())
+    boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
     boot.step("share cards")(shareCardReapers.foreach(_.start()))
     boot.step("facebook rescrapes")(startFacebookRescrapes())
@@ -564,6 +581,7 @@ class WorkerWiring(
     settleReaper.stop()
     identityShadowSchedule.foreach(_.stop())
     closureSchedule.stop()
+    identityProposalSchedule.foreach(_.stop())
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
     stopFacebookRescrapes()
@@ -625,6 +643,9 @@ object WorkerWiring {
   /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed
    *  daily), so a daily verdict loses nothing. */
   val ClosureSweepInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(24, "hours")
+  /** How often the model is asked about new unresolved titles, and how long after boot first. */
+  val ProposalInterval: scala.concurrent.duration.FiniteDuration     = scala.concurrent.duration.Duration(60, "minutes")
+  val ProposalInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(20, "minutes")
   /** Clear of the boot scrape burst, which it has no reason to compete with. */
   val ClosureSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "minutes")
 

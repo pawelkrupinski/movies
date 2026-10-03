@@ -102,6 +102,7 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   private def askDetail(listing: Listing)     = reads.asking(Question.Detail(listing.key))(inner.detail(listing))
 
   def hasDetail(listing: Listing): Boolean = inner.hasDetail(listing)
+  override def proposal(listing: Listing): Option[Proposal] = inner.proposal(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(details.remove(listing.key)).map(served).getOrElse(single(askDetail(listing)))
   def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(queries.remove(query)).map(served).getOrElse(single(askQuery(query)))
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))

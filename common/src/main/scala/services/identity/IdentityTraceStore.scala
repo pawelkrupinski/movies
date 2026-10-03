@@ -66,6 +66,8 @@ trait IdentityTraceReads {
   /** What keeps listings unresolved: each blocker with its listings, its distinct titles and a few of them — most
    *  listings first, so the top row is the next win to investigate. */
   def blockers(): Seq[BlockerCount]
+  /** Up to `limit` listings left with no film that no proposal judged no film — what a model is asked about. */
+  def unresolved(limit: Int): Seq[ListingTrace]
 }
 
 /** One blocker's share of the unresolved listings ([[IdentityTraceReads.blockers]]). */
@@ -81,6 +83,8 @@ object BlockerCount {
 }
 
 object IdentityTraceReads {
+  /** The blocker prefix of a listing a model judged no film (`ResolverDecisions`). */
+  val NotAFilm = "not-a-film:"
   /** Nothing traced: a deployment with no Mongo. */
   val Empty: IdentityTraceReads = new IdentityTraceReads {
     def byRule(rule: String, limit: Int)  = Nil
@@ -88,6 +92,7 @@ object IdentityTraceReads {
     def byTitle(text: String, limit: Int) = Nil
     def ruleCounts()                      = Nil
     def blockers()                        = Nil
+    def unresolved(limit: Int)            = Nil
     def byBlocker(blocker: String, limit: Int) = Nil
   }
 }
@@ -103,6 +108,7 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityT
   def byFilm(film: Int, limit: Int)     = all.filter(_.film.contains(film)).take(limit)
   def byTitle(text: String, limit: Int) = all.filter(_.listing.rawTitle.toLowerCase.contains(text.toLowerCase)).take(limit)
   def blockers()                        = BlockerCount.of(all)
+  def unresolved(limit: Int)            = all.filter(_.blocker.exists(!_.startsWith(IdentityTraceReads.NotAFilm))).take(limit)
   def byBlocker(blocker: String, limit: Int) = all.filter(_.blocker.contains(blocker)).take(limit)
   def ruleCounts()                      = all.flatMap(_.rules).groupBy(identity).map { case (rule, hits) => rule -> hits.size }.toSeq.sortBy(c => (-c._2, c._1))
 }
@@ -158,6 +164,9 @@ final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceRead
   def byRule(rule: String, limit: Int)  = find(Filters.equal("rules", rule), limit)
   def byFilm(film: Int, limit: Int)     = find(Filters.equal("film", film), limit)
   def byBlocker(blocker: String, limit: Int) = find(Filters.equal("blocker", blocker), limit)
+  /** Through the sparse `blocker` index: only unresolved listings carry one. */
+  def unresolved(limit: Int) =
+    find(Filters.and(Filters.exists("blocker"), Filters.not(Filters.regex("blocker", s"^${IdentityTraceReads.NotAFilm}"))), limit)
   def byTitle(text: String, limit: Int) =
     find(Filters.regex("listing.rawTitle", java.util.regex.Pattern.quote(text), "i"), limit)
   def ruleCounts(): Seq[(String, Int)] =

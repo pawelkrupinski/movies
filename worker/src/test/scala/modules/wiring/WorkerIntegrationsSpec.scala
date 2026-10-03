@@ -16,6 +16,7 @@ class WorkerIntegrationsSpec extends AnyFlatSpec with Matchers {
     WorkerIntegrations.features(resolved()) shouldBe Seq(
       EnvGatedFeature("tmdb", Seq(MissingSetting("TMDB_API_KEY"))),
       EnvGatedFeature("omdb", Seq(MissingSetting("OMDB_API_KEY"))),
+      EnvGatedFeature("identity_proposals", Seq(MissingSetting("ANTHROPIC_API_KEY"))),
       EnvGatedFeature("residential_proxy", Seq(MissingSetting("KINOWO_PROXY_USER"), MissingSetting("KINOWO_PROXY_PASS"))),
       EnvGatedFeature("zyte", Seq(MissingSetting("ZYTE_API_KEY"))),
       EnvGatedFeature("sentry", Seq(MissingSetting("SENTRY_DSN"))),

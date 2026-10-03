@@ -86,6 +86,7 @@ final class ProcessConfiguration(val env: Env) {
   // ── Third-party credentials and ids ─────────────────────────────────────────
   def tmdbApiKey: Option[TmdbApiKey]                         = text("TMDB_API_KEY").map(TmdbApiKey(_))
   def omdbApiKey: Option[OmdbApiKey]                         = text("OMDB_API_KEY").map(OmdbApiKey(_))
+  def anthropicApiKey: Option[AnthropicApiKey]               = text("ANTHROPIC_API_KEY").map(AnthropicApiKey(_))
   def zyteApiKey: Option[ZyteApiKey]                         = text("ZYTE_API_KEY").map(ZyteApiKey(_))
   def proxyUser: Option[ProxyUser]                           = text("KINOWO_PROXY_USER").map(ProxyUser(_))
   def proxyPassword: Option[ProxyPassword]                   = text("KINOWO_PROXY_PASS").map(ProxyPassword(_))
@@ -412,6 +413,7 @@ final case class TelegramRoute(token: TelegramBotToken, chatId: TelegramChatId, 
 enum GatedIntegration(val featureName: String, val keys: Seq[String]) {
   case Tmdb             extends GatedIntegration("tmdb", Seq("TMDB_API_KEY"))
   case Omdb             extends GatedIntegration("omdb", Seq("OMDB_API_KEY"))
+  case IdentityProposals extends GatedIntegration("identity_proposals", Seq("ANTHROPIC_API_KEY"))
   case ResidentialProxy extends GatedIntegration("residential_proxy", Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS"))
   case Zyte             extends GatedIntegration("zyte", Seq("ZYTE_API_KEY"))
   case Sentry           extends GatedIntegration("sentry", Seq("SENTRY_DSN"))
