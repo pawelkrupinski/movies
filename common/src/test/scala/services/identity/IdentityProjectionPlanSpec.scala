@@ -25,8 +25,15 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
                   page: Option[String] = None, hours: Seq[Int] = Seq(0, 24)): ProjectedListing = {
     val cm = CinemaMovie(Movie(title, releaseYear = year), cinema, None, page, None, Nil, director.toSeq,
       hours.map(h => Showtime(start.plusHours(h.toLong), None)))
-    ProjectedListing(Listing.of(cinema, cm, normalizer), cm)
+    val listing = ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm)
+    full(listing) = cm
+    listing
   }
+
+  // Each listing's row as published, showtimes and all: what the projection reads a venue's rows back as (`rowsOf`).
+  private val full = scala.collection.mutable.Map.empty[ProjectedListing, CinemaMovie]
+  private def rowsOf(listings: Seq[ProjectedListing]): Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] =
+    venues => listings.filter(l => venues(l.listing.cinema)).groupMap(_.listing.cinema)(full)
 
   /** The slot a stored film holds for `l`, as the landing wrote it. */
   private def slotOf(l: ProjectedListing): (models.Source, SourceData) =
@@ -49,8 +56,9 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
   private def plan(listings: Seq[ProjectedListing], r: Resolution, stored: Seq[StoredMovieRecord] = Nil,
                    counters: FilmIdCounters = FilmIdCounters.empty): ProjectionPlan = {
-    val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, at)
-    IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
+    val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, at, rowsOf(listings))
+    val p = IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
+    p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
   }
 
   private def storedOf(p: ProjectionPlan): Seq[StoredMovieRecord] =
@@ -77,7 +85,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     (lalka ++ obcy).foreach { l =>
       val film = p.films.find(_.members.contains(l.listing.key)).get
       val atVenue = film.record.data.collect { case (CinemaShowing(c, _), sd) if c == l.listing.cinema => sd.showtimes }.flatten
-      atVenue.map(_.dateTime) should contain allElementsOf l.row.showtimes.map(_.dateTime)
+      atVenue.map(_.dateTime) should contain allElementsOf full(l).showtimes.map(_.dateTime)
     }
   }
 
@@ -109,7 +117,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       data = Map(Tmdb -> SourceData(title = Some("Lalka")), slotOf(lalka.head))),
       FilmId("lalka|1968"), Some("lalka|1968"))
     val d = IdentityProjectionPlan.draft(lalka, resolution(decision(Some(1), lalka*)), Seq(stored), FilmIdCounters.empty,
-      normalizer, slots, tokens, at)
+      normalizer, slots, tokens, at, rowsOf(lalka))
     d.drafts.map(_.inherited) shouldBe Seq(Some(FilmId("lalka|1968")))
     d.drafts.head.record.imdbRating shouldBe None
     d.drafts.head.needsDetails shouldBe Some(1)
@@ -125,7 +133,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       val stored = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), data = Map(slotOf(lalka.head), network)),
         FilmId("lalka|2026"), Some("lalka|2026"))
       val d = IdentityProjectionPlan.draft(lalka, resolution(decision(film, lalka*)), Seq(stored), FilmIdCounters.empty,
-        normalizer, slots, tokens, at)
+        normalizer, slots, tokens, at, rowsOf(lalka))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(models.CinemaCityChain) shouldBe Some(network._2))
     }
   }
@@ -140,7 +148,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     Seq(None, Some(889389)).foreach { film =>
       val stored = StoredMovieRecord("Bunkier", None, MovieRecord(data = Map(enriched)), FilmId("bunkier"), Some("bunkier"))
       val d = IdentityProjectionPlan.draft(Seq(bunkier), resolution(decision(film, bunkier)), Seq(stored), FilmIdCounters.empty,
-        normalizer, slots, tokens, at)
+        normalizer, slots, tokens, at, rowsOf(Seq(bunkier)))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(enriched._1).flatMap(_.releaseYear) shouldBe Some(2021))
     }
   }

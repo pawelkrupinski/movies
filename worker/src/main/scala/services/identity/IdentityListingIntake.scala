@@ -38,11 +38,23 @@ final class IdentityListingIntake(
    *  the next: the rows of venues no longer live, and the
    *  archive's copy of a venue that already has an accepted listing, are never fetched. An archive that
    *  could not be read whole counts as empty — a partial read is not a smaller archive. */
-  def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
+  def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live)((_, films) => films)
+
+  /** [[listings]] as the projection holds them: each listing without its showtimes, only their digest
+   *  ([[ProjectedListing]]) — each venue's rows reduced as its page is read, so the showtimes of the whole
+   *  corpus are never held at once. */
+  def projected(live: Seq[Cinema]): Seq[ProjectedListing] =
+    read(live)((cinema, films) => films.map(cm => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm))).flatMap(_._2)
+
+  /** The rows each of `venues` publishes now, showtimes and all — what the projection builds a venue's slots from. */
+  def rowsOf(venues: Set[Cinema]): Map[Cinema, Seq[CinemaMovie]] = listings(venues.toSeq).toMap
+
+  /** Each venue of `live` publishing something, with `view` of its listing: its accepted one, else the archive's. */
+  private def read[A](live: Seq[Cinema])(view: (Cinema, Seq[CinemaMovie]) => A): Seq[(Cinema, A)] = {
     val wanted          = live.toSet
-    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted)
-    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c))
-    live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).map(c -> _)).filter(_._2.nonEmpty)
+    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, view)
+    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), view)
+    live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).flatten.map(c -> _))
   }
 
   // A venue's guard state and accepted listing are its own, so one venue's scrape waits only for
@@ -73,11 +85,13 @@ object IdentityListingIntake {
   /** Where each venue's accepted listing is kept. */
   val Collection = "identity_listings"
 
-  /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time; empty
-   *  when the scan could not complete. */
-  private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean): Map[Cinema, Seq[CinemaMovie]] = {
-    val byVenue  = Map.newBuilder[Cinema, Seq[CinemaMovie]]
-    val complete = repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s => byVenue += row.cinema -> s.films)))
+  /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time and taken
+   *  as `view` of it as its page is read (`None`: it listed nothing); empty when the scan could not complete. */
+  private def lastListings[A](repository: ScrapeArchiveRepository, keep: Cinema => Boolean,
+                              view: (Cinema, Seq[CinemaMovie]) => A): Map[Cinema, Option[A]] = {
+    val byVenue  = Map.newBuilder[Cinema, Option[A]]
+    val complete = repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s =>
+      byVenue += row.cinema -> Option.when(s.films.nonEmpty)(view(row.cinema, s.films)))))
     if (complete) byVenue.result() else Map.empty
   }
 }

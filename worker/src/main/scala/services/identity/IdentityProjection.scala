@@ -1,5 +1,7 @@
 package services.identity
 
+import scala.util.chaining.scalaUtilChainingOps
+
 import models.{Cinema, CinemaMovie, MovieRecord}
 import play.api.Logging
 import services.movies.{CacheKey, ListingKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens, ShowtimesDigest,
@@ -88,7 +90,8 @@ object IdentityProjectionMetrics {
  * store); only the films that changed are written. A second projection over an unchanged listing set writes nothing (P2).
  */
 final class IdentityProjection(
-  listings:    () => Seq[(Cinema, Seq[CinemaMovie])],
+  listings:    () => Seq[ProjectedListing],
+  rows:        Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
   resolve:     Seq[Listing] => Option[IdentityProjection.Resolved],
   cache:       MovieCache,
   filmIds:     FilmIdCounterStore,
@@ -110,8 +113,7 @@ final class IdentityProjection(
   def tick(): ProjectionTick = synchronized {
     val started  = tools.Stopwatch.start()
     val phases   = new ProjectionPhases
-    val corpus   = phases("listings")(listings().flatMap { case (cinema, films) =>
-      films.map(cm => ProjectedListing(Listing.of(cinema, cm, normalizer), cm)) })
+    val corpus   = phases("listings")(listings())
     val stored   = phases("snapshot")(cache.snapshot())
     def refuse(reason: IdentityProjectionMetrics.Refusal, why: String, resolution: Option[Resolution] = None) = {
       metrics.refused(reason)
@@ -132,7 +134,7 @@ final class IdentityProjection(
             // Exactly the listings the resolution decided: one that reached the intake after the
             // model's snapshot is projected by the next tick, never left out of its film by this one.
             val draft = phases("draft")(IdentityProjectionPlan.draft(corpus.filter(row => held(row.listing.key)), resolution, stored,
-              counters, normalizer, slots, tokens, at, slotMemo))
+              counters, normalizer, slots, tokens, at, rows, slotMemo))
             val slotCounts = slotMemo.endTick()
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
@@ -166,7 +168,7 @@ final class IdentityProjection(
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
     val changed = phases("compare")(plan.films.filter { f =>
       before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
-    }.map(f => detailed.complete(f, before.get(f.id).map(_.record))))
+    }.pipe(films => detailed.complete(films, id => before.get(id).map(_.record))))
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer)))
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))

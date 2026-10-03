@@ -47,8 +47,10 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ScrapeLandingMetrics.noop)
     val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
+    /** Every venue whose rows the projection read back, showtimes and all, to build its slots. */
+    val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
     val projection = new IdentityProjection(
-      listings = () => intake.listings(venues),
+      listings = () => intake.projected(venues), rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
       resolve = IdentityProjection.resolving(() => NoFilms, new InMemoryPinStore, normalizer, IdentityCalibration.resolver), cache = cache,
       filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { announced += k; () }, normalizer = normalizer,
       slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
@@ -197,6 +199,26 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     tick.written shouldBe 1
     w.showtimes shouldBe venues.flatMap(c => Seq(1, 2, 3).map(h => c.displayName -> start.plusHours(h.toLong))).toSet +
       (venues.head.displayName -> start.plusHours(4))
+  }
+
+  // A US projection held every listing's showtimes (1.7M, ~560 MB live with their rows) and again in every film's
+  // built slots, through the whole tick: 18 back-to-back full GCs a projection, on a heap of 853 MB.
+  "A projection" should "hold no listing's showtimes, nor any in the films it plans, and read rows only for the venues it builds" in {
+    // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
+    val w = new World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer))
+    w.scrape(programme)
+    val first = w.projection.tick()
+    first.plan.get.films.flatMap(_.record.data.values).flatMap(_.showtimes) shouldBe empty
+    w.showtimes shouldBe allShowtimes
+    w.rowsRead.toSet shouldBe programme.keySet
+    w.projection.tick()
+    w.rowsRead.clear()
+    w.projection.tick().wroteNothing shouldBe true
+    w.rowsRead shouldBe empty
+    w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    w.projection.tick().written shouldBe 1
+    w.rowsRead.toSet shouldBe Set(KinoMuza)
   }
 
   "A second projection over the same listings" should "write nothing (P2)" in {

@@ -40,7 +40,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
 
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
-      listings    = () => identityListingIntake.listings(cinemaScrapers.map(_.cinema)),
+      listings    = () => identityListingIntake.projected(cinemaScrapers.map(_.cinema)),
+      rows        = identityListingIntake.rowsOf,
       resolve     = identityModel.fold(IdentityProjection.resolving(
         () => cutoverLookups(),
         new MongoPinStore(mongoConnection.database), titleNormalizer, IdentityCalibration.resolver))(
