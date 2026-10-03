@@ -54,7 +54,7 @@ final class MovieChangeStream(
   source:              MovieChangeStream.Source,
   screenings:          Option[ScreeningsRepository],
   slots:               Option[SlotsRepository],
-  reread:              String => (Option[StoredMovieRecord], Boolean),
+  reread:              String => tools.ReadOutcome[StoredMovieRecord],
   // Marked before every `reread`, so a consumer that also writes films (the cache) can tell a
   // read taken before its own write from one taken after — see [[FilmWriteFence]].
   fence:               FilmWriteFence = new FilmWriteFence(),
@@ -426,7 +426,7 @@ final class MovieChangeStream(
   /** Re-read `filmId` (a few quick attempts) and fan it out, with the fence mark the
    *  successful read was taken under; false when every read failed. */
   private def rereadAndDispatch(filmId: String): Boolean = {
-    def markedRead() = { val mark = fence.mark(filmId); val (film, read) = reread(filmId); (film, read, mark) }
+    def markedRead() = { val mark = fence.mark(filmId); val read = reread(filmId); (read.answered, !read.isFailed, mark) }
     var attempt = 1
     var (film, read, mark) = markedRead()
     while (!read && attempt < MovieChangeStream.RereadAttempts) {
@@ -522,7 +522,7 @@ final class MovieChangeStream(
     if (changeSub.get() == null) {
       // Resume from the last persisted token if we have one (a restart / prior terminal
       // error) so events missed while down are replayed; else open at "now".
-      val resumeFrom = resumeToken.load()
+      val resumeFrom = resumeToken.openFrom()
       source.open(resumeFrom, new Observer[ChangeStreamDocument[BsonDocument]] {
         override def onSubscribe(s: Subscription): Unit = {
           changeSub.set(s); moviesDemand.opened(s); liveness.watching(ChangeStreamLiveness.Movies)

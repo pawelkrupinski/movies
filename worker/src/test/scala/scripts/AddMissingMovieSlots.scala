@@ -41,19 +41,18 @@ object AddMissingMovieSlots {
       val embedded = SlotsRepository.slotsOf(row.record.data)
       if (embedded.nonEmpty) {
         val id                  = row.id.value
-        val (stored, slotsRead) = slots.findForFilmChecked(id)
-        val (shown, showsRead)  = screenings.findForFilmChecked(id)
-        if (!slotsRead || !showsRead) counts = counts.copy(unread = counts.unread + 1)
-        else {
-          val missing = embedded.filter { case (key, _) => shown.contains(key) && !stored.contains(key) }
-          if (missing.nonEmpty) {
-            if (apply) missing.foreach { case (key, slot) => slots.upsertSlot(id, key, slot) }
-            counts = counts.copy(repaired = counts.repaired + 1, rows = counts.rows + missing.size)
-          }
+        slots.findForFilmChecked(id).flatMap(stored => screenings.findForFilmChecked(id).map(stored -> _)).answered match {
+          case None => counts = counts.copy(unread = counts.unread + 1)
+          case Some((stored, shown)) =>
+            val missing = embedded.filter { case (key, _) => shown.contains(key) && !stored.contains(key) }
+            if (missing.nonEmpty) {
+              if (apply) missing.foreach { case (key, slot) => slots.upsertSlot(id, key, slot) }
+              counts = counts.copy(repaired = counts.repaired + 1, rows = counts.rows + missing.size)
+            }
         }
       }
     }
-    (counts, complete)
+    (counts, complete.isComplete)
   }
 
   def main(args: Array[String]): Unit = {

@@ -1,10 +1,9 @@
 package services.attempts
 
 import com.mongodb.client.model.UpdateOptions
-import org.mongodb.scala.model.{Filters, Sorts, Updates}
+import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-import services.movies.KeysetScan
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
@@ -40,7 +39,7 @@ object EnrichmentAttemptStore {
 class InMemoryEnrichmentAttemptStore extends EnrichmentAttemptStore with EnrichmentAttemptReader {
   private val attempts = new ConcurrentHashMap[String, EnrichmentAttempt]()
   override def record(key: String, attempt: EnrichmentAttempt): Unit = { attempts.put(key, attempt); () }
-  override def all(): Seq[(String, EnrichmentAttempt)] = {
+  def all(): Seq[(String, EnrichmentAttempt)] = {
     import scala.jdk.CollectionConverters._
     attempts.asScala.toSeq
   }
@@ -79,14 +78,9 @@ class MongoEnrichmentAttemptStore(db: Option[MongoDatabase]) extends EnrichmentA
   }
 }
 
-/** Read-only view of `enrichment_attempts` for the dev debug page (the web app).
- *  Keyset-paged rather than one unbounded `find()`: this collection is one row per
- *  (source, film) and grows with the corpus, the same shape that made an
- *  unbounded cursor a StackOverflow risk for the cadence hydrate. An
- *  unreadable/absent Mongo yields an empty list rather than throwing. */
+/** Read-only view of `enrichment_attempts` for the dev debug page (the web app): one film's
+ *  attempts at a time, never the whole collection. */
 trait EnrichmentAttemptReader {
-  def all(): Seq[(String, EnrichmentAttempt)]
-
   /** The attempts for a KNOWN set of keys — what one film's /debug expand needs
    *  (its four `<site>|tmdb:<id>` keys). A bounded `_id in [...]` lookup, so
    *  expanding a row doesn't drag the whole collection across the wire. */
@@ -96,34 +90,12 @@ trait EnrichmentAttemptReader {
 object EnrichmentAttemptReader {
   /** No data — the default where attempts aren't wired (tests, Mongo-less dev). */
   val empty: EnrichmentAttemptReader = new EnrichmentAttemptReader {
-    override def all(): Seq[(String, EnrichmentAttempt)] = Seq.empty
     override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] = Map.empty
   }
 }
 
 class MongoEnrichmentAttemptReader(db: Option[MongoDatabase]) extends EnrichmentAttemptReader with Logging {
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(EnrichmentAttempts.Collection))
-
-  override def all(): Seq[(String, EnrichmentAttempt)] = coll match {
-    case None => Seq.empty
-    case Some(c) =>
-      val collected = Seq.newBuilder[(String, EnrichmentAttempt)]
-      Try {
-        KeysetScan.scan[Document](
-          label          = "EnrichmentAttempt read",
-          batchSize      = 2000,
-          maxAttempts    = 3,
-          initialBackoff = 500.millis,
-          keyOf          = _.getString("_id"),
-          fetchPage      = (afterId, limit) => {
-            val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
-            Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
-          },
-          onIncomplete   = exception => logger.warn(s"Enrichment-attempt read keyset scan failed: ${exception.getMessage}")
-        )(batch => batch.foreach(d => EnrichmentAttempts.decodeRecord(d).foreach(collected += _)))
-      }.recover { case e => logger.warn(s"Enrichment-attempt read failed: ${e.getMessage}") }
-      collected.result()
-  }
 
   override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] =
     if (keys.isEmpty) Map.empty

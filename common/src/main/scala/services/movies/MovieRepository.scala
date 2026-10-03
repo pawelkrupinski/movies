@@ -3,7 +3,7 @@ package services.movies
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Projections, Sorts, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
@@ -135,10 +135,10 @@ trait MovieRepository {
   /** Snapshot of every persisted record. Returns empty when disabled. */
   def findAll(): Seq[StoredMovieRecord]
 
-  /** [[findAll]] and whether the scan was COMPLETE. `findAll` answers an incomplete scan
-   *  with `Seq.empty`, which a caller deciding "is the corpus empty?" must not take at its
-   *  word. The in-memory store cannot fail, so the default reports `true`. */
-  def findAllChecked(): (Seq[StoredMovieRecord], Boolean) = (findAll(), true)
+  /** [[findAll]] as the read it is: failed when the scan was incomplete. `findAll` answers an
+   *  incomplete scan with `Seq.empty`, which a caller deciding "is the corpus empty?" must not
+   *  take at its word. The in-memory store cannot fail. */
+  def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = tools.ReadOutcome.Answered(findAll())
 
   /** The single row stored under this exact `_id` (the [[StoredMovieRecord.idOf]]
    *  form), or `None` when absent. Lets the dev `/debug` page render ONE row's
@@ -146,10 +146,10 @@ trait MovieRepository {
    *  up front — rendering the whole corpus's details in one Twirl pass OOM'd the
    *  view. The default scans [[findAll]] (fine for the in-memory store);
    *  `MongoMovieRepository` overrides it with an indexed `_id` lookup. */
-  def findById(id: FilmId): Option[StoredMovieRecord] = findByIdChecked(id)._1
+  def findById(id: FilmId): Option[StoredMovieRecord] = findByIdChecked(id).toOptionOrThrow
 
-  /** Like [[findById]] but says whether the READ succeeded, so `None` can be told from
-   *  "could not look".
+  /** [[findById]] as the read it is — absent ("no such film") told apart from failed ("could
+   *  not look").
    *
    *  `findById` collapses both into `None`, and one caller cannot afford that:
    *  `MovieCache.stored` uses it as the merge base for a scrape whose film is not in the
@@ -162,9 +162,9 @@ trait MovieRepository {
    *  the logs filled with `MovieRepository.findById(…) failed` while the showtime volume
    *  fell to a third across every country.
    *
-   *  The in-memory store cannot fail, so the default reports `true`. */
-  def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
-    (findAll().find(_.id == id), true)
+   *  The in-memory store cannot fail. */
+  def findByIdChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] =
+    findAll().find(_.id == id).fold[tools.ReadOutcome[StoredMovieRecord]](tools.ReadOutcome.none(s"film $id"))(tools.ReadOutcome.Answered(_))
 
   /** [[findByIdChecked]] stitching the cinema slots but NOT the showtimes — the by-id
    *  counterpart of [[foreachRecordWithSlots]], with the same caveat: `.data` is complete,
@@ -172,24 +172,24 @@ trait MovieRepository {
    *  nothing but card fields): a card never reads a showtime (`ReadModelProjection.metadataHash`),
    *  and skipping the `screenings` read skips most of a whole-row read's bytes — 260 of the US
    *  corpus's 341 MB (2026-09-26). Default delegates to the fully stitched read. */
-  def findByIdWithSlotsChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = findByIdChecked(id)
+  def findByIdWithSlotsChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] = findByIdChecked(id)
 
   /** Whether a live document holds `id` — the question minting a fresh id asks of each
    *  candidate. THROWS when the row cannot be read: counting "unknown" as free lets the
    *  write that follows replace the film that holds it. */
   final def holdsId(id: FilmId): Boolean = findByIdChecked(id) match {
-    case (Some(_), _)  => true
-    case (None, true)  => false
-    case (None, false) => throw new IllegalStateException(s"cannot read whether id $id is taken")
+    case tools.ReadOutcome.Answered(_)          => true
+    case tools.ReadOutcome.Absent(_)   => false
+    case tools.ReadOutcome.Failed(cause) => throw new IllegalStateException(s"cannot read whether id $id is taken", cause.exception)
   }
 
   /** The row whose `key` field is this lookup key — a cold cache asking "is this
    *  film stored?" before it knows the id. Same checked contract as
    *  [[findByIdChecked]]. At most one row holds a key (the cache keeps its map by it);
    *  the default scans [[findAll]], `MongoMovieRepository` uses the `key` index. */
-  def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = {
+  def findByKeyChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] = {
     val k = StoredMovieRecord.keyFor(key)
-    (findAll().find(_.key(normalizer) == k), true)
+    findAll().find(_.key(normalizer) == k).fold[tools.ReadOutcome[StoredMovieRecord]](tools.ReadOutcome.none(s"film keyed $k"))(tools.ReadOutcome.Answered(_))
   }
 
   /** The country whose rules derive a row's `_id`. Defaulted so the in-memory and
@@ -226,13 +226,13 @@ trait MovieRepository {
    *  the side loads into per-page lookups would trade that ~15 MB for one round-trip per
    *  page, which is a real change and not one to smuggle into a doc comment.
    *
-   *  Returns `true` when the WHOLE corpus was scanned, `false` when a read failed
-   *  mid-scan and the iteration stopped early (rows delivered so far still reached
-   *  `f`). A caller that PRUNES on a row's absence — the read-model reconcile —
-   *  MUST treat `false` as "this set is not the complete corpus" and skip the
-   *  destructive step, or a transient Mongo read failure deletes live rows. The
-   *  in-memory store never fails, so the default reports `true`. */
-  def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { findAll().foreach(f); true }
+   *  Answers [[tools.ScanOutcome.Complete]] when the WHOLE corpus was scanned, and
+   *  `Incomplete` when a read failed mid-scan and the iteration stopped early (rows
+   *  delivered so far still reached `f`). A caller that PRUNES on a row's absence — the
+   *  read-model reconcile — MUST treat an incomplete scan as "this set is not the complete
+   *  corpus" and skip the destructive step, or a transient Mongo read failure deletes live
+   *  rows. The in-memory store never fails, so the default reports a complete scan. */
+  def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome = { findAll().foreach(f); tools.ScanOutcome.complete }
 
   /** Like [[foreachRecord]] but stitching NEITHER side collection — so under the split
    *  each row has empty showtimes AND NO CINEMA SLOTS AT ALL. The name undersells that:
@@ -245,7 +245,7 @@ trait MovieRepository {
    *  display-title variants included — must use [[foreachRecordWithSlots]], or it will
    *  compute its answer from a film that appears to screen nowhere. Default delegates to
    *  the (fully stitched, safe) [[foreachRecord]]. */
-  def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+  def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): tools.ScanOutcome = foreachRecord(f)
 
   /** Like [[foreachRecord]] but WITHOUT re-injecting showtimes from `screenings` — the
    *  cinema slots ARE stitched, so `.data` is complete and everything derived from it is
@@ -263,7 +263,7 @@ trait MovieRepository {
    *  too would have the prune compute FEWER live ids than the read model holds and delete
    *  live cards — the shape that has already cost this repository a 129-film outage.
    *  Default delegates to the (fully stitched, safe) [[foreachRecord]]. */
-  def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+  def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = foreachRecord(f)
 
   /** Like [[foreachRecord]] — fully stitched, showtimes included — but only the rows whose
    *  `updatedAt` is strictly after `since`. The BOUNDED catch-up read for a silent change
@@ -276,7 +276,7 @@ trait MovieRepository {
    *  cursor did deliver has `updatedAt` before that stamp and is not read again. Same
    *  completeness contract as [[foreachRecord]]. Default: every row — a store that keeps no
    *  timestamp can only over-approximate "changed since", never under. */
-  def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+  def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome = foreachRecord(f)
 
   /** Remove the film stored under this id, with its side-collection rows. Never
    *  throws: a failure is logged, counted and reported as [[WriteOutcome.Failed]]. */
@@ -409,28 +409,31 @@ trait KeyAddressedMovieWrites { self: MovieRepository =>
   def upsert(title: String, year: Option[Int], e: MovieRecord): WriteOutcome = {
     val key = CacheKey(title, year, normalizer)
     findByKeyChecked(key) match {
-      case (Some(row), _) => upsert(row.id, key, e)
-      case (None, true)   =>
+      case tools.ReadOutcome.Answered(row)       => upsert(row.id, key, e)
+      case tools.ReadOutcome.Absent(_)  =>
         scala.util.Try(Some(FilmId.legacy(key)).filterNot(holdsId).getOrElse(FilmId.fresh(key, holdsId))) match {
           case scala.util.Success(id) => upsert(id, key, e)
           case scala.util.Failure(_)  => WriteOutcome.Declined("id-unreadable")
         }
-      case (None, false)  => WriteOutcome.Declined("key-unreadable")
+      case tools.ReadOutcome.Failed(_)  => WriteOutcome.Declined("key-unreadable")
     }
   }
 
   def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
-    findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, row.cacheKey(normalizer), before, after))
+    findByKeyChecked(CacheKey(title, year, normalizer)).answered.exists(row => updateIfPresent(row.id, row.cacheKey(normalizer), before, after))
 
   def delete(title: String, year: Option[Int]): WriteOutcome =
     findByKeyChecked(CacheKey(title, year, normalizer)) match {
-      case (Some(row), _) => delete(row.id)
-      case (None, true)   => WriteOutcome.Written                   // nothing under the key: already gone
-      case (None, false)  => WriteOutcome.Declined("key-unreadable")
+      case tools.ReadOutcome.Answered(row)      => delete(row.id)
+      case tools.ReadOutcome.Absent(_) => WriteOutcome.Written                   // nothing under the key: already gone
+      case tools.ReadOutcome.Failed(_) => WriteOutcome.Declined("key-unreadable")
     }
 }
 
 object MovieRepository {
+  /** How many times the dotted-name fallback reads and patches again when the document moved under it. */
+  val DottedReplaceAttempts = 3
+
   /** The corpus collection. Named here rather than inline so
    *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
   val Collection = "movies"
@@ -565,10 +568,9 @@ class MongoMovieRepository(
     for {
       sl                        <- slots
       sc                        <- screenings
-      (slotRows, slotsRead)      = sl.findAtCinemasChecked(filmId, names)
-      if slotsRead
-      (showtimeRows, showsRead)  = sc.findAtCinemasChecked(filmId, names)
-      if showsRead && covered(filmId, showtimeRows.keySet, slotRows.keySet)
+      slotRows                  <- sl.findAtCinemasChecked(filmId, names).answered
+      showtimeRows              <- sc.findAtCinemasChecked(filmId, names).answered
+      if covered(filmId, showtimeRows.keySet, slotRows.keySet)
       placed                     = slotRows.toSeq.map { case (key, slot) => Source.byWireKey(key).collect {
                                      case showing: models.CinemaShowing if cinemas(showing.cinema) => showing -> slot } }
       if placed.forall(_.isDefined)
@@ -632,20 +634,20 @@ class MongoMovieRepository(
    *  film's next write repeats; producing an empty one empties a live film off the site.
    *  `withShowtimes = false` skips the `screenings` read entirely: the slots-only row. */
   private def decodeStitched(dto: StoredMovieDto, withShowtimes: Boolean = true): Option[StoredMovieRecord] = {
-    val (storedSlots, slotsRead) = slots.map(_.findForFilmChecked(dto._id))
-      .getOrElse((Map.empty[String, SourceData], true))
-    if (!slotsRead) {
-      logger.warn(s"MovieRepository: skipping ${dto._id} — its movie_slots read failed, and serving the row " +
-        "without them would present a live film as having no cinemas.")
-      None
-    } else {
-      val (storedShowtimes, showtimesRead) = screenings.filter(_ => withShowtimes).map(_.findForFilmChecked(dto._id))
-        .getOrElse((Map.empty[String, Seq[Showtime]], true))
-      if (!showtimesRead) {
-        logger.warn(s"MovieRepository: skipping ${dto._id} — its screenings read failed, and serving the row " +
-          "without them would present a live film as having no showtimes.")
+    slots.fold[tools.ReadOutcome[Map[String, SourceData]]](tools.ReadOutcome.Answered(Map.empty))(_.findForFilmChecked(dto._id)).answered match {
+      case None =>
+        logger.warn(s"MovieRepository: skipping ${dto._id} — its movie_slots read failed, and serving the row " +
+          "without them would present a live film as having no cinemas.")
         None
-      } else Some(stitchRow(StoredMovieDto.toDomain(dto, normalizer), storedShowtimes, storedSlots))
+      case Some(storedSlots) =>
+        screenings.filter(_ => withShowtimes)
+          .fold[tools.ReadOutcome[Map[String, Seq[Showtime]]]](tools.ReadOutcome.Answered(Map.empty))(_.findForFilmChecked(dto._id)).answered match {
+          case None =>
+            logger.warn(s"MovieRepository: skipping ${dto._id} — its screenings read failed, and serving the row " +
+              "without them would present a live film as having no showtimes.")
+            None
+          case Some(storedShowtimes) => Some(stitchRow(StoredMovieDto.toDomain(dto, normalizer), storedShowtimes, storedSlots))
+        }
     }
   }
 
@@ -701,14 +703,13 @@ class MongoMovieRepository(
    *  acting on a partial corpus. The 60s per-batch timeout (vs the 10s on point writes)
    *  still covers a cold WiredTiger first read after a process boot (10–20 s even when
    *  steady-state finds are <100 ms). */
-  def findAll(): Seq[StoredMovieRecord] = findAllChecked()._1
+  def findAll(): Seq[StoredMovieRecord] = findAllChecked().answered.getOrElse(Seq.empty)
 
-  override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) = coll match {
+  override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = coll match {
     case Some(_) =>
-      val buf      = Vector.newBuilder[StoredMovieRecord]
-      val complete = scanStitched(batch => buf ++= batch)
-      if (complete) (buf.result(), true) else (Seq.empty, false)
-    case None => (Seq.empty, true)
+      val buf = Vector.newBuilder[StoredMovieRecord]
+      scanStitched(batch => buf ++= batch).collected(buf.result())
+    case None => tools.ReadOutcome.Answered(Seq.empty)
   }
 
   /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
@@ -720,10 +721,10 @@ class MongoMovieRepository(
    *  Projection-safety: a page whose side read FAILED is never handed on — its rows,
    *  stitched from the empty answer, would read as films with no cinemas or no showtimes,
    *  and a projecting caller writes exactly that. The page is skipped and the scan reports
-   *  "incomplete" (`false`), exactly like a failed movies batch, so a pruning caller skips
+   *  "incomplete", exactly like a failed movies batch, so a pruning caller skips
    *  its destructive step too. */
   private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true,
-                           filter: Bson = Filters.empty()): Boolean = {
+                           filter: Bson = Filters.empty()): tools.ScanOutcome = {
     // Side rows are fetched PER PAGE, for exactly the films that page holds, rather than
     // preloaded whole. Both are one indexed `filmId $in [...]` query.
     //
@@ -750,11 +751,9 @@ class MongoMovieRepository(
       // The two side reads are independent (each is `filmId $in` the page's ids), so they run at
       // once: in sequence they were most of a US boot's 16–21 s cache hydrate, one round-trip
       // after the other for every page.
-      val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(slotReads(slots.map(_.findForFilmsChecked(ids))
-        .getOrElse((Map.empty[String, Map[String, SourceData]], true)))))(using scala.concurrent.ExecutionContext.global)
+      val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(slotReads(slots.fold((Map.empty[String, Map[String, SourceData]], true))(s => SlotKeyed.rowsOrNone(s.findForFilmsChecked(ids))))))(using scala.concurrent.ExecutionContext.global)
       val (pageScr, scrOk) = if (!withShowtimes) (Map.empty[String, Map[String, Seq[Showtime]]], true)
-        else screeningReads(screenings.map(_.findForFilmsChecked(ids))
-          .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true)))
+        else screeningReads(screenings.fold((Map.empty[String, Map[String, Seq[Showtime]]], true))(s => SlotKeyed.rowsOrNone(s.findForFilmsChecked(ids))))
       val (pageSlots, slotsOk) = Await.result(slotsRead, Duration.Inf)
       // A page whose side read failed is NOT handed on, stitched from the empty answer: its
       // films would arrive with no cinemas or no showtimes, and "incomplete" only stops a
@@ -779,7 +778,7 @@ class MongoMovieRepository(
     report(s"MovieRepository.scanStitched: $films film(s) in ${wall.millis}ms — slot reads " +
       s"${slotReads.elapsed.toMillis}ms, screening reads ${screeningReads.elapsed.toMillis}ms (alongside), " +
       s"stitch ${stitching.elapsed.toMillis}ms over ${stitching.count} page(s).")
-    moviesComplete && sideReadsComplete
+    moviesComplete.andThen(tools.ScanOutcome.of(sideReadsComplete, "a side-collection read failed for a page of films"))
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
@@ -796,11 +795,11 @@ class MongoMovieRepository(
    *     (see [[findAll]]).
    *
    *  Each BATCH read is retried independently (keyset pagination makes every batch a
-   *  fresh, idempotent `find`) before the scan is declared incomplete. Returns `true`
-   *  only when the scan reached the last page; `false` when a batch still failed after
-   *  its retries — rows delivered so far still reached `onBatch`, so a PRUNING caller
-   *  must treat `false` as "not the complete corpus" and skip its destructive step. */
-  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): Boolean = coll match {
+   *  fresh, idempotent `find`) before the scan is declared incomplete — complete only when
+   *  the scan reached the last page. Rows delivered before a batch that still failed after
+   *  its retries reached `onBatch`, so a PRUNING caller must treat an incomplete scan as
+   *  "not the complete corpus" and skip its destructive step. */
+  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome = coll match {
     case Some(c) =>
       KeysetScan.scan[StoredMovieDto](
         label          = "MovieRepository keyset batch",
@@ -819,7 +818,7 @@ class MongoMovieRepository(
           countIfUndecodable(exception)
         }
       )(onBatch)
-    case None => false
+    case None => tools.ScanOutcome.Incomplete(new tools.IncompleteScanException("no movies collection"))
   }
 
   /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
@@ -829,15 +828,15 @@ class MongoMovieRepository(
    *  absent row from an unreadable one — see the trait doc for what conflating them
    *  costs. A row whose SLOT read failed counts as unreadable too: `decodeStitched`
    *  declines to build it, and that `None` means "could not look", not "no such film". */
-  override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+  override def findByIdChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] =
     findOneChecked(Filters.eq("_id", id.value), s"findById($id)")
 
   /** The indexed `_id` lookup without the `screenings` read — see the trait. */
-  override def findByIdWithSlotsChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+  override def findByIdWithSlotsChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] =
     findOneChecked(Filters.eq("_id", id.value), s"findByIdWithSlots($id)", withShowtimes = false)
 
   /** Indexed lookup by the `key` field — see the trait. */
-  override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
+  override def findByKeyChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] =
     findOneChecked(Filters.eq("key", StoredMovieRecord.keyFor(key)), s"findByKey(${StoredMovieRecord.keyFor(key)})")
 
   /** A read that failed on a document the codec refused: counted, since it fails every read that
@@ -846,21 +845,20 @@ class MongoMovieRepository(
     if (services.readmodel.DecodeFailureMetrics.isDecodeFailure(failure))
       decodeFailures.recordDecodeFailure(services.readmodel.DecodeFailureMetrics.SourceMoviesCollection)
 
-  private def findOneChecked(filter: Bson, what: String, withShowtimes: Boolean = true): (Option[StoredMovieRecord], Boolean) = coll match {
+  private def findOneChecked(filter: Bson, what: String, withShowtimes: Boolean = true): tools.ReadOutcome[StoredMovieRecord] = coll match {
     case Some(c) =>
-      Try(Option(Await.result(c.find(filter).first().toFuture(), 10.seconds))) match {
-        case scala.util.Success(None)      => (None, true)   // genuinely absent
-        case scala.util.Success(Some(dto)) =>
-          decodeStitched(dto, withShowtimes) match {
-            case some @ Some(_) => (some, true)
-            case None           => (None, false)             // slots or screenings unreadable
-          }
-        case scala.util.Failure(exception) =>
-          logger.warn(s"MovieRepository.$what failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          countIfUndecodable(exception)
-          (None, false)
+      tools.MongoRead.one(what, 10.seconds)(c.find(filter).headOption()) match {
+        case tools.ReadOutcome.Answered(dto) =>
+          // A row whose slots or screenings could not be read is not readable either.
+          decodeStitched(dto, withShowtimes).fold[tools.ReadOutcome[StoredMovieRecord]](
+            tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new IllegalStateException(s"$what: a side-collection read failed"))))(tools.ReadOutcome.Answered(_))
+        case absent: tools.ReadOutcome.Absent => absent
+        case failed @ tools.ReadOutcome.Failed(cause) =>
+          logger.warn(s"MovieRepository.$what failed: ${cause.explain}")
+          countIfUndecodable(cause.exception)
+          failed
       }
-    case None => (None, true)
+    case None => tools.ReadOutcome.none(what)
   }
 
   /** Strips each source's `showtimes` SERVER-SIDE so they never cross the wire:
@@ -893,8 +891,7 @@ class MongoMovieRepository(
       // shape to return), but it MUST NOT pass silently: every migrated film would
       // render cinema-less and the page would read as a corpus-wide outage. This one is
       // the dev /debug table, so it degrades loudly instead of refusing to render.
-      val (allSlots, slotsRead) = slots.map(_.findAllChecked())
-        .getOrElse((Map.empty[String, Map[String, SourceData]], true))
+      val (allSlots, slotsRead) = slots.fold((Map.empty[String, Map[String, SourceData]], true))(s => SlotKeyed.rowsOrNone(s.findAllChecked()))
       if (!slotsRead)
         logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
           "list with no cinemas. The listing is stale, not the corpus.")
@@ -918,22 +915,22 @@ class MongoMovieRepository(
    *  screenings (un-stitched empty showtimes would make it prune every film's
    *  `web_screenings`), and `WorkerShowtimesMetrics` counts them. Prune-safety +
    *  bounded-heap guarantees live in `scanStitched`. */
-  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
+  override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
     scanStitched(_.foreach(f))
 
   /** Count-only scan: pages the movies cursor WITHOUT the `screenings` load [[foreachRecord]]
    *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
    *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
-  override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean =
+  override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): tools.ScanOutcome =
     scanByKeyset(Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
-  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean =
+  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome =
     scanStitched(_.foreach(f), withShowtimes = false)
 
   /** The `updatedAt` range read, through the same stitched scan as [[foreachRecord]] — the
    *  catch-up re-projects what it reads, so a row from here must be as whole as one the
    *  change stream would have delivered. */
-  override def foreachRecordUpdatedSince(since: Instant)(f: StoredMovieRecord => Unit): Boolean =
+  override def foreachRecordUpdatedSince(since: Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome =
     scanStitched(_.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
 
   /** Remove the film `id` with its side-collection rows. */
@@ -974,7 +971,7 @@ class MongoMovieRepository(
         logger.warn(s"MovieRepository id keyset scan failed after retries: " +
           s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
     )(ids ++= _)
-    if (complete) Some(ids.result()) else None
+    Option.when(complete.isComplete)(ids.result())
   }
 
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
@@ -1167,14 +1164,23 @@ class MongoMovieRepository(
               // (FilmwebUrlAudit). Read the current doc and apply the SAME patch to it, so
               // the replace carries exactly the diff the `$set` path would, every other
               // field preserved. Absent row → nothing to replace → report not-present.
-              val current = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-                .map(dto => StoredMovieDto.toDomain(dto, normalizer).record)
-              dottedReplaceRecord(current, patch) match {
-                case Some(merged) =>
-                  Await.result(c.replaceOne(Filters.eq("_id", id),
-                    StoredMovieDto.fromDomain(id, key, merged, Instant.now()),
-                    new ReplaceOptions().upsert(false)).toFuture(), 10.seconds).getMatchedCount
-                case None => 0L
+              //
+              // …and the replace lands only over the document as read (its `updatedAt`, which every
+              // write moves): a rating refresh landing between the read and the replace was wiped by
+              // it, the same null this fallback exists to avoid. On a mismatch the patch is applied
+              // again to the document as it now is.
+              tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => dottedReplaceRead(c, id)) { stored =>
+                dottedReplaceRecord(stored.map(dto => StoredMovieDto.toDomain(dto, normalizer).record), patch)
+              } { (stored, merged) =>
+                services.MongoGuard.replaceIfUnchanged(c,
+                  services.MongoGuard.unchanged(BsonString(id),
+                    stored.map(dto => BsonDocument("updatedAt" -> BsonDateTime(dto.updatedAt.toEpochMilli))), Seq("updatedAt")),
+                  StoredMovieDto.fromDomain(id, key, merged, Instant.now()), 10.seconds, insert = false)
+              } match {
+                case tools.GuardedWrite.Landed(_)                 => 1L
+                case tools.GuardedWrite.Unneeded                  => 0L
+                case tools.GuardedWrite.ChangedUnderYou(attempts) =>
+                  throw new IllegalStateException(s"'$id' changed between its read and its replace $attempts times in a row")
               }
             } else {
               Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
@@ -1203,6 +1209,11 @@ class MongoMovieRepository(
    *  replace → report not-present, don't upsert). Pure — no Mongo I/O. */
   private[movies] def dottedReplaceRecord(persisted: Option[MovieRecord], patch: MovieRecordPatch): Option[MovieRecord] =
     persisted.map(patch.applyTo)
+
+  /** The stored document the dotted-name fallback patches — a seam a spec uses to land another write
+   *  between this read and the replace. */
+  protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[StoredMovieDto] =
+    Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
 
   // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
   // scalar field gets its own atom; the `data` map gets per-source

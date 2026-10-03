@@ -203,8 +203,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // Mirrors the Mongo impl on a mid-scan read failure: deliver nothing further and
     // report the scan INCOMPLETE (rows before the failure would still have reached `f`;
     // here the very first batch dies, so none do).
-    override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
-      if (failScan) false else super.foreachRecord(f)
+    override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
+      if (failScan) tools.ScanOutcome.of(whole = false, "the scan fails on purpose") else super.foreachRecord(f)
   }
 
   "reconcile" should "NOT prune live read-model rows when the source scan failed mid-way (incomplete)" in {
@@ -453,9 +453,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository() {
       override def findAllScreenings(): Seq[CityScreening] = fail("the boot seed read every screening at once")
-      override def foreachScreening(f: CityScreening => Unit): Boolean = { super.findAllScreenings().foreach(f); true }
-      override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
-        (super.findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)), true)
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome = { super.findAllScreenings().foreach(f); tools.ScanOutcome.complete }
+      override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
+        tools.ReadOutcome.Answered(super.findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)))
     }
     val record = MovieRecord(tmdbId = Some(1), data = venues.take(3).map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
     new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(stored(record))
@@ -630,7 +630,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val landed = new java.util.concurrent.atomic.AtomicBoolean(false)
     lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
         slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
-      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
         val complete = super.foreachRecordWithSlots(f)
         if (landed.compareAndSet(false, true))
           repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
@@ -725,7 +725,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val rm = new InMemoryReadModelRepository()
     val written = new java.util.concurrent.atomic.AtomicBoolean(false)
     lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
-      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
         val complete = super.foreachRecordWithSlots(f)
         if (written.compareAndSet(false, true)) {
           repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
@@ -1334,9 +1334,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // that never happened.
   it should "meter only the rows it actually projected, not one that vanished before it was read" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
-      override def findByIdChecked(id: services.movies.FilmId): (Option[StoredMovieRecord], Boolean) = {
+      override def findByIdChecked(id: services.movies.FilmId): tools.ReadOutcome[StoredMovieRecord] = {
         val found = super.findByIdChecked(id)
-        if (found._1.exists(_.title == "Bar")) (None, true) else found
+        if (found.answered.exists(_.title == "Bar")) tools.ReadOutcome.none("Bar") else found
       }
     }
     val rm = new InMemoryReadModelRepository()
@@ -1545,8 +1545,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // a prune would delete every card. Both stand down.
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val blind = new InMemoryReadModelRepository() {
-      override def findAllMovieIdsChecked(): (Seq[String], Boolean) = (Seq.empty, false)
-      override def findAllMovieIds(): Seq[String] = Seq.empty
+      override def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable on purpose")))
     }
     val projector = new ReadModelProjector(repository, blind, blind, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -1567,8 +1566,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "a screenings read that did not complete" should "heal no venue" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val blind = new InMemoryReadModelRepository() {
-      override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) = (Seq.empty, false)
-      override def findAllScreeningRefs(): Seq[ScreeningRef] = Seq.empty
+      override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable on purpose")))
     }
     val m = new RecordingReadModelProjectionMetrics()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))

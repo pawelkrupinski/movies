@@ -16,7 +16,7 @@ class SlotKeyedRowsForFilmsSpec extends AnyFlatSpec with Matchers {
     val asked   = mutable.ArrayBuffer.empty[Seq[String]]
     val answers = mutable.ArrayBuffer.empty[(Promise[Seq[String]], Seq[String])]
     val expected = (films.size + SlotKeyed.FilmsPerRead - 1) / SlotKeyed.FilmsPerRead
-    val (rows, complete) = SlotKeyed.rowsForFilmsChecked[String](films, "test", _ => ()) { ids =>
+    val read = SlotKeyed.rowsForFilmsChecked[String](films, "test", _ => ()) { ids =>
       asked.synchronized {
         asked += ids
         val promise = Promise[Seq[String]]()
@@ -25,7 +25,7 @@ class SlotKeyedRowsForFilmsSpec extends AnyFlatSpec with Matchers {
         promise.future
       }
     }
-    complete shouldBe true
+    val rows = read.required
     asked.size shouldBe expected
     asked.forall(_.size <= SlotKeyed.FilmsPerRead) shouldBe true
     rows.toSet shouldBe films.map(_ + "|slot")
@@ -33,15 +33,14 @@ class SlotKeyedRowsForFilmsSpec extends AnyFlatSpec with Matchers {
 
   it should "report the whole read incomplete when any one piece fails" in {
     var warned = Option.empty[String]
-    val (rows, complete) = SlotKeyed.rowsForFilmsChecked[String](films, "test", w => warned = Some(w)) { ids =>
+    val read = SlotKeyed.rowsForFilmsChecked[String](films, "test", w => warned = Some(w)) { ids =>
       if (ids.contains("film060")) Future.failed(new RuntimeException("mongo down")) else Future.successful(ids)
     }
-    complete shouldBe false
-    rows shouldBe empty
+    read shouldBe a[tools.ReadOutcome.Failed]
     warned.exists(_.contains("mongo down")) shouldBe true
   }
 
   it should "not read at all for no films" in {
-    SlotKeyed.rowsForFilmsChecked[String](Set.empty, "test", _ => ())(_ => fail("read for no films")) shouldBe (Seq.empty, true)
+    SlotKeyed.rowsForFilmsChecked[String](Set.empty, "test", _ => ())(_ => fail("read for no films")) shouldBe tools.ReadOutcome.Answered(Seq.empty)
   }
 }

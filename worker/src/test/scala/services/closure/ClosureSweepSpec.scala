@@ -118,7 +118,7 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers {
     val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
     h.ledger.confirm(hochland.displayName, daysAgo(1))
     val broken = new ClosureSweep(() => Seq(ClosureCandidate(hochland, hasFallback = true)),
-      new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = false },
+      new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.of(whole = false, "unreadable on purpose") },
       h.fallbacks, h.ledger, h.pages += _, h.dispatch, Clock.fixed(now, ZoneOffset.UTC))
     broken.sweep()
     h.ledger.confirmed().keySet shouldBe Set(hochland.displayName)

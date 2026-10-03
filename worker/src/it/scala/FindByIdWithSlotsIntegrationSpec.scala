@@ -23,11 +23,11 @@ class FindByIdWithSlotsIntegrationSpec extends AnyFlatSpec with Matchers with to
         Multikino -> SourceData(title = Some("Anora"), filmUrl = Some("https://mk/anora"), showtimes = Seq(Showtime(when, None))))))
       val id = repository.findAll().head.id
 
-      val (whole, wholeRead)         = repository.findByIdChecked(id)
-      val (slotsOnly, slotsOnlyRead) = repository.findByIdWithSlotsChecked(id)
+      val whole     = repository.findByIdChecked(id).answered
+      val slotsOnly = repository.findByIdWithSlotsChecked(id).answered
 
-      wholeRead shouldBe true
-      slotsOnlyRead shouldBe true
+      whole shouldBe defined
+      slotsOnly shouldBe defined
       withClue("the whole read stitches the showtime back from `screenings`: ") {
         whole.get.record.data(Multikino).showtimes.map(_.dateTime) shouldBe Seq(when)
       }

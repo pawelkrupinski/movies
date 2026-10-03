@@ -51,10 +51,9 @@ class RetiredVenueCensus(
   def sample(): Unit =
     if (roster.isEmpty) logger.warn(s"$censusName: the $countryCode roster is EMPTY — not counting any venue as retired.")
     else {
-      val (slotIds, slotsRead) = slots.rowIdsChecked()
-      if (slotsRead) rows.labelValues(countryCode, SlotsRepository.Collection).set(retiredOf(slotIds).size.toDouble)
-      val (screeningIds, screeningsRead) = screenings.rowIdsChecked()
-      if (screeningsRead) {
+      slots.rowIdsChecked().answered.foreach(slotIds =>
+        rows.labelValues(countryCode, SlotsRepository.Collection).set(retiredOf(slotIds).size.toDouble))
+      screenings.rowIdsChecked().answered.foreach { screeningIds =>
         val retiredRows = retiredOf(screeningIds)
         rows.labelValues(countryCode, ScreeningsRepository.Collection).set(retiredRows.size.toDouble)
         futureOf(retiredRows).foreach(n => futureShowtimes.labelValues(countryCode).set(n.toDouble))
@@ -68,8 +67,7 @@ class RetiredVenueCensus(
     if (retiredRows.isEmpty) Some(0)
     else {
       val slotKeysByFilm = retiredRows.groupMap(SlotKeyed.filmIdOf)(SlotKeyed.slotKeyOf)
-      val (byFilm, read) = screenings.findForFilmsChecked(slotKeysByFilm.keySet)
-      Option.when(read) {
+      screenings.findForFilmsChecked(slotKeysByFilm.keySet).answered.map { byFilm =>
         val now = LocalDateTime.now(clock.withZone(zone))
         slotKeysByFilm.iterator.map { case (filmId, keys) =>
           val showtimes = byFilm.getOrElse(filmId, Map.empty)

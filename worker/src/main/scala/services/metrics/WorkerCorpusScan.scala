@@ -55,12 +55,12 @@ class WorkerCorpusScan(
       val row = new CorpusRow(stored)
       samplers.foreach { case (_, sampler, time) => time(sampler.accept(row)) }
     }
-    if (!complete) {
+    if (!complete.isComplete) {
       metrics.recordIncompleteSample()
       logger.warn("worker-corpus-scan: corpus scan incomplete — census gauges keep their previous values " +
         "rather than publishing a partial count as if the corpus had shrunk.")
     }
-    samplers.foreach { case (_, sampler, time) => time(sampler.publish(complete)) }
+    samplers.foreach { case (_, sampler, time) => time(sampler.publish(complete.isComplete)) }
     val result = WorkerCorpusScan.Pass(pass.elapsed, samplers.map { case (name, _, time) => name -> time.elapsed })
     logger.info(result.summary)
     result

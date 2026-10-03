@@ -52,6 +52,8 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   /** file → why it may read the wall clock. Keep each reason specific enough to check. */
   private val Allowlist: Map[String, String] = Map(
+    "worker/src/test/scala/tools/RepositoryReadSwallows.scala" ->
+      "quotes main-source lines verbatim as allowlist keys for NoSwallowedFailureSpec; it reads no clock",
     "worker/src/test/scala/tools/NoWallClockInTestsSpec.scala" ->
       "rule 2 compares literals with today on purpose (see the class doc)",
     "common/src/test/scala/tools/TlsTrustSpec.scala" ->

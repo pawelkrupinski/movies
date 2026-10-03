@@ -113,7 +113,12 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     source              = source,
     screenings          = screenings,
     slots               = slots,
-    reread              = rereadChecked.getOrElse(id => (reread(id), true)),
+    // The specs say what a re-read found as `(row, readOk)`; the stream takes the outcome it is.
+    reread              = id => rereadChecked.getOrElse((id: String) => (reread(id), true))(id) match {
+                            case (_, false)    => tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException(s"$id unreadable")))
+                            case (Some(r), _)  => tools.ReadOutcome.Answered(r)
+                            case (None, _)     => tools.ReadOutcome.none(id)
+                          },
     fence               = fence,
     resumeToken         = resumeToken,
     changeStreamMetrics = changeStreamMetrics,

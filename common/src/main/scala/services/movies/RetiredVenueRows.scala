@@ -118,8 +118,8 @@ object RetiredVenueRows {
    *  when its read failed (logged). */
   private def stampsOf(store: Option[SlotKeyedRows], label: String): Option[Map[String, Instant]] =
     store.fold(Option(Map.empty[String, Instant])) { s =>
-      val (ids, read) = s.rowWrittenAtChecked()
-      if (!read) logger.warn(s"Retired-venue rows: the $label row ids could not be read — removing no row from either collection.")
-      Option.when(read)(ids)
+      val read = s.rowWrittenAtChecked().answered
+      if (read.isEmpty) logger.warn(s"Retired-venue rows: the $label row ids could not be read — removing no row from either collection.")
+      read
     }
 }

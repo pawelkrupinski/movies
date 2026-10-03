@@ -85,7 +85,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
 
     def updatedSince(since: java.time.Instant): Seq[StoredMovieRecord] = {
       val rows = Seq.newBuilder[StoredMovieRecord]
-      repository.foreachRecordUpdatedSince(since)(rows += _) shouldBe true
+      repository.foreachRecordUpdatedSince(since)(rows += _) shouldBe tools.ScanOutcome.Complete
       rows.result()
     }
     // By id: a read row's TITLE is re-derived from its cinema slot (the same for both here).

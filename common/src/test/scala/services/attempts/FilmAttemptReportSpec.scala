@@ -76,7 +76,6 @@ class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
         fail("the two store reads ran serially — the second never started while the first was in flight")
     }
     val attemptReader = new EnrichmentAttemptReader {
-      override def all() = Seq.empty
       override def forKeys(keys: Seq[String]) = {
         gate(); Map("imdb|tmdb:7" -> EnrichmentAttempt(now, 1, AttemptOutcome.Unchanged))
       }
@@ -103,7 +102,6 @@ class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
   // An unresolved row has no keys to look up, so it must not pay a round-trip at all.
   it should "not touch either store for a film with no tmdbId" in {
     val exploding = new EnrichmentAttemptReader {
-      override def all() = Seq.empty
       override def forKeys(keys: Seq[String]) = fail("should not read the attempt log without a tmdbId")
     }
     val explodingCadence = new RatingCadenceReader {

@@ -33,7 +33,7 @@ class AddMissingMovieSlotsSpec extends AnyFlatSpec with Matchers {
    *  beside it — else the venue read declines and the change stream re-reads the whole film. */
   private def venueReadable(slots: InMemorySlotsRepository, screenings: InMemoryScreeningsRepository, id: String): Boolean = {
     val names = Set(cinema.displayName)
-    screenings.findAtCinemasChecked(id, names)._1.keySet.subsetOf(slots.findAtCinemasChecked(id, names)._1.keySet)
+    screenings.findAtCinemasChecked(id, names).required.keySet.subsetOf(slots.findAtCinemasChecked(id, names).required.keySet)
   }
 
   "AddMissingMovieSlots" should "give a legacy film the slot rows its showtimes need, so its venue read stops declining" in {

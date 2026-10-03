@@ -34,8 +34,6 @@ object ShareCardAudit {
     reader.findCard(filmId).flatMap(_.movie).flatMap(_.shareCard).map(problems(filmId, _, store))
 
   /** The films whose document names a card, or None when `web_movies` could not be read whole. */
-  def ids(reader: ReadModelReader): Option[Seq[String]] = {
-    val (refs, complete) = reader.findAllShareCardRefsChecked()
-    Option.when(complete)(refs.filter(_.shareCard.nonEmpty).map(_.filmId))
-  }
+  def ids(reader: ReadModelReader): Option[Seq[String]] =
+    reader.findAllShareCardRefsChecked().answered.map(_.filter(_.shareCard.nonEmpty).map(_.filmId))
 }

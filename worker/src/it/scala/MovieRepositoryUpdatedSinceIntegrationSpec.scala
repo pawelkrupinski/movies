@@ -44,7 +44,7 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
 
         def updatedSince(at: Instant): Seq[StoredMovieRecord] = {
           val rows = Seq.newBuilder[StoredMovieRecord]
-          repository.foreachRecordUpdatedSince(at)(rows += _) shouldBe true
+          repository.foreachRecordUpdatedSince(at)(rows += _) shouldBe tools.ScanOutcome.Complete
           rows.result()
         }
         updatedSince(since).map(_.title) shouldBe Seq("__updated-since-second__")

@@ -75,7 +75,7 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
       val pages = (1 to 5).map(i => VenuePage(VenuePageKey("helios", s"https://helios.pl/film/$i"), VenuePage.Read(FilmDetail(runtimeMinutes = Some(90 + i))), at))
       pages.foreach(store.put)
       val seen = mutable.ListBuffer.empty[VenuePage]
-      store.foreach(seen += _)
+      store.foreach(seen += _) shouldBe tools.ScanOutcome.Complete
       seen.toSeq.sortBy(_.key.id) shouldBe pages.sortBy(_.key.id)
     }
   }

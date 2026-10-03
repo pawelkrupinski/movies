@@ -2,7 +2,7 @@ package services.scrapes
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.UpdateOptions
-import org.bson.{BsonDocument, BsonDocumentWriter}
+import org.bson.{BsonDocument, BsonDocumentWriter, BsonString}
 import org.bson.codecs.EncoderContext
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.bson.codecs.configuration.CodecRegistry
@@ -155,11 +155,10 @@ object ScrapeArchiveCodecs extends PersistedCodecs {
  * Mongo-backed `ScrapeArchiveRepository`, collection `cinema_scrapes` — one row
  * per cinema, its listing replaced on every scrape that has content.
  *
- * Exactly one worker writes a given country's database, so a successful scrape
- * overwrites its row's listing outright. A barren attempt reads the row's `scrapedAt` and
- * `lastBarren` first — the "only if newer" rule and the run it continues — and then writes
- * the marker: read-then-write, so it relies on that same single writer, and on one venue's
- * scrapes not landing side by side, to never mark a listing that landed in between.
+ * A successful scrape overwrites its row's listing outright. A barren attempt reads the row's
+ * `scrapedAt` and `lastBarren` first — the "only if newer" rule and the run it continues — and
+ * writes the marker only while the row still holds them (`tools.GuardedWrite`), so a listing
+ * that lands in between is never marked barren behind it.
  *
  * Relaxed write concern, and every operation `Try`-guarded: this collection is a
  * side-record of a scrape that has already happened, so a failed write must
@@ -207,31 +206,44 @@ class MongoScrapeArchiveRepository(
 
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
     coll.foreach { c =>
-      // The ordering rule is decided on the row read below, and the marker then upserted
-      // on `_id` alone (see the class doc for why that read-then-write holds). The upsert
-      // branch (first-ever sighting of a cinema that has only failed) creates a
-      // content-less row, which decodes as `lastSuccess = None`.
+      // Decided on the row as read — the "only if newer" rule and the run the marker continues — and
+      // written only while the row still holds what was read (`MongoGuard`): a listing, or another
+      // blank scrape's marker, landing in between sends it round again, decided afresh. The upsert
+      // branch (first-ever sighting of a cinema that has only failed) creates a content-less row,
+      // which decodes as `lastSuccess = None`.
       guard(cinema, "recordBarren") {
-        // Only the two fields the guard reads: the whole row carries the venue's last listing,
-        // every film and showtime of it, decoded for nothing on every blank scrape.
-        val existing = Await.result(c.find(Filters.eq("_id", cinema.displayName))
-          .projection(Projections.include("scrapedAt", "lastBarren")).headOption(), 30.seconds)
-        val stale    = existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))
-        if (!stale) {
-          // The read above is already here for the ordering guard, so continuing
-          // the run costs nothing extra — and the decision itself is the shared
-          // pure one, never this store's own idea of when a run began.
-          val run = BarrenAttempt.continuing(
-            existing.flatMap(_.lastBarren).flatMap(_.toDomain),
-            attempt)
-          val marker = Updates.set("lastBarren", BarrenAttemptDto.from(run))
-          val update = city.fold(marker)(name => Updates.combine(marker, Updates.setOnInsert("city", name)))
-          Await.result(
-            c.updateOne(Filters.eq("_id", cinema.displayName), update, new UpdateOptions().upsert(true)).toFuture(),
-            30.seconds)
+        val written = tools.GuardedWrite(MongoScrapeArchiveRepository.BarrenWriteAttempts)(() => barrenGuardRead(cinema)) { asRead =>
+          val existing = asRead.map(decodeStored)
+          Option.when(!existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))) {
+            // The decision itself is the shared pure one, never this store's own idea of when a run began.
+            val run    = BarrenAttempt.continuing(existing.flatMap(_.lastBarren).flatMap(_.toDomain), attempt)
+            val marker = Updates.set("lastBarren", BarrenAttemptDto.from(run))
+            city.fold(marker)(name => Updates.combine(marker, Updates.setOnInsert("city", name)))
+          }
+        } { (asRead, update) =>
+          services.MongoGuard.updateIfUnchanged(c,
+            services.MongoGuard.unchanged(new BsonString(cinema.displayName), asRead, MongoScrapeArchiveRepository.BarrenGuardFields),
+            update, 30.seconds, insert = true)
+        }
+        written match {
+          case tools.GuardedWrite.ChangedUnderYou(attempts) =>
+            logger.warn(s"ScrapeArchiveRepository.recordBarren(${cinema.displayName}): the row changed between its read and " +
+              s"its write $attempts times in a row — the marker is not written; the next blank scrape writes it")
+          case _ => ()
         }
       }
     }
+
+  /** The fields a blank scrape's marker is decided on, as stored — the guard compares them raw. A
+   *  seam a spec uses to land a write between this read and the marker's. */
+  protected def barrenGuardRead(cinema: Cinema): Option[BsonDocument] = coll.flatMap { c =>
+    Await.result(c.withDocumentClass[BsonDocument]().find(Filters.eq("_id", cinema.displayName))
+      .projection(Projections.include(MongoScrapeArchiveRepository.BarrenGuardFields*)).headOption(), 30.seconds)
+  }
+
+  private def decodeStored(document: BsonDocument): StoredScrapeDto =
+    ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])
+      .decode(new org.bson.BsonDocumentReader(document), org.bson.codecs.DecoderContext.builder().build())
 
   def find(cinema: Cinema): Option[ArchivedScrape] = read(cinema).toOption.flatten
 
@@ -286,7 +298,7 @@ class MongoScrapeArchiveRepository(
           s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
     )(batch => collected ++= batch)
 
-    if (complete) collected.result().map(d => d._id -> d.toDomain)
+    if (complete.isComplete) collected.result().map(d => d._id -> d.toDomain)
     else {
       logger.warn(s"ScrapeArchiveRepository.contentStamps discarding ${collected.result().size} row(s) from an " +
         "incomplete scan — returning empty so unfetched cinemas are never counted as barren")
@@ -314,13 +326,13 @@ class MongoScrapeArchiveRepository(
    * query, so a partial failure costs a page rather than the whole read.
    *
    * Still best-effort, like every read here: an incomplete scan logs and answers
-   * `false`, which `findAll` turns into an empty archive.
+   * incomplete, which `findAll` turns into an empty archive.
    */
-  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = scanVenues(_ => true)(consume)
+  def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = scanVenues(_ => true)(consume)
 
   /** [[scan]], fetching only the rows whose `_id` names a venue `keep` admits: the ids are read
    *  first anyway, so a venue left out costs its id and nothing else. */
-  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
+  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = coll.fold(tools.ScanOutcome.complete) { c =>
     // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run and its supervisor
     // brings it back within a couple of seconds; 3 attempts at 1s backoff could expire inside that
     // window, turning a blip into an empty corpus. 5 attempts backing off 2s→32s covers it with room
@@ -350,7 +362,7 @@ class MongoScrapeArchiveRepository(
       // A row whose id names no venue decodes to nothing (`StoredScrapeDto.toDomain`), kept or not.
       if (Cinema.byDisplayName.get(id).exists(keep)) ids += id
     })
-    idsWhole && services.movies.KeysetScan.byKeys[StoredScrapeDto](
+    idsWhole.andThen(services.movies.KeysetScan.byKeys[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
       keys           = ids.result(),
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
@@ -362,7 +374,7 @@ class MongoScrapeArchiveRepository(
           .batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
         60.seconds),
       onIncomplete   = failed
-    )(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
+    )(page => consume(page.flatMap(StoredScrapeDto.toDomain))))
   }
 
   /** Every archive operation is best-effort: it records something that already
@@ -377,6 +389,12 @@ class MongoScrapeArchiveRepository(
 }
 
 object MongoScrapeArchiveRepository {
+  /** The fields a blank scrape's marker is decided on — and guarded on. */
+  val BarrenGuardFields: Seq[String] = Seq("scrapedAt", "lastBarren")
+
+  /** How many times a blank scrape's marker reads and decides again when the row moved under it. */
+  val BarrenWriteAttempts = 3
+
   /**
    * Rows per keyset page — sized by BYTES, not by row count.
    *

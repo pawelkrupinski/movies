@@ -41,23 +41,23 @@ class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
         // A live film's screenings row whose movie_slots twin is gone.
         screenings.upsertSlot(liveIds.head, "kino-x␟twinless", ListedShowtimes(tomorrow, None))
 
-        screenings.filmIdsChecked() shouldBe ((liveIds + "deadboth|2020" + "deadscreeningsonly|1986", true))
-        slots.filmIdsChecked()      shouldBe ((liveIds + "deadboth|2020", true))
+        screenings.filmIdsChecked() shouldBe tools.ReadOutcome.Answered(liveIds + "deadboth|2020" + "deadscreeningsonly|1986")
+        slots.filmIdsChecked()      shouldBe tools.ReadOutcome.Answered(liveIds + "deadboth|2020")
 
         repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 2, slots = 1, twinless = 1,
           filmIds = Set("deadboth|2020", "deadscreeningsonly|1986"))
 
-        screenings.filmIdsChecked() shouldBe ((liveIds, true))
-        slots.filmIdsChecked()      shouldBe ((liveIds, true))
+        screenings.filmIdsChecked() shouldBe tools.ReadOutcome.Answered(liveIds)
+        slots.filmIdsChecked()      shouldBe tools.ReadOutcome.Answered(liveIds)
         liveIds.foreach { id =>
           withClue(s"live film $id\n") {
-            screenings.findForFilmChecked(id)._1 should not be empty
-            slots.findForFilmChecked(id)._1      should not be empty
+            screenings.findForFilmChecked(id).required should not be empty
+            slots.findForFilmChecked(id).required      should not be empty
           }
         }
-        screenings.findForFilmChecked("deadboth|2020")           shouldBe ((Map.empty, true))
-        slots.findForFilmChecked("deadboth|2020")                shouldBe ((Map.empty, true))
-        screenings.findForFilmChecked("deadscreeningsonly|1986") shouldBe ((Map.empty, true))
+        screenings.findForFilmChecked("deadboth|2020")           shouldBe tools.ReadOutcome.Answered(Map.empty)
+        slots.findForFilmChecked("deadboth|2020")                shouldBe tools.ReadOutcome.Answered(Map.empty)
+        screenings.findForFilmChecked("deadscreeningsonly|1986") shouldBe tools.ReadOutcome.Answered(Map.empty)
 
         repository.deleteStrandedSideRows() shouldBe StrandedSideRows.none
       } finally repository.close()

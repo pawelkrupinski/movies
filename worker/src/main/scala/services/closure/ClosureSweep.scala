@@ -35,7 +35,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
       byName.get(row.cinema.displayName).foreach(c =>
         verdicts(c.cinema.displayName) = VenueClosure.judge(row, fallbacks.get(c.cinema.displayName), c.hasFallback, now))
     })
-    if (!complete) logger.warn("Closure sweep skipped: the scrape archive could not be read in full.")
+    if (!complete.isComplete) logger.warn("Closure sweep skipped: the scrape archive could not be read in full.")
     else settle(byName, verdicts.toMap, now)
   }
 

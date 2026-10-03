@@ -232,7 +232,7 @@ class MongoFreshnessStore(
       } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
     })
     if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
-    complete
+    complete.isComplete
   }
 }
 

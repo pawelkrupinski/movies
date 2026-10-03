@@ -125,7 +125,6 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     val resolved = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1),
       data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))))
     val unreadable = new services.attempts.EnrichmentAttemptReader {
-      override def all() = Seq.empty
       override def forKeys(keys: Seq[String]) = throw new java.io.IOException("attempt log unreachable")
     }
     val (controller, _) = TestDebugController.build(resolved, Mode.Dev,

@@ -136,13 +136,12 @@ trait MovieCache extends MovieCacheReader {
    *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
    *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
    *  rebuild read EMPTY and null a persisted rating (or cinema slot). */
-  private[services] def stored(key: CacheKey): Option[MovieRecord] = storedChecked(key)._1
+  private[services] def stored(key: CacheKey): Option[MovieRecord] = storedChecked(key).toOptionOrThrow
 
-  /** Like [[stored]], but says whether the underlying read SUCCEEDED — `(row, readOk)`.
-   *  A caller that would treat `None` as "this film is new" MUST use this instead: a
-   *  failed read otherwise makes it rebuild a live film from scratch, carrying only what
+  /** [[stored]] as the read it is — absent ("this film is new") told apart from failed. A failed
+   *  read taken for absent makes a caller rebuild a live film from scratch, carrying only what
    *  the current scrape saw. See [[MovieRepository.findByIdChecked]]. */
-  private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
+  private[services] def storedChecked(key: CacheKey): tools.ReadOutcome[MovieRecord]
 
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
@@ -179,13 +178,8 @@ trait MovieCache extends MovieCacheReader {
  *
  * What this class OWNS is the resident corpus and the way into it: the Caffeine
  * map and its [[CorpusIndex]], the write funnels (`put`'s tmdbId / imdbId identity
- * gate, `putIfPresent`, `rekey`), the per-title and per-tmdbId locks, the
- * cache-or-store reads, hydration and the change-stream mirror, and the settle
- * paths that self-heal the corpus (`canonicalizeBySanitize`, `settleResolved`,
- * `backfillEmbeddedYears`). The scrape-time LANDING — where one venue's fresh
- * listing goes, and what its arrival displaces — is [[ScrapeLanding]]'s, reached
- * through the [[LandingStore]] seam this class implements; `recordCinemaScrape`
- * here is a delegation. See `docs/stable-film-id.md`.
+ * gate, `putIfPresent`), the per-title locks, the cache-or-store reads, and
+ * hydration and the change-stream mirror. See `docs/stable-film-id.md`.
  */
 class CaffeineMovieCache(
   repository: MovieRepository,
@@ -259,12 +253,12 @@ class CaffeineMovieCache(
    *  a key — see [[FilmId]]. */
   private def idFor(key: CacheKey): Option[FilmId] =
     corpusIndex.idOf(key).orElse(repository.findByKeyChecked(key) match {
-      case (Some(row), _) => Some(row.id)
-      case (None, true)   => Some(FilmId.fresh(key, corpusIndex.holdsId))
+      case tools.ReadOutcome.Answered(row)      => Some(row.id)
+      case tools.ReadOutcome.Absent(_) => Some(FilmId.fresh(key, corpusIndex.holdsId))
       // The store could not say whether a document holds this key. Minting an id
       // here would write a SECOND document for the key once the store recovers
       // (a failed read is not "absent") — the caller defers instead.
-      case (None, false)  => None
+      case tools.ReadOutcome.Failed(_) => None
     })
 
   /** The id of a RESIDENT row. Every write into `positive` goes through `store`, which
@@ -529,16 +523,11 @@ class CaffeineMovieCache(
    *  EMPTY and null the scores the `*Ratings` refreshers own (and the cinema
    *  slots) — the "ratings keep disappearing" clobber. On a warm cache it's just
    *  `get`; the `movies` read only happens on a miss. */
-  private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean) =
-    get(key) match {
-      case cached @ Some(_) => (cached, true)
-      case None =>
-        val (row, readOk) = findStoredChecked(key)
-        (row.map(_.record), readOk)
-    }
+  private[services] def storedChecked(key: CacheKey): tools.ReadOutcome[MovieRecord] =
+    get(key).fold(findStoredChecked(key).map(_.record))(tools.ReadOutcome.Answered(_))
 
   /** The stored row behind `key` — by id when the index knows it, by key otherwise. */
-  private def findStoredChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
+  private def findStoredChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] =
     corpusIndex.idOf(key).fold(repository.findByKeyChecked(key))(repository.findByIdChecked)
 
   /** Conditional write — applies `updater` to the row if it currently exists
@@ -711,7 +700,7 @@ class CaffeineMovieCache(
   private[services] def invalidate(key: CacheKey): Unit = {
     val id = corpusIndex.idOf(key)
     evict(key)
-    id.orElse(repository.findByKeyChecked(key)._1.map(_.id)).foreach(repository.delete)
+    id.orElse(repository.findByKeyChecked(key).answered.map(_.id)).foreach(repository.delete)
     touch()
   }
 
@@ -730,13 +719,10 @@ class CaffeineMovieCache(
     positive.asMap().asScala.toSeq
   }
 
-  def rehydrate(): Int = rehydrateChecked()._1
-
-  /** [[LandingStore]]: [[rehydrate]], plus whether the corpus read was COMPLETE. An incomplete
+  /** Put every stored row and evict the keys gone from the store; how many rows it put. An incomplete
    *  read (a page the scan could not read is skipped whole) changes nothing — no row put, none
-   *  evicted: its missing films are not gone, and a cold mirror partly filled from it would read
-   *  as warm to the cold-mirror sync. The 30-s tick, or the sync's backoff, reads again. */
-  private[services] def rehydrateChecked(): (Int, Boolean) = {
+   *  evicted: its missing films are not gone. The 30-s tick reads again. */
+  def rehydrate(): Int = {
     // Additive sync — never blank the cache mid-rehydrate. The periodic
     // 30-s tick (see `start()` below) runs while page loads are flying
     // through `snapshot()`; an `invalidateAll()` window would briefly
@@ -750,13 +736,14 @@ class CaffeineMovieCache(
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
     val marks         = repository.writeFence.markAll()
-    val (rows, complete) = repository.findAllChecked()
+    val read          = repository.findAllChecked()
     val tFindAllMs    = findingAll.millis
-    if (!complete) {
-      logger.warn(s"MovieCache rehydrate: the corpus read was incomplete (${rows.size} row(s) read in ${tFindAllMs}ms) — " +
+    if (read.answered.isEmpty) {
+      logger.warn(s"MovieCache rehydrate: the corpus read ${read.explain} (in ${tFindAllMs}ms) — " +
         "nothing put or evicted; the next tick reads again.")
-      return (0, false)
+      return 0
     }
+    val rows          = read.answered.get
     // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
     // surface as "no rows". Treating that as "Mongo is genuinely empty,
@@ -768,7 +755,7 @@ class CaffeineMovieCache(
     if (rows.isEmpty && cachedSize > 0) {
       logger.warn(s"MovieCache rehydrate: findAll() returned empty while cache holds $cachedSize row(s) — " +
                   "treating as a transient Mongo failure; cache left intact.")
-      return (0, true)
+      return 0
     }
     // Cold-boot empty result — `findAll()` returned nothing AND the cache was
     // already empty. Don't silently start serving an empty repertoire; surface
@@ -821,7 +808,7 @@ class CaffeineMovieCache(
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()
-    (rows.size, true)
+    rows.size
   }
 
   // ── Mongo → cache sync ─────────────────────────────────────────────────────

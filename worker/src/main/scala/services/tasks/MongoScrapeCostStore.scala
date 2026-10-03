@@ -5,6 +5,7 @@ import org.mongodb.scala.model.{Filters, PushOptions, Sorts, UpdateOptions, Upda
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
 import services.movies.KeysetScan
+import tools.ScanOutcome
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -32,7 +33,6 @@ final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with
   // (see KeysetScan).
   def recent(): Map[String, Seq[ScrapeCost]] = {
     val costs = Map.newBuilder[String, Seq[ScrapeCost]]
-    var failure: Option[Throwable] = None
     KeysetScan.scan[Document](
       label          = "MongoScrapeCostStore.recent",
       batchSize      = 2000,
@@ -43,14 +43,14 @@ final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with
         val find = afterId.fold(coll.find())(a => coll.find(Filters.gt("_id", a)))
         Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
       },
-      onIncomplete   = e => failure = Some(e)
     )(batch => batch.foreach { document =>
       val tasks = document.get("tasks").filter(_.isArray).toSeq
         .flatMap(_.asArray().getValues.asScala).filter(_.isNumber).map(v => ScrapeCost(v.asNumber().intValue()))
       costs += document.getString("_id") -> tasks
-    })
-    failure.foreach(e => throw new IllegalStateException(s"${MongoScrapeCostStore.Collection} read incomplete", e))
-    costs.result()
+    }) match {
+      case ScanOutcome.Complete          => costs.result()
+      case ScanOutcome.Incomplete(cause) => throw new IllegalStateException(s"${MongoScrapeCostStore.Collection} read incomplete", cause)
+    }
   }
 }
 

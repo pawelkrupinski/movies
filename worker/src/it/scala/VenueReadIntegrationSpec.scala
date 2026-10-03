@@ -28,7 +28,7 @@ class VenueReadIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
         CinemaShowing(Multikino, "anora35mm")       -> SourceData(title = Some("Anora (35mm)"), showtimes = Seq.empty),
         CinemaShowing(KinoApollo, "anora")          -> SourceData(title = Some("Anora"), filmUrl = Some("https://apollo/anora"), showtimes = Seq(at(20))))))
       val id    = repository.findAll().head.id
-      val whole = repository.findByIdChecked(id)._1.get.record.data
+      val whole = repository.findByIdChecked(id).answered.get.record.data
 
       val venues = repository.readVenues(id.value, Set(Multikino)).get
       venues.atCinemas.keySet shouldBe Set(Multikino)

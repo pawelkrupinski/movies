@@ -331,7 +331,9 @@ class WebReadModel(
 
   private def reloadAround(during: WebReadModel.Streamed): Int = {
     val applied = during.ids
-    val (ms, moviesComplete) = reader.findAllMoviesChecked()
+    val moviesRead     = reader.findAllMoviesChecked().answered
+    val moviesComplete = moviesRead.isDefined
+    val ms             = moviesRead.getOrElse(Seq.empty)
     ms.foreach(m => movies.compute(m._id, (id, held) => if (applied.contains(id)) held else m))
     if (moviesComplete) {
       val liveMovieIds = ms.iterator.map(_._id).toSet
@@ -346,7 +348,7 @@ class WebReadModel(
         .compute(s._id, (id, held) => if (applied.contains(id)) held else s)
       seenByCity.computeIfAbsent(s.city, _ => new java.util.HashSet[String]()).add(s._id)
       nextFilmCities.computeIfAbsent(s.filmId, _ => new java.util.HashSet[String]()).add(s.city)
-    }
+    }.isComplete
     if (screeningsComplete) {
       // A bucket left empty stays: removing it would race a stream apply already holding it.
       byCity.forEach { (city, bucket) =>
@@ -388,12 +390,10 @@ class WebReadModel(
    *  not a reload: serving nothing while `web_movies` holds films is unambiguous — either a
    *  read failed or a boot raced the database, and both want the same answer. A warm model
    *  costs one field read (drift is the backstop's job), and a genuinely empty corpus costs
-   *  one count. A negative count means the count itself is unavailable, which is no evidence
-   *  there is anything to load. */
+   *  one count. A count that could not be taken is no evidence there is anything to load. */
   private[readmodel] def coldRetryTick(): Unit = {
     if (!movies.isEmpty) return
-    val dbMovies = reader.countMovies()
-    if (dbMovies > 0) {
+    reader.countMovies().answered.filter(_ > 0).foreach { dbMovies =>
       logger.warn(s"WebReadModel cold-retry: serving an empty corpus while web_movies holds " +
         s"$dbMovies movie(s) — the boot hydrate read failed; reloading.")
       reload()
@@ -431,14 +431,13 @@ class WebReadModel(
   }
 
   /** The mismatch between the server-side counts and the model, described, or `None` when they
-   *  agree. An unavailable count (negative) is a mismatch: it is no evidence the model is right. */
+   *  agree. A count that could not be taken is a mismatch: it is no evidence the model is right. */
   private def drift(): Option[String] = {
-    val dbMovies     = reader.countMovies()
-    val dbScreenings = reader.countScreenings()
-    val drifted =
-      dbMovies     < 0 || dbMovies     != movies.size.toLong ||
-      dbScreenings < 0 || dbScreenings != liveScreeningCount.toLong
-    Option.when(drifted)(s"movies mem=${movies.size}/db=$dbMovies, screenings mem=$liveScreeningCount/db=$dbScreenings")
+    val dbMovies     = reader.countMovies().answered
+    val dbScreenings = reader.countScreenings().answered
+    val drifted      = !dbMovies.contains(movies.size.toLong) || !dbScreenings.contains(liveScreeningCount.toLong)
+    def shown(count: Option[Long]) = count.fold("unavailable")(_.toString)
+    Option.when(drifted)(s"movies mem=${movies.size}/db=${shown(dbMovies)}, screenings mem=$liveScreeningCount/db=${shown(dbScreenings)}")
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────

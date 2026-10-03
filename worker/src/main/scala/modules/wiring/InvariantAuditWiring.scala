@@ -31,10 +31,7 @@ trait InvariantAuditWiring { self: WorkerWiring =>
       ShareCardAudit.check(_, readModelRepository, shareCardStore))
 
   lazy val auditHandlers: Seq[TaskHandler] =
-    Seq(new RecheckedAuditHandler(TaskType.AuditReadModelContent, readModelContentAudit, () => {
-      val (ids, complete) = readModelRepository.findAllMovieIdsChecked()
-      Option.when(complete)(ids)
-    })) ++
+    Seq(new RecheckedAuditHandler(TaskType.AuditReadModelContent, readModelContentAudit, () => readModelRepository.findAllMovieIdsChecked().answered)) ++
     Option.when(shareCardsEnabled)(
       new RecheckedAuditHandler(TaskType.AuditShareCards, shareCardAudit, () => ShareCardAudit.ids(readModelRepository)))
 

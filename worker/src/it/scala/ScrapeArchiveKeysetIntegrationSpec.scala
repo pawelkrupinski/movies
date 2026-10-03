@@ -85,7 +85,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
         listingComplete = true, films = Seq(film(s"Film at ${cinema.displayName}")))))
       most.set(0)
       val read = Vector.newBuilder[Cinema]
-      repository.scan(_.foreach(row => read += row.cinema)) shouldBe true
+      repository.scan(_.foreach(row => read += row.cinema)) shouldBe tools.ScanOutcome.Complete
       read.result().sortBy(_.displayName) shouldBe cinemas.sortBy(_.displayName)
       most.get should be > 1
     } finally {
@@ -120,7 +120,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
         listingComplete = true, films = Seq(film(s"Film at ${cinema.displayName}")))))
       requested.clear()
       val read = Vector.newBuilder[Cinema]
-      repository.scanVenues(kept)(_.foreach(row => read += row.cinema)) shouldBe true
+      repository.scanVenues(kept)(_.foreach(row => read += row.cinema)) shouldBe tools.ScanOutcome.Complete
       read.result().toSet shouldBe kept
       requested.asScala.toSet shouldBe kept.map(_.displayName)
     } finally {

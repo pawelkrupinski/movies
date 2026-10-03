@@ -8,7 +8,6 @@ import play.api.Logging
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
 
 /** One film's entry in the FilmId map: today's opaque string id (legacy `title|year` or `f…`) and
  *  the counter [[IdAssigner]] knows the film by. */
@@ -85,16 +84,16 @@ object FilmIdCounters {
  * a caller misuses it.
  */
 trait FilmIdCounterStore {
-  /** Every stored entry, plus whether the read succeeded. */
-  def allChecked(): (Seq[FilmIdCounter], Boolean)
+  /** Every stored entry — failed when the read, or the decoding of any entry, did not succeed. */
+  def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]]
   /** Insert `entries`; returns how many landed (a refused one did not). */
   def insert(entries: Seq[FilmIdCounter]): Int
 }
 
 final class InMemoryFilmIdCounterStore extends FilmIdCounterStore {
   private val stored = scala.collection.mutable.LinkedHashMap.empty[String, Long]
-  def allChecked(): (Seq[FilmIdCounter], Boolean) =
-    synchronized((stored.iterator.map { case (f, c) => FilmIdCounter(f, c) }.toSeq, true))
+  def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] =
+    synchronized(tools.ReadOutcome.Answered(stored.iterator.map { case (f, c) => FilmIdCounter(f, c) }.toSeq))
   def insert(entries: Seq[FilmIdCounter]): Int = synchronized {
     entries.count { e =>
       val free = !stored.contains(e.filmId) && !stored.valuesIterator.contains(e.counter)
@@ -117,17 +116,20 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
       case _ => ()
     }
 
-  def allChecked(): (Seq[FilmIdCounter], Boolean) =
-    Try(Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
-      case Success(docs) =>
-        (docs.flatMap { d =>
-          val doc = d.toBsonDocument
-          Try(FilmIdCounter(doc.getString("_id").getValue, doc.getNumber("counter").longValue)).toOption
-        }, true)
-      case Failure(exception) =>
-        logger.warn(s"${MongoFilmIdCounterStore.Collection}: read failed: ${exception.getMessage}")
-        (Seq.empty, false)
+  /** An entry that does not decode fails the read: skipped, its film id and counter would read
+   *  as free, and the map is append-only precisely so that neither is ever handed out twice. */
+  def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] = {
+    val read = tools.MongoRead(60.seconds)(coll.find().batchSize(tools.MongoReplies.Default).toFuture())
+      .flatMap(docs => tools.ReadOutcome.of(docs.map { d =>
+        val doc = d.toBsonDocument
+        FilmIdCounter(doc.getString("_id").getValue, doc.getNumber("counter").longValue)
+      }))
+    read match {
+      case tools.ReadOutcome.Failed(cause) => logger.warn(s"${MongoFilmIdCounterStore.Collection}: read failed: ${cause.explain}")
+      case _                 => ()
     }
+    read
+  }
 
   /** Unordered inserts: a duplicate `_id` or `counter` is refused by the store and the rest land.
    *  Any other failure throws — the seeding tool must not read it as "nothing to add". */
@@ -162,8 +164,8 @@ final class FilmIdMapping(store: FilmIdCounterStore) {
 
   /** The stored map, or why it cannot be read. */
   def load(): Either[String, FilmIdCounters] = store.allChecked() match {
-    case (entries, true) => FilmIdCounters.of(entries)
-    case (_, false)      => Left("the stored map could not be read")
+    case tools.ReadOutcome.Answered(entries) => FilmIdCounters.of(entries)
+    case other                 => Left(s"the stored map could not be read: ${other.explain}")
   }
 
   /** What appending `films` would add — the dry run. */

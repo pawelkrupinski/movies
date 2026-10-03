@@ -171,8 +171,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     override def findByIdChecked(id: services.movies.FilmId) = { wholeReads += 1; super.findByIdChecked(id) }
     override def findByIdWithSlotsChecked(id: services.movies.FilmId) = {
       slotsOnlyReads += 1
-      val (row, read) = super.findByIdChecked(id)
-      (row.map(r => r.copy(record = r.record.copy(data = r.record.data.view.mapValues(_.copy(showtimes = Nil)).toMap))), read)
+      super.findByIdChecked(id).map(r => r.copy(record = r.record.copy(data = r.record.data.view.mapValues(_.copy(showtimes = Nil)).toMap)))
     }
     def resetCounts(): Unit = { wholeReads = 0; slotsOnlyReads = 0 }
   }

@@ -44,16 +44,16 @@ class ShareCardJanitor(
 
   private def run(daily: Boolean): ShareCardJanitor.Report = {
     val cutoff               = clock.instant().minusMillis(grace.toMillis)
-    val (refs, refsComplete) = reader.findAllShareCardRefsChecked()
+    val refsRead = reader.findAllShareCardRefsChecked().answered
+    val refs     = refsRead.getOrElse(Seq.empty)
     // Which films are on screen takes a scan of every screenings id — a country's largest
     // collection — so only the daily prune pays for it. The budget pass protects every film with a
     // card instead.
-    val (screened, screensRead) =
-      if (daily) {
-        val (screenings, read) = reader.findAllScreeningRefsChecked()
-        (screenings.iterator.map(_.filmId).toSet, read)
-      } else (refs.iterator.filter(_.shareCard.nonEmpty).map(_.filmId).toSet, true)
-    val complete   = refsComplete && screensRead
+    val screenedRead =
+      if (daily) reader.findAllScreeningRefsChecked().answered.map(_.iterator.map(_.filmId).toSet)
+      else Some(refs.iterator.filter(_.shareCard.nonEmpty).map(_.filmId).toSet)
+    val screened   = screenedRead.getOrElse(Set.empty[String])
+    val complete   = refsRead.isDefined && screenedRead.isDefined
     val liveTokens = refs.iterator.filter(ref => screened(ref.filmId)).map(ref => ShareCardFile.token(ref.filmId)).toSet
 
     val files   = store.list()

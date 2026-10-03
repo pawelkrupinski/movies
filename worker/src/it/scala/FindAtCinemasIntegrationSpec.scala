@@ -21,12 +21,11 @@ class FindAtCinemasIntegrationSpec extends AnyFlatSpec with Matchers with tools.
       Seq("anora", "🎬 kino", "￿z").foreach(title => screenings.upsertSlot("film", s"$venue$title", listed))
       screenings.upsertSlot("film", s"Rialto${models.CinemaShowing.Separator}anora", listed)
 
-      val (rows, read) = screenings.findAtCinemasChecked("film", Set("Kino Muza"))
-      read shouldBe true
+      val rows = screenings.findAtCinemasChecked("film", Set("Kino Muza")).required
       rows.keySet shouldBe Set(s"${venue}anora", s"$venue🎬 kino", s"$venue￿z")
 
-      screenings.findAtCinemasChecked("film", Set.empty) shouldBe ((Map.empty, true))
-      new MongoSlotsRepository(Some(db)).findAtCinemasChecked("film", Set.empty) shouldBe ((Map.empty, true))
+      screenings.findAtCinemasChecked("film", Set.empty) shouldBe tools.ReadOutcome.Answered(Map.empty)
+      new MongoSlotsRepository(Some(db)).findAtCinemasChecked("film", Set.empty) shouldBe tools.ReadOutcome.Answered(Map.empty)
     }
   }
 }

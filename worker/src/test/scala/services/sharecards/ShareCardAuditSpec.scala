@@ -57,7 +57,7 @@ class ShareCardAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
   "the ids sampled" should "be the films whose document names a card, and none when web_movies could not be read whole" in new Setup {
     pointAt("fa", v1); readModel.upsertMovie(film(id = "fb"))
     ShareCardAudit.ids(readModel) shouldBe Some(Seq("fa"))
-    val blind = new InMemoryReadModelRepository { override def findAllShareCardRefsChecked() = (Seq.empty, false) }
+    val blind = new InMemoryReadModelRepository { override def findAllShareCardRefsChecked() = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable"))) }
     ShareCardAudit.ids(blind) shouldBe None
   }
 

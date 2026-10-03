@@ -223,7 +223,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     // countScreenings reports one more than was streamed in — standing in for a
     // delivered event the applier dropped, which a count-blind backstop misses.
     val repository = new InMemoryReadModelRepository {
-      override def countScreenings(): Long = super.countScreenings() + 1
+      override def countScreenings(): tools.ReadOutcome[Long] = super.countScreenings().map(_ + 1)
     }
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
@@ -240,8 +240,8 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   it should "not reload over a mismatch that settles once the in-flight event lands" in {
     val counts = new java.util.concurrent.atomic.AtomicInteger(0)
     val repository = new InMemoryReadModelRepository {
-      override def countScreenings(): Long =
-        super.countScreenings() + (if (counts.getAndIncrement() == 0) 1 else 0)
+      override def countScreenings(): tools.ReadOutcome[Long] =
+        super.countScreenings().map(_ + (if (counts.getAndIncrement() == 0) 1 else 0))
     }
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
@@ -326,7 +326,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val buffered = new java.util.concurrent.atomic.AtomicInteger(0)
     val repository = new InMemoryReadModelRepository {
       override def findAllScreenings(): Seq[CityScreening] = { buffered.incrementAndGet(); super.findAllScreenings() }
-      override def foreachScreening(f: CityScreening => Unit): Boolean = { super.findAllScreenings().foreach(f); true }
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome = { super.findAllScreenings().foreach(f); tools.ScanOutcome.complete }
     }
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
@@ -365,10 +365,10 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   it should "keep what the change streams apply while its scan runs" in {
     @volatile var during: () => Unit = () => ()
     val repository = new InMemoryReadModelRepository {
-      override def foreachScreening(f: CityScreening => Unit): Boolean = {
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome = {
         val read = super.findAllScreenings()
         val now = during; during = () => (); now()
-        read.foreach(f); true
+        read.foreach(f); tools.ScanOutcome.complete
       }
     }
     repository.upsertMovie(movie("belle|2021"))
@@ -395,9 +395,9 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository {
       override def findAllScreenings(): Seq[CityScreening] =
         if (screeningsFail) Seq.empty else super.findAllScreenings()
-      override def foreachScreening(f: CityScreening => Unit): Boolean =
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome =
         if (!screeningsFail) super.foreachScreening(f)
-        else { super.findAllScreenings().take(1).foreach(f); false }
+        else { super.findAllScreenings().take(1).foreach(f); tools.ScanOutcome.of(whole = false, "screenings fail on purpose") }
     }
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
@@ -430,7 +430,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     // The failure this pins: the read failed, so there is nothing to serve — while the
     // database demonstrably holds a film.
     rm.allMovies() shouldBe empty
-    repository.countMovies().shouldBe(1L)
+    repository.countMovies().shouldBe(tools.ReadOutcome.Answered(1L))
 
     // Mongo comes back. No restart, no 1800s backstop — the cold retry must notice that
     // it is serving nothing while the database holds films, and rehydrate.

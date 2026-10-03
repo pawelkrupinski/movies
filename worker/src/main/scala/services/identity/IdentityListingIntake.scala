@@ -153,7 +153,7 @@ object IdentityListingIntake {
       val fresh    = Map.newBuilder[String, Entry]
       val complete = repository.scanVenues(reread)(_.foreach(row => row.lastSuccess.foreach(s =>
         fresh += row.cinema.displayName -> Entry(row.cinema, Some(s.at), Option.when(s.films.nonEmpty)(project(row.cinema, s.films))))))
-      entries = if (complete) keep ++ fresh.result() else Map.empty
+      entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
   }
@@ -169,6 +169,6 @@ object IdentityListingIntake {
     val byVenue  = Map.newBuilder[Cinema, Option[A]]
     val complete = repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s =>
       byVenue += row.cinema -> Option.when(s.films.nonEmpty)(view(row.cinema, s.films.map(values.film))))))
-    if (complete) byVenue.result() else Map.empty
+    if (complete.isComplete) byVenue.result() else Map.empty
   }
 }

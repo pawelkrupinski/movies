@@ -30,8 +30,8 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
         slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> SourceData(title = Some("The Odyssey"))))
         slots.upsertSlot(film, other, SourceData(title = Some("Other")))
 
-        screenings.findForFilmChecked(film) shouldBe ((Map(polish -> tomorrow), true))
-        slots.findForFilmChecked(film)._1.keySet shouldBe Set(polish)
+        screenings.findForFilmChecked(film) shouldBe tools.ReadOutcome.Answered(Map(polish -> tomorrow))
+        slots.findForFilmChecked(film).required.keySet shouldBe Set(polish)
       } finally { screenings.close(); slots.close() }
     }
 
@@ -43,7 +43,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
       try {
         unscoped.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> stale))
         slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja 2")), foreign -> SourceData(title = Some("rewritten"))))
-        slots.findForFilmChecked(film) shouldBe ((Map(polish -> SourceData(title = Some("Odyseja 2")), foreign -> stale), true))
+        slots.findForFilmChecked(film) shouldBe tools.ReadOutcome.Answered(Map(polish -> SourceData(title = Some("Odyseja 2")), foreign -> stale))
       } finally { unscoped.close(); slots.close() }
     }
 }

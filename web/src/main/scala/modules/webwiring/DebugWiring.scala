@@ -118,9 +118,9 @@ trait DebugWiring { self: Wiring =>
         // straight from Mongo, `now` for the mtime. A partial read THROWS rather than
         // listing as a smaller read model.
         val readModel  = debugSnapshot(s"/debug/readmodel ${country.code}", freshness) {
-          val (movies, moviesRead) = reader.findAllMoviesChecked()
+          val movies = reader.findAllMoviesChecked().required
           ReadModelDump.of(movies, f => {
-            if (!moviesRead || !reader.foreachScreening(f))
+            if (!reader.foreachScreening(f).isComplete)
               throw new IllegalStateException(s"${country.code} read model read incomplete")
           }, clock.instant())
         }

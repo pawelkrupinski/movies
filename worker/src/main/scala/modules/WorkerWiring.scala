@@ -428,7 +428,12 @@ class WorkerWiring(
     // untagged until it next flips). Same rationale as above — the catalog is
     // worker-only, so the tags ride the UptimeMonitor tag channel.
     boot.step("client markers")(clientMarkers.foreach { case (cinema, marker) =>
-      val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
+      val inFallback =
+        try filmwebFallbackStore.get(cinema).exists(_.active)
+        catch { case scala.util.control.NonFatal(e) =>
+          logger.warn(s"FtFW chip for $cinema: fallback state unreadable at boot (${e.getMessage}) — tagged as not in fallback")
+          false
+        }
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
     })
     // The task worker drains all queue work: scraping, deferred detail, and

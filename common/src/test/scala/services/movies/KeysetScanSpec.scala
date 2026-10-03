@@ -39,7 +39,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
       fetchPage      = fetchPage,
       onIncomplete   = onIncomplete
     )(buf ++= _)
-    (complete, buf.result())
+    (complete.isComplete, buf.result())
   }
 
   "KeysetScan.scan" should "return every row exactly once, in _id order, across page boundaries" in {
@@ -132,7 +132,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
       fetchPage      = collectionOf("a", "b", "c", "d"),
       onIncomplete   = e => notified = Some(e)
     )(_ => ())
-    complete shouldBe false
+    complete.isComplete shouldBe false
     notified.map(_.getMessage) shouldBe Some("ObjectId is not a String")
   }
 
@@ -148,7 +148,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
       keyOf          = identity,
       fetchPage      = (afterId, limit) => { if (afterId.contains("b")) secondStarted.countDown(); base(afterId, limit) }
     )(batch => if (batch.head == "a") overlapped = secondStarted.await(5, java.util.concurrent.TimeUnit.SECONDS))
-    complete   shouldBe true
+    complete   shouldBe tools.ScanOutcome.Complete
     overlapped shouldBe true
   }
 
@@ -156,7 +156,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     val pages = Vector.newBuilder[Seq[String]]
     val complete = KeysetScan.byKeys[String]("test", keys, batchSize = 2, inFlight = inFlight, maxAttempts = 1,
       initialBackoff = 1.milli, fetchKeys = fetchKeys)(pages += _)
-    (complete, pages.result())
+    (complete.isComplete, pages.result())
   }
 
   "byKeys" should "read its pages side by side and hand them on in key order" in {
@@ -177,8 +177,26 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     val complete = KeysetScan.byKeys[String]("test", Seq("a", "b", "c", "d", "e"), batchSize = 2, inFlight = 1, maxAttempts = 1,
       initialBackoff = 1.milli, fetchKeys = page => if (page.contains("c")) throw new RuntimeException("down") else page,
       onIncomplete = e => failure = Some(e))(pages += _)
-    complete shouldBe false
+    complete shouldBe a[tools.ScanOutcome.Incomplete]
     pages.result() shouldBe Vector(Seq("a", "b"))
     failure.map(_.getMessage) shouldBe Some("down")
+  }
+
+  // A collecting reader once returned the rows it had read as the whole collection when a later
+  // page failed (the cadence page's `all`): `collect` hands rows out only for a complete scan.
+  "collect" should "answer every decoded row of a complete scan" in {
+    KeysetScan.collect[String, String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
+      keyOf = identity, fetchPage = collectionOf("a", "b", "c"))(row => Seq(row.toUpperCase))
+      .shouldBe(tools.ReadOutcome.Answered(Vector("A", "B", "C")))
+  }
+
+  it should "fail — never answer the rows it got — when a page still fails" in {
+    val base = collectionOf("a", "b", "c", "d", "e")
+    val outcome = KeysetScan.collect[String, String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
+      keyOf = identity, fetchPage = (after, limit) => if (after.contains("b")) throw new RuntimeException("down") else base(after, limit))(Seq(_))
+    outcome match {
+      case tools.ReadOutcome.Failed(cause) => cause.exception.getMessage shouldBe "down"
+      case other                           => fail(s"a short scan answered $other")
+    }
   }
 }

@@ -11,7 +11,7 @@ class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
 
   "A title-addressed upsert" should "decline, not write, when it cannot read whether its id is taken" in {
     val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
-      override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = (None, false)
+      override def findByIdChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
     }
     repo.upsert("Kumotry", Some(2026), MovieRecord(tmdbId = Some(7))) shouldBe WriteOutcome.Declined("id-unreadable")
     repo.upserts shouldBe empty
@@ -19,7 +19,7 @@ class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
 
   "MovieRepository.holdsId" should "throw on an unreadable row, never answer 'free'" in {
     val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
-      override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = (None, false)
+      override def findByIdChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
     }
     an[IllegalStateException] should be thrownBy repo.holdsId(FilmId("f1"))
     new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer).holdsId(FilmId("f1")) shouldBe false
@@ -29,7 +29,7 @@ class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
   // Written, the caller took a row it never looked for as gone.
   "A title-addressed delete" should "decline, not report a delete, when it cannot read the key" in {
     val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
-      override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
+      override def findByKeyChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
     }
     repo.delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Declined("key-unreadable")
     new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer).delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Written

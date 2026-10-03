@@ -80,9 +80,9 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
 
     // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
     // holds a key the corpus doesn't, so dropping it is the whole point of this pass.
-    val orphans    = checked.collect { case (k, (row, true)) if !holdsCinemas(row) => k }
-    val stillHeld  = checked.collect { case (k, (row, true)) if holdsCinemas(row)  => k }
-    val unreadable = checked.collect { case (k, (_, false))                        => k }
+    val orphans    = checked.collect { case (k, read) if !read.isFailed && !holdsCinemas(read.answered) => k }
+    val stillHeld  = checked.collect { case (k, read) if !read.isFailed && holdsCinemas(read.answered)  => k }
+    val unreadable = checked.collect { case (k, read) if read.isFailed                                => k }
 
     RemovalAudit.cleanupSkipped("unscreened-cleanup", stillHeld.map(label),
       reason = "stored-record-still-holds-cinemas")

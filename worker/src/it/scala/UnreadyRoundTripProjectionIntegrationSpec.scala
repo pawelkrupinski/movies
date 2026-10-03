@@ -41,7 +41,7 @@ class UnreadyRoundTripProjectionIntegrationSpec extends AnyFlatSpec with Matcher
         tmdbAttempt = Some(TmdbAttempt("fingerprint", at)),
         data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(when, None)))))
       def served: Boolean =
-        readModel.findAllMovieIds().contains(id) && readModel.findAllScreenings().exists(_.filmId == id)
+        readModel.findAllMovieIdsChecked().required.contains(id) && readModel.findAllScreenings().exists(_.filmId == id)
 
       val projecting = repository.watchUpserts(projector.onMovieUpsert)
       projecting should not be empty

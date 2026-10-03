@@ -44,9 +44,9 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     write(underlying.replaceFilm(filmId, slots, stored))
   }
 
-  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] =
     underlying.findListedForFilmChecked(filmId)
-  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) = {
+  override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] = {
     batchReadCalls.incrementAndGet()
     underlying.findForFilmsChecked(filmIds)
   }
@@ -60,10 +60,10 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     write(underlying.restampSlot(filmId, slotKey, listingKey))
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
   def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
-  def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]]          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = write(underlying.deleteFilms(filmIds))
-  def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]]           = underlying.rowIdsChecked()
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
@@ -80,13 +80,13 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   val writes           = new AtomicInteger(0)
   private def write[A](body: => A): A = { writes.incrementAndGet(); body }
 
-  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] =
     underlying.findForFilmChecked(filmId)
-  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) = {
+  override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = {
     batchReadCalls.incrementAndGet()
     underlying.findForFilmsChecked(filmIds)
   }
-  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = {
+  def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = {
     findAllCalls.incrementAndGet()
     underlying.findAllChecked()
   }
@@ -99,10 +99,10 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
     write(underlying.upsertSlot(filmId, slotKey, slot))
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
   def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
-  def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]]          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = write(underlying.deleteFilms(filmIds))
-  def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]]           = underlying.rowIdsChecked()
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)

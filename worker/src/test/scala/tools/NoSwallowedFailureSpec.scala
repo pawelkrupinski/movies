@@ -35,6 +35,15 @@ import scala.util.matching.Regex
  *     not "no data"; read through `tools.HttpRead` / `ReadOutcome` instead. (`"[]"` and
  *     `"{}"` count as empty for shapes 1 and 2: they are an empty JSON body.)
  *
+ *  4. In repository code (a file that holds a `MongoCollection`/`MongoDatabase`): a `Try(...)`
+ *     around an awaited Mongo READ — `find`, `first`/`headOption`, a count, `listIndexes`, an
+ *     `aggregate`, a `findOneAnd…` — answered with `.toOption`, `.getOrElse`, `.recover` or
+ *     `.fold`, whatever the fallback. A read that timed out is not a missing document: read
+ *     through `tools.MongoRead` (a `ReadOutcome`), let the failure propagate, or — for a cache,
+ *     where a miss is the safe answer — allowlist it in [[RepositoryReadSwallows]] with WHY.
+ *     Whole-collection reads answer a `tools.ScanOutcome`, which the build will not let a
+ *     caller drop.
+ *
  * Where the empty answer is genuinely right — an optional field's default while decoding,
  * a probe whose failure means "not available here", a retry loop's "not yet" — add the
  * site to [[Allowlist]] with WHY. The reason is the review: "defensive" is not one. Where
@@ -212,9 +221,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "}.recover { case exception =>") ->
       "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",
-    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeAll",
-      "}.recover { case exception =>") ->
-      "the count only feeds an INFO line; a clear that failed leaves the entries, logged at WARN",
     ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
       "case Failure(e)     =>") ->
       "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
@@ -436,7 +442,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       val last    = caseBody(src, m.end).split("[\n;]").map(_.trim).filter(_.nonEmpty).lastOption
       Option.when(handler && last.exists(l => EmptyLine.matches(l)))(site(m.start))
     }
-    (tries ++ handlers ++ swallowedReads(file, raw)).toSeq.distinct.sortBy(_.line)
+    (tries ++ handlers ++ swallowedReads(file, raw) ++ swallowedRepositoryReads(file, raw)).toSeq.distinct.sortBy(_.line)
   }
 
   private lazy val found: Seq[Site] = scalaFiles(MainRoots).flatMap { p =>
@@ -472,7 +478,27 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       }.toSeq
     }
 
-  private val Allowed: Map[(String, String, String), String] = Allowlist ++ HttpReadBacklog.Swallows
+  // An awaited Mongo read: a find, one document, a count, the index list, an aggregate, a findOneAnd….
+  private val MongoReadCall: Regex =
+    """\.\s*(?:find|first|headOption|countDocuments|estimatedDocumentCount|listIndexes|aggregate|distinct|findOneAndDelete|findOneAndUpdate|findOneAndReplace)\b\s*[\[(]""".r
+  private val AnyAnswer: Regex = """^\s*\.\s*(?:toOption|getOrElse|recover|recoverWith|fold)\b""".r
+
+  /** Shape 4: a `Try` around an awaited Mongo read in repository code, answered with anything but
+   *  the failure itself. */
+  private def swallowedRepositoryReads(file: String, raw: String): Seq[Site] =
+    if (!raw.contains("MongoCollection") && !raw.contains("MongoDatabase")) Nil
+    else {
+      val src = withoutComments(raw)
+      val lines = raw.split("\n", -1)
+      TryOpen.findAllMatchIn(src).flatMap { m =>
+        val close = closing(src, m.end - 1)
+        val body  = if (close > 0) src.substring(m.end, close) else ""
+        Option.when(close > 0 && body.contains("Await.result(") && MongoReadCall.findFirstIn(body).isDefined &&
+          AnyAnswer.findPrefixOf(src.substring(afterChain(src, close + 1))).isDefined)(siteAt(file, src, lines, m.start))
+      }.toSeq
+    }
+
+  private val Allowed: Map[(String, String, String), String] = Allowlist ++ HttpReadBacklog.Swallows ++ RepositoryReadSwallows.Swallows
 
   "Main sources" should "not answer a failed fetch, read or decode with an empty value, outside the allowlist" in {
     val offenders = found.filterNot(s => Allowed.contains(s.key))
@@ -533,6 +559,23 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
         |  val q = rows match { case row => row }
         |}""".stripMargin
     swallows("A.scala", src).map(_.line) shouldBe Seq(2, 3, 4, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+  }
+
+  "Shape 4" should "flag an awaited Mongo read answered with anything but its failure, in repository code only" in {
+    val src =
+      """object A {
+        |  val c: MongoCollection[Document] = ???
+        |  val a = Try(Await.result(c.find(f).headOption(), t)).toOption.flatten
+        |  val b = Try(Await.result(c.countDocuments().toFuture(), t)).recover { case e => log(e); -1L }.get
+        |  val d = Try(Await.result(c.find(f).toFuture(), t)).map(_.size).getOrElse(fallback)
+        |  val e = Try(Await.result(c.insertOne(doc).toFuture(), t)).recover { case e => log(e) }
+        |  val g = Try(Await.result(c.find(f).toFuture(), t))
+        |  val h = MongoRead.one("row", t)(c.find(f).headOption())
+        |  val i = Try(Await.result(c.find[Document](f).first().toFuture(), t)).fold(_ => None, Option(_))
+        |}""".stripMargin
+    swallows("common/src/main/scala/services/A.scala", src).map(_.line) shouldBe Seq(3, 4, 5, 9)
+    // Without a collection in the file only shape 1 (the `fold` to None) is left.
+    swallows("common/src/main/scala/services/A.scala", src.replace("MongoCollection", "Store")).map(_.line) shouldBe Seq(9)
   }
 
   "Shape 3" should "flag a read or parse inside a swallowing Try in client code, and only there" in {

@@ -116,7 +116,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
     // already migrated away from). Each page is a bounded
     // `find(_id > last).sort(_id).limit`.
     var count = 0
-    KeysetScan.scan[Document](
+    val outcome = KeysetScan.scan[Document](
       label          = "RatingCadenceStore hydrate",
       batchSize      = 2000,
       maxAttempts    = 3,
@@ -126,11 +126,14 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
         val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
         Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
       },
-      onIncomplete   = exception => logger.warn(s"Rating-cadence hydrate keyset scan failed: ${exception.getMessage}")
     )(batch => batch.foreach { document =>
       MongoRatingCadenceStore.decodeRecord(document).foreach { case (key, stats) => mirror.put(key, stats); count += 1 }
     })
-    if (count > 0) logger.info(s"Hydrated $count rating-cadence record(s) from Mongo.")
+    // A short hydrate is a partly cold mirror, which the class doc already holds safe: the films
+    // it did not reach refresh at the base interval until their next `record`.
+    if (!outcome.isComplete)
+      logger.warn(s"Rating-cadence hydrate ${outcome.explain} — $count record(s) loaded; the rest start at the base interval")
+    else if (count > 0) logger.info(s"Hydrated $count rating-cadence record(s) from Mongo.")
   }
 }
 
@@ -185,8 +188,8 @@ object MongoRatingCadenceStore {
 
 /** Read-only view of the `rating_cadence` collection for the dev cadence page
  *  (the web app). A one-shot full read — the page is dev-only and low-traffic, so
- *  no mirror. Returns `(dedupKey, stats)` pairs; an unreadable/absent Mongo yields
- *  an empty list rather than throwing. */
+ *  no mirror. Returns `(dedupKey, stats)` pairs: none when no Mongo is configured, and a
+ *  read that fails — or stops part-way — throws rather than answering with what it got. */
 trait RatingCadenceReader {
   def all(): Seq[(String, RatingChangeStats)]
 
@@ -219,8 +222,9 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
   override def all(): Seq[(String, RatingChangeStats)] = coll match {
     case None => Seq.empty
     case Some(c) =>
-      val buf = Vector.newBuilder[(String, RatingChangeStats)]
-      KeysetScan.scan[Document](
+      // An incomplete scan THROWS: the rows it read were handed back as the whole collection, and
+      // the cadence page showed every film it did not reach as never refreshed.
+      KeysetScan.collect[Document, (String, RatingChangeStats)](
         label          = "RatingCadenceStore all",
         batchSize      = 2000,
         maxAttempts    = 3,
@@ -231,8 +235,7 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
           Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
         },
         onIncomplete   = exception => logger.warn(s"Rating-cadence read keyset scan failed: ${exception.getMessage}")
-      )(batch => buf ++= batch.flatMap(MongoRatingCadenceStore.decodeRecord))
-      buf.result()
+      )(MongoRatingCadenceStore.decodeRecord).required
   }
 
   override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =

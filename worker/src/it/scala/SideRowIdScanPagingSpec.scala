@@ -47,10 +47,10 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       val expected = (1 to Films).map(n => SlotKeyed.idOf(s"film$n|2026", s"Kino␟film $n")).toSet
 
       finds.clear()
-      screenings.rowIdsChecked()       shouldBe (expected, true)
-      slots.rowIdsChecked()            shouldBe (expected, true)
-      screenings.rowWrittenAtChecked()._1.keySet shouldBe expected
-      slots.rowWrittenAtChecked()._1.keySet      shouldBe expected
+      screenings.rowIdsChecked()       shouldBe tools.ReadOutcome.Answered(expected)
+      slots.rowIdsChecked()            shouldBe tools.ReadOutcome.Answered(expected)
+      screenings.rowWrittenAtChecked().required.keySet shouldBe expected
+      slots.rowWrittenAtChecked().required.keySet      shouldBe expected
 
       val sent = finds.asScala.toSeq
       sent should not be empty
@@ -86,7 +86,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       val asked = Set(SlotKeyed.idOf("film2|2026", "Kino␟film 2"), SlotKeyed.idOf("film5|2026", "Kino␟film 5"), SlotKeyed.idOf("film9|2026", "Kino␟film 9"))
 
       finds.clear()
-      screenings.existingRowIdsChecked(asked) shouldBe ((asked - SlotKeyed.idOf("film9|2026", "Kino␟film 9"), true))
+      screenings.existingRowIdsChecked(asked) shouldBe tools.ReadOutcome.Answered(asked - SlotKeyed.idOf("film9|2026", "Kino␟film 9"))
       val sent = finds.asScala.toSeq
       sent should have size 1
       sent.head.getDocument("filter").getDocument("_id").getArray("$in").size shouldBe 3
@@ -123,8 +123,8 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       val films = (1 to Films).map(n => s"film$n|2026").toSet
 
       finds.clear()
-      screenings.findForFilmsChecked(films)._1.keySet shouldBe films
-      slots.findForFilmsChecked(films)._1.keySet shouldBe films
+      screenings.findForFilmsChecked(films).required.keySet shouldBe films
+      slots.findForFilmsChecked(films).required.keySet shouldBe films
       val sent = finds.asScala.toSeq
       sent should have size 2
       sent.foreach { cmd =>

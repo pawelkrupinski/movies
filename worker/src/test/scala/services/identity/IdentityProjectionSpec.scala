@@ -77,7 +77,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.repository.findAll().forall(_.record.readyToProject) shouldBe true
     w.cache.snapshot().map(_.id).toSet shouldBe w.repository.findAll().map(_.id).toSet
     w.announced.map(_.cleanTitle).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
-    w.filmIds.allChecked()._1.map(_.filmId).toSet shouldBe w.repository.findAll().map(_.id.value).toSet
+    w.filmIds.allChecked().required.map(_.filmId).toSet shouldBe w.repository.findAll().map(_.id.value).toSet
   }
 
   "A projection's failures" should "be logged WITH their stacks, the announce naming its film, and a failed projection counted" in {

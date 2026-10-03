@@ -40,7 +40,7 @@ trait VenuePageStore {
   /** Store `page`, replacing what it held; whether the store has it now. */
   def put(page: VenuePage): Boolean
   /** Every page, read through; whether the read reached every page (a failed read stops it short). */
-  def foreach(onPage: VenuePage => Unit): Boolean
+  def foreach(onPage: VenuePage => Unit): tools.ScanOutcome
 }
 
 /** In memory, for tests and Mongo-less wiring. */
@@ -48,7 +48,7 @@ final class InMemoryVenuePageStore extends VenuePageStore {
   private val pages = new ConcurrentHashMap[String, VenuePage]()
   def get(key: VenuePageKey): Option[VenuePage] = Option(pages.get(key.id))
   def put(page: VenuePage): Boolean = { pages.put(page.key.id, page); true }
-  def foreach(onPage: VenuePage => Unit): Boolean = { pages.values.asScala.toSeq.sortBy(_.key.id).foreach(onPage); true }
+  def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = { pages.values.asScala.toSeq.sortBy(_.key.id).foreach(onPage); tools.ScanOutcome.complete }
 }
 
 /** `venue_pages`: `{_id: "<group>|<page>", group, page, readAt, gone?, <FilmDetail fields>}`. */
@@ -64,7 +64,7 @@ final class MongoVenuePageStore(database: MongoDatabase) extends VenuePageStore 
       exception => { logger.warn(s"venue_pages write failed for ${page.key.id}: ${exception.getMessage}"); false },
       _.wasAcknowledged())
 
-  def foreach(onPage: VenuePage => Unit): Boolean =
+  def foreach(onPage: VenuePage => Unit): tools.ScanOutcome =
     services.movies.KeysetScan.scan[Document](
       label          = "MongoVenuePageStore.foreach",
       batchSize      = 2000,

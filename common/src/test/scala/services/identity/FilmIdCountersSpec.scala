@@ -37,12 +37,12 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
     val store   = new InMemoryFilmIdCounterStore
     val mapping = new FilmIdMapping(store)
     mapping.plan(Seq(film("a", 1))).map(_._2) shouldBe Right(Seq(FilmIdCounter("a", 1)))
-    store.allChecked()._1 shouldBe empty                                           // a plan writes nothing
+    store.allChecked().required shouldBe empty                                           // a plan writes nothing
     mapping.append(Seq(film("a", 1), film("b", 2))) shouldBe Right(2)
     mapping.append(Seq(film("a", 9), film("b", 2))) shouldBe Right(0)
     mapping.load().map(_.counterOf("a")) shouldBe Right(Some(2L))
     new FilmIdMapping(new FilmIdCounterStore {
-      def allChecked() = (Seq.empty, false)
+      def allChecked() = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
       def insert(entries: Seq[FilmIdCounter]) = fail("must not write after a failed read")
     }).append(Seq(film("a", 1))).isLeft shouldBe true
   }

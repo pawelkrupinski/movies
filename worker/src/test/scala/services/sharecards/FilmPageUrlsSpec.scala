@@ -41,7 +41,7 @@ class FilmPageUrlsSpec extends AnyFlatSpec with Matchers {
   // thousands of ids in the US — to keep the few rows filed under one film.
   it should "come from the film's own screenings, never a scan of the whole of web_screenings" in {
     val readModel = new services.readmodel.InMemoryReadModelRepository {
-      override def findAllScreeningRefsChecked(): (Seq[services.readmodel.ScreeningRef], Boolean) =
+      override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[services.readmodel.ScreeningRef]] =
         fail("a re-scrape scanned every screening in the read model for one film's pages")
     }
     val rig   = new Rig(readModel = readModel)

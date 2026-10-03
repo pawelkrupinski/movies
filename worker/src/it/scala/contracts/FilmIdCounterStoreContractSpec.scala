@@ -48,7 +48,7 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
       val store = fresh(cls)
       store.insert(Seq(FilmIdCounter("belle|2013", 1), FilmIdCounter("f00a", 2))) shouldBe 2
       store.insert(Seq(FilmIdCounter("belle|2013", 9), FilmIdCounter("dune|2021", 2), FilmIdCounter("dune|2021", 3))) shouldBe 1
-      store.allChecked()._1.sortBy(_.counter) shouldBe Seq(FilmIdCounter("belle|2013", 1), FilmIdCounter("f00a", 2), FilmIdCounter("dune|2021", 3))
+      store.allChecked().required.sortBy(_.counter) shouldBe Seq(FilmIdCounter("belle|2013", 1), FilmIdCounter("f00a", 2), FilmIdCounter("dune|2021", 3))
     }
 
     it should s"[$name] seed the same map through FilmIdMapping, and add nothing on a second run" in {
@@ -60,5 +60,16 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
       mapping.load().map(_.entries) shouldBe Right(Seq(
         FilmIdCounter("big", 1), FilmIdCounter("mid", 2), FilmIdCounter("small", 3), FilmIdCounter("new", 4)))
     }
+  }
+
+  // An entry the store cannot decode was skipped, so the map read as complete without it — and its
+  // film id and counter as free to hand out again, in a map that exists to never do that.
+  "MongoFilmIdCounterStore" should "fail the read, not skip, an entry it cannot decode" in {
+    val store = fresh(classOf[MongoFilmIdCounterStore])
+    store.insert(Seq(FilmIdCounter("belle|2013", 1))) shouldBe 1
+    Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection)
+      .insertOne(org.mongodb.scala.Document("_id" -> "dune|2021", "counter" -> "two")).toFuture(), 30.seconds)
+    store.allChecked() shouldBe a[tools.ReadOutcome.Failed]
+    new FilmIdMapping(store).load().isLeft shouldBe true
   }
 }

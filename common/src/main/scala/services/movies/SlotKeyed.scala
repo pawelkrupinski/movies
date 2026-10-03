@@ -7,7 +7,7 @@ import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObs
 import java.time.Instant
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * The film-level questions every slot-keyed side collection answers — the seam
@@ -16,33 +16,29 @@ import scala.util.{Failure, Success, Try}
  * and the rule deciding what is stranded lives once, above both.
  */
 trait SlotKeyedRows {
-  /** The DISTINCT `filmId`s with at least one row here, plus whether the read succeeded.
-   *  `(Set.empty, false)` is "could not tell" — a caller deleting on this store's behalf
-   *  must skip it, not treat it as empty. Never a full document read: `screenings` is
+  /** The DISTINCT `filmId`s with at least one row here — failed when the read did not succeed,
+   *  which a caller deleting on this store's behalf must skip, not treat as empty. Never a full document read: `screenings` is
    *  129 MB fleet-wide, and the answer is a few thousand short strings. */
-  def filmIdsChecked(): (Set[String], Boolean)
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]]
 
   /** Drop every row of every film in `filmIds` in one write; returns the rows removed.
    *  The batch counterpart of `deleteFilm`, for a caller holding a SET of films to clear
    *  that wants one round-trip rather than one per film. */
   def deleteFilms(filmIds: Set[String]): Long
 
-  /** Every row `_id` here (`filmId + IdSep + slotKey`), plus whether the read succeeded —
+  /** Every row `_id` here (`filmId + IdSep + slotKey`), failed when the read did not succeed —
    *  the id strings only, never the rows. The stranded sweep compares the two side
    *  collections' id sets: a `screenings` row with no `movie_slots` twin projects nothing. */
-  def rowIdsChecked(): (Set[String], Boolean)
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]]
 
-  /** Which of `ids` are rows here, plus whether the read succeeded — an existence check that
+  /** Which of `ids` are rows here, failed when the read did not succeed — an existence check that
    *  never reads the rows. A store that can look the ids up directly overrides it. */
-  def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) = {
-    val (all, read) = rowIdsChecked()
-    (all.intersect(ids), read)
-  }
+  def existingRowIdsChecked(ids: Set[String]): tools.ReadOutcome[Set[String]] = rowIdsChecked().map(_.intersect(ids))
 
   /** Every row `_id` with the instant it was last WRITTEN (`updatedAt`, which the no-op write
-   *  guards leave alone), plus whether the read succeeded. A sweep that must not touch rows
+   *  guards leave alone), failed when the read did not succeed. A sweep that must not touch rows
    *  a newer deploy may have just written — [[RetiredVenueRows]] — ages them by this. */
-  def rowWrittenAtChecked(): (Map[String, Instant], Boolean)
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, Instant]]
 
   /** Drop the rows with exactly these `_id`s in one write; returns the rows removed. */
   def deleteRows(ids: Set[String]): Long
@@ -144,41 +140,36 @@ object SlotKeyed {
   /** [[SlotKeyedRows.filmIdsChecked]] for a Mongo side collection: a `$group` on `filmId`,
    *  which the `filmId` index serves as a DISTINCT_SCAN, so neither the documents nor the
    *  showtimes they carry cross the wire. Shared by both Mongo stores so the two cannot
-   *  answer the sweep's question differently. A failed read reports `false` and is logged
-   *  through `warn` under the caller's label. */
-  def distinctFilmIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Set[String], Boolean) =
-    Try(Await.result(c.aggregate[Document](Seq(Aggregates.group("$filmId"))).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)) match {
-      case Success(groups) =>
-        (groups.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet, true)
-      case Failure(exception) =>
-        warn(s"$label.filmIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
-          "reporting the read as incomplete.")
-        (Set.empty, false)
+   *  answer the sweep's question differently. A failed read is logged through `warn` under the
+   *  caller's label. */
+  def distinctFilmIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): tools.ReadOutcome[Set[String]] =
+    logged(tools.MongoRead(60.seconds)(c.aggregate[Document](Seq(Aggregates.group("$filmId"))).batchSize(tools.MongoReplies.Default).toFuture())
+      .map(_.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet), s"$label.filmIds", warn)
+
+  def logged[A](read: tools.ReadOutcome[A], what: String, warn: String => Unit): tools.ReadOutcome[A] = {
+    read match {
+      case tools.ReadOutcome.Failed(cause) => warn(s"$what failed: ${cause.explain} — reporting the read as failed.")
+      case _                 => ()
     }
+    read
+  }
 
   /** [[SlotKeyedRows.rowIdsChecked]] for a Mongo side collection: the `_id`s alone, projected
    *  server-side, so the showtimes never cross the wire. Same failure contract as
    *  [[distinctFilmIdsChecked]]. */
   def rowIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
-                       paging: Paging): (Set[String], Boolean) = {
-    val (docs, read) = projectedRowsChecked(c, s"$label.rowIds", warn, paging, Projections.include("_id"))
-    (docs.flatMap(idOfDoc).toSet, read)
-  }
+                       paging: Paging): tools.ReadOutcome[Set[String]] =
+    projectedRowsChecked(c, s"$label.rowIds", warn, paging, Projections.include("_id")).map(_.flatMap(idOfDoc).toSet)
 
   /** [[SlotKeyedRows.existingRowIdsChecked]] for a Mongo side collection: `_id $in`, `_id`s only,
    *  a thousand ids a read — an index lookup per id, whatever the rows hold. */
   def existingRowIdsChecked[T](c: MongoCollection[T], ids: Set[String], label: String,
-                               warn: String => Unit): (Set[String], Boolean) =
-    ids.toSeq.sorted.grouped(1000).foldLeft((Set.empty[String], true)) { case ((found, complete), batch) =>
-      if (!complete) (found, false)
-      else Try(Await.result(c.find[Document](Filters.in("_id", batch*)).projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
-        case Success(docs) => (found ++ docs.flatMap(idOfDoc), true)
-        case Failure(exception) =>
-          warn(s"$label.existingRowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
-            "reporting the read as incomplete.")
-          (found, false)
-      }
-    }
+                               warn: String => Unit): tools.ReadOutcome[Set[String]] =
+    logged(ids.toSeq.sorted.grouped(1000).foldLeft[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty)) { (found, batch) =>
+      found.flatMap(soFar => tools.MongoRead(30.seconds)(
+        c.find[Document](Filters.in("_id", batch*)).projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(docs => soFar ++ docs.flatMap(idOfDoc)))
+    }, s"$label.existingRowIds", warn)
 
   /** How many films one side-collection read asks for. A 200-film page of US screenings was
    *  one `$in` read of ~1.4 s — 16.7 s of the boot hydrate's 20.4 s — decoded on one driver
@@ -189,19 +180,24 @@ object SlotKeyed {
    *  in flight at once, plus whether EVERY read succeeded — one failed piece fails the whole
    *  answer, as the single read it replaces did, so a caller never prunes on a partial one. */
   def rowsForFilmsChecked[T](filmIds: Set[String], label: String, warn: String => Unit)
-                            (find: Seq[String] => Future[Seq[T]]): (Seq[T], Boolean) =
-    if (filmIds.isEmpty) (Seq.empty, true)
+                            (find: Seq[String] => Future[Seq[T]]): tools.ReadOutcome[Seq[T]] =
+    if (filmIds.isEmpty) tools.ReadOutcome.Answered(Seq.empty)
     else {
       given ExecutionContext = ExecutionContext.parasitic
-      val reads = filmIds.toSeq.grouped(FilmsPerRead).map(find).toSeq
-      Try(Await.result(Future.sequence(reads), 60.seconds)) match {
-        case Success(pieces) => (pieces.flatten, true)
-        case Failure(exception) =>
-          warn(s"$label.findForFilms(${filmIds.size} film(s)) failed: ${exception.getClass.getSimpleName}: " +
-            s"${exception.getMessage} — reporting the read as incomplete.")
-          (Seq.empty, false)
-      }
+      logged(tools.MongoRead(60.seconds)(Future.sequence(filmIds.toSeq.grouped(FilmsPerRead).map(find).toSeq)).map(_.flatten),
+        s"$label.findForFilms(${filmIds.size} film(s))", warn)
     }
+
+  /** Each film's rows read one at a time, for a store with no batch read — failed when any one failed. */
+  def eachFilm[A](filmIds: Set[String])(read: String => tools.ReadOutcome[Map[String, A]]): tools.ReadOutcome[Map[String, Map[String, A]]] =
+    filmIds.foldLeft[tools.ReadOutcome[Map[String, Map[String, A]]]](tools.ReadOutcome.Answered(Map.empty)) { (soFar, id) =>
+      soFar.flatMap(found => read(id).map(rows => if (rows.isEmpty) found else found + (id -> rows)))
+    }
+
+  /** A per-film read as the rows a write compares against and whether they are the whole truth:
+   *  an unread film is no rows, NOT complete — so the write rewrites every row and deletes none. */
+  def rowsOrNone[A](read: tools.ReadOutcome[Map[String, A]]): (Map[String, A], Boolean) =
+    read.answered.fold((Map.empty[String, A], false))((_, true))
 
   /** The stamped listing key's field, on both side collections. */
   val ListingKeyField = "listingKey"
@@ -217,13 +213,11 @@ object SlotKeyed {
    *  projected server-side. A row with no `updatedAt` (none is written without one) reads as
    *  the epoch — as old as it gets, since nothing current could have written it. */
   def rowWrittenAtChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
-                             paging: Paging): (Map[String, Instant], Boolean) = {
-    val (docs, read) = projectedRowsChecked(c, s"$label.rowWrittenAt", warn, paging, Projections.include("_id", "updatedAt"))
-    (docs.flatMap { d =>
+                             paging: Paging): tools.ReadOutcome[Map[String, Instant]] =
+    projectedRowsChecked(c, s"$label.rowWrittenAt", warn, paging, Projections.include("_id", "updatedAt")).map(_.flatMap { d =>
       idOfDoc(d).map(_ -> d.get("updatedAt").collect { case at if at.isDateTime =>
         Instant.ofEpochMilli(at.asDateTime.getValue) }.getOrElse(Instant.EPOCH))
-    }.toMap, read)
-  }
+    }.toMap)
 
   /** How a whole-collection read of a side collection pages — the store's own keyset page
    *  size and retry budget. */
@@ -234,9 +228,9 @@ object SlotKeyed {
 
   /** Every row of `c`, `projection` only, read in keyset pages ([[KeysetScan]]) — never one
    *  unbounded `find()`, the shape that overflowed the async driver's completion chain on
-   *  `movies` and then `screenings`. An incomplete scan reports `false` and no rows. */
+   *  `movies` and then `screenings`. An incomplete scan is a failed read. */
   private def projectedRowsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
-                                      paging: Paging, projection: Bson): (Seq[Document], Boolean) = {
+                                      paging: Paging, projection: Bson): tools.ReadOutcome[Seq[Document]] = {
     val buf = Vector.newBuilder[Document]
     val complete = KeysetScan.scan[Document](
       label          = label,
@@ -251,7 +245,7 @@ object SlotKeyed {
         warn(s"$label failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
           "reporting the read as incomplete.")
     )(buf ++= _)
-    if (complete) (buf.result(), true) else (Seq.empty, false)
+    complete.collected(buf.result())
   }
 
   /** A bulk delete's ids as its failure line names them: the ids themselves when there are a

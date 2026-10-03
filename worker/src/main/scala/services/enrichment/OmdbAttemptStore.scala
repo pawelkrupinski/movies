@@ -93,7 +93,7 @@ class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock = Clock.syst
     // costs OMDb calls rather than correctness — but it should be short because
     // Mongo was slow, not because one cursor died halfway.
     val entries = Map.newBuilder[String, OmdbAttempt]
-    services.movies.KeysetScan.scan[Document](
+    val outcome = services.movies.KeysetScan.scan[Document](
       label          = "OmdbAttemptStore.all",
       batchSize      = 2000,
       maxAttempts    = 3,
@@ -103,14 +103,14 @@ class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock = Clock.syst
         val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
         Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
       },
-      onIncomplete   = exception => logger.warn(s"OmdbAttemptStore.all keyset scan failed: ${exception.getMessage} — " +
-        "the sweep will treat unread films as eligible (fail-open)")
     )(batch => entries ++= batch.flatMap { d =>
       for {
         key  <- Option(d.getString("_id"))
         date <- Option(d.getDate("at"))
       } yield key -> OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0))
     })
+    if (!outcome.isComplete)
+      logger.warn(s"OmdbAttemptStore.all ${outcome.explain} — the sweep will treat unread films as eligible (fail-open)")
     entries.result()
   }.getOrElse(Map.empty)
 

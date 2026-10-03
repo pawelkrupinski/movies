@@ -42,13 +42,11 @@ import scala.util.Try
  */
 trait SlotsRepository extends SlotKeyedRows {
 
-  /** Every slot of one film: `slotKey -> slot`. Empty when the film has none.
-   *
-   *  Conflates "no rows" with "the read failed" — use [[findForFilmChecked]] anywhere
-   *  the difference decides what gets SERVED. */
-  def findForFilm(filmId: String): Map[String, SourceData] = findForFilmChecked(filmId)._1
+  /** Every slot of one film: `slotKey -> slot`, empty when it has none. Throws when the read
+   *  fails — [[findForFilmChecked]] answers that as the outcome it is. */
+  def findForFilm(filmId: String): Map[String, SourceData] = findForFilmChecked(filmId).required
 
-  /** One film's slots, PLUS whether the read actually succeeded — the per-film twin of
+  /** One film's slots, as the read it is — the per-film twin of
    *  [[findAllChecked]], and load-bearing for the same reason one level down.
    *
    *  The corpus scan learned this lesson first; the per-film path needed it just as
@@ -58,20 +56,17 @@ trait SlotsRepository extends SlotKeyedRows {
    *  deletes every `web_screening` the film has. A transient Mongo blip would empty a
    *  live film's showtimes off the site. Only the repository can tell "genuinely
    *  slot-less" from "could not read", so it says so instead of leaving the caller to
-   *  infer it from the emptiness. A store that cannot fail always reports true. */
-  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean)
+   *  infer it from the emptiness. A store that cannot fail always answers. */
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]]
 
   /** [[findForFilmChecked]] narrowed to the film's slots at `cinemas` (`Cinema.displayName`s). */
-  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, SourceData], Boolean) = {
-    val (rows, complete) = findForFilmChecked(filmId)
-    (rows.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) }, complete)
-  }
+  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, SourceData]] =
+    findForFilmChecked(filmId).map(_.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) })
 
-  /** Every film's slots: `filmId -> (slotKey -> slot)`. For the boot hydrate /
-   *  `findAll` read-stitch. */
-  def findAll(): Map[String, Map[String, SourceData]] = findAllChecked()._1
+  /** Every film's slots: `filmId -> (slotKey -> slot)`. Throws when the read cannot be completed. */
+  def findAll(): Map[String, Map[String, SourceData]] = findAllChecked().required
 
-  /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
+  /** The rows of SEVERAL films in ONE round-trip — failed when any piece of the read failed.
    *
    *  The corpus scan used to preload this entire collection before it began paging
    *  `movies`, making the scan's peak heap the size of the collection (7.5 MB each for
@@ -80,20 +75,17 @@ trait SlotsRepository extends SlotKeyedRows {
    *  `foreachRecord` promises its callers and had stopped being true when the side
    *  collections were split out. Default: one call per id, so a store with no batch read
    *  still satisfies the contract. */
-  def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) = {
-    val results = filmIds.iterator.map(id => id -> findForFilmChecked(id)).toSeq
-    (results.collect { case (id, (rows, _)) if rows.nonEmpty => id -> rows }.toMap,
-     results.forall { case (_, (_, ok)) => ok })
-  }
+  def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, SourceData]]] =
+    SlotKeyed.eachFilm(filmIds)(findForFilmChecked)
 
-  /** Every film's slots, PLUS whether the scan actually completed.
+  /** Every film's slots, failed when the scan did not complete.
    *
    *  The distinction is load-bearing once the embedded copy is retired. An empty map
    *  can mean "the collection is genuinely empty" (early in the lazy migration —
    *  harmless) or "the read failed" (every migrated film looks like it has no cinemas —
    *  catastrophic if a pruning caller believes it). Only the repository knows which, so
    *  it says so rather than making callers guess from the emptiness. */
-  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)
+  def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]]
 
   /** Set a film's slots to EXACTLY `slots` — upsert those present, delete any no
    *  longer present. The whole-record write path.
@@ -160,10 +152,10 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
 
   private val rows = new InMemorySlotRows[SourceData](clock)
 
-  // An in-memory read cannot fail, so the checked form always reports complete.
-  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (rows.forFilm(filmId), true)
+  // An in-memory read cannot fail, so the checked forms always answer.
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] = tools.ReadOutcome.Answered(rows.forFilm(filmId))
 
-  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = (rows.all(), true)   // an in-memory scan cannot fail
+  def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = tools.ReadOutcome.Answered(rows.all())
 
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is
   // free and the parameter exists only to honour the trait (see the screenings twin).
@@ -182,11 +174,11 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
 
   def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
 
-  def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.all().keySet)
 
-  def rowIdsChecked(): (Set[String], Boolean) = (rows.writtenAt().keySet, true)
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.writtenAt().keySet)
 
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = (rows.writtenAt(), true)
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = tools.ReadOutcome.Answered(rows.writtenAt())
 
   def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
 
@@ -219,11 +211,11 @@ object SlotsRepository {
    * and an empty map equals an empty payload — so the unchecked form answers "already landed" for
    * a film it could not read, on the one path where that answer deletes data.
    */
-  def applyFilm(slots: SlotsRepository, filmId: String, payload: Map[String, SourceData]): WriteOutcome = {
-    val (current, readOk) = slots.findForFilmChecked(filmId)
-    if (readOk && current == payload) WriteOutcome.Written
-    else slots.replaceFilm(filmId, payload, if (readOk) Some(current) else None)
-  }
+  def applyFilm(slots: SlotsRepository, filmId: String, payload: Map[String, SourceData]): WriteOutcome =
+    slots.findForFilmChecked(filmId).answered match {
+      case Some(current) if current == payload => WriteOutcome.Written
+      case read                                => slots.replaceFilm(filmId, payload, read)
+    }
 
   /** A record's slots in wire form, ready to store. Showtimes are dropped — they are
    *  authoritative in `screenings`, and storing them twice would let the two disagree. */
@@ -359,45 +351,35 @@ class MongoSlotsRepository(
 
   private val resumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken)
 
-  /** A FAILED read reports `false` rather than passing an empty map off as "this film has
+ /** A FAILED read is answered as one rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
    *  the old silent `getOrElse(Seq.empty)` meant the one read whose failure can empty a
    *  live film left no trace at all. */
-  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
-    coll.fold((Map.empty[String, SourceData], true)) { c =>
-      Try(Await.result(c.find(SlotKeyed.filmFilter(filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
-        case scala.util.Success(rows) => (rows.map(d => d.slotKey -> d.slot).toMap, true)
-        case scala.util.Failure(e) =>
-          logger.warn(s"SlotsRepository.findForFilm($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage} " +
-            "— reporting the read as incomplete so no caller serves the film as cinema-less.")
-          (Map.empty, false)
-      }
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] =
+    coll.fold[tools.ReadOutcome[Map[String, SourceData]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.filmFilter(filmId)).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(_.map(d => d.slotKey -> d.slot).toMap), s"SlotsRepository.findForFilm($filmId)", logger.warn(_))
     }
 
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
-  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, SourceData], Boolean) =
-    coll.fold((Map.empty[String, SourceData], true)) { c =>
-      Try(Await.result(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
-        case scala.util.Success(rows) => (rows.map(d => d.slotKey -> d.slot).toMap, true)
-        case scala.util.Failure(e) =>
-          logger.warn(s"SlotsRepository.findAtCinemas($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
-          (Map.empty, false)
-      }
+  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, SourceData]] =
+    coll.fold[tools.ReadOutcome[Map[String, SourceData]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(_.map(d => d.slotKey -> d.slot).toMap), s"SlotsRepository.findAtCinemas($filmId)", logger.warn(_))
     }
 
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
-  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
-    coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
-      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "SlotsRepository", logger.warn(_))(ids =>
+  override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, SourceData]]] =
+    coll.fold[tools.ReadOutcome[Map[String, Map[String, SourceData]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.rowsForFilmsChecked(filmIds, "SlotsRepository", logger.warn(_))(ids =>
         c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
-      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, complete)
+        .map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
     }
 
   /** Every film's slots, keyset-paged by `_id` — see [[MongoScreeningsRepository.findAll]]
-   *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
-   *  empty map so a caller can treat it as "unknown" rather than "the film has no slots"
-   *  and prune on it. */
-  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = coll match {
+   *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan is a failed read,
+   *  never "the film has no slots" for a caller to prune on. */
+  def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredSlotDto]
       val complete = KeysetScan.scan[StoredSlotDto](
@@ -414,10 +396,9 @@ class MongoSlotsRepository(
           logger.warn(s"SlotsRepository.findAll keyset scan failed after retries: " +
             s"${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
       )(batch => buf ++= batch)
-      if (complete) (buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
-      else (Map.empty, false)
+      complete.collected(buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
     // No collection wired at all — not a failure, there is simply nothing to read.
-    case None => (Map.empty, true)
+    case None => tools.ReadOutcome.Answered(Map.empty)
   }
 
   /** ONE ordered bulk round-trip: every slot's upsert plus a single `deleteMany` of
@@ -440,7 +421,7 @@ class MongoSlotsRepository(
       // The caller's read when it has one — `MovieRepository.upsert` reads these rows to
       // decide whether to write at all, so making this read them again was a duplicated
       // full-film read on the hottest write path in the system.
-      val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
+      val (current, readComplete) = stored.map(_ -> true).getOrElse(SlotKeyed.rowsOrNone(findForFilmChecked(filmId)))
       val writable = roster.writable(SlotsRepository.Collection, filmId, current, slots)
       val upserts = SlotKeyed.changedRows(current, readComplete, writable).toSeq.map { case (k, sd) =>
         val dto = StoredSlotDto.of(filmId, k, sd, now)
@@ -496,20 +477,20 @@ class MongoSlotsRepository(
     }
   }
 
-  def filmIdsChecked(): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
 
   private val idPaging = SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff)
 
-  def rowIdsChecked(): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_), idPaging))
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
-    coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] =
+    coll.fold[tools.ReadOutcome[Map[String, java.time.Instant]]](tools.ReadOutcome.Answered(Map.empty))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
 
-  override def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.existingRowIdsChecked(_, ids, "SlotsRepository", logger.warn(_)))
+  override def existingRowIdsChecked(ids: Set[String]): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.existingRowIdsChecked(_, ids, "SlotsRepository", logger.warn(_)))
 
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, SlotsRepository.Collection, writeMetrics, logger))

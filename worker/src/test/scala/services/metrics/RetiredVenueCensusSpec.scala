@@ -79,7 +79,7 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   // load, not a country whose every venue retired: neither may publish a count.
   it should "publish nothing when a read failed or the roster is empty" in {
     val screenings = new InMemoryScreeningsRepository {
-      override def rowIdsChecked(): (Set[String], Boolean) = (Set.empty, false)
+      override def rowIdsChecked(): tools.ReadOutcome[Set[String]] = services.movies.UnreadableRepositories.failed
     }
     val slots = new InMemorySlotsRepository
     slots.upsertSlot("foo|2026", s"$retired␟foo", SourceData(title = Some("Foo")))

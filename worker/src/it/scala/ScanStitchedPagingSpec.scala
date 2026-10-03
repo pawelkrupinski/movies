@@ -53,7 +53,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
       // either spelling makes this paging spec fail for a naming reason.
       val complete = repository.foreachRecord(r => if (r.record.tmdbId.exists(t => t > 6000 && t <= 6005)) seen += 1)
 
-      complete shouldBe true
+      complete shouldBe tools.ScanOutcome.Complete
       withClue("the scan preloaded a whole side collection: ")(slots.findAllCalls.get() shouldBe 0)
       withClue("the scan never used the batched per-page read: ")(slots.batchReadCalls.get() should be > 1)
       withClue(s"batched reads=${slots.batchReadCalls.get()} for a 2-row page size: ")(seen should be >= 5)

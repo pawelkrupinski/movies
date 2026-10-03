@@ -18,14 +18,14 @@ final class PagedScrapeArchive(rows: Seq[ArchivedScrape], pageSize: Int, complet
   def find(cinema: Cinema): Option[ArchivedScrape]  = rows.find(_.cinema == cinema)
   def contentStamps(): Map[String, ContentStamp]    = Map.empty
   override def findAll(): Seq[ArchivedScrape]       = fail("the whole archive was asked for at once")
-  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = scanVenues(_ => true)(consume)
-  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean = {
+  def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = scanVenues(_ => true)(consume)
+  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = {
     val pages = rows.filter(row => keep(row.cinema)).grouped(pageSize).toSeq
     pages.take(if (completes) pages.size else 1).foreach { page =>
       pagesServed += 1
       venuesServed ++= page.map(_.cinema)
       consume(page)
     }
-    completes
+    tools.ScanOutcome.of(completes, "the archive stops after its first page on purpose")
   }
 }

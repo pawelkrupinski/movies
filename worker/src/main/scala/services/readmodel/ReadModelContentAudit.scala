@@ -31,9 +31,8 @@ object ReadModelContentAudit {
    *  which is the prune's and the heal's business and already has its own signals. */
   def differences(cardId: String, movies: MovieRepository, reader: ReadModelReader,
                   ratingGate: RatingGate = RatingGate.off): Option[Seq[String]] = {
-    val (row, readable) = movies.findByIdChecked(FilmId(rowIdOf(cardId)))
     for {
-      stored   <- row.filter(_ => readable).filter(_.record.readyToProject)
+      stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.record.readyToProject)
       expected <- ReadModelProjection.projectAll(stored, movies.normalizer).find(_._1._id == cardId)
       card     <- reader.findCard(cardId)
       movie    <- card.movie

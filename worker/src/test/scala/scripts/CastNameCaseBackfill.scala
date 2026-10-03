@@ -168,9 +168,9 @@ object CastNameCaseBackfill {
 
   /** `movie_slots.slot.cast` — the live per-cinema slots. */
   private def backfillSlots(slots: MongoSlotsRepository, apply: Boolean): Counts = {
-    val (byFilm, complete) = slots.findAllChecked()
-    if (!complete)
-      println("  ! movie_slots scan did not complete — the counts below are a PARTIAL view of that collection.")
+    val byFilm = slots.findAllChecked().answered.getOrElse {
+      println("  ! movie_slots scan did not complete — refusing to count part of that collection."); Map.empty
+    }
     val counts = byFilm.foldLeft(Counts()) { case (accumulated, (filmId, filmSlots)) =>
       filmSlots.foldLeft(accumulated) { case (soFar, (slotKey, slot)) =>
         recased(slot) match {
@@ -213,7 +213,7 @@ object CastNameCaseBackfill {
             names         = counts.names + changed)
       }
     }
-    if (!complete)
+    if (!complete.isComplete)
       println("  ! movies scan did not complete — the counts above are a PARTIAL view of that collection.")
     movies.close()
     counts

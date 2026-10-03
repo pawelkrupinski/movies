@@ -123,7 +123,7 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
     // that did not arrive are simply not refreshed this cycle, and the next one
     // picks them up. That is why an incomplete scan stays at debug here rather than
     // warning like the staging read, where a short result silences an alarm.
-    KeysetScan.scan[Document](
+    val outcome = KeysetScan.scan[Document](
       label          = "UptimeMonitor tag load",
       batchSize      = 1000,
       maxAttempts    = 2,
@@ -133,7 +133,6 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
         val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
         Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), UptimeMonitor.HydrateTimeout)
       },
-      onIncomplete   = exception => logger.debug(s"Uptime tag load incomplete: ${exception.getMessage}")
     ) { documents =>
       documents.foreach { document =>
         Option(document.getString("service")).foreach { service =>
@@ -143,7 +142,8 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
         }
       }
     }
-    ()
+    if (!outcome.isComplete)
+      logger.debug(s"Uptime tag load ${outcome.explain} — the services not read keep their tags until the next load")
   }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
 }
 

@@ -77,8 +77,8 @@ class MongoReadModelRepository(
   // StackOverflow the async driver, Sentry KINOWO-19) and returned Seq.empty — which made the
   // projector's BOOT SEED empty, so every boot reproject saw all screenings as new and rewrote
   // the whole corpus (the reproject's phantom "did_work", ~6.5k writes per restart). Paged,
-  // bounded, retried reads complete quickly. Empty on an incomplete scan, matching
-  // MongoScreeningsRepository.findAll (neither of these callers prunes on the result).
+  // bounded, retried reads complete quickly. An incomplete scan is a FAILED read
+  // (`ScanOutcome.collected`): the whole-collection reads throw on it, the checked ones answer it.
   //
   // Each page is read as raw BsonDocuments and decoded PER-DOCUMENT (see [[decodeTolerant]]),
   // so ONE malformed/legacy row (e.g. a `web_movies` doc missing the required `ratings`) is
@@ -87,19 +87,14 @@ class MongoReadModelRepository(
   // `findAllBatchSize` valid films. Keyset advances on the raw `_id` (always present), so a
   // skipped doc still moves the scan forward. Matches the change-stream apply path, which
   // already swallows per-doc decode failures.
-  private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String): Seq[A] =
-    pagedFindAllChecked(coll, label)._1
-
-  /** [[pagedFindAll]] with whether the scan completed — empty and `false` when it did not. */
-  private def pagedFindAllChecked[A: ClassTag](coll: Option[MongoCollection[A]], label: String): (Seq[A], Boolean) = {
-    val buf      = Vector.newBuilder[A]
-    val complete = pagedForeach(coll, label)(buf += _)
-    if (complete) (buf.result(), true) else (Seq.empty, false)
+  private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String): tools.ReadOutcome[Seq[A]] = {
+    val buf = Vector.newBuilder[A]
+    pagedForeach(coll, label)(buf += _).collected(buf.result())
   }
 
   /** Every document of `coll`, decoded and handed to `f` one keyset page at a time — never the
    *  whole collection at once — plus whether the scan reached the end. */
-  private def pagedForeach[A: ClassTag](coll: Option[MongoCollection[A]], label: String)(f: A => Unit): Boolean =
+  private def pagedForeach[A: ClassTag](coll: Option[MongoCollection[A]], label: String)(f: A => Unit): tools.ScanOutcome =
     coll match {
       case Some(c) =>
         val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
@@ -116,7 +111,7 @@ class MongoReadModelRepository(
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
         )(batch => decodeTolerant(batch, codec, label, c.namespace.getCollectionName).foreach(f))
-      case None => true
+      case None => tools.ScanOutcome.complete
     }
 
   /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
@@ -134,11 +129,13 @@ class MongoReadModelRepository(
       }
     }
 
-  def findAllMovies():     Seq[ResolvedMovie] = findAllMoviesChecked()._1
-  override def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) =
-    pagedFindAllChecked(movies, "ReadModelRepository.findAllMovies")
-  def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings")
-  override def foreachScreening(f: CityScreening => Unit): Boolean =
+  /** Throws when the read cannot be completed — read [[findAllMoviesChecked]] to branch on it. */
+  def findAllMovies():     Seq[ResolvedMovie] = findAllMoviesChecked().required
+  override def findAllMoviesChecked(): tools.ReadOutcome[Seq[ResolvedMovie]] =
+    pagedFindAll(movies, "ReadModelRepository.findAllMovies")
+  /** Throws when the read cannot be completed. */
+  def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings").required
+  override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome =
     pagedForeach(screenings, "ReadModelRepository.foreachScreening")(f)
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
@@ -159,10 +156,8 @@ class MongoReadModelRepository(
    * largest collection we hold (a country's showtimes, hundreds of thousands of
    * rows), so it is the likeliest of all of them to hit it.
    *
-   * An incomplete scan yields `Seq.empty` and says so (`false`). Empty is the SAFE
-   * direction for the prune — it deletes read-model rows absent from the source, so
-   * fewer ids means fewer deletions — but NOT for a heal, which reads empty as "every
-   * card / venue is missing" and rewrites the corpus; so every caller gets the flag.
+   * An incomplete scan is a FAILED read, never an empty one: empty reads to a heal as "every
+   * card / venue is missing" and rewrites the corpus, so every caller branches on it.
    * It is logged loudly all the same, because the quiet version of this failure is a
    * prune that stops working and lets stale cards accumulate with nothing but a `warn`
    * to show for it.
@@ -171,7 +166,7 @@ class MongoReadModelRepository(
     collection: Option[MongoCollection[?]],
     label:      String,
     projection: org.bson.conversions.Bson
-  )(decode: BsonDocument => A): (Seq[A], Boolean) = collection match {
+  )(decode: BsonDocument => A): tools.ReadOutcome[Seq[A]] = collection match {
     case Some(c) =>
       val buf = Vector.newBuilder[A]
       val complete = KeysetScan.scan[BsonDocument](
@@ -188,22 +183,20 @@ class MongoReadModelRepository(
         },
         onIncomplete   = exception =>
           logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: " +
-            s"${exception.getMessage} — returning empty, so this tick's prune will under-delete rather than over-delete")
+            s"${exception.getMessage} — the read fails; nothing is pruned or healed on it")
       )(batch => buf ++= batch.map(decode))
-      (if (complete) buf.result() else Seq.empty, complete)
-    case None => (Seq.empty, true)
+      complete.collected(buf.result())
+    case None => tools.ReadOutcome.Answered(Seq.empty)
   }
 
-  override def findAllMovieIds(): Seq[String] = findAllMovieIdsChecked()._1
-
-  override def findAllMovieIdsChecked(): (Seq[String], Boolean) =
+  override def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] =
     pagedIdsChecked(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
 
-  override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
+  override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
     pagedIdsChecked(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
       ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))
 
-  override def findAllShareCardRefsChecked(): (Seq[ShareCardRef], Boolean) =
+  override def findAllShareCardRefsChecked(): tools.ReadOutcome[Seq[ShareCardRef]] =
     pagedIdsChecked(movies, "ReadModelRepository.findAllShareCardRefs", Projections.include("_id", "shareCard"))(d =>
       ShareCardRef(d.getString("_id").getValue, Option(d.getString("shareCard", null)).map(_.getValue)))
 
@@ -231,17 +224,18 @@ class MongoReadModelRepository(
   // Server-side document counts — the read model's cheap integrity probe. These
   // count index entries (no payload decode), so the web's backstop can detect
   // drift without re-reading the whole corpus. `-1` signals "unavailable".
-  def countMovies():     Long = count(movies, "countMovies")
-  def countScreenings(): Long = count(screenings, "countScreenings")
+  def countMovies():     tools.ReadOutcome[Long] = count(movies, "countMovies")
+  def countScreenings(): tools.ReadOutcome[Long] = count(screenings, "countScreenings")
 
-  private def count[T](coll: Option[MongoCollection[T]], op: String): Long = coll match {
+  private def count[T](coll: Option[MongoCollection[T]], op: String): tools.ReadOutcome[Long] = coll match {
     case Some(c) =>
-      Try(Await.result(c.countDocuments().toFuture(), 10.seconds)).recover {
-        case exception: Throwable =>
-          logger.warn(s"ReadModelRepository.$op failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          -1L
-      }.getOrElse(-1L)
-    case None => -1L
+      val counted = tools.MongoRead(10.seconds)(c.countDocuments().toFuture())
+      counted match {
+        case tools.ReadOutcome.Failed(cause) => logger.warn(s"ReadModelRepository.$op failed: ${cause.explain}")
+        case _                 => ()
+      }
+      counted
+    case None => tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new IllegalStateException(s"ReadModelRepository.$op: no read model configured")))
   }
 
   // ── Writes ──────────────────────────────────────────────────────────────────

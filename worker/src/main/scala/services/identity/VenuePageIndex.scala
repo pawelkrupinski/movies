@@ -46,7 +46,7 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
       }
       answers  = read
       scanned  = true
-      complete = reachedEnd
+      complete = reachedEnd.isComplete
     } else if (!pending.isEmpty) {
       // Each page is un-noted only as it is read: a read that throws (a Mongo timeout) leaves it and
       // every page after it noted for the next settle, instead of dropping their announcements. One

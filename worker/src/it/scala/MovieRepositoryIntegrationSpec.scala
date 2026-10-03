@@ -1089,6 +1089,35 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     e.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów") // …and the slot change landed
   }
 
+  // THE LOST UPDATE in that same fallback: it read the document, patched it, and replaced it on `_id`
+  // alone — so a rating refresh landing between the read and the replace was wiped by it. The replace
+  // now lands only over the document as read, and patches again what it finds on a mismatch.
+  it should "keep a rating written between the dotted-name fallback's read and its replace" in {
+    val title  = "__integration-test-dotted-race__"
+    val year   = Some(1906)
+    val stored = MovieRecord(imdbId = Some("tt0000007"), imdbRating = Some(6.0),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Race"))))
+    var raced = false
+    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), normalizer = titleNormalizer) {
+      override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
+        val asRead = super.dottedReplaceRead(c, id)
+        if (!raced) {
+          raced = true
+          Thread.sleep(2) // the racing write's stamp is a later millisecond than the one read
+          repository.updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(8.8))) shouldBe true
+        }
+        asRead
+      }
+    }
+    repository.upsert(title, year, stored)
+    val after = stored.copy(data = stored.data + (HeliosOstrowWlkp -> SourceData(title = Some("Race"), synopsis = Some("from Ostrów"))))
+    racing.updateIfPresent(title, year, stored, after) shouldBe true
+
+    val e = repository.findAll().find(_.record.imdbId.contains("tt0000007")).getOrElse(fail("film gone")).record
+    e.imdbRating shouldBe Some(8.8) // the refresh that landed in between survived…
+    e.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów") // …and the slot change landed over it
+  }
+
   // The split is on whenever a screenings repo is wired: `movies` is written WITHOUT
   // showtimes, reads stitch them from `screenings`, a showtimes-only change leaves
   // `movies` untouched, and a `screenings` change fans out a stitched upsert (so the
@@ -1128,7 +1157,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // film not re-scraped since boot (the 2026-07-02 served-films drop).
       var seen = 0
       repo.foreachRecord(r => if (r.id.value == id)
-        seen = r.record.cinemaData.get(Multikino).map(_.showtimes.size).getOrElse(0))
+        seen = r.record.cinemaData.get(Multikino).map(_.showtimes.size).getOrElse(0)) shouldBe tools.ScanOutcome.Complete
       seen shouldBe 2
 
       // a screenings change fans out a (stitched) upsert on the movies change stream
@@ -1260,7 +1289,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // dropped 129 films is exactly what a second stitch site can reintroduce
       var scanned: Option[String] = None
       split.foreachRecord(r => if (r.id.value == id)
-        scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl))
+        scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl)) shouldBe tools.ScanOutcome.Complete
       scanned shouldBe Some("https://poster/split.png")
     } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
@@ -1296,7 +1325,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       split.findById(FilmId(id)).map(_.title)                              shouldBe Some(title)
       split.findAll().find(r => r.id.value == id).map(_.title) shouldBe Some(title)
       var scanned: Option[String] = None
-      split.foreachRecord(r => if (r.id.value == id) scanned = Some(r.title))
+      split.foreachRecord(r => if (r.id.value == id) scanned = Some(r.title)) shouldBe tools.ScanOutcome.Complete
       scanned shouldBe Some(title)
     } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
@@ -1591,7 +1620,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val viaFindById   = slotsOf(split.findById(FilmId(id)))
       val viaFindAll    = slotsOf(split.findAll().find(r => r.id.value == id))
       var scanned: Option[StoredMovieRecord] = None
-      split.foreachRecord(r => if (r.id.value == id) scanned = Some(r))
+      split.foreachRecord(r => if (r.id.value == id) scanned = Some(r)) shouldBe tools.ScanOutcome.Complete
       val viaForeach    = slotsOf(scanned)
       val viaListing    = slotsOf(split.findAllForListing().find(r => r.id.value == id))
 
@@ -1623,7 +1652,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val viaFindById = showtimesVia(repo.findById(FilmId(id)))
     val viaFindAll  = showtimesVia(repo.findAll().find(r => r.id.value == id))
     var viaForeach  = Seq.empty[Showtime]
-    repo.foreachRecord(r => if (r.id.value == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+    repo.foreachRecord(r => if (r.id.value == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty)) shouldBe tools.ScanOutcome.Complete
 
     viaFindById.size shouldBe 2
     viaFindAll  shouldBe viaFindById
@@ -1633,7 +1662,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // the screenings load. Contract guard so a future "fix" to stitch it (and re-add
     // the per-scan cost) is caught.
     var viaNoStitch = Seq.empty[Showtime]
-    repo.foreachRecordWithoutShowtimes(r => if (r.id.value == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+    repo.foreachRecordWithoutShowtimes(r => if (r.id.value == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty)) shouldBe tools.ScanOutcome.Complete
     viaNoStitch shouldBe empty
 
     repo.delete(title, year)
@@ -1708,7 +1737,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       // The reconcile RETAINED the film's screenings (pre-fix, foreachRecord returned
       // empty showtimes → projectAll produced 0 → the screenings were pruned/never written).
-      rm.findAllScreeningRefs().map(_._id).toSet should contain allElementsOf expectedScrIds
+      rm.findAllScreeningRefsChecked().required.map(_._id).toSet should contain allElementsOf expectedScrIds
     } finally {
       // Tidy the web_* the projector wrote (keyed by the projection-derived ids).
       expectedScrIds.foreach(rm.deleteScreening)
@@ -2064,9 +2093,10 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // …now the same row, read through a slots repository whose reads fail.
       val blind: SlotsRepository = new UnreadableSlotsRepository
       val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(blind), normalizer = titleNormalizer)
-      // None, NOT a record with an empty `data` map. Fails before the fix: `findById`
+      // A failed read, NOT a record with an empty `data` map. Fails before the fix: `findById`
       // returned a film with zero cinemas, which the projector treats as "delete them all".
-      blindRepo.findById(FilmId(id)) shouldBe None
+      blindRepo.findByIdChecked(FilmId(id)) shouldBe a[tools.ReadOutcome.Failed]
+      an[IllegalStateException] should be thrownBy blindRepo.findById(FilmId(id))
     } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
@@ -2092,7 +2122,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(new UnreadableScreeningsRepository(scr)),
         slots = Some(slots), normalizer = titleNormalizer)
       // None, NOT the film with its cinema and no showtimes.
-      blindRepo.findByIdChecked(FilmId(id)) shouldBe ((None, false))
+      blindRepo.findByIdChecked(FilmId(id)) shouldBe a[tools.ReadOutcome.Failed]
     } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
@@ -2120,18 +2150,18 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val showtimesOf = (r: StoredMovieRecord) => r.record.data.values.flatMap(_.showtimes).size
       // Positive control: the healthy scan delivers the film WITH its showtime.
       val healthy = scala.collection.mutable.ListBuffer.empty[StoredMovieRecord]
-      repo.foreachRecord(r => if (r.id.value == id) healthy += r) shouldBe true
+      repo.foreachRecord(r => if (r.id.value == id) healthy += r) shouldBe tools.ScanOutcome.Complete
       healthy.map(showtimesOf) shouldBe Seq(1)
 
       val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(new UnreadableScreeningsRepository(scr)),
         slots = Some(slots), normalizer = titleNormalizer)
-      val scans: Seq[(String, (StoredMovieRecord => Unit) => Boolean)] = Seq(
+      val scans: Seq[(String, (StoredMovieRecord => Unit) => tools.ScanOutcome)] = Seq(
         "foreachRecord"             -> blindRepo.foreachRecord,
         "foreachRecordUpdatedSince" -> blindRepo.foreachRecordUpdatedSince(java.time.Instant.EPOCH))
       scans.foreach { case (scan, run) =>
         val seen     = scala.collection.mutable.ListBuffer.empty[StoredMovieRecord]
         val complete = run(r => if (r.id.value == id) seen += r)
-        withClue(s"$scan reported a scan whose screenings read failed as complete: ")(complete shouldBe false)
+        withClue(s"$scan reported a scan whose screenings read failed as complete: ")(complete.isComplete shouldBe false)
         // Not delivered at all — NOT delivered with its cinema and no showtimes, which a
         // projection reads as "this film is no longer screening there".
         withClue(s"$scan delivered the film stripped of its showtimes: ")(seen.map(showtimesOf) shouldBe empty)

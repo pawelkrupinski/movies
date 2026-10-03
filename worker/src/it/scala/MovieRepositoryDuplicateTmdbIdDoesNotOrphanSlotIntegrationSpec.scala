@@ -52,7 +52,7 @@ class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends Any
       // Film A claims the tmdbId first.
       repository.upsert(titleA, year, MovieRecord(tmdbId = Some(sharedTmdbId)))
       withClue("film A's own resolution must land: ") {
-        repository.findByIdChecked(FilmId(idA))._1.flatMap(_.record.tmdbId) shouldBe Some(sharedTmdbId)
+        repository.findByIdChecked(FilmId(idA)).answered.flatMap(_.record.tmdbId) shouldBe Some(sharedTmdbId)
       }
 
       // Film B exists, unresolved — every scraped film starts this way.
@@ -64,7 +64,7 @@ class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends Any
       repository.upsert(titleB, year, MovieRecord(tmdbId = Some(sharedTmdbId), data = Map(Tmdb -> wrongMatch)))
 
       withClue("the colliding write must not set tmdbId on B: ") {
-        repository.findByIdChecked(FilmId(idB))._1.flatMap(_.record.tmdbId) shouldBe None
+        repository.findByIdChecked(FilmId(idB)).answered.flatMap(_.record.tmdbId) shouldBe None
       }
       withClue("and must not leave a TMDB slot behind that B's movies document never recorded: ") {
         slots.findForFilm(idB).get(Tmdb.displayName) shouldBe None

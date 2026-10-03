@@ -49,6 +49,17 @@ sealed trait ReadOutcome[+A] {
     case Failed(cause)    => throw cause.exception
   }
 
+  /** Whether the read taught us nothing — not an answer, not an absence. */
+  def isFailed: Boolean = this.isInstanceOf[Failed]
+
+  /** The answer, or `None` when there is none to act on — absent or failed alike. For a caller
+   *  whose only safe move without an answer is to do nothing (skip a prune, seed nothing); one that
+   *  must tell the two apart matches the cases. */
+  def answered: Option[A] = this match {
+    case Answered(value) => Some(value)
+    case _               => None
+  }
+
   /** For a read whose content is required — a cinema's listing page: anything but an
    *  answer throws. An absence rethrows its original status, so a durable 404 still
    *  reaches the scrape archive as `HTTP 404` (see `GoneUpstream`). */

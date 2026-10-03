@@ -450,9 +450,9 @@ class ReadModelProjector(
     val rows = held.valuesIterator.filter(_.until <= now).map(_.row).toSet
     rows.filter { row =>
       movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
-        case (Some(whole), _) => projectRow(whole, ProjectTrigger.HoldRelease); false
-        case (None, true)     => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
-        case (None, false)    => true                                                       // unreadable: keep the hold
+        case tools.ReadOutcome.Answered(whole)     => projectRow(whole, ProjectTrigger.HoldRelease); false
+        case tools.ReadOutcome.Absent(_)  => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
+        case tools.ReadOutcome.Failed(_)  => true                                                       // unreadable: keep the hold
       }
     }
   }
@@ -643,8 +643,9 @@ class ReadModelProjector(
     // …and only when that read was COMPLETE: an incomplete keyset scan answers "no cards",
     // and healing on that answer would re-project every row (the boot burst this design
     // avoids). A prune that cannot see the cards heals nothing this tick.
-    val (cardsBeforeSeq, cardsRead) = if (reproject) (Seq.empty[String], true) else reader.findAllMovieIdsChecked()
-    val cardsBefore = cardsBeforeSeq.toSet
+    val cardsBeforeRead = if (reproject) tools.ReadOutcome.Answered(Seq.empty[String]) else reader.findAllMovieIdsChecked()
+    val cardsRead       = cardsBeforeRead.answered.isDefined
+    val cardsBefore     = cardsBeforeRead.answered.fold(Set.empty[String])(_.toSet)
     if (!reproject && !cardsRead) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
     // The screenings rows as they are before this sweep, read once for the venue heal and
     // the prune alike. A venue the source lists (a cinema slot) with no row here is healed
@@ -652,7 +653,7 @@ class ReadModelProjector(
     // while nothing else touched the row. A read that fails — or stops short, which the keyset
     // scan reports as EMPTY — heals no venue this tick: "no rows" is not "could not read them".
     val screeningRefsBefore: Option[Seq[ScreeningRef]] =
-      if (reproject) None else Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs }
+      if (reproject) None else reader.findAllScreeningRefsChecked().answered
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
     // The same rows by card, for the venues a live card holds that its row no longer lists at all
     // (`unlisted`): a removal the stream never applied, which no id check of the CARD can see — the
@@ -666,7 +667,7 @@ class ReadModelProjector(
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
     // `screenings` collection through WiredTiger twice an hour to throw it away — 177,676
     // rows and 129 MB across the five countries (2026-09-05) against a 1.07 GB cache.
-    val scan: (StoredMovieRecord => Unit) => Boolean =
+    val scan: (StoredMovieRecord => Unit) => tools.ScanOutcome =
       if (reproject) movieRepository.foreachRecord else movieRepository.foreachRecordWithSlots
     val scanComplete = scan { row =>
       if (row.record.readyToProject) {
@@ -700,7 +701,7 @@ class ReadModelProjector(
             }
         }
       }
-    }
+    }.isComplete
     var prunedFilms      = 0
     var prunedScreenings = 0
     if (!scanComplete) {
@@ -720,7 +721,9 @@ class ReadModelProjector(
       // (another process, during a rolling deploy) belongs to a row the scan may not have seen, and
       // diffing a fresh read against `liveIds` pruned it as an orphan. Those cards are the next
       // sweep's to judge; this one's heals are in `liveIds` either way.
-      val cardsToJudge = if (!reproject && cardsRead) cardsBeforeSeq else reader.findAllMovieIds()
+      // A card read that failed judges none: an unread card is not an orphan.
+      val cardsToJudge = (if (!reproject) cardsBeforeRead else reader.findAllMovieIdsChecked()).answered.getOrElse {
+        logger.warn(s"read-model $kind: the card ids could not be read — no card is pruned this tick."); Seq.empty }
       cardsToJudge.iterator.filterNot(liveIds).foreach { id =>
         val rowOfCard = id.takeWhile(_ != '~')
         continuing(s"read-model $kind: pruning card $id failed") {
@@ -741,7 +744,10 @@ class ReadModelProjector(
           lastScreenings.forget(ref.filmId, ref._id)
           prunedScreenings += 1
         }.getOrElse { pruneFailed = true }
-      screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
+      // A screenings read that failed prunes none: an unread row is not an orphan.
+      screeningRefsBefore.orElse(if (reproject) reader.findAllScreeningRefsChecked().answered else None).getOrElse {
+        logger.warn(s"read-model $kind: the screening ids could not be read — no screening is pruned this tick."); Seq.empty
+      }.iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
       // A stream misses a removal now and then; one sweep finding a great many is far likelier a
       // comparison gone wrong — the slots-only view disagreeing with the projection about some shape
       // of row — and pruning on it would blank the served venues of a country. So past the cap the
@@ -805,7 +811,7 @@ class ReadModelProjector(
             projectRow(row, ProjectTrigger.CatchUp); caughtUp += 1
           }.getOrElse { failed = true }
       }
-      if (complete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
+      if (complete.isComplete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
       metrics.recordCatchUp(caughtUp)
       if (caughtUp > 0)
         logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +
@@ -873,16 +879,16 @@ class ReadModelProjector(
    *  id and handed to `project`: the documents written, and whether every row was read and
    *  projected (a row gone since `rowIds` was taken counts as done — its cards are the prune's). */
   private def reprojectSlice(rowIds: Iterable[services.movies.FilmId], slice: Int, what: String,
-                             read: services.movies.FilmId => (Option[StoredMovieRecord], Boolean),
+                             read: services.movies.FilmId => tools.ReadOutcome[StoredMovieRecord],
                              project: StoredMovieRecord => Int): (Int, Boolean) = {
     var written  = 0
     var complete = true
     rowIds.iterator.filter(ReadModelProjector.contentSliceOf(_) == slice).foreach { id =>
       val projected = continuing(s"read-model $what: a row in content slice $slice failed to project") {
         read(id) match {
-          case (Some(row), _) => written += project(row)
-          case (None, true)   => ()
-          case (None, false)  => complete = false
+          case tools.ReadOutcome.Answered(row)      => written += project(row)
+          case tools.ReadOutcome.Absent(_) => ()
+          case tools.ReadOutcome.Failed(_) => complete = false
         }
       }
       if (projected.isEmpty) complete = false
@@ -1020,7 +1026,12 @@ class ReadModelProjector(
    *  boot of the next worker over a read model it did not write. */
   def seedFromReadModel(): Unit =
     lock.synchronized {
-      reader.findAllMovies().foreach { m =>
+      // A read that falls short seeds nothing: every card is then rewritten on its first projection,
+      // the costly-but-safe direction.
+      reader.findAllMoviesChecked().answered.getOrElse {
+        logger.warn("read model: the cards could not be read whole at boot — seeding none; each is rewritten on its first projection")
+        Seq.empty
+      }.foreach { m =>
         lastMovie.update(m._id, CardHash.of(m))
         if (m.shareCardPending) pendingCards += m._id
       }
@@ -1030,7 +1041,7 @@ class ReadModelProjector(
       // rather than trusting it. A read that falls short seeds nothing, as it always has.
       val byFilm = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.Builder[(String, WrittenScreening), Map[String, WrittenScreening]]]
       val complete = reader.foreachScreening(s => byFilm.getOrElseUpdate(s.filmId, Map.newBuilder) += s._id -> WrittenScreening(s.##, input = None))
-      if (complete) byFilm.foreach { case (fid, rows) => lastScreenings.update(fid, rows.result()) }
+      if (complete.isComplete) byFilm.foreach { case (fid, rows) => lastScreenings.update(fid, rows.result()) }
       seeded = true
     }
 
@@ -1095,9 +1106,9 @@ class ReadModelProjector(
         val id = services.movies.FilmId(rowId)
         continuing(s"read model: applying the change to $rowId held through the boot reads failed") {
           movieRepository.findByIdChecked(id) match {
-            case (Some(row), _) => onMovieUpsert(row)
-            case (None, true)   => onMovieDelete(id)
-            case (None, false)  => logger.warn(s"read model: $rowId changed during the boot reads and could not be read — the prune sweep heals it.")
+            case tools.ReadOutcome.Answered(row)      => onMovieUpsert(row)
+            case tools.ReadOutcome.Absent(_) => onMovieDelete(id)
+            case tools.ReadOutcome.Failed(_) => logger.warn(s"read model: $rowId changed during the boot reads and could not be read — the prune sweep heals it.")
           }
         }
       }
@@ -1179,9 +1190,10 @@ class ReadModelProjector(
    *  card did not is still short, and the change stream only revisits it on its next
    *  scrape change. */
   private def healMissingCards(): Unit = Try {
-    val (cardsSeq, cardsRead) = reader.findAllMovieIdsChecked()
-    val cards = cardsSeq.toSet
-    val venues = Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs.map(_._id).toSet }
+    val cardIds = reader.findAllMovieIdsChecked().answered
+    val cardsRead  = cardIds.isDefined
+    val cards      = cardIds.fold(Set.empty[String])(_.toSet)
+    val venues     = reader.findAllScreeningRefsChecked().answered.map(_.map(_._id).toSet)
     // The check reads slots only (ids derive from the slot titles, never from a
     // showtime); the few rows it names are then read whole, showtimes included. An
     // incomplete card read heals nothing: "no cards" and "could not read" differ.
@@ -1195,7 +1207,7 @@ class ReadModelProjector(
         if (absentCards.nonEmpty || absentVenues.nonEmpty)
           missing += ((row.id, ReadModelProjection.metadataHash(row), absentCards, absentVenues))
       }
-    }
+    }.isComplete
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
     val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues) =>

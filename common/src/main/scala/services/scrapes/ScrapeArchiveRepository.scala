@@ -184,20 +184,20 @@ trait ScrapeArchiveRepository {
    *  cannot fail, so the default is `find`'s answer. */
   def read(cinema: Cinema): Try[Option[ArchivedScrape]] = Success(find(cinema))
 
-  /** Every archived scrape, handed to `consume` a page at a time, in no promised order; `true`
+  /** Every archived scrape, handed to `consume` a page at a time, in no promised order; complete
    *  when the whole archive was read. A page is the caller's to keep or drop: a caller that
    *  reduces each page (the identity intake, turning rows into listings) never holds the whole
    *  archive's parsed films at once — tens of kilobytes a venue, hundreds of megabytes a country.
    *
-   *  On `false` the pages already handed over are a PARTIAL archive, and the caller must not
+   *  On an incomplete scan the pages already handed over are a PARTIAL archive, and the caller must not
    *  mistake them for a smaller one — a failed read is not data ([[findAll]]). */
-  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean
+  def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome
 
   /** [[scan]] of only the venues `keep` admits: the same answer as filtering every page, but a
    *  repository that can tell a row's venue before reading it (Mongo, by its `_id`) never fetches
    *  or decodes the others — a cut-over country's projection reads the archive only for the venues
    *  with no accepted listing, a handful of the US archive's 5,000 rows, every five minutes. */
-  def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean =
+  def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
     scan(page => consume(page.filter(row => keep(row.cinema))))
 
   /** Every archived scrape, all at once — the replay/repopulate entry point, for a caller that
@@ -207,7 +207,7 @@ trait ScrapeArchiveRepository {
    *  read that would then have been replayed as authoritative on every future run. */
   def findAll(): Seq[ArchivedScrape] = {
     val rows = Seq.newBuilder[ArchivedScrape]
-    if (scan(rows ++= _)) rows.result() else Seq.empty
+    if (scan(rows ++= _).isComplete) rows.result() else Seq.empty
   }
 
   /** When each archived cinema last produced ANY films, and whether its newest
@@ -271,7 +271,7 @@ object ScrapeArchiveRepository {
     protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit = ()
     protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit    = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
-    def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = true
+    def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.complete
     def contentStamps(): Map[String, ContentStamp]   = Map.empty
   }
 }
@@ -300,9 +300,9 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
   def find(cinema: Cinema): Option[ArchivedScrape] =
     byCinema.synchronized(byCinema.get(cinema.displayName))
 
-  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = {
+  def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = {
     consume(byCinema.synchronized(byCinema.values.toSeq))
-    true
+    tools.ScanOutcome.complete
   }
 
   // No projection to make here — the rows are already in memory, so reading the

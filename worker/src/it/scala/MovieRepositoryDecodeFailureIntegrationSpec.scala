@@ -29,9 +29,9 @@ class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Match
         Document("_id" -> "__undecodable__", "key" -> "undecodable|2026", "title" -> "Undecodable",
           "sourceData" -> "not a document")).toFuture(), 10.seconds)
 
-      repository.findByIdChecked(FilmId("__undecodable__")) shouldBe ((None, false))
+      repository.findByIdChecked(FilmId("__undecodable__")) shouldBe a[tools.ReadOutcome.Failed]
       counted.toSeq shouldBe Seq("movies")
-      repository.findAllChecked()._2 shouldBe false
+      repository.findAllChecked() shouldBe a[tools.ReadOutcome.Failed]
       counted.toSeq shouldBe Seq("movies", "movies")
     }
 }

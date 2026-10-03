@@ -260,8 +260,9 @@ class InMemoryMovieRepository(
     WriteOutcome.all(screeningsWrite.toSeq ++ slotsWrite)
   }
 
-  private def sideRowsOf(id: String): (Option[Map[String, SourceData]], Option[Map[String, ListedShowtimes]]) =
-    (slots.map(_.findForFilmChecked(id)._1), screenings.map(_.findListedForFilmChecked(id)._1))
+  // What each wired store answers for the film — an unread store answers None both times, so it never reads as a change.
+  private def sideRowsOf(id: String): (Option[Option[Map[String, SourceData]]], Option[Option[Map[String, ListedShowtimes]]]) =
+    (slots.map(_.findForFilmChecked(id).answered), screenings.map(_.findListedForFilmChecked(id).answered))
 
   def updateIfPresent(film: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     val id = film.value
@@ -334,15 +335,15 @@ class InMemoryMovieRepository(
    *  stitched them made the read-model sweep look convergent in every spec while
    *  production re-projected the same ~333 Polish rows every 30 minutes (2026-09-08).
    *  A repository with no screenings store is not split, so it stitches as before. */
-  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
     findAll().foreach(row => f(if (screenings.isEmpty) row else row.copy(record = row.record.copy(data = ScreeningsSplit.stripShowtimes(row.record.data)))))
-    true
+    tools.ScanOutcome.complete
   }
 
   /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
-  override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = {
+  override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
     readRows(id => updatedAtById.get(id).exists(_.isAfter(since))).foreach(f)
-    true
+    tools.ScanOutcome.complete
   }
 
   def close(): Unit = ()

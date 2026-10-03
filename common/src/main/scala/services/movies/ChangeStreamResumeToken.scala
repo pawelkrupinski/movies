@@ -43,12 +43,28 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
     if (!enabled) None
     else database.map(_.getCollection[Document]("change_stream_tokens").withWriteConcern(WriteConcern.W1.withJournal(false)))
 
-  /** The persisted position to reopen from, if any (a restart / prior terminal error). */
-  def load(): Option[BsonDocument] =
-    coll.flatMap { c =>
-      Try(Option(Await.result(c.find(Filters.eq("_id", streamId)).first().toFuture(), 5.seconds)))
-        .toOption.flatten.flatMap(_.get("token")).map(_.asDocument())
+  /** The persisted position to reopen from (a restart / prior terminal error): absent when none
+   *  was saved, FAILED when it could not be read — which is not "none saved". */
+  def load(): tools.ReadOutcome[BsonDocument] =
+    coll.fold[tools.ReadOutcome[BsonDocument]](tools.ReadOutcome.none(s"$streamId resume token (not persisted)")) { c =>
+      tools.MongoRead.one(s"$streamId resume token", 5.seconds)(c.find(Filters.eq("_id", streamId)).headOption())
+        .flatMap(_.get("token").fold[tools.ReadOutcome[BsonDocument]](tools.ReadOutcome.none(s"$streamId resume token"))(
+          token => tools.ReadOutcome.Answered(token.asDocument())))
     }
+
+  /** Where to open the cursor: the saved position, or "now" when there is none — and "now" too
+   *  when it could not be read, since a cursor that never opens is worse than one that skips.
+   *  That case is said at WARN: the events since the last save reach the consumers only through
+   *  their backstops (cache rehydrate, projector reconcile), not through this stream. It used to
+   *  read exactly like a first-ever open. */
+  def openFrom(): Option[BsonDocument] = load() match {
+    case tools.ReadOutcome.Answered(token) => Some(token)
+    case tools.ReadOutcome.Absent(_)       => None
+    case tools.ReadOutcome.Failed(cause)   =>
+      logger.warn(s"Change stream '$streamId': the saved resume position could not be read (${cause.explain}) — " +
+        "opening at now; changes made since the last save are recovered only by the backstop")
+      None
+  }
 
   // Bumped by every `clear()`. A position is advanced only once its event is APPLIED —
   // on the apply thread, possibly well after delivery — so an event delivered before a

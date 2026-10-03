@@ -45,7 +45,7 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
   it should "delete nothing but abandoned temps when web_movies could not be read whole" in new Setup {
     putFilm("fgone", old)
     val blind = new InMemoryReadModelRepository {
-      override def findAllShareCardRefsChecked() = (Seq.empty, false)
+      override def findAllShareCardRefsChecked() = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
     }
     new ShareCardJanitor(store, blind, budget = settings.ShareCardStorageBudget(1), metrics, clock, _ => ()).prune().deleted shouldBe empty
     filmFiles("fgone") shouldBe 3

@@ -178,7 +178,7 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
   // The per-film read's failure signal. An in-memory read cannot fail, so this pins the
   // contract's shape; MovieRepositoryIntegrationSpec pins the Mongo side's `false`.
   "findForFilmChecked" should "report a genuinely slot-less film as a COMPLETE empty read" in {
-    repo.findForFilmChecked("nobody") shouldBe (Map.empty, true)
+    repo.findForFilmChecked("nobody") shouldBe tools.ReadOutcome.Answered(Map.empty)
   }
 
   "the composite id" should "survive a filmId that itself contains the separator" in {

@@ -18,8 +18,8 @@ import tools.contracts.FailsOnPurpose
 /** A [[SlotsRepository]] whose reads always fail — empty result, `complete = false`.
  *  Writes still land, so a spec can seed state and then fail only the read. */
 class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurpose {
-  override def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (Map.empty, false)
-  override def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)      = (Map.empty, false)
+  override def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] = UnreadableRepositories.failed
+  override def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]]     = UnreadableRepositories.failed
 }
 
 /** A [[ScreeningsRepository]] whose per-film reads always fail — empty result,
@@ -28,7 +28,7 @@ class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurp
  *  store so an integration spec can fail the read in front of the REAL Mongo repository. */
 class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository)
   extends ScreeningsRepository with FailsOnPurpose {
-  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) = (Map.empty, false)
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] = UnreadableRepositories.failed
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
   def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
                   stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome    = store.replaceFilm(filmId, slots, stored)
@@ -39,9 +39,9 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   def deleteFilms(filmIds: Set[String]): Long                                   = store.deleteFilms(filmIds)
   /** A READ, so it fails like the others: the stranded-row sweep must skip this store,
    *  not clear it on the strength of an id list it never saw. */
-  def filmIdsChecked(): (Set[String], Boolean)                                  = (Set.empty, false)
-  def rowIdsChecked(): (Set[String], Boolean)                                   = (Set.empty, false)
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean)          = (Map.empty, false)
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]]                                  = UnreadableRepositories.failed
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]]                                   = UnreadableRepositories.failed
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]]          = UnreadableRepositories.failed
   def deleteRows(ids: Set[String]): Long                                        = store.deleteRows(ids)
   // DELEGATED LIKE EVERY OTHER NON-READ. These two were missing until 2026-09-06, so decorating a
   // real Mongo store — which is the case this class documents itself as existing for — silently
@@ -87,7 +87,8 @@ class UnwritableSlotsRepository extends InMemorySlotsRepository with FailsOnPurp
 class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
                                     titleNormalizer: TitleNormalizer)
   extends InMemoryMovieRepository(delivered, normalizer = titleNormalizer) with FailsOnPurpose {
-  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
+  override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
+    super.foreachRecord(f).andThen(tools.ScanOutcome.of(whole = false, "the corpus scan stops short on purpose"))
 }
 
 /** A [[ScreeningsRepository]] whose WRITES fail. A caller that copies rows to a new id and
@@ -108,7 +109,7 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with F
 
 /** A [[MovieRepository]] whose BY-ID read fails while the row is genuinely there, and whose
  *  every other operation is real. The shape a Mongo timeout or a slot-read failure produces:
- *  `findByIdChecked` reports `(None, false)`, and a caller that only looks at the `None` sees
+ *  `findByIdChecked` answers a failed read, and a caller that only looks at the `None` sees
  *  a film that does not exist.
  *
  *  `findAll` deliberately keeps working — the corruption this exposes is a WRITE built on a
@@ -118,12 +119,12 @@ class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)
                                     titleNormalizer: TitleNormalizer)
   extends InMemoryMovieRepository(seed, normalizer = titleNormalizer) with FailsOnPurpose {
   @volatile var failing: Boolean = true
-  override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
-    if (failing) (None, false) else super.findByIdChecked(id)
+  override def findByIdChecked(id: FilmId): tools.ReadOutcome[StoredMovieRecord] =
+    if (failing) UnreadableRepositories.failed else super.findByIdChecked(id)
   /** `keyReadsFail = false` fails only the by-ID read: the key lookup answers, and a
    *  caller then asks whether a candidate id is free — the read that must not pass. */
-  override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
-    if (failing && keyReadsFail) (None, false) else super.findByKeyChecked(key)
+  override def findByKeyChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] =
+    if (failing && keyReadsFail) UnreadableRepositories.failed else super.findByKeyChecked(key)
 }
 
 /** A [[MovieRepository]] whose whole-record `upsert` is DECLINED while `declining` — what
@@ -174,4 +175,10 @@ class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemoryS
     write("replaceFilm")(super.replaceFilm(filmId, slots, stored))
   override def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome =
     write("upsertSlot")(super.upsertSlot(filmId, slotKey, slot))
+}
+
+object UnreadableRepositories {
+  /** What a read that fails on purpose answers. */
+  def failed: tools.ReadOutcome[Nothing] =
+    tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable on purpose")))
 }

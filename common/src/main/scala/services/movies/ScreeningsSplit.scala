@@ -77,7 +77,7 @@ object ScreeningsSplit {
    *  its delete vector would erase every slot the read failed to return. */
   def reStitchChecked(screenings: ScreeningsRepository, id: String,
                       data: Map[Source, SourceData]): ReStitched = {
-    val (scr, complete) = screenings.findListedForFilmChecked(id)
+    val (scr, complete) = SlotKeyed.rowsOrNone(screenings.findListedForFilmChecked(id))
     val stitched = data.map {
       case (src, sd) if sd.showtimes.isEmpty && sd.showtimesDigest.isDefined =>
         src -> sd.copy(showtimes = scr.get(src.displayName).fold(Seq.empty[Showtime])(_.showtimes))

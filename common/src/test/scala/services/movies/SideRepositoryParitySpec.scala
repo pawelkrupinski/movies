@@ -21,18 +21,16 @@ class SideRepositoryParitySpec extends AnyFlatSpec with Matchers {
   private val slots      = new MongoSlotsRepository(None)
 
   "an unwired side repository" should "report a per-film read as COMPLETE, not failed" in {
-    withClue("screenings: ")(screenings.findForFilmChecked("film|2026")._2 shouldBe true)
-    withClue("slots: ")(slots.findForFilmChecked("film|2026")._2           shouldBe true)
+    withClue("screenings: ")(screenings.findForFilmChecked("film|2026") shouldBe tools.ReadOutcome.Answered(Map.empty))
+    withClue("slots: ")(slots.findForFilmChecked("film|2026")           shouldBe tools.ReadOutcome.Answered(Map.empty))
   }
 
   it should "agree with its sibling on both halves of the answer" in {
-    screenings.findForFilmChecked("film|2026")._1 shouldBe empty
-    slots.findForFilmChecked("film|2026")._1      shouldBe empty
-    screenings.findForFilmChecked("film|2026")._2 shouldBe slots.findForFilmChecked("film|2026")._2
+    screenings.findForFilmChecked("film|2026") shouldBe slots.findForFilmChecked("film|2026")
   }
 
   it should "report a multi-film read as COMPLETE too" in {
-    withClue("screenings: ")(screenings.findForFilmsChecked(Set("a|", "b|"))._2 shouldBe true)
-    withClue("slots: ")(slots.findForFilmsChecked(Set("a|", "b|"))._2           shouldBe true)
+    withClue("screenings: ")(screenings.findForFilmsChecked(Set("a|", "b|")) shouldBe tools.ReadOutcome.Answered(Map.empty))
+    withClue("slots: ")(slots.findForFilmsChecked(Set("a|", "b|"))           shouldBe tools.ReadOutcome.Answered(Map.empty))
   }
 }

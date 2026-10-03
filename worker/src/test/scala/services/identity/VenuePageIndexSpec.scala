@@ -52,12 +52,12 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val scanning = new services.venuepages.VenuePageStore {
       def get(key: VenuePageKey) = pages.get(key)
       def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): Boolean = {
-        pages.foreach(onPage)
+      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = {
+        pages.foreach(onPage).isComplete shouldBe true
         // The scan has passed every page it will see; a reader writes and announces a new one now.
         pages.put(VenuePage(VenuePageKey(Group, Page), VenuePage.Read(Full), clock.instant()))
         index.pageRead(Group, Page)
-        true
+        tools.ScanOutcome.complete
       }
     }
     index = new VenuePageIndex(scanning, reported += _)
@@ -78,7 +78,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val flaky = new services.venuepages.VenuePageStore {
       def get(key: VenuePageKey) = if (failing) throw new IllegalStateException("timed out") else pages.get(key)
       def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): Boolean = pages.foreach(onPage)
+      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = pages.foreach(onPage)
     }
     val index    = new VenuePageIndex(flaky, reported += _)
     val enricher = new FakeDetailEnricher(KinoApollo, Group)
@@ -104,8 +104,8 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val failing = new services.venuepages.VenuePageStore {
       def get(key: VenuePageKey) = pages.get(key)
       def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): Boolean =
-        if (failNextScan) { failNextScan = false; pages.get(VenuePageKey(Group, "http://a")).foreach(onPage); false }
+      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome =
+        if (failNextScan) { failNextScan = false; pages.get(VenuePageKey(Group, "http://a")).foreach(onPage); tools.ScanOutcome.of(whole = false, "scan fails on purpose") }
         else pages.foreach(onPage)
     }
     val reported = scala.collection.mutable.ArrayBuffer.empty[String]

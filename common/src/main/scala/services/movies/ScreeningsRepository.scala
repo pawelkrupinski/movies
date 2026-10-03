@@ -11,7 +11,7 @@ import play.api.Logging
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Per-cinema showtimes, split out of the embedded `movies.sourceData` map into
@@ -33,37 +33,30 @@ import scala.util.{Failure, Success, Try}
  */
 trait ScreeningsRepository extends SlotKeyedRows {
 
-  /** Every slot's showtimes for one film: `slotKey -> showtimes`. Empty when the
-   *  film has no recorded screenings — OR when the read failed, which callers that
-   *  act destructively on the emptiness must not conflate. Use
-   *  [[findForFilmChecked]] there. */
-  def findForFilm(filmId: String): Map[String, Seq[Showtime]] = findForFilmChecked(filmId)._1
+  /** Every slot's showtimes for one film: `slotKey -> showtimes`, empty when it has none. Throws
+   *  when the read fails — [[findForFilmChecked]] answers that as the outcome it is. */
+  def findForFilm(filmId: String): Map[String, Seq[Showtime]] = findForFilmChecked(filmId).required
 
-  /** [[findForFilm]] plus whether the read actually SAW the film's screenings.
-   *  `(Map.empty, true)` is "this film has none"; `(Map.empty, false)` is "we could
-   *  not tell". `reStitch` feeds the whole-record write path, whose `replaceFilm`
+  /** [[findForFilm]] as the read it is: `Answered(Map.empty)` is "this film has none", `Failed`
+   *  is "we could not tell". `reStitch` feeds the whole-record write path, whose `replaceFilm`
    *  DELETES every slot the record does not name — so a failed read that reads as
    *  "no showtimes" deletes them all. That is how the German corpus lost ~80% of its
    *  upcoming showtimes on 2026-07-27 while its film count and every film↔cinema slot
    *  row stayed intact. */
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = {
-    val (rows, complete) = findListedForFilmChecked(filmId)
-    (rows.view.mapValues(_.showtimes).toMap, complete)
-  }
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, Seq[Showtime]]] =
+    findListedForFilmChecked(filmId).map(_.view.mapValues(_.showtimes).toMap)
 
   /** [[findForFilmChecked]] narrowed to the film's slots at `cinemas` (`Cinema.displayName`s). */
-  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, Seq[Showtime]], Boolean) = {
-    val (rows, complete) = findForFilmChecked(filmId)
-    (rows.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) }, complete)
-  }
+  def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, Seq[Showtime]]] =
+    findForFilmChecked(filmId).map(_.filter { case (slotKey, _) => SlotKeyed.isAtCinemas(slotKey, cinemas) })
 
   /** [[findForFilmChecked]] with each row's `listingKey` beside its showtimes — what a WRITE
    *  compares against and a merge carries across, so a row whose listing key moved is rewritten
    *  and a moved row keeps the key it had. Serving never needs the key (phase 4 of the identity
    *  migration writes it and reads it nowhere else). */
-  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean)
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]]
 
-  /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
+  /** The rows of SEVERAL films in ONE round-trip — failed when any piece of the read failed.
    *
    *  The corpus scan used to preload this entire collection before it began paging
    *  `movies`, making the scan's peak heap the size of the collection (7.5 MB each for
@@ -72,14 +65,12 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  `foreachRecord` promises its callers and had stopped being true when the side
    *  collections were split out. Default: one call per id, so a store with no batch read
    *  still satisfies the contract. */
-  def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) = {
-    val results = filmIds.iterator.map(id => id -> findForFilmChecked(id)).toSeq
-    (results.collect { case (id, (rows, _)) if rows.nonEmpty => id -> rows }.toMap,
-     results.forall { case (_, (_, ok)) => ok })
-  }
+  def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] =
+    SlotKeyed.eachFilm(filmIds)(findForFilmChecked)
 
-  /** Every film's screenings: `filmId -> (slotKey -> showtimes)`. For the boot
-   *  hydrate / `findAll` read-stitch. */
+  /** Every film's screenings: `filmId -> (slotKey -> showtimes)`, all at once — for specs and
+   *  scripts; the corpus scans read a page's films at a time ([[findForFilmsChecked]]). Throws
+   *  when the read cannot be completed. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
@@ -145,7 +136,7 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
 
   private val rows = new InMemorySlotRows[ListedShowtimes](clock)
 
-  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) = (rows.forFilm(filmId), true)
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] = tools.ReadOutcome.Answered(rows.forFilm(filmId))
 
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = rows.all().view.mapValues(_.view.mapValues(_.showtimes).toMap).toMap
 
@@ -171,11 +162,11 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
 
   def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
 
-  def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.all().keySet)
 
-  def rowIdsChecked(): (Set[String], Boolean) = (rows.writtenAt().keySet, true)
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.writtenAt().keySet)
 
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = (rows.writtenAt(), true)
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = tools.ReadOutcome.Answered(rows.writtenAt())
 
   def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
 
@@ -298,14 +289,10 @@ class MongoScreeningsRepository(
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
-  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, Seq[Showtime]], Boolean) =
-    coll.fold((Map.empty[String, Seq[Showtime]], true)) { c =>
-      Try(Await.result(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
-        case Success(docs) => (docs.map(d => d.slotKey -> d.listed.showtimes).toMap, true)
-        case Failure(e) =>
-          logger.warn(s"ScreeningsRepository.findAtCinemas($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
-          (Map.empty, false)
-      }
+  override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, Seq[Showtime]]] =
+    coll.fold[tools.ReadOutcome[Map[String, Seq[Showtime]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(_.map(d => d.slotKey -> d.listed.showtimes).toMap), s"ScreeningsRepository.findAtCinemas($filmId)", logger.warn(_))
     }
 
   // No collection wired at all reports COMPLETE, not failed — there is simply nothing to
@@ -313,53 +300,41 @@ class MongoScreeningsRepository(
   // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
   // answered opposite things for the same state, and a caller that treats "unreadable" as
   // "defer" would have deferred forever against a Mongo-less stack.
-  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
-    coll.fold((Map.empty[String, ListedShowtimes], true)) { c =>
-      Try(Await.result(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
-        case Success(docs) => (docs.map(d => d.slotKey -> d.listed).toMap, true)
-        case Failure(exception) =>
-          logger.warn(s"ScreeningsRepository.findForFilm($filmId) failed: ${exception.getMessage}")
-          (Map.empty, false)
-      }
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] =
+    coll.fold[tools.ReadOutcome[Map[String, ListedShowtimes]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(_.map(d => d.slotKey -> d.listed).toMap), s"ScreeningsRepository.findForFilm($filmId)", logger.warn(_))
     }
 
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
-  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
-    coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
-      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
+  override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] =
+    coll.fold[tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
+      SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
         c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
-      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, complete)
+        .map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap)
     }
 
   /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
-   *  through ONE unbounded `find().toFuture()`. That single cursor over the whole
-   *  `screenings` collection recursed the async Mongo driver into a `StackOverflowError`
-   *  on a driver I/O thread once the collection grew (Sentry KINOWO-19) — and because it
-   *  runs FIRST inside `MovieRepository.scanStitched`, that crash killed the worker's
-   *  cold-cache rehydrate, so `findAll()` reported empty and the pages served no films.
-   *  Paging caps how many rows any one cursor delivers synchronously. On an INCOMPLETE
-   *  scan (a page still failing after retries) returns an empty map — `scanStitched`
-   *  treats that as "incomplete" and won't let a reconcile prune on stripped rows. */
-  def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll match {
-    case Some(c) =>
-      val buf = Vector.newBuilder[StoredScreeningsDto]
-      val complete = KeysetScan.scan[StoredScreeningsDto](
-        label          = "ScreeningsRepository keyset batch",
-        batchSize      = findAllBatchSize,
-        maxAttempts    = findAllBatchAttempts,
-        initialBackoff = findAllBatchBackoff,
-        keyOf          = _._id,
-        fetchPage      = (afterId, limit) => {
-          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-        },
-        onIncomplete   = exception =>
-          logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +
-            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
-      )(batch => buf ++= batch)
-      if (complete) buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
-      else Map.empty
-    case None => Map.empty
+   *  through ONE unbounded `find().toFuture()`, which recursed the async Mongo driver into a
+   *  `StackOverflowError` on a driver I/O thread once the collection grew (Sentry KINOWO-19).
+   *  An INCOMPLETE scan (a page still failing after retries) THROWS: it answered an empty map,
+   *  which reads as "no film has a screening" — the corpus-wide version of the empty answer
+   *  `MovieRepository.scanStitched` refuses page by page. */
+  def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
+    KeysetScan.collect[StoredScreeningsDto, StoredScreeningsDto](
+      label          = "ScreeningsRepository keyset batch",
+      batchSize      = findAllBatchSize,
+      maxAttempts    = findAllBatchAttempts,
+      initialBackoff = findAllBatchBackoff,
+      keyOf          = _._id,
+      fetchPage      = (afterId, limit) => {
+        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+        Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+      },
+      onIncomplete   = exception =>
+        logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    )(Seq(_)).required.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
   }
 
   /** ONE bulk round-trip: every slot's upsert plus a single `deleteMany` of whatever
@@ -393,7 +368,7 @@ class MongoScreeningsRepository(
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
-      val (current, readComplete) = stored.map(_ -> true).getOrElse(findListedForFilmChecked(filmId))
+      val (current, readComplete) = stored.map(_ -> true).getOrElse(SlotKeyed.rowsOrNone(findListedForFilmChecked(filmId)))
       val changed = ScreeningsSplit.changedSlots(current, readComplete,
         roster.writable(ScreeningsRepository.Collection, filmId, current, slots))
       // The SKIP is counted here and the WRITE is counted after the bulkWrite returns, which is
@@ -476,20 +451,20 @@ class MongoScreeningsRepository(
     }
   }
 
-  def filmIdsChecked(): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "ScreeningsRepository", logger.warn(_)))
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.distinctFilmIdsChecked(_, "ScreeningsRepository", logger.warn(_)))
 
   private val idPaging = SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff)
 
-  def rowIdsChecked(): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.rowIdsChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
 
-  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
-    coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] =
+    coll.fold[tools.ReadOutcome[Map[String, java.time.Instant]]](tools.ReadOutcome.Answered(Map.empty))(SlotKeyed.rowWrittenAtChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
 
 
-  override def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.existingRowIdsChecked(_, ids, "ScreeningsRepository", logger.warn(_)))
+  override def existingRowIdsChecked(ids: Set[String]): tools.ReadOutcome[Set[String]] =
+    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.existingRowIdsChecked(_, ids, "ScreeningsRepository", logger.warn(_)))
 
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, ScreeningsRepository.Collection, writeMetrics, logger))

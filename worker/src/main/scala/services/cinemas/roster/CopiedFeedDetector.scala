@@ -68,7 +68,7 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
   /** [[seed]] from every venue's latest archived scrape, a page at a time, [[seedComplete]] once the
    *  archive was read whole. A partial read publishes nothing: a copy it missed would read as none. */
   def seedFrom(archive: ScrapeArchiveRepository): Unit =
-    if (archive.scan(seed)) seedComplete()
+    if (archive.scan(seed).isComplete) seedComplete()
     else logger.warn(s"copied feed ($countryCode): the scrape archive could not be read whole — the gauge stays " +
       "unpublished until the next boot's seed; landings are still checked.")
 

@@ -47,17 +47,17 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
         seed("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh")
         val freshIds = Set(SlotKeyed.idOf("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh"))
 
-        val (screeningIdsBefore, _) = screenings.rowIdsChecked()
-        val (slotIdsBefore, _)      = slots.rowIdsChecked()
+        val screeningIdsBefore = screenings.rowIdsChecked().required
+        val slotIdsBefore      = slots.rowIdsChecked().required
         screeningIdsBefore should have size 9
 
         RetiredVenueRows.sweep(Some(screenings), Some(slots), VenueRoster.venuesOf(Country.Poland), now = java.time.Instant.now()) shouldBe
           RetiredVenueRows(screenings = 2, slots = 2, venues = Map(Retired -> 4L))
 
-        screenings.rowIdsChecked() shouldBe ((screeningIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds, true))
-        slots.rowIdsChecked()      shouldBe ((slotIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds, true))
+        screenings.rowIdsChecked() shouldBe tools.ReadOutcome.Answered(screeningIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds)
+        slots.rowIdsChecked()      shouldBe tools.ReadOutcome.Answered(slotIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds)
         screenings.findForFilmChecked("other|2025") shouldBe
-          ((Map(CinemaShowing(KinoEtiuda, "other").displayName -> tomorrow), true))
+          tools.ReadOutcome.Answered(Map(CinemaShowing(KinoEtiuda, "other").displayName -> tomorrow))
 
         RetiredVenueRows.sweep(Some(screenings), Some(slots), VenueRoster.venuesOf(Country.Poland), now = java.time.Instant.now()) shouldBe
           RetiredVenueRows.none

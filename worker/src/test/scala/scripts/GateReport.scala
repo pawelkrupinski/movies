@@ -77,7 +77,8 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
     // single 736-doc `findAll`, which intermittently corrupts the BSON stream
     // (StackOverflow on decode) / blows the 60s cap.
     val buf = scala.collection.mutable.ArrayBuffer.empty[StoredMovieRecord]
-    repo.foreachRecord(buf += _)
+    val scanned = repo.foreachRecord(buf += _)
+    if (!scanned.isComplete) { println(s"corpus read ${scanned.explain} — refusing to report on part of it."); sys.exit(1) }
     val corpus = buf.toSeq
     println(s"\ncorpus: ${corpus.size} rows")
 

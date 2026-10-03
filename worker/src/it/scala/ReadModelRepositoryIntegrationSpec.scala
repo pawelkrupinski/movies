@@ -37,7 +37,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     val ids = (0 until 3).map(i => s"__it-rm-movie-${i}__")
     ids.map(resolvedMovie).foreach(rm.upsertMovie)
     rm.findAllMovies().map(_._id).toSet shouldBe ids.toSet
-    rm.findAllMovieIds().toSet shouldBe ids.toSet
+    rm.findAllMovieIdsChecked().required.toSet shouldBe ids.toSet
   }
 
   "findAllScreeningRefs" should "project the same (_id, filmId) pairs as a full findAllScreenings decode" in {
@@ -48,7 +48,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     }
     try {
       rm.findAllScreenings().map(s => s._id -> s.filmId).toSet shouldBe pairs.toSet
-      rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe pairs.toSet
+      rm.findAllScreeningRefsChecked().required.map(r => r._id -> r.filmId).toSet shouldBe pairs.toSet
     } finally pairs.foreach { case (id, _) => rm.deleteScreening(id) }
   }
 
@@ -81,10 +81,9 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
         shareCardPending = false)
       fresh.upsertMovie(film); fresh.upsertMovie(bare)
       fresh.findAllMovies().sortBy(_._id) shouldBe Seq(bare, film)
-      fresh.findAllShareCardRefsChecked() shouldBe ((Seq(
+      fresh.findAllShareCardRefsChecked() shouldBe tools.ReadOutcome.Answered(Seq(
         ShareCardRef("__it-rm-nocard__", None),
-        ShareCardRef("__it-rm-sharecard__", Some("f1.jpg?v=0123456789abcdef"))),
-        true))
+        ShareCardRef("__it-rm-sharecard__", Some("f1.jpg?v=0123456789abcdef"))))
     } finally {
       scala.concurrent.Await.ready(client2.getDatabase(ownDb).drop().toFuture(),
         scala.concurrent.duration.Duration(10, "seconds"))
@@ -145,7 +144,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
     try {
       docs.foreach(paged.upsertScreening)
-      val refs = paged.findAllScreeningRefs().filter(_._id.startsWith("__it-rm-ref-"))
+      val refs = paged.findAllScreeningRefsChecked().required.filter(_._id.startsWith("__it-rm-ref-"))
       refs.map(_._id) shouldBe ids
       refs.map(_.filmId).distinct shouldBe Seq("__it-rm-ref-film__")
     } finally ids.foreach(paged.deleteScreening)

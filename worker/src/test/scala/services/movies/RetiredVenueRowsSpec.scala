@@ -56,18 +56,18 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     (screenings, slots)
   }
 
-  private def venuesOf(store: SlotKeyedRows): Set[String] = store.rowIdsChecked()._1.map(RetiredVenueRows.venueOf)
+  private def venuesOf(store: SlotKeyedRows): Set[String] = store.rowIdsChecked().required.map(RetiredVenueRows.venueOf)
 
   "sweep" should "remove every row of a venue the roster no longer lists, and nothing else" in {
     val (screenings, slots) = corpus()
-    val liveScreenings = screenings.rowIdsChecked()._1.filterNot(RetiredVenueRows.venueOf(_) == Retired)
-    val liveSlots      = slots.rowIdsChecked()._1.filterNot(RetiredVenueRows.venueOf(_) == Retired)
+    val liveScreenings = screenings.rowIdsChecked().required.filterNot(RetiredVenueRows.venueOf(_) == Retired)
+    val liveSlots      = slots.rowIdsChecked().required.filterNot(RetiredVenueRows.venueOf(_) == Retired)
 
     sweep(Some(screenings), Some(slots), roster) shouldBe
       RetiredVenueRows(screenings = 2, slots = 3, venues = Map(Retired -> 5L))
 
-    screenings.rowIdsChecked() shouldBe ((liveScreenings, true))
-    slots.rowIdsChecked()      shouldBe ((liveSlots, true))
+    screenings.rowIdsChecked() shouldBe tools.ReadOutcome.Answered(liveScreenings)
+    slots.rowIdsChecked()      shouldBe tools.ReadOutcome.Answered(liveSlots)
     venuesOf(slots) should contain allOf (KinoEtiuda.displayName, CinemaCityChain.displayName, Tmdb.displayName)
   }
 

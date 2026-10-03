@@ -68,7 +68,7 @@ final class SideCollectionWatch[Dto: ClassTag](
     def open(): Unit = {
       // Resume from the last persisted token (a restart / prior terminal error) so changes
       // that landed while down are replayed; else open at "now".
-      val resumeFrom = resumeToken.load()
+      val resumeFrom = resumeToken.openFrom()
       // Post-images arrive UNDECODED and are decoded below: decoded by the driver, one row the
       // codec refuses ended the cursor — see [[ChangeEventDecoder]].
       val base       = collection.watch[BsonDocument]()

@@ -80,7 +80,7 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
       val slots = fresh(cls)
       Seq("a|2026", "b|2026", "c|2026").foreach(id => slots.upsertSlot(id, "Helios", slot(id)))
       slots.findForFilmsChecked(Set("a|2026", "c|2026", "absent|2026")) shouldBe
-        (Map("a|2026" -> Map("Helios" -> slot("a|2026")), "c|2026" -> Map("Helios" -> slot("c|2026"))), true)
+        tools.ReadOutcome.Answered(Map("a|2026" -> Map("Helios" -> slot("a|2026")), "c|2026" -> Map("Helios" -> slot("c|2026"))))
     }
 
     it should s"[$name] never keep a slot's cache-only fields" in {

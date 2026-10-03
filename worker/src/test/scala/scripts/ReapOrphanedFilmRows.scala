@@ -69,7 +69,7 @@ object ReapOrphanedFilmRows {
         onIncomplete   = e => println(s"  corpus scan failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
       )(batch => { live ++= batch.map(_._id); liveCount += batch.size })
 
-      if (!complete) {
+      if (!complete.isComplete) {
         println("  ABORT: the corpus scan fell short, so the live-film set is partial and every film it")
         println("  missed would look orphaned. Refusing to delete anything on a partial view.")
         sys.exit(2)

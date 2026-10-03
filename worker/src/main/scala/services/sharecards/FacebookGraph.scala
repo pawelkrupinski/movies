@@ -106,9 +106,7 @@ class FilmPageUrls(reader: ReadModelReader, country: Country, clock: Clock) exte
     val fresh = slugs.filter { case (_, at) => clock.instant().isBefore(at.plusMillis(FilmPageUrls.SlugsFor.toMillis)) }
       .map(_._1).filter(_.slugFor(filmId).isDefined)
     fresh.getOrElse {
-      val (movies, complete) = reader.findAllMoviesChecked()
-      if (!complete) throw new IllegalStateException("web_movies read incomplete")
-      val read = FilmSlugs(movies)
+      val read = FilmSlugs(reader.findAllMoviesChecked().required)
       slugs = Some(read -> clock.instant())
       read
     }.slugFor(filmId)

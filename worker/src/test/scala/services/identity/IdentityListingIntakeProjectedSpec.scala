@@ -25,7 +25,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
   /** An in-memory archive that counts the rows its keyed reads hand over. */
   private final class Counting extends ForwardingScrapeArchive(new InMemoryScrapeArchiveRepository) {
     var rowsRead = 0
-    override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean =
+    override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
       super.scanVenues(keep) { rows => rowsRead += rows.size; consume(rows) }
     def store(cinema: Cinema, at: Instant, films: CinemaMovie*): Unit =
       record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), at, listingComplete = true, films, error = None))

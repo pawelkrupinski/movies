@@ -160,9 +160,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Missing is not deleted: evicting them would drop live films from the cache.
     final class HidingRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
       var hiding = false
-      override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) =
-        if (hiding) (super.findAll().filterNot(_.title == "Ghost"), false) else (super.findAll(), true)
-      override def findAll(): Seq[StoredMovieRecord] = findAllChecked()._1
+      override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] =
+        if (hiding) tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable"))) else tools.ReadOutcome.Answered(super.findAll())
+      override def findAll(): Seq[StoredMovieRecord] =
+        if (hiding) super.findAll().filterNot(_.title == "Ghost") else super.findAll()
     }
     val repository = new HidingRepository
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)

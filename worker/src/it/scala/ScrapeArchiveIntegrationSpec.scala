@@ -337,4 +337,42 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
       rowCount() shouldBe 1
     } finally purge()
   }
+
+  // THE LOST UPDATE. The marker was decided on the row as read and then upserted on `_id` alone, so a
+  // listing landing between that read and the write was marked barren behind it: a venue whose newest
+  // scrape had films read as blank since a scrape OLDER than its listing.
+  it should "not mark barren a listing that landed between the blank scrape's read and its write" in {
+    var landed = false
+    val repository: MongoScrapeArchiveRepository = new MongoScrapeArchiveRepository(Some(db)) {
+      override protected def barrenGuardRead(cinema: Cinema) = {
+        val asRead = super.barrenGuardRead(cinema)
+        if (!landed) { landed = true; record(scraped(Noon, Seq(minimal))) }
+        asRead
+      }
+    }
+    try {
+      repository.record(blank(Morning))
+      val stored = repository.find(Multikino).getOrElse(fail("nothing archived"))
+      stored.lastBarren shouldBe None
+      stored.lastSuccess.map(_.at) shouldBe Some(Noon)
+    } finally purge()
+  }
+
+  it should "continue a blank run another blank scrape wrote in between, rather than overwrite it" in {
+    var landed = false
+    val repository: MongoScrapeArchiveRepository = new MongoScrapeArchiveRepository(Some(db)) {
+      override protected def barrenGuardRead(cinema: Cinema) = {
+        val asRead = super.barrenGuardRead(cinema)
+        if (!landed) { landed = true; record(blank(Morning)) }
+        asRead
+      }
+    }
+    try {
+      repository.record(scraped(Morning.minusSeconds(3600), Seq(minimal)))
+      repository.record(blank(Noon))
+      val run = repository.find(Multikino).flatMap(_.lastBarren).getOrElse(fail("no barren marker"))
+      run.at shouldBe Noon
+      run.since shouldBe Some(Morning)
+    } finally purge()
+  }
 }

@@ -63,10 +63,9 @@ trait ReadModelReader {
   def enabled: Boolean
   def findAllMovies(): Seq[ResolvedMovie]
 
-  /** Like [[findAllMovies]] but says whether the READ was complete: an incomplete scan
-   *  returns empty, and "no films" is a different fact from "could not read the films".
-   *  The in-memory store cannot fail, so the default reports `true`. */
-  def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) = (findAllMovies(), true)
+  /** Every film, as the read it is: failed when the scan could not read them all — "no films" is a
+   *  different fact from "could not read the films". The in-memory store cannot fail. */
+  def findAllMoviesChecked(): tools.ReadOutcome[Seq[ResolvedMovie]] = tools.ReadOutcome.Answered(findAllMovies())
   def findAllScreenings(): Seq[CityScreening]
 
   /** Every read-model screening, handed to `f` a page at a time instead of buffered whole,
@@ -74,40 +73,29 @@ trait ReadModelReader {
    *  projector's boot seed held all of US `web_screenings` at once (~400 MB, every showtime)
    *  to keep an id and a hash per row, overlapping the identity take-up into full-GC storms.
    *  The in-memory store has nothing to page, so the default walks [[findAllScreenings]]. */
-  def foreachScreening(f: CityScreening => Unit): Boolean = { findAllScreenings().foreach(f); true }
+  def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome = { findAllScreenings().foreach(f); tools.ScanOutcome.complete }
 
   /** Just the `_id`s of every read-model movie — the projector's reconcile prune
    *  needs only the id set to spot orphaned films, never the full `ResolvedMovie`
    *  payload. Default derives from [[findAllMovies]] (fine for the in-memory
    *  store); the Mongo store projects `{_id}` so the worker's 30-min reconcile
    *  never decodes the whole `web_movies` collection just to diff ids. */
-  def findAllMovieIds(): Seq[String] = findAllMovieIdsChecked()._1
-
-  /** Like [[findAllMovieIds]] but says whether the READ was complete. An incomplete
-   *  keyset scan returns empty, and "no cards" is a very different fact from "could not
-   *  read the cards": a heal that trusted the empty answer would re-project the whole
-   *  corpus. The in-memory store cannot fail, so the default reports `true`. */
-  def findAllMovieIdsChecked(): (Seq[String], Boolean) = (findAllMovies().map(_._id), true)
+  def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] = tools.ReadOutcome.Answered(findAllMovies().map(_._id))
 
   /** The (`_id`, `filmId`) of every read-model screening — the prune deletes a
    *  screening whose `filmId` is no longer live and reads no other field. Default
    *  derives from [[findAllScreenings]]; the Mongo store projects `{_id, filmId}`
    *  so 6k+ screening documents collapse to a few id strings instead of full
    *  `CityScreening` payloads on the heap. */
-  def findAllScreeningRefs(): Seq[ScreeningRef] = findAllScreeningRefsChecked()._1
+  def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
+    tools.ReadOutcome.Answered(findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)))
 
-  /** Like [[findAllScreeningRefs]] but says whether the READ was complete — the venue heals'
-   *  counterpart of [[findAllMovieIdsChecked]]: an incomplete scan returns empty, which a heal
-   *  must not read as "no venue has a row". The in-memory store cannot fail. */
-  def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
-    (findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)), true)
-
-  /** Every document's [[ShareCardRef]], with the same completeness flag as
-   *  [[findAllMovieIdsChecked]]: an incomplete read must prune nothing, since a card missing
-   *  from the answer would read as unreferenced. The default decodes whole documents; the
-   *  Mongo reader projects the two fields server-side. */
-  def findAllShareCardRefsChecked(): (Seq[ShareCardRef], Boolean) =
-    (findAllMovies().map(m => ShareCardRef(m._id, m.shareCard)), true)
+  /** Every document's [[ShareCardRef]], failed like [[findAllMovieIdsChecked]] when the read could
+   *  not be completed: an incomplete read must prune nothing, since a card missing from the answer
+   *  would read as unreferenced. The default decodes whole documents; the Mongo reader projects
+   *  the two fields server-side. */
+  def findAllShareCardRefsChecked(): tools.ReadOutcome[Seq[ShareCardRef]] =
+    tools.ReadOutcome.Answered(findAllMovies().map(m => ShareCardRef(m._id, m.shareCard)))
 
   /** One card's stored documents — what the worker's content audit compares with a fresh
    *  projection — or None when the read FAILED, which is not the fact "no such card". The default
@@ -116,8 +104,10 @@ trait ReadModelReader {
   def findCard(id: String): Option[StoredCard] =
     Some(StoredCard(findAllMovies().find(_._id == id), findAllScreenings().filter(_.filmId == id)))
 
-  def countMovies(): Long
-  def countScreenings(): Long
+  /** The server-side document counts — the backstop's drift check — failed when the count could
+   *  not be taken, which is no evidence about the model either way. */
+  def countMovies(): tools.ReadOutcome[Long]
+  def countScreenings(): tools.ReadOutcome[Long]
   /** Where the change history stands now — `None` when the store cannot replay from a
    *  point (disabled, a standalone Mongo), in which case a watch can only start now. */
   def streamCheckpoint(): Option[StreamCheckpoint]

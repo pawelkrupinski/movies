@@ -56,8 +56,8 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
     repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 2, slots = 2,
       filmIds = Set("deadboth|2020", "deadscreeningsonly|1986", "deadslotsonly|1999"))
 
-    screenings.filmIdsChecked() shouldBe ((Set(liveId), true))
-    slots.filmIdsChecked()      shouldBe ((Set(liveId), true))
+    screenings.filmIdsChecked() shouldBe tools.ReadOutcome.Answered(Set(liveId))
+    slots.filmIdsChecked()      shouldBe tools.ReadOutcome.Answered(Set(liveId))
     screenings.findForFilm(liveId) should not be empty
     slots.findForFilm(liveId)      should not be empty
     repository.findAll().map(_.id.value) shouldBe Seq(liveId)
@@ -68,8 +68,8 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
     val liveId = liveFilm(repository, "Live")
     // A second venue's showtimes whose slot was dropped: projects nothing, inflates the census.
     screenings.upsertSlot(liveId, "kino-x␟live", ListedShowtimes(tomorrow, None))
-    screenings.rowIdsChecked()._1 should have size 2
-    slots.rowIdsChecked()._1      should have size 1
+    screenings.rowIdsChecked().required should have size 2
+    slots.rowIdsChecked().required      should have size 1
 
     repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 0, slots = 0, filmIds = Set.empty, twinless = 1)
 
@@ -80,14 +80,14 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
 
   it should "remove no twinless row while the slot store's ids cannot be read" in {
     val unreadableSlots = new InMemorySlotsRepository {
-      override def rowIdsChecked(): (Set[String], Boolean) = (Set.empty, false)
+      override def rowIdsChecked(): tools.ReadOutcome[Set[String]] = UnreadableRepositories.failed
     }
     val (repository, screenings, _) = split(slots = unreadableSlots)
     val liveId = liveFilm(repository, "Live")
     screenings.upsertSlot(liveId, "kino-x␟live", ListedShowtimes(tomorrow, None))
 
     repository.deleteStrandedSideRows().twinless shouldBe 0
-    screenings.rowIdsChecked()._1 should have size 2
+    screenings.rowIdsChecked().required should have size 2
   }
 
   it should "be a no-op once nothing is stranded, and against a store with no side collections" in {

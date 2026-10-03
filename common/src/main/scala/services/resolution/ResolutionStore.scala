@@ -53,7 +53,7 @@ trait ResolutionStore {
   /** Forget EVERY memoised resolution for this source, returning how many were
    *  dropped. Backs the operator's corpus-wide refresh button: without it the
    *  walk re-derives from the same memoised answers it is meant to re-check, so
-   *  a wrong resolution survives the button entirely. */
+   *  a wrong resolution survives the button entirely. Throws when it cannot clear the store. */
   def removeAll(): Int
 }
 
@@ -174,15 +174,13 @@ class MongoResolutionStore(
     }.getOrElse(0)
   }
 
+  /** A failure PROPAGATES: answered as "0 forgotten", an operator's bulk refresh reported itself
+   *  dispatched while every stored resolution stayed, to be replayed instead of re-probed. */
   override def removeAll(): Int = coll.fold(0) { c =>
-    Try {
-      val n = Await.result(c.countDocuments().head(), 10.seconds).toInt
-      Await.result(c.deleteMany(Filters.empty()).toFuture(), 30.seconds)
-      if (n > 0) logger.info(s"Resolution cache: forgot all $n $collectionName entr(ies) for an operator bulk refresh.")
-      n
-    }.recover { case exception =>
-      logger.warn(s"Resolution clear failed for $collectionName: ${exception.getMessage}"); 0
-    }.getOrElse(0)
+    val n = Await.result(c.countDocuments().head(), 10.seconds).toInt
+    Await.result(c.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+    if (n > 0) logger.info(s"Resolution cache: forgot all $n $collectionName entr(ies) for an operator bulk refresh.")
+    n
   }
 
   /** Bring the TTL index on `at` in line with `Ttl`, creating it when absent.

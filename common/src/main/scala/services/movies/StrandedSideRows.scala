@@ -65,8 +65,10 @@ object StrandedSideRows {
     slots:      Option[SlotKeyedRows],
     liveIds:    () => Option[Set[String]]
   ): StrandedSideRows = {
-    val (screeningFilms, screeningsRead) = filmIdsOf(screenings)
-    val (slotFilms, slotsRead)           = filmIdsOf(slots)
+    val screeningFilmsRead = filmIdsOf(screenings).answered
+    val slotFilmsRead      = filmIdsOf(slots).answered
+    val (screeningFilms, screeningsRead) = (screeningFilmsRead.getOrElse(Set.empty[String]), screeningFilmsRead.isDefined)
+    val (slotFilms, slotsRead)           = (slotFilmsRead.getOrElse(Set.empty[String]), slotFilmsRead.isDefined)
     val candidates = screeningFilms ++ slotFilms
     val stranded =
       if (!screeningsRead && !slotsRead) {
@@ -82,21 +84,17 @@ object StrandedSideRows {
   private def twinlessScreenings(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows]): Long =
     (screenings, slots) match {
       case (Some(s), Some(sl)) =>
-        val (screeningIds, screeningsRead) = s.rowIdsChecked()
-        val (slotIds, slotsRead)           = sl.rowIdsChecked()
-        if (!screeningsRead || !slotsRead) {
-          logger.warn("Stranded side rows: a side collection's row ids could not be read — no twinless row removed.")
-          0L
-        } else {
-          val twinless = screeningIds -- slotIds
-          if (twinless.isEmpty) 0L
-          else {
+        s.rowIdsChecked().flatMap(screeningIds => sl.rowIdsChecked().map(screeningIds -- _)).answered match {
+          case None =>
+            logger.warn("Stranded side rows: a side collection's row ids could not be read — no twinless row removed.")
+            0L
+          case Some(twinless) if twinless.isEmpty => 0L
+          case Some(twinless) =>
             val deleted = s.deleteRows(twinless)
             logger.info(s"Stranded side rows: removed $deleted screenings row(s) whose movie_slots twin is gone " +
               s"(${twinless.map(SlotKeyed.filmIdOf).size} film(s)).")
             RemovalAudit.twinlessScreeningsRemoved("movies.deleteStrandedSideRows", deleted, twinless.map(SlotKeyed.filmIdOf))
             deleted
-          }
         }
       case _ => 0L
     }
@@ -131,8 +129,8 @@ object StrandedSideRows {
     }
   }
 
-  private def filmIdsOf(store: Option[SlotKeyedRows]): (Set[String], Boolean) =
-    store.fold((Set.empty[String], true))(_.filmIdsChecked())
+  private def filmIdsOf(store: Option[SlotKeyedRows]): tools.ReadOutcome[Set[String]] =
+    store.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(_.filmIdsChecked())
 
   private def deleteFrom(store: Option[SlotKeyedRows], read: Boolean, filmIds: Set[String]): Long =
     if (read && filmIds.nonEmpty) store.fold(0L)(_.deleteFilms(filmIds)) else 0L

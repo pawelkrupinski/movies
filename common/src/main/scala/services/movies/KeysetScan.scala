@@ -1,6 +1,6 @@
 package services.movies
 
-import tools.RetryWithBackoff
+import tools.{RetryWithBackoff, ScanOutcome}
 
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -28,13 +28,15 @@ import scala.util.{Failure, Success, Try}
  * concurrent write can neither resurface a visited row nor hide one — no duplicate at a
  * page boundary, no skip. `keyOf` extracts that `_id` from a decoded row.
  *
- * Returns `true` only when the scan reached the last page; `false` when a page still
- * failed after its retries. Rows delivered so far still reached `onBatch`, so a PRUNING
- * caller must treat `false` as "not the complete collection" and skip its destructive
- * step. `onIncomplete` is invoked once with the failure so the caller can log it.
+ * Answers [[ScanOutcome.Complete]] only when the scan reached the last page, and
+ * [[ScanOutcome.Incomplete]] (with the read failure) when a page still failed after its
+ * retries. Rows delivered so far still reached `onBatch`, so a PRUNING caller must treat
+ * an incomplete scan as "not the complete collection" and skip its destructive step — the
+ * outcome cannot be dropped unread (see [[ScanOutcome]]). `onIncomplete` is invoked once
+ * with the failure so the caller can log it.
  *
  * Only a READ failure is "incomplete". An exception `onBatch` throws is the caller's own
- * bug and PROPAGATES: reporting it as `false` read as "Mongo failed after retries", sent
+ * bug and PROPAGATES: reporting it as incomplete read as "Mongo failed after retries", sent
  * pruning callers down their skip path under a misleading warning, and kept the bug
  * hidden for as long as it lasted. The in-memory repositories already behave this way
  * (their `foreachRecord` is a plain `foreach`), so this also keeps the fakes honest.
@@ -49,7 +51,7 @@ object KeysetScan {
     keyOf:          A => String,
     fetchPage:      (Option[String], Int) => Seq[A],
     onIncomplete:   Throwable => Unit = _ => ()
-  )(onBatch: Seq[A] => Unit): Boolean = {
+  )(onBatch: Seq[A] => Unit): ScanOutcome = {
     // The page AND where the next one starts are the read: a last row whose key cannot be
     // taken is a scan that cannot continue, so it is incomplete like a failed fetch.
     def read(afterId: Option[String]): Future[(Seq[A], Option[String])] = Future(blocking {
@@ -65,21 +67,36 @@ object KeysetScan {
     // cache) spends about as long on a page as Mongo takes to deliver one, so reading them in
     // turn left each waiting on the other. At most two pages are ever held.
     var pending: Future[(Seq[A], Option[String])] = read(None)
-    var more     = true
-    var complete = true
-    while (more) {
+    var outcome: Option[ScanOutcome] = None
+    while (outcome.isEmpty) {
       Try(Await.result(pending, Duration.Inf)) match {
         case Success((batch, nextAfter)) =>
-          more = batch.sizeIs == batchSize
+          val more = batch.sizeIs == batchSize
           if (more) pending = read(nextAfter)
           onBatch(batch)   // outside the Try: a consumer failure is not a read failure
+          if (!more) outcome = Some(ScanOutcome.Complete)
         case Failure(exception) =>
           onIncomplete(exception)
-          complete = false
-          more     = false
+          outcome = Some(ScanOutcome.Incomplete(exception))
       }
     }
-    complete
+    outcome.get
+  }
+
+  /** [[scan]], gathering what `decode` makes of each row — answered only when the scan read
+   *  the whole collection, so a partial collection is never handed out as the whole one. */
+  def collect[A, B](
+    label:          String,
+    batchSize:      Int,
+    maxAttempts:    Int,
+    initialBackoff: FiniteDuration,
+    keyOf:          A => String,
+    fetchPage:      (Option[String], Int) => Seq[A],
+    onIncomplete:   Throwable => Unit = _ => ()
+  )(decode: A => IterableOnce[B]): tools.ReadOutcome[Vector[B]] = {
+    val rows = Vector.newBuilder[B]
+    scan(label, batchSize, maxAttempts, initialBackoff, keyOf, fetchPage, onIncomplete)(_.foreach(rows ++= decode(_)))
+      .collected(rows.result())
   }
 
   /** The rows of `keys`, a `batchSize` page at a time — `inFlight` pages fetched side by side and
@@ -87,7 +104,7 @@ object KeysetScan {
    *  each several round trips and a decode of large documents (a scrape archive row is a venue's
    *  whole listing): read one after another, the US archive's 179 pages were ~6 s of every identity
    *  projection, the CPU idle. Each page is retried as [[scan]] retries one, and the outcome is
-   *  [[scan]]'s: `false` once a page still failed, the batches before it already handed on, and a
+   *  [[scan]]'s: incomplete once a page still failed, the batches before it already handed on, and a
    *  failure of `onBatch` propagates. A key whose row is gone by its page's read is simply absent. */
   def byKeys[A](
     label:          String,
@@ -98,24 +115,24 @@ object KeysetScan {
     initialBackoff: FiniteDuration,
     fetchKeys:      Seq[String] => Seq[A],
     onIncomplete:   Throwable => Unit = _ => ()
-  )(onBatch: Seq[A] => Unit): Boolean = {
+  )(onBatch: Seq[A] => Unit): ScanOutcome = {
     val pages = keys.grouped(batchSize).toVector
     def read(page: Seq[String]): Future[Seq[A]] = Future(blocking {
       RetryWithBackoff(label = label, maxAttempts = maxAttempts, initialBackoff = initialBackoff)(fetchKeys(page))
     })(using ExecutionContext.global)
     val reading = scala.collection.mutable.Queue.from(pages.take(inFlight).map(read))
     var next     = inFlight
-    var complete = true
-    while (complete && reading.nonEmpty) {
+    var outcome: ScanOutcome = ScanOutcome.Complete
+    while (outcome.isComplete && reading.nonEmpty) {
       Try(Await.result(reading.dequeue(), Duration.Inf)) match {
         case Success(batch) =>
           if (next < pages.size) { reading.enqueue(read(pages(next))); next += 1 }
           onBatch(batch)   // outside the Try: a consumer failure is not a read failure
         case Failure(exception) =>
           onIncomplete(exception)
-          complete = false
+          outcome = ScanOutcome.Incomplete(exception)
       }
     }
-    complete
+    outcome
   }
 }

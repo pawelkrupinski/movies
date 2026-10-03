@@ -65,9 +65,14 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   // projection: they read ids WITHOUT decoding (or counting) a full reload, so the
   // reconcile prune's lightweight path is faithfully exercised — a test can assert
   // the prune never triggers a full `findAll*`.
-  override def findAllMovieIds(): Seq[String] = lock.synchronized(moviesStore.keys.toSeq)
-  override def findAllScreeningRefs(): Seq[ScreeningRef] =
-    lock.synchronized(screeningsStore.values.map(s => ScreeningRef(s._id, s.filmId)).toSeq)
+  /** For specs: the store cannot fail, so the checked reads' answers, unwrapped. */
+  def findAllMovieIds(): Seq[String]             = findAllMovieIdsChecked().required
+  def findAllScreeningRefs(): Seq[ScreeningRef] = findAllScreeningRefsChecked().required
+
+  override def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] =
+    tools.ReadOutcome.Answered(lock.synchronized(moviesStore.keys.toSeq))
+  override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
+    tools.ReadOutcome.Answered(lock.synchronized(screeningsStore.values.map(s => ScreeningRef(s._id, s.filmId)).toSeq))
 
   // Two reads by id, like Mongo's — not the whole-collection reads the trait's default derives
   // it from, which would count as full reloads.
@@ -75,8 +80,8 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
     Some(StoredCard(moviesStore.get(id), screeningsStore.values.filter(_.filmId == id).toSeq))
   }
 
-  def countMovies():     Long = lock.synchronized(moviesStore.size.toLong)
-  def countScreenings(): Long = lock.synchronized(screeningsStore.size.toLong)
+  def countMovies():     tools.ReadOutcome[Long] = tools.ReadOutcome.Answered(lock.synchronized(moviesStore.size.toLong))
+  def countScreenings(): tools.ReadOutcome[Long] = tools.ReadOutcome.Answered(lock.synchronized(screeningsStore.size.toLong))
 
   def upsertMovie(m: ResolvedMovie): Unit = {
     lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m; writeOrder += s"movie:${m._id}"; history += Change(movies = true, m._id, deleted = false) }

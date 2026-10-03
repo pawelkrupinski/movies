@@ -51,10 +51,21 @@ class MongoFallbackStore(
   private val mirror = new ConcurrentHashMap[String, FallbackState]()
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
 
-  coll.foreach(hydrate)
+  // Whether the mirror holds what Mongo does. A hydrate that FAILED left it empty, and an empty
+  // mirror read as "no cinema is on fallback": the scraper then rebuilt each state from nothing
+  // and `put` wrote it over the stored one — its failure streak, its history and whether it had
+  // already paged, gone. Until a hydrate lands, a read hydrates again or throws.
+  @volatile private var hydrated = coll.isEmpty
+  coll.foreach(c => { hydrated = hydrate(c); () })
 
-  def get(cinema: String): Option[FallbackState] = Option(mirror.get(cinema))
-  def findAll(): Seq[FallbackState] = mirror.values().asScala.toSeq
+  private def ensureHydrated(): Unit =
+    if (!hydrated) coll.foreach { c =>
+      synchronized { if (!hydrated) hydrated = hydrate(c) }
+      if (!hydrated) throw new IllegalStateException(s"$collectionName could not be read — fallback state unknown")
+    }
+
+  def get(cinema: String): Option[FallbackState] = { ensureHydrated(); Option(mirror.get(cinema)) }
+  def findAll(): Seq[FallbackState] = { ensureHydrated(); mirror.values().asScala.toSeq }
 
   /** Writes are SYNCHRONOUS (unlike the hot-path freshness store): a cinema
    *  enters/leaves fallback at most a few times a day, so the round-trip cost is
@@ -72,12 +83,19 @@ class MongoFallbackStore(
     }
   }
 
-  private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
-    var count = 0
-    documents.foreach(document => fromDocument(document).foreach { s => mirror.put(s.cinema, s); count += 1 })
-    if (count > 0) logger.info(s"Hydrated $count Filmweb-fallback state(s) from Mongo.")
-  }.recover { case exception => logger.warn(s"Filmweb-fallback hydrate failed: ${exception.getMessage}") }
+  /** Load every stored state into the mirror (a state already there — written since — is kept);
+   *  whether the read landed. */
+  private def hydrate(c: MongoCollection[Document]): Boolean =
+    tools.MongoRead(10.seconds)(c.find().batchSize(tools.MongoReplies.Default).toFuture()) match {
+      case tools.ReadOutcome.Answered(documents) =>
+        var count = 0
+        documents.foreach(document => fromDocument(document).foreach { s => mirror.putIfAbsent(s.cinema, s); count += 1 })
+        if (count > 0) logger.info(s"Hydrated $count Filmweb-fallback state(s) from Mongo.")
+        true
+      case other =>
+        logger.warn(s"Filmweb-fallback hydrate ${other.explain} — reads hydrate again until it lands")
+        false
+    }
 }
 
 object MongoFallbackStore {

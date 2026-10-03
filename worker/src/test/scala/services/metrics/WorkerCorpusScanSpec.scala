@@ -27,11 +27,11 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     extends InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)), normalizer = services.movies.SingleCountryNormalizer.titleNormalizer) {
     val scans = new AtomicInteger(0)
 
-    override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = {
+    override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
       scans.incrementAndGet(); super.foreachRecord(f)
     }
 
-    override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean = {
+    override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
       scans.incrementAndGet(); super.foreachRecordWithoutShowtimes(f)
     }
   }
