@@ -17,10 +17,15 @@ final class FillingLookups(inner: IdentityLookups, rnd: Random) extends Identity
   def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
   def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (gapQuery(q)) Answer.Unknown else inner.candidates(q)
   def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (gapFilm(id)) Answer.Unknown else inner.film(id)
-  /** Answer about half of the open questions; what changed. */
+  /** Answer about half of the open questions — at least one while any is open, so that an empty answer means the fill
+   *  ran dry and not that the coin chose none of the last few (which left them stale for a caller looping until empty:
+   *  12 of 30 seeds of IncrementalResolverSpec's gaps case on 2026-10-03); what changed. */
   def answer(): AnswersChanged = {
-    val queries = openQueries.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
-    val films   = openFilms.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
+    val drawn   = openQueries.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
+    val films0  = openFilms.toSeq.sorted.filter(_ => rnd.nextBoolean()).toSet
+    val (queries, films) =
+      if (drawn.isEmpty && films0.isEmpty) (openQueries.toSeq.sorted.take(1).toSet, if (openQueries.isEmpty) openFilms.toSeq.sorted.take(1).toSet else Set.empty[Int])
+      else (drawn, films0)
     openQueries --= queries; openFilms --= films
     AnswersChanged(queries, films)
   }
