@@ -59,7 +59,12 @@ case "${1:-}" in
   run)
     heap="${2:?usage: sbt-server.sh run <heap> <command>}"; shift 2
     await_start || echo "[sbt-server] the background start failed — running on a fresh server"
-    SBT_OPTS="$(opts "$heap")" exec sbt --client "$*"
+    # The thin client wraps lines in terminal control codes (`ESC[0J[de] boot complete ESC[0J`), and
+    # every reader of the `| tee`d log anchors on a line's start: the publish's `^\[de\] boot
+    # complete` never matched, so no recording pinned its pair after this server landed (run
+    # 37114285078). Strip them here, and exit with the command's own status.
+    SBT_OPTS="$(opts "$heap")" sbt --client "$*" | sed -u -E 's/\x1b\[[0-9;?]*[A-Za-z]//g'
+    exit "${PIPESTATUS[0]}"
     ;;
   classpath)
     key="${2:?usage: sbt-server.sh classpath <key>}"

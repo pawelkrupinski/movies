@@ -31,6 +31,7 @@ case "$1" in
       printf '[info] entering thin client - BEEP WHIRR\n/w/target/classes:/c/lib.jar\n[success] elapsed time: 0 s\n\033[0J'
     fi ;;
   *red*)   echo "$(date +%s) end $1" >> "$RUNNER_TEMP/calls"; exit 1 ;;
+  boot*)   printf '\033[0J[de] boot complete\033[0J\n' ;;
 esac
 echo "$(date +%s) end $1" >> "$RUNNER_TEMP/calls"
 STUB
@@ -49,6 +50,8 @@ check "the heap reaches the server's JVM, with the marker stop finds it by" "tru
   "$(grep -q 'start warm \[-Xmx6g -Dkinowo.leg-sbt=server\]' "$work/calls" && echo true || echo false)"
 bash "$script" run 6g redAlias > /dev/null
 check "a run exits with its command's status" "1" "$?"
+check "a run's output comes without the client's control codes, so a log anchored on a line's start matches" \
+  "[de] boot complete" "$(bash "$script" run 6g bootAlias | grep '^\[de\] boot complete')"
 check "classpath prints the value bare, without the client's chatter" "/w/target/classes:/c/lib.jar" \
   "$(bash "$script" classpath worker/Fixtures/fullClasspath)"
 value=$(SBT_STUB_SERVER_SAYS=nothing bash "$script" classpath worker/Fixtures/fullClasspath 2> "$work/cp.err")
