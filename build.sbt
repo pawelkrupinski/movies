@@ -370,7 +370,7 @@ lazy val web = (project in file("web"))
 // transform. Depending on web + worker here means neither app depends on the
 // other and no view code has to sink into common. Test-only — `publish / skip`,
 // never staged. CI fans its specs out across parallel `e2e` shards (see the
-// e2eScrape/e2eStaging/e2eReScrape/e2eRest aliases below); it ships no deploy
+// e2eCorpus/e2eRest aliases below); it ships no deploy
 // artifact. Depends on worker's narrow `Fixtures` config, not its full `Test`
 // (~320 unrelated specs) — see the Fixtures config comment near IntegrationTest.
 lazy val e2e = (project in file("e2e"))
@@ -493,8 +493,7 @@ addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Tes
 // the build's long pole (a WebKit page-test row) with a whole runner to itself,
 // and ci.yml is at its 20-runner cap, so the slot buys more as another WebKit
 // page-test shard than as a fourth e2e one.
-addCommandAlias("e2eScrape",   "e2e/Test/testOnly services.movies.ScrapeOrderDeterminismSpec")
-addCommandAlias("e2eStaging",  "e2e/Test/testOnly services.movies.StagingOrderDeterminismSpec")
+addCommandAlias("e2eCorpus",   "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec")
 addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")
 
 // Per-country convergence legs, one per country, run by `.github/workflows/

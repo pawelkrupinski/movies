@@ -45,7 +45,7 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
   "the whole-collection readers" should "each take their first reading in a minute of their own" in {
     SampledCensus.Slots.all.distinct should have size SampledCensus.Slots.all.size.toLong
     SampledCensus.Slots.all.map(SampledCensus.firstDelay(_, 1.hour)).distinct should have size SampledCensus.Slots.all.size.toLong
-    (new SampledCensusSpec.Slotted(SampledCensus.Slots.UnstampedListings)).delay shouldBe 5.minutes
+    (new SampledCensusSpec.Slotted(SampledCensus.Slots.StrandedSideRows)).delay shouldBe 4.minutes
   }
 
   "the first-sample delay" should "never exceed the census's own interval" in {

@@ -201,37 +201,6 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
   }
 
-  "the store's sweep over the live model" should "keep what the model's questions read and nothing it no longer asks" in {
-    import models.{Movie, CinemaMovie, Multikino, Showtime}
-    val w        = new World
-    val reads    = new ObservationReads
-    val titles   = services.movies.SingleCountryNormalizer.titleNormalizer
-    val listings = Listing.distinct(Listing.all(Seq(Multikino -> Seq(CinemaMovie(Movie("Lalka", releaseYear = Some(2025)), Multikino, None,
-      Some("Multikino/Lalka"), None, Nil, Nil, Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 1, 18, 0), None))))), titles))
-    var model  = Option.empty[IncrementalResolver]
-    val service = new IdentityModelService(
-      () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(w.store, language, NoDetails, reads), reads,
-        Some(java.util.concurrent.Executors.newFixedThreadPool(2))), titles, IdentityCalibration.resolver); model = Some(m); m },
-      reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor())
-    val sweep  = new TmdbStoreSweep(w.docs, () => service.reachable(scala.concurrent.duration.Duration(5, "seconds")), w.clock, maxShare = 1.0)
-
-    sweep.sweep() shouldBe None                                              // not taken up: nothing reaches anything yet
-    service.takeUp()
-    val asked = model.get.gaps.queries.toSeq.map(TmdbStore.questionId(language, _))
-    asked should not be empty
-    asked.foreach(id => w.store.question(id, Nil))                           // the answers to what it asked…
-    w.store.question(TmdbStore.titleSearchId(language, "Nikt nie pyta"), Nil) // …and to what nobody asks
-    w.store.filmPartial(1, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("title" -> "Stray"))
-    w.clock.advance(java.time.Duration.ofDays(8))
-
-    sweep.sweep().map(_.deleted) shouldBe Some(2)
-    w.docs.get(TmdbKind.Query, asked).keySet shouldBe asked.toSet
-    w.docs.get(TmdbKind.Film, Seq("1")) shouldBe empty
-  }
-
-  /** A film document carries the two partial responses its record was parsed from beside the
-   *  record: ~650 of ~1,000 bytes that no answer reads. A take-up fetched and decoded them for every
-   *  film it named — UK's store batches took 12.4 s of a 21 s context. Answers read only what they use. */
   "the model's lookups" should "read a film's answer fields, never its partial responses" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)

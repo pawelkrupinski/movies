@@ -152,10 +152,6 @@ final class ProcessConfiguration(val env: Env) {
   def mongoMaxPoolSize(default: MongoMaxPoolSize): MongoMaxPoolSize = MongoMaxPoolSize(count("KINOWO_MONGO_MAX_POOL_SIZE", default.value))
   def mongoOptional: MongoOptional = MongoOptional(env.flag("MONGODB_OPTIONAL"))
 
-  /** `KINOWO_LISTING_KEY_SHADOW_READ` (`true` / `1`); off when unset. */
-  def listingKeyShadowRead: ListingKeyShadowReadEnabled = ListingKeyShadowReadEnabled(env.flag("KINOWO_LISTING_KEY_SHADOW_READ"))
-  def listingKeyShadowSample(default: ListingKeyShadowSample): ListingKeyShadowSample =
-    ListingKeyShadowSample(count("KINOWO_LISTING_KEY_SHADOW_SAMPLE", default.value))
 
   def backgroundConcurrency(default: BackgroundConcurrency): BackgroundConcurrency =
     BackgroundConcurrency(count("KINOWO_BG_CONCURRENCY", default.value))
@@ -223,18 +219,9 @@ final class ProcessConfiguration(val env: Env) {
     ReadModelColdRetryInterval(seconds("KINOWO_READMODEL_COLD_RETRY_SECONDS", default.value))
   /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings; off unless set. */
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
-  /** `KINOWO_IDENTITY_SHADOW` (`1` or `true`) — the identity resolver's shadow run; off unless set. */
-  def identityShadow: IdentityShadowEnabled = IdentityShadowEnabled(env.flag("KINOWO_IDENTITY_SHADOW"))
-  /** `KINOWO_IDENTITY_CUTOVER` — the countries whose identity is decided by the resolver's projection
-   *  instead of the landing / staging / settle path (docs/design/identity-resolver.md §8, phase 5):
-   *  comma-separated codes, unknown ones ignored. Empty — every country on the old path — unless set. */
-  def identityCutover: IdentityCutoverCountries =
-    IdentityCutoverCountries(text("KINOWO_IDENTITY_CUTOVER").toSeq.flatMap(_.split(",")).map(_.trim).flatMap(Country.byCode).toSet)
-  /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — how often a cut-over country's projection runs. */
+  /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — how often the identity projection runs. */
   def identityProjectionInterval(default: IdentityProjectionInterval): IdentityProjectionInterval =
     IdentityProjectionInterval(seconds("KINOWO_IDENTITY_PROJECTION_SECONDS", default.value))
-  /** `KINOWO_IDENTITY_SHADOW_LOOKUPS` (`1` or `true`) — the shadow run's live lookup fill; off unless set. */
-  def identityShadowLookups: IdentityShadowLookupsEnabled = IdentityShadowLookupsEnabled(env.flag("KINOWO_IDENTITY_SHADOW_LOOKUPS"))
   def identityShadowInterval(default: IdentityShadowInterval): IdentityShadowInterval =
     IdentityShadowInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
   def identityShadowInitialDelay(default: IdentityShadowInitialDelay): IdentityShadowInitialDelay =

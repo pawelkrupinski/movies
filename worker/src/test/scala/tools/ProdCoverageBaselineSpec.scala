@@ -143,17 +143,7 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
     ProdCoverageBaseline.divergences(run, prod, Band) shouldBe empty
   }
 
-  "A shadow run's coverage" should "count each film the new model decided and those it matched on TMDB" in {
-    import services.identity.{ResolverDecision, ShadowCluster, ShadowRun}
-    def cluster(title: String, film: Option[Int]) = ShadowCluster(
-      ResolverDecision(Seq(services.movies.ListingKey.Published("Kino", title, None, Nil)), film, 0.9, ResolverDecision.Basis.OwnMatch, Nil)(), 1, None, Nil)
-    val at = java.time.Instant.parse("2026-09-30T21:38:11Z")
-
-    ShadowCoverage.of(ShadowRun(at, Seq(cluster("Lalka", Some(1)), cluster("Diuna", Some(2)), cluster("Maraton", None)), Nil)) shouldBe
-      ShadowCoverage(at, films = 3, tmdbId = 2)
-  }
-
-  it should "be judged on identification alone, for the shadow rates nothing" in {
+  "A shadow run's coverage, in a recording from before the cut-over," should "be judged on identification alone, for the shadow rates nothing" in {
     val shadow = ShadowCoverage(java.time.Instant.EPOCH, films = 1239, tmdbId = 721)
     val run    = coverage(films = 1236, tmdb = 699, imdb = 756, imdbRating = 708, filmweb = 631, metascore = 309, rt = 413)
 

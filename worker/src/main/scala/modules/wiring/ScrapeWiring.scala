@@ -288,13 +288,10 @@ trait ScrapeWiring { self: WorkerWiring =>
   // for a gone venue nothing else pages for.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
     new GoneVenueAlertingArchive(
-      copiedFeedDetector.foldLeft(
-        identityModel.filter(_ => !identityCutover).fold(scrapeArchive)(model =>
-          new services.identity.IdentityModelFeed(scrapeArchive, model)))(
-        new services.cinemas.roster.CopiedFeedArchive(_, _)),
+      copiedFeedDetector.foldLeft(scrapeArchive)(new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,
       fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)),
-    landing = identityListingIntake)
+    landing = Some(identityListingIntake))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

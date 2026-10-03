@@ -131,32 +131,9 @@ object FixpointPass {
     w.readModelProjector.reconcile()
   }
 
-  /** One production tick over whatever the wiring's scrapers report — on a CUT-OVER country
-   *  (`KINOWO_IDENTITY_CUTOVER`) the runner's landing in the identity intake and one projection
-   *  ([[TestWiring.cutoverTick]]), there being no staging, settle or reaper to run. */
-  def run(w: TestWiring): Unit =
-    if (w.identityCutover) { w.cutoverTick(); w.readModelProjector.pruneOrphans() }
-    else runPipeline(w)
-
-  private def runPipeline(w: TestWiring): Unit = {
-    w.runOneScrapeTick()
-    w.drainServices()
-    w.drainStaging()
-    w.movieService.settle()
-    w.movieCache.canonicalizeBySanitize()
-    // The detail tasks the settle enqueued, worked as the TaskWorker would work them —
-    // the harness's rating drain below completes any task it has no handler for, so
-    // leaving them queued would drop them unworked and re-ask them on every pass.
-    w.enrichDetailsSync()
-    services.tasks.ReaperSweeps.unresolvedTmdbPeriod(w.unresolvedTmdbReaper, w.clock.instant())
-    w.drainServices()
-    w.enrichRatingsSync()
-    // The sweep LAST, so it takes its first look at whatever this tick changed within the
-    // tick. Run before the re-dispatch, a row the TMDB re-try made ready here was projected
-    // off the stream and first swept by the NEXT tick — whose heal then looked at its spent
-    // slots for the first time and read as churn (2 UK rows with 23-25 spent venues each).
-    w.readModelProjector.pruneOrphans()
-  }
+  /** One production tick over whatever the wiring's scrapers report: the runner's landing in the
+   *  identity intake and one projection ([[TestWiring.cutoverTick]]). */
+  def run(w: TestWiring): Unit = { w.cutoverTick(); w.readModelProjector.pruneOrphans() }
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
    *  no event waiting on any cursor's apply thread or held by its debounce, and none delivered

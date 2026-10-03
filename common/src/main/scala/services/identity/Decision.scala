@@ -3,31 +3,6 @@ package services.identity
 import services.movies.ListingKey
 
 /**
- * One cluster the identity resolver decided: which listings are one film, which film, how sure
- * it is, and why (docs/design/identity-resolver.md, "Pure two-stage resolution").
- *
- * The shape curation reads (the admin view). The resolver's own verdict,
- * [[ResolverDecision]], implements it; the shadow run persists them ([[ShadowRunStore]]), and the
- * admin view reads them back through [[ShadowDecisions]].
- */
-trait Decision {
-  /** The cluster: every listing the resolver put in this film. */
-  def listings: Set[ListingKey]
-  /** The film the cluster resolved to, if any. */
-  def tmdbId: Option[Int]
-  /** How sure the resolver is, in [0, 1]. Only its ORDER matters to curation: the admin view's
-   *  threshold is calibrated from data (see [[ConfidenceCalibration]]), never read as a
-   *  probability. */
-  def confidence: Double
-  /** Why, in the resolver's own words: the edges and lookups that decided the cluster. */
-  def explanation: Seq[String]
-  /** Constraint pressure on the cluster: each must-link the solver refused because a
-   *  cannot-link held the two sides apart, or an ambiguous node it left alone. Empty for an
-   *  uncontested cluster. */
-  def contradictions: Seq[String]
-}
-
-/**
  * The resolver's verdict on one CLUSTER (`IdentityResolver`): which listings are one film, which
  * film that is (if any), how sure it is, and why.
  *
@@ -43,7 +18,7 @@ trait Decision {
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
-                                  contradictions: Seq[String] = Nil)(val trace: DecisionTrace = DecisionTrace.Empty) extends Decision {
+                                  contradictions: Seq[String] = Nil)(val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
   def render: String =

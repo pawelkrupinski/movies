@@ -5,7 +5,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
-import services.identity.{FilmIdCounters, Listing, ProjectionTick}
+import services.identity.{Listing, ProjectionTick}
 import services.movies.TitleNormalizer
 import tools._
 
@@ -13,9 +13,8 @@ import scala.collection.mutable
 import scala.util.{Random, Try}
 
 /**
- * PHASE 5 over the HARD CLUSTERS (docs/design/identity-resolver.md §8, §10 "Phase 3 (cutover)"):
- * every country's hard-cluster corpus booted through the real pipeline with that country CUT OVER
- * to the identity projection — real Mongo, the listing intake, the resolver over the recorded
+ * The identity projection over the HARD CLUSTERS (docs/design/identity-resolver.md §8, §10):
+ * every country's hard-cluster corpus booted through the real pipeline — real Mongo, the listing intake, the resolver over the recorded
  * answers, the projection's writes — asserting on what was STORED:
  *
  *  - P1 ORDER INDEPENDENCE: two seeded arrival orders store the same films, ids included; an
@@ -23,11 +22,7 @@ import scala.util.{Random, Try}
  *    same partition and films (its ids follow its history, by design);
  *  - P2 FIXPOINT: a projection over the projection's own output writes nothing;
  *  - P3: no stored film holds two listings the resolution cannot-linked;
- *  - P4: every published showtime is on the film holding its listing;
- *  - IDS: switching a country OVER from the old path, every film keeps the id `IdAssigner` gives it
- *    over the old path's films, and no showtime is lost;
- *  - ROLLBACK: switching it BACK, the old path re-lands every listing onto the projection's rows
- *    and serves every published showtime.
+ *  - P4: every published showtime is on the film holding its listing.
  *
  * Each pass runs in its own database (`ConvergenceStorage.mongo`), dropped in `afterAll`.
  */
@@ -49,10 +44,9 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     s
   }
 
-  /** A wiring over `store`, cut over or on the old path. */
-  private def wiring(country: Country, store: ConvergenceStorage, cutOver: Boolean): ArchiveReplayWiring = {
-    val w = FetchReplayWiring(country, store, CorpusFixture.read(HardClusters.corpusKey(country)), responses(country),
-      environment = if (cutOver) Env.of("KINOWO_IDENTITY_CUTOVER" -> country.code) else Env.of())
+  /** A wiring over `store`. */
+  private def wiring(country: Country, store: ConvergenceStorage): ArchiveReplayWiring = {
+    val w = FetchReplayWiring(country, store, CorpusFixture.read(HardClusters.corpusKey(country)), responses(country))
     // What production's `start()` does before any tick: the cache holds the stored films.
     w.movieCache.rehydrate()
     w
@@ -66,15 +60,8 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def publish(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Unit =
     scrapers.foreach(s => Try(w.cinemaScrapeRunner.run(s)))
 
-  /** The old path's boot, as the hard-cluster convergence spec drives it. */
-  private def bootOldPath(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Unit = {
-    scrapers.foreach { s => Try(w.cinemaScrapeRunner.run(s)); w.advanceStagingOnce() }
-    w.enrichDetailsSync(); w.drainServices(); w.drainStaging()
-    w.movieService.settle(); w.drainStaging(); w.concludeEnrichment(); w.movieService.settle()
-  }
-
   private def published(w: ArchiveReplayWiring): Seq[(Cinema, Seq[CinemaMovie])] =
-    w.identityListingIntake.get.listings(w.cinemaScrapers.map(_.cinema))
+    w.identityListingIntake.listings(w.cinemaScrapers.map(_.cinema))
   private def listings(w: ArchiveReplayWiring): Seq[Listing] =
     published(w).flatMap { case (c, fs) => fs.map(Listing.of(c, _, w.titleNormalizer)) }
 
@@ -84,7 +71,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private final case class Pass(w: ArchiveReplayWiring, tick: ProjectionTick)
 
   private def cutPass(country: Country, label: String, seed: Long, halfFirst: Boolean): Pass = {
-    val w = wiring(country, storage(country, label), cutOver = true)
+    val w = wiring(country, storage(country, label))
     val scrapers = arrivals(w, new Random(seed))
     if (halfFirst) {
       publish(w, scrapers.map(s => PreScrapedCinemaScraper.replaying(s.cinema, w.archivedListings(s.cinema).take(
@@ -104,41 +91,10 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     tick
   }
 
-  /** Switching a country OVER from the old path: its films before, the cut-over wiring, the tick, after. */
-  private final case class Over(before: Seq[services.movies.StoredMovieRecord], cut: ArchiveReplayWiring, tick: ProjectionTick, after: Seq[services.movies.StoredMovieRecord])
-
-  private def switchOver(country: Country): Over = {
-    val store = storage(country, "over")
-    val old   = wiring(country, store, cutOver = false)
-    bootOldPath(old, arrivals(old, new Random(OrderSeed)))
-    val before = old.movieRepository.findAll()
-    val cut    = wiring(country, store, cutOver = true)
-    val tick   = cut.projectIdentity()
-    Over(before, cut, tick, cut.movieRepository.findAll())
-  }
-
-  /** Switching it BACK: what the projection stored and published, then the old path's wiring and films. */
-  private final case class Back(projected: Seq[services.identity.ProjectedFilm], shown: Seq[(Cinema, Seq[CinemaMovie])],
-                                old: ArchiveReplayWiring, after: Seq[services.movies.StoredMovieRecord])
-
-  private def switchBack(country: Country): Back = {
-    val store = storage(country, "back")
-    val cut   = wiring(country, store, cutOver = true)
-    publish(cut, arrivals(cut, new Random(OrderSeed)))
-    val projected = cut.projectIdentity().plan.get.films
-    val shown     = published(cut)
-    val old       = wiring(country, store, cutOver = false)
-    bootOldPath(old, arrivals(old, new Random(OrderSeed + 7)))
-    Back(projected, shown, old, old.movieRepository.findAll())
-  }
-
-  private final case class Booted(passes: Map[Country, Seq[Pass]], over: Map[Country, Over], back: Map[Country, Back])
-
-  /** EVERY boot this spec asserts on — each country's three passes and its two switches, each in its
-   *  own database and wiring, sharing nothing but the read-only corpus and the (concurrent) recorded
-   *  answers — run up front on a small pool rather than one after another inside the tests. Serially
-   *  the twenty-five were ~5 min, the tail of the whole `itAll` run; the tests below only assert. */
-  private lazy val booted: Booted = {
+  /** EVERY boot this spec asserts on — each country's three passes, each in its own database and
+   *  wiring, sharing nothing but the read-only corpus and the (concurrent) recorded answers — run up
+   *  front on a small pool rather than one after another inside the tests; the tests below only assert. */
+  private lazy val passes: Map[Country, Seq[Pass]] = {
     val pool = java.util.concurrent.Executors.newFixedThreadPool(BootParallelism)
     try {
       def run[A](body: => A): java.util.concurrent.Future[A] = pool.submit(() => body)
@@ -146,13 +102,9 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         c -> Seq(run(cutPass(c, "p0", OrderSeed, halfFirst = false)), run(cutPass(c, "p1", OrderSeed + 1, halfFirst = false)),
           run(cutPass(c, "half", OrderSeed + 2, halfFirst = true)))
       }
-      val over = countries.map(c => c -> run(switchOver(c)))
-      val back = countries.map(c => c -> run(switchBack(c)))
-      Booted(passes.map { case (c, fs) => c -> fs.map(_.get()) }.toMap, over.map { case (c, f) => c -> f.get() }.toMap,
-        back.map { case (c, f) => c -> f.get() }.toMap)
+      passes.map { case (c, fs) => c -> fs.map(_.get()) }.toMap
     } finally pool.shutdownNow(): Unit
   }
-  private def passes: Map[Country, Seq[Pass]] = booted.passes
 
   /** A CI runner's four vCPUs; `itAll` runs other suites beside this one, so no more. */
   private val BootParallelism = 4
@@ -160,7 +112,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   countries.foreach { country =>
     val cc = country.code
 
-    s"A cut-over $cc" should "store the same films whatever the arrival order (P1)" in {
+    s"$cc's projection" should "store the same films whatever the arrival order (P1)" in {
       val Seq(p0, p1, half) = passes(country)
       info(s"[$cc] ${p0.tick.listings} listings → ${p0.tick.plan.get.films.size} films " +
         s"(${p0.tick.plan.get.films.count(_.record.tmdbId.isDefined)} matched)")
@@ -171,9 +123,9 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     it should "write nothing on a projection over its own output (P2)" in {
       passes(country).foreach { p =>
-        val settled = p.w.identityProjection.get.tick()
+        val settled = p.w.identityProjection.tick()
         settled.plan.get.regroupings.isEmpty shouldBe true
-        val again = p.w.identityProjection.get.tick()
+        val again = p.w.identityProjection.tick()
         withClue(s"${again.written} written, ${again.retired} retired\n")(again.wroteNothing shouldBe true)
       }
     }
@@ -183,27 +135,6 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         CutoverProperties.cannotLinked(p.tick, listings(p.w)) shouldBe empty
         CutoverProperties.lostShowtimes(published(p.w), p.tick, p.w.movieRepository.findAll()) shouldBe empty
       }
-    }
-
-    it should "keep, switching OVER from the old path, the ids IdAssigner gives the old films, and every showtime" in {
-      val Over(before, cut, tick, after) = booted.over(country)
-      tick.refused shouldBe None
-      val plan  = tick.plan.get
-      info(s"[$cc] old path ${before.size} films → projection ${after.size}: kept ${plan.films.count(f => before.exists(_.id == f.id))} ids, " +
-        s"${plan.regroupings}; canary ${plan.canary.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}")
-      CutoverProperties.misassigned(before, listings(cut), tick, after, FilmIdCounters.empty, cut.titleNormalizer) shouldBe empty
-      CutoverProperties.lostShowtimes(published(cut), tick, after) shouldBe empty
-      cut.filmIdCounterStore.allChecked()._1.map(_.filmId).toSet should contain allElementsOf after.map(_.id.value)
-    }
-
-    it should "leave, switching BACK, rows the old path re-lands onto, serving every published showtime" in {
-      val p = passes(country).head
-      val Back(projected, shown, old, after) = booted.back(country)
-      info(s"[$cc] projection ${projected.size} films → old path ${after.size}; " +
-        s"${projected.count(f => after.exists(_.id == f.id))} projected ids still stored")
-      CutoverProperties.unservedShowtimes(shown, after) shouldBe empty
-      after.map(_.key(old.titleNormalizer)).distinct.size shouldBe after.size
-      p.tick.refused shouldBe None
     }
   }
 }

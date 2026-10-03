@@ -64,7 +64,7 @@ jobs:
             packages: write
 
     # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `image-web` and this workflow's
-    # `image-worker` build them from the dists ci's `e2e (staging)` row staged, while ci's slowest rows
+    # `image-worker` build them from the dists ci's `e2e (corpus)` row staged, while ci's slowest rows
     # still run, and push them under the commit SHA alone — a tag nothing deploys. `build-web` /
     # `build-worker` below `needs: ci` (the worker's also `needs: image-worker`),
     # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
@@ -418,7 +418,7 @@ jobs:
     # THE WORKER IMAGE, BUILT AND AOT-TRAINED WHILE ci RUNS — and OUTSIDE ci, so `build-web` (which
     # `needs: ci`) never waits for the ~5 min training: only `build-worker` needs this job. It takes
     # the slot `gates` gives back seconds in (CiRunnerBudgetSpec counts only jobs without `needs`),
-    # then waits for the dist ci's `e2e (staging)` row uploads to this same run — `needs: ci` would
+    # then waits for the dist ci's `e2e (corpus)` row uploads to this same run — `needs: ci` would
     # also wait for every other ci row. SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
     # a SHA tag; `build-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
     # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
@@ -435,12 +435,12 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            - name: Wait for the worker distribution ci's e2e staging row stages
+            - name: Wait for the worker distribution ci's e2e corpus row stages
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (staging)" 900
+              run: scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)" 900
 
-            - name: Fetch the worker distribution the e2e staging row staged
+            - name: Fetch the worker distribution the e2e corpus row staged
               # Straight into `stage/`, the only path the Dockerfile's whitelisted context
               # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
               # `chmod +x bin/*` restores the one that matters.

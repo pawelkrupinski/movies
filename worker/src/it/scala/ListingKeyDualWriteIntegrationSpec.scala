@@ -158,42 +158,4 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
       screeningKeys.filter { case (rowId, stored) => stored.isEmpty || !slotKeyOf.get(rowId).contains(stored) }.take(10) shouldBe empty
     }
   }
-
-  "the shadow read" should "find every listing's rows by listingKey exactly as by slot key after the pipeline (PL hard clusters), and see a row the stamp missed" in {
-    val db         = plPipeline
-    val slots      = new MongoSlotsRepository(Some(db))
-    val screenings = new MongoScreeningsRepository(Some(db))
-    val registry   = new io.prometheus.metrics.model.registry.PrometheusRegistry()
-    val shadow = new services.identity.ListingKeyShadowRead(slots, screenings, settings.ListingKeyShadowSample(Int.MaxValue),
-      services.identity.ListingKeyShadowRead.gauge(registry), models.Country.Poland, new scala.util.Random(0))
-    val unstamped = services.metrics.UnstampedListingCensus.gauge(registry)
-    val census    = new services.metrics.UnstampedListingCensus(screenings, slots, unstamped, models.Country.Poland)
-
-    val report = shadow.compare().get
-    val venueSlots = keys(db, SlotsRepository.Collection).keys.count(id => ListingKey.isVenueRow(SlotKeyed.slotKeyOf(id)))
-    withClue(s"every venue slot row is compared (${report.compared.size} of $venueSlots, ${report.unread} unread): ") {
-      report.compared.size shouldBe venueSlots
-      report.compared.size should be > 100
-      report.unread shouldBe 0
-    }
-    info(s"shadow read over the PL hard clusters: ${report.count(services.identity.ListingKeyShadowRead.Agree)} of ${report.compared.size} listings agree")
-    withClue("listings whose rows differ by listingKey from by slot key: ") {
-      report.disagreements.take(10).map(_.describe) shouldBe empty
-    }
-    census.sample()
-    unstamped.labelValues("pl", SlotsRepository.Collection).get() shouldBe 0.0
-    unstamped.labelValues("pl", ScreeningsRepository.Collection).get() shouldBe 0.0
-
-    // Teeth: one row of each collection loses its stamp, as a pre-phase-4 write would leave it.
-    val sampled = report.compared.find(_.screeningsBySlotKey.nonEmpty).get.rowId
-    Seq(SlotsRepository.Collection, ScreeningsRepository.Collection).foreach { collection =>
-      Await.result(db.getCollection[Document](collection).updateOne(
-        Document("_id" -> sampled), Document("$unset" -> Document("listingKey" -> ""))).toFuture(), 10.seconds)
-    }
-    val broken = shadow.compare().get
-    broken.disagreements.map(d => (d.rowId, d.slotsAgree, d.screeningsAgree)) shouldBe Seq((sampled, false, false))
-    census.sample()
-    unstamped.labelValues("pl", SlotsRepository.Collection).get() shouldBe 1.0
-    unstamped.labelValues("pl", ScreeningsRepository.Collection).get() shouldBe 1.0
-  }
 }

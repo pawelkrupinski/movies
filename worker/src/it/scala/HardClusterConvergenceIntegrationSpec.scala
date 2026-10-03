@@ -5,10 +5,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
-import services.events.MovieDetailsComplete
 import services.movies.{StoredMovieRecord, TitleNormalizer}
-import services.resolution.TmdbAttempt
-import services.staging.StagingSteps
 import services.readmodel.FilmSlugs
 import tools._
 
@@ -19,34 +16,25 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Random, Try}
 
 /**
- * The convergence legs' fold/settle claims, over the HARD CLUSTERS only, in minutes
- * rather than hours.
+ * The convergence legs' identity claims, over the HARD CLUSTERS only, in minutes rather than hours.
  *
- * Every fold/settle regression the country convergence legs caught in their first
- * months lived in a few dozen films — franchise siblings folding by arrival order, a
- * contested film address decided by which row came first, a decorated re-release year
- * read as a second film by the settle's split detector, a programme-prefixed listing
- * re-folding on an identical rescrape. The legs found each of them 1.5-5 hours after
- * the commit, and a red streak ran up to two and a half days. `tools.HardClusters`
- * extracts those clusters (and the shapes around them) from the recorded corpora into a
- * few hundred listings, and this spec runs the REAL pipeline over them — real Mongo,
- * the real staging fold, settle and read-model projection — with every HTTP answer the
- * clusters need replayed from one checked-in file (`tools.RecordedResponses`).
+ * Every identity regression the country convergence legs caught lived in a few dozen films —
+ * franchise siblings joined by arrival order, a contested film address decided by which listing came
+ * first, a decorated re-release year read as a second film, a programme-prefixed listing moving on an
+ * identical rescrape. `tools.HardClusters` extracts those clusters (and the shapes around them) from
+ * the recorded corpora into a few hundred listings, and this spec runs the REAL pipeline over them —
+ * real Mongo, the listing intake, the identity projection and the read-model projection — with every
+ * HTTP answer the clusters need replayed from one checked-in file (`tools.RecordedResponses`).
  *
  * Per country it asserts:
  *
- *   1. ORDER-INDEPENDENCE — three seeded arrival orders (cinemas shuffled, each
- *      cinema's films shuffled, the staging reaper advanced between arrivals as
- *      production's does) and a SPLIT arrival (half the cinemas, settled and projected,
- *      then the rest) come out as the same films: identity, title, year, tmdbId,
- *      imdbId, cinemas and the film's public address.
- *   2. NO SETTLE-SPLIT — no settle, in any pass or on the settled corpus, splits a slot
- *      off a row as a second film. The fixture holds no genuinely mixed row, so a split
- *      is the detector reading ordinary data as two films (the "Mockingjay - Part 1
- *      (2026)" beside "Part 1" split of 14 UK venues). A further settle over the settled
- *      corpus also changes no record.
- *   3. NO CHURN — two identical rescrapes re-divert no known film to staging, move no
- *      key and change no stored record.
+ *   1. ORDER-INDEPENDENCE — three seeded arrival orders (cinemas shuffled, each cinema's films
+ *      shuffled) and a SPLIT arrival (half the cinemas, projected, then the rest) come out as the
+ *      same films: identity, title, year, tmdbId, imdbId, cinemas and the film's public address.
+ *   2. THE RIGHT ANSWER — the films checked in for the clusters (`expected-hard-clusters-<cc>.txt`).
+ *   3. NO CHURN — a further projection, and two identical rescrapes each projected, write nothing.
+ *   4. AN OUTAGE IS NOT AN ANSWER — with TMDB failing half its requests, then back, the films come
+ *      out as the undisturbed boot's (their IMDb ids reported, not asserted).
  *
  * Each pass runs in its own uniquely-named database (`IsolatedMongoDatabase`), dropped
  * in `afterAll`.
@@ -104,10 +92,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       s"address=${address.getOrElse("unprojected")} cinemas=${cinemas.mkString("[", ", ", "]")}"
   }
 
-  private final class Pass(val label: String, val wiring: ArchiveReplayWiring, val scrapers: Seq[CinemaScraper]) {
-    /** Slots the settle split off a row as a second film while this pass booted. */
-    val bootSplits: Int = wiring.movieService.mixedFilmSplits
-  }
+  private final class Pass(val label: String, val wiring: ArchiveReplayWiring, val scrapers: Seq[CinemaScraper])
 
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
@@ -128,35 +113,18 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       PreScrapedCinemaScraper.replaying(cinema, rnd.shuffle(films.toList))
     }
 
-  /** Production's arrival: each cinema's scrape lands and publishes inline, and the
-   *  staging reaper advances between cinemas — so a film's group can resolve and fold
-   *  against a PARTIAL set of its cinemas. */
-  private def arrive(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Unit = {
-    scrapers.foreach { scraper =>
-      try w.cinemaScrapeRunner.run(scraper) catch { case _: Exception => () }
-      w.advanceStagingOnce()
-    }
-    w.enrichDetailsSync()
-    w.drainServices()
-  }
+  /** Production's arrival: each cinema's scrape lands in the identity model's intake through the
+   *  production runner. */
+  private def arrive(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Unit =
+    scrapers.foreach(scraper => Try(w.cinemaScrapeRunner.run(scraper)))
 
-  /** The periodic settle production runs once staging has drained, then projection. */
+  /** Projections until one writes nothing — the rest production's projection interval reaches, as the
+   *  venue pages and ids a projection's enrichment fetched are taken in by the next — then the read model. */
   private def settle(w: ArchiveReplayWiring): Unit = {
-    w.drainStaging()
-    w.movieService.settle()
-    w.movieCache.canonicalizeBySanitize()
-    w.drainStaging()
-    w.movieService.settle()
-    w.concludeEnrichment()
-    // …and the settle AFTER it. The re-try sweep resolves rows late — a no-match whose
-    // evidence a later venue changed (Helios Siedlce's crew landing on Cinema1's unmatched
-    // "Niesamowite przygody skarpetek") — and a resolve keeps a yeared row's key; the next
-    // periodic settle is what re-keys it onto TMDB's year. Stopping before it compared the
-    // split arrival's film at its interim key against the all-at-once one at its final key.
-    w.movieService.settle()
-    w.movieCache.canonicalizeBySanitize()
+    Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.wroteNothing)
     project(w)
   }
+  private val SettleProjections = 5
 
   /** The read model every claim reads, from a COMPLETE scan. Passes boot side by side against
    *  one local Mongo, and under a loaded `itAll` a page's side read can time out: the scan then
@@ -254,15 +222,13 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   }
 
   /**
-   * TMDB DOWN for part of a boot: half its URLs answer 503 while every venue lands, and
-   * then it comes back. Production's answer to a 5xx is "not now" — the resolve is
-   * rescheduled, the row keeps waiting — never "no such film". A pipeline that reads the
-   * outage as an answer concludes `tmdbNoMatch`, the row is published unmatched with no
-   * ratings, and it stays that way until the daily re-try reaper happens to look again.
+   * TMDB DOWN for part of a boot: half its URLs answer 503 while every venue lands and is projected,
+   * and then it comes back. A 5xx is "not now", never "no such film": the model holds the question
+   * open, and the lookup fill asks it again — so once TMDB answers and a fill round has run, the
+   * corpus must come out as the undisturbed reference did.
    *
-   * Returns the films DURING the outage (by key: unmatched though the reference pass
-   * matched them) and AFTER it recovered (the films themselves, for a diff against the
-   * reference).
+   * Returns the films matched in the reference that the outage left unmatched (reported), and the
+   * films after the recovery.
    */
   private def outage(country: Country): (Seq[String], Seq[Film]) = {
     val down  = new java.util.concurrent.atomic.AtomicBoolean(true)
@@ -277,43 +243,18 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       override def post(url: String, body: String, contentType: String): String = { check(url); inner.post(url, body, contentType) }
     }
     val normalizer = TitleNormalizer.forCountry(country)
-    // The undisturbed reference first, so the outage pass's own log is one contiguous block.
     val reference  = booted(country).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
     val (w, _)     = wiringFor(country, "outage", flaky, Some(clock))
-    // Staging as production drives it, never the harness's end-of-drain fold: a film whose
-    // resolve keeps failing STAYS in staging, and only production's own ceiling
-    // (`StagingSteps.TransientResolveCeiling`) may fold it — as an unanswered no-match.
-    def advanceStaging(): Unit = {
-      var before = Int.MaxValue
-      var rounds = 0
-      while (rounds < 20 && w.stagingRepository.findAll().size < before) {
-        before = w.stagingRepository.findAll().size
-        w.advanceStagingOnce()
-        rounds += 1
-      }
-    }
     arrive(w, arrivals(w, new Random(OrderSeed)))
-    advanceStaging()
-    // The outage outlasts the ceiling, which is the case the ceiling exists for.
-    clock.advance(java.time.Duration.ofMillis(StagingSteps.TransientResolveCeiling.toMillis).plusHours(1))
-    advanceStaging()
-    w.movieService.settle()
-    w.movieCache.canonicalizeBySanitize()
-    val concludedUnmatched = w.movieRepository.findAll().collect {
-      case r if r.record.tmdbNoMatch && !r.record.tmdbAttempt.exists(TmdbAttempt.isUnanswered) &&
-                reference.contains(r.key(normalizer)) =>
-        s"${r.title} (${r.year.getOrElse("—")}) [${r.key(normalizer)}] attempt=${r.record.tmdbAttempt.getOrElse("—")}"
-    }.sorted
-    // TMDB answers again, and a day passes: the resolve backoff and the re-try reaper's
-    // period both. Then the corpus settles as it would after it.
+    settle(w)
+    val unmatched = films(w, normalizer).collect { case f if f.tmdbId.isEmpty && reference.contains(f.key) => f.toString }
+    // TMDB answers again; the fill's next round asks what the outage left open, as production's
+    // refresh schedule does, and the projection takes the answers in.
     down.set(false)
-    clock.advance(java.time.Duration.ofHours(25))
-    // A day is many settles: the last resolve of one feeds the next (a no-match that lets a
-    // row split by its brackets is only seen by the settle after it).
-    w.concludeEnrichment()
+    clock.advance(java.time.Duration.ofHours(1))
+    w.shadowLookupFill.foreach(_.round())
     settle(w)
-    settle(w)
-    (concludedUnmatched, films(w, normalizer))
+    (unmatched, films(w, normalizer))
   }
 
   private lazy val outages: Map[Country, (Seq[String], Seq[Film])] = countries.map(c => c -> outage(c)).toMap
@@ -424,35 +365,32 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       }
     }
 
-    it should "not conclude a film unmatched while TMDB is failing" in {
+    it should "come out as the undisturbed boot's films once TMDB is back after an outage" in {
       val (unmatched, recovered) = outages(country)
       val (reference, refFilms)  = booted(country).head
-      // How far the corpus is back a day after TMDB answers again — REPORTED, not asserted:
-      // on 2026-09-25 a handful of UK/US films stayed unresolved or lost their imdbId after
-      // the recovery tick (a resolve that matched in the log never reached its `movies`
-      // row), and whether that is the pipeline or this pass's short recovery tick is not
-      // yet known. Named here so the next look starts from the films.
-      val drift = diff(refFilms, recovered, reference.label, "outage-recovered").map(_._2)
-      if (drift.nonEmpty)
-        info(s"$name: ${drift.size} film(s) not back to the undisturbed boot a day after TMDB recovered:\n" +
-             drift.take(12).mkString("\n"))
-      withClue(s"$name: ${unmatched.size} film(s) concluded tmdbNoMatch on a 503 — an outage read as an answer, " +
-               s"so the film is published unmatched and unrated until the daily re-try looks again:\n  " +
-               s"${unmatched.take(12).mkString("\n  ")}\n") {
-        unmatched shouldBe empty
+      if (unmatched.nonEmpty)
+        info(s"$name: ${unmatched.size} film(s) unmatched while TMDB failed (held open, not concluded):\n  " +
+             unmatched.take(12).mkString("\n  "))
+      // The films themselves — identity, title, year, TMDB match, cinemas — must come back. An IMDb id the
+      // id recovery looked up during the outage is REPORTED, not asserted: that recovery runs once per
+      // match and is not re-asked when TMDB failed under it (as before the cut-over, 2026-09-25).
+      def identity(fs: Seq[Film]) = fs.map(_.copy(imdbId = None, address = None))
+      val idDrift = diff(refFilms, recovered, reference.label, "outage-recovered").map(_._2)
+      if (idDrift.nonEmpty) info(s"$name: ${idDrift.size} film(s) differ after the recovery (IMDb ids included):\n${idDrift.take(12).mkString("\n")}")
+      val drift = diff(identity(refFilms), identity(recovered), reference.label, "outage-recovered").map(_._2)
+      withClue(s"$name: ${drift.size} film(s) not back to the undisturbed boot after TMDB recovered:\n${drift.take(12).mkString("\n")}\n") {
+        drift shouldBe empty
       }
     }
 
-    it should "not split, re-fold or rewrite a settled row on a further settle or an identical rescrape" in {
+    it should "not rewrite a settled film on a further projection or an identical rescrape" in {
       val (pass, _) = booted(country).head
       val w          = pass.wiring
       val normalizer = TitleNormalizer.forCountry(country)
       // The known churners are read apart from the rest: left out of every check below,
       // and required to still churn (see the end), so fixing one retires its entry.
       val knownChurn = KnownRescrapeChurn.getOrElse(country.code, Set.empty)
-      // By the film's FULL key; only a staged row, which has no year yet, is matched by title.
       def isKnown(key: String) = knownChurn.contains(key)
-      def isKnownTitle(title: String) = knownChurn.exists(_.takeWhile(_ != '|') == normalizer.sanitize(title))
       def allRecords = w.movieRepository.findAll().sortBy(r => (r.key(normalizer), r.title))
       def records: Seq[StoredMovieRecord] = allRecords.filterNot(r => isKnown(r.key(normalizer)))
       def knownRecords: Seq[StoredMovieRecord] = allRecords.filter(r => isKnown(r.key(normalizer)))
@@ -461,44 +399,20 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       val knownBefore = knownRecords
 
       val problems = mutable.ListBuffer.empty[String]
-      booted(country).collect { case (p, _) if p.bootSplits != 0 =>
-        problems += s"pass ${p.label}'s settles split ${p.bootSplits} cinema slot(s) off rows as a second film" }
       val settledRecords = records
       val settledKeys    = keys
-      val splitsBefore   = w.movieService.mixedFilmSplits
 
-      w.movieService.settle()
-      w.movieCache.canonicalizeBySanitize()
-      val splitBySettle = w.movieService.mixedFilmSplits - splitsBefore
-      if (splitBySettle != 0)
-        problems += s"a settle on the settled corpus split $splitBySettle cinema slot(s) off rows as a second film"
-      val afterSettle = records
-      if (afterSettle != settledRecords)
-        problems += s"a settle on the settled corpus changed records:\n${changed(settledRecords, afterSettle, normalizer)}"
+      val again = w.projectIdentity()
+      if (!again.wroteNothing) problems += s"a projection over the settled corpus wrote ${again.written}, retired ${again.retired}"
+      val afterProjection = records
+      if (afterProjection != settledRecords)
+        problems += s"a projection over the settled corpus changed records:\n${changed(settledRecords, afterProjection, normalizer)}"
 
       (1 to 2).foreach { tick =>
-        val before     = records
-        val staged     = w.stagingRepository.findAll().map(r => (r.cinema.displayName, r.title)).toSet
-        val ready      = mutable.ListBuffer.empty[MovieDetailsComplete]
-        val rnd        = new Random(OrderSeed + 100 + tick)
-        rnd.shuffle(pass.scrapers).foreach { scraper =>
-          Try(scraper.fetch()).toOption.foreach { listed =>
-            val touched = w.movieCache.recordCinemaScrape(scraper.cinema, listed)
-            ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
-          }
-        }
-        val diverted = w.stagingRepository.findAll().map(r => (r.cinema.displayName, r.title)).toSet -- staged
-        ready.foreach(w.eventBus.publish)
-        w.drainServices()
-        w.drainStaging()
-        val splitsBeforeSettle = w.movieService.mixedFilmSplits
-        w.movieService.settle()
-        val splitsInTick = w.movieService.mixedFilmSplits - splitsBeforeSettle
-        val divertedUnknown = diverted.filterNot { case (_, title) => isKnownTitle(title) }
-        if (divertedUnknown.nonEmpty)
-          problems += s"rescrape $tick re-diverted ${divertedUnknown.size} known film(s) to staging: ${divertedUnknown.toSeq.sorted.take(10).mkString(", ")}"
-        if (splitsInTick != 0)
-          problems += s"rescrape $tick's settle split $splitsInTick cinema slot(s) off rows"
+        val before = records
+        arrive(w, new Random(OrderSeed + 100 + tick).shuffle(pass.scrapers))
+        val projected = w.projectIdentity()
+        if (!projected.wroteNothing) problems += s"rescrape $tick's projection wrote ${projected.written}, retired ${projected.retired}"
         val after = records
         if (after != before) problems += s"rescrape $tick changed records:\n${changed(before, after, normalizer)}"
         val drift = (keys -- settledKeys).map(k => s"+$k") ++ (settledKeys -- keys).map(k => s"-$k")

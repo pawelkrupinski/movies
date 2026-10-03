@@ -48,8 +48,6 @@ class ObservationReads {
       questions.collect { case ObservationReads.Question.Detail(listing) => listing })
   }
 
-  /** Every key some current question read: what the store's sweep keeps (`TmdbStoreSweep`). */
-  def keySet: Set[String] = synchronized(readers.keySet.toSet)
 
   /** How many keys it tracks: the index a model's questions keep over the store. */
   def keys: Int = synchronized(readers.size)

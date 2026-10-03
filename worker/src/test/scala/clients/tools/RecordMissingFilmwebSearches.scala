@@ -13,7 +13,7 @@ import tools.{FixtureTestWiring, HttpFetch, RealHttpFetch}
  * with today's data — a huge, needless drift.
  *
  * This boots the corpus through the SAME replay path the e2e snapshot uses
- * (`FixtureTestWiring.bootStartup` + `converge`, so the Filmweb SEARCH path actually
+ * (`FixtureTestWiring.bootStartup`, so the Filmweb SEARCH path actually
  * fires per row) but over a `RecordMissingFetch` scoped to `filmweb.pl`: every
  * non-Filmweb call AND every by-id `film/{id}/…` call is served from the existing
  * 08-06 fixtures untouched; ONLY a missing `live/search` (the new normalized query)
@@ -33,9 +33,8 @@ object RecordMissingFilmwebSearches {
       override lazy val multikinoFetch: HttpFetch = recording
       override lazy val biletynaFetch:  HttpFetch = recording
     }
-    println("Filmweb-search recorder: booting corpus (replay) + converge (re-enrich → search)…")
+    println("Filmweb-search recorder: booting corpus (replay) through the identity projection…")
     w.bootStartup()
-    w.converge()
     w.movieRepository.close()
     println("Filmweb-search recorder: done.")
   }

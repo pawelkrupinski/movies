@@ -37,6 +37,12 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // `MovieControllerService` from `webReadModel` (not the raw cache).
   override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
 
+  // The identity model's input, without Mongo: the scrape archive (what the old path last landed,
+  // which the intake reads for a venue with no accepted listing yet) and the intake's own accepted
+  // listings, in memory, keeping what the boot's scrapes publish.
+  override lazy val scrapeArchive: services.scrapes.ScrapeArchiveRepository     = new services.scrapes.InMemoryScrapeArchiveRepository
+  override lazy val acceptedListings: services.scrapes.ScrapeArchiveRepository  = new services.scrapes.InMemoryScrapeArchiveRepository
+
   // The fixture's capture day, parsed from a `dd-MM-yyyy` directory name (e.g.
   // "08-06-2026" → 2026-06-08). `None` for fixtures named for something else
   // ("multikino"), which aren't date-keyed. MUST be `lazy` — the super
@@ -73,26 +79,24 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // `TestWiring` refuses their paid legs, and a route with neither a proxy nor a Zyte
   // leg IS its direct leg — `httoFetch`.
 
-  /** Convenience: scrape every cinema once, drain the cascade, run the daily
-   *  `UnscreenedCleanup` pass, then project into the read model. After this
-   *  returns the cache is in the same shape it would be ~20s into production
-   *  boot, so the rest of the test can assert against `movieCache.snapshot()`
-   *  directly (the serving transform — `MovieControllerService.toSchedules` — is
-   *  the web app's job now and is tested there).
-   *
-   *  The corpus half is `TestWiring.bootCorpus`, shared with the archive-replay
-   *  wiring; the read-model tail is this wiring's alone, since it is the one that
-   *  owns `webReadModel`. Projection is a one-shot reconcile + reload (no
-   *  change-stream/scheduler) to keep the test deterministic and thread-free. */
+  /** Convenience: scrape every cinema once into the identity model's intake and project its films
+   *  until a projection writes nothing — the rest production's projection interval reaches, as the
+   *  venue pages and ids a projection's enrichment fetched are taken in by the next — then project
+   *  the read model. After this returns the cache is in the shape production reaches a few
+   *  projections after boot, so the rest of the test can assert against `movieCache.snapshot()`
+   *  directly (the serving transform — `MovieControllerService.toSchedules` — is the web app's job
+   *  now and is tested there). Projection is a one-shot reconcile + reload (no change-stream or
+   *  scheduler) to keep the test deterministic and thread-free. */
   def bootStartup(): Unit = {
-    bootCorpus()
+    bootCutover()
+    Iterator.continually(projectIdentity()).take(FixtureTestWiring.SettleProjections).find(_.wroteNothing)
     readModelProjector.reconcile()
     webReadModel.reload()
   }
 
   /** Warm `webReadModel` the cheap way: load the checked-in read-model snapshot
-   *  (the deterministic output of `bootStartup`'s ~110s pipeline) straight into
-   *  the read-model repository, skipping scrape→enrich→fold→project entirely.
+   *  (the deterministic output of `bootStartup`) straight into
+   *  the read-model repository, skipping scrape→resolve→project entirely.
    *  This is all the page-test servers (FixtureServerMain, PageSnapshotSpec,
    *  PageJsBehaviourSpec) need — they only ever read through `webReadModel`.
    *
@@ -110,81 +114,9 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
           "(slow). Run FilmScheduleEndToEndSpec to (re)generate it.")
       bootStartup()
     }
+}
 
-  /** Like `bootStartup`, but drives the staging path the way PROD does rather
-   *  than the deterministic record-all-then-drain shape `bootStartup`/
-   *  `runOneScrapeTick` use: cinemas arrive in a SHUFFLED order and the reaper
-   *  fires (`advanceStagingOnce`) BETWEEN arrivals, so a film's hint group can
-   *  resolve before its last cinema — and that cinema's director spelling — has
-   *  landed. This is the disorder that `bootStartup`'s "record every cinema,
-   *  THEN publish/drain" deliberately removes; `StagingOrderDeterminismSpec`
-   *  uses it to prove the staging resolve+fold is order-independent (the path
-   *  the whole-corpus `ScrapeOrderDeterminismSpec` skips — it harvests with
-   *  `staging = None` and settles via `converge`, both of which absorb every
-   *  director hint before resolving, masking an arrival-order resolution race). */
-  def bootStartupInterleaved(rnd: scala.util.Random, cinemaFilter: models.Cinema => Boolean = _ => true): Unit = {
-    rnd.shuffle(cinemaScrapers.filter(s => cinemaFilter(s.cinema)).toSeq).foreach { scraper =>
-      try cinemaScrapeRunner.run(scraper) catch { case _: Exception => () }
-      advanceStagingOnce()
-    }
-    // Deferred-detail cinemas published their bare row above; fill each detail and
-    // publish the TMDB trigger, then drain the async cascade. This is only the
-    // CONCURRENT, disorder-prone phase — the caller settles to the deterministic
-    // steady state with `converge(Some(rnd))` (re-resolve + re-fold + collapse,
-    // exactly as `ScrapeOrderDeterminismSpec.replayCorpus` does), so the assertion
-    // is about the SETTLED corpus, not this transient.
-    enrichDetailsSync()
-    drainServices()
-  }
-
-  /** Settle the cache to its deterministic steady state. The production scrape
-   *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
-   *  cinema lands, so a film's TMDB/ratings can resolve against a partially-merged row; in
-   *  production those rows settle over successive 5-min passes (+ the daily TMDB
-   *  retry). A single test pass can't wait for that, so re-run enrichment
-   *  synchronously against the now-settled rows — the same belt-and-braces sweep
-   *  the fixture recorder uses — making the snapshot a pure function of the
-   *  fixtures rather than of thread scheduling. Pass a seeded `reorder` RNG to
-   *  shuffle the re-enrich sweep (the determinism spec does, to prove the sweep
-   *  is order-independent like prod's arbitrary one); omit it for a stable
-   *  title order. */
-  def converge(reorder: Option[scala.util.Random] = None): Unit = {
-    // 1. Graduate newcomers out of staging into `movies` (resolve-then-fold),
-    //    the same pipeline the worker's promoter scheduler runs in prod, so the
-    //    settle below sees the complete corpus.
-    drainStaging()
-    // 1b. THEN collapse the spelling/year variants a concurrent scrape/enrichment
-    //     or an arrival-ordered fold left behind, so every row is under its
-    //     canonical key BEFORE we re-enrich. Otherwise the title-keyed enrichment
-    //     (esp. Filmweb's fuzzy title/director SEARCH) runs against an
-    //     order-dependent spelling and lands an order-dependent result. The order
-    //     matters: on the staging path every film is still in `pending_movies`
-    //     until `drainStaging`, so a settle run before it collapsed nothing, and the
-    //     sweep audited Filmweb on two halves of a film that step 3 then merged
-    //     (Kino Sfinks' "Tani wtorek: Robin hood…" beside a yearless
-    //     "Robin Hood:Koniec Legendy" — the fold keeps them apart when the decorated
-    //     spelling folds first, and only the settle's search-title edge joins them).
-    //     Prod reaches the same end state because a settle merge re-kicks the
-    //     title ratings (`MergeRetrigger`); this sweep is the harness's stand-in.
-    movieService.settle()
-    // 2. Re-run enrichment synchronously against the now-canonical, settled rows.
-    //    Production's `retryUnresolvedTmdb` sweeps rows in arbitrary map order,
-    //    so `reorder` SHUFFLES this sweep — a cross-film re-enrich/settle order
-    //    must not change the result (default: a stable title order).
-    val films = movieCache.snapshot().map(r => (r.title, r.year))
-    val sequenced = reorder.fold(
-      films.sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
-    )(_.shuffle(films))
-    sequenced.foreach { case (t, y) =>
-      // Swallow a missing-fixture throw the SAME way the async enrichment path
-      // does (MovieService logs "Giving up on TMDB …" and moves on): a row whose
-      // TMDB id has no recorded `external_ids` (NTLive theatre captures share id
-      // 203912, no IMDb cross-reference) would otherwise abort the whole sweep.
-      try fullySyncOne(t, y) catch { case _: Exception => () }
-    }
-    // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
-    //    year, briefly re-introducing a spelling/year variant — exactly the
-    //    "Dzień objawienia" shape `canonicalizeBySanitize` exists to fix.
-    movieService.settle()
-  }
+object FixtureTestWiring {
+  /** Projections after the boot's first that a fixture boot may take to reach rest. */
+  val SettleProjections = 4
 }

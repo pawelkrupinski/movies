@@ -5,24 +5,21 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.identity.ConfidenceCalibration.Sample
-import services.identity.{Decision, InMemoryPinStore, PinClaim, PipelineFilmRef, Pins, ResolverDecision, ShadowCluster, ShadowDecisions,
-  ShadowRelation, ShadowRetention, ShadowRun, ShadowRunStore}
+import services.identity.{InMemoryPinStore, PinClaim, Pins}
 import services.movies.ListingKey
 
 import java.time.{Clock, Instant, ZoneOffset}
 
 /**
- * `/admin/identity`: a read-only diagnostic of the resolver's contradicted and low-confidence
- * decisions, and pin create/remove for emergencies. Driven through the real [[Pins]] rules over
- * an in-memory store, and a shadow source standing in for the resolver's output.
+ * `/admin/identity`: pin create/remove for emergencies, driven through the real [[Pins]] rules over
+ * an in-memory store, and the trace page.
  */
 class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
   import IdentityAdminControllerSpec._
 
-  private def fixture(shadow: ShadowDecisions = Shadow) = {
+  private def fixture() = {
     val pins = new Pins(new InMemoryPinStore, Now)
-    (new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository, pins, shadow), pins)
+    (new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository, pins), pins)
   }
 
   private val admin = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
@@ -45,7 +42,7 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
         Seq("title \"Ein Hund namens Quill\": 0 film(s)"), Seq("49258 26.6% rank - 'Quill - Ein Freund für´s Leben' (2004)"),
         Some("rule:below-the-rating-cut"))))
     val c = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository,
-      new Pins(new InMemoryPinStore, Now), Shadow, store)
+      new Pins(new InMemoryPinStore, Now), store)
     val byRule = contentAsString(c.traces(Some("accept:favoured-calibrated"), None, None).apply(admin))
     byRule should include ("Brides of Dracula")
     byRule should include ("director=same_person +4.22")
@@ -73,42 +70,20 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     status(c.traces(None, None, None).apply(FakeRequest())) should not be OK
   }
 
-  "the identity page" should "list contradicted and low-confidence decisions with their explanations, and the calibration" in {
-    val (c, _) = fixture()
+  "the identity page" should "list the pins and link the traces" in {
+    val (c, pins) = fixture()
+    pins.add(Seq(ListingKey.Published("A", "One", Some(2020), Seq("X"))), PinClaim.NeverFilm(7), "a", "the strand").toOption.get
     val page = contentAsString(c.index.apply(admin))
-    page should include ("Contradicted")
-    page should include ("different bracketed years hold it apart")      // contradicted's pressure
-    page should include ("bare title, no year")                          // low-confidence's explanation
-    page should not include ("Uncontested Film")                         // confident and uncontested: not listed
-    page should include ("threshold 0.5")
-  }
-
-  it should "say the gate withholds nothing when there is no labelled shadow data" in {
-    val (c, _) = fixture(ShadowRunStore.inMemory(Now))
-    contentAsString(c.index.apply(admin)) should include ("no labelled shadow data")
-  }
-
-  it should "list the decisions of the latest persisted shadow run, cut by the run's own verdicts" in {
-    val store = ShadowRunStore.inMemory(Now)
-    def cluster(title: String, film: Int, confidence: Double, relation: ShadowRelation, contradictions: Seq[String] = Nil) =
-      ShadowCluster(ResolverDecision(Seq(ListingKey.Published("Kino Amok", title, None, Nil)), Some(film), confidence,
-        ResolverDecision.Basis.OwnMatch, Seq(s"why $title"), contradictions)(), 0, Some(relation), Seq(PipelineFilmRef(title, Some(film))))
-    store.record(ShadowRun(Now.instant(), Seq(
-      cluster("Lalka", 1321666, 0.95, ShadowRelation.Identical, Seq("a cannot-link held 'Lalka' ×3 apart")),
-      cluster("Opętanie", 21484, 0.3, ShadowRelation.Moved),
-      cluster("Belle", 11, 0.6, ShadowRelation.Identical)), Nil), ShadowRetention(scala.concurrent.duration.Duration(8, "days")))
-    val page = contentAsString(fixture(store)._1.index.apply(admin))
-    page should include ("a cannot-link held")   // contradicted
-    page should include ("why Opętanie")         // below the cut the run's verdicts draw (0.3 wrong, 0.6 right)
-    page should not include ("why Belle")        // confident and uncontested
-    page should include ("threshold 0.6")
+    page should include ("never film 7")
+    page should include ("the strand")
+    page should include ("/admin/identity/traces")
   }
 
   it should "refuse an anonymous caller and a non-admin" in {
     val (c, _) = fixture()
     status(c.index.apply(FakeRequest())) shouldBe UNAUTHORIZED
     val member = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(allow = Set.empty),
-      TestAdminAction.adminRepository, fixture()._2, Shadow)
+      TestAdminAction.adminRepository, fixture()._2)
     status(member.index.apply(admin)) shouldBe FORBIDDEN
   }
 
@@ -151,16 +126,4 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
 object IdentityAdminControllerSpec {
   val Now: Clock = Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC)
 
-  final case class D(listings: Set[ListingKey], tmdbId: Option[Int], confidence: Double, explanation: Seq[String],
-                     contradictions: Seq[String]) extends Decision
-
-  val Shadow: ShadowDecisions = new ShadowDecisions {
-    def latest(): Seq[Decision] = Seq(
-      D(Set(ListingKey.Published("Vue Leeds", "Mockingjay – Part 2 (2026)", Some(2026), Nil)), None, 0.9,
-        Seq("no must-link joins it to the 2015 film"), Seq("different bracketed years hold it apart")),
-      D(Set(ListingKey.Published("Kino Amok", "Samson i Dalila", None, Nil)), Some(22683), 0.2,
-        Seq("bare title, no year"), Nil),
-      D(Set(ListingKey.Published("Kino X", "Uncontested Film", Some(2024), Seq("Y"))), Some(1), 0.95, Seq("same TMDB id"), Nil))
-    def verdicts(): Seq[Sample] = Seq(Sample(0.1, correct = false), Sample(0.5, correct = true), Sample(0.9, correct = true))
-  }
 }

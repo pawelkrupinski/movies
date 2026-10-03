@@ -3,26 +3,22 @@ package controllers
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc._
-import services.identity.ConfidenceCalibration.Calibration
-import services.identity.{ConfidenceCalibration, Decision, Pin, PinClaim, Pins, ShadowDecisions}
+import services.identity.{Pin, PinClaim, Pins}
 import services.movies.ListingKey
 import services.users.UserRepository
 
 /**
- * `/admin/identity` — a read-only diagnostic of the identity resolver's shadow output, plus pin
- * create/remove for emergencies (docs/design/identity-resolver.md, "Phase 3: curation").
- *
- * It lists the decisions under constraint pressure (a must-link a cannot-link refused, an
- * ambiguous node left alone) and those the calibrated rating gate would withhold, each with the
- * resolver's own explanation. It is not a review queue: the resolver is expected to be right
- * without anyone looking, and a pin is the escape hatch for a case the evidence cannot decide.
+ * `/admin/identity` — the identity model's pins, created and removed for emergencies
+ * (docs/design/identity-resolver.md, "Phase 3: curation"), and `/admin/identity/traces`, which rules
+ * decided each listing. It is not a review queue: the resolver is expected to be right without anyone
+ * looking, and a pin is the escape hatch for a case the evidence cannot decide.
  *
  * Gated by [[AdminAction]] (login + ADMIN_ALLOWLIST), like `/admin/config`. The pin POSTs are
  * `nocsrf` JSON (the page posts with `fetch`); `CrossSiteWriteFilter` refuses cross-site writes
  * (`RouteProtectionMatrixSpec`).
  */
 class IdentityAdminController(cc: ControllerComponents, adminAction: AdminAction, users: UserRepository,
-                              pins: Pins, shadow: ShadowDecisions,
+                              pins: Pins,
                               traces: services.identity.IdentityTraceReads = services.identity.IdentityTraceReads.Empty)
     extends AbstractController(cc) {
   import IdentityAdminController._
@@ -34,7 +30,7 @@ class IdentityAdminController(cc: ControllerComponents, adminAction: AdminAction
       blocker.map(_.trim).filter(_.nonEmpty))))
   }
 
-  def index: Action[AnyContent] = adminAction { Ok(views.html.admin.identity(page(shadow, pins.all()))) }
+  def index: Action[AnyContent] = adminAction { Ok(views.html.admin.identity(Page(pins.all()))) }
 
   /** `{ kind: "is-film"|"same-film"|"never-film", tmdbId?, reason, listings: [listing…] }`. The
    *  author is the signed-in admin. 400 with the pin rules' refusal. */
@@ -82,17 +78,7 @@ object IdentityAdminController {
   }
 
   /** What the page renders. */
-  final case class Page(contradicted: Seq[Decision], lowConfidence: Seq[Decision], calibration: Option[Calibration], pins: Seq[Pin])
-
-  def page(shadow: ShadowDecisions, pins: Seq[Pin]): Page = {
-    val calibration = ConfidenceCalibration.calibrate(shadow.verdicts())
-    val decisions   = shadow.latest().sortBy(d => (d.confidence, d.listings.toSeq.sorted.headOption.map(_.toString)))
-    Page(
-      contradicted  = decisions.filter(_.contradictions.nonEmpty),
-      lowConfidence = decisions.filter(d => calibration.exists(_.gates(d.confidence))),
-      calibration   = calibration,
-      pins          = pins)
-  }
+  final case class Page(pins: Seq[Pin])
 
   def claimLabel(claim: PinClaim): String = claim match {
     case PinClaim.IsFilm(id)    => s"is film $id"

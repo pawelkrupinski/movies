@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Guards the split between BUILDING the container images and PUBLISHING them.
  *
- * ci builds both images from the dists its `e2e (staging)` row staged, and pushes
+ * ci builds both images from the dists its `e2e (corpus)` row staged, and pushes
  * them under the commit SHA alone — a tag nothing deploys. main.yml's `build-web`
  * / `build-worker` give those bytes the tags Flux ships only once ci is green, so
  * the early build never reaches a machine untested.
@@ -110,7 +110,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The images are BUILT inside ci, from the dists its `e2e (staging)` row staged, while ci's slowest
+   * The images are BUILT inside ci, from the dists its `e2e (corpus)` row staged, while ci's slowest
    * rows still run; main.yml's `build-web` / `build-worker` only PUBLISH them once ci is green.
    * Restaging in main.yml was ~2 min of cold `sbt stage`, and building there ~1.7 min more, both on
    * the post-ci critical path. The upload and the download move together: an upload nothing downloads
@@ -127,7 +127,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         image should include(s"name: stage-$tier")
         // The web's job `needs:` the e2e rows inside ci; the worker's, outside ci, waits for its dist.
         if (tier == "web") image should include("needs: e2e")
-        else image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (staging)"""")
+        else image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)"""")
         commands(publish) should not include "sbt "
         commands(publish) should not include "build-push-action"
         commands(publish) should include("docker buildx imagetools create")

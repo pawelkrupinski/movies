@@ -86,14 +86,10 @@ final class IdentityModelService(
   }
 
   /** The model caught up with what queued, if it has been taken up — never a take-up: what the
-   *  shadow tick and the fill read, which must not wait on one. */
+   *  fill reads, which must not wait on one. */
   def peek(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
     model.flatMap { _ => safely("catch up") { drain(); () }; model.map(snapshotOf) }
   }
-
-  /** Every store key the model's current questions read, taken on the model's thread so no
-   *  question is caught half re-asked; None until the model is taken up (`TmdbStoreSweep`). */
-  def reachable(timeout: FiniteDuration): Option[Set[String]] = onModel(timeout)(model.map(_ => reads.keySet))
 
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.

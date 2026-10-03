@@ -314,7 +314,7 @@ trait TestWiring extends WorkerWiring {
   /** One identity projection of a cut-over country, then the enrichment it kicked (venue detail pages,
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
   def projectIdentity(): services.identity.ProjectionTick = {
-    val projection = identityProjection.getOrElse(throw new IllegalStateException(s"${country.code} is not cut over"))
+    val projection = identityProjection
     // Each stage timed, as `bootCorpus`'s are: a cut-over replay is this one call, and its log said only
     // how long the whole of it took, not whether the projection or the enrichment after it spent it.
     val scope = country.code

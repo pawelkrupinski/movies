@@ -27,7 +27,7 @@ STUB
 chmod +x "$work/gh"
 
 scenario() { rm -f "$work"/artifacts-* "$work/calls"; : > "$work/jobs"; }
-run() { bash "$REPO_ROOT/scripts/ci/wait-for-run-artifact.sh" stage-worker "e2e (staging)" "$1" >/dev/null 2>&1; echo $?; }
+run() { bash "$REPO_ROOT/scripts/ci/wait-for-run-artifact.sh" stage-worker "e2e (corpus)" "$1" >/dev/null 2>&1; echo $?; }
 
 scenario; printf 'stage-worker\n' > "$work/artifacts-0"
 check "ready at once when the artifact is already listed" 0 "$(run 60)"

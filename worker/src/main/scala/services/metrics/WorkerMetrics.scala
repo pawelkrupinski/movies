@@ -112,10 +112,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val contentStaleVenuesGauge: Gauge = CinemaContentCensus.staleVenuesGauge(registry)
   val (retiredVenueRowsGauge, retiredVenueFutureGauge) = RetiredVenueCensus.gauges(registry)
   val copiedFeedPairsGauge: Gauge = services.cinemas.roster.CopiedFeedDetector.gauge(registry)
-  // The identity migration's listing-key readiness: unstamped side rows, and the shadow read's
-  // agreement between a read by listing and today's read by slot key (docs/design/identity-resolver.md §16).
-  val unstampedListingRowsGauge: Gauge = UnstampedListingCensus.gauge(registry)
-  val listingKeyShadowReadGauge: Gauge = services.identity.ListingKeyShadowRead.gauge(registry)
 
   // Counts census passes that could not read the whole corpus. The gauges above publish
   // NOTHING on such a pass (a partial count is indistinguishable from a real collapse),

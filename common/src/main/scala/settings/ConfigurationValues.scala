@@ -49,12 +49,6 @@ final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
 final case class MongoMaxPoolSize(value: Int) extends AnyVal
 /** `MONGODB_OPTIONAL` — a local dev's opt-out of the required-Mongo boot check. */
 final case class MongoOptional(value: Boolean) extends AnyVal
-/** `KINOWO_LISTING_KEY_SHADOW_READ` — the identity migration's shadow read (docs/design/identity-resolver.md
- *  §16): sampled side rows read both by slot key and by `listingKey`, and the two answers compared.
- *  A staged-migration switch, off by default; it serves nothing either way. */
-final case class ListingKeyShadowReadEnabled(value: Boolean) extends AnyVal
-/** `KINOWO_LISTING_KEY_SHADOW_SAMPLE` — how many venue slot rows one shadow-read tick compares. */
-final case class ListingKeyShadowSample(value: Int) extends AnyVal
 
 // ── Third-party credentials and ids ─────────────────────────────────────────────
 /** `TMDB_API_KEY` (a v3 key or a v4 read token). */
@@ -132,22 +126,8 @@ final case class GapFill(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
  *  calibrated identity confidence are served without ratings. Off by default. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW` — the identity resolver's shadow run (docs/design/identity-resolver.md §8):
- *  a staged-migration switch, off by default, that resolves the live corpus from the observation
- *  store after each settle and writes only the shadow collections. */
-final case class IdentityShadowEnabled(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_CUTOVER` — the identity phase-5 staged-migration switch: the countries whose
- *  films are the resolver's projection (docs/design/identity-resolver.md §8, "cutover, per country").
- *  Chosen once, at the worker's composition root. Empty by default. */
-final case class IdentityCutoverCountries(value: Set[models.Country]) extends AnyVal {
-  def covers(country: models.Country): Boolean = value.contains(country)
-}
-/** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the cut-over projection's period. */
+/** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the identity projection's period. */
 final case class IdentityProjectionInterval(value: FiniteDuration) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_LOOKUPS` — the shadow run's paced live lookup fill
- *  (docs/design/identity-resolver.md §19): asks the resolver's unobserved TMDB questions live,
- *  into the observation store only. A staged-migration switch, off by default. */
-final case class IdentityShadowLookupsEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity shadow run resolves (its own
  *  claimed window, independent of the settle). */
 final case class IdentityShadowInterval(value: scala.concurrent.duration.FiniteDuration) extends AnyVal

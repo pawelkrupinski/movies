@@ -88,25 +88,12 @@ class WorkerWiring(
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
     ttlMismatches = workerMetrics.ttlIndexMismatches)
 
-  // ── Identity shadow run ─────────────────────────────────────────────────────
-  // The identity resolver over the live corpus, on its own claimed schedule (`identityShadowSchedule`)
-  // (docs/design/identity-resolver.md §8): `KINOWO_IDENTITY_SHADOW`, a staged-migration switch, off by
-  // default. It writes only `identity_shadow_decisions` / `identity_shadow_diff` and the
-  // `kinowo_worker_identity_*` gauges. It reads TMDB and IMDb from the model's normalized store (filled
-  // by `shadowLookupFill`) and venue details from venue_pages (`venuePageIndex`).
-  /** Where the shadow run persists its runs: this country's shadow collections (in memory
-   *  without a database). */
-  lazy val shadowRuns: services.identity.ShadowRunStore = new services.identity.ShadowRunStore(
-    mongoConnection.database.fold[services.identity.ShadowRunBackend](new services.identity.InMemoryShadowRunBackend)(
-      services.identity.MongoShadowRunBackend.writer(_, workerMetrics.ttlIndexMismatches)), clock)
-
   // ── The incremental identity model ─────────────────────────────────────────
-  // The shadow's resolver kept current by the pipeline's own events (docs/design/identity-resolver.md
-  // §20) instead of a whole-corpus resolve per tick: each venue's archived scrape (`IdentityModelFeed`
-  // on the scrapers' archive), each TMDB answer the store files and each venue page the enrichment
-  // asks (`VenueDetailRead`), drained on
-  // one thread; its families persist in `identity_model_families`, so a restart takes them up and
-  // re-resolves only what moved while it was down. Under the shadow switch, like the tick it replaces.
+  // The resolver kept current by events (docs/design/identity-resolver.md §20) instead of a
+  // whole-corpus resolve per tick: each venue's accepted listing as the intake publishes it, each TMDB
+  // answer the store files and each venue page the enrichment reads, drained on one thread; its
+  // families persist in `identity_model_families`, so a restart takes them up and re-resolves only what
+  // moved while it was down. The projection (`IdentityCutoverWiring`) writes its films.
   lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
 
   // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
@@ -114,9 +101,8 @@ class WorkerWiring(
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
   // runs, in the country's database.
   lazy val identityTmdbDocuments: Option[services.identity.TmdbDocuments] =
-    Option.when(configuration.identityShadow.value || identityCutover)(
-      mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
-        new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db))))
+    Some(mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
+      new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db))))
   lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
   lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_, tmdbJsonBodies))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
@@ -125,25 +111,16 @@ class WorkerWiring(
     for { store <- identityTmdbStore; docs <- identityTmdbDocuments; normalizer <- identityTmdbNormalizer }
     yield new services.identity.TmdbChangesSweep(store, docs,
       tmdbClientOver(new services.identity.NormalizingHttpFetch(enrichmentFetch, normalizer)), country.language.toLanguageTag, clock)
-  /** Keeps the store to what the shadow model reads (`TmdbStoreSweep`), at most daily, before a
-   *  fill round. Not for a cut-over model: it reads observations, and its index names no store key. */
-  lazy val identityTmdbSweep: Option[services.identity.TmdbStoreSweep] =
-    identityTmdbDocuments.filter(_ => !identityCutover).map(docs => new services.identity.TmdbStoreSweep(docs,
-      () => identityModel.flatMap(_.reachable(WorkerWiring.IdentityModelPeek)), clock))
   /** The model's questions due to be asked again (`TmdbRefreshes`). */
   lazy val identityTmdbRefreshes: Option[services.identity.TmdbRefreshes] =
     identityTmdbStore.map(new services.identity.TmdbRefreshes(_, country.language.toLanguageTag, clock))
   lazy val identityModel: Option[services.identity.IdentityModelService] = {
     import services.identity._
-    // A cut-over country's model is its identity: the intake's accepted listings, answered from the
-    // model's store and asked live on a gap (`cutoverLookups`). Otherwise the shadow's: the archive's
-    // listings, from the store alone, waiting for its fill.
-    val sources: Option[(() => Seq[Listing], () => IdentityLookups)] =
-      if (identityCutover) Some((
-        () => identityListingIntake.fold(Seq.empty[Listing])(intake =>
-          Listing.distinct(Listing.all(intake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer))),
-        () => cutoverLookups(identityReads)))
-      else Option.when(configuration.identityShadow.value)((() => shadowListings(), () => storedLookups(identityReads)))
+    // The model is the country's identity: the intake's accepted listings, answered from the model's
+    // store and asked live on a gap (`cutoverLookups`).
+    val sources: Option[(() => Seq[Listing], () => IdentityLookups)] = Some((
+      () => Listing.distinct(Listing.all(identityListingIntake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer)),
+      () => cutoverLookups(identityReads)))
     sources.map { case (listings, lookups) =>
       val pinStore = new MongoPinStore(mongoConnection.database)
       var tracked  = Option.empty[TrackedLookups]
@@ -165,10 +142,10 @@ class WorkerWiring(
         metrics    = workerMetrics.identityModel.forCountry(country.code),
         reading    = () => tracked.fold("")(_.render),
         beforeDrain = () => venuePageIndex.settle(),
-        // A cut-over country's new listing waits for its venue page, read into venue_pages by a
-        // ReadVenuePage task, so its first resolve has the page's facts; the shadow run never waits.
-        pageWait   = if (identityCutover) new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
-                       WorkerWiring.VenuePageWaitLimit) else services.identity.PageWait.Never,
+        // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
+        // its first resolve has the page's facts.
+        pageWait   = new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
+                       WorkerWiring.VenuePageWaitLimit),
         clock      = clock)
       identityTmdbStore.foreach(_.onChanged(model.observed))
       model
@@ -231,31 +208,6 @@ class WorkerWiring(
     java.util.concurrent.Executors.newSingleThreadScheduledExecutor { (task: Runnable) =>
       val thread = new Thread(task, s"identity-model-${country.code}"); thread.setDaemon(true); thread }
 
-  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = identityModel.filter(_ => !identityCutover).map(model =>
-    new services.identity.ShadowIdentityReaper(
-      source        = services.identity.ShadowIdentityReaper.modelled(model, WorkerWiring.IdentityModelPeek),
-      pipelineFilms = () => movieCache.snapshot(),
-      normalizer    = titleNormalizer,
-      runs          = shadowRuns,
-      retention     = services.identity.ShadowRetention(WorkerWiring.ShadowRetentionWindow),
-      metrics       = workerMetrics.identityShadow.forCountry(country.code),
-      clock         = clock))
-
-  // The shadow run's OWN schedule — not the settle's: the settle is a self-heal near-no-op, and the
-  // shadow diffs against the pipeline's films as they are when it ticks (`movieCache.snapshot()`).
-  // One claimed window per `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 min), first a few minutes
-  // after boot so the hydrate has loaded the films it diffs against. Each tick is followed by a
-  // fill round when the fill is on.
-  def identityShadowInterval: settings.IdentityShadowInterval =
-    configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
-  def identityShadowTick(): Unit = shadowIdentityReaper.foreach { reaper =>
-    reaper.tickQuietly()
-    shadowLookupFill.foreach(_.start())
-  }
-  lazy val identityShadowSchedule: Option[services.tasks.ClaimedPeriodicTask] = shadowIdentityReaper.map(_ =>
-    new services.tasks.ClaimedPeriodicTask("identity-shadow", () => identityShadowTick(), identityShadowInterval.value,
-      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
-
   // Once a day, every venue through `VenueClosure`: a newly confirmed closure pages once on
   // the fallback channel and, for a data-driven roster (DE/ES/US), starts the retire-venues
   // workflow, which re-checks it live and opens the PR removing it. Without
@@ -270,29 +222,20 @@ class WorkerWiring(
   lazy val closureSchedule = new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
     WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock)
 
-  // The shadow run's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19):
-  // `KINOWO_IDENTITY_SHADOW_LOOKUPS`, a staged-migration switch, off by default, and only with the
-  // shadow run on. After each shadow tick it asks the resolver's unobserved TMDB questions through
-  // the pipeline's own lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
-  // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, and files the answers ONLY in the model's TMDB
-  // store. The default cap is 60/min: about 2% of TMDB's ~50 req/s ceiling.
-  // A cut-over country runs it too, on its own schedule (`identityLookupRefreshSchedule`): its model asks
-  // live only what the store lacks, so an answer the store holds is renewed only here — a search that
-  // found nothing before TMDB had the film (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`).
+  // The model's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19), on its own claimed
+  // schedule (`identityLookupRefreshSchedule`): the model asks live only what its store lacks, so an
+  // answer the store holds is renewed only here — a search that found nothing before TMDB had the film
+  // (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`) — and any question still open.
+  // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
+  // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
   lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
-    for {
-      normalizer <- identityTmdbNormalizer
-      if identityCutover || (shadowIdentityReaper.isDefined && configuration.identityShadowLookups.value)
-    } yield
+    for (normalizer <- identityTmdbNormalizer) yield
       new services.identity.ShadowLookupFill(
         questions   = () => identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(services.identity.AnswersChanged.Empty)(_.gaps),
         tmdb        = tmdbClientOver,
         liveFetch   = enrichmentFetch,
         normalizer  = normalizer,
-        beforeRound = () => {
-          identityTmdbChanges.filter(_.behind).foreach(_.sweep())
-          identityTmdbSweep.filter(_.behind).foreach(_.sweep())
-        },
+        beforeRound = () => identityTmdbChanges.filter(_.behind).foreach(_.sweep()),
         gapMemory   = identityTmdbDocuments.map(new services.identity.TmdbGapMemory(_, country.language.toLanguageTag, clock)),
         refreshes   = () => identityTmdbRefreshes.fold(Seq.empty[services.identity.CandidateQuery])(r =>
           identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(Seq.empty[services.identity.CandidateQuery])(s => r.due(s.questions))),
@@ -302,9 +245,11 @@ class WorkerWiring(
         executor    = shadowLookupExecutor,
         sleep       = shadowLookupSleep)
 
-  /** A cut-over country's fill rounds, at the shadow run's cadence: no shadow tick starts them there. */
+  def identityShadowInterval: settings.IdentityShadowInterval =
+    configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
+  /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: Option[services.tasks.ClaimedPeriodicTask] =
-    shadowLookupFill.filter(_ => identityCutover).map(fill =>
+    shadowLookupFill.map(fill =>
       new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => fill.start(), identityShadowInterval.value,
         configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
@@ -314,10 +259,6 @@ class WorkerWiring(
   /** One daemon thread for the fill's rounds, which sleep their pace between asks. */
   protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService =
     tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1)
-
-  /** The shadow run's listing set: every listing of the scrape archive's latest scrape per live venue. */
-  def shadowListings(): Seq[services.identity.Listing] =
-    services.identity.ArchiveListings.read(scrapeArchive, cinemaScrapers.map(_.cinema).toSet, titleNormalizer)
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
@@ -422,9 +363,6 @@ class WorkerWiring(
   // instant rating-task burst. ImdbIdMissing is the only resolution event with a
   // subscriber now (id recovery); the old TmdbResolved / ImdbIdResolved events
   // were removed once nothing consumed them.
-  // A detail landing re-resolves the film's TMDB match — the old identity path's, so not in a
-  // cut-over country, whose identity is the projection's.
-  if (!identityCutover) eventBus.subscribe(movieService.onMovieDetailsComplete)
   // A venue page read into venue_pages: its answer is the model's now, and the next settle tells the
   // model of every page whose answer that changed.
   eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page) }
@@ -523,10 +461,8 @@ class WorkerWiring(
     // are not started, and neither is staging's below.
     // A cut-over country still enriches venue detail pages (the model reads them from the slots);
     // only the TMDB re-try sweep is the old identity path's.
-    if (!identityCutover) boot.step("tmdb reaper")(unresolvedTmdbReaper.start())
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())
-    boot.step("identity shadow")(identityShadowSchedule.foreach(_.start()))
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.foreach(_.start()))
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
@@ -542,7 +478,6 @@ class WorkerWiring(
     // Incubate pending_movies through the queue: newcomers and every step run off
     // events (subscribed above); this periodic tick only backstops stalled chains.
     // The TaskWorker (above) drains the steps.
-    if (!identityCutover) boot.step("staging reaper")({ stagingReaper.start(); stagingStuckAlerter.foreach(_.start()) })
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
     boot.step("alerters")(reportAlerters())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan):
@@ -559,8 +494,6 @@ class WorkerWiring(
     boot.step("scrape census")(cinemaScrapeCensus.start())
     boot.step("content census")(cinemaContentCensus.start())
     boot.step("retired venue census")(retiredVenueCensus.start())
-    boot.step("unstamped listing census")(unstampedListingCensus.start())
-    boot.step("listing key shadow read")(listingKeyShadowRead.foreach(_.start()))
     logger.info(boot.summary)
   }
 
@@ -575,8 +508,6 @@ class WorkerWiring(
     cinemaScrapeCensus.stop()
     cinemaContentCensus.stop()
     retiredVenueCensus.stop()
-    unstampedListingCensus.stop()
-    listingKeyShadowRead.foreach(_.stop())
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.
@@ -589,7 +520,6 @@ class WorkerWiring(
     unresolvedTmdbReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
-    identityShadowSchedule.foreach(_.stop())
     identityLookupRefreshSchedule.foreach(_.stop())
     closureSchedule.stop()
     identityProposalSchedule.foreach(_.stop())
@@ -624,8 +554,8 @@ object WorkerWiring {
    *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `shadowLookupFill`). */
   val DefaultShadowLookupRate: settings.IdentityShadowLookupRate = settings.IdentityShadowLookupRate(60)
 
-  /** How long the shadow tick and the fill wait for the model's thread to catch up and hand them a
-   *  snapshot — a drain, never a take-up. */
+  /** How long the fill waits for the model's thread to catch up and hand it a snapshot — a drain,
+   *  never a take-up. */
   val IdentityModelPeek: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(2, "minutes")
 
   /** How long the identity model lets events gather before one drain takes them together: a venue
@@ -637,17 +567,11 @@ object WorkerWiring {
    *  times as full as the eight platform threads that each held a connection. */
   val IdentityPrefetchThreads = 64
 
-  /** How long a shadow run stays readable: twice the longest any rating or freshness kind waits before
-   *  asking again, so a run outlives every answer it was decided on. */
-  val ShadowRetentionWindow: scala.concurrent.duration.FiniteDuration =
-    (services.cadence.RatingCadence.MaxInterval +:
-      services.freshness.FreshnessKind.all.flatMap(services.freshness.Freshness.ttlFor)).max * 2
-
-  /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
-   *  most seconds a tick) and the fill's per-round allowance were measured against. */
+  /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
+   *  against. */
   val DefaultIdentityShadowInterval: settings.IdentityShadowInterval =
     settings.IdentityShadowInterval(scala.concurrent.duration.Duration(30, "minutes"))
-  /** Long enough after boot for the synchronous hydrate to have loaded the films the diff reads. */
+  /** Clear of the boot's scrape burst and the model's take-up. */
   val DefaultIdentityShadowInitialDelay: settings.IdentityShadowInitialDelay =
     settings.IdentityShadowInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
 

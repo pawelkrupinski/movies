@@ -8,7 +8,6 @@ import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import tools.{Alongside, ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
@@ -127,7 +126,7 @@ abstract class CountryConvergenceBehaviour(
    *  requests the tree never held. Those gaps cost ratings, not identity, and no recorder records the
    *  model's enrichment yet — so on this leg they are REPORTED at the end of the run, never fatal:
    *  failing every claim on them would leave the build measuring nothing about the model. */
-  private lazy val measuresNewModel: Boolean = configuration.identityCutover.covers(country)
+  private lazy val measuresNewModel: Boolean = true
 
   /** Fail the leg NOW if the phase just run met a gap in the recording, rather than letting
    *  it spend the rest of its budget replaying over refused fetches. */
@@ -662,8 +661,7 @@ abstract class CountryConvergenceBehaviour(
    *  fails `readyToProject` and is silently skipped by the projector — which is
    *  exactly how 32 of 80 films, 44 cinemas and 360 screenings went missing from
    *  the read model while the corpus itself was complete. */
-  private def bootSettled(w: ArchiveReplayWiring): Unit =
-    if (w.identityCutover) {
+  private def bootSettled(w: ArchiveReplayWiring): Unit = {
       step("bootCutover")(w.bootCutover())
       // Production projects on an interval, and the first projection's films are enriched after it
       // (an IMDb year can complete a yearless film's key), which the next one takes in — as the
@@ -675,7 +673,7 @@ abstract class CountryConvergenceBehaviour(
         (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
       step("project")(w.readModelProjector.reconcile())
       step("reloadReadModel")(w.webReadModel.reload())
-    } else bootPipeline(w)
+    }
 
   /** A CUT-OVER leg (the leg run with `KINOWO_IDENTITY_CUTOVER` naming this country — the
    *  `Identity model convergence` build) lands every scrape through the production runner into the
@@ -696,8 +694,7 @@ abstract class CountryConvergenceBehaviour(
   /** Projections after the boot's first that a cut-over boot may take to reach rest. */
   private val CutoverSettleProjections = 4
 
-  private def settleOnce(w: ArchiveReplayWiring): Unit =
-    if (w.identityCutover) {
+  private def settleOnce(w: ArchiveReplayWiring): Unit = {
       // A projection that would drop more than ProjectionGuard's share of the films is REFUSED, and
       // accepted once it has been refused `Grace` projections running — which production's
       // projection interval reaches on its own. A day that withdraws films is exactly that shrink, so
@@ -705,31 +702,7 @@ abstract class CountryConvergenceBehaviour(
       Iterator.continually(w.projectIdentity()).take(services.identity.ProjectionGuard.Grace + 1).find(_.refused.isEmpty)
       ()
     }
-    else { w.movieService.settle(); w.movieCache.canonicalizeBySanitize(); () }
 
-  private def bootPipeline(w: ArchiveReplayWiring): Unit = {
-    step("bootCorpus")(w.bootCorpus())
-    // ONE settle, deliberately. Settling twice here would let a corpus that needs
-    // two passes to stop moving look identical to one that never moved, because
-    // the assertion below only ever sees the state after the last of them.
-    //
-    // The settle is the PAIR, though — `settle()` then `canonicalizeBySanitize()`,
-    // exactly what the periodic settle runs in production and exactly what the
-    // fixpoint assertion below re-applies. Booting with only the first half left the
-    // corpus in a state production never rests in, so the assertion's canonicalize
-    // was the FIRST one the corpus had ever seen and legitimately collapsed three
-    // stranded same-film duplicates ("Ghost in shell" / "Ghost in the Shell -
-    // Ponownie Na Wielkim Ekranie" / "Uwierz w ducha"). That read as the pipeline
-    // failing to converge when it was the boot never finishing a settle — and it was
-    // unreachable for as long as the TMDB key was gated wrong and nothing enriched,
-    // because the duplicates are only discoverable once a shared `tmdbId` exists.
-    step("settle")(w.movieService.settle())
-    step("canonicalize")(w.movieCache.canonicalizeBySanitize())
-    step("drainStaging")(w.drainStaging())
-    step("concludeEnrichment")(w.concludeEnrichment())
-    step("project")(w.readModelProjector.reconcile())
-    step("reloadReadModel")(w.webReadModel.reload())
-  }
 
   /**
    * Announce a phase to STDOUT as it starts and finishes, with its duration.
@@ -875,37 +848,10 @@ abstract class CountryConvergenceBehaviour(
    *  shuffled order, then drain and settle. Returns the set of `(cinema, title)`
    *  diversions the scrape phase pushed into staging — a KNOWN film landing back
    *  in `pending_movies` is the churn we care about. */
-  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] =
-    if (w.identityCutover) { rescrapeCutover(w, rnd, failures); Set.empty }
-    else pipelineTick(w, rnd, failures)
-
-  private def pipelineTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
-    val before = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
-    val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
-
-    // Shuffled per tick so the fixpoint is asserted independent of the order
-    // cinemas re-report, not merely in catalogue order. `rnd` is caller-seeded,
-    // so an order-dependent regression fails deterministically, never as a flake.
-    // A venue whose re-scrape THROWS is recorded, never skipped silently: it lands nothing,
-    // so the tick would read as perfectly churn-free over a pipeline that no longer takes a
-    // re-scrape at all — the fixpoint held by construction. Nothing in a replayed corpus
-    // can legitimately fail to land.
-    rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
-      try {
-        val touched = w.movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
-        ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case e: Exception => failures += s"${scraper.cinema.displayName}: $e" }
-    }
-
-    val after = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
-    ready.foreach(w.eventBus.publish)
-    w.drainServices()
-    w.drainStaging()
-    w.movieService.settle()
-    after -- before
+  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
+    rescrapeCutover(w, rnd, failures); Set.empty
   }
+
 
   s"the ${country.displayName} pipeline" should
     "converge on the first settle and stay churn-free under identical re-scrapes" in {
@@ -1182,41 +1128,10 @@ abstract class CountryConvergenceBehaviour(
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
     // corpus has nothing that may legitimately fail to land, so a venue that throws fails the pass.
-    if (w.identityCutover) {
+    {
       val failures = mutable.ListBuffer.empty[String]
       PhaseTimer.timed(scope, "replayCutover")(rescrapeCutover(w, rnd, failures))
       if (failures.nonEmpty) fail(s"$scope: ${failures.size} venue(s) failed to land: ${failures.take(5).mkString("; ")}")
-    } else {
-      val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
-      // TIMED, like every other phase in this suite — and this was the ONLY one that said
-      // nothing at all. A US leg spent 75 minutes in here and was killed with the log
-      // holding three `MongoConnection connected` lines and then silence, so the failure
-      // could not distinguish a wedged replay from a slow one, or name the phase that was
-      // spending the budget. `bootCorpus` was given exactly this treatment for exactly
-      // this reason; the replays are the same shape and cost more.
-      PhaseTimer.timed(scope, "replayScrape") {
-        val scrapers = rnd.shuffle(w.cinemaScrapers.toList)
-        val started  = System.nanoTime()
-        var done     = 0
-        scrapers.foreach { scraper =>
-          Try(scraper.fetch()).toOption.foreach { films =>
-            val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
-            ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
-          }
-          done += 1
-          if (PhaseTimer.shouldReport(done, scrapers.size))
-            PhaseTimer.progress(scope, "scraped", done, scrapers.size, started)
-        }
-      }
-      // Publish in a shuffled order too: production publishes inline as each cinema
-      // lands, so the enrichment stage sees an arbitrary cross-film order.
-      PhaseTimer.timed(scope, "replayPublish")(rnd.shuffle(ready.toList).foreach(w.eventBus.publish))
-      PhaseTimer.timed(scope, "replayDrainServices")(w.drainServices())
-      PhaseTimer.timed(scope, "replayDrainStaging")(w.drainStaging())
-      PhaseTimer.timed(scope, "replaySettle")(w.movieService.settle())
-      PhaseTimer.timed(scope, "replayDrainStagingSecondPass")(w.drainStaging())
-      PhaseTimer.timed(scope, "replaySettleSecondPass")(w.movieService.settle())
-      PhaseTimer.timed(scope, "replayConcludeEnrichment")(w.concludeEnrichment())
     }
     PhaseTimer.timed(scope, "replayProject")(w.readModelProjector.reconcile())
     // Reload AND materialise inside the comparison's lock: this is the step that
@@ -1337,7 +1252,7 @@ abstract class CountryConvergenceBehaviour(
       // decisions for the same repertoire (its shadow run, recorded with the corpus); the
       // pipeline's band below is then how the new model compares with what production serves,
       // reported, not asserted — that is the cut-over gate's question, not this harness's.
-      val againstShadow = baseline.shadow.filter(_ => w.identityCutover)
+      val againstShadow = baseline.shadow
       againstShadow.foreach { shadow =>
         val whole = CorpusCoverage.of(corpus)
         info(s"${country.displayName}: new model against production's new model (shadow run ${shadow.runAt}: " +
@@ -1665,8 +1580,7 @@ abstract class CountryConvergenceBehaviour(
       // that leaves can settle what it had kept open. Run 36777365475: 'DKF Zamek: Lawa' (Wajda,
       // 1989) ending let a bare 'Lawa' join 'Konwicki. Lawa' (2023), its own listing unchanged.
       val familyOf: Map[services.movies.ListingKey, Int] =
-        if (!w.identityCutover) Map.empty
-        else w.identityModel.flatMap(_.current(scala.concurrent.duration.Duration(5, "minutes")))
+        w.identityModel.flatMap(_.current(scala.concurrent.duration.Duration(5, "minutes")))
           .fold(fail("the identity model could not be read for the next day's families"))(_.resolution.familyOf)
       def familiesOf(r: StoredMovieRecord): Set[Int] =
         r.record.data.toSeq.flatMap { case (source, slot) => services.movies.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
@@ -1681,7 +1595,7 @@ abstract class CountryConvergenceBehaviour(
            s"${withdrawn.size} withdrawn (${withdrawn.map { case (c, cm, _) => s"'${cm.movie.title}' at ${c.displayName}" }.mkString(", ")}), " +
            s"${throwing.map(_.displayName).mkString} throws, ${blank.map(_.displayName).mkString} comes back empty, " +
            s"${unchanged.size} film(s) untouched" +
-           (if (w.identityCutover) s" (${ownUnchanged.size - unchanged.size} more share a family with a changed listing)" else ""))
+           s" (${ownUnchanged.size - unchanged.size} more share a family with a changed listing)")
       withClue("the next day moves nothing, so it would prove nothing — the corpus has no second day or no venue to fail: ") {
         arrivals should not be empty
         withdrawn should not be empty
@@ -1738,26 +1652,14 @@ abstract class CountryConvergenceBehaviour(
         // A venue that goes down is meant to: its failure is the case under test, not a gap. Both paths
         // land venues side by side, as production's scrape pool does: a cut-over intake into each venue's
         // own state, the pipeline into shared rows under the cache's per-title lock.
-        step("  landing")((if (w.identityCutover) w.landCutover(scrapers) else w.landPipeline(scrapers))(_ => ()))
-        // A cut-over country decides the day's films by projecting what its intake now holds;
-        // the pipeline drains staging around its settle.
-        if (w.identityCutover) settleOnce(w)
-        else {
-          w.enrichDetailsSync()
-          w.drainServices()
-          w.drainStaging()
-          settleOnce(w)
-          w.drainStaging()
-        }
+        step("  landing")(w.landCutover(scrapers)(_ => ()))
+        // The day's films are decided by projecting what the intake now holds.
+        settleOnce(w)
         // A DAY has passed, so the daily cleanup has run: a film whose last venue dropped it
         // holds no slot, and it is this sweep — not the tick — that deletes the row and so
         // retires its card. Without it the withdrawn films stay served as empty cards. Before
         // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
-        // The pipeline's TMDB reaper sweep: a cut-over worker never starts that reaper (its identity is
-        // the projection's), and a sweep here matched films the model had left unmatched — writing a
-        // tmdbId onto a film whose listings had not changed (run 36720826476).
-        if (!w.identityCutover) w.concludeEnrichment()
         step("  read model")(w.readModelProjector.reconcile())
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)

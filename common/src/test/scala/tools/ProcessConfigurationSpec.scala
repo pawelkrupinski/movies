@@ -31,13 +31,7 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_COUNTRIES" -> "xx").workerCountries shouldBe WorkerCountries(Seq(Country.default))
   }
 
-  it should "resolve the identity cutover countries, empty unless named" in {
-    resolvedFrom().identityCutover shouldBe IdentityCutoverCountries(Set.empty)
-    resolvedFrom().identityCutover.covers(Country.Spain) shouldBe false
-    val resolved = resolvedFrom("KINOWO_IDENTITY_CUTOVER" -> "es, xx ,de")
-    resolved.identityCutover shouldBe IdentityCutoverCountries(Set(Country.Spain, Country.Germany))
-    resolved.identityCutover.covers(Country.Spain) shouldBe true
-    resolved.identityCutover.covers(Country.Poland) shouldBe false
+  it should "resolve the identity projection's period" in {
     resolvedFrom("KINOWO_IDENTITY_PROJECTION_SECONDS" -> "90").identityProjectionInterval(IdentityProjectionInterval(5.minutes)) shouldBe
       IdentityProjectionInterval(90.seconds)
   }

@@ -35,7 +35,7 @@ final class IdentityListingIntake(
   /** Every venue of `live` with the listing it is taken to publish, venues publishing nothing left out.
    *
    *  Both archives are read a page at a time, each page reduced to the live venues' listings before
-   *  the next (as [[ArchiveListings]] does for the shadow): the rows of venues no longer live, and the
+   *  the next: the rows of venues no longer live, and the
    *  archive's copy of a venue that already has an accepted listing, are never held. An archive that
    *  could not be read whole counts as empty — a partial read is not a smaller archive. */
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {

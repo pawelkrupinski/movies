@@ -104,16 +104,11 @@ trait ResolutionWiring { self: WorkerWiring =>
   // the per-deploy flap. Now the load is a pure read and this reaper re-asserts the
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleInterval: SettleInterval = configuration.settleInterval(SettleInterval(SettleReaper.DefaultInterval))
-  // A cut-over country has no settle: the tick is its identity projection, on the projection's own
-  // period (`IdentityCutoverWiring`). The identity shadow run has its own schedule
-  // (`WorkerWiring.identityShadowSchedule`).
-  def settleTick(): Unit = identityProjection match {
-    case Some(projection) => projection.tickQuietly()
-    case None             => movieService.settle()
-  }
+  // The tick is the identity projection, on the projection's own period (`IdentityCutoverWiring`).
+  def settleTick(): Unit = identityProjection.tickQuietly()
   lazy val settleReaper = new SettleReaper(() => settleTick(),
-    interval = if (identityCutover) SettleInterval(identityProjectionInterval.value) else settleInterval,
-    initialDelay = SettleReaper.InitialDelay(if (identityCutover) identityProjectionInterval.value else SettleReaper.DefaultInitialDelay),
+    interval = SettleInterval(identityProjectionInterval.value),
+    initialDelay = SettleReaper.InitialDelay(identityProjectionInterval.value),
     runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —

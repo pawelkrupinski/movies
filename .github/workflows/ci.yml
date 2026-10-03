@@ -37,8 +37,8 @@ on:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 1 test + 1 integration + 3 e2e + 1 mobile + 9 page-tests.
-# Staging and eslint ride the `e2e (staging)` row (the lightest), and iOS +
+# Current split: 1 test + 1 integration + 2 e2e + 1 mobile + 9 page-tests.
+# Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
 # serial whole-corpus determinism specs); it's now (a) fanned out across parallel
@@ -518,31 +518,18 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across three
-    # parallel shards. On one runner the module was the ~13-min pipeline long
-    # pole: each heavy spec boots the always-on staging pipeline (~110s) one or
-    # more times, and they ran serially. The shards (see the
-    # e2eScrape/e2eStaging/e2eRest aliases in build.sbt):
+    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across two
+    # parallel shards (see the e2eCorpus/e2eRest aliases in build.sbt):
     #
-    #   scrape   — ScrapeOrderDeterminismSpec  (run by name)
-    #   staging  — StagingOrderDeterminismSpec (run by name)
+    #   corpus   — FilmScheduleEndToEndSpec (run by name), which boots the whole fixture
+    #              corpus through the identity projection; this row also stages the dists
+    #              Main's image build reads;
     #   rest     — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
-    #              (tag-EXCLUSION of the two @CorpusReplay specs), so a
-    #              newly-added spec auto-rides this shard and can't be silently
-    #              dropped. See the `@CorpusReplay` tag annotation in
-    #              CorpusReplay.java.
+    #              (tag-EXCLUSION of the @CorpusReplay spec), so a newly-added spec
+    #              auto-rides this shard and can't be silently dropped. See the
+    #              `@CorpusReplay` tag annotation in CorpusReplay.java.
     #
-    # ReScrapeIdempotencySpec HAD a fourth shard of its own. It gave that slot up
-    # to an eighth WebKit page-test shard, which was the build's long pole while
-    # this shard sat ~2 min under it. Folding it back into `rest` costs `rest`
-    # only the spec's own runtime — it joins the same ScalaTest run and the same
-    # already-paid sbt load — and ScalaTest keeps going across suites, so a
-    # failure in one still reports the other. Untagging it is what moves it (the
-    # tag means "has its own shard").
-    #
-    # Same coverage as the old single job, a fraction of the wall-clock. Each
-    # shard pays its own compile, but they run in parallel. Uses
-    # FixtureTestWiring (no Mongo); reports go to the root unit/ dir
+    # Uses FixtureTestWiring (no Mongo); reports go to the root unit/ dir
     # (unitReportSettings) → a per-shard `e2e tests (<shard>)` check.
     e2e:
         name: e2e (${{ matrix.shard }})
@@ -550,8 +537,7 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { shard: scrape,   cmd: e2eScrape }
-                    - { shard: staging,  cmd: e2eStaging }
+                    - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }
         runs-on: ubuntu-latest
         permissions:
@@ -637,7 +623,7 @@ jobs:
             # on the post-CI critical path. On a PR run (branch-ci.yml never
             # reaches main.yml) this staging is the only place a dist that stopped
             # linking, or a reappearing Scaladoc tree, is caught at all.
-            - if: matrix.shard == 'staging'
+            - if: matrix.shard == 'corpus'
               run: sbt "web/stage" "worker/stage"
 
             # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
@@ -647,7 +633,7 @@ jobs:
             # reads these docs, so their reappearance is a regression: fail
             # loudly rather than let an unread artefact break deploys again.
             - name: Deploy artefacts carry no generated Scaladoc
-              if: matrix.shard == 'staging'
+              if: matrix.shard == 'corpus'
               run: |
                   found=$(find web/target/universal/stage worker/target/universal/stage \
                               -type d -name doc -print -quit)
@@ -661,7 +647,7 @@ jobs:
               # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
               # jars, already zipped, so compressing again only costs upload time — and
               # kept one day, since its one consumer runs minutes after this job.
-              if: matrix.shard == 'staging' && github.event_name != 'pull_request'
+              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
               uses: actions/upload-artifact@v6
               with:
                   name: stage-web
@@ -675,7 +661,7 @@ jobs:
               # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
               # jars, already zipped, so compressing again only costs upload time — and
               # kept one day, since its one consumer runs minutes after this job.
-              if: matrix.shard == 'staging' && github.event_name != 'pull_request'
+              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
               uses: actions/upload-artifact@v6
               with:
                   name: stage-worker
@@ -684,7 +670,7 @@ jobs:
                   retention-days: 1
                   if-no-files-found: error
 
-            # ESLint over the production JS in `public/js/`, on the staging row for
+            # ESLint over the production JS in `public/js/`, on the corpus row for
             # the same reason as the staging above (it was a standalone `lint` job
             # once; folding it into a shard keeps CI inside the runner budget). Runs
             # LAST: the e2e check is published above with `always()`, so a lint
@@ -693,16 +679,16 @@ jobs:
             # inline `<script>` blocks) are listed in `eslint.config.js` so
             # `no-undef` stays meaningful.
             - uses: actions/setup-node@v5
-              if: matrix.shard == 'staging'
+              if: matrix.shard == 'corpus'
               with:
                   node-version: '22'
                   cache: 'npm'
-            - if: matrix.shard == 'staging'
+            - if: matrix.shard == 'corpus'
               run: npm ci
-            - if: matrix.shard == 'staging'
+            - if: matrix.shard == 'corpus'
               run: npm run lint
 
-    # THE WEB IMAGE, BUILT WHILE THE REST OF ci RUNS. It needs only the dist the e2e staging row
+    # THE WEB IMAGE, BUILT WHILE THE REST OF ci RUNS. It needs only the dist the e2e corpus row
     # staged, which is ready minutes before the slowest ci row finishes, so it rides runners the e2e rows
     # have just given back (no slot at t=0 — CiRunnerBudgetSpec counts only jobs without `needs`).
     # SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys a SHA tag; main.yml's
@@ -719,7 +705,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            - name: Fetch the web distribution the e2e staging row staged
+            - name: Fetch the web distribution the e2e corpus row staged
               # Straight into `stage/`, the only path the Dockerfile's whitelisted context
               # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
               # `chmod +x bin/*` restores the one that matters.

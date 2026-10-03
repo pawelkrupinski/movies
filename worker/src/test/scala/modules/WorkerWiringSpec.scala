@@ -7,7 +7,7 @@ import models.Country
 import services.MongoConnection
 import services.events.{ImdbIdMissing, StagingFilmEnriched}
 import services.staging.FoldOnStagingEnriched
-import services.tasks.{ScrapeReaper, TaskType, UnresolvedTmdbReaper}
+import services.tasks.{ScrapeReaper, TaskType}
 import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
 import tools.{ExecutionBudget, GetOnlyHttpFetch, HttpFetch, SharedExecutionBudget, TestWiring}
 
@@ -29,17 +29,19 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
   class SpyWiring extends TestWiring {
     @volatile var scrapeStarted = false
-    @volatile var tmdbRetryStarted = false
+    @volatile var projectionStarted = false
 
     override lazy val scrapeReaper: ScrapeReaper =
       new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore) {
         override def start(): Unit = scrapeStarted = true
       }
 
-    override lazy val unresolvedTmdbReaper: UnresolvedTmdbReaper =
-      new UnresolvedTmdbReaper(movieCache, movieService.retryResolve) {
-        override def start(): Unit = tmdbRetryStarted = true
+    override lazy val settleReaper: services.tasks.SettleReaper = {
+      val runs = scheduledRunStore
+      new services.tasks.SettleReaper(() => (), runStore = runs) {
+        override def start(): Unit = projectionStarted = true
       }
+    }
   }
 
   // A Filmweb-disabled country: same test seams as SpyWiring, but the per-country
@@ -100,11 +102,11 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     } finally { first.stop(); second.stop() }
   }
 
-  "WorkerWiring.start()" should "boot both the scrape and the enrichment cascade" in {
+  "WorkerWiring.start()" should "boot both the scrape and the identity projection" in {
     val wiring = new SpyWiring
     wiring.start()
     wiring.scrapeStarted shouldBe true
-    wiring.tmdbRetryStarted shouldBe true
+    wiring.projectionStarted shouldBe true
     wiring.stop()
   }
 
@@ -578,27 +580,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       theSameInstanceAs(services.identity.RatingGate.off)
   }
 
-  // The identity shadow run is a staged-migration switch too: nothing resolves in shadow — and no
-  // shadow collection is written — until the composition root is told so.
-  "the identity shadow run" should "be wired only when KINOWO_IDENTITY_SHADOW switches it on" in {
-    val budget = new SharedExecutionBudget(4)
-    def probe(env: tools.Env) = new Probe(Country.Spain, budget, env)
-    probe(tools.Env.of()).shadowIdentityReaper shouldBe None
-    // Its TMDB store and the venues' enriched slots are there with or without a database.
-    probe(tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")).shadowIdentityReaper shouldBe defined
-  }
-
-  // A cut-over model reads TMDB from its normalized store first (`StoredFirstLookups`): a question the
+  // The model reads TMDB from its normalized store first (`StoredFirstLookups`): a question the
   // store has no answer to is asked live once, filed into the store as it arrives, and read from there
   // after — never asked again per take-up.
-  "a cut-over model's lookups" should "ask TMDB live only for what the model's store lacks, and file the answer there" in {
+  "the identity model's lookups" should "ask TMDB live only for what the model's store lacks, and file the answer there" in {
     val requests = new java.util.concurrent.atomic.AtomicInteger()
     val counting: HttpFetch = new HttpFetch {
       override def get(url: String): String = { requests.incrementAndGet(); """{"results":[]}""" }
       override def post(url: String, body: String, contentType: String): String = get(url)
     }
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
-      tools.Env.of("TMDB_API_KEY" -> "test-key", "KINOWO_IDENTITY_CUTOVER" -> Country.Spain.code)) {
+      tools.Env.of("TMDB_API_KEY" -> "test-key")) {
       override lazy val enrichmentFetch: HttpFetch = counting
     }
     val question = services.identity.CandidateQuery.Title("dune")
@@ -610,24 +602,12 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  "the shadow run's live lookup fill" should "be wired only when KINOWO_IDENTITY_SHADOW_LOOKUPS and the shadow run are both on" in {
-    val budget = new SharedExecutionBudget(4)
-    def probe(pairs: (String, String)*) = new Probe(Country.Spain, budget, tools.Env.of(pairs*))
-    probe("KINOWO_IDENTITY_SHADOW" -> "true").shadowLookupFill shouldBe None
-    probe("KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true").shadowLookupFill shouldBe None
-    val on = probe("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")
-    on.shadowLookupFill shouldBe defined
-    on.shadowLookupFill.get.effectiveRate shouldBe WorkerWiring.DefaultShadowLookupRate
-    probe("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12")
-      .shadowLookupFill.get.effectiveRate shouldBe settings.IdentityShadowLookupRate(12)
-  }
-
-  // A cut-over model asks live only what its store lacks: an answer it holds — a search that found
-  // nothing before TMDB had the film, a record TMDB has since changed — is renewed only by the fill's
-  // refreshes and change sweep, which the shadow tick no longer starts once a country is cut over.
-  it should "be wired for a cut-over country, on a claimed schedule of its own that starts a round" in {
+  // The model asks live only what its store lacks: an answer it holds — a search that found nothing
+  // before TMDB had the film, a record TMDB has since changed — is renewed only by the fill's refreshes
+  // and change sweep, on a schedule of their own.
+  "the identity model's live lookup fill" should "be wired on a claimed schedule of its own that starts a round, at its configured rate" in {
     val rounds = new java.util.concurrent.atomic.AtomicInteger()
-    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_CUTOVER" -> Country.Spain.code)) {
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
       override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
         def execute(command: Runnable): Unit = { rounds.incrementAndGet(); () }
         def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
@@ -635,40 +615,13 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
       }
     }
-    wiring.shadowLookupFill shouldBe defined
+    wiring.shadowLookupFill.map(_.effectiveRate) shouldBe Some(WorkerWiring.DefaultShadowLookupRate)
     val schedule = wiring.identityLookupRefreshSchedule.getOrElse(fail("the refresh is not scheduled"))
     schedule.tickIfClaimed() shouldBe true
     rounds.get shouldBe 1
     wiring.stop()
-  }
-
-  it should "start a round after each shadow tick" in {
-    val rounds = new java.util.concurrent.atomic.AtomicInteger()
-    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
-      tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")) {
-      override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
-        def execute(command: Runnable): Unit = { rounds.incrementAndGet(); command.run() }
-        def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
-        def isShutdown: Boolean = false; def isTerminated: Boolean = false
-        def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
-      }
-    }
-    wiring.identityShadowTick()
-    rounds.get shouldBe 1
-  }
-
-  "the identity shadow run" should "tick on its own claimed schedule, not the settle's, and persist its run" in {
-    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true"))
-    wiring.settleTick()
-    wiring.shadowRuns.latestRun() shouldBe None
-    // Before its model is taken up the tick has nothing to diff; after, it persists the model's run.
-    wiring.identityShadowSchedule.map(_.tickIfClaimed()) shouldBe Some(true)
-    wiring.shadowRuns.latestRun() shouldBe None
-    wiring.identityModel.foreach(_.takeUp())
-    wiring.identityShadowSchedule.map(_.tickIfClaimed()) shouldBe Some(true)
-    wiring.shadowRuns.latestRun() shouldBe defined
-    // Off, there is no schedule at all.
-    new Probe(Country.Spain, new SharedExecutionBudget(4)).identityShadowSchedule shouldBe None
+    new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12"))
+      .shadowLookupFill.map(_.effectiveRate) shouldBe Some(settings.IdentityShadowLookupRate(12))
   }
 
   "the rating gate, switched on," should "withhold a title-only match no venue's facts back — scored from the row alone" in {

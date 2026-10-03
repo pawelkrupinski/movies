@@ -179,11 +179,6 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
 
   def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
 
-  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) =
-    (rows.listingKeys((_, row) => row.listingKey.map(ListingKey.serialised)), true)
-
-  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
-    (rowListingKeysChecked()._1.collect { case (id, Some(k)) if k == listingKey => id }.toSet, true)
 
   def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
 
@@ -492,11 +487,6 @@ class MongoScreeningsRepository(
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
     coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
 
-  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) =
-    coll.fold((Map.empty[String, Option[String]], true))(SlotKeyed.rowListingKeysChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
-
-  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsForListingKeyChecked(_, listingKey, "ScreeningsRepository", logger.warn(_)))
 
   override def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.existingRowIdsChecked(_, ids, "ScreeningsRepository", logger.warn(_)))

@@ -53,7 +53,7 @@ showings:
 
 === Aberald Giza "Wentyl" ===
 displayTitle:      Aberald Giza "Wentyl"
-cinemaTitles:      Aberald Giza "Wentyl"
+cinemaTitles:      Abelard Giza "Wentyl" | Aberald Giza "Wentyl"
 runtimeMinutes:    105
 releaseYear:       —
 countries:         —
@@ -88,11 +88,15 @@ cinemaScrapes:
   Helios Kielce / Aberald Giza "Wentyl" / —
   Helios Konin / Aberald Giza "Wentyl" / —
   Helios Koszalin / Aberald Giza "Wentyl" / —
+  Helios Krosno / Abelard Giza "Wentyl" / —
+  Helios Kędzierzyn-Koźle / Abelard Giza "Wentyl" / —
   Helios Legnica / Aberald Giza "Wentyl" / —
+  Helios Lubin / Abelard Giza "Wentyl" / —
   Helios Magnolia Park / Aberald Giza "Wentyl" / —
   Helios Metropolia / Aberald Giza "Wentyl" / —
   Helios Nowy Sącz / Aberald Giza "Wentyl" / —
   Helios Olsztyn / Aberald Giza "Wentyl" / —
+  Helios Ostrów Wlkp. / Abelard Giza "Wentyl" / —
   Helios Outlet Park / Aberald Giza "Wentyl" / —
   Helios Posnania / Aberald Giza "Wentyl" / —
   Helios Przemyśl / Aberald Giza "Wentyl" / —
@@ -102,7 +106,10 @@ cinemaScrapes:
   Helios Rzeszów / Aberald Giza "Wentyl" / —
   Helios Solaris / Aberald Giza "Wentyl" / —
   Helios Sosnowiec / Aberald Giza "Wentyl" / —
+  Helios Starachowice / Abelard Giza "Wentyl" / —
+  Helios Tczew / Abelard Giza "Wentyl" / —
   Helios Łódź / Aberald Giza "Wentyl" / —
+  Helios Żory / Abelard Giza "Wentyl" / —
 showings:
   2026-06-27  Helios Posnania               18:00 2D/ORG
 
@@ -164,10 +171,10 @@ showings:
 
 === André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 ===
 displayTitle:      André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
-cinemaTitles:      André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu z Maastricht 2026 | André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
-runtimeMinutes:    —
+cinemaTitles:      ANDRE RIEU - NIECH ŻYJE MAASTRICHT! | André Rieu. Niech żyje Maastricht! | André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu z Maastricht 2026 | André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
+runtimeMinutes:    185
 releaseYear:       2026
-countries:         —
+countries:         Niemcy
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ar2026-vm-poster-b1-pl.jpg
 synopsis.length:   —
 cast:              —
@@ -185,6 +192,8 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157352
 cinemaScrapes:
+  Cinema1 / ANDRE RIEU - NIECH ŻYJE MAASTRICHT! / 2026
+  Kino Bajka / André Rieu. Niech żyje Maastricht! / —
   Kino Rialto / André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 / 2026
   Świt / André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu z Maastricht 2026 / —
 showings:
@@ -575,23 +584,23 @@ showings:
 
 === Bts world tour 'arirang' in busan: live ===
 displayTitle:      Bts world tour 'arirang' in busan: live
-cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE
+cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE | BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) | BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
 runtimeMinutes:    195
 releaseYear:       2026
 countries:         Korea Południowa
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8240O2R.jpg
-synopsis.length:   1358
-cast:              BTS
+posterUrl:         https://img.helios.pl/pliki/film/bts-world-tour-arirang-in-busan-live-viewing/bts-world-tour-arirang-in-busan-live-viewing-plakat-881.jpg
+synopsis.length:   —
+cast:              RM, 진, 슈가, 제이홉, 지민
 director:          Jungjae Ha
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1701849
+imdbId:            tt42867738
+originalTitle:     BTS World Tour ‘Arirang’ in Busan: Live Viewing
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/bts_world_tour_arirang_in_busan_live_viewing
 filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live/8240o2r
@@ -613,13 +622,35 @@ cinemaScrapes:
   Cinema City Rybnik / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Cinema City Wroclavia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Cinema City Zielona Góra / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Helios Alfa / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Bielsko-Biała / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Blue City / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Bydgoszcz / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Dąbrowa Górnicza / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Forum / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Jelenia Góra / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Kalisz / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Katowice / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Kielce / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Koszalin / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Magnolia Park / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Olsztyn / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Outlet Park / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Posnania / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Płock / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Radom / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Riviera / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Rzeszów / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Solaris / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Sosnowiec / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
+  Helios Łódź / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
 showings:
   2026-06-13  Cinema City Kinepolis         11:45 Sala 6 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      11:45 Sala 3 2D/NAP
 
 === Bts world tour 'arirang' in busan: live viewing (encore) ===
 displayTitle:      Bts world tour 'arirang' in busan: live viewing (encore)
-cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) | BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
+cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE | BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) | BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
 runtimeMinutes:    195
 releaseYear:       2026
 countries:         Korea Południowa
@@ -642,21 +673,21 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live-viewing-encore/8240o2r1
 cinemaScrapes:
   Cinema City / — / —
-  Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bydgoszcz / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Czerwona Droga / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Felicity / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Gliwice / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Kinepolis / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Manufaktura / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Mokotów / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Poznań Plaza / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Punkt 44 / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Rybnik / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Wroclavia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Zielona Góra / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
+  Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bydgoszcz / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Czerwona Droga / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Felicity / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Gliwice / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Kinepolis / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Manufaktura / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Mokotów / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Poznań Plaza / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Punkt 44 / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Rybnik / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Wroclavia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Zielona Góra / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Helios Alfa / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
   Helios Bielsko-Biała / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
   Helios Blue City / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
@@ -685,7 +716,7 @@ showings:
 
 === BTS World Tour ‘Arirang’ in Busan: Live Viewing ===
 displayTitle:      BTS World Tour ‘Arirang’ in Busan: Live Viewing
-cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) | BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
+cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE | BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) | BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
 runtimeMinutes:    195
 releaseYear:       2026
 countries:         Korea Południowa
@@ -707,21 +738,21 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/bts-world-tour-arirang-in-busan-live-viewing-w-helios-na-scenie-2613
 cinemaScrapes:
   Cinema City / — / —
-  Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Bydgoszcz / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Czerwona Droga / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Felicity / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Gliwice / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Kinepolis / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Manufaktura / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Mokotów / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Poznań Plaza / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Punkt 44 / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Rybnik / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Wroclavia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
-  Cinema City Zielona Góra / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
+  Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Bydgoszcz / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Czerwona Droga / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Felicity / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Gliwice / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Kinepolis / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Manufaktura / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Mokotów / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Poznań Plaza / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Punkt 44 / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Rybnik / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Wroclavia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
+  Cinema City Zielona Góra / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Helios Alfa / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
   Helios Bielsko-Biała / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
   Helios Blue City / BTS World Tour ‘ARIRANG’ in Busan: Live Viewing / —
@@ -913,7 +944,7 @@ showings:
 
 === Cinema Italia Oggi: Jeden szkolny rok ===
 displayTitle:      Cinema Italia Oggi: Jeden szkolny rok
-cinemaTitles:      Cinema Italia Oggi: Jeden szkolny rok
+cinemaTitles:      Cinema Italia Oggi: Jeden szkolny rok | Jeden szkolny rok
 runtimeMinutes:    103
 releaseYear:       2025
 countries:         Włochy, Francja
@@ -921,20 +952,21 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1753219495691.jpg
 synopsis.length:   118
 cast:              —
 director:          Laura Samani
-tmdbId:            —
+tmdbId:            1442922
 imdbId:            —
 originalTitle:     —
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.9
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14628-cinema-italia-oggi-jeden-szkolny-rok/
 cinemaScrapes:
   Kino Pałacowe / Cinema Italia Oggi: Jeden szkolny rok / 2025
+  Kino Pod Baranami / Jeden szkolny rok / —
 showings:
   2026-07-09  Kino Pałacowe                 20:00 Sala 1 - Kinowa
 
@@ -994,7 +1026,7 @@ showings:
 
 === Cinema Italia Oggi: Miasta na równinie ===
 displayTitle:      Cinema Italia Oggi: Miasta na równinie
-cinemaTitles:      Cinema Italia Oggi: Miasta na równinie
+cinemaTitles:      Cinema Italia Oggi: Miasta na równinie | Miasta na równinie
 runtimeMinutes:    98
 releaseYear:       2025
 countries:         Włochy, Niemcy
@@ -1016,6 +1048,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14625-cinema-italia-oggi-miasta-na-rowninie/
 cinemaScrapes:
   Kino Pałacowe / Cinema Italia Oggi: Miasta na równinie / 2025
+  Kino Pod Baranami / Miasta na równinie / —
 showings:
   2026-07-06  Kino Pałacowe                 20:00 Sala 1 - Kinowa
 
@@ -1080,7 +1113,7 @@ showings:
 
 === Cinema Italia Oggi: Razem czy osobno ===
 displayTitle:      Cinema Italia Oggi: Razem czy osobno
-cinemaTitles:      Cinema Italia Oggi: Razem czy osobno
+cinemaTitles:      Cinema Italia Oggi: Razem czy osobno | KOK - Razem czy osobno | Razem czy osobno
 runtimeMinutes:    108
 releaseYear:       2026
 countries:         Włochy
@@ -1102,12 +1135,14 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14630-cinema-italia-oggi-razem-czy-osobno/
 cinemaScrapes:
   Kino Pałacowe / Cinema Italia Oggi: Razem czy osobno / 2025
+  Kino Pod Baranami / Razem czy osobno / —
+  Kinoteatr Rialto / KOK - Razem czy osobno / —
 showings:
   2026-07-10  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Cinema Italia Oggi: Takie jest życie ===
 displayTitle:      Cinema Italia Oggi: Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -1139,6 +1174,7 @@ cinemaScrapes:
   Kino CK Lublin / Takie jest życie / —
   Kino Forum / Best Film on Tour: Takie jest życie / —
   Kino IKM / Takie jest życie / —
+  Kino Kultura / Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” / —
   Kino Luna / BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej / —
   Kino Muranów / Takie jest życie / 2025
   Kino Oskard / Kino Konesera: Takie jest życie / —
@@ -1154,28 +1190,29 @@ showings:
 
 === Cinema Italia Oggi: Trener Tenisa ===
 displayTitle:      Cinema Italia Oggi: Trener Tenisa
-cinemaTitles:      Cinema Italia Oggi: Trener Tenisa
+cinemaTitles:      Cinema Italia Oggi: Trener Tenisa | Trener tenisa
 runtimeMinutes:    125
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1746483878552.jpg
 synopsis.length:   119
-cast:              Pierfrancesco Favino, Tiziano Menichelli, Giovanni Ludeno, Dora Romano, Valentina Bellè
+cast:              —
 director:          Andrea Di Stefano
-tmdbId:            1143973
-imdbId:            tt5179884
-originalTitle:     Il maestro
-imdbRating:        6.7
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     https://www.metacritic.com/movie/my-tennis-maestro
+metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14627-cinema-italia-oggi-trener-tenisa/
 cinemaScrapes:
   Kino Pałacowe / Cinema Italia Oggi: Trener Tenisa / 2025
+  Kino Pod Baranami / Trener tenisa / —
 showings:
   2026-07-08  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
@@ -1216,56 +1253,28 @@ showings:
 
 === Cykl "Kultowa klasyka" - Zawieście czerwone latarnie ===
 displayTitle:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
 runtimeMinutes:    142
-releaseYear:       1991
-countries:         Chiny, Hongkong, Tajwan
+releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
 synopsis.length:   1908
-cast:              Gong Li, Saifei He, Jingwu Ma, Cuifen Cao, Qi Zhao, Shuyuan Jin
-director:          Yimou Zhang
-tmdbId:            10404
-imdbId:            tt0101640
-originalTitle:     大红灯笼高高挂
-imdbRating:        8.1
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
-rottenTomatoes:    97
-filmwebRating:     7.8
+rottenTomatoes:    —
+filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
-filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/
 cinemaScrapes:
-  Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
-  KINOMUZEUM / Zawieście czerwone latarnie / 1991
-  Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
-  Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
-  Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino CK Lublin / Zawieście czerwone latarnie / —
-  Kino Charlie / Zawieście czerwone latarnie / —
-  Kino Iluzjon / Zawieście czerwone latarnie / 1991
-  Kino Kinematograf / Zawieście czerwone latarnie / 1991
-  Kino Kultura / Zawieście czerwone latarnie / —
-  Kino Luna / Zawieście czerwone latarnie / —
-  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
-  Kino Muranów / Zawieście czerwone latarnie / 1991
-  Kino Muza / Zawieście czerwone latarnie / 1991
-  Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
-  Kino NCKF EC1 / Zawieście czerwone latarnie (1991) / —
-  Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
-  Kino Orzeł / Zawieście czerwone latarnie (pokaz jednorazowy) / —
-  Kino Paradox / Zawieście czerwone latarnie / 1991
-  Kino Pałacowe / Zawieście czerwone latarnie / 1991
-  Kino Pod Baranami / Zawieście czerwone latarnie / —
-  Kino Rialto / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino U-jazdowski / Zawieście czerwone latarnie / 1991
-  Kino Wisła / Zawieście czerwone latarnie - pokazy specjalne / 1991
-  Kino Żak / Zawieście czerwone latarnie / 1991
-  KinoPort / Zawieście czerwone latarnie / 1991
-  Kinoteka / Zawieście czerwone latarnie / 2026
 showings:
   2026-06-13  Kino Apollo                   17:30
 
@@ -1299,7 +1308,7 @@ showings:
 
 === Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
 displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1342,8 +1351,10 @@ cinemaScrapes:
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Roma / Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” / 1976
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
+  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
   Kino Zamek / Człowiek z marmuru / —
+  Kino na Boku / WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
   Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
   Kinoteka / CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin / —
@@ -1353,7 +1364,7 @@ showings:
 
 === Człowiek z marmuru ===
 displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1396,8 +1407,10 @@ cinemaScrapes:
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Roma / Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” / 1976
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
+  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
   Kino Zamek / Człowiek z marmuru / —
+  Kino na Boku / WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
   Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
   Kinoteka / CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin / —
@@ -2547,7 +2560,7 @@ showings:
 
 === Erupcja ===
 displayTitle:      Erupcja
-cinemaTitles:      ERUPCJA | Erupcja | Erupcja | Kinoteka dla Rodziców
+cinemaTitles:      ERUPCJA | Erupcja | Erupcja (pokaz jednorazowy) | Erupcja | Kinoteka dla Rodziców
 runtimeMinutes:    71
 releaseYear:       2026
 countries:         USA, Polska
@@ -2583,6 +2596,7 @@ cinemaScrapes:
   Kino Muranów / Erupcja / 2026
   Kino Muza / Erupcja / 2025
   Kino NCKF EC1 / Erupcja / —
+  Kino Orzeł / Erupcja (pokaz jednorazowy) / —
   Kino Pałacowe / Erupcja / 2025
   Kino Rejs / Erupcja / 2026
   Kino Spektrum / Erupcja / —
@@ -2602,7 +2616,7 @@ showings:
 
 === Fałszerz stulecia ===
 displayTitle:      Fałszerz stulecia
-cinemaTitles:      Fałszerz stulecia
+cinemaTitles:      17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia | Fałszerz stulecia
 runtimeMinutes:    128
 releaseYear:       2026
 countries:         Francja, Belgia
@@ -2623,6 +2637,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Fa%C5%82szerz+stulecia-2025-10099
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/falszerz-stulecia/
 cinemaScrapes:
+  Kino Forum / 17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia / —
   Kino Muranów / Fałszerz stulecia / 2025
   Kino Muza / Fałszerz stulecia / 2025
   Kino Nowe Horyzonty / Fałszerz stulecia / 2025
@@ -2634,29 +2649,31 @@ showings:
 
 === Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil ===
 displayTitle:      Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil
-cinemaTitles:      500 mil | FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
+cinemaTitles:      500 mil | FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil | KINO NA KOZETCE: 500 mil - pokaz przedpremierowy | Kino dla seniora: 500 mil
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania
 posterUrl:         https://stacjafalenica.pl/wp-content/uploads/2026/08/121_BetaCinema_500_Miles_copyright_Enda_Bowe_Finn_Productions_Ltd_Port_Pictures_Ltd-1.png
 synopsis.length:   2232
-cast:              Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Michael Socha
+cast:              —
 director:          Morgan Matthews
-tmdbId:            1242876
-imdbId:            tt31216533
-originalTitle:     500 Miles
-imdbRating:        7.9
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.2
+filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/500_miles_2026
-filmwebUrl:        https://www.filmweb.pl/film/500+mil-2026-10117286
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/filmoczule-dla-edukacji-z-odn-i-wziss-ump-500-mil/
 cinemaScrapes:
   KINOkawiarnia Stacja Falenica / 500 mil / —
+  Kino Kryterium / Kino dla seniora: 500 mil / —
   Kino Muza / FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil / 2026
+  Kino Spektrum / KINO NA KOZETCE: 500 mil - pokaz przedpremierowy / —
 showings:
   2026-06-16  Kino Muza                     17:30 Sala 2
 
@@ -2727,7 +2744,7 @@ showings:
 
 === Filmowy Klub Seniora: 18 lecie - Takie Jest Życie ===
 displayTitle:      Filmowy Klub Seniora: 18 lecie - Takie Jest Życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -2759,6 +2776,7 @@ cinemaScrapes:
   Kino CK Lublin / Takie jest życie / —
   Kino Forum / Best Film on Tour: Takie jest życie / —
   Kino IKM / Takie jest życie / —
+  Kino Kultura / Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” / —
   Kino Luna / BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej / —
   Kino Muranów / Takie jest życie / 2025
   Kino Oskard / Kino Konesera: Takie jest życie / —
@@ -2904,7 +2922,7 @@ showings:
 
 === Filmowy Klub Seniora: Ojczyzna ===
 displayTitle:      Filmowy Klub Seniora: Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
+cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -2939,11 +2957,13 @@ cinemaScrapes:
   Cinema City Wroclavia / Ojczyzna / 2026
   Dolnośląskie Centrum Filmowe / Ojczyzna / 2026
   Forum / Ojczyzna / —
+  Fregata / Dyskusyjny Klub Filmowy: Ojczyzna / —
   Gdyńskie Centrum Filmowe / Ojczyzna | POKAZ PRZEDPREMIEROWY / —
   Janosik / Ojczyzna / —
   KINOMUZEUM / Ojczyzna / 2026
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
+  Kino Amok / Ojczyzna | przedpremierowo / —
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna / —
   Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
@@ -2957,10 +2977,12 @@ cinemaScrapes:
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
   Kino Lot / Ojczyzna / —
+  Kino Luna / KINO SENIORA | Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
+  Kino NCKF EC1 / Ojczyzna + spotkanie z Ewą Puszczyńską / —
   Kino Narie / Ojczyzna / —
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
@@ -2973,6 +2995,7 @@ cinemaScrapes:
   Kino Rialto / OJCZYZNA / 2026
   Kino Roma / Ojczyzna / 2026
   Kino Sfinks / OJCZYZNA / —
+  Kino Sokół / OJCZYZNA - DKF KOT / —
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
@@ -2985,6 +3008,7 @@ cinemaScrapes:
   Max Kino / Ojczyzna / —
   Patria / Ojczyzna / —
   Planet Cinema / Ojczyzna / —
+  Wybrzeże / Fatherland / —
   Świt / Ojczyzna / —
 showings:
   2026-06-23  Kino Rialto                   13:00 · 15:30
@@ -3041,7 +3065,7 @@ showings:
 
 === Following ===
 displayTitle:      Following
-cinemaTitles:      FOLLOWING | Following
+cinemaTitles:      DKF Immersja: Following (1998) - seans z prelekcją i dyskusją | FOLLOWING | Following | Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza | Following | POKAZ PRZEDPREMIEROWY | prelekcja przed seansem
 runtimeMinutes:    70
 releaseYear:       1999
 countries:         Wielka Brytania, USA
@@ -3062,7 +3086,10 @@ filmwebUrl:        https://www.filmweb.pl/film/%C5%9Aledz%C4%85c-1998-93473
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14652-following/
 cinemaScrapes:
+  Gdyńskie Centrum Filmowe / Following | POKAZ PRZEDPREMIEROWY | prelekcja przed seansem / —
+  Kino Kultura / Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza / —
   Kino Muranów / Following / 1998
+  Kino NCKF EC1 / DKF Immersja: Following (1998) - seans z prelekcją i dyskusją / —
   Kino Pałacowe / Following / 1998
   Kino Pionier 1907 / FOLLOWING / 1998
 showings:
@@ -3070,7 +3097,7 @@ showings:
 
 === Giulietta i duchy ===
 displayTitle:      Giulietta i duchy
-cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
@@ -3096,7 +3123,6 @@ cinemaScrapes:
   Kino Muza / Giulietta i duchy / 1965
   Kino Pałacowe / Giulietta i duchy / 1965
   Kino Pionier 1907 / Federico Fellini: GIULIETTA I DUCHY / 1965
-  Kino Rialto / GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego / 1965
   Kino Spektrum / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! / —
   Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) / 1965
   Kino za Rogiem Cafe / Giulietta i duchy / —
@@ -3108,43 +3134,34 @@ showings:
 
 === Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego ===
 displayTitle:      Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego
-cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
-runtimeMinutes:    139
+cinemaTitles:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
+runtimeMinutes:    148
 releaseYear:       1965
-countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg
+countries:         Francja, Włochy
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/giulietta-i-duchy-plakat.jpg
 synopsis.length:   1007
-cast:              Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina
+cast:              —
 director:          Federico Fellini
-tmdbId:            19120
-imdbId:            tt0059229
-originalTitle:     Giulietta degli spiriti
-imdbRating:        7.4
-metascore:         84
-rottenTomatoes:    79
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
 filmwebRating:     7.4
-metacriticUrl:     https://www.metacritic.com/movie/juliet-of-the-spirits
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/juliet_of_the_spirits
+metacriticUrl:     —
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157280
 cinemaScrapes:
-  Kino Kinematograf / Federico Fellini: ciao a tutti! – Giulietta i duchy / 1965
-  Kino Muza / Giulietta i duchy / 1965
-  Kino Pałacowe / Giulietta i duchy / 1965
-  Kino Pionier 1907 / Federico Fellini: GIULIETTA I DUCHY / 1965
   Kino Rialto / GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego / 1965
-  Kino Spektrum / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! / —
-  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) / 1965
-  Kino za Rogiem Cafe / Giulietta i duchy / —
-  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy / —
-  Kinoteka / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti / —
 showings:
   2026-06-17  Kino Rialto                   18:00
 
 === Guru ===
 displayTitle:      Guru
-cinemaTitles:      Guru
+cinemaTitles:      Guru | Guru | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    126
 releaseYear:       2026
 countries:         Francja
@@ -3169,12 +3186,13 @@ cinemaScrapes:
   Kino Muranów / Guru / 2025
   Kino Muza / Guru / 2025
   Kino Pod Baranami / Guru / —
+  Kino Żak / Guru | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-12  Kino Muza                     21:00 Sala 1
 
 === Gwiezdne wojny: Mandalorian i Grogu ===
 displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
-cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorets' i Grogu - UA | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorets' i Grogu - UA | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | Star Wars: Mandalorian i Grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
 runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
@@ -3287,6 +3305,7 @@ cinemaScrapes:
   Kino Ignacy / Mandalorian i grogu / —
   Kino KDK / GWIEZDNE WOJNY: MANDALORIAN I GROGU / —
   Kino Kijów / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Kolory / Star Wars: Mandalorian i Grogu / —
   Kino MCK / Gwiezdne wojny: mandalorian i grogu / —
   Kino MOK Centrum / GWIEZDNE WOJNY : MANDALORIAN I GROGU / —
   Kino MOKiS / Mandalorian i Grogu / —
@@ -3432,15 +3451,15 @@ showings:
 displayTitle:      John Williams - A Tribute
 cinemaTitles:      John Williams - A Tribute
 runtimeMinutes:    83
-releaseYear:       2026
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8132O2R.jpg
 synopsis.length:   791
-cast:              Anna Agafia Egholm (skrzypce), Christine Nonbo Andersen (sopran), Duńska Narodowa Orkiestra Symfoniczna
+cast:              Danish National Symphony Orchestra, Antony Hermus, Anna Agafia Svideniouk Egholm, Jakob Stegelmann
 director:          Antony Hermus (dyrygent)
-tmdbId:            —
+tmdbId:            1659440
 imdbId:            —
-originalTitle:     —
+originalTitle:     John Williams - A Tribute – The Danish National Symphony Orchestra
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
@@ -3480,11 +3499,11 @@ showings:
 
 === K-popowe łowczynie demonów ===
 displayTitle:      K-popowe łowczynie demonów
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada, Canada
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7704D2R.jpg
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
 synopsis.length:   425
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
 director:          Chris Appelhans, Maggie Kang
@@ -3540,59 +3559,6 @@ cinemaScrapes:
   Cinema City Zielona Góra / K-popowe łowczynie demonów / 2025
   Forum / K-popowe łowczynie demonów / —
   Fregata / K-popowe łowczynie demonów / —
-  Kino Amok / K-popowe łowczynie demonów | w wersji karaoke / —
-  Kino Iluzjon / K-popowe łowczynie demonów / 2025
-  Kino Lewart / K-popowe łowczynie demonów / —
-  Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / 2025
-  Kino Muranów / K-popowe łowczynie demonów / 2025
-  Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
-  Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
-  Kino Pod Baranami / K-popowe Łowczynie demonów / —
-  Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
-  Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
-  Kino Spektrum / K-popowe łowczynie demonów / —
-  Kino Twierdza / K-popowe łowczynie demonów / —
-  Kinoteatr Rondo / K-popowe łowczynie demonów / —
-  Kinoteka / K-popowe łowczynie demonów / 2026
-  Świt / K-popowe łowczynie demonów / —
-showings:
-  2026-06-10  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
-  2026-06-10  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
-  2026-06-11  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
-  2026-06-11  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
-  2026-06-12  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
-  2026-06-12  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
-  2026-06-13  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
-  2026-06-13  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
-  2026-06-13  Kino Rialto                   13:45
-  2026-06-14  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
-  2026-06-14  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
-  2026-06-14  Kino Rialto                   13:45
-
-=== K-popowe Łowczynie Demonów: Karaoke ===
-displayTitle:      K-popowe Łowczynie Demonów: Karaoke
-cinemaTitles:      K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-popowe Łowczynie Demonów: Karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
-runtimeMinutes:    96
-releaseYear:       2025
-countries:         USA
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
-synopsis.length:   74
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/k-popowe-lowczynie-demonow-karaoke-w-helios-na-scenie-2609
-  Kino Apollo = https://kinoapollo.pl/kino/k-popowe-lowczynie-demonow/
-cinemaScrapes:
   Helios Aleja Bielany / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Alfa / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Biała / K-popowe Łowczynie Demonów: Karaoke / —
@@ -3633,9 +3599,158 @@ cinemaScrapes:
   Helios Tczew / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Łódź / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Żory / K-popowe Łowczynie Demonów: Karaoke / —
+  Kino Amok / K-popowe łowczynie demonów | w wersji karaoke / —
   Kino Apollo / K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE / —
+  Kino Iluzjon / K-popowe łowczynie demonów / 2025
+  Kino Lewart / K-popowe łowczynie demonów / —
+  Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Muranów / K-popowe łowczynie demonów / 2025
+  Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
+  Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino Paradox / K-popowe łowczynie demonów: Karaoke / 2025
+  Kino Pod Baranami / K-popowe Łowczynie demonów / —
+  Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Spektrum / K-popowe łowczynie demonów / —
+  Kino Twierdza / K-popowe łowczynie demonów / —
   Kino Wisła / K-popowe Łowczynie Demonów: Karaoke / 2025
+  Kinoteatr Rondo / K-popowe łowczynie demonów / —
+  Kinoteka / K-popowe łowczynie demonów / 2026
+  Świt / K-popowe łowczynie demonów / —
+  Świt Zwoleń / K-popowe łowczynie demonów: karaoke / —
+showings:
+  2026-06-10  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
+  2026-06-10  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
+  2026-06-11  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
+  2026-06-11  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
+  2026-06-12  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
+  2026-06-12  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
+  2026-06-13  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
+  2026-06-13  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
+  2026-06-13  Kino Rialto                   13:45
+  2026-06-14  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
+  2026-06-14  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
+  2026-06-14  Kino Rialto                   13:45
+
+=== K-popowe Łowczynie Demonów: Karaoke ===
+displayTitle:      K-popowe Łowczynie Demonów: Karaoke
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
+runtimeMinutes:    96
+releaseYear:       2025
+countries:         USA, Kanada, Canada
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
+synopsis.length:   170
+cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
+director:          Chris Appelhans, Maggie Kang
+tmdbId:            803796
+imdbId:            tt14205554
+originalTitle:     KPop Demon Hunters
+imdbRating:        7.4
+metascore:         77
+rottenTomatoes:    91
+filmwebRating:     7.2
+metacriticUrl:     https://www.metacritic.com/movie/kpop-demon-hunters
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/kpop_demon_hunters
+filmwebUrl:        https://www.filmweb.pl/film/K-popowe+%C5%82owczynie+demon%C3%B3w-2025-10080273
+cinemaFilmUrls:
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/k-popowe-lowczynie-demonow-karaoke-w-helios-na-scenie-2609
+  Kino Apollo = https://kinoapollo.pl/kino/k-popowe-lowczynie-demonow/
+cinemaScrapes:
+  Chemik / K-popowe łowczynie demonów / —
+  Cinema City / — / —
+  Cinema City Arkadia / K-popowe łowczynie demonów / 2025
+  Cinema City Bemowo / K-popowe łowczynie demonów / 2025
+  Cinema City Bielsko-Biała / K-popowe łowczynie demonów / 2025
+  Cinema City Bonarka / K-popowe łowczynie demonów / 2025
+  Cinema City Bydgoszcz / K-popowe łowczynie demonów / 2025
+  Cinema City Bytom / K-popowe łowczynie demonów / 2025
+  Cinema City Czerwona Droga / K-popowe łowczynie demonów / 2025
+  Cinema City Elbląg / K-popowe łowczynie demonów / 2025
+  Cinema City Felicity / K-popowe łowczynie demonów / 2025
+  Cinema City Galeria Północna / K-popowe łowczynie demonów / 2025
+  Cinema City Gliwice / K-popowe łowczynie demonów / 2025
+  Cinema City Janki / K-popowe łowczynie demonów / 2025
+  Cinema City Jurajska / K-popowe łowczynie demonów / 2025
+  Cinema City Kazimierz / K-popowe łowczynie demonów / 2025
+  Cinema City Kinepolis / K-popowe łowczynie demonów / 2025
+  Cinema City Korona / K-popowe łowczynie demonów / 2025
+  Cinema City Lublin Plaza / K-popowe łowczynie demonów / 2025
+  Cinema City Manufaktura / K-popowe łowczynie demonów / 2025
+  Cinema City Mokotów / K-popowe łowczynie demonów / 2025
+  Cinema City Poznań Plaza / K-popowe łowczynie demonów / 2025
+  Cinema City Promenada / K-popowe łowczynie demonów / 2025
+  Cinema City Punkt 44 / K-popowe łowczynie demonów / 2025
+  Cinema City Ruda Śląska / K-popowe łowczynie demonów / 2025
+  Cinema City Rybnik / K-popowe łowczynie demonów / 2025
+  Cinema City Sadyba / K-popowe łowczynie demonów / 2025
+  Cinema City Silesia / K-popowe łowczynie demonów / 2025
+  Cinema City Sosnowiec / K-popowe łowczynie demonów / 2025
+  Cinema City Toruń Plaza / K-popowe łowczynie demonów / 2025
+  Cinema City Wałbrzych / K-popowe łowczynie demonów / 2025
+  Cinema City Wolność / K-popowe łowczynie demonów / 2025
+  Cinema City Wroclavia / K-popowe łowczynie demonów / 2025
+  Cinema City Zakopianka / K-popowe łowczynie demonów / 2025
+  Cinema City Zielona Góra / K-popowe łowczynie demonów / 2025
+  Forum / K-popowe łowczynie demonów / —
+  Fregata / K-popowe łowczynie demonów / —
+  Helios Aleja Bielany / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Alfa / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Biała / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Bielsko-Biała / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Blue City / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Bydgoszcz / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Dąbrowa Górnicza / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Forum / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Gorzów Wielkopolski / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Jelenia Góra / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Jurowiecka / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Kalisz / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Karolinka / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Katowice / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Kielce / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Konin / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Koszalin / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Krosno / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Kupiec / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Kędzierzyn-Koźle / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Legnica / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Lubin / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Magnolia Park / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Metropolia / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Nowy Sącz / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Olsztyn / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Ostrów Wlkp. / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Outlet Park / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Posnania / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Przemyśl / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Płock / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Radom / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Riviera / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Rzeszów / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Solaris / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Sosnowiec / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Starachowice / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Tczew / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Łódź / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Żory / K-popowe Łowczynie Demonów: Karaoke / —
+  Kino Amok / K-popowe łowczynie demonów | w wersji karaoke / —
+  Kino Apollo / K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE / —
+  Kino Iluzjon / K-popowe łowczynie demonów / 2025
+  Kino Lewart / K-popowe łowczynie demonów / —
+  Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Muranów / K-popowe łowczynie demonów / 2025
+  Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
+  Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
+  Kino Paradox / K-popowe łowczynie demonów: Karaoke / 2025
+  Kino Pod Baranami / K-popowe Łowczynie demonów / —
+  Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
+  Kino Spektrum / K-popowe łowczynie demonów / —
+  Kino Twierdza / K-popowe łowczynie demonów / —
+  Kino Wisła / K-popowe Łowczynie Demonów: Karaoke / 2025
+  Kinoteatr Rondo / K-popowe łowczynie demonów / —
+  Kinoteka / K-popowe łowczynie demonów / 2026
+  Świt / K-popowe łowczynie demonów / —
   Świt Zwoleń / K-popowe łowczynie demonów: karaoke / —
 showings:
   2026-06-10  Helios Posnania               16:30 Sala 8 2D/NAP
@@ -4018,7 +4133,7 @@ showings:
 
 === Klątwa Doliny Węży ===
 displayTitle:      Klątwa Doliny Węży
-cinemaTitles:      KLĄTWA DOLINY WĘŻY | Klątwa Doliny Węży | Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży
+cinemaTitles:      KLĄTWA DOLINY WĘŻY | Klątwa Doliny Węży | Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży | Klątwa doliny węży – z autorską narracją Łony (pokaz jednorazowy)
 runtimeMinutes:    105
 releaseYear:       1988
 countries:         Polska, ZSRR
@@ -4045,6 +4160,7 @@ cinemaScrapes:
   Kino Luna / Klątwa Doliny Węży z autorską narracją Łony / —
   Kino Malta Charlie Monroe / Klątwa Doliny Węży / —
   Kino Nowe Horyzonty / Klątwa Doliny Węży z autorską narracją Łony / 1987
+  Kino Orzeł / Klątwa doliny węży – z autorską narracją Łony (pokaz jednorazowy) / —
   Kino Pionier 1907 / Klątwa Doliny Węży / —
   Świt / Klątwa doliny węży / —
 showings:
@@ -4339,7 +4455,7 @@ showings:
 
 === Kurozając i świątynia Świstaka ===
 displayTitle:      Kurozając i świątynia Świstaka
-cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia Świstaka (2025) | Kurozając i świątynia świstaka
+cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kmw: kurozając i świątynia świstaka | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia Świstaka (2025) | Kurozając i świątynia świstaka
 runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja, Belgia, USA
@@ -4401,6 +4517,7 @@ cinemaScrapes:
   Kino Bajka / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Kino Bajka Kluczbork / Kurozając i świątynia Świstaka / —
   Kino Kijów / Kurozając i świątynia świstaka / —
+  Kino Kryterium / Kmw: kurozając i świątynia świstaka / —
   Kino MCK / Kurozając i świątynia świstaka / —
   Kino MOKiS / Kurozając i świątynia Świstaka / —
   Kino Na Biegunach / Kurozając i świątynia świstaka / —
@@ -4497,11 +4614,11 @@ showings:
 
 === Maraton Horrorów ===
 displayTitle:      Maraton Horrorów
-cinemaTitles:      Maraton Horrorów | Maraton horrorów
-runtimeMinutes:    105
+cinemaTitles:      Maraton Horrorów
+runtimeMinutes:    490
 releaseYear:       —
 countries:         —
-posterUrl:         https://img.helios.pl/pliki/film/rytual-lily/rytual-lily-plakat-833.jpg
+posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8253S2R.jpg
 synopsis.length:   370
 cast:              —
 director:          —
@@ -4518,7 +4635,6 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/maraton-horrorow/8253s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/maraton-horrorow/8253s2r
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634
 cinemaScrapes:
   Cinema City / — / —
   Cinema City Arkadia / Maraton Horrorów / —
@@ -4546,6 +4662,33 @@ cinemaScrapes:
   Cinema City Wolność / Maraton Horrorów / —
   Cinema City Wroclavia / Maraton Horrorów / —
   Cinema City Zielona Góra / Maraton Horrorów / —
+showings:
+  2026-06-19  Cinema City Kinepolis         21:00 Sala 15 2D/NAP
+  2026-06-19  Cinema City Poznań Plaza      21:00 Sala 2 2D/NAP
+
+=== Maraton horrorów ===
+displayTitle:      Maraton horrorów
+cinemaTitles:      Maraton horrorów
+runtimeMinutes:    105
+releaseYear:       —
+countries:         —
+posterUrl:         https://img.helios.pl/pliki/film/rytual-lily/rytual-lily-plakat-833.jpg
+synopsis.length:   —
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634
+cinemaScrapes:
   Helios Aleja Bielany / Maraton horrorów / —
   Helios Alfa / Maraton horrorów / —
   Helios Biała / Maraton horrorów / —
@@ -4587,8 +4730,6 @@ cinemaScrapes:
   Helios Łódź / Maraton horrorów / —
   Helios Żory / Maraton horrorów / —
 showings:
-  2026-06-19  Cinema City Kinepolis         21:00 Sala 15 2D/NAP
-  2026-06-19  Cinema City Poznań Plaza      21:00 Sala 2 2D/NAP
   2026-06-26  Helios Posnania               23:00 2D/NAP
 
 === Mavka. Prawdziwy mit ===
@@ -4599,17 +4740,17 @@ releaseYear:       2026
 countries:         Ukraina
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/untitled-1-copy.jpg
 synopsis.length:   465
-cast:              Arina Bocharova, Ivan Dovzhenko, В'ячеслав Довженко, Юлія Буйновська, Аліна Коваленко
+cast:              —
 director:          Katya Tsarik
-tmdbId:            1459612
-imdbId:            tt36957240
-originalTitle:     Мавка. Справжній міф
-imdbRating:        5.9
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/mavka_the_true_myth
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155441
@@ -4620,7 +4761,7 @@ showings:
 
 === Mi Amor ===
 displayTitle:      Mi Amor
-cinemaTitles:      Mi Amor
+cinemaTitles:      Mi Amor | Mi Amor | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    113
 releaseYear:       2026
 countries:         Francja
@@ -4644,6 +4785,7 @@ cinemaScrapes:
   Kino Muranów / Mi Amor / 2025
   Kino Muza / Mi Amor / 2025
   Kino Pod Baranami / Mi Amor / —
+  Kino Żak / Mi Amor | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-14  Kino Muza                     21:00 Sala 1
 
@@ -5348,7 +5490,7 @@ showings:
 
 === Monterey Pop ===
 displayTitle:      Monterey Pop
-cinemaTitles:      MONTEREY POP | Monterey Pop
+cinemaTitles:      Klasyka w kinie Atlantic: Monterey Pop | MONTEREY POP | Monterey Pop | Monterey Pop | DKF
 runtimeMinutes:    78
 releaseYear:       1968
 countries:         USA
@@ -5375,10 +5517,12 @@ cinemaScrapes:
   KINOMUZEUM / Monterey Pop / 1967
   Kino 60 Krzeseł / Monterey Pop / —
   Kino Apollo / Monterey Pop / —
+  Kino Atlantic / Klasyka w kinie Atlantic: Monterey Pop / 1968
   Kino Awangarda 2 / Monterey Pop / —
   Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
   KinoPort / Monterey Pop / 1968
+  Pionier / Monterey Pop | DKF / —
 showings:
   2026-06-16  Kino Apollo                   19:30
   2026-06-16  Kino Rialto                   20:45
@@ -5528,11 +5672,11 @@ releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg
 synopsis.length:   631
-cast:              Aidan Turner, Lesley Manville, Monica Barbaro, Darragh Hand, Cat Simmons
+cast:              Lesley Manville, Aidan Turner, Monica Barbaro
 director:          Marianne Elliott
-tmdbId:            1598667
-imdbId:            tt40258746
-originalTitle:     National Theatre Live: Les Liaisons Dangereuses
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
@@ -5595,7 +5739,7 @@ showings:
 
 === Niesamowite przygody skarpetek 3. Ale kosmos! ===
 displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos!
-cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale ko | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos!
+cinemaTitles:      Kmw: niesamowite przygody skarpetek 3. Ale kosmos! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale ko | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos! | Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
@@ -5697,6 +5841,7 @@ cinemaScrapes:
   Helios Łódź / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Żory / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Janosik / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Jaworzyna / Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos! / —
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5710,6 +5855,7 @@ cinemaScrapes:
   Kino Kijów / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Kika / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Kreska / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Kryterium / Kmw: niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Lewart / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino MCK / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Kino MOK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5840,7 +5986,7 @@ showings:
 
 === Nowa fala ===
 displayTitle:      Nowa fala
-cinemaTitles:      Nowa Fala | Nowa fala | UNLIMITED SHOW - Nowa Fala
+cinemaTitles:      Nowa Fala | Nowa Fala | Przegląd Nowego Kina Francuskiego | Nowa fala | UNLIMITED SHOW - Nowa Fala
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
@@ -5891,6 +6037,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Nowa Fala / 2025
   Kino Pionier 1907 / Nowa Fala / 2025
   Kino Pod Baranami / Nowa fala / —
+  Kino Żak / Nowa Fala | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-12  Kino Muza                     19:00 Sala 1
 
@@ -6006,7 +6153,7 @@ showings:
 
 === Obcy ===
 displayTitle:      Obcy
-cinemaTitles:      OBCY | Obcy
+cinemaTitles:      OBCY | Obcy | Obcy | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja, Belgia, Maroko
@@ -6032,6 +6179,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Obcy / 2025
   Kino Pionier 1907 / Obcy / 2025
   Kino Pod Baranami / Obcy / —
+  Kino Żak / Obcy | Przegląd Nowego Kina Francuskiego / —
   Teatr Elektryczny / OBCY / —
   Świt / OBCY / —
 showings:
@@ -6158,7 +6306,7 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
+cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -6195,11 +6343,13 @@ cinemaScrapes:
   Cinema City Wroclavia / Ojczyzna / 2026
   Dolnośląskie Centrum Filmowe / Ojczyzna / 2026
   Forum / Ojczyzna / —
+  Fregata / Dyskusyjny Klub Filmowy: Ojczyzna / —
   Gdyńskie Centrum Filmowe / Ojczyzna | POKAZ PRZEDPREMIEROWY / —
   Janosik / Ojczyzna / —
   KINOMUZEUM / Ojczyzna / 2026
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
+  Kino Amok / Ojczyzna | przedpremierowo / —
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna / —
   Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
@@ -6213,10 +6363,12 @@ cinemaScrapes:
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
   Kino Lot / Ojczyzna / —
+  Kino Luna / KINO SENIORA | Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
+  Kino NCKF EC1 / Ojczyzna + spotkanie z Ewą Puszczyńską / —
   Kino Narie / Ojczyzna / —
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
@@ -6229,6 +6381,7 @@ cinemaScrapes:
   Kino Rialto / OJCZYZNA / 2026
   Kino Roma / Ojczyzna / 2026
   Kino Sfinks / OJCZYZNA / —
+  Kino Sokół / OJCZYZNA - DKF KOT / —
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
@@ -6241,6 +6394,7 @@ cinemaScrapes:
   Max Kino / Ojczyzna / —
   Patria / Ojczyzna / —
   Planet Cinema / Ojczyzna / —
+  Wybrzeże / Fatherland / —
   Świt / Ojczyzna / —
 showings:
   2026-06-11  Kino Muza                     17:15 Sala 1
@@ -6356,7 +6510,7 @@ showings:
 
 === Osiem i pół ===
 displayTitle:      Osiem i pół
-cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Osiem i pół | FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) | Federico Fellini: OSIEM I PÓŁ | Federico Fellini: ciao a tutti! – Osiem i pół | Osiem i pół | Osiem i pół (1963) | Osiem i pół | FEDERICO FELLINI: ciao a tutti!
+cinemaTitles:      DKF Rozpięci: FEDERICO FELLINI: ciao a tutti! | FEDERICO FELLINI: Ciao a tutti! - Osiem i pół | FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) | Federico Fellini: OSIEM I PÓŁ | Federico Fellini: ciao a tutti! – Osiem i pół | Osiem i pół | Osiem i pół (1963) | Osiem i pół | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
@@ -6379,6 +6533,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   KINOkawiarnia Stacja Falenica / Osiem i pół (1963) / —
+  Kino Agrafka / DKF Rozpięci: FEDERICO FELLINI: ciao a tutti! / 1963
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Osiem i pół / 1963
   Kino Muza / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
@@ -6683,17 +6838,17 @@ releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
 synopsis.length:   607
-cast:              Nicola Coughlan, Éanna Hardwicke, Siobhán McSweeney, Declan Conlon, Lorcan Cranitch
+cast:              Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke
 director:          Caitríona McLaughlin
-tmdbId:            1598661
-imdbId:            tt40031882
-originalTitle:     National Theatre Live: The Playboy of the Western World
-imdbRating:        7.1
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/national_theatre_live_the_playboy_of_the_western_world
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/playboy-zachodniego-swiata-national-theatre-live-2026/8211s2r
@@ -6837,7 +6992,7 @@ showings:
 
 === Plenerowe Pałacowe: Być kochaną ===
 displayTitle:      Plenerowe Pałacowe: Być kochaną
-cinemaTitles:      Plenerowe Pałacowe: Być kochaną
+cinemaTitles:      Być Kochaną | Plenerowe Pałacowe: Być kochaną
 runtimeMinutes:    105
 releaseYear:       2024
 countries:         Norwegia, Szwecja
@@ -6859,6 +7014,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14602-plenerowe-paacowe-byc-kochana/
 cinemaScrapes:
   Kino Pałacowe / Plenerowe Pałacowe: Być kochaną / 2024
+  Kino na Szekspirowskim / Być Kochaną / —
 showings:
   2026-06-23  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -7365,7 +7521,7 @@ showings:
 
 === Poczta głosowa ===
 displayTitle:      Poczta głosowa
-cinemaTitles:      Poczta głosowa
+cinemaTitles:      Poczta głosowa | Poczta głosowa | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    102
 releaseYear:       2025
 countries:         Francja
@@ -7391,6 +7547,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Poczta głosowa / 2024
   Kino Pionier 1907 / Poczta głosowa / 2024
   Kino Pod Baranami / Poczta głosowa / —
+  Kino Żak / Poczta głosowa | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-15  Kino Muza                     17:00 Sala 1
 
@@ -7649,7 +7806,7 @@ showings:
 
 === Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos! ===
 displayTitle:      Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos!
-cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale ko | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos!
+cinemaTitles:      Kmw: niesamowite przygody skarpetek 3. Ale kosmos! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale ko | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos! | Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
@@ -7747,6 +7904,7 @@ cinemaScrapes:
   Helios Łódź / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Żory / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Janosik / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Jaworzyna / Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos! / —
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -7760,6 +7918,7 @@ cinemaScrapes:
   Kino Kijów / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Kika / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Kreska / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Kryterium / Kmw: niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Lewart / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino MCK / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Kino MOK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -7923,22 +8082,22 @@ showings:
 displayTitle:      Powrót do przyszłości II
 cinemaTitles:      Powrót do przyszłości II
 runtimeMinutes:    108
-releaseYear:       —
-countries:         —
+releaseYear:       1989
+countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/powrot-do-przyszlosci-ii/powrot-do-przyszlosci-ii-plakat-70759.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   555
+cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Thomas F. Wilson, Elisabeth Shue
+director:          Robert Zemeckis
+tmdbId:            165
+imdbId:            tt0096874
+originalTitle:     Back to the Future Part II
+imdbRating:        7.8
+metascore:         57
+rottenTomatoes:    63
+filmwebRating:     7.5
+metacriticUrl:     https://www.metacritic.com/movie/back-to-the-future-part-ii
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/back_to_the_future_part_ii
+filmwebUrl:        https://www.filmweb.pl/film/Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+II-1989-8824
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/powrot-do-przyszlosci-ii-w-helios-replay-2577
 cinemaScrapes:
@@ -8161,7 +8320,7 @@ showings:
 
 === Przekleństwa Niewinności ===
 displayTitle:      Przekleństwa Niewinności
-cinemaTitles:      Przekleństwa niewinności | Przekleństwa niewinności | POKAZ PRZEDPREMIEROWY
+cinemaTitles:      Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI | Przekleństwa niewinności | Przekleństwa niewinności | POKAZ PRZEDPREMIEROWY
 runtimeMinutes:    97
 releaseYear:       2000
 countries:         USA
@@ -8187,12 +8346,13 @@ cinemaScrapes:
   Kino Pałacowe / Przekleństwa niewinności / 1999
   Kino Pod Baranami / Przekleństwa niewinności / —
   Kino Zamek / Przekleństwa niewinności / —
+  Kinoteka / Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI / 2026
 showings:
   2026-06-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Przeżyj to sam ===
 displayTitle:      Przeżyj to sam
-cinemaTitles:      Przeżyj to sam
+cinemaTitles:      17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Przeżyj to sam | Przeżyj to sam | Przeżyj to sam | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    116
 releaseYear:       2026
 countries:         Francja
@@ -8213,16 +8373,18 @@ filmwebUrl:        https://www.filmweb.pl/film/Prze%C5%BCyj+to+sam-2026-10110008
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/juste-une-illusion/
 cinemaScrapes:
+  Kino Forum / 17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Przeżyj to sam / —
   Kino Muranów / Przeżyj to sam / 2025
   Kino Muza / Przeżyj to sam / 2025
   Kino Nowe Horyzonty / Przeżyj to sam / 2025
   Kino Pod Baranami / Przeżyj to sam / —
+  Kino Żak / Przeżyj to sam | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-10  Kino Muza                     20:30 Sala 1
 
 === Przygoda w muzeum ===
 displayTitle:      Przygoda w muzeum
-cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      Bezpieczne wakacje: tom i jerry: przygoda w muzeum | Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
@@ -8335,6 +8497,7 @@ cinemaScrapes:
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
   Kino Kijów / Tom i Jerry: Przygoda w muzeum / —
+  Kino Kryterium / Bezpieczne wakacje: tom i jerry: przygoda w muzeum / —
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / —
@@ -8455,7 +8618,7 @@ showings:
 
 === Romería ===
 displayTitle:      Romería
-cinemaTitles:      Klub Konesera: Romería | ROMERÍA | Romeria | Romería
+cinemaTitles:      Klub Filmowy Urania: Romeria | Klub Konesera: Romería | ROMERÍA | Romeria | Romeria Cykl For English Press Monday | Romería
 runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania, Niemcy
@@ -9066,7 +9229,7 @@ showings:
 
 === Super Mario Galaxy Film ===
 displayTitle:      Super Mario Galaxy Film
-cinemaTitles:      SUPER MARIO GALAXY FILM | Super Mario Galaxy Film | Super mario galaxy film
+cinemaTitles:      SUPER MARIO GALAXY FILM | Super Mario Galaxy Film | Super mario galaxy film | Super mario galaxy movie
 runtimeMinutes:    100
 releaseYear:       2026
 countries:         USA, Japonia
@@ -9162,6 +9325,7 @@ cinemaScrapes:
   Kino Na Biegunach / Super mario galaxy film / —
   Kino ODEON / Super mario galaxy film / —
   Kino Sokół / SUPER MARIO GALAXY FILM / —
+  Wybrzeże / Super mario galaxy movie / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:00 Sala 18 2D/DUB · 14:20 Sala 18 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      11:30 Sala 3 2D/DUB · 13:50 Sala 3 2D/DUB
@@ -9373,7 +9537,7 @@ showings:
 
 === Takie jest życie ===
 displayTitle:      Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -9406,6 +9570,7 @@ cinemaScrapes:
   Kino CK Lublin / Takie jest życie / —
   Kino Forum / Best Film on Tour: Takie jest życie / —
   Kino IKM / Takie jest życie / —
+  Kino Kultura / Best Film on Tour: Dobra Strona Filmu – „Takie jest życie” / —
   Kino Luna / BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej / —
   Kino Muranów / Takie jest życie / 2025
   Kino Oskard / Kino Konesera: Takie jest życie / —
@@ -9515,7 +9680,7 @@ showings:
 
 === Tom i Jerry: Przygoda w muzeum ===
 displayTitle:      Tom i Jerry: Przygoda w muzeum
-cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      Bezpieczne wakacje: tom i jerry: przygoda w muzeum | Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
@@ -9630,6 +9795,7 @@ cinemaScrapes:
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
   Kino Kijów / Tom i Jerry: Przygoda w muzeum / —
+  Kino Kryterium / Bezpieczne wakacje: tom i jerry: przygoda w muzeum / —
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / —
@@ -9680,7 +9846,7 @@ showings:
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | Toy story 5 2d dub. sps | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9843,7 +10009,7 @@ showings:
 
 === Toy Story 5 ukraiński dubbing ===
 displayTitle:      Toy Story 5 ukraiński dubbing
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | Toy story 5 2d dub. sps | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9992,7 +10158,7 @@ showings:
 
 === Unlimited Show - Nowa Fala ===
 displayTitle:      Unlimited Show - Nowa Fala
-cinemaTitles:      Nowa Fala | Nowa fala | UNLIMITED SHOW - Nowa Fala
+cinemaTitles:      Nowa Fala | Nowa Fala | Przegląd Nowego Kina Francuskiego | Nowa fala | UNLIMITED SHOW - Nowa Fala
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
@@ -10043,6 +10209,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Nowa Fala / 2025
   Kino Pionier 1907 / Nowa Fala / 2025
   Kino Pod Baranami / Nowa fala / —
+  Kino Żak / Nowa Fala | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-18  Cinema City Poznań Plaza      19:00 Sala 5 2D/NAP
 
@@ -10318,7 +10485,7 @@ showings:
 
 === Wszystko na sprzedaż ===
 displayTitle:      Wszystko na sprzedaż
-cinemaTitles:      Wszystko na sprzedaż
+cinemaTitles:      Wszystko na sprzedaż | Wszystko na sprzedaż (Everything for Sale)
 runtimeMinutes:    94
 releaseYear:       1969
 countries:         Polska
@@ -10340,6 +10507,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wszystko-na-sprzedaz/
 cinemaScrapes:
   Kino Muza / Wszystko na sprzedaż / 1968
+  Kino Pod Baranami / Wszystko na sprzedaż (Everything for Sale) / —
   Kino za Rogiem Cafe / Wszystko na sprzedaż / —
 showings:
   2026-12-01  Kino Muza                     20:30 Sala 1
@@ -10379,7 +10547,7 @@ showings:
 
 === Wędrówka na północ ===
 displayTitle:      Wędrówka na północ
-cinemaTitles:      Wędrówka na północ | „Wędrówka na północ” pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne
+cinemaTitles:      Wędrówka na północ | Wędrówka na północ | POKAZ PRZEDPREMIEROWY | Wędrówka na północ – pokaz specjalny ze spotkaniem | gościni: podróżniczka Zuzanna Puchalska | „Wędrówka na północ” pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne
 runtimeMinutes:    130
 releaseYear:       2025
 countries:         Holandia
@@ -10401,10 +10569,12 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wedrowka-na-polnoc/
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Wędrówka na północ / 2025
+  Gdyńskie Centrum Filmowe / Wędrówka na północ | POKAZ PRZEDPREMIEROWY / —
   Kino Muranów / „Wędrówka na północ” pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne / 2025
   Kino Muza / Wędrówka na północ / 2025
   Kino Nowe Horyzonty / Wędrówka na północ / 2025
   Kino Żak / Wędrówka na północ / 2025
+  Kinoteatr Rialto / Wędrówka na północ – pokaz specjalny ze spotkaniem | gościni: podróżniczka Zuzanna Puchalska / —
 showings:
   2026-06-24  Kino Muza                     20:00 Sala 1
 
@@ -10534,7 +10704,7 @@ showings:
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie
-cinemaTitles:      Kobiecy świat: Zaproszenie | WSP: Zaproszenie - przedpremiera | ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
+cinemaTitles:      Kobiecy Dobry Wieczór ze Zwierciadłem - „Zaproszenie” - przedpremiera | Kobiecy świat: Zaproszenie | WSP: Zaproszenie - przedpremiera | ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
 runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
@@ -10558,6 +10728,7 @@ cinemaScrapes:
   Centrum 3D Przemyśl / ZAPROSZENIE / —
   Cinema1 / ZAPROSZENIE / 2026
   Dolnośląskie Centrum Filmowe / Zaproszenie / 2026
+  Kino Atlantic / Kobiecy Dobry Wieczór ze Zwierciadłem - „Zaproszenie” - przedpremiera / 2026
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
   Kino Pionier 1907 / ZAPROSZENIE / 2026
@@ -10569,11 +10740,11 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
-runtimeMinutes:    142
+cinemaTitles:      DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
+runtimeMinutes:    125
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
+posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg
 synopsis.length:   1934
 cast:              Gong Li, Saifei He, Jingwu Ma, Cuifen Cao, Qi Zhao, Shuyuan Jin
 director:          Yimou Zhang
@@ -10597,7 +10768,6 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
   KINOMUZEUM / Zawieście czerwone latarnie / 1991
   Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
@@ -10633,7 +10803,7 @@ showings:
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
-cinemaTitles:      ZAWODOWCY | Zawodowcy
+cinemaTitles:      ZAWODOWCY | ZAWODOWCY - 2D napisy - Premiera Krajowa | Zawodowcy
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
@@ -10745,6 +10915,7 @@ cinemaScrapes:
   Kino Echo / ZAWODOWCY / —
   Kino Goplana / Zawodowcy / —
   Kino Głębocka 66 / Zawodowcy / —
+  Kino Hel / ZAWODOWCY - 2D napisy - Premiera Krajowa / —
   Kino Ignacy / Zawodowcy / —
   Kino Iluzjon / Zawodowcy / 2026
   Kino KDK / ZAWODOWCY / —

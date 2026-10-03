@@ -192,11 +192,6 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
 
   def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
 
-  // The key a Mongo row would be stamped with — the same derivation `StoredSlotDto.of` writes.
-  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) = (rows.listingKeys(StoredSlotDto.listingKeyOf), true)
-
-  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
-    (rowListingKeysChecked()._1.collect { case (id, Some(k)) if k == listingKey => id }.toSet, true)
 
   // Rings listeners synchronously, so there is no queue and nothing for `demand` to
   // bound — it is accepted only to honour the trait's contract.
@@ -512,11 +507,6 @@ class MongoSlotsRepository(
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
     coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
-  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) =
-    coll.fold((Map.empty[String, Option[String]], true))(SlotKeyed.rowListingKeysChecked(_, "SlotsRepository", logger.warn(_), idPaging))
-
-  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsForListingKeyChecked(_, listingKey, "SlotsRepository", logger.warn(_)))
 
   override def existingRowIdsChecked(ids: Set[String]): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.existingRowIdsChecked(_, ids, "SlotsRepository", logger.warn(_)))

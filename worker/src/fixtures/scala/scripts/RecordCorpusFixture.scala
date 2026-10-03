@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ShadowCoverage, TunnelTunedUri}
+import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -50,9 +50,7 @@ object RecordCorpusFixture {
       val read     = tools.Stopwatch.start()
       val (rows, baseline) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
-        // …and what production's NEW model decided for it (its latest shadow run), which a cut-over
-        // leg must reproduce. Only the full corpus: the sample's films are resolved apart from the rest.
-        ProdCoverage.of(database).copy(shadow = ShadowCoverage.latest(database)))
+        ProdCoverage.of(database))
       println(f"[corpus] read ${rows.size} venues and prod's coverage in ${read.seconds}%.1fs")
       if (rows.isEmpty) {
         System.err.println(
@@ -74,8 +72,7 @@ object RecordCorpusFixture {
       // and the baseline is prod's coverage of exactly that set at exactly T. Recorded anywhere
       // else it would drift against the corpus and the band it guards would become a flake.
       val baselinePath = ProdCoverageBaseline.write(country.code, baseline)
-      println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire" +
-        baseline.shadow.fold(" (no shadow run)")(s => s", and its new model's ${s.films} films, ${s.tmdbId} on TMDB (shadow run ${s.runAt})"))
+      println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire")
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs
       // ahead of the full matrix. The draw happens HERE, once, and the files pin it:

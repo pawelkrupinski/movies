@@ -47,6 +47,7 @@ import scala.collection.mutable
  * Asserting the full `FilmSchedule` makes that mode loud — any field
  * regressing to None or wrong value fails specifically.
  */
+@CorpusReplay
 class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // Anchor film: Guy Ritchie's "Zawodowcy" (orig. "In the Grey") — a
   // mainstream current release showing across six Poznań cinemas in the
@@ -459,10 +460,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   //   - a same-cinema dub re-spawning a separate row and re-folding every tick
   //     (the churn the per-(cinema,title) model exists to kill).
   it should "keep the per-title slots clean across multiple scrape ticks" in {
-    // The shared `wiring` boot already ran the canonical first tick (+ drain +
-    // cleanup). One more identical tick must not duplicate any slot or move the
-    // dub onto its own row.
-    wiring.runOneScrapeTick()
+    // The shared `wiring` boot already scraped and projected to rest. One more identical tick — every
+    // venue re-scraped into the intake and projected, the read model following — must not duplicate
+    // any slot or move the dub onto its own row.
+    wiring.cutoverTick()
+    wiring.readModelProjector.reconcile()
 
     val row = wiring.movieCache.snapshot()
       .find(_.record.tmdbId.contains(DubTmdbId))

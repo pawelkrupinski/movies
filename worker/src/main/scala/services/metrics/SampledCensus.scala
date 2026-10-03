@@ -71,14 +71,12 @@ object SampledCensus {
   def firstDelay(slot: Int, interval: FiniteDuration): FiniteDuration = (FirstSampleDelay + SlotSpacing * slot.toLong).min(interval)
 
   /** The whole-collection readers' first-reading slots, one each and named in one place. All of them used to read at
-   *  two minutes: on a us boot the corpus scan, the stranded side-row cleanup and the listing-key shadow read held
+   *  two minutes: on a us boot the corpus scan, the stranded side-row cleanup and a listing-key read held
    *  ~250 MB live at once, the old generation filled, and four back-to-back full GCs paused ~10 s (JFR, 2026-10-03). */
   object Slots {
     val CorpusScan        = 0
     val RetiredVenues     = 1
-    val ListingKeyShadow  = 2
-    val UnstampedListings = 3
-    val StrandedSideRows  = 4
-    val all: Seq[Int] = Seq(CorpusScan, RetiredVenues, ListingKeyShadow, UnstampedListings, StrandedSideRows)
+    val StrandedSideRows  = 2
+    val all: Seq[Int] = Seq(CorpusScan, RetiredVenues, StrandedSideRows)
   }
 }

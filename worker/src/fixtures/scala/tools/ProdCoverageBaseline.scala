@@ -45,8 +45,8 @@ case class ProdCoverageBaseline(
   filmwebRating:  Int,
   metascore:      Int,
   rottenTomatoes: Int,
-  /** Production's NEW model on the same repertoire — its latest shadow run — which a cut-over leg
-   *  is judged against; absent from a baseline recorded before it was captured. */
+  /** Production's identity model on the same repertoire while it ran in shadow — recorded only before
+   *  the cut-over, when the baseline's own counts were the old pipeline's (see [[ShadowCoverage]]). */
   shadow:         Option[ShadowCoverage] = None
 ) {
 
@@ -58,10 +58,10 @@ case class ProdCoverageBaseline(
 }
 
 /**
- * What production's NEW identity model decided for a country: its latest shadow run
- * (`identity_shadow_decisions`), read when the corpus is recorded. A cut-over convergence leg runs
- * the same model over the same repertoire, so this is what it must reproduce — while the pipeline's
- * baseline beside it says how the model compares with what production serves today.
+ * What production's identity model decided for a country while it ran in SHADOW beside the old
+ * pipeline: its latest shadow run, captured with the corpus by recorders before the cut-over
+ * (2026-10-03). A leg replaying such a recording is judged against it, since the baseline beside it
+ * is the old pipeline's; one recorded since carries none, its baseline being the model's own.
  *
  * Only identification: the shadow decides films and their TMDB match, and rates nothing. Counted over
  * every film the run decided, as the leg counts its whole corpus — both read the same intake, white
@@ -81,13 +81,6 @@ final case class ShadowCoverage(runAt: java.time.Instant, films: Int, tmdbId: In
 
 object ShadowCoverage {
   val Axes: Set[String] = Set("films", "tmdbId")
-
-  def of(run: services.identity.ShadowRun): ShadowCoverage =
-    ShadowCoverage(run.at, run.clusters.size, run.clusters.count(_.decision.film.isDefined))
-
-  /** The country database's latest shadow run, if its worker runs the shadow. */
-  def latest(database: org.mongodb.scala.MongoDatabase): Option[ShadowCoverage] =
-    services.identity.MongoShadowRunBackend.reader(database).latest().map { case (run, _) => of(run) }
 
   private implicit val instantFormat: Format[java.time.Instant] =
     Format(Reads.DefaultInstantReads, Writes.DefaultInstantWrites)
