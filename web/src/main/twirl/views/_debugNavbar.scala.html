@@ -26,6 +26,9 @@
           title="Newest updatedAt in the local read-mirror. Past @services.MirrorFreshness.label(services.MirrorFreshness.StaleAfter) the sync has stopped keeping up — check scripts/local-mirror/.">
       @if(age.stale){⚠ mirror @age.label behind} else {mirror @age.label behind}
     </span>
+    @for(old <- age.snapshotLabel) {
+      <span class="debug-nav-snapshot" title="Served from a read taken @old ago (kept across restarts so a first load needn't wait); a fresh read is already running — reload in a few seconds.">snapshot @old old · refreshing</span>
+    }
   }
 
   @* Country dimension. Every debug view is scoped to ONE country's Mongo db, so
@@ -67,6 +70,7 @@
   }
   @* Loud on purpose: this badge only earns its place if a stale mirror is
      impossible to read past. *@
+  .debug-nav-snapshot { color: #b0a070; font-size: 11px; margin-left: .3rem; }
   .debug-nav-mirror.is-stale { color: #1a1a2e; background: #ffb454; border-color: #ffb454; font-weight: bold; }
   @* The country picker keeps the right-hand end; with a mirror badge present it
      is the badge that takes the auto margin, so this one must not also claim it. *@

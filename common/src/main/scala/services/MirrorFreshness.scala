@@ -51,10 +51,14 @@ object MirrorFreshness {
    *  exactly when a healthy sync would already have re-seeded itself. */
   val StaleAfter: FiniteDuration = 30.minutes
 
-  /** How far behind the mirror is, and whether that is far enough to disbelieve
-   *  the page. */
-  final case class Age(behind: FiniteDuration, stale: Boolean) {
+  /** How far behind the mirror was when the page's data was read, whether that is
+   *  far enough to disbelieve the page, and — for data served from an earlier read
+   *  old enough to matter — how long ago that read was (`snapshotAge`). The two are
+   *  kept apart on purpose: a lagging mirror is a broken sync, an old snapshot is a
+   *  page that is already re-reading. */
+  final case class Age(behind: FiniteDuration, stale: Boolean, snapshotAge: Option[FiniteDuration] = None) {
     def label: String = MirrorFreshness.label(behind)
+    def snapshotLabel: Option[String] = snapshotAge.map(MirrorFreshness.label)
   }
 
   /** `12s`, `4m`, `26h`, `3d`. NOT `CadenceReport.intervalLabel`: that one names

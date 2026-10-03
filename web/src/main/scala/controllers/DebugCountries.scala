@@ -64,14 +64,14 @@ final class DebugStack(
  *  and rendering ~2k of them (every derived `MovieRecord` field per row) was most of
  *  a `/debug` load once the read itself was snapshotted — so a snapshot renders them
  *  once, off the request path. */
-final case class DebugCorpusTable(size: Int, rows: play.twirl.api.Html)
+final case class DebugCorpusTable(size: Int, rows: String)
 
 object DebugCorpusTable {
   def of(records: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer)(implicit city: models.City): DebugCorpusTable =
     // Flattened to ONE string: a `fill`ed `Html` is a tree of thousands of fragments that
     // every page render walks again to rebuild the same text.
-    DebugCorpusTable(records.size, play.twirl.api.Html(
-      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase).map(views.html._debugRow(_, normalizer))).body))
+    DebugCorpusTable(records.size,
+      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase).map(views.html._debugRow(_, normalizer))).body)
 }
 
 /** One read of the corpus, in the two shapes the debug pages use it. */

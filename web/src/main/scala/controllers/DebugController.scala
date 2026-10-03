@@ -8,7 +8,7 @@ import services.readmodel.WebReadModel
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, DurationLong}
 
 /**
  * The dev-only `/debug*` pages: the corpus table, its per-row detail, the
@@ -104,13 +104,18 @@ class DebugController(cc: ControllerComponents,
     }
   }
 
-  /** How far behind the mirror the data ON SCREEN is, for the debug navbar's badge:
-   *  the mirror's newest stamp as of the snapshot's read, against now — so a
-   *  snapshot taken a minute ago over a live mirror reads "1m behind", which is what
-   *  it is. `None` in prod, where the pages read the source and there is no copy to
-   *  be behind. */
-  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.MirrorFreshness.Age] =
-    services.MirrorFreshness.describe(snapshot.mirrorNewest, clock.instant())
+  /** The debug navbar's age badge: how far behind the mirror was when the data on
+   *  screen was READ (the sync's health — a snapshot's own age doesn't make the
+   *  mirror look broken), plus how long ago that read was once it is old enough to
+   *  matter, e.g. a snapshot restored after a restart. `None` in prod, where the
+   *  pages read the source and there is no copy to be behind. */
+  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.MirrorFreshness.Age] = {
+    val now = clock.instant()
+    services.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
+      val sinceRead = snapshot.takenAt.map(at => java.time.Duration.between(at, now).toMillis.millis)
+      age.copy(snapshotAge = sinceRead.filter(_ >= DebugController.SnapshotAgeShownAfter))
+    }
+  }
 
   /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
    *  grouped by their current refresh interval, slowest (most backed-off / stable)
@@ -287,6 +292,10 @@ object DebugController {
    *  cover a backed-up enrichment queue so a pending movie's place is still
    *  resolvable, without an unbounded scan. */
   private val DebugQueueActiveLimit = 1000
+
+  /** A snapshot younger than this is what the warm-up keeps them at (~1 min) and is
+   *  not called out; an older one — restored after a restart — says how old it is. */
+  private[controllers] val SnapshotAgeShownAfter: scala.concurrent.duration.FiniteDuration = 2.minutes
 
   /** How many staging rows `/debug` renders. The header still shows the full
    *  `pending_movies` count; only the table is capped (and the page's live

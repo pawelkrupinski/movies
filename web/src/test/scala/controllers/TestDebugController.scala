@@ -32,6 +32,7 @@ object TestDebugController {
     // the collaborators above; a spec exercising the Dev country switch injects a
     // multi-country `DebugCountries` instead.
     debugCountries: Option[DebugCountries] = None,
+    clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC),
   ): (DebugController, WebReadModel) = {
     given play.api.i18n.Messages = testsupport.TestMessages.deployment
     val readModel = TestReadModel.fromRecords(records)
@@ -48,6 +49,7 @@ object TestDebugController {
       environment      = mode,
       cinemaSourceUrls = () => cinemaSourceUrls,
       servingCountry   = models.Country.default,
+      clock            = clock,
       normalizer       = services.movies.SingleCountryNormalizer.titleNormalizer,
     )
     (ctrl, readModel)

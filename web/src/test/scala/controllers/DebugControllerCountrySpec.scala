@@ -78,4 +78,22 @@ class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
     html should not include ("Uk Only Film")
     cookies(result).get(DebugCountries.CookieName) shouldBe None
   }
+
+  // The navbar badge takes the mirror's lag as of the READ, and a restored snapshot's
+  // own age separately: an hour-old snapshot of a healthy mirror is not a broken sync.
+  "GET /debug from a snapshot read an hour ago" should "show the mirror's lag at the read and the snapshot's age" in {
+    val now     = java.time.Instant.parse("2026-10-03T12:00:00Z")
+    val readAt  = now.minusSeconds(3600)
+    val listing = CorpusListing.read(plStack.movieRepository)
+    val stack   = new DebugStack(Country.Poland, plStack.movieRepository, plStack.stagingRepository, plStack.taskQueue,
+      plStack.ratingCadenceReader, plStack.attemptReader, () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty),
+      corpusListing = Some(() => DebugSnapshot(listing, Some(readAt.minusSeconds(10)), Some(readAt))))
+    val html = contentAsString(TestDebugController.build(Seq.empty, Mode.Dev,
+      debugCountries = Some(DebugCountries.single(stack)),
+      clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))._1.debug().apply(FakeRequest(GET, "/debug")))
+
+    html should include ("Pl Only Film")
+    html should include ("mirror 10s behind")
+    html should include ("snapshot 1h old · refreshing")
+  }
 }

@@ -48,6 +48,21 @@ class DebugViewMirrorFreshnessSpec extends AnyFlatSpec with Matchers {
 
   // The cadence page is the one whose staleness was mistaken for a bug, and the
   // read-model dump is the other page reading the same copy.
+  // A snapshot restored after a restart: the mirror was healthy when it was read, and
+  // the page says how old the read is — without painting the sync as broken.
+  it should "say how old a snapshot is, apart from the mirror's lag" in {
+    val restored = age(12.seconds).map(_.copy(snapshotAge = Some(3.hours)))
+    val html = views.html.debug(controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer, mirror = restored, current = models.Country.Poland).body
+    html should include ("mirror 12s behind")
+    html should not include ("debug-nav-mirror is-stale")
+    html should include ("snapshot 3h old · refreshing")
+  }
+
+  it should "not mention a snapshot's age when there is none to mention" in {
+    val html = views.html.debug(controllers.DebugCorpusTable.of(Seq.empty, titleNormalizer), titleNormalizer, mirror = age(12.seconds), current = models.Country.Poland).body
+    html should not include ("""class="debug-nav-snapshot"""")
+  }
+
   "cadence page" should "carry the same badge" in {
     val html = views.html.cadence(Seq.empty, Instant.EPOCH, mirror = age(26.hours), current = models.Country.Poland).body
     html should include ("mirror 26h behind")

@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CorpusListing, DebugController, DebugCountries, DebugSnapshot, DebugStack, DebugStreamController, ReadModelDump, RefreshingSnapshot}
+import controllers.{CorpusListing, DebugController, DebugCountries, DebugSnapshot, DebugStack, DebugStreamController, ReadModelDump, RefreshingSnapshot, FileSnapshotStore, SnapshotStore}
 import modules.Wiring
 import play.api.Mode
 import services.{MongoConnection, UptimeMonitor}
@@ -61,13 +61,19 @@ trait DebugWiring { self: Wiring =>
   // country also its read-model dump) are `RefreshingSnapshot`s: re-reading them
   // per request made every country switch 4–10 s (US: 105k slots, 100k read-model
   // screenings, measured off the local mirror). In Dev a ticker keeps them warm —
-  // first one shortly after boot, then every `DebugSnapshotRefresh` — so a switch is
-  // a map lookup and what it shows is at most about a minute behind the mirror, an
-  // age the navbar badge states.
+  // from boot, then every `DebugSnapshotRefresh` — so a switch is a map lookup and
+  // what it shows is at most about a minute behind the mirror, an age the navbar
+  // badge states. In Dev each snapshot is also kept on disk (`target/`), so a dev
+  // reload or a server restart serves the last one at once instead of making the
+  // first load of every country wait on a cold read.
   private val DebugSnapshotRefresh = scala.concurrent.duration.DurationInt(60).seconds
   private lazy val debugSnapshotPool = tools.DaemonExecutors.virtualThreadEC("debug-snapshots")
+  private lazy val debugSnapshotStore: SnapshotStore =
+    if (environmentMode == Mode.Dev) new FileSnapshotStore(java.nio.file.Paths.get("target", "debug-snapshots"))
+    else SnapshotStore.none
   private def debugSnapshot[A](label: String, freshness: services.MirrorFreshness)(read: => A): RefreshingSnapshot[A] =
-    new RefreshingSnapshot(label, () => read, freshness, refreshAfter = scala.concurrent.duration.DurationInt(15).seconds, clock)(using debugSnapshotPool)
+    new RefreshingSnapshot(label, () => read, freshness, refreshAfter = scala.concurrent.duration.DurationInt(15).seconds, clock,
+      debugSnapshotStore)(using debugSnapshotPool)
 
   private lazy val bootDebugListing = debugSnapshot(s"/debug listing ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
     CorpusListing.read(movieRepository))
@@ -145,8 +151,13 @@ trait DebugWiring { self: Wiring =>
     Option.when(environmentMode == Mode.Dev) {
       val snapshots = Seq(bootDebugListing, bootDebugCadence) ++ debugExtraStacks.flatMap(_._4)
       val ticker    = tools.DaemonExecutors.scheduler("debug-snapshot-ticker")
-      ticker.scheduleWithFixedDelay(() => snapshots.foreach(_.refreshIfOlderThan(DebugSnapshotRefresh)),
-        10, DebugSnapshotRefresh.toSeconds, java.util.concurrent.TimeUnit.SECONDS)
+      // ONE re-read at a time, boot country first: all of them at once (14 reads)
+      // contended so hard right after boot that each took 8–60 s instead of ~1 s.
+      // A page asking for a cold country doesn't queue behind this — its own read
+      // starts immediately.
+      ticker.scheduleWithFixedDelay(() => snapshots.foreach(snapshot =>
+          scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(DebugSnapshotRefresh), scala.concurrent.duration.DurationInt(2).minutes)),
+        0, DebugSnapshotRefresh.toSeconds, java.util.concurrent.TimeUnit.SECONDS)
       ticker
     }
   protected def stopDebugSnapshots(): Unit = {

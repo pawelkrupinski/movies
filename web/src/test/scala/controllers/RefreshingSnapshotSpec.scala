@@ -46,8 +46,15 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
   private val Start = Instant.parse("2026-10-03T12:00:00Z")
 
-  private def snapshotOf(read: GatedRead, clock: Clock, newest: Option[Instant] = None) =
-    new RefreshingSnapshot[Int]("spec", () => read(), () => newest, refreshAfter = 15.seconds, clock)
+  private def snapshotOf(read: GatedRead, clock: Clock, newest: Option[Instant] = None, store: SnapshotStore = SnapshotStore.none) =
+    new RefreshingSnapshot[Int]("spec", () => read(), () => newest, refreshAfter = 15.seconds, clock, store)
+
+  /** What a previous app run left behind. */
+  private final class MapStore extends SnapshotStore {
+    val saved = scala.collection.concurrent.TrieMap.empty[String, DebugSnapshot[?]]
+    def load[A](key: String): Option[DebugSnapshot[A]] = saved.get(key).map(_.asInstanceOf[DebugSnapshot[A]])
+    def save[A](key: String, snapshot: DebugSnapshot[A]): Unit = saved(key) = snapshot
+  }
 
   "get" should "wait for the very first read" in {
     val read = new GatedRead
@@ -117,12 +124,34 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     snapshotOf(new GatedRead, new ManualClock(Start), Some(stamp)).get().mirrorNewest shouldBe Some(stamp)
   }
 
+  it should "serve what a previous run stored AT ONCE on its first get, and re-read it behind" in {
+    val store = new MapStore
+    store.saved("spec") = DebugSnapshot(41, None, Some(Start.minusSeconds(3600)))
+    val read     = new GatedRead
+    read.gate    = new CountDownLatch(1)          // the fresh read hangs until released
+    val snapshot = snapshotOf(read, new ManualClock(Start), store = store)
+
+    val started = System.nanoTime()
+    snapshot.get().value shouldBe 41
+    (System.nanoTime() - started).nanos should be < 1.second
+
+    read.gate.countDown()
+    eventually(snapshot.get().value == 1)
+  }
+
+  it should "store every read, stamped with when it was taken" in {
+    val store = new MapStore
+    snapshotOf(new GatedRead, new ManualClock(Start), store = store).get()
+    eventually(store.saved.contains("spec"))
+    store.saved("spec") shouldBe DebugSnapshot(1, None, Some(Start))
+  }
+
   "refreshIfOlderThan" should "re-read a snapshot past the threshold and leave a younger one alone" in {
     val read     = new GatedRead
     val clock    = new ManualClock(Start)
     val snapshot = snapshotOf(read, clock)
-    snapshot.refreshIfOlderThan(60.seconds)         // nothing read yet: warms it
-    eventually(read.reads.get() == 1)
+    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), 5.seconds)   // nothing read yet: warms it, and says when
+    read.reads.get() shouldBe 1
     clock.advance(30.seconds)
     snapshot.refreshIfOlderThan(60.seconds)
     Thread.sleep(50)
