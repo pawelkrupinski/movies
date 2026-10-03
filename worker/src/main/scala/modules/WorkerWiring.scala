@@ -477,7 +477,6 @@ class WorkerWiring(
     // backstop); refreshOneSync, which the handlers call, needs no start().
     boot.step("unscreened cleanup")(unscreenedCleanup.start())
     boot.step("stranded side rows")(strandedSideRowsCleanup.start())
-    boot.step("booking-url split")(bookingUrlSplitMigration.foreach(_.start()))
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go
@@ -577,7 +576,6 @@ class WorkerWiring(
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
     strandedSideRowsCleanup.stop()
-    bookingUrlSplitMigration.foreach(_.stop())
     readModelProjector.stop()
     movieCache.stop()
     readModelRepository.close()

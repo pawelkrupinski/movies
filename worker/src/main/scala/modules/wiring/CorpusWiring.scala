@@ -106,11 +106,6 @@ trait CorpusWiring { self: WorkerWiring =>
   // The other daily sweep: side-collection rows whose film left the corpus before
   // deletes and merges carried their rows with them — and, on the same tick, rows filed
   // under a venue this country's roster no longer lists.
-  // Rewrites the `screenings` / `web_screenings` rows stored before booking URLs were split at
-  // their row's prefix, once per collection — see the class for when to delete it.
-  lazy val bookingUrlSplitMigration: Option[services.movies.BookingUrlSplitMigration] =
-    mongoConnection.database.map(new services.movies.BookingUrlSplitMigration(_, clock))
-
   lazy val strandedSideRowsCleanup = new StrandedSideRowsCleanup(movieRepository,
     retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
       VenueRoster.venuesOf(country), now = clock.instant()),
