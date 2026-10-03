@@ -83,4 +83,17 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  it should "write a film's booking URLs split at the prefix they share, and read them back unchanged" in {
+    val dateTime = java.time.LocalDateTime.of(2026, 12, 17, 13, 0)
+    val film = ArchivedFilmDto(models.Movie("Lalka"), None, None, None, Nil, Nil, Seq(
+      Showtime(dateTime, Some("https://kino.example/buy?show=101")), Showtime(dateTime, Some("https://kino.example/buy?show=2"))),
+      Map.empty, None, None)
+    val codec = ScrapeArchiveCodecs.registry.get(classOf[ArchivedFilmDto])
+    val out   = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(out), film, EncoderContext.builder().build())
+    out.toJson should include(""""bookingUrlPrefix": "https://kino.example/buy?show=", "showtimes": [""")
+    out.toJson should not include(""""bookingUrl":""")
+    codec.decode(new BsonDocumentReader(out), DecoderContext.builder().build()) shouldBe film
+  }
 }

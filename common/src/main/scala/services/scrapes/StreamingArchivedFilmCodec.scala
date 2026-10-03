@@ -8,8 +8,9 @@ import services.movies.{BsonReads, ShowtimeCodec}
 /**
  * One film of an archived listing, written and read field by field — so its booking URLs can be
  * stored split at the prefix they share (the film's `bookingUrlPrefix`, each showtime's
- * `bookingUrlRest`), which the macro codec has no way to express. Everything else reads and
- * writes as the macro codec did (`IgnoreNone`: an absent optional is omitted, and reads back
+ * `bookingUrlRest`), which the macro codec has no way to express — at the prefix its own URLs
+ * share on every write, so a venue that moves its booking pages writes the new one. A film
+ * whose URLs share none is written whole. Everything else reads and writes as the macro codec did (`IgnoreNone`: an absent optional is omitted, and reads back
  * `None`; `ScrapeArchiveCodecsSpec` pins every stored shape to it). `movie` goes through its
  * macro codec.
  *
@@ -28,9 +29,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
     v.synopsis.foreach(w.writeString("synopsis", _))
     strings(w, "cast", v.cast)
     strings(w, "director", v.director)
-    w.writeStartArray("showtimes")
-    v.showtimes.foreach(ShowtimeCodec.write(w, _, c, null))
-    w.writeEndArray()
+    ShowtimeCodec.writeShowtimes(w, v.showtimes, c)
     w.writeStartDocument("externalIds")
     v.externalIds.foreach { case (k, id) => w.writeString(k, id) }
     w.writeEndDocument()
