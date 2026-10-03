@@ -124,6 +124,16 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     normalizer.firedRules(Rialto, "Mistyczka 2D napisy").filter(_.startsWith("format:")) should not be empty
   }
 
+  // A batch of traces asked the canonical and search tiers once per LISTING, and a us re-resolve's ~100k listings bill
+  // far fewer titles: the venues listing one title share its tiers' reading.
+  it should "read a title's canonical and search tiers once for every venue that lists it" in {
+    val title  = "Klub Filmowy: pokaz filmu \"Mira\""
+    val venues = Seq(Rialto, Multikino, KinoApollo)
+    val shared = mutable.HashMap.empty[String, Seq[String]]
+    venues.map(normalizer.firedRules(_, title, shared)) shouldBe venues.map(normalizer.firedRules(_, title))
+    shared should have size 1
+  }
+
   "the incremental model" should "file each re-resolved family's traces, drop a removed family's, and keep none in memory" in {
     val filed   = mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
     val dropped = mutable.ArrayBuffer.empty[String]

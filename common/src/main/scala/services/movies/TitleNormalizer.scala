@@ -56,11 +56,16 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   /** What the title rules did to a venue's `raw` title, as rule ids: the venue's own cleanup and the format
    *  tags it peeled (`format:<tag>`), then the canonical and search tiers over what that leaves (`title:<id>`).
    *  The identity trace's — uncached, and never asked on the pipeline's path. */
-  def firedRules(cinema: Cinema, raw: String): Seq[String] = {
+  def firedRules(cinema: Cinema, raw: String): Seq[String] = firedRules(cinema, raw, scala.collection.mutable.HashMap.empty)
+
+  /** [[firedRules]], each cleaned title's canonical and search tiers read once into `byClean`: those see only the
+   *  cleaned title, which the venues listing one film share, while a batch of traces asked them per listing (half the
+   *  trace writer's CPU in a us re-resolve, JFR 2026-10-03). The venue's own cleanup stays per listing. */
+  def firedRules(cinema: Cinema, raw: String, byClean: scala.collection.mutable.Map[String, Seq[String]]): Seq[String] = {
     val key             = TitleRuleKey.of(cinema.displayName)
     val (clean, formats) = listingTitle(cinema, raw)
-    (rules.firedPerCinema(key, TitleText.tidy(raw)) ++ rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean))).map("title:" + _).distinct ++
-      formats.map("format:" + _)
+    val tiers           = byClean.getOrElseUpdate(clean, rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean)))
+    (rules.firedPerCinema(key, TitleText.tidy(raw)) ++ tiers).map("title:" + _).distinct ++ formats.map("format:" + _)
   }
 
   /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
