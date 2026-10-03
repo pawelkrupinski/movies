@@ -131,9 +131,9 @@ on:
             # (exit 3) before ScalaTest had reported a single assertion — twice, on
             # consecutive runs. A leg that cannot reach an assertion answers nothing.
             #
-            # Applied to BOTH sbt invocations, not just the full one. `-Xmx` is a ceiling
-            # rather than a reservation, so a sample that stays well under it pays
-            # nothing, and one knob is one fewer way for the two steps to drift apart.
+            # Applied to the job's ONE sbt server, which runs the sample and the suite alike (and to
+            # any fresh server a suite boots, `scripts/ci/sbt-server.sh run`). `-Xmx` is a ceiling
+            # rather than a reservation, so a sample that stays well under it pays nothing.
             heap:
                 description: Max JVM heap for this country's sbt runs, as an -Xmx value.
                 required: false
@@ -313,6 +313,28 @@ jobs:
                   mode:          ${{ inputs.mode }}
                   corpus-run:    ${{ inputs.corpus-run }}
 
+            # ONE sbt for the job (scripts/ci/sbt-server.sh): booted here, in the background, beside
+            # the tunnel and the corpus read, and reached warm by the steps after it — where each
+            # step's own cold sbt paid ~12 s of JVM, project load and compile checks before its first
+            # line of work (run 37105119296). The server runs with THIS step's environment for good —
+            # a thin client forwards none — so it is the suite's, key for key
+            # (ConvergenceLegWiringSpec), and never the corpus capture's: the prod credential reaches
+            # only that step's own plain JVM. Stopped after the suite ("Stop sbt").
+            - name: Start sbt in the background
+              shell: bash
+              run: scripts/ci/sbt-server.sh start ${{ inputs.heap }}
+              env:
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
+                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase == 'order-independence') }}
+                  KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
+                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+
             # A RECORDING leg records its own country's corpus FIRST, in this job — the sample
             # and the suite below then replay what it wrote to test/resources/fixtures/corpus.
             #
@@ -353,7 +375,7 @@ jobs:
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
 
             #
-            # From `worker/Fixtures`, not `worker/Test`: nothing else in a leg compiles worker's
+            # From `worker/Fixtures`' classpath, not `worker/Test`'s: nothing else in a leg compiles worker's
             # specs (e2e depends on worker's fixtures only), so the build cache every hermetic leg
             # saves carries worker/test-classes as stale as whatever it was first restored from,
             # and this step paid for recompiling them — 13 to 80 sources most nights, all 744
@@ -363,7 +385,14 @@ jobs:
               if: inputs.mode == 'record' && matrix.phase == 'convergence'
               timeout-minutes: 10
               shell: bash
-              run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"
+              # On a plain JVM over the server's classpath — never on the server itself, whose
+              # environment would then hold the credential for the rest of the job — with the
+              # options sbt's own JVM ran it under (`.jvmopts`).
+              run: |
+                  set -euo pipefail
+                  classpath=$(scripts/ci/sbt-server.sh classpath worker/Fixtures/fullClasspath)
+                  mapfile -t options < <(grep -Ev '^[[:space:]]*(#|$)' .jvmopts)
+                  java "${options[@]}" -cp "$classpath" scripts.RecordCorpusFixture ${{ inputs.code }}
               env:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
@@ -481,7 +510,7 @@ jobs:
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
               run: |
                   set -o pipefail
-                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
+                  scripts/ci/sbt-server.sh run ${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
               env:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
@@ -553,7 +582,10 @@ jobs:
                   set -o pipefail
                   # The sample, above, wrote its JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
-                  sbt -J-Xmx${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
+                  # A failed sample may have been cut off at its step's ceiling, which kills the client
+                  # and leaves the server running it; this suite then runs on a fresh one.
+                  if [ "${{ steps.sample.outcome }}" = failure ]; then scripts/ci/sbt-server.sh stop; fi
+                  scripts/ci/sbt-server.sh run ${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
               env:
                   # The spec builds this country's TitleNormalizer itself; naming the
                   # country here too means anything that reads the environment
@@ -594,7 +626,7 @@ jobs:
                   # web for the same page need not hear the same answer — an arrival-order
                   # "dependence" the pipeline does not have (run 36801876786). Nothing it records
                   # is published: the convergence row is the one writer.
-                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}
+                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase == 'order-independence') }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
@@ -618,6 +650,13 @@ jobs:
                   # Absent, the suite runs in memory and says which it chose — a suite that
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+
+            # Before anything reads what the server writes: a step cut off at its ceiling kills only
+            # its client, and a server still recording into the tree would be packed mid-write.
+            - name: Stop sbt
+              if: always()
+              shell: bash
+              run: scripts/ci/sbt-server.sh stop
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it

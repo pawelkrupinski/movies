@@ -287,9 +287,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     heaps.foreach { case (country, heap) =>
       withClue(s"$country: ")(heapGigabytes(heap) should be >= 4)
     }
-    withClue("neither sbt invocation may fall back to `.jvmopts`' 4g: ") {
-      leg.linesIterator.filter(_.trim.startsWith("sbt ")).toList.foreach(
-        _ should include("-J-Xmx${{ inputs.heap }}"))
+    withClue("no sbt may fall back to `.jvmopts`' 4g — every start or run of the job's server names the heap: ") {
+      val invocations = leg.linesIterator.map(_.trim).filterNot(_.startsWith("#"))
+        .filter(l => l.contains("sbt-server.sh start") || l.contains("sbt-server.sh run")).toList
+      invocations should not be empty
+      invocations.foreach(l => withClue(l)(l should include regex """sbt-server\.sh (start|run) \$\{\{ inputs\.heap \}\}"""))
+      leg.linesIterator.map(_.trim).filter(_.startsWith("sbt ")).toList shouldBe empty
     }
   }
 
@@ -599,6 +602,33 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     unpack should include("scripts/ci/in-background.sh wait tree-restore")
     unpack should include("""stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"""")
     withClue("moved in before the overlay is laid over it: ")(at("Unpack whichever fixtures") should be < at("Unpack the identity model's overlay"))
+  }
+
+  /** ONE sbt per job (scripts/ci/sbt-server.sh): every step's cold sbt paid ~12 s before its first
+   *  line of work (run 37105119296). The server keeps the environment of the step that boots it —
+   *  a thin client forwards none — so that step must carry the suite's, key for key, and must come
+   *  BEFORE the tunnel (whose credential would otherwise sit in the server for the whole job); and
+   *  it is stopped, whatever happened, before anything packs or reports what it wrote. */
+  it should "run the sample and suite on one sbt, booted with the suite's environment before the tunnel" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    def envOf(step: String): Map[String, String] = {
+      val lines = RepoFile.step(convergence, step).linesIterator.toVector
+      val at = lines.indexWhere(_.trim == "env:")
+      lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || l.trim.startsWith("#") || l.takeWhile(_ == ' ').length > 14)
+        .map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#"))
+        .map(l => l.takeWhile(_ != ':') -> l.dropWhile(_ != ':').drop(1).trim).toMap
+    }
+    val start = "Start sbt in the background"
+    envOf(start) shouldBe envOf(SuiteStep)
+    RepoFile.step(convergence, start) should include("run: scripts/ci/sbt-server.sh start ${{ inputs.heap }}")
+    convergence.indexOf(s"- name: $start") should be < convergence.indexOf("- name: Tunnel to prod Mongo")
+    RepoFile.step(convergence, SampleStep) should include("scripts/ci/sbt-server.sh run ${{ inputs.heap }} ${{ inputs.sample-command }}")
+    RepoFile.step(convergence, SuiteStep) should include("""if [ "${{ steps.sample.outcome }}" = failure ]; then scripts/ci/sbt-server.sh stop; fi""")
+    val stop = RepoFile.step(convergence, "Stop sbt")
+    stop should include("if: always()\n")
+    convergence.indexOf("- name: Stop sbt") should be > convergence.indexOf(s"- name: $SuiteStep")
+    convergence.indexOf("- name: Stop sbt") should be < convergence.indexOf("uses: mikepenz/action-junit-report")
+    convergence.indexOf("- name: Stop sbt") should be < convergence.indexOf("uses: ./.github/actions/convergence-publish")
   }
 
   /** The prod-Mongo tunnel's `socat` is not on the runner image, and installing it inside the

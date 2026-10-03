@@ -44,6 +44,7 @@ scripts/ci/gh-release.sh
 scripts/ci/preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/in-background.sh
+scripts/ci/sbt-server.sh
 scripts/ci/wait-for-run-artifact.sh
 scripts/ci/install-apt-package.sh
 scripts/ci/drop-microsoft-apt-sources.sh
