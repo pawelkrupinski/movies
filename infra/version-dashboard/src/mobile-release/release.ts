@@ -12,11 +12,11 @@
  * CI dispatch builds whatever main's head is when it starts (not necessarily this commit), and its
  * run_number version codes are now far below Play's epoch-second ones.
  */
-import { appendFile, copyFile, mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describeFailure, type Executor } from "../exec.js";
-import type { AscApi, PlayApi, Sleep } from "../mobile/stores.js";
+import { retryingReads, type AscApi, type PlayApi, type Sleep } from "../mobile/stores.js";
 import { inspectAndroid, internalBuildFor, nextVersionCode, promoteAndroid, type AndroidState } from "./android.js";
 import { deliveryUuid, describeIosPlan, existingBuild, inspectIos, planIosVersion, submitIos, type IosState } from "./ios.js";
 import type { Notes } from "./notes.js";
@@ -144,7 +144,8 @@ async function androidSigningEnv(repoDir: string): Promise<Record<string, string
   };
 }
 
-export async function release(deps: ReleaseDeps, options: ReleaseOptions): Promise<void> {
+export async function release(given: ReleaseDeps, options: ReleaseOptions): Promise<void> {
+  const deps = { ...given, asc: retryingReads(given.asc, given.sleep) };
   const { log } = deps;
   const inspection = await inspect(deps, options);
   describeInspection(inspection).forEach((line) => log(line));
@@ -153,6 +154,51 @@ export async function release(deps: ReleaseDeps, options: ReleaseOptions): Promi
   const { version } = plan.decision;
   planIosVersion(inspection.ios, version); // throws on an approved-but-unreleased record, before any build
 
+  const lock = await lockVersion(deps.workDir, version);
+  try {
+    await releaseVersion(deps, options, inspection, version);
+  } finally {
+    await unlink(lock).catch(() => {});
+  }
+}
+
+/**
+ * ONE RELEASE OF A VERSION AT A TIME. Each run of a version works in the same worktree, and starts by
+ * removing whatever is there -- without this, a second run deleted the first one's worktree in the
+ * middle of its Gradle or Xcode build. A lock left by a run that died (its process gone) is taken over.
+ */
+async function lockVersion(workDir: string, version: string): Promise<string> {
+  const lock = join(workDir, `kinowo-mobile-release-${version}.lock`);
+  await mkdir(workDir, { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const file = await open(lock, "wx");
+      await file.writeFile(String(process.pid));
+      await file.close();
+      return lock;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const holder = Number((await readFile(lock, "utf8").catch(() => "")).trim());
+      if (holder > 0 && alive(holder)) throw new Error(`a release of ${version} is already running (pid ${holder}); its lock is ${lock}`);
+      await unlink(lock).catch(() => {});
+    }
+  }
+  throw new Error(`could not take the release lock ${lock}`);
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+async function releaseVersion(deps: ReleaseDeps, options: ReleaseOptions, inspection: Inspection, version: string): Promise<void> {
+  const { log } = deps;
+  const { plan } = inspection;
+  if (plan.kind === "nothing") return;
   const git = new Git(deps);
   const worktree = join(deps.workDir, `kinowo-mobile-release-${version}`);
   const logs = join(deps.workDir, `kinowo-mobile-release-${version}-logs`);
@@ -223,19 +269,31 @@ async function bumpMain(deps: ReleaseDeps, git: Git, worktree: string, version: 
 }
 
 async function logged(deps: ReleaseDeps, argv: readonly string[], cwd: string, logFile: string, prefix: string, env?: Record<string, string>): Promise<void> {
-  const writes: Promise<void>[] = [];
-  const result = await deps.run(argv, {
+  // ONE handle and ONE write at a time. A concurrent appendFile per line reordered the log (each
+  // opens the file on its own pool thread), held thousands of descriptors open over a Gradle build,
+  // and a write that failed mid-build was an unhandled rejection that killed the release outright.
+  const file = await open(logFile, "a");
+  let written: Promise<unknown> = Promise.resolve();
+  let writeFailure: Error | null = null;
+  const run = deps.run(argv, {
     cwd,
     timeoutMs: 90 * MINUTE,
     mergeStderr: true,
     ...(env ? { env } : {}),
     onLine: (line) => {
-      writes.push(appendFile(logFile, `${line}\n`));
+      written = written.then(() => file.appendFile(`${line}\n`)).catch((error: unknown) => (writeFailure ??= error instanceof Error ? error : new Error("log write failed")));
       // The iOS script prints its own ▸/✓ milestones; Gradle's task lines are too many to echo.
       if (/^\S*[▸✓✗!]/.test(line) || /BUILD (SUCCESSFUL|FAILED)|^> Task .*publish/i.test(line)) deps.log(`${prefix} ${line}`);
     },
   });
-  await Promise.all(writes);
+  let result: Awaited<typeof run>;
+  try {
+    result = await run;
+  } finally {
+    await written;
+    await file.close();
+  }
+  if (writeFailure) deps.log(`${prefix} could not write ${logFile}: ${(writeFailure as Error).message}`);
   if (result.code !== 0) throw new Error(`${prefix} ${describeFailure(argv, result)} -- full log: ${logFile}`);
 }
 

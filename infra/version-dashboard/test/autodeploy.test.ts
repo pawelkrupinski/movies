@@ -70,6 +70,26 @@ describe("autodeploy", () => {
     expect(logs.join("\n")).toContain("TS1005");
   });
 
+  it("takes a fix that lands while a broken change is still being type-checked", async () => {
+    let finishCheck: (result: CommandResult) => void = () => {};
+    let checks = 0;
+    setExecutor(async (argv) => {
+      ran.push((argv[0] ?? "").split("/").pop() ?? "");
+      checks += 1;
+      if (checks === 1) return new Promise<CommandResult>((resolve) => (finishCheck = resolve));
+      return { code: 0, stdout: "", stderr: "", timedOut: false };
+    });
+    const { restarts, change, settle } = deployer();
+    change("src/fleet/view.ts");
+    await vi.advanceTimersByTimeAsync(2_000);
+    change("src/fleet/live.ts");
+    await vi.advanceTimersByTimeAsync(2_000);
+    finishCheck({ code: 2, stdout: "error TS1005", stderr: "", timedOut: false });
+    await settle();
+    expect(ran).toEqual(["tsc", "tsc"]);
+    expect(restarts).toEqual(["autodeploy (src/fleet/live.ts)"]);
+  });
+
   it("installs the new dependencies first when the lockfile moved", async () => {
     let lock = "lock-1";
     const { restarts, change, settle } = deployer(() => lock);

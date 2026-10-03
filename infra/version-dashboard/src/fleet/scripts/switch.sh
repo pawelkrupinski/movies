@@ -3,6 +3,14 @@
 set -uo pipefail
 staged="$1"
 [ -e "$staged" ] || { echo "!! $staged is not on this host any more"; exit 5; }
+# STILL THE PIN, re-read here rather than trusted from the check: FleetJobs accepts any closure a
+# check ever read, and CI may have staged a newer one since -- a stale tab would then roll the host
+# back to what CI already replaced. Same pin path as check.sh.
+pinned=$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null || true)
+if [ "$pinned" != "$staged" ]; then
+  echo "!! $staged is no longer the closure staged on this host (the pin is ${pinned:-empty}); run the check again"
+  exit 7
+fi
 running=$(readlink -f /run/current-system 2>/dev/null || true)
 if [ "$staged" = "$running" ]; then
   echo "· already running it — nothing to do"

@@ -50,6 +50,7 @@ export class Autodeploy {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private changed = new Set<string>();
   private deploying: Promise<void> | null = null;
+  private restarting = false;
   private lock: string;
 
   constructor(private readonly options: AutodeployOptions) {
@@ -72,9 +73,17 @@ export class Autodeploy {
     this.timer = setTimeout(() => void this.deploy(), this.options.settleMs ?? SETTLE_MS);
   }
 
-  /** One deploy at a time; changes that land meanwhile are picked up by the next. */
+  /**
+   * One deploy at a time. Changes that land meanwhile get the next: their settle timer fired into
+   * this one's promise, so nothing else would ever take them -- a fix merged while a broken change
+   * was type-checking sat unserved until some unrelated later edit. Not once a restart is asked for:
+   * the drain is under way, and the new process starts from whatever is on disk.
+   */
   deploy(): Promise<void> {
-    this.deploying ??= this.attempt().finally(() => (this.deploying = null));
+    this.deploying ??= this.attempt().finally(() => {
+      this.deploying = null;
+      if (this.changed.size && !this.restarting) void this.deploy();
+    });
     return this.deploying;
   }
 
@@ -100,6 +109,7 @@ export class Autodeploy {
       return;
     }
     log(`autodeploy: ${what} changed and type-checks; draining and restarting onto it`);
+    this.restarting = true;
     this.options.restart(`autodeploy (${what})`);
   }
 

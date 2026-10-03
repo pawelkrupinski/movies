@@ -58,6 +58,11 @@ describe("iOS release state", () => {
     expect(state).toEqual({ error: null, liveVersion: "2.0.6", liveExtra: "READY_FOR_SALE", pending: { version: "2.0.8", state: "WAITING_FOR_REVIEW" } });
   });
 
+  it("reports an answer without the version list as an error, never as nothing live", async () => {
+    const state = await iosReleaseState(async () => ({ errors: [{ status: "500" }] }), noSleep);
+    expect(state).toEqual({ error: "App Store Connect answered without a version list", networkError: false });
+  });
+
   it("retries a DNS failure and recovers", async () => {
     let calls = 0;
     const state = await iosReleaseState(async () => {

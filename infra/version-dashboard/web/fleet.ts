@@ -617,6 +617,12 @@ export function start(): void {
   if (initial) latest = (JSON.parse(initial) as { state: FleetState }).state;
   document.addEventListener("click", onClick);
   connect<FleetState>("fleet", (snapshot) => applySnapshot(snapshot.state));
+  // The server pushes only a CHANGED state, and a Prometheus read that keeps failing changes
+  // nothing: re-render from the state already held, so "read … ago" ages and the stale banner
+  // appears in an open tab (as the mobile page's "built … ago" does).
+  setInterval(() => {
+    if (latest) applySnapshot(latest);
+  }, 30_000);
 }
 
 /** Tests only: forget module state between cases. */

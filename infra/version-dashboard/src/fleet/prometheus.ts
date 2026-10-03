@@ -52,5 +52,7 @@ export async function promSeries(): Promise<{ series: Sample[] } | { error: stri
     return { error: "Prometheus returned unparseable JSON (is it bound to the address we queried?)" };
   }
   if (body.status !== "success") return { error: `Prometheus answered status=${body.status ?? "None"}` };
-  return { series: body.data?.result ?? [] };
+  // A success without its result vector is no answer either -- never an empty fleet.
+  if (!Array.isArray(body.data?.result)) return { error: "Prometheus answered without a result vector" };
+  return { series: body.data.result };
 }

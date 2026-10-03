@@ -45,6 +45,16 @@ def test_rewrites_the_count_only_as_a_whole_number():
     assert rv.rewrite_count(text, 1517, 1516) == "Germany's 1,516 venues; 11,517 is not it, nor 1,5170, nor 21,517."
 
 
+def test_rewrites_the_count_only_in_prose_files():
+    # Spain's 602 has no thousands comma, so a bare `git grep 602` also took fonts, OG images and a
+    # roster-audit fixture: read_text() crashed on the binaries after retired.json was written, and
+    # a fixture whose ids or coordinates hold 602 would have been silently rewritten.
+    files = rv.files_quoting(602, "spain")
+    assert "common/src/main/scala/models/City.scala" in files, files
+    assert "data/spain/README.md" in files, files
+    assert all(f.endswith(".scala") or f.endswith("README.md") for f in files), files
+
+
 def test_retries_a_page_that_did_not_answer_but_not_one_that_did():
     answers = iter(["no answer (URLError)", "no answer (TimeoutError)", "404"])
     assert rv.probe("https://example.test/", fetch=lambda url: next(answers), sleep=lambda s: None) == "404"

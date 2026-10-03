@@ -39,9 +39,9 @@ export interface FleetSources {
   readonly distances: Pick<Distances, "measure" | "between">;
 }
 
-export function realSources(infraDir: string, onRosterChange: () => void): FleetSources {
+export function realSources(infraDir: string, onRosterChange: () => void, waitForReread = false): FleetSources {
   return {
-    roster: new RosterKeeper({ infraDir, onChange: onRosterChange }),
+    roster: new RosterKeeper({ infraDir, onChange: onRosterChange, waitForReread }),
     checkout: () => inspectCheckout(infraDir),
     prometheus: promSeries,
     distances: new Distances(infraDir),
@@ -76,6 +76,9 @@ export class FleetLive {
   private checkout: Checkout = { head: "", origin: "", dirty: false };
   private byAddress: Record<string, Series> = {};
   private promError: string | null = null;
+  /** Prometheus reads started, and the newest of them whose answer is the one held. */
+  private readsStarted = 0;
+  private readApplied = 0;
   private readAt = 0;
   private took = 0;
   private ready = false;
@@ -156,7 +159,13 @@ export class FleetLive {
    * one's -- every row then says it is not reporting, under a banner saying why. */
   private async readPrometheus(): Promise<boolean> {
     const started = this.now();
+    const generation = ++this.readsStarted;
     const answer = await this.sources.prometheus();
+    // Three callers read concurrently (the timer, a switch's landing wait, readOne), and an ssh
+    // round trip that started first can finish last: its older answer must not replace a newer
+    // one -- that put the pre-switch closure back on the page. It reports the newer read's verdict.
+    if (generation < this.readApplied) return this.promError === null;
+    this.readApplied = generation;
     if ("error" in answer) {
       this.byAddress = {};
       this.promError = answer.error;
@@ -181,10 +190,10 @@ export class FleetLive {
     const deadline = this.now() + this.cadence.scrapeWaitBudgetMs;
     while (machine.private && want && this.now() < deadline && !this.stopped) {
       await this.sleep(this.cadence.scrapeWaitStepMs);
-      if (await this.readPrometheus()) {
-        this.schedule();
-        if (this.byAddress[machine.private]?.nixos_closure_info?.metric.closure === want) return;
-      }
+      const read = await this.readPrometheus();
+      // Pushed either way: a failed read blanked the series, and the page must say so.
+      this.schedule();
+      if (read && this.byAddress[machine.private]?.nixos_closure_info?.metric.closure === want) return;
       // A blip in the poll must not end the wait.
     }
     await this.pollPrometheus();

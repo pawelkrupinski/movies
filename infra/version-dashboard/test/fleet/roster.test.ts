@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -125,6 +125,34 @@ describe("the roster is read only when the flake changes", () => {
     expect(read.machines).toEqual(MONGO);
     expect(read.error).toContain("roster evaluation is pending");
     expect(reads).toHaveLength(2);
+  });
+
+  it("waits for a re-read when its reader exits once answered, rather than leave it to be cut off", async () => {
+    await keeper().read();
+    fingerprint = "edited-since-the-last-cron-run";
+    answer = { machines: { ...MONGO, "web-1": { hostName: "web-1", privateAddress: "10.20.0.14" } } };
+    const roster = keeper({ waitForReread: true });
+    const read = await roster.read();
+    expect(roster.pending()).toBeNull();
+    expect(read).toEqual({ machines: answer.machines, error: null });
+    expect(reads).toHaveLength(2);
+  });
+
+  it("answers a waited re-read that failed with the last roster, saying how old it is", async () => {
+    await keeper().read();
+    fingerprint = "edited-since-the-last-cron-run";
+    answer = { error: "nix eval timed out" };
+    const read = await keeper({ waitForReread: true }).read();
+    expect(read.machines).toEqual(MONGO);
+    expect(read.error).toContain("nix eval timed out");
+  });
+
+  it("never renames another process's half-written cache into place", async () => {
+    // What the other process (the server, or a cron `npm run once`) is writing as this one remembers.
+    writeFileSync(join(dir, "roster.json.tmp"), '{"fingerprint":"half-writ');
+    await keeper().read();
+    expect(readFileSync(join(dir, "roster.json.tmp"), "utf8")).toBe('{"fingerprint":"half-writ');
+    expect(await keeper({ evaluate: async () => ({ error: "not asked" }) }).read()).toEqual({ machines: MONGO, error: null });
   });
 
   it("treats an unreadable cache file as no cache, not an error", async () => {

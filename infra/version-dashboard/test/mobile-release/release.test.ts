@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CommandOptions, CommandResult, Executor } from "../../src/exec.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { release, type ReleaseDeps } from "../../src/mobile-release/release.js";
+import { fetchFailed } from "../mobile/errors.js";
 import { FakeAsc, FakePlay, fixture, fixtureJson, noSleep } from "./fakes.js";
 
 const APP = "6792566321";
@@ -29,6 +30,9 @@ interface Ran {
   readonly options: CommandOptions;
 }
 
+/** As much output as a real Gradle build streams: every line of it reaches android.log, in order. */
+const GRADLE_OUTPUT = Array.from({ length: 3_000 }, (_, i) => `> Task :app:step${i}`);
+
 /** Answers the commands a release runs; `gradleExit` fails the Android build. */
 function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
   return async (argv, options) => {
@@ -48,7 +52,10 @@ function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
       writeFileSync(join(logDir, "upload.log"), fixture("altool-upload.txt"));
       options.onLine?.("\u001b[32m✓\u001b[0m uploaded");
     }
-    if (argv[0] === "./gradlew") return { ...ok(), code: gradleExit };
+    if (argv[0] === "./gradlew") {
+      for (const line of GRADLE_OUTPUT) options.onLine?.(line);
+      return { ...ok(), code: gradleExit };
+    }
     return ok();
   };
 }
@@ -138,6 +145,28 @@ describe("release", () => {
     expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
   });
 
+  it("logs a build's output whole and in order, one write after another", async () => {
+    const d = deps([], []);
+    await release(d, options);
+    const log = readFileSync(join(dir, "kinowo-mobile-release-2.0.10-logs", "android.log"), "utf8");
+    expect(log).toBe(GRADLE_OUTPUT.map((line) => `${line}\n`).join(""));
+  });
+
+  it("rides out a network blip while waiting for Apple to process the upload", async () => {
+    const d = deps([], []);
+    const build = fixtureJson("asc-build.json");
+    const blipping = new FakeAsc({
+      ...d.asc.routes,
+      [`GET /v1/builds/${BUILD}`]: (_body: unknown, hit: number) => {
+        if (hit === 1) throw fetchFailed("ECONNRESET");
+        return build;
+      },
+    });
+    await release({ ...d, asc: blipping }, options);
+    expect(blipping.calls.filter((call) => call.path === `/v1/builds/${BUILD}`)).toHaveLength(2);
+    expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
+  });
+
   it("submits and promotes nothing when either build fails", async () => {
     const events: string[] = [];
     const ran: Ran[] = [];
@@ -146,5 +175,23 @@ describe("release", () => {
     expect(d.asc.writes()).toEqual([]);
     expect(d.play.writes().some((call) => call.method === "PUT")).toBe(false);
     expect(events.some((event) => event.includes("worktree remove"))).toBe(false); // kept for the logs
+  });
+
+  it("refuses to start while another release of the same version runs, touching nothing of its worktree", async () => {
+    const events: string[] = [];
+    const d = deps(events, []);
+    // The other run: this very test process, alive, holding 2.0.10's lock.
+    writeFileSync(join(dir, "kinowo-mobile-release-2.0.10.lock"), String(process.pid));
+    await expect(release(d, options)).rejects.toThrow(/a release of 2.0.10 is already running/);
+    expect(events.some((event) => event.includes("worktree"))).toBe(false);
+    expect(readFileSync(join(dir, "kinowo-mobile-release-2.0.10.lock"), "utf8")).toBe(String(process.pid));
+  });
+
+  it("takes over the lock of a release whose process died, and lets it go when done", async () => {
+    const d = deps([], []);
+    writeFileSync(join(dir, "kinowo-mobile-release-2.0.10.lock"), "999999");
+    await release(d, options);
+    expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
+    expect(existsSync(join(dir, "kinowo-mobile-release-2.0.10.lock"))).toBe(false);
   });
 });

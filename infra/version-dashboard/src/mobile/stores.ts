@@ -86,6 +86,16 @@ export interface AscApi {
   readonly send: (method: HttpMethod, path: string, body?: unknown) => Promise<unknown>;
 }
 
+/**
+ * `asc` with its READS retried through a transient network failure: a release polls Apple for up to
+ * half an hour while a build processes, and one DNS or ECONNRESET blip there aborted the whole
+ * release after the upload. Writes are NOT retried -- a request that timed out may have landed, and
+ * creating a version or a review submission twice is not a blip.
+ */
+export function retryingReads(asc: AscApi, sleep: Sleep): AscApi {
+  return { get: (path) => withNetworkRetries(() => asc.get(path), sleep), send: asc.send };
+}
+
 /** App Store Connect, signing a fresh token per call from the key on this Mac. */
 export function ascApi(repoDir: string, keyDir = ASC_KEY_DIR, now: () => number = Date.now): AscApi {
   const send = async (method: HttpMethod, path: string, body?: unknown) => {
@@ -122,7 +132,10 @@ export async function iosReleaseState(get: (path: string) => Promise<unknown>, s
   } catch (error) {
     return failed(error);
   }
-  const versions = (data.data ?? [])
+  // An answer without the version list (an error document, a changed shape) is no answer: read as
+  // empty it reported nothing live, and every change since the last release as unreleased.
+  if (!Array.isArray(data?.data)) return { error: "App Store Connect answered without a version list", networkError: false };
+  const versions = data.data
     .map((version) => version.attributes)
     .sort((a, b) => ((b.createdDate ?? "") < (a.createdDate ?? "") ? -1 : (b.createdDate ?? "") > (a.createdDate ?? "") ? 1 : 0));
   const live = versions.find((version) => version.appStoreState === "READY_FOR_SALE") ?? null;

@@ -99,9 +99,24 @@ def decide(retired: dict, venues: list, page: str, status_of, today: str):
     return added, kept
 
 
+def whole_number(count: int) -> str:
+    """`count` as prose writes it ("1,517"), matched only as a whole number."""
+    return rf"(?<![\d,]){re.escape(f'{count:,}')}(?![\d,])"
+
+
 def rewrite_count(text: str, old: int, new: int) -> str:
-    """`old` as prose writes it ("1,517") becomes `new`, only as a whole number."""
-    return re.sub(rf"(?<![\d,]){re.escape(f'{old:,}')}(?![\d,])", f"{new:,}", text)
+    """`old` as prose writes it becomes `new`, only as a whole number."""
+    return re.sub(whole_number(old), f"{new:,}", text)
+
+
+def files_quoting(count: int, roster: str) -> list[str]:
+    """The prose that quotes the roster size: Scala sources (their comments and CountrySpec) and the
+    roster's README. Only text files, and only the count as a whole number — a size under 1,000
+    has no comma to tell it apart, and Spain's 602 also sits in fonts, images and test fixtures."""
+    return subprocess.run(
+        ["git", "grep", "-I", "-l", "-P", whole_number(count), "--",
+         "common/*.scala", "worker/*.scala", "web/*.scala", f"data/{roster}/README.md"],
+        cwd=ROOT, capture_output=True, text=True).stdout.split()
 
 
 def main() -> int:
@@ -124,9 +139,7 @@ def main() -> int:
         old = int(re.search(PINNED_SIZE[args.roster], spec).group(2))
         new = old - len(added)
         COUNTRY_SPEC.write_text(re.sub(PINNED_SIZE[args.roster], rf"\g<1>{new}", spec))
-        quoted = subprocess.run(["git", "grep", "-l", f"{old:,}", "--", "common", "worker", "web", f"data/{args.roster}/README.md"],
-                                cwd=ROOT, capture_output=True, text=True).stdout.split()
-        for path in quoted:
+        for path in files_quoting(old, args.roster):
             file = ROOT / path
             file.write_text(rewrite_count(file.read_text(), old, new))
 

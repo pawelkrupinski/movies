@@ -280,7 +280,7 @@ final class ConsoleView: NSObject {
         }
         self.runner = r
         let env = repoRoot.map { ["DEVPANEL_REPO_ROOT": $0] }
-        r.run(executable: "/bin/bash", arguments: ["-lc", devpanelCommand(scriptsDir, actionName)], environment: env)
+        r.run(executable: "/bin/bash", arguments: ["-l"] + devpanelArguments(scriptsDir, actionName), environment: env)
     }
 
     func stop() { doStop() }
@@ -301,7 +301,7 @@ final class ConsoleView: NSObject {
         guard !scriptsDir.isEmpty else { return }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
-        p.arguments = ["-lc", devpanelCommand(scriptsDir, "reap-worker")]
+        p.arguments = ["-l"] + devpanelArguments(scriptsDir, "reap-worker")
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = pipe
@@ -347,12 +347,14 @@ final class ConsoleView: NSObject {
 
 private enum Console { case web, device }
 
-/// The login-shell line that runs one devpanel.py action. A login shell so the
-/// action sees the terminal's PATH/SDK setup (sbt, java); the system python so
-/// it runs without Homebrew.
-func devpanelCommand(_ scriptsDir: String, _ actionName: String) -> String {
+/// The bash arguments that run one devpanel.py action. A login shell (`-l`, add
+/// it in front) so the action sees the terminal's PATH/SDK setup (sbt, java); the
+/// system python so it runs without Homebrew. The script path and the action go
+/// in as positional parameters, never spliced into the command text, so a
+/// checkout path holding a space, a quote or `$(…)` is a path, not shell.
+func devpanelArguments(_ scriptsDir: String, _ actionName: String) -> [String] {
     let script = (scriptsDir as NSString).appendingPathComponent("devpanel.py")
-    return "exec /usr/bin/python3 \"\(script)\" \(actionName)"
+    return ["-c", "exec /usr/bin/python3 \"$1\" \"$2\"", "devpanel", script, actionName]
 }
 
 private struct Action {
@@ -979,7 +981,12 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
     // The real action command line reaches devpanel.py (an unknown action
     // prints its usage and exits 2), when the test passes the scripts dir.
     let scriptsDir = ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST_SCRIPTS"] ?? ""
-    let (o3, s3) = runOnce("/bin/bash", ["-c", devpanelCommand(scriptsDir, "bogus")], nil)
+    let (o3, s3) = runOnce("/bin/bash", devpanelArguments(scriptsDir, "bogus"), nil)
+    // A scripts dir that is shell syntax stays a path: nothing runs, python just
+    // finds no such file (exit 2, its own "can't open file" message).
+    let marker = "/tmp/devpanel-selftest-injected-\(getpid())"
+    let (_, s4) = runOnce("/bin/bash", devpanelArguments("/nonexistent/$(touch \(marker))", "bogus"), nil)
+    let injectionOK = s4 == 2 && !FileManager.default.fileExists(atPath: marker)
     let streamOK = s1 == 0 && o1.contains("SELFTEST_OK")
         && s2 == 0 && o2.contains("ROOT=/tmp/devpanel-selftest-root")
         && s3 == 2 && o3.contains("usage: devpanel.py")
@@ -1013,9 +1020,9 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         && LocalHostIp.isSiteLocal("172.16.0.1") && LocalHostIp.isSiteLocal("172.31.9.9")
         && !LocalHostIp.isSiteLocal("172.15.0.1") && !LocalHostIp.isSiteLocal("172.32.0.1")
 
-    let ok = streamOK && labelOK && persistOK && migrateOK && ipOK
+    let ok = streamOK && injectionOK && labelOK && persistOK && migrateOK && ipOK
     print(ok ? "SELFTEST_OK stream+env+groups+migrate+ip status=\(s1),\(s2)"
-             : "SELFTEST_FAIL stream=\(streamOK) label=\(labelOK) persist=\(persistOK) migrate=\(migrateOK) ip=\(ipOK) "
+             : "SELFTEST_FAIL stream=\(streamOK) injection=\(injectionOK) label=\(labelOK) persist=\(persistOK) migrate=\(migrateOK) ip=\(ipOK) "
                + "o1=\(o1.debugDescription) o2=\(o2.debugDescription) o3=\(o3.debugDescription) st=\(s1),\(s2),\(s3)")
     exit(ok ? 0 : 1)
 }

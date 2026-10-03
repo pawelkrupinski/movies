@@ -6,7 +6,8 @@ import { INFRA_DIR } from "./config.js";
 import { FleetLive, realSources } from "./fleet/live.js";
 import { shortClosure } from "./fleet/read.js";
 
-const live = new FleetLive((onRosterChange) => realSources(INFRA_DIR, onRosterChange));
+// It exits once it has printed, so a roster re-read is waited for rather than cut off by the exit.
+const live = new FleetLive((onRosterChange) => realSources(INFRA_DIR, onRosterChange, true));
 await live.boot();
 const { state } = live.store.get();
 for (const error of state.errors) console.log(`error: ${error}`);

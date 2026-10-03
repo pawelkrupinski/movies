@@ -4,7 +4,9 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Autodeploy } from "./autodeploy.js";
 import { AUTODEPLOY, HOST, PORT, ROOT } from "./config.js";
+import { killRunningCommands } from "./exec.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
+import { isLocalHost, isOwnOriginWrite } from "./local-host.js";
 import type { Page } from "./page.js";
 import { createPages } from "./pages.js";
 import { shell } from "./shell.js";
@@ -44,6 +46,12 @@ function streamSnapshots(page: Page<unknown>, request: FastifyRequest, reply: Fa
 async function main(): Promise<void> {
   const pages = createPages();
   const app = Fastify({ logger: { level: "warn" }, forceCloseConnections: true });
+  app.addHook("onRequest", async (request, reply) => {
+    if (!isLocalHost(request.headers.host, PORT)) return reply.code(421).send("this dashboard answers only http://127.0.0.1 and http://localhost");
+    const fetchSite = request.headers["sec-fetch-site"];
+    if (!isOwnOriginWrite(request.method, request.headers.origin, typeof fetchSite === "string" ? fetchSite : undefined, PORT))
+      return reply.code(403).send("this dashboard accepts writes only from its own pages");
+  });
   // NO-STORE ON EVERYTHING. The log endpoint is polled with an increasing offset; a cached answer
   // to it is worse than no answer, because it looks current.
   app.addHook("onSend", async (_request, reply) => {
@@ -91,6 +99,10 @@ async function main(): Promise<void> {
     if (busy.length) console.log(`${signal}: draining ${busy.map((work) => work.label).join(", ")} before exit`);
     await drain();
     pages.forEach((page) => page.stop());
+    // What is left running is background reading (a roster eval, an ssh probe) nothing waits on:
+    // ended here, or each restart leaves one behind beside the next process's own.
+    const killed = killRunningCommands();
+    if (killed) console.log(`${signal}: killed ${killed} background command(s) still running`);
     await app.close();
     process.exit(0);
   };

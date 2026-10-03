@@ -125,6 +125,12 @@ export interface RosterOptions {
   readonly now?: () => number;
   /** A background re-read landed: the page should recompute. */
   readonly onChange?: () => void;
+  /**
+   * WAIT FOR EVERY RE-READ, never run one behind the answer: for a reader that exits once it has
+   * its answer (`npm run once`). Behind it, the evaluation was cut off by the exit -- its answer
+   * never cached, so every cron run started another 86-second `nix eval` and none finished.
+   */
+  readonly waitForReread?: boolean;
 }
 
 export interface RosterAnswer {
@@ -184,13 +190,14 @@ export class RosterKeeper {
     const due = !this.evaluating && (!this.error || this.now() - this.failedAt >= ROSTER_RETRY_MS);
     if (!due) return this.last();
     const evaluation = this.evaluate(fingerprint);
-    if (this.machines) {
+    if (this.machines && !this.options.waitForReread) {
       void evaluation.then(() => this.options.onChange?.());
       return this.last();
     }
     // NOTHING TO SHOW, so this one is worth waiting for: the alternative is a page with no fleet on
     // it. Every later evaluation has last time's answer to fall back on and runs behind the page.
     await evaluation;
+    if (this.error && this.machines) return this.last();
     return { machines: this.machines ?? {}, error: this.error };
   }
 
@@ -247,8 +254,11 @@ export class RosterKeeper {
     try {
       mkdirSync(dirname(this.cacheFile), { recursive: true });
       const body: Remembered = { fingerprint: this.fingerprint, machines: this.machines ?? {}, evaluatedAt: this.evaluatedAt / 1000 };
-      writeFileSync(`${this.cacheFile}.tmp`, JSON.stringify({ fingerprint: body.fingerprint, machines: body.machines, evaluated_at: body.evaluatedAt }));
-      renameSync(`${this.cacheFile}.tmp`, this.cacheFile);
+      // A temporary file of THIS process's own: the server and `npm run once` both remember the
+      // roster, and sharing one name, one could rename the other's half-written file into place.
+      const temporary = `${this.cacheFile}.${process.pid}.tmp`;
+      writeFileSync(temporary, JSON.stringify({ fingerprint: body.fingerprint, machines: body.machines, evaluated_at: body.evaluatedAt }));
+      renameSync(temporary, this.cacheFile);
     } catch {
       // a dashboard that cannot write its cache is still a dashboard
     }

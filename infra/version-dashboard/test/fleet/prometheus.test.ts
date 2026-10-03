@@ -44,6 +44,8 @@ describe("the Prometheus read", () => {
     expect(await promSeries()).toEqual({ error: "Prometheus returned unparseable JSON (is it bound to the address we queried?)" });
     answer({ stdout: JSON.stringify({ status: "error" }) });
     expect(await promSeries()).toEqual({ error: "Prometheus answered status=error" });
+    answer({ stdout: JSON.stringify({ status: "success", data: {} }) });
+    expect(await promSeries()).toEqual({ error: "Prometheus answered without a result vector" });
     answer({ code: null, timedOut: true });
     expect(await promSeries()).toEqual({ error: "could not reach Prometheus through root@128.140.49.167: timed out after 30s" });
   });

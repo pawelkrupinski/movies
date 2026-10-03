@@ -94,6 +94,28 @@ describe("the fleet's live state", () => {
     expect(await live.readOne("nope")).toEqual({ error: "no machine called 'nope' on this page" });
   });
 
+  it("never lets a slow read that STARTED earlier overwrite a newer one that already landed", async () => {
+    // The timer's poll is still on its ssh round trip (the pre-switch closure) when a bulk run's
+    // readOne reads the switched one; the old answer arriving last must not put the old closure back.
+    const answers: ((answer: Awaited<ReturnType<typeof promSeries>>) => void)[] = [];
+    let first = true;
+    const { live } = world([], {
+      prometheus: () => {
+        if (first) { first = false; return Promise.resolve({ series: running(CLOSURE) }); }
+        return new Promise((resolve) => answers.push(resolve));
+      },
+    });
+    await live.boot();
+    const slow = live.pollPrometheus();
+    const one = live.readOne("mongo-1");
+    answers[1]?.({ series: running(NEW_CLOSURE) });
+    expect(await one).toMatchObject({ closure: NEW_CLOSURE });
+    answers[0]?.({ series: running(CLOSURE) });
+    await slow;
+    await live.recompute();
+    expect(live.store.get().state.rows[0]?.closure).toBe(NEW_CLOSURE);
+  });
+
   it("renders a failure to build as an alarm instead of a half-built page", async () => {
     const { live } = world([{ series: running(CLOSURE) }], {
       distances: { measure: async () => { throw new Error("git exploded"); }, between: () => null },

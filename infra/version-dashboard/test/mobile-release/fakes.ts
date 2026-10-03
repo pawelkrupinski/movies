@@ -22,7 +22,7 @@ class RoutedApi {
   readonly calls: Call[] = [];
   private readonly hits = new Map<string, number>();
   /** `events`, when given, is shared with other fakes so a test can assert the order across them. */
-  constructor(private readonly routes: Record<string, Route>, private readonly events: string[] = []) {}
+  constructor(readonly routes: Record<string, Route>, private readonly events: string[] = []) {}
 
   async answer(method: HttpMethod, path: string, body?: unknown): Promise<unknown> {
     this.calls.push(body === undefined ? { method, path } : { method, path, body });

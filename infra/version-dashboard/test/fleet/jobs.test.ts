@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setExecutor, type CommandOptions, type CommandResult, type Executor } from "../../src/exec.js";
 import { FleetJobs, LOG_LINE_CAP, readScript, type JobLog } from "../../src/fleet/jobs.js";
@@ -225,6 +229,21 @@ describe("a switch", () => {
     calls.at(-1)?.finish({ code: 1 }, ["@@ FAILED"]);
     await flush();
     expect(switched).toEqual([]);
+  });
+
+  it("refuses a closure that is no longer the host's staged pin, before touching the profile", () => {
+    // A check read X; CI has since staged Y. A stale tab's switch to X would roll the host BACK to
+    // what CI already replaced -- so the host itself must still pin X. Here nothing is pinned at all
+    // (this is not a NixOS host), and the closure exists, so only the pin check can stop it.
+    const closure = mkdtempSync(join(tmpdir(), "closure-"));
+    try {
+      const run = spawnSync("bash", ["-s", "--", closure], { input: readScript("switch.sh"), encoding: "utf8", env: { PATH: "/usr/bin:/bin" } });
+      expect(run.stdout).toContain("is no longer the closure staged on this host");
+      expect(run.stdout).not.toContain("nix-env");
+      expect(run.status).toBe(7);
+    } finally {
+      rmSync(closure, { recursive: true, force: true });
+    }
   });
 
   it("sets the profile BEFORE activating, and judges by /run/current-system", () => {

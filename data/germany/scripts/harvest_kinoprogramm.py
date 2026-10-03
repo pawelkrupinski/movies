@@ -52,6 +52,7 @@ import html
 import json
 import math
 import os
+import pathlib
 import random
 import re
 import sys
@@ -70,11 +71,17 @@ REGIONS = os.path.join(DATA, "regions.json")
 COORDS = os.path.join(DATA, "city-coords.json")
 OUT = os.path.join(DATA, "kinoprogramm.json")
 OUT_UNMATCHED = os.path.join(DATA, "kinoprogramm-unmatched.json")
-CACHE_DIR = os.environ.get(
-    "KP_CACHE_DIR",
-    "/private/tmp/claude-501/-Users-pawel-projects-movies/"
-    "e61ce549-706a-4f9b-8a39-77e0133b9d6f/scratchpad/kp-harvest",
-)
+
+
+def cache_dir(env, home):
+    """KP_CACHE_DIR, else the user's cache directory: it must outlive the session that ran it."""
+    if env.get("KP_CACHE_DIR"):
+        return env["KP_CACHE_DIR"]
+    base = env.get("XDG_CACHE_HOME") or str(home / ".cache")
+    return os.path.join(base, "kinowo", "kp-harvest")
+
+
+CACHE_DIR = cache_dir(os.environ, pathlib.Path.home())
 
 BASE = "https://www.kinoprogramm.com"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
