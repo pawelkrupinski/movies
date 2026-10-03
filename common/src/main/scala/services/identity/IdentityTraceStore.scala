@@ -158,13 +158,15 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   // not changed.
   private def write(removed: Set[String], added: IterableOnce[ListingTrace]): Unit = {
     val before = if (removed.isEmpty) Set.empty[String] else
-      Await.result(collection.find(Filters.in("family", removed.toSeq*)).projection(Projections.include("_id")).toFuture(), Timeout)
+      Await.result(collection.find(Filters.in("family", removed.toSeq*)).projection(Projections.include("_id"))
+        .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
         .flatMap(_.get("_id").collect { case id if id.isString => id.asString.getValue }).toSet
     val kept = scala.collection.mutable.HashSet.empty[String]
     added.iterator.grouped(WriteBatch).foreach { batch =>
       val docs   = batch.map(trace => ListingKey.serialised(trace.listing) -> digested(encode(trace)))
       kept ++= docs.map(_._1)
-      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(DigestField)).toFuture(), Timeout)
+      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(DigestField))
+        .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
         .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(DigestField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
       val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(DigestField).getValue) }
       if (moved.nonEmpty) {
