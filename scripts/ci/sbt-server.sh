@@ -58,10 +58,25 @@ case "${1:-}" in
     ;;
   classpath)
     key="${2:?usage: sbt-server.sh classpath <key>}"
-    await_start || { echo "[sbt-server] the background start failed" >&2; exit 1; }
-    out=$(sbt --client "export $key" 2>&1) || { printf '%s\n' "$out" >&2; exit 1; }
     # `export` prints the value bare, between the client's own `[info]`/`[success]` lines.
-    printf '%s\n' "$out" | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | grep -v '^\[' | grep -E '^[^ ]+$' | tail -1
+    value_in() { printf '%s\n' "$1" | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | grep -v '^\[' | grep -E '^[^ ]+$' | tail -1; }
+    value=""
+    if await_start; then
+      out=$(sbt --client "export $key" 2>&1) && value=$(value_in "$out")
+    else
+      out="[sbt-server] the background start failed"
+    fi
+    # A server answer with no value in it used to end this script in silence: the parse's grep matched
+    # nothing, `pipefail` made that exit 1, and the UK recording leg died at its corpus step with no
+    # output (run 37110767992). Say what the server answered, and ask a sbt of our own instead: it
+    # costs a JVM start, only when the server could not answer.
+    if [ -z "$value" ]; then
+      { echo "[sbt-server] no value for $key from the server; it answered:"; printf '%s\n' "$out"
+        echo "[sbt-server] asking a fresh sbt instead"; } >&2
+      out=$(sbt -batch -Dsbt.server.forcestart=true "export $key" 2>&1 < /dev/null) && value=$(value_in "$out")
+    fi
+    [ -n "$value" ] || { echo "[sbt-server] no value for $key from a fresh sbt either:" >&2; printf '%s\n' "$out" >&2; exit 1; }
+    printf '%s\n' "$value"
     ;;
   stop)
     pkill -f -- "$marker" 2>/dev/null || exit 0

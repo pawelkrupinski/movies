@@ -16,11 +16,18 @@ mkdir -p "$work/bin"
 # it, and any other command exiting 1 when it names `red`. Every call is logged with SBT_OPTS.
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-shift   # --client
-echo "$(date +%s) start $1 [$SBT_OPTS]" >> "$RUNNER_TEMP/calls"
+mode=client
+[ "$1" = "--client" ] && shift || { mode=fresh; while [ "${1#-}" != "$1" ]; do shift; done; }
+echo "$(date +%s) start $1 [$SBT_OPTS] $mode" >> "$RUNNER_TEMP/calls"
 case "$1" in
   warm*)   sleep 2 ;;
-  export*) printf '[info] entering thin client - BEEP WHIRR\n/w/target/classes:/c/lib.jar\n[success] elapsed time: 0 s\n\033[0J' ;;
+  export*)
+    # SBT_STUB_SERVER_SAYS=nothing: the server answers without the value (what failed run 37110767992).
+    if [ "$mode" = client ] && [ "${SBT_STUB_SERVER_SAYS:-}" = nothing ]; then
+      printf '[info] entering thin client - BEEP WHIRR\n[success] elapsed time: 0 s\n'
+    else
+      printf '[info] entering thin client - BEEP WHIRR\n/w/target/classes:/c/lib.jar\n[success] elapsed time: 0 s\n\033[0J'
+    fi ;;
   *red*)   echo "$(date +%s) end $1" >> "$RUNNER_TEMP/calls"; exit 1 ;;
 esac
 echo "$(date +%s) end $1" >> "$RUNNER_TEMP/calls"
@@ -42,6 +49,12 @@ bash "$script" run 6g redAlias > /dev/null
 check "a run exits with its command's status" "1" "$?"
 check "classpath prints the value bare, without the client's chatter" "/w/target/classes:/c/lib.jar" \
   "$(bash "$script" classpath worker/Fixtures/fullClasspath)"
+value=$(SBT_STUB_SERVER_SAYS=nothing bash "$script" classpath worker/Fixtures/fullClasspath 2> "$work/cp.err")
+check "a server answer without the value falls back to a fresh sbt" "/w/target/classes:/c/lib.jar" "$value"
+check "...saying what the server answered, rather than failing in silence" "true" \
+  "$(grep -q 'no value for worker/Fixtures/fullClasspath from the server' "$work/cp.err" && echo true || echo false)"
+check "...and the fallback is a sbt of its own, not the server" "true" \
+  "$(grep -q 'start export worker/Fixtures/fullClasspath .* fresh' "$work/calls" && echo true || echo false)"
 
 # A server still running a timed-out step's command is stopped, and `stop` returns once it is gone.
 bash -c 'exec -a "java -Dkinowo.leg-sbt=server stand-in" sleep 60' 2>/dev/null &
