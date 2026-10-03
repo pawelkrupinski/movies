@@ -16,12 +16,12 @@ trait OperatorWiring { self: WorkerWiring =>
   // Live config: install the Mongo override cache as Env's override source and
   // publish this process's (non-secret) knobs to the shared registry so the web
   // `/admin/config` page can list + flip them mid-flight. See EnvConfigService.
-  lazy val envConfigService = new EnvConfigService(
+  lazy val envConfigService = managedResources.stopping(new EnvConfigService(
     app       = "worker",
     overrides = new MongoEnvOverrideStore(mongoConnection.database),
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
-    tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds)))
+    tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds))))
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by

@@ -86,6 +86,16 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     store.get("k") shouldBe None
   }
 
+  // The in-memory layer had a TTL and no count bound: a re-resolve of the whole corpus kept every
+  // distinct hint it asked for a day. Past the bound a key is read back from the durable store.
+  "the in-memory layer" should "hold at most its bound, and serve an evicted key from the store" in {
+    val store = new InMemoryResolutionStore(clock = _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
+    val cache = new WriteThroughResolutionCache(store, maxEntries = 10)
+    (0 until 200).foreach(i => cache.getOrResolve(s"k$i")(Some(s"tt$i")))
+    cache.held should be <= 10L
+    cache.getOrResolve("k0")(fail("k0 is in the durable store")) shouldBe Some("tt0")
+  }
+
   // The whole point of `forget`: after it, the next call must genuinely
   // re-resolve. Clearing only the durable store would leave the stale value in
   // the Caffeine layer in front of it, and the caller would never notice.

@@ -1,6 +1,5 @@
 package services.movies
 
-import com.github.benmanes.caffeine.cache.Caffeine
 
 /** Interns short, heavily-repeated `SourceData` strings — synopses, cast/director names,
  *  countries, genres, and the poster / film-page / trailer URLs — so a film shown at N
@@ -25,8 +24,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
  *  actually fill. Anything else (a spec, a lone cache) gets a pool of its own. */
 final class StringPool {
 
-  private val pool = Caffeine.newBuilder()
-    .maximumSize(StringPool.MaxEntries)
+  private val pool = tools.BoundedCache.ofSize(StringPool.MaxEntries)
     // Occupancy and evictions are the only way to tell a working pool from a
     // thrashing one; Caffeine keeps these on LongAdders, so the cost is a counter
     // bump per lookup against an allocation saved.
@@ -36,8 +34,7 @@ final class StringPool {
   // A film's cast, genres, directors and countries are one list at every venue that shows it, but
   // each venue's slot held its own copy: ~985k list cells on the US worker (~24 MB of `::`, live
   // heap 2026-10-01). Equal lists of interned strings share one instance through this.
-  private val lists = Caffeine.newBuilder()
-    .maximumSize(StringPool.MaxEntries)
+  private val lists = tools.BoundedCache.ofSize(StringPool.MaxEntries)
     .build[Seq[String], Seq[String]]()
 
   /** The canonical instance for a string: the first equal value interned wins, so all

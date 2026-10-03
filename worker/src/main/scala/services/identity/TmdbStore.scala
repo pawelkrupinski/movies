@@ -2,7 +2,7 @@ package services.identity
 
 import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.{BulkWriteOptions, Filters, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteOneModel, Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.libs.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue}
 
@@ -38,6 +38,17 @@ trait TmdbDocuments {
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
 }
 
+/** The storage half of the store's retention ([[TmdbStoreSweep]] holds its rules): which documents
+ *  were last fetched long ago, and deleting one only while it still carries the stamp that was read —
+ *  so a document re-fetched after the scan is kept. Apart from [[TmdbDocuments]]: only the sweep asks. */
+trait TmdbDocumentRetention {
+  /** Every document of `kind` whose [[TmdbStore.FetchedAt]] is before `cutoff` (epoch millis), with that
+   *  stamp; one carrying no stamp is never named. Throws when the scan cannot be completed. */
+  def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)]
+  /** Delete each of `stamped` whose stamp is still the one given; how many were deleted. */
+  def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int
+}
+
 object TmdbDocuments {
   /** How many of one read's batches are in flight at once — each holds one of the worker's pooled
    *  connections, so a take-up's reads overlap without taking the pool from everything else. */
@@ -52,8 +63,15 @@ object TmdbDocuments {
     }
 }
 
-final class InMemoryTmdbDocuments extends TmdbDocuments {
+final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetention {
   private val byKind = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, BsonDocument]()).toMap
+  def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] =
+    byKind(kind).asScala.toSeq.flatMap { case (id, d) => TmdbStore.fetchedAt(d).filter(_ < cutoff).map(id -> _) }
+  def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = stamped.count { case (id, at) =>
+    var deleted = false
+    byKind(kind).computeIfPresent(id, (_, d) => if (TmdbStore.fetchedAt(d).contains(at)) { deleted = true; null } else d)
+    deleted
+  }
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
     ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> _.clone())).toMap
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => byKind(kind).put(id, d.clone()) }
@@ -61,9 +79,11 @@ final class InMemoryTmdbDocuments extends TmdbDocuments {
 }
 
 /** `tmdb_films` / `tmdb_people` / `tmdb_queries`: one document per entity, `_id` its key. */
-final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
+final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with TmdbDocumentRetention {
   private val Timeout = 30.seconds
   private val Batch   = 500
+  /** A whole collection's stale stamps, read in default-sized replies: minutes at most. */
+  private val ScanTimeout = 5.minutes
   private def coll(kind: TmdbKind): MongoCollection[BsonDocument] = db.getCollection[BsonDocument](kind.collection)
 
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = read(kind, ids, None)
@@ -80,6 +100,18 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
         id -> d
       })(using scala.concurrent.ExecutionContext.parasitic)
     }.toMap
+
+  def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] =
+    Await.result(coll(kind).find(Filters.lt(TmdbStore.FetchedAt, cutoff))
+      .projection(org.mongodb.scala.model.Projections.include(TmdbStore.FetchedAt))
+      .batchSize(tools.MongoReplies.Default).toFuture(), ScanTimeout)
+      .flatMap(d => TmdbStore.fetchedAt(d).map(d.getString("_id").getValue -> _))
+
+  def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = stamped.grouped(Batch).map { batch =>
+    Await.result(coll(kind).bulkWrite(batch.map { case (id, at) =>
+      DeleteOneModel(Filters.and(Filters.equal("_id", id), Filters.equal(TmdbStore.FetchedAt, BsonInt64(at))))
+    }, BulkWriteOptions().ordered(false)).toFuture(), Timeout).getDeletedCount
+  }.sum
 
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.grouped(Batch).foreach { batch =>
     Await.result(coll(kind).bulkWrite(batch.map { case (id, d) =>

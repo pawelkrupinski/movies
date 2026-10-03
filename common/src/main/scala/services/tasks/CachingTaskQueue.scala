@@ -1,6 +1,6 @@
 package services.tasks
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import com.github.benmanes.caffeine.cache.Cache
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -36,13 +36,13 @@ class CachingTaskQueue(
   // Mongo enqueue round-trip not made. Published as `kinowo_worker_cache_hit_ratio`,
   // where a fall means the dedup is being evicted and those round-trips are back.
   private val active: Cache[String, java.lang.Boolean] =
-    Caffeine.newBuilder().expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
-      .maximumSize(maxKeys).recordStats().build()
+    tools.BoundedCache.ofSize(maxKeys).expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
+      .recordStats().build()
   // taskId -> dedupKey, so complete(id) can evict the right `active` entry. Expires
   // on a lease-length scale so an id whose completion we never observe (reaped, or
   // finished on another instance) doesn't leak.
   private val idToKey: Cache[String, String] =
-    Caffeine.newBuilder().expireAfterWrite(10L, TimeUnit.MINUTES).maximumSize(maxKeys).build()
+    tools.BoundedCache.ofSize(maxKeys).expireAfterWrite(10L, TimeUnit.MINUTES).build()
 
   /** What the dedup cache holds against `maxKeys`, for `kinowo_worker_cache_*`.
    *  The `active` half is the one worth watching: it is what spares a Mongo

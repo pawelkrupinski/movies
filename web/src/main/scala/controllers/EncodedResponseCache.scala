@@ -38,10 +38,10 @@ import scala.util.control.NonFatal
  *  hourly, and `pekko.jvm-exit-on-fatal-error` means the JVM exits rather than
  *  limps, so each one was a 502 window on the public site.
  *
- *  Eviction is least-recently-USED rather than least-recently-written: the
- *  access pattern that overflows this is a crawler sweeping cold states while
- *  real visitors sit on a few hot ones, and insertion order would evict exactly
- *  the hot ones. */
+ *  Eviction weighs how often and how lately a page was read (Caffeine's
+ *  W-TinyLFU), never insertion order: the access pattern that overflows this is
+ *  a crawler sweeping cold states while real visitors sit on a few hot ones, and
+ *  insertion order would evict exactly the hot ones. */
 class EncodedResponseCache(refreshExecutor: ExecutionContext,
                            now: () => Instant,
                            maxBytes: Long = EncodedResponseCache.DefaultMaxBytes) extends Logging {
@@ -51,13 +51,13 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
    *  the read model was taken, and so what its staleness is measured from. */
   private final case class Entry(version: Instant, renderedAt: Instant, bytes: ByteString)
 
-  // Access-ordered, so `get` promotes; guarded by `this` rather than concurrent
-  // because access order makes reads mutating anyway. The critical sections are
-  // map operations on a few dozen entries — the render and the gzip pass, which
-  // are the expensive parts, deliberately happen OUTSIDE the lock so a cold miss
-  // on one path never blocks a hit on another.
-  private val entries = new java.util.LinkedHashMap[String, Entry](16, 0.75f, true)
-  private var bytesHeld = 0L
+  // Weighed by the gzipped bytes each body holds (plus `BoundedCache`'s per-entry floor). Maintenance
+  // runs on the writing thread, so what `heldBytes` reports is settled when a store returns. The render
+  // and the gzip pass, the expensive parts, happen outside any lock: a cold miss on one path never
+  // blocks a hit on another.
+  private val entries: com.github.benmanes.caffeine.cache.Cache[String, Entry] =
+    tools.BoundedCache.ofWeight[String, Entry](maxBytes)((_, entry) => entry.bytes.size)
+      .executor((task: Runnable) => task.run()).recordStats().build[String, Entry]()
 
   /** Keys with a background render scheduled or running — the single-flight
    *  guard. A key is released when its render ends, successfully or not, so a
@@ -87,7 +87,7 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
    *  rendered synchronously in 0.7-1.2 s (measured in production 2026-09-25)
    *  against ~5 ms for a hit. */
   def gzippedBody(key: String, version: Instant, staleFloor: Instant = Instant.MIN)(renderBody: => ResponseBody): Served = {
-    val held = synchronized(Option(entries.get(key)))
+    val held = Option(entries.getIfPresent(key))
     held match {
       case Some(entry) if !entry.version.isBefore(version) =>
         Served(entry.version, entry.bytes)
@@ -131,39 +131,19 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
    *  tests and published as `kinowo_web_cache_*` — a cache whose bound is
    *  the point needs its accounting measured, not assumed, and nothing in the
    *  process could previously say how much heap it was holding. */
-  def heldBytes: Long = synchronized(bytesHeld)
-  def heldEntries: Int = synchronized(entries.size)
+  def heldBytes: Long = { entries.cleanUp(); entries.policy().eviction().get().weightedSize().getAsLong }
+  def heldEntries: Int = { entries.cleanUp(); entries.estimatedSize().toInt }
 
-  /** What this cache holds against its byte budget, for `kinowo_web_cache_*`.
-   *  Built by hand rather than read off Caffeine — this one is an access-ordered
-   *  `LinkedHashMap`, and it has no hit counters to report. */
-  def occupancy: services.metrics.CacheOccupancy =
-    services.metrics.CacheOccupancy(
-      entries   = heldEntries.toLong,
-      heldBytes = Some(heldBytes),
-      maxBytes  = Some(maxBytes))
+  /** What this cache holds against its byte budget, for `kinowo_web_cache_*`. */
+  def occupancy: services.metrics.CacheOccupancy = services.metrics.CacheOccupancy.of(entries, weighted = true)
 
-  private def store(key: String, entry: Entry): Unit = synchronized {
-    // A render finishing after a NEWER one was stored (a background refresh
-    // overtaken by a synchronous render) must not put the older version back.
-    val newerHeld = Option(entries.get(key)).exists(_.version.isAfter(entry.version))
+  private def store(key: String, entry: Entry): Unit =
     // An entry larger than the whole budget is never worth holding: storing it
     // would evict everything else and then itself on the next put.
-    if (newerHeld) ()
-    else if (entry.bytes.size <= maxBytes) {
-      Option(entries.put(key, entry)).foreach(previous => bytesHeld -= previous.bytes.size)
-      bytesHeld += entry.bytes.size
-      val stale = entries.entrySet().iterator()
-      while (bytesHeld > maxBytes && stale.hasNext) {
-        val evicted = stale.next()          // access order: eldest use first
-        if (evicted.getKey != key) {
-          bytesHeld -= evicted.getValue.bytes.size
-          stale.remove()
-        }
-      }
-    } else
-      Option(entries.remove(key)).foreach(previous => bytesHeld -= previous.bytes.size)
-  }
+    if (entry.bytes.size.toLong + tools.BoundedCache.MinEntryOverhead > maxBytes) entries.invalidate(key)
+    // A render finishing after a NEWER one was stored (a background refresh
+    // overtaken by a synchronous render) must not put the older version back.
+    else entries.asMap.merge(key, entry, (held, rendered) => if (held.version.isAfter(rendered.version)) held else rendered)
 }
 
 object EncodedResponseCache {

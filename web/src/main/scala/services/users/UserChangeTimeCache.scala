@@ -1,6 +1,6 @@
 package services.users
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Ticker}
+import com.github.benmanes.caffeine.cache.{Cache, Ticker}
 import play.api.Logging
 
 import java.time.Instant
@@ -53,7 +53,7 @@ final class CaffeineUserChangeTimeCache(
   entryTtl:   FiniteDuration = 10.minutes,
   // What `entryTtl` is measured on: the system's nanosecond ticker outside specs.
   ticker:     Ticker         = Ticker.systemTicker()
-) extends UserChangeTimeCache with Logging {
+) extends UserChangeTimeCache with services.Stoppable with Logging {
 
   // A synchronous executor: Caffeine's default runs eviction/expiry MAINTENANCE
   // asynchronously (on the common ForkJoinPool), so a write past `maxEntries`
@@ -63,8 +63,7 @@ final class CaffeineUserChangeTimeCache(
   // load (a handful of user-state writes a second, not a hot path) makes the
   // synchronous cost negligible.
   private val cache: Cache[String, Instant] =
-    Caffeine.newBuilder()
-      .maximumSize(maxEntries)
+    tools.BoundedCache.ofSize(maxEntries)
       .expireAfterWrite(entryTtl.toMillis, TimeUnit.MILLISECONDS)
       .ticker(ticker)
       .executor((r: Runnable) => r.run())

@@ -65,7 +65,7 @@ trait DebugWiring { self: Wiring =>
   // reload or a server restart serves the last one at once instead of making the
   // first load of every country wait on a cold read.
   private val DebugSnapshotRefresh = scala.concurrent.duration.DurationInt(60).seconds
-  private lazy val debugSnapshotPool = tools.DaemonExecutors.virtualThreadEC("debug-snapshots")
+  private lazy val debugSnapshotPool = managedResources.executor("debug snapshots")(tools.DaemonExecutors.virtualThreadEC("debug-snapshots"))
   private lazy val debugSnapshotStore: SnapshotStore =
     if (environmentMode == Mode.Dev) new FileSnapshotStore(java.nio.file.Paths.get("target", "debug-snapshots"))
     else SnapshotStore.none
@@ -142,12 +142,12 @@ trait DebugWiring { self: Wiring =>
       devMode = environmentMode != Mode.Prod)
 
   // The warm-up ticker: Dev only — prod 404s every /debug route, and a spec's
-  // wiring must not start reading Mongo behind its back. `stop()` shuts it down, so
+  // wiring must not start reading Mongo behind its back. `stop()` shuts it down (`managedResources`), so
   // a dev reload doesn't leave the previous app's ticker reading.
   protected lazy val debugSnapshotTicker: Option[java.util.concurrent.ScheduledExecutorService] =
     Option.when(environmentMode == Mode.Dev) {
       val snapshots = Seq(bootDebugListing, bootDebugCadence) ++ debugExtraStacks.flatMap(_._4)
-      val ticker    = tools.DaemonExecutors.scheduler("debug-snapshot-ticker")
+      val ticker    = managedResources.executor("debug snapshot ticker")(tools.DaemonExecutors.scheduler("debug-snapshot-ticker"))
       // ONE re-read at a time, boot country first: all of them at once (14 reads)
       // contended so hard right after boot that each took 8–60 s instead of ~1 s.
       // A page asking for a cold country doesn't queue behind this — its own read
@@ -157,11 +157,6 @@ trait DebugWiring { self: Wiring =>
         0, DebugSnapshotRefresh.toSeconds, java.util.concurrent.TimeUnit.SECONDS)
       ticker
     }
-  protected def stopDebugSnapshots(): Unit = {
-    debugSnapshotTicker.foreach(_.shutdownNow())
-    debugSnapshotPool.shutdownNow()
-    ()
-  }
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),

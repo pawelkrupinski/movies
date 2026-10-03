@@ -60,7 +60,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
-  lazy val taskWorker = new TaskWorker(
+  lazy val taskWorker = managedResources.stopping(new TaskWorker(
     taskQueue, identityPathHandlers(Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
       ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers),
     poolSize = workerPoolSize,
@@ -71,11 +71,11 @@ trait TaskQueueWiring { self: WorkerWiring =>
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics
-  , clock = clock)
+  , clock = clock))
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
-  lazy val workerHeartbeat = new WorkerHeartbeat(taskQueue)
+  lazy val workerHeartbeat = managedResources.stopping(new WorkerHeartbeat(taskQueue))
 
   // Last-resort backstop for a WEDGED-but-alive JVM (the 2026-06-23 heap OOM, where
   // the process limped on for ~2h answering /health 200 because the OOM had killed
@@ -87,10 +87,10 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // above the 1-min pulse so GC jitter never trips it.
   def livenessStaleAfter: LivenessStaleAfter = configuration.livenessStaleAfter(LivenessStaleAfter(5.minutes))
   def heapDumpDirectory: HeapDumpDirectory   = configuration.heapDumpDirectory
-  lazy val livenessWatchdog = new LivenessWatchdog(
+  lazy val livenessWatchdog = managedResources.stopping(new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
     stalenessThreshold = livenessStaleAfter,
-    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged); sys.exit(70) })
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged); sys.exit(70) }))
 }
 
 object TaskQueueWiring {

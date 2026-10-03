@@ -536,13 +536,15 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     } finally client.close()
 
     var closed = false
-    val stopped = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
-      override protected lazy val identityTraces: services.identity.IdentityTraceStore = new services.identity.IdentityTraceStore {
+    final class Stopped extends Probe(Country.Spain, new SharedExecutionBudget(4)) {
+      override protected def newIdentityTraces: services.identity.IdentityTraceStore = new services.identity.IdentityTraceStore {
         def replace(removed: Set[String], added: Seq[services.identity.FamilyTraces]): Unit = ()
         override def close(): Unit = closed = true
       }
+      def traces: services.identity.IdentityTraceStore = identityTraces
     }
-    stopped.identityModel
+    val stopped = new Stopped
+    stopped.traces   // a model's first rebuild builds it
     stopped.stop()
     closed shouldBe true
   }

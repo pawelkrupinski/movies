@@ -53,7 +53,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // token so a restart replays events missed while down instead of leaning on the backstop.
     persistResumeToken = true)
 
-  lazy val movieCache: CaffeineMovieCache =
+  lazy val movieCache: CaffeineMovieCache = managedResources.stopping(
     new CaffeineMovieCache(movieRepository,
       retrigger = enrichmentRetrigger, cacheMetrics = taskMetrics,
       normalizer = titleNormalizer, clock = clock,
@@ -61,7 +61,7 @@ trait CorpusWiring { self: WorkerWiring =>
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
-      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)))
+      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours))))
 
   /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)
@@ -76,13 +76,13 @@ trait CorpusWiring { self: WorkerWiring =>
   // dedup doesn't skip the re-fetch. See QueueEnrichmentRetrigger / MergeRetrigger.
   lazy val enrichmentRetrigger = new services.tasks.QueueEnrichmentRetrigger(taskQueue, freshnessStore, country, titleNormalizer)
 
-  lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, movieRepository)
+  lazy val unscreenedCleanup = managedResources.stopping(new UnscreenedCleanup(movieCache, movieRepository))
 
   // The other daily sweep: side-collection rows whose film left the corpus before
   // deletes and merges carried their rows with them — and, on the same tick, rows filed
   // under a venue this country's roster no longer lists.
-  lazy val strandedSideRowsCleanup = new StrandedSideRowsCleanup(movieRepository,
+  lazy val strandedSideRowsCleanup = managedResources.stopping(new StrandedSideRowsCleanup(movieRepository,
     retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
       VenueRoster.venuesOf(country), now = clock.instant()),
-    afterSweeps = () => retiredVenueCensus.sample())
+    afterSweeps = () => retiredVenueCensus.sample()))
 }

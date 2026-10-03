@@ -64,6 +64,14 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
     cache.occupancy.entries shouldBe 2
   }
 
+  // An empty card weighed 0, and Caffeine never evicts a zero-weight entry: each pinned its key —
+  // the film's whole schedule — for the life of the process.
+  it should "evict empty cards too, so a byte bound bounds what the keys pin" in {
+    val cache = new CaffeineFilmCardFragments(maxBytes = 10L * tools.BoundedCache.MinEntryOverhead)
+    (0 until 200).foreach(n => cache.fragment(FilmCardFragments.Key(city.slug, "pl", film(n)))(""))
+    cache.heldEntries should be <= 10L
+  }
+
   private val threads = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
   private def allocatedBy(f: => Any): Long = {
     val id = Thread.currentThread.threadId

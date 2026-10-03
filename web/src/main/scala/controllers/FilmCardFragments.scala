@@ -1,6 +1,6 @@
 package controllers
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import com.github.benmanes.caffeine.cache.Cache
 import play.twirl.api.Html
 import services.metrics.CacheOccupancy
 
@@ -66,9 +66,7 @@ object FilmCardFragments {
 final class CaffeineFilmCardFragments(maxBytes: Long) extends FilmCardFragments {
 
   private val cache: Cache[FilmCardFragments.Key, String] =
-    Caffeine.newBuilder()
-      .maximumWeight(maxBytes)
-      .weigher[FilmCardFragments.Key, String]((_, card) => CaffeineFilmCardFragments.bytesHeld(card))
+    tools.BoundedCache.ofWeight[FilmCardFragments.Key, String](maxBytes)((_, card) => CaffeineFilmCardFragments.bytesHeld(card))
       .recordStats()
       .build[FilmCardFragments.Key, String]()
 
@@ -76,6 +74,9 @@ final class CaffeineFilmCardFragments(maxBytes: Long) extends FilmCardFragments 
     cache.get(key, _ => render)
 
   def occupancy: CacheOccupancy = CacheOccupancy.of(cache, weighted = true)
+
+  /** How many cards are held once pending evictions have run — for the specs. */
+  def heldEntries: Long = { cache.cleanUp(); cache.estimatedSize() }
 }
 
 object CaffeineFilmCardFragments {

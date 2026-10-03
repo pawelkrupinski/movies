@@ -15,12 +15,12 @@ trait ReadModelWiring { self: WorkerWiring =>
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
-  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
+  lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     shareCards = shareCardLedger, firstCardHold = configuration.shareCardFirstHold(ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold)), clock = clock,
     pruneInterval  = configuration.readModelPruneInterval(ReadModelProjector.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelProjector.DefaultPruneBootDelay),
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock),
-    ratingGate = ratingGate)
+    ratingGate = ratingGate))
 
   // ── Identity phase 3: confidence-gated ratings (docs/design/identity-resolver.md §15) ──────
   // A staged-migration switch, off by default: on, a card whose stored evidence the calibration

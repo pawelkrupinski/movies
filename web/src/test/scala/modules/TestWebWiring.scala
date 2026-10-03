@@ -48,4 +48,6 @@ class TestWebWiring(
 
   /** Expose the protected data-layer start so a spec can drive it. */
   def boot(): Unit = start()
+  /** …and the protected stop. */
+  def shutdown(): Unit = stop()
 }

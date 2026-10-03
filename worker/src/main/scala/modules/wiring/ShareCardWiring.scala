@@ -75,17 +75,14 @@ trait ShareCardWiring { self: WorkerWiring =>
   }
 
   /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
-  lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] =
+  lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] = managedResources.stoppingEach(
     for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled }
-    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), country.code, shareCardMetrics, clock)
+    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), country.code, shareCardMetrics, clock))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
 
-  /** Stops the drain and closes the fleet database — only when this wiring opened it. */
-  def stopFacebookRescrapes(): Unit = {
-    facebookRescrapeDrain.foreach(_.stop())
-    facebookRescrapeStore.foreach(_ => fleetMongoConnection.close())
-  }
+  /** Closes the fleet database — only when this wiring opened it; the drain itself is a managed resource. */
+  def closeFleetConnection(): Unit = facebookRescrapeStore.foreach(_ => fleetMongoConnection.close())
 
   /** What the projection asks about share cards. */
   lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
@@ -113,7 +110,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily at 03:00 UTC (or five minutes after a boot that
    *  finds that day's prune never ran). Each window is claimed, so one replica enqueues it. */
-  lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] =
+  lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] = managedResources.stoppingEach(
     if (!shareCardsEnabled) Nil
     else {
       def enqueue(taskType: TaskType, key: String, payload: Map[String, String] = Map.empty): () => Unit =
@@ -127,7 +124,7 @@ trait ShareCardWiring { self: WorkerWiring =>
         new ClaimedEnqueueReaper("share-card-prune",
           enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
           24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt)))
-    }
+    })
 }
 
 object ShareCardWiring {

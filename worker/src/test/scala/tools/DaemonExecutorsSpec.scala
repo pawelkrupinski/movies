@@ -9,6 +9,39 @@ import scala.concurrent.Promise
 
 class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
 
+  // `Executors.newFixedThreadPool` queued without bound: a producer outrunning the pool grew the
+  // queue until the heap was gone. A full bounded pool slows its producer instead.
+  "boundedPool" should "run a task on the submitting thread once its queue is full" in {
+    val pool    = DaemonExecutors.boundedPool("bounded-pool", threads = 1, queueCapacity = 1, WhenFull.RunOnCaller)
+    val release = new CountDownLatch(1)
+    try {
+      pool.execute(() => release.await())          // occupies the one thread
+      pool.execute(() => ())                       // fills the queue
+      var ranOn: Thread = null
+      pool.execute(() => ranOn = Thread.currentThread())
+      ranOn shouldBe Thread.currentThread()
+    } finally { release.countDown(); pool.shutdownNow() }
+  }
+
+  it should "make the submitter wait for room, keeping order, when asked to" in {
+    val pool    = DaemonExecutors.singleThreadExecutor("ordered-pool", queueCapacity = 1)
+    val order   = new java.util.concurrent.ConcurrentLinkedQueue[Int]()
+    val release = new CountDownLatch(1)
+    try {
+      pool.execute(() => { release.await(); order.add(0); () })
+      pool.execute(() => { order.add(1); () })
+      val third = new Thread(() => pool.execute(() => { order.add(2); () }))
+      third.start()
+      // The third submit waits for room rather than running on its thread.
+      third.join(200)
+      third.isAlive shouldBe true
+      release.countDown()
+      third.join(5000)
+      pool.shutdown(); pool.awaitTermination(5, TimeUnit.SECONDS) shouldBe true
+      order.toArray.toSeq shouldBe Seq(0, 1, 2)
+    } finally { release.countDown(); pool.shutdownNow() }
+  }
+
   "boundedEC" should "cap concurrency for a single EC" in {
     val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(DaemonExecutors.boundedEC("bounded", 3)))
     peak should be <= 3

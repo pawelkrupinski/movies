@@ -196,8 +196,7 @@ class MovieControllerService(
   }
 
   private val built: com.github.benmanes.caffeine.cache.Cache[(String, String), Built] =
-    com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
-      .maximumSize(MovieControllerService.BuiltSchedules)
+    tools.BoundedCache.ofSize(MovieControllerService.BuiltSchedules)
       .build[(String, String), Built]()
 
   /** One film's upcoming showtimes in this city, by date and then by cinema: dates

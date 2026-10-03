@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Expiry, Ticker}
+import com.github.benmanes.caffeine.cache.{Cache, Expiry, Ticker}
 import play.api.libs.json._
 import tools.{HttpFetch, HttpRead}
 
@@ -41,7 +41,8 @@ class BiletynaNationalFeed(http: HttpFetch, halls: Set[BiletynaPlacePage],
   private val wanted: Set[HallPath] = halls.map(pathOf)
 
   private val programme: Cache[Unit, Try[Map[HallPath, Vector[JsValue]]]] =
-    Caffeine.newBuilder()
+    // One key (the feed is one document), so a bound of one says what it holds.
+    tools.BoundedCache.ofSize(1)
       .expireAfter(Expiry.creating[Unit, Try[Map[HallPath, Vector[JsValue]]]]((_, read) =>
         java.time.Duration.ofNanos((if (read.isSuccess) ttl else FailureHold.min(ttl)).toNanos)))
       .ticker(ticker)

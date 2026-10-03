@@ -26,6 +26,9 @@ trait EnrichmentAttemptStore {
    *  must not fail the enrichment it is merely observing. */
   def record(key: String, attempt: EnrichmentAttempt): Unit
 
+  /** Its rows by when each was last written, for the orphan sweep (`OrphanFilmStateSweep`). */
+  def retention: services.retention.StampedRows = services.retention.StampedRows.Unswept
+
   def close(): Unit = ()
 }
 
@@ -39,6 +42,7 @@ object EnrichmentAttemptStore {
 class InMemoryEnrichmentAttemptStore extends EnrichmentAttemptStore with EnrichmentAttemptReader {
   private val attempts = new ConcurrentHashMap[String, EnrichmentAttempt]()
   override def record(key: String, attempt: EnrichmentAttempt): Unit = { attempts.put(key, attempt); () }
+  override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(attempts)(_.at)
   def all(): Seq[(String, EnrichmentAttempt)] = {
     import scala.jdk.CollectionConverters._
     attempts.asScala.toSeq
@@ -57,6 +61,9 @@ class InMemoryEnrichmentAttemptStore extends EnrichmentAttemptStore with Enrichm
  */
 class MongoEnrichmentAttemptStore(db: Option[MongoDatabase]) extends EnrichmentAttemptStore with Logging {
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(EnrichmentAttempts.Collection))
+
+  override def retention: services.retention.StampedRows =
+    coll.fold(services.retention.StampedRows.Unswept)(services.retention.StampedRows.inMongo(_, "at"))
 
   override def record(key: String, attempt: EnrichmentAttempt): Unit = coll.foreach { c =>
     val (outcome, detail) = EnrichmentAttempts.encodeOutcome(attempt.outcome)

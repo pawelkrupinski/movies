@@ -52,6 +52,9 @@ class ObservationReads {
 
   /** How many keys it tracks: the index a model's questions keep over the store. */
   def keys: Int = synchronized(readers.size)
+
+  /** Every key some question reads now — what the store's sweep must keep (`TmdbStoreSweep`). */
+  def trackedKeys: Set[String] = synchronized(readers.keySet.toSet)
 }
 
 object ObservationReads {

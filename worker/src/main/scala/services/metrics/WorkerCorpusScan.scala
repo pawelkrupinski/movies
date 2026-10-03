@@ -37,7 +37,7 @@ class WorkerCorpusScan(
   // care about the gauges; the worker injects the Prometheus-backed sink.
   metrics:        CorpusScanMetrics = CorpusScanMetrics.noop,
   stopwatch:      Stopwatch         = Stopwatch.System
-) extends Logging {
+) extends services.Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("worker-corpus-scan")
 

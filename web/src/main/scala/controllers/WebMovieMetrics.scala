@@ -36,7 +36,7 @@ class WebMovieMetrics(
   servingCountry: Country,
   // The wiring's clock, which also dates the listing these counts come from.
   clock:   Clock,
-) extends Logging {
+) extends services.Stoppable with Logging {
   private val cities: Seq[City] = servingCountry.cities
   private val country: String   = servingCountry.code
 

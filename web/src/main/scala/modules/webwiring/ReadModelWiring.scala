@@ -63,10 +63,10 @@ trait ReadModelWiring { self: Wiring =>
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)
-  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository,
+  lazy val webReadModel: WebReadModel = managedResources.stopping(new WebReadModel(readModelRepository,
     reloadInterval    = processConfiguration.readModelReloadInterval(WebReadModel.DefaultReloadInterval),
     coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval),
-    clock             = clock)
+    clock             = clock))
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.

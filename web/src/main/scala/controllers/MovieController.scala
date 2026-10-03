@@ -190,7 +190,7 @@ class MovieController( cc: ControllerComponents,
   // films it names): rebuilding its JSON tree for every film was ~1.3 MB a New York
   // render, and it changes only when the city's films do.
   private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
-    com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(512).build[StructuredData.CityPageKey, String]()
+    tools.BoundedCache.ofSize(512).build[StructuredData.CityPageKey, String]()
 
   // Each film's object in a city's JSON payloads (`/api/repertoire`, `/api/details`),
   // kept under the schedule it is serialized from. A payload is re-rendered whenever its
@@ -202,9 +202,8 @@ class MovieController( cc: ControllerComponents,
   // `FilmJsonEntryBytes`, a film left out (`None`) too: Caffeine never evicts a zero-weight
   // entry, and each pins its key's whole schedule.
   private val filmJson: com.github.benmanes.caffeine.cache.Cache[MovieController.FilmJsonKey, Option[String]] =
-    com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
-      .maximumWeight(MovieController.FilmJsonMaxBytes)
-      .weigher[MovieController.FilmJsonKey, Option[String]]((_, json) => MovieController.filmJsonWeight(json))
+    tools.BoundedCache.ofWeight[MovieController.FilmJsonKey, Option[String]](MovieController.FilmJsonMaxBytes, MovieController.FilmJsonEntryBytes)(
+      (_, json) => json.fold(0)(CaffeineFilmCardFragments.bytesHeld))
       .build[MovieController.FilmJsonKey, Option[String]]()
 
   /** How many films' API JSON this controller is holding — for the spec. */
@@ -788,9 +787,6 @@ object MovieController {
    *  outlive the schedule's own rebuild until evicted. A film left out of a payload holds no
    *  JSON but still pins its schedule — weighed as nothing, Caffeine would never evict it. */
   val FilmJsonEntryBytes: Int = 1024
-
-  private[controllers] def filmJsonWeight(json: Option[String]): Int =
-    FilmJsonEntryBytes + json.fold(0)(CaffeineFilmCardFragments.bytesHeld)
 
   /** What the faceted browse pages tell a crawler about themselves.
    *

@@ -68,6 +68,15 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
     cache.gzippedBody("/poznan/movies", v3)(fail("v3 is held")).version shouldBe v3
   }
 
+  // Built on the bounded cache factory, it reports its hit ratio beside its bytes: the number that says
+  // whether the 64 MiB budget is holding the pages visitors read.
+  it should "report the share of reads it served from what it held" in {
+    val cache = TestResponseCache()
+    cache.gzippedBody("/poznan/", v1)("<html>a</html>")
+    cache.gzippedBody("/poznan/", v1)(fail("held"))
+    cache.occupancy.hitRatio shouldBe Some(0.5)
+  }
+
   it should "key independently per path" in {
     val cache = TestResponseCache()
     val a = cache.gzippedBody("/poznan/movies", v1)("<html>filmy</html>")

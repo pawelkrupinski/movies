@@ -44,6 +44,9 @@ trait RatingCadenceStore {
     next
   }
 
+  /** Its rows by when each was last written, for the orphan sweep (`OrphanFilmStateSweep`). */
+  def retention: services.retention.StampedRows = services.retention.StampedRows.Unswept
+
   def close(): Unit = ()
 }
 
@@ -52,6 +55,7 @@ class InMemoryRatingCadenceStore extends RatingCadenceStore {
   private val stats = new ConcurrentHashMap[String, RatingChangeStats]()
   override def statsFor(key: String): Option[RatingChangeStats] = Option(stats.get(key))
   override protected def persist(key: String, s: RatingChangeStats): Unit = { stats.put(key, s); () }
+  override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(stats)(_.lastCheckedAt)
 }
 
 /**
@@ -80,6 +84,11 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
   }
 
   override def statsFor(key: String): Option[RatingChangeStats] = Option(mirror.get(key))
+
+  override def retention: services.retention.StampedRows = {
+    val held = services.retention.StampedRows.inMap(mirror)(_.lastCheckedAt)
+    coll.fold(held)(c => services.retention.StampedRows.mirrored(services.retention.StampedRows.inMongo(c, "lastCheckedAt"), held))
+  }
 
   override protected def persist(key: String, s: RatingChangeStats): Unit = {
     mirror.put(key, s)

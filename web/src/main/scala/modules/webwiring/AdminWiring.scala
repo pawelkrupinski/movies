@@ -19,7 +19,8 @@ trait AdminWiring { self: Wiring =>
   // scrape volume).
   // `surfaceExternalWrites = true` also means this tier does NOT own the bucket TTL index and
   // will not rebuild it — see `UptimeMonitor.ownsIndexes`.
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true, clock = clock)
+  lazy val uptimeMonitor = managedResources.register("uptime monitor",
+    new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true, clock = clock))(_.close())
 
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
   // pages (/uptime, /tasks) and the rehydrate trigger. Empty
@@ -44,13 +45,13 @@ trait AdminWiring { self: Wiring =>
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
   // Live config: install the override cache as Env's source + publish web's knobs
   // to the shared registry, and serve the /admin/config page (see EnvConfigService).
-  lazy val envConfigService = new services.config.EnvConfigService(
+  lazy val envConfigService = managedResources.stopping(new services.config.EnvConfigService(
     app          = "web",
     overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
     tickInterval = processConfiguration.configRefreshInterval(
-      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))))
+      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds")))))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 
   // Film identity (phase 3 of docs/design/identity-resolver.md): the emergency pins, written here and

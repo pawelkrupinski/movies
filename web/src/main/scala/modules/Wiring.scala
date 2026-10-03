@@ -74,14 +74,14 @@ trait Wiring
     debugCountries
   }
 
+  /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
+  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources
+
   protected def stop(): Unit = {
-    envConfigService.stop()
-    uptimeMonitor.close()
-    webMovieMetrics.stop()
-    userChangeTimeCache.stop()
-    // Before the read model and Mongo go: a page re-render reads both.
-    pageRefreshExecutor.shutdownNow()
-    webReadModel.stop()
+    // Every service and pool the wiring built (the config ticker, the uptime monitor, the metrics sampler,
+    // page re-renders, the /debug snapshots, the read model), newest first, before the repositories and
+    // Mongo go: a page re-render reads both, a snapshot re-read a client below.
+    managedResources.closeAll()
     // Each repository's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
     readModelRepository.close()
@@ -95,8 +95,6 @@ trait Wiring
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
-    // Before the clients below: a snapshot re-read in flight would otherwise fail on a closed one.
-    stopDebugSnapshots()
     // Dev-only per-country debug stacks share ONE client (built in DebugWiring);
     // their connections' own close() is a no-op, so close the shared client once.
     debugExtraClient.foreach(_.close())

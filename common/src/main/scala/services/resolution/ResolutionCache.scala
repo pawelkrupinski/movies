@@ -1,6 +1,6 @@
 package services.resolution
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import com.github.benmanes.caffeine.cache.Cache
 
 import java.util.concurrent.TimeUnit
 
@@ -108,7 +108,8 @@ object UnresolvedPolicy {
 class WriteThroughResolutionCache(
   store: ResolutionStore,
   recorder: ResolutionOutcomeRecorder = ResolutionOutcomeRecorder.noop,
-  unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry) extends ResolutionCache {
+  unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry,
+  maxEntries: Long = WriteThroughResolutionCache.MaxEntries) extends ResolutionCache {
 
   // Take the rules from the store rather than accepting a second copy: the
   // in-memory cache and the durable store hold the SAME hint keys, so folding
@@ -116,7 +117,10 @@ class WriteThroughResolutionCache(
   private val normalizer: services.movies.TitleNormalizer = store.normalizer
 
   private val cache: Cache[String, String] =
-    Caffeine.newBuilder().expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
+    tools.BoundedCache.ofSize(maxEntries).expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
+
+  /** How many hint keys the in-memory layer holds — for the spec. */
+  private[resolution] def held: Long = { cache.cleanUp(); cache.estimatedSize() }
 
   /** The stored stand-in for "this chain ran and found nothing". Empty because
    *  no real resolution can be empty, so it can never be mistaken for one. */
@@ -171,4 +175,11 @@ class WriteThroughResolutionCache(
             }
         }
     }
+}
+
+object WriteThroughResolutionCache {
+  /** How many hint keys the in-memory layer holds at most. It only ever held what the TTL window
+   *  saw, with no count bound: a burst of distinct hints (a re-resolve of the whole corpus) was all
+   *  kept for a day. A key past the bound is read back from the durable store on its next ask. */
+  val MaxEntries: Long = 50000L
 }

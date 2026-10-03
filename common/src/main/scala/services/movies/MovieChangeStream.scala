@@ -105,11 +105,13 @@ final class MovieChangeStream(
   // ctx-switches — proven on-box), flooring the shared-CPU credit. A SINGLE thread
   // keeps events applied strictly in order.
   //
-  // Its queue is UNBOUNDED, so what keeps the backlog finite is the demand window each
-  // cursor opens with — see [[ChangeStreamDemand]]. Every `changeApply.execute` here
-  // must therefore be paired with an `applied()` in the task's `finally`, or that
-  // cursor stalls; `applyBacklog` is the invariant made observable.
-  private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply")
+  // What keeps the backlog finite is the demand window each cursor opens with — see
+  // [[ChangeStreamDemand]]; the queue's own capacity sits above all three windows and is
+  // only the backstop. Every `changeApply.execute` here must therefore be paired with an
+  // `applied()` in the task's `finally`, or that cursor stalls; `applyBacklog` is the
+  // invariant made observable.
+  private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply",
+    MovieChangeStream.applyQueueCapacity(changeDemandWindow))
   private val backlog      = new AtomicInteger(0)
   // Demand windows: one per cursor, since each is a separate subscription. All drain
   // into `changeApply`, so the queue is capped at the sum of the windows.
@@ -678,6 +680,10 @@ final class MovieChangeStream(
 }
 
 object MovieChangeStream {
+  /** The apply queue's capacity: the three cursors' demand windows, each event at most one task,
+   *  plus room for the re-read retries and venue waits that owe no demand. */
+  private[movies] def applyQueueCapacity(window: Int): Int = math.min(Int.MaxValue.toLong, 3L * window + 4096L).toInt
+
   /** One re-read film on its way to the listeners, with the fence mark taken before the read. */
   private final case class Delivery(film: StoredMovieRecord, mark: Long)
 

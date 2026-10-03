@@ -41,12 +41,11 @@ object PassThroughMinifier extends Minifier {
  *  every distinct template-rendered block (a few per city) is one entry. */
 class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends Minifier {
   private def cache(): com.github.benmanes.caffeine.cache.Cache[String, String] =
-    com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(maxEntries).build[String, String]()
+    BoundedCache.ofSize(maxEntries).build[String, String]()
   // Stats on the block cache alone: its hit ratio is what says the blocks are what they
   // should be. A per-render value inside one would show as a ratio near zero and an
   // entry count that only grows (published as `kinowo_web_cache_*{cache="minifier"}`).
-  private val blockCache = com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
-    .maximumSize(maxEntries).recordStats().build[String, String]()
+  private val blockCache = BoundedCache.ofSize(maxEntries).recordStats().build[String, String]()
   private val jsCache    = cache()
   private val cssCache   = cache()
 

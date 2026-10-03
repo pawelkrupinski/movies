@@ -1,6 +1,6 @@
 package tools
 
-import java.util.concurrent.{AbstractExecutorService, ExecutorService, Executors, RejectedExecutionException, ScheduledExecutorService, Semaphore, TimeUnit}
+import java.util.concurrent.{AbstractExecutorService, ExecutorService, Executors, LinkedBlockingQueue, RejectedExecutionException, RejectedExecutionHandler, ScheduledExecutorService, Semaphore, ThreadFactory, ThreadPoolExecutor, TimeUnit}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 /**
@@ -99,12 +99,29 @@ object DaemonExecutors {
    *  back to a `virtualThreadEC` (`executionContext.execute(() => …)` or
    *  `Future(...)(executionContext)`), so the scheduler thread doesn't block on the work
    *  itself. */
-  def scheduler(name: String): ScheduledExecutorService =
-    Executors.newSingleThreadScheduledExecutor { r =>
-      val thread = new Thread(r, name)
-      thread.setDaemon(true)
-      thread
-    }
+  def scheduler(name: String): ScheduledExecutorService = scheduler(name, threads = 1)
+
+  /** [[scheduler]] on `threads` daemon platform threads, each named `name`. */
+  def scheduler(name: String, threads: Int): ScheduledExecutorService =
+    Executors.newScheduledThreadPool(threads, daemonPlatform(name))
+
+  /** A pool of `threads` threads (daemon platform threads named `name`, or virtual threads named
+   *  `name-N`) whose queue holds at most `queueCapacity` waiting tasks; a task submitted to a full
+   *  queue is handled as `whenFull` says. The one place a fixed pool is built: `Executors.newFixed…`
+   *  queues without bound, so a producer outrunning the pool grew it until the heap was gone, each
+   *  queued task retaining what it closed over. */
+  def boundedPool(name: String, threads: Int, queueCapacity: Int, whenFull: WhenFull, virtual: Boolean = false): ExecutorService = {
+    require(threads > 0 && queueCapacity > 0, s"$name: threads ($threads) and queue capacity ($queueCapacity) must be positive")
+    val factory: ThreadFactory = if (virtual) Thread.ofVirtual().name(s"$name-", 0L).factory() else daemonPlatform(name)
+    dropRejectedAfterShutdown(new ThreadPoolExecutor(threads, threads, 0L, TimeUnit.MILLISECONDS,
+      new LinkedBlockingQueue[Runnable](queueCapacity), factory, whenFull.handler))
+  }
+
+  private def daemonPlatform(name: String): ThreadFactory = { r =>
+    val thread = new Thread(r, name)
+    thread.setDaemon(true)
+    thread
+  }
 
   /** Single daemon platform thread with a FIFO queue, named `name`. Use to move
    *  ORDERED, potentially-blocking work off a thread that must not block —
@@ -114,19 +131,24 @@ object DaemonExecutors {
    *  worker's CPU credit. A single thread keeps change events applied strictly in
    *  order; blocking on it is fine — that's the point, it isn't an I/O loop.
    *
-   *  ITS QUEUE IS UNBOUNDED (`LinkedBlockingQueue`), as is every executor in this
-   *  object — `boundedEC` bounds CONCURRENCY with a semaphore, not queue depth. So a
-   *  producer that outruns this single consumer grows the queue until the heap is gone,
-   *  and each queued task retains whatever it closed over. That is only safe when the
-   *  PRODUCER is bounded: the change-stream caller bounds itself with a demand window
-   *  ([[services.movies.ChangeStreamDemand]]) rather than relying on this queue. Bound
-   *  your producer before handing work here, or size the work so it cannot run ahead. */
-  def singleThreadExecutor(name: String): ExecutorService =
-    dropRejectedAfterShutdown(Executors.newSingleThreadExecutor { r =>
-      val thread = new Thread(r, name)
-      thread.setDaemon(true)
-      thread
-    })
+   *  Its queue holds at most `queueCapacity` tasks, and a producer that finds it full WAITS for
+   *  room ([[WhenFull.WaitForRoom]]) — running the task on the caller would break the order this
+   *  thread exists to keep. Size it above what the producer can have outstanding (the change-stream
+   *  caller bounds itself with a demand window, [[services.movies.ChangeStreamDemand]]), so the
+   *  wait is a backstop that never engages while the producer keeps its own bound. */
+  def singleThreadExecutor(name: String, queueCapacity: Int): ExecutorService =
+    boundedPool(name, threads = 1, queueCapacity, WhenFull.WaitForRoom)
+}
+
+/** What a [[DaemonExecutors.boundedPool]] does with a task submitted while its queue is full. A
+ *  pool already shut down drops it either way ([[DaemonExecutors.dropRejectedAfterShutdown]]). */
+enum WhenFull(val handler: RejectedExecutionHandler) {
+  /** The submitting thread runs it: the producer is slowed to the pool's pace, and order is not kept. */
+  case RunOnCaller extends WhenFull(new ThreadPoolExecutor.CallerRunsPolicy)
+  /** The submitting thread waits until the queue has room: order is kept, the producer blocks. */
+  case WaitForRoom extends WhenFull((task: Runnable, pool: ThreadPoolExecutor) =>
+    if (pool.isShutdown) throw new RejectedExecutionException("shut down")
+    else pool.getQueue.put(task))
 }
 
 /** An `AbstractExecutorService` whose lifecycle (`shutdown` / `shutdownNow` /

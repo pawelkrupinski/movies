@@ -1,6 +1,6 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Ticker, Weigher}
+import com.github.benmanes.caffeine.cache.{Cache, Ticker, Weigher}
 
 import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
 import scala.concurrent.duration._
@@ -49,10 +49,8 @@ class CachingDetailFetch(
   // failure, never both, and sharing the entry means the TTL and the size bound
   // apply to them uniformly.
   private val cache: Cache[String, CachingDetailFetch.Outcome] =
-    Caffeine.newBuilder()
+    BoundedCache.ofWeight[String, CachingDetailFetch.Outcome](maxBytes)(CachingDetailFetch.RetainedBytes.weigh)
       .expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
-      .maximumWeight(maxBytes)
-      .weigher(CachingDetailFetch.RetainedBytes)
       .executor(maintenance)
       .ticker(ticker)
       .build()

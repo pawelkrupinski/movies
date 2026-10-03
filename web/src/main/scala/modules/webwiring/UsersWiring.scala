@@ -41,7 +41,7 @@ trait UsersWiring { self: Wiring =>
   // Typed concrete, not `UserChangeTimeCache` — `Wiring.start()`/`stop()` need
   // its lifecycle methods, which the lookup-only trait deliberately omits
   // (same split as `MovieCache`'s trait vs. its `Stoppable` real impl).
-  lazy val userChangeTimeCache: CaffeineUserChangeTimeCache = new CaffeineUserChangeTimeCache(userStateRepository)
+  lazy val userChangeTimeCache: CaffeineUserChangeTimeCache = managedResources.stopping(new CaffeineUserChangeTimeCache(userStateRepository))
 
   // ── OAuth providers ──────────────────────────────────────────────────────
   // Each provider is wired only when its env vars are present. Missing keys →

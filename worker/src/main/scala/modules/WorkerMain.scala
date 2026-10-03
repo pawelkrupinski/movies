@@ -10,7 +10,7 @@ import tools.{ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthenticat
 
 import java.net.InetSocketAddress
 import java.time.Instant
-import java.util.concurrent.{CountDownLatch, Executors}
+import java.util.concurrent.CountDownLatch
 
 /**
  * Entry point for the scrape/enrich worker. A plain `def main` (not `extends
@@ -183,9 +183,8 @@ object WorkerMain extends Logging {
     // A tiny daemon pool (not the default single caller-runs executor) so a
     // /metrics scrape — which reads the queue depth from Mongo and can block up
     // to its Await timeout if Mongo is slow — can't delay the /health check.
-    server.setExecutor(Executors.newFixedThreadPool(2, (r: Runnable) => {
-      val t = new Thread(r, "worker-http"); t.setDaemon(true); t
-    }))
+    // At most a few dozen requests wait; past that the server's own dispatcher answers them.
+    server.setExecutor(tools.DaemonExecutors.boundedPool("worker-http", threads = 2, queueCapacity = 64, tools.WhenFull.RunOnCaller))
     server.start()
     server
   }

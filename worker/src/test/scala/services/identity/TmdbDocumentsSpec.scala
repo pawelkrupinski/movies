@@ -5,8 +5,31 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** The in-memory backend under the normalized store's storage contract. */
-class TmdbDocumentsSpec extends TmdbDocumentsBehaviour {
-  protected def newDocuments(): TmdbDocuments = new InMemoryTmdbDocuments
+class TmdbDocumentsSpec extends TmdbDocumentRetentionBehaviour {
+  protected def newDocuments(): TmdbDocuments & TmdbDocumentRetention = new InMemoryTmdbDocuments
+}
+
+/** What a backend that keeps the documents (not a decorator in front of one) owes the store's sweep. */
+trait TmdbDocumentRetentionBehaviour extends TmdbDocumentsBehaviour {
+  override protected def newDocuments(): TmdbDocuments & TmdbDocumentRetention
+  private val unstamped = new BsonDocument("ids", new BsonArray(java.util.List.of(BsonInt32(1018))))
+  private def stamped(at: Long) = new BsonDocument("ids", new BsonArray()).append(TmdbStore.FetchedAt, org.bson.BsonInt64(at))
+
+  "the store's retention" should "name only documents fetched before the cutoff, never one without a stamp" in {
+    val d = newDocuments()
+    d.put(TmdbKind.Query, Seq("old" -> stamped(100), "new" -> stamped(900), "unstamped" -> unstamped))
+    d.fetchedBefore(TmdbKind.Query, 500) shouldBe Seq("old" -> 100L)
+    d.fetchedBefore(TmdbKind.Film, 500) shouldBe empty
+  }
+
+  it should "delete a document only while it still carries the stamp the scan read" in {
+    val d = newDocuments()
+    d.put(TmdbKind.Query, Seq("kept" -> stamped(100), "gone" -> stamped(100)))
+    val scanned = d.fetchedBefore(TmdbKind.Query, 500)
+    d.put(TmdbKind.Query, Seq("kept" -> stamped(700)))                            // re-fetched after the scan
+    d.deleteIfStill(TmdbKind.Query, scanned) shouldBe 1
+    d.get(TmdbKind.Query, Seq("kept", "gone")).keySet shouldBe Set("kept")
+  }
 }
 
 /** What any backend of the normalized TMDB store keeps: `TmdbDocumentsSpec` (in memory) and

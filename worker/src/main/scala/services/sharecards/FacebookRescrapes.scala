@@ -215,7 +215,7 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * [[MaxAttempts]].
  */
 class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String],
-                            country: String, metrics: ShareCardMetrics, clock: Clock) extends Logging {
+                            country: String, metrics: ShareCardMetrics, clock: Clock) extends services.Stoppable with Logging {
   import FacebookRescrapeDrain.*
 
   def tick(): Unit = {

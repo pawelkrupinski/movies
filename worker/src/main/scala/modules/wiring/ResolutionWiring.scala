@@ -29,14 +29,14 @@ trait ResolutionWiring { self: WorkerWiring =>
   /** Every per-source resolution cache — what a forced re-enrich clears. */
   lazy val resolutionCaches: Seq[ResolutionCache] =
     Seq(imdbIdCache, rtLinkCache, mcLinkCache, filmwebLinkCache)
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
+  lazy val imdbIdResolver = managedResources.stopping(new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
     wikidata = Some(wikidataClient),
     letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
     omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(enrichmentFetch)))
+    cinemeta = Some(new CinemetaClient(enrichmentFetch))))
 
   // Hint-keyed resolution caches (Caffeine + per-source Mongo collection, 24h
   // TTL): the same hints resolve once instead of hitting the upstream each cycle.
@@ -69,8 +69,8 @@ trait ResolutionWiring { self: WorkerWiring =>
 
   // The tick is the identity projection, on the projection's own period (`IdentityCutoverWiring`).
   def settleTick(): Unit = identityProjection.tickQuietly()
-  lazy val settleReaper = new SettleReaper(() => settleTick(),
+  lazy val settleReaper = managedResources.stopping(new SettleReaper(() => settleTick(),
     interval = SettleInterval(identityProjectionInterval.value),
     initialDelay = SettleReaper.InitialDelay(identityProjectionInterval.value),
-    runStore = scheduledRunStore, clock = clock)
+    runStore = scheduledRunStore, clock = clock))
 }

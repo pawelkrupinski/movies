@@ -5,10 +5,10 @@ import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 import scala.util.Using
 
-/** Text-level helpers for the source lints (`NoWallClockInTestsSpec`,
- *  `NoPolandDefaultCountrySpec`, `NoDefaultTitleNormalizerSpec`, `NoSwallowedFailureSpec`, `NoHandRolledTimingSpec`,
- *  `NoUnboundedMongoReadSpec`, `NoDefaultLocaleCaseMappingSpec`, `DocCommentPlacementSpec`): they read the repository's own `.scala` files from the
- *  build root (these specs run unforked, so the working directory is the repo root). */
+/** Text-level helpers for the source lints (`NoWallClockInTestsSpec`, `NoSwallowedFailureSpec`,
+ *  `DocCommentPlacementSpec`, `CollectionRetentionSpec` and the other lints under `tools`): they read
+ *  the repository's own `.scala` files from the build root (these specs run unforked, so the working
+ *  directory is the repo root). */
 object ScalaSourceScan {
 
   val MainRoots: Seq[String] = Seq("common/src/main", "web/src/main", "worker/src/main")

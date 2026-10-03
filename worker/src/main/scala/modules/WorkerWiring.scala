@@ -101,8 +101,27 @@ class WorkerWiring(
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
   // runs, in the country's database.
   lazy val identityTmdbDocuments: services.identity.TmdbDocuments =
-    mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
-      new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db)))
+    mongoConnection.database.fold[services.identity.TmdbDocuments](identityTmdbBackend)(_ =>
+      new services.identity.CoalescedTmdbDocuments(identityTmdbBackend))
+  /** Where the store's documents are kept, under the coalescing in front of Mongo: what the sweep scans. */
+  private lazy val identityTmdbBackend: services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention =
+    mongoConnection.database.fold[services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention](
+      new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_))
+  /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
+  lazy val identityTmdbSweep: services.identity.TmdbStoreSweep =
+    new services.identity.TmdbStoreSweep(identityTmdbBackend,
+      liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
+  /** Rating stamps, last attempts and cadence of films gone from the corpus (`OrphanFilmStateSweep`). */
+  lazy val orphanFilmStateSweep: services.movies.OrphanFilmStateSweep = new services.movies.OrphanFilmStateSweep(
+    Seq("freshness" -> freshnessStore.retention, "enrichment_attempts" -> enrichmentAttemptStore.retention,
+      "rating_cadence" -> ratingCadenceStore.retention),
+    services.movies.OrphanFilmStateSweep.liveTmdbIds(movieRepository), clock)
+  lazy val orphanFilmStateSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
+    new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => { orphanFilmStateSweep.sweep(); () },
+      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock))
+  lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
+    new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); () },
+      services.identity.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock))
   lazy val identityTmdbStore: services.identity.TmdbStore = new services.identity.TmdbStore(identityTmdbDocuments, clock)
   lazy val identityTmdbNormalizer: services.identity.TmdbNormalizer = new services.identity.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
@@ -162,9 +181,9 @@ class WorkerWiring(
     for { key <- configuration.anthropicApiKey; db <- mongoConnection.database }
     yield new services.identity.ProposalFill(new services.identity.MongoIdentityTraceReads(db), identityProposals,
       new services.identity.AnthropicProposer(key), clock)
-  lazy val identityProposalSchedule: Option[services.tasks.ClaimedPeriodicTask] = identityProposalFill.map(fill =>
+  lazy val identityProposalSchedule: Option[services.tasks.ClaimedPeriodicTask] = managedResources.stoppingEach(identityProposalFill.map(fill =>
     new services.tasks.ClaimedPeriodicTask("identity-proposals", () => { fill.round(); () }, WorkerWiring.ProposalInterval,
-      WorkerWiring.ProposalInitialDelay, scheduledRunStore, clock))
+      WorkerWiring.ProposalInitialDelay, scheduledRunStore, clock)))
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
@@ -186,6 +205,9 @@ class WorkerWiring(
    *  rebuild makes: a store apiece left each replaced model's writer thread idle for the life of the process,
    *  and its queued writes racing the new model's. */
   protected lazy val identityTraces: services.identity.IdentityTraceStore =
+    managedResources.register("identity traces", newIdentityTraces)(_.close())
+  /** The store [[identityTraces]] holds, built once. */
+  protected def newIdentityTraces: services.identity.IdentityTraceStore =
     identityTracesDatabase.fold[services.identity.IdentityTraceStore](services.identity.IdentityTraceStore.Discard)(
       new services.identity.MongoIdentityTraceStore(_))
   /** The database [[identityTraces]] writes into: the wiring's own. */
@@ -196,13 +218,12 @@ class WorkerWiring(
    *  the reads and writes they file answers with into one round-trip per batch
    *  (`CoalescedTmdbDocuments`), so they share connections of the pool instead of each holding one. */
   protected lazy val identityPrefetchPool: java.util.concurrent.ExecutorService =
-    java.util.concurrent.Executors.newFixedThreadPool(WorkerWiring.IdentityPrefetchThreads,
-      Thread.ofVirtual().name(s"identity-prefetch-${country.code}-", 0).factory())
+    managedResources.executor("identity prefetch")(tools.DaemonExecutors.boundedPool(s"identity-prefetch-${country.code}",
+      WorkerWiring.IdentityPrefetchThreads, WorkerWiring.IdentityPrefetchQueue, tools.WhenFull.RunOnCaller, virtual = true))
 
   /** One daemon thread for the model: it is not thread-safe, and every event is drained on it. */
   protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
-    java.util.concurrent.Executors.newSingleThreadScheduledExecutor { (task: Runnable) =>
-      val thread = new Thread(task, s"identity-model-${country.code}"); thread.setDaemon(true); thread }
+    managedResources.executor("identity model")(tools.DaemonExecutors.scheduler(s"identity-model-${country.code}"))
 
   // Once a day, every venue through `VenueClosure`: a newly confirmed closure pages once on
   // the fallback channel and, for a data-driven roster (DE/ES/US), starts the retire-venues
@@ -215,8 +236,8 @@ class WorkerWiring(
     configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
       java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
     clock)
-  lazy val closureSchedule = new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
-    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock)
+  lazy val closureSchedule = managedResources.stopping(new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
+    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock))
 
   // The model's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19), on its own claimed
   // schedule (`identityLookupRefreshSchedule`): the model asks live only what its store lacks, so an
@@ -243,16 +264,16 @@ class WorkerWiring(
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
-  lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask =
+  lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => shadowLookupFill.start(), identityShadowInterval.value,
-      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock)
+      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def shadowLookupSleep: Long => Unit = Thread.sleep
 
   /** One daemon thread for the fill's rounds, which sleep their pace between asks. */
   protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService =
-    tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1)
+    managedResources.executor("identity shadow lookups")(tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1))
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
@@ -452,6 +473,8 @@ class WorkerWiring(
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())
     boot.step("closure schedule")(closureSchedule.start())
+    boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
+    boot.step("orphan film-state sweep")(orphanFilmStateSweepSchedule.start())
     boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
     boot.step("share cards")(shareCardReapers.foreach(_.start()))
@@ -489,44 +512,22 @@ class WorkerWiring(
    *  *Ratings own no pool. */
   def cascadeDrainOrder: Seq[Drainable] = Seq(imdbIdResolver)
 
+  /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
+  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources
+
   def stop(): Unit = {
-    shadowLookupExecutor.shutdownNow()
-    envConfigService.stop()
-    cinemaScrapeCensus.stop()
-    cinemaContentCensus.stop()
-    retiredVenueCensus.stop()
-    ratingRunCensus.stop()
-    corpusScan.stop()
-    // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.
-    scrapeReaper.stop()
-    scrapePhasePlanner.stop()
-    chunkScrapeReaper.stop()
-    enrichmentReaper.stop()
-    detailReaper.stop()
-    settleReaper.stop()
-    identityLookupRefreshSchedule.stop()
-    closureSchedule.stop()
-    identityProposalSchedule.foreach(_.stop())
-    // Its readers stopped above; its own threads next, before the Mongo connection they write through closes.
-    identityModelScheduler.shutdownNow(); identityPrefetchPool.shutdownNow(); identityTraces.close()
-    omdbBackfillReaper.foreach(_.stop())
-    shareCardReapers.foreach(_.stop())
-    stopFacebookRescrapes()
-    auditReapers.foreach(_.stop())
-    livenessWatchdog.stop()
-    workerHeartbeat.stop()
-    taskWorker.stop()
+    // Every reaper, census, schedule, pool and service the wiring built, newest first: a service stops
+    // before what it was built from — the task worker before the queue and the cascade it feeds, the
+    // projector before the cache — and all of it before the stores and the Mongo connection below.
+    managedResources.closeAll()
+    closeFleetConnection()
     taskQueue.close()
     freshnessStore.close()
-    cascadeDrainOrder.foreach(_.stop())
-    unscreenedCleanup.stop()
-    strandedSideRowsCleanup.stop()
-    readModelProjector.stop()
-    movieCache.stop()
     readModelRepository.close()
     movieRepository.close()
     mongoConnection.close()
   }
+
 }
 
 object WorkerWiring {
@@ -550,6 +551,9 @@ object WorkerWiring {
   /** Questions the model's prefetch keeps in flight: 64 fill a coalesced read's batch about eight
    *  times as full as the eight platform threads that each held a connection. */
   val IdentityPrefetchThreads = 64
+  /** How many prefetch asks wait for a thread at most; past it the take-up asks on its own thread,
+   *  which is waiting on them anyway (`invokeAll`). */
+  val IdentityPrefetchQueue = 4096
 
   /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
    *  against. */
@@ -565,6 +569,10 @@ object WorkerWiring {
   /** How often the model is asked about new unresolved titles, and how long after boot first. */
   val ProposalInterval: scala.concurrent.duration.FiniteDuration     = scala.concurrent.duration.Duration(60, "minutes")
   val ProposalInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(20, "minutes")
+  /** Well after boot, away from the other daily sweeps: it reads the whole of `movies`. */
+  val OrphanSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(3, "hours")
+  /** Well after boot: the sweep keeps what the model reads, so it waits for the model's take-up. */
+  val TmdbSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(2, "hours")
   /** Clear of the boot scrape burst, which it has no reason to compete with. */
   val ClosureSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "minutes")
 

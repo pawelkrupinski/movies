@@ -260,7 +260,7 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  it. Virtual threads (cheap, daemon) in production; the test harness
    *  overrides this with a caller-runs executor to stay deterministic. */
   protected lazy val adaptiveTimeoutExecutor: ExecutorService =
-    DaemonExecutors.virtualThreadEC("adaptive-timeout")
+    managedResources.executor("adaptive timeout")(DaemonExecutors.virtualThreadEC("adaptive-timeout"))
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
@@ -317,9 +317,9 @@ trait ScrapeWiring { self: WorkerWiring =>
   // What each venue is expected to cost: its measured mean, else the country's median,
   // else the configured prior. Read by the reaper's admission and the phase plan alike.
   lazy val scrapeCostEstimates = new ScrapeCostEstimates(scrapeTasksPerVenue)
-  lazy val scrapePhasePlanner = new ScrapePhasePlanner(
+  lazy val scrapePhasePlanner = managedResources.stopping(new ScrapePhasePlanner(
     cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
-    scrapeCostEstimates)
+    scrapeCostEstimates))
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
@@ -353,12 +353,12 @@ trait ScrapeWiring { self: WorkerWiring =>
   // `scrapeCostEstimates`. Per country because the fan-out is a property of that
   // country's scrapers. Default 1 (unchunked).
   def scrapeTasksPerVenue: ScrapeTasksPerVenue = configuration.scrapeTasksPerVenue(ScrapeTasksPerVenue(1))
-  lazy val scrapeReaper =
+  lazy val scrapeReaper = managedResources.stopping(
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelay,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
       chunkSpread = scrapeChunkSpread,
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock)
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock))
 }

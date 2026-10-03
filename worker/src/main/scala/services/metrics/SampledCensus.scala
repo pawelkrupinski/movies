@@ -25,7 +25,7 @@ import scala.util.Try
  * wrap its tick in the same `Try`, and "every implementation has to remember" is
  * how one of them eventually doesn't.
  */
-trait SampledCensus extends Logging {
+trait SampledCensus extends services.Stoppable with Logging {
 
   /** Names the daemon thread and the failure logs — kebab-case, e.g. `rating-run-census`. */
   protected def censusName: String

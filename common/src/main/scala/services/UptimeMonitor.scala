@@ -6,7 +6,7 @@ import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObserv
 import org.mongodb.scala.model.{Filters, Indexes, Updates}
 import play.api.Logging
 
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap, Executors, ScheduledExecutorService}
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap, ScheduledExecutorService}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -90,9 +90,7 @@ class UptimeMonitor(
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
       // state before the on-disk base is loaded would overwrite Mongo with just
       // this process's fresh increments.
-      val exec = Executors.newScheduledThreadPool(2, (r: Runnable) => {
-        val th = new Thread(r, "uptime-monitor"); th.setDaemon(true); th
-      })
+      val exec = tools.DaemonExecutors.scheduler("uptime-monitor", threads = 2)
       scheduler.set(exec)
       backgroundSchedule(Some(c), tagColl).foreach { job =>
         exec.scheduleWithFixedDelay(job.task, job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
