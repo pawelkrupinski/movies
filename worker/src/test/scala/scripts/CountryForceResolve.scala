@@ -1,10 +1,8 @@
 package scripts
 
 import models.Country
-import services.MongoConnection
-import services.movies.MongoMovieRepository
+import services.movies.TitleNormalizer
 import services.tasks.MongoTaskQueue
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot operational tool: force a re-resolve of every row in a given
@@ -31,12 +29,8 @@ object CountryForceResolve {
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
     val dbName  = country.mongoDb
-    val conn    = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forCountry(country, process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(dbName))), required = services.MongoRequirement.Required, services.MongoTuning.from(process)) }
-    val db = conn.database.getOrElse {
-      println(s"Could not open $dbName — is the Mongo tunnel up (scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
-      sys.exit(1)
-    }
-    val repo  = new MongoMovieRepository(sharedDb = Some(db), normalizer = titleNormalizer)
+    val (conn, db) = CountryDatabase.open(country)
+    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country))
     val queue = new MongoTaskQueue(Some(db))
 
     val rows = repo.findAll()

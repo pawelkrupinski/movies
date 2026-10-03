@@ -1,8 +1,7 @@
 package scripts
 
 import services.MongoConnection
-import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
-import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.movies.{FilmId, MovieRepository, StoredMovieRecord, TitleNormalizer}
 import services.tasks.MongoTaskQueue
 
 /**
@@ -127,7 +126,8 @@ object ReresolveSelfLockedRows {
   def main(args: Array[String]): Unit = {
     val apply = args.contains("--apply")
     val wanted = targets(args.toSeq, lockedTo)
-    val conn  = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val conn  = MongoConnection.forProcess(configuration, required = services.MongoRequirement.Required)
     val db = conn.database.getOrElse {
       println("Could not open the database — is the Mongo tunnel up and MONGODB_URI set?")
       sys.exit(1)
@@ -138,12 +138,8 @@ object ReresolveSelfLockedRows {
     // ("Grzegorzdolniakmoglobycgorzejstandup"). Enqueuing THAT as the resolve payload
     // would key the reset on a title no cinema ever published and search TMDB for a
     // concatenated string. Same trap as the unstitched read that wiped live screenings on
-    // 2026-08-10; the fix is to wire them, as below.
-    val repo: MovieRepository = new MongoMovieRepository(
-      sharedDb = Some(db),
-      screenings = Some(new MongoScreeningsRepository(Some(db))),
-      slots      = Some(new MongoSlotsRepository(Some(db))),
-      normalizer = titleNormalizer)
+    // 2026-08-10; the fix is to wire them, as `AmbientMovieRepository` does.
+    val repo: MovieRepository = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(configuration.country))
 
     val found = wanted.keys.toSeq.sorted.map(id => id -> repo.findById(FilmId(id)))
     val (locked, skipped) = stillLocked(found, wanted)

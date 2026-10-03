@@ -1,7 +1,6 @@
 package scripts
 
 import models.Country
-import services.MongoConnection
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ScreeningsRepository, SlotsRepository, TitleNormalizer}
 
 /**
@@ -66,17 +65,14 @@ object AddMissingMovieSlots {
     println(if (apply) "APPLY — missing slot rows will be WRITTEN." else "DRY RUN — nothing is written. Pass --apply to write.")
     var incomplete = false
     countries.foreach { country =>
-      val process    = _root_.settings.ProcessConfiguration.resolve()
-      val connection = MongoConnection.forCountry(country,
-        process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))),
-        required = services.MongoRequirement.Required, services.MongoTuning.from(process))
-      val database = connection.database.getOrElse { println(s"${country.displayName}: could not open ${country.mongoDb}"); sys.exit(1) }
+      val (connection, database) = CountryDatabase.open(country)
       val screenings = new MongoScreeningsRepository(Some(database))
       // Slots deliberately NOT wired: the record's `data` must be the embedded map.
       val movies     = new MongoMovieRepository(Some(database), screenings = Some(screenings), normalizer = TitleNormalizer.forCountry(country))
       val (counts, complete) = run(movies, new MongoSlotsRepository(Some(database)), screenings, apply)
       println(s"${country.displayName} (${country.mongoDb}): ${counts.describe}${if (complete) "" else " — SCAN INCOMPLETE, re-run"}")
       incomplete ||= !complete
+      connection.close()
     }
     sys.exit(if (incomplete) 2 else 0)
   }

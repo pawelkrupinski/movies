@@ -14,7 +14,7 @@ import java.nio.file.{Files, Path}
 import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.util.{Try, Using}
 
 /**
  * The calibration's INPUT: every recorded listing, the TMDB answers the recorded trees hold for
@@ -36,11 +36,13 @@ object IdentityCalibrationData {
   /** Production's decision for one film: never ground truth on its own. */
   final case class ProdFilm(id: String, tmdbId: Option[Int], imdbId: Option[String], ratingUrls: Seq[String])
 
+  /** `dir`'s entries, the listing's directory handle closed. */
+  private def listed(dir: Path): Seq[Path] = Using.resource(Files.list(dir))(_.iterator().asScala.toList)
+
   private def readGz(path: Path): String = {
     val in = new GZIPInputStream(Files.newInputStream(path))
     try new String(in.readAllBytes(), StandardCharsets.UTF_8) finally in.close()
   }
-
 
   // ── recorded TMDB answers ─────────────────────────────────────────────────────────────
 
@@ -55,11 +57,11 @@ object IdentityCalibrationData {
       val fromTrees = trees.flatMap { t =>
         val dir = t.resolve("api.themoviedb.org/3/movie")
         if (!Files.isDirectory(dir)) Nil
-        else Files.list(dir).iterator().asScala.toSeq.flatMap { p =>
+        else listed(dir).flatMap { p =>
           val name = p.getFileName.toString
           val id = Try(name.takeWhile(_ != '.').toInt).toOption
           id.toSeq.flatMap { i =>
-            if (Files.isDirectory(p)) Files.list(p).iterator().asScala.map(q => i -> q.toString).toSeq
+            if (Files.isDirectory(p)) listed(p).map(q => i -> q.toString)
             else Seq(i -> p.toString)
           }
         }
@@ -129,7 +131,7 @@ object IdentityCalibrationData {
     else {
       val films = Map.newBuilder[String, ProdFilm]
       val slots = Seq.newBuilder[(String, String, JsObject)]
-      Files.lines(path).iterator().asScala.filter(_.startsWith("{")).foreach { line =>
+      Using.resource(Files.lines(path))(_.iterator().asScala.filter(_.startsWith("{")).foreach { line =>
         val js = Json.parse(line)
         (js \ "kind").as[String] match {
           case "film" =>
@@ -139,7 +141,7 @@ object IdentityCalibrationData {
           case _ =>
             slots += (((js \ "filmId").as[String], (js \ "slotKey").as[String], (js \ "slot").asOpt[JsObject].getOrElse(Json.obj())))
         }
-      }
+      })
       ProdSnapshot(films.result(), slots.result())
     }
 

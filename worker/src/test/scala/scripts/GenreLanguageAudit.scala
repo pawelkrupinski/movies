@@ -1,9 +1,7 @@
 package scripts
 
 import models.{Country, Filmweb, Source, Tmdb}
-import services.MongoConnection
-import services.movies.MongoMovieRepository
-import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.movies.TitleNormalizer
 
 /**
  * Read-only diagnostic: for a country's corpus, report WHICH source slot supplies
@@ -36,12 +34,10 @@ object GenreLanguageAudit {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.Germany)
     val filter  = args.drop(1).headOption
     val dbName  = country.mongoDb
-    val conn    = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forDatabase(process.mongoAddress.uri, _root_.settings.MongoDatabaseName(dbName), required = services.MongoRequirement.Required, services.MongoTuning.from(process)) }
-    val db = conn.database.getOrElse {
-      println(s"Could not open $dbName — is the tunnel up (scripts/local-mirror/prod-tunnel.sh)?")
-      sys.exit(1)
-    }
-    val repo = new MongoMovieRepository(sharedDb = Some(db), normalizer = titleNormalizer)
+    val (conn, db) = CountryDatabase.open(country)
+    // The audited country's rules: its rows' keys were sanitized by them, not by Poland's.
+    val titleNormalizer = TitleNormalizer.forCountry(country)
+    val repo = AmbientMovieRepository.over(Some(db), titleNormalizer)
     val all  = repo.findAll()
     val rows = all.filter(s => filter.forall(f => s.title.toLowerCase.contains(f.toLowerCase)))
 

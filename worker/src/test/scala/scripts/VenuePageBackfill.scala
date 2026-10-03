@@ -61,7 +61,7 @@ object VenuePageBackfill {
   def plan(stamps: Seq[Stamp], slots: Seq[Slot], stored: Set[String], at: Instant): Plan = {
     val byPage   = slots.flatMap(s => services.cinemas.common.DetailEnricher.nativeRefOf(s.data).map(_ -> s)).groupMap(_._1)(_._2)
     val byFilm   = slots.groupBy(_.filmId)
-    val fresh    = stamps.filterNot(st => stored(st.key.id)).distinctBy(_.key.id)
+    val fresh    = stamps.filterNot(st => stored(st.key.id))
     // A read stamp wins over a gone one for the same page: the page came back.
     val decided  = fresh.groupBy(_.key.id).values.map(sts => sts.find(!_.gone).getOrElse(sts.head)).toSeq.sortBy(_.key.id)
     val groupPages = stamps.groupMap(_.key.detailGroup)(_.key.page).view.mapValues(_.toSet).toMap
@@ -122,12 +122,14 @@ object VenuePageBackfill {
   }
 
   private def seed(country: Country, apply: Boolean): Unit = {
-    val (connection, database) = ListingKeyBackfill.openCountry(country)
+    val (connection, database) = CountryDatabase.open(country)
     val started = System.nanoTime()
     val slots   = slotsOf(database)
-    val paged   = stampsOf(database)
-    val (marked, unplaced) = markerStamps(markersOf(database, services.movies.TitleNormalizer.forCountry(country)), paged, slots)
-    val stamps  = paged ++ marked.filterNot(m => paged.exists(_.key.id == m.key.id))
+    val freshness = ListingKeyBackfill.ids(database, "freshness")
+    val paged   = stampsOf(freshness)
+    val (marked, unplaced) = markerStamps(markersOf(freshness, services.movies.TitleNormalizer.forCountry(country)), paged, slots)
+    val pagedIds = paged.iterator.map(_.key.id).toSet
+    val stamps  = paged ++ marked.filterNot(m => pagedIds(m.key.id))
     val stored  = ListingKeyBackfill.ids(database, MongoVenuePageStore.Collection).toSet
     val p       = plan(stamps, slots, stored, Instant.now())
     val reads   = p.writes.count(_.outcome.isInstanceOf[VenuePage.Read])
@@ -150,18 +152,16 @@ object VenuePageBackfill {
 
   /** The marker names the film by its display title and year (`Marsupilami|2026`); a film's id is that
    *  title sanitized by the country's rules (`marsupilami|2026`). */
-  private def markersOf(database: MongoDatabase, normalizer: services.movies.TitleNormalizer): Seq[FilmMarker] =
-    ListingKeyBackfill.scan(database.getCollection[Document]("freshness"), Projections.include("_id"))(d => ListingKeyBackfill.text(d, "_id"))
-      .collect { case FilmReadMarker(group, film) =>
+  private def markersOf(freshness: Seq[String], normalizer: services.movies.TitleNormalizer): Seq[FilmMarker] =
+    freshness.collect { case FilmReadMarker(group, film) =>
         val (title, year) = (film.take(film.lastIndexOf('|')), film.drop(film.lastIndexOf('|') + 1))
         FilmMarker(group, s"${normalizer.sanitize(title)}|$year")
       }
 
   private val PageStamp = """^detail-page\|([^|]+)\|(.+)\|(read|gone)$""".r
 
-  private def stampsOf(database: MongoDatabase): Seq[Stamp] =
-    ListingKeyBackfill.scan(database.getCollection[Document]("freshness"), Projections.include("_id"))(d => ListingKeyBackfill.text(d, "_id"))
-      .collect { case PageStamp(group, page, kind) => Stamp(VenuePageKey(group, page), kind == "gone") }
+  private def stampsOf(freshness: Seq[String]): Seq[Stamp] =
+    freshness.collect { case PageStamp(group, page, kind) => Stamp(VenuePageKey(group, page), kind == "gone") }
 
   /** Every slot a page's facts may sit in: the side collection's, the films' inline ones, the staged rows'. */
   private def slotsOf(database: MongoDatabase): Seq[Slot] = {

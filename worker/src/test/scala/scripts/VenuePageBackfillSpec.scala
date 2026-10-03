@@ -49,6 +49,13 @@ class VenuePageBackfillSpec extends AnyFlatSpec with Matchers {
     p.alreadyStored shouldBe 1
   }
 
+  it should "seed a page stamped both read and gone as read: the page came back" in {
+    // `freshness` scans in `_id` order, so the `|gone` stamp arrives before the `|read` one.
+    val p = plan(Seq(Stamp(muranow, gone = true), Stamp(muranow, gone = false)),
+      Seq(Slot("dune|2021", "Kino Muranów␟dune", read)), Set.empty, at)
+    p.writes shouldBe Seq(VenuePage(muranow, VenuePage.Read(VenuePageBackfill.detailOf(read)), at))
+  }
+
   it should "count a read page no slot names any more, writing nothing for it" in {
     val p = plan(Seq(Stamp(muranow, gone = false)), Nil, Set.empty, at)
     p.writes shouldBe empty

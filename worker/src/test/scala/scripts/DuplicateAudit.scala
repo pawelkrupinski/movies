@@ -1,7 +1,6 @@
 package scripts
 
 import services.movies.StoredMovieRecord
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Audit duplicate rows across alternative merge keys.
@@ -47,6 +46,8 @@ object DuplicateAudit {
 
     // Helpers — the sanitized title is the same form the production documentId
     // already uses, just without the |year suffix.
+    // The database's own country's rules — the ones its rows' keys were sanitized by.
+    val titleNormalizer = repository.normalizer
     def titleKey(t: String): String = titleNormalizer.sanitize(t)
     def directorKey(d: Seq[String]): String =
       if (d.nonEmpty) titleNormalizer.sanitize(d.mkString(", ")) else ""

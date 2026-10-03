@@ -3,7 +3,7 @@ package scripts
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.metrics.{WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, TitleNormalizer}
+import services.movies.TitleNormalizer
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}
 
@@ -28,8 +28,7 @@ object CorpusCensusBench {
       MongoDatabaseName(s"${country.mongoDb}_prod_mirror"), MongoRequirement.Required)
     val normalizer = TitleNormalizer.forCountry(country)
     // Wired as CorpusWiring wires prod: showtimes and slots in their own collections, stitched per page.
-    val repo       = new MongoMovieRepository(conn.database, normalizer = normalizer,
-      screenings = Some(new MongoScreeningsRepository(conn.database)), slots = Some(new MongoSlotsRepository(conn.database)))
+    val repo       = AmbientMovieRepository.over(conn.database, normalizer)
     val registry   = new PrometheusRegistry()
     val scan = new WorkerCorpusScan(repo, Seq(
       new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), country.code),

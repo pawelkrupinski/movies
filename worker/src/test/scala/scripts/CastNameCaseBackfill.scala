@@ -1,7 +1,6 @@
 package scripts
 
 import models.{Country, MovieRecord, ResolvedMovie, SourceData}
-import services.MongoConnection
 import services.movies.{MongoMovieRepository, MongoSlotsRepository, StoredMovieRecord, TitleNormalizer}
 import services.readmodel.MongoReadModelRepository
 import tools.PersonName
@@ -150,12 +149,7 @@ object CastNameCaseBackfill {
 
   private def backfill(country: Country, apply: Boolean): Counts = {
     // `country.mongoDb`, never the address's own database — see the class comment.
-    val connection = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forCountry(country, process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))), required = services.MongoRequirement.Required, services.MongoTuning.from(process)) }
-    val database = connection.database.getOrElse {
-      println(s"${country.displayName}: could not open ${country.mongoDb} — is the Mongo tunnel up " +
-        "(scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
-      sys.exit(1)
-    }
+    val (connection, database) = CountryDatabase.open(country)
     val startedAtMs = System.currentTimeMillis()
     val normalizer  = TitleNormalizer.forCountry(country)
 

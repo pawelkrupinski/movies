@@ -6,7 +6,6 @@ import org.bson.{BsonDocument, BsonDocumentReader}
 import org.mongodb.scala.model.{BulkWriteOptions, Filters, Projections, Sorts, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.libs.json.{JsArray, JsObject, JsString, Json}
-import services.MongoConnection
 import services.movies.{ListingKey, MovieCodecs, ScreeningsRepository, SlotsRepository}
 
 import java.nio.charset.StandardCharsets
@@ -97,10 +96,21 @@ object ListingKeyBackfill {
   /** Rows per scan page. */
   private val ScanPage = 2000
 
+  /** The command line: `--apply`, `--export <dir>`, and the country codes — every other argument. */
+  final case class Arguments(apply: Boolean, exportDir: Option[Path], countryCodes: Seq[String])
+
+  def arguments(args: Seq[String]): Arguments = {
+    val exportArg = args.sliding(2).collectFirst { case Seq("--export", dir) => dir }
+    // By the argument as typed: `Paths.get` drops a trailing slash, so comparing against the parsed
+    // path read `--export /tmp/lk/`'s directory as a country code.
+    val codes = args.zipWithIndex.collect {
+      case (a, i) if !a.startsWith("--") && !(i > 0 && args(i - 1) == "--export") => a
+    }
+    Arguments(args.contains("--apply"), exportArg.map(Paths.get(_)), codes)
+  }
+
   def main(args: Array[String]): Unit = {
-    val apply     = args.contains("--apply")
-    val exportDir = args.sliding(2).collectFirst { case Array("--export", dir) => Paths.get(dir) }
-    val requested = args.filterNot(a => a.startsWith("--") || exportDir.exists(_.toString == a)).toSeq
+    val Arguments(apply, exportDir, requested) = arguments(args.toSeq)
     val countries =
       if (requested.isEmpty) Country.all
       else requested.map(code => Country.byCode(code).getOrElse {
@@ -114,7 +124,7 @@ object ListingKeyBackfill {
   }
 
   private def backfill(country: Country, apply: Boolean, exportDir: Option[Path]): Unit = {
-    val (connection, database) = openCountry(country)
+    val (connection, database) = CountryDatabase.open(country)
     val started = System.nanoTime()
     val slots = slotRows(database)
     val screenings = scan(database.getCollection[Document](ScreeningsRepository.Collection),
@@ -145,18 +155,6 @@ object ListingKeyBackfill {
     val seconds = (System.nanoTime() - started) / 1e9
     println(f"    ${slots.size + screenings.size} rows in $seconds%.1fs (${(slots.size + screenings.size) / math.max(seconds, 0.001)}%.0f rows/s)")
     connection.close()
-  }
-
-  /** `country`'s own database (`Country.mongoDb`, never `MONGODB_DB`), or exit saying why not. */
-  def openCountry(country: Country): (MongoConnection, MongoDatabase) = {
-    val process    = _root_.settings.ProcessConfiguration.resolve()
-    val connection = MongoConnection.forCountry(country,
-      process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))),
-      required = services.MongoRequirement.Required, services.MongoTuning.from(process))
-    val database = connection.database.getOrElse {
-      println(s"${country.displayName}: could not open ${country.mongoDb} — is the tunnel up and MONGODB_URI set?"); sys.exit(1)
-    }
-    (connection, database)
   }
 
   /** Every `movie_slots` row, its listing fields and stored key only, `_id`-keyset paged. */

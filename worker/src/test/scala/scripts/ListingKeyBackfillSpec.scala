@@ -57,4 +57,10 @@ class ListingKeyBackfillSpec extends AnyFlatSpec with Matchers {
       "f1" -> Set(belleKey),
       "f2" -> Set(ListingKey.serialised(ListingKey.Published(Kinoteka.displayName, "Belle (2013)", Some(2013), Nil))))
   }
+
+  "arguments" should "take the export directory as typed, trailing slash and all, never as a country code" in {
+    arguments(Seq("--export", "/tmp/lk/", "es", "--apply")) shouldBe
+      Arguments(apply = true, Some(java.nio.file.Paths.get("/tmp/lk")), Seq("es"))
+    arguments(Nil) shouldBe Arguments(apply = false, None, Nil)
+  }
 }

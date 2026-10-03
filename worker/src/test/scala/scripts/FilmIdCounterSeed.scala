@@ -43,7 +43,7 @@ object FilmIdCounterSeed {
   }
 
   private def seed(country: Country, apply: Boolean): Unit = {
-    val (connection, database) = ListingKeyBackfill.openCountry(country)
+    val (connection, database) = CountryDatabase.open(country)
     val started = System.nanoTime()
     val today   = films(ListingKeyBackfill.slotRows(database), ListingKeyBackfill.ids(database, MovieRepository.Collection))
     val mapping = new FilmIdMapping(new MongoFilmIdCounterStore(database))
