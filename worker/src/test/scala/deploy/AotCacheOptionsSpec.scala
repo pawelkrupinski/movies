@@ -101,8 +101,8 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
 
     // The JIT was half of a worker boot's CPU, much of it compiling code a boot runs a few thousand
     // times and never again.
-    if (tier == "worker") it should "compile a method only after four times the default invocations" in {
-      launcher(tier) should contain ("-XX:CompileThresholdScaling=4")
+    if (tier == "worker") it should "compile a method only after three times the default invocations" in {
+      launcher(tier) should contain ("-XX:CompileThresholdScaling=3")
     }
 
     // The flag is diagnostic, and so are several parity flags: a launcher that names one before
