@@ -125,6 +125,9 @@ jobs:
                       project/**
                       Dockerfile
                       infra/nix/files/heap-dumps.sh
+                      infra/jvm/web.options
+                      infra/jvm/jdk25-parity.options
+                      infra/jvm/jdk25-parity-g1.options
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
@@ -157,6 +160,8 @@ jobs:
                       project/**
                       Dockerfile
                       infra/nix/files/heap-dumps.sh
+                      infra/jvm/worker.options
+                      infra/jvm/jdk25-parity.options
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 

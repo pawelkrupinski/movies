@@ -129,6 +129,21 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * build.sbt's `launcherOptions(...)` bakes infra/jvm/<file>.options into each image's launcher, so
+   * a change there is a change to that image. Missing from both lists, 9b9aa9e7b's worker JIT flags
+   * passed Main and shipped nowhere.
+   */
+  it should "redeploy the tier whose launcher options move, and only that tier" in {
+    matches(workerFilter, Seq("infra/jvm/worker.options")) shouldBe true
+    matches(webFilter, Seq("infra/jvm/worker.options")) shouldBe false
+    matches(webFilter, Seq("infra/jvm/web.options")) shouldBe true
+    matches(webFilter, Seq("infra/jvm/jdk25-parity-g1.options")) shouldBe true
+    matches(workerFilter, Seq("infra/jvm/web.options")) shouldBe false
+    matches(workerFilter, Seq("infra/jvm/jdk25-parity.options")) shouldBe true
+    matches(webFilter, Seq("infra/jvm/jdk25-parity.options")) shouldBe true
+  }
+
+  /**
    * And the two lists must not converge. The web sources pattern appearing in the
    * worker's set is the one edit that would make every web push restart the worker
    * while every assertion above still passed on the day it was made — the
