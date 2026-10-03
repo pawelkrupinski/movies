@@ -1559,6 +1559,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.scorings shouldBe r.nodes + r.decisions.size
   }
 
+  // A title relation reads only the listing's titles, so the venues billing one title — and a cluster read
+  // under its lead's titles — share each pool film's relation instead of reading it per node.
+  it should "relate a title the family's venues share to each pool film once" in {
+    val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
+    val ls    = Seq(Multikino, Helios).map(listing(_, "Leonas", Some(2026), Some("Juan Manuel Cotelo"), Some(94)))
+    val r     = shipped(ls, films)
+    ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1651192))
+    r.scorings should be > 1
+    r.titleRelations shouldBe 1
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

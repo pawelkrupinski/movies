@@ -368,6 +368,7 @@ object IdentityResolver {
       unknownFilms   = if (generation.partOfCorpus) 0 else records.count(!_._2.isKnown),
       violations     = perFamily.map(_._3).sum,
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
-      scorings       = families.scorings)
+      scorings       = families.scorings,
+      titleRelations = families.titleRelations)
   }
 }

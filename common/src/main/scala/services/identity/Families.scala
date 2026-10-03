@@ -42,6 +42,9 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  read off the scopes, so a round's replaced scopes and their scores are not kept alive. */
   private var listingsScored = 0
   def scorings: Int = listingsScored
+  /** How many listing-film title relations the scopes read rather than shared ([[Resolution.titleRelations]]). */
+  private var relationsRead = 0
+  def titleRelations: Int = relationsRead
 
   private final case class Round(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int],
                                  scopes: Map[Int, FamilyScope], bestOf: Map[String, Accepted])
@@ -53,7 +56,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
                             scored: Map[Seq[String], FamilyScope] = Map.empty): Round = {
     val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) =>
       val sorted = members.sortBy(_.id)
-      family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, () => listingsScored += 1))
+      family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, () => listingsScored += 1, () => relationsRead += 1))
     }
     val bestOf = nodes.groupBy(node => familyOf(node.id)).toSeq.flatMap { case (family, members) =>
       val scope = scopes(family)

@@ -87,7 +87,10 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
                             films: Map[Int, IdentityMeasures.Film],
                             /** How many listings — nodes alone, clusters pooled — the families scored
                              *  against their pools: the resolve's dominant cost. 0 where no family scored. */
-                            scorings: Int = 0) {
+                            scorings: Int = 0,
+                            /** How many listing-film title relations the families read: once per pool film and
+                             *  distinct titles a family bills, however many of its nodes and clusters bill them. */
+                            titleRelations: Int = 0) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet

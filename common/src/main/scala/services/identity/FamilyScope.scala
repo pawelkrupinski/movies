@@ -7,7 +7,7 @@ import scala.collection.mutable
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
-                                          counted: () => Unit) {
+                                          counted: () => Unit, related: () => Unit = () => ()) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf, soleResults}
 
@@ -24,7 +24,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
-    val relation  = pool.map(candidate => candidate.tmdbId -> IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers).value).toMap
+    val relationOf = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
+    val relation   = relationOf.view.mapValues(_.value).toMap
     val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
     // A film only IMDb suggested, under a title the listing does not carry, rivals nothing: the rules other than
@@ -34,8 +35,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val groups    = IdentityMeasures.titleGroups(listing)
     val candidates = reachable.map { candidate =>
       val rivals   = close - (if (IdentityMeasures.Rivalling(relation(candidate.tmdbId))) 1 else 0)
-      val measures = IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilm(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
-        backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue), houses, qualifiers), directedBy(candidate.tmdbId))
+      val measures = IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
+        backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue),
+        relationOf(candidate.tmdbId)), directedBy(candidate.tmdbId))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
@@ -61,6 +63,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else scored)
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
+
+  // A title relation reads only the listing's titles — its title, raw, original and search titles and its
+  // decorations — never its facts, beside the film and this scope's houses and qualifiers. Every node and
+  // cluster of the family is related to the whole pool, so the nodes billing one title, and a cluster read
+  // under its lead's titles, share the pool's relations instead of reading them again.
+  private val relations = mutable.HashMap.empty[(FamilyScope.TitleInputs, Int), IdentityMeasures.Category]
+  private def titleRelation(listing: IdentityMeasures.Listing, candidate: Candidate): IdentityMeasures.Category =
+    relations.getOrElseUpdate((listing.titleInputs, candidate.tmdbId),
+      { related(); IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers) })
 
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
@@ -107,5 +118,23 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       cluster.flatMap(node => directed(node.id)).toSet)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
+  }
+}
+
+private[identity] object FamilyScope {
+  /** What a title relation reads of a listing ([[FamilyScope]]'s relations). The decorations by identity:
+   *  one resolve's listings share its instance, and its structural hash was itself a cost. */
+  final class TitleInputs(listing: IdentityMeasures.Listing) {
+    private val title         = listing.title
+    private val rawTitle      = listing.rawTitle
+    private val originalTitle = listing.originalTitle
+    private val searchTitles  = listing.searchTitles
+    private val decorations   = listing.decorations
+    override val hashCode: Int = (title, rawTitle, originalTitle, searchTitles).## * 31 + System.identityHashCode(decorations)
+    override def equals(other: Any): Boolean = other match {
+      case that: TitleInputs => (that.decorations eq decorations) && that.title == title && that.rawTitle == rawTitle &&
+        that.originalTitle == originalTitle && that.searchTitles == searchTitles
+      case _ => false
+    }
   }
 }

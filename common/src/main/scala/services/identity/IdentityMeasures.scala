@@ -45,6 +45,8 @@ object IdentityMeasures {
     def statedRuntime: Option[Int] = runtime.filter(_ > 0).orElse(titleRuntime)
     /** `titleShapes`, once per listing: every title relation and billing reads them. */
     private[identity] lazy val shapes: Seq[String] = IdentityMeasures.shapesOf(this)
+    /** What a title relation reads of this listing, hashed once: `FamilyScope` shares relations by it. */
+    private[identity] lazy val titleInputs: FamilyScope.TitleInputs = new FamilyScope.TitleInputs(this)
     /** The title and raw title as comparison forms, and the shapes' keys, once per listing: the
      *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
@@ -1247,8 +1249,13 @@ object IdentityMeasures {
    * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] = {
-    val title = titleRelation(l, f, houses, qualifiers)
+                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
+    listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers))
+
+  /** [[listingFilm]] with the title relation already read — `titleRelation(l, f, houses, qualifiers)` —
+   *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). */
+  def listingFilmTitled(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
+                        title: Category): Map[String, Measure] = {
     screeningYearAbsent(l, f, title, Map(
       "title"          -> title,
       "numeral"        -> numeralRelation(l, f),
