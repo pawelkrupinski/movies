@@ -36,7 +36,7 @@ final class IdentityListingIntake(
    *
    *  Both archives are read a page at a time, each page reduced to the live venues' listings before
    *  the next: the rows of venues no longer live, and the
-   *  archive's copy of a venue that already has an accepted listing, are never held. An archive that
+   *  archive's copy of a venue that already has an accepted listing, are never fetched. An archive that
    *  could not be read whole counts as empty — a partial read is not a smaller archive. */
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
     val wanted          = live.toSet
@@ -78,7 +78,7 @@ object IdentityListingIntake {
    *  when the scan could not complete. */
   private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean): Map[Cinema, Seq[CinemaMovie]] = {
     val byVenue  = Map.newBuilder[Cinema, Seq[CinemaMovie]]
-    val complete = repository.scan(_.foreach(row => if (keep(row.cinema)) row.lastSuccess.foreach(s => byVenue += row.cinema -> s.films)))
+    val complete = repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s => byVenue += row.cinema -> s.films)))
     if (complete) byVenue.result() else Map.empty
   }
 }

@@ -299,7 +299,11 @@ class MongoScrapeArchiveRepository(
    * Still best-effort, like every read here: an incomplete scan logs and answers
    * `false`, which `findAll` turns into an empty archive.
    */
-  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
+  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = scanVenues(_ => true)(consume)
+
+  /** [[scan]], fetching only the rows whose `_id` names a venue `keep` admits: the ids are read
+   *  first anyway, so a venue left out costs its id and nothing else. */
+  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
     // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run and its supervisor
     // brings it back within a couple of seconds; 3 attempts at 1s backoff could expire inside that
     // window, turning a blip into an empty corpus. 5 attempts backing off 2s→32s covers it with room
@@ -324,7 +328,11 @@ class MongoScrapeArchiveRepository(
           .batchSize(tools.MongoReplies.Default).toFuture(),
         60.seconds),
       onIncomplete   = failed
-    )(page => ids ++= page.map(_.getString("_id").getValue))
+    )(page => page.foreach { row =>
+      val id = row.getString("_id").getValue
+      // A row whose id names no venue decodes to nothing (`StoredScrapeDto.toDomain`), kept or not.
+      if (Cinema.byDisplayName.get(id).exists(keep)) ids += id
+    })
     idsWhole && services.movies.KeysetScan.byKeys[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
       keys           = ids.result(),

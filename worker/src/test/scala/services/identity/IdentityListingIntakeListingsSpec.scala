@@ -48,8 +48,18 @@ class IdentityListingIntakeListingsSpec extends AnyFlatSpec with Matchers {
     val accepted = new PagedScrapeArchive(acceptedRows, pageSize = 2)
     val archive  = new PagedScrapeArchive(archiveRows, pageSize = 2)
     intake(accepted, archive).listings(live) should not be empty
-    accepted.pagesServed shouldBe 2
-    archive.pagesServed shouldBe 3
+    accepted.pagesServed shouldBe 1
+    archive.pagesServed shouldBe 1
+  }
+
+  // Every venue of a cut-over country soon has an accepted listing, and the archive's copy of each was
+  // read whole and thrown away: 2.6 GB of decode every five minutes on the US corpus instead of 1.3.
+  it should "never read the archive row of a venue with an accepted listing, nor either archive's rows of a venue not live" in {
+    val accepted = new PagedScrapeArchive(acceptedRows, pageSize = 2)
+    val archive  = new PagedScrapeArchive(archiveRows, pageSize = 2)
+    intake(accepted, archive).listings(live)
+    accepted.venuesServed should contain theSameElementsAs Seq(Multikino, KinoApollo)
+    archive.venuesServed should contain theSameElementsAs Seq(Helios, KinoMuza)
   }
 
   it should "be exactly the listing set the whole-archive read gave" in {

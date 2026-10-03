@@ -186,6 +186,13 @@ trait ScrapeArchiveRepository {
    *  mistake them for a smaller one — a failed read is not data ([[findAll]]). */
   def scan(consume: Seq[ArchivedScrape] => Unit): Boolean
 
+  /** [[scan]] of only the venues `keep` admits: the same answer as filtering every page, but a
+   *  repository that can tell a row's venue before reading it (Mongo, by its `_id`) never fetches
+   *  or decodes the others — a cut-over country's projection reads the archive only for the venues
+   *  with no accepted listing, a handful of the US archive's 5,000 rows, every five minutes. */
+  def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): Boolean =
+    scan(page => consume(page.filter(row => keep(row.cinema))))
+
   /** Every archived scrape, all at once — the replay/repopulate entry point, for a caller that
    *  needs the rows themselves; one that only reduces them should [[scan]]. Empty on an
    *  INCOMPLETE read, not the rows it managed to get: a partial archive looks exactly like a
