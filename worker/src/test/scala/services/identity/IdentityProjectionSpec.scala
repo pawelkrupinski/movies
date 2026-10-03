@@ -39,7 +39,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     Rialto     -> Seq(film(Rialto, "Obcy", Some(1979), 6)),
     KinoMuza   -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8)))
 
-  private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer)) {
+  private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
+                            venues: Seq[Cinema] = programme.keys.toSeq) {
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = clock)
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
@@ -48,7 +49,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       services.movies.ScrapeLandingMetrics.noop)
     val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
     val projection = new IdentityProjection(
-      listings = () => intake.listings(programme.keys.toSeq),
+      listings = () => intake.listings(venues),
       resolve = IdentityProjection.resolving(() => NoFilms, new InMemoryPinStore, normalizer, IdentityCalibration.resolver), cache = cache,
       filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { announced += k; () }, normalizer = normalizer,
       slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
@@ -168,6 +169,20 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     tick.slotsBuilt shouldBe 0
     tick.written shouldBe 1
     w.showtimes shouldBe allShowtimes
+  }
+
+  // One film at many venues: each venue's key read the film's prior slots, so a film showing at N venues was
+  // scanned N times a tick — quadratic in the venues, and a US release shows at hundreds.
+  it should "read a widely shown film's prior slots once a tick, not once per venue" in {
+    val venues = Cinema.all.distinct.take(400)
+    val w      = new World(venues = venues)
+    w.scrape(venues.map(c => c -> Seq(film(c, "Diuna", Some(2021), 1, 2, 3))).toMap)
+    w.projection.tick(); w.projection.tick()
+    val tick  = w.projection.tick()
+    val draft = tick.phases.find(_.name == "draft").get
+    info(f"draft over one film at ${venues.size} venues: ${draft.seconds}%.2fs, ${draft.allocatedBytes / 1e6}%.1f MB")
+    tick.slotsBuilt shouldBe 0
+    draft.allocatedBytes should be < 4_000_000L   // 7.2 MB scanning the film per venue, 2.2 MB once
   }
 
   "A second projection over the same listings" should "write nothing (P2)" in {

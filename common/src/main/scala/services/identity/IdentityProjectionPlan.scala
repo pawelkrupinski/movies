@@ -176,13 +176,20 @@ object IdentityProjectionPlan {
 
     // 3. Each film's record.
     val full = Map.newBuilder[Long, () => Seq[(Source, SourceData)]]
+    // Each stored film's prior slots by venue, as the slot memo's key reads them: worked out once per film, not
+    // once per venue of every film it lends a listing to — a US film showing at hundreds of venues was scanned
+    // whole for each of them.
+    val priorsByFilm = scala.collection.mutable.HashMap.empty[String, Map[Cinema, Int]]
+    def priorsOf(id: String): Map[Cinema, Int] = priorsByFilm.getOrElseUpdate(id, storedById.get(id).fold(Map.empty[Cinema, Int])(r =>
+      r.record.data.toSeq.collect { case (cs: CinemaShowing, slot) => cs.cinema -> (cs.titleKey, VenueSlotMemo.carried(slot)) }
+        .groupMap(_._1)(_._2).map { case (cinema, slots) => cinema -> slots.sorted.## }))
     val drafts = assigned.ids.map { case (counter, members) =>
       val previous = previousIdOf(counter).flatMap(storedById.get)
       val film     = filmOf(members)
       val sorted   = members.toSeq.sorted
       val rows     = sorted.map(byKey)
-      val (venueSlots, anchor, lean) = slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, memo)
-      if (lean) full += counter -> (() => slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, VenueSlotMemo.none)._1)
+      val (venueSlots, anchor, lean) = slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, memo, priorsOf)
+      if (lean) full += counter -> (() => slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, VenueSlotMemo.none, priorsOf)._1)
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
@@ -249,13 +256,13 @@ object IdentityProjectionPlan {
    *  listing's previous film held there. Also the title most of its listings carry. */
   private def slotsOf(rows: Seq[ProjectedListing], previousOf: Map[ListingKey, PipelineFilmRef],
                       storedById: Map[String, StoredMovieRecord], normalizer: TitleNormalizer,
-                      slots: CinemaSlotBuilder, tokens: ScreeningTokens, memo: VenueSlotMemo): (Seq[(Source, SourceData)], String, Boolean) = {
+                      slots: CinemaSlotBuilder, tokens: ScreeningTokens, memo: VenueSlotMemo,
+                      priorsOf: String => Map[Cinema, Int]): (Seq[(Source, SourceData)], String, Boolean) = {
     var lean = false
     val built = rows.groupBy(_.listing.cinema).toSeq.sortBy(_._1.displayName).flatMap { case (cinema, ofVenue) =>
       // The prior slots any of these rows' previous films held at the venue: a superset of the one
       // each built slot carries forward, so a change to any of them is a change to the key.
-      val priors = ofVenue.flatMap(r => previousOf.get(r.listing.key)).map(_.id).distinct.sorted.flatMap(storedById.get)
-        .map(_.record.data.collect { case (cs: CinemaShowing, slot) if cs.cinema == cinema => cs.titleKey -> VenueSlotMemo.carried(slot) }.toSeq.sorted)
+      val priors = ofVenue.flatMap(r => previousOf.get(r.listing.key)).map(_.id).distinct.sorted.map(id => priorsOf(id).getOrElse(cinema, 0))
       val key = VenueSlotMemo.Key(cinema.displayName, ofVenue.map(_.row).##, ofVenue.map(_.listing.key).##, priors.##, ofVenue.size)
       val (venue, fromMemo) = memo(key) {
         val prepared = ScrapeListing.prepare(cinema, ofVenue.map(_.row), normalizer, tokens)
