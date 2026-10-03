@@ -19,6 +19,9 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     n.apiQuery("Kino przyjazne sensorycznie: Baranek Shaun i kudłata bestia") shouldBe "Baranek Shaun i kudłata bestia"
     n.apiQuery("Toddler Club: Pip and Posy and Friends") shouldBe "Pip and Posy and Friends"
     n.apiQuery("Róża. DKF") shouldBe "Róża"
+    // US Showcase's Met broadcasts (recording 37071880312): the encore is the screening's, its year the film's
+    n.apiQuery("The Metropolitan Opera: Così fan tutte ENCORE (2026)") shouldBe "The Metropolitan Opera: Così fan tutte (2026)"
+    n.apiQuery("Encore") shouldBe "Encore"
   }
 
   it should "keep its own row: the merge key still carries the affix" in {

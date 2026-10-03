@@ -750,7 +750,10 @@ object ExtraTitleRules {
       """(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)""" +
         """(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?""" +
         """{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$""",
-      "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)")
+      "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)"),
+    // An encore is a repeat showing of a broadcast, never part of its title: US "The Metropolitan Opera: Così fan
+    // tutte ENCORE (2026)" ×7 found nothing on TMDB until the word came off. Never the whole title ("Encore").
+    searchStrip("xtra-encore-suffix",              """(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)""", "'<broadcast> ENCORE (2026)' encore-screening tag")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
