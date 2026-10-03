@@ -68,7 +68,7 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ignore a showtimes-only change — those are the screenings collection's job" in {
-    val before = Map(slotA -> sd("A"))
+    val before = Map(slotA -> sd("A").copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 27, 18, 0), None))))
     val after  = Map(slotA -> sd("A").copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 27, 20, 0), None))))
     SlotsRepository.slotOps(before, after) shouldBe empty
   }
@@ -191,4 +191,16 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     val id = SlotKeyed.idOf("film|2026", s"Kino Muza\u241fDune")
     (SlotKeyed.filmIdOf(id), SlotKeyed.slotKeyOf(id)) shouldBe ("film|2026", s"Kino Muza\u241fDune")
   }
+
+  // A partial update's `before` is the cache's record, whose slots may come from the `movies`
+  // document's embedded copy alone — no `movie_slots` row behind them. When that venue then gains
+  // showtimes the slot itself is unchanged, so it used to write the showtimes row with no slot row
+  // beside it: the venue read declined that film from then on (venue_read_failed, prod 2026-10-02).
+  "slotOps" should "write a slot whose showtimes appear, even when the slot itself is unchanged" in {
+    val slot   = sd("A")
+    val listed = slot.copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 3, 20, 0), None)))
+    SlotsRepository.slotOps(Map(slotA -> slot), Map(slotA -> listed)) shouldBe Map(slotA.displayName -> Some(slot))
+    SlotsRepository.slotOps(Map.empty, Map(slotA -> listed)) shouldBe Map(slotA.displayName -> Some(slot))
+  }
 }
+

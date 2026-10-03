@@ -275,8 +275,18 @@ object SlotsRepository {
   def slotOps(before: Map[Source, SourceData], after: Map[Source, SourceData]): Map[String, Option[SourceData]] = {
     val b = slotsOf(before)
     val a = slotsOf(after)
+    // A slot whose showtimes APPEAR is written even when it is otherwise unchanged: `before` is the
+    // cache's record, whose slot may stand only on the `movies` document's embedded copy, with no
+    // `movie_slots` row behind it — and the showtimes row this update writes would then have no slot
+    // row beside it, which the venue read declines (venue_read_failed, prod 2026-10-02). Showtimes
+    // appearing is rare beside showtimes churning, so this costs few writes, and an existing row is
+    // rewritten with what it already holds.
+    val gaining = after.iterator.collect {
+      case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(_.showtimes.isEmpty) => source.displayName
+    }.toSet
     (b.keySet ++ a.keySet).iterator.flatMap { k =>
       (b.get(k), a.get(k)) match {
+        case (x, Some(y)) if x.contains(y) && gaining(k) => Some(k -> Some(y))
         case (x, y) if x == y => None
         case (_, Some(y))     => Some(k -> Some(y))
         case (_, None)        => Some(k -> None)
