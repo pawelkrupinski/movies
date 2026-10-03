@@ -8,9 +8,12 @@ import scala.jdk.CollectionConverters.*
 
 /** Every pod's JAVA_OPTS must let the image's AOT cache map (Dockerfile, `tools.ClassArchiveTraining`).
  *  The cache is trained through the launcher under the options baked into it (infra/jvm/<tier>.options),
- *  and the overlay's JAVA_OPTS come AFTER those, so an overlay naming another collector or
- *  type-speculation setting would win at run time and the cache would not map — silently: every
- *  class back in metaspace, where worker-pl died at its 128m cap. A CDS archive flag is worse: the
+ *  so the options must stay the launcher's alone: an overlay naming another collector or
+ *  type-speculation setting puts the pod under options the cache was not trained under, and a cache
+ *  that does not map fails silently: every class back in metaspace, where worker-pl died at its 128m
+ *  cap. The launcher's options come AFTER the overlay's JAVA_OPTS on the java command line (a
+ *  worker-us JVM's arguments, 2026-10-03), so for a flag both name the launcher's value is the one
+ *  that runs — an overlay cannot switch a launcher flag off. A CDS archive flag is worse: the
  *  JVM refuses to start beside -XX:AOTCache, which is why the Dockerfile then leaves the cache out. */
 class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
 
@@ -88,6 +91,18 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
     // instead of a fresh box each (~10 MB on worker-us). The worker's own flag, not web's.
     if (tier == "worker") it should "cache the boxes of the identity model's family ids" in {
       launcher(tier) should contain ("-XX:AutoBoxCacheMax=16384")
+    }
+
+    // At the default SweeperThreshold (15% of the 64m code cache) every ~10 MB of new code asked
+    // SerialGC for a FULL collection to unload cold code: 7 in a worker boot, then one every ~90 s.
+    if (tier == "worker") it should "let the code cache grow by half before a full GC unloads it" in {
+      launcher(tier) should contain ("-XX:SweeperThreshold=50")
+    }
+
+    // The JIT was half of a worker boot's CPU, much of it compiling code a boot runs a few thousand
+    // times and never again.
+    if (tier == "worker") it should "compile a method only after twice the default invocations" in {
+      launcher(tier) should contain ("-XX:CompileThresholdScaling=2")
     }
 
     // The flag is diagnostic, and so are several parity flags: a launcher that names one before

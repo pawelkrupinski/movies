@@ -20,3 +20,12 @@
 # recycled, so below the live family count (~2,200 on US) — in five maps and sets, and every one was
 # a fresh Integer (~10 MB on worker-us). The cache itself is ~320 KB.
 -XX:AutoBoxCacheMax=16384
+# Let the code cache grow by half its size, not 15%, before the collector is asked to unload cold code:
+# at 15% of the 64m cache every ~10 MB of new code forced a SerialOld FULL collection — 7 in a boot,
+# then one every ~90 s. Boots with nothing to re-resolve (2026-10-03, pl/us): pl ~25% less CPU over a
+# boot's first 5 and 10 minutes at the same 64m cache, us 5-7%, the JIT and GC each ~15% less on us.
+-XX:SweeperThreshold=50
+# Compile a method only after twice the default invocations: the JIT was half of a boot's CPU, much of
+# it on code a boot runs a few thousand times and never again. us boots: JIT -18% and peak 30 s
+# ~1.25 cores (was 1.4-2.1); pl unchanged; neither used more CPU 10-30 minutes after boot.
+-XX:CompileThresholdScaling=2
