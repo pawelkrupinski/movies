@@ -528,8 +528,13 @@ addCommandAlias("convergenceUkOrder",        "e2e/Test/testOnly services.movies.
 // and `convergenceUsOrder` runs only that. Split because the two do not fit in one job:
 // the boot is 167 minutes and the three concurrent replays project to ~4h15m, against a
 // 315-minute suite step and GitHub's hard 360-minute job cancellation. No other country
-// splits — Poland's replays cost 287s and Germany's 439s, so theirs stay inline, and
-// every sample leg keeps the ~100-film version of the claim. See `OrderIndependence`.
+// splits in the pipeline lane — Poland's replays cost 287s and Germany's 439s, so theirs stay
+// inline there, and every sample leg keeps the ~100-film version of the claim. See `OrderIndependence`.
 addCommandAlias("convergenceUs",      "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -l services.movies.OrderIndependence")
 addCommandAlias("convergenceUsOrder", "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -n services.movies.OrderIndependence")
+// The IDENTITY lane splits Germany the same way, for wall clock rather than to fit a job: its
+// three replays were ~5 of the slowest row's 11.3 minutes (run 37148209974, three lockstep passes
+// behind a ~2-minute boot), which bounded the whole lane. Two rows, one runner more per push.
+addCommandAlias("convergenceGermanyWithoutOrder", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -l services.movies.OrderIndependence")
+addCommandAlias("convergenceGermanyOrder",        "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -n services.movies.OrderIndependence")
 addCommandAlias("convergenceSpain",    "e2e/Test/testOnly services.movies.SpainConvergenceSpec")

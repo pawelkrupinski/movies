@@ -27,8 +27,50 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       ".github/workflows/identity-model-convergence.yml")
   }
 
+  /** The fields that say how a country's full spec is split across rows — the only thing the
+   *  two lanes may disagree on. */
+  private val SplitFields = Set("cmd", "order", "orderJob", "orderSuite")
+  private val OrderTag    = "services.movies.OrderIndependence"
+  private def specOf(alias: String): String = RepoFile.commandAlias(alias).split(" -- ").head
+  private def byCountry(yaml: String): Map[String, Map[String, String]] =
+    RepoFile.matrixRows(yaml).map(row => row("country") -> row).toMap
+
   it should "measure every country the pipeline suite does, on the same budgets and heap" in {
-    RepoFile.matrixRows(workflow) shouldBe RepoFile.matrixRows(suite)
+    RepoFile.matrixRows(workflow).map(_ -- SplitFields) shouldBe RepoFile.matrixRows(suite).map(_ -- SplitFields)
+    // ...and replay the same spec for each: a split changes which row runs a test, never which tests run.
+    val pipeline = byCountry(suite)
+    byCountry(workflow).foreach { case (country, row) =>
+      withClue(s"$country: ")(specOf(row("cmd")) shouldBe specOf(pipeline(country)("cmd")))
+    }
+  }
+
+  /** Germany's three lockstep replays were ~5 of the 11.3 minutes of the lane's slowest row (run
+   *  37148209974). In a row of their own they run beside the rest of the spec, as the US's do. */
+  it should "replay Germany's order-independence in a row of its own, with a budget of its own" in {
+    val germany = byCountry(workflow)("germany")
+    germany("order") shouldBe "convergenceGermanyOrder"
+    germany.keySet should contain allOf ("orderJob", "orderSuite")
+    germany("orderJob").toInt should be > (germany("orderSuite").toInt + germany("sampleSuite").toInt)
+  }
+
+  /** Every split row the lane runs holds up both ends: the full row EXCLUDES the tag and the order
+   *  row runs exactly it, over the same spec. A dropped flag is silent — the claim runs twice, or
+   *  stops being checked on that country at all. */
+  it should "run each split country's tagged test in its order row and nowhere else in its full one" in {
+    val split = RepoFile.matrixRows(workflow).filter(_.contains("order"))
+    split.map(_("country")).toSet should contain allOf ("germany", "united-states")
+    split.foreach { row =>
+      val (full, order) = (RepoFile.commandAlias(row("cmd")), RepoFile.commandAlias(row("order")))
+      withClue(s"${row("country")} full row `$full`: ") {
+        full should include(s"-l $OrderTag")
+        full should not include s"-n $OrderTag"
+      }
+      withClue(s"${row("country")} order row `$order`: ") {
+        order should include(s"-n $OrderTag")
+        order should not include s"-l $OrderTag"
+      }
+      specOf(row("order")) shouldBe specOf(row("cmd"))
+    }
   }
 
   it should "decide its legs' films by the identity model" in {

@@ -16,10 +16,12 @@ import org.scalatest.Tag
  * against a 315-minute suite ceiling and GitHub's hard 360-minute cancellation, which
  * is why no US leg had ever reached the end of this test.
  *
- * ONLY the full US leg excludes it (`convergenceUs`), and only because a second job
- * (`convergenceUsOrder`) runs it. The warm countries keep it inline — Poland's costs
- * 287s, Germany's 439s — and every SAMPLE leg keeps it too, so the ~100-film version
- * of this claim is checked on every country on every run regardless.
+ * A full leg excludes it only where a second job runs it: the US in both lanes
+ * (`convergenceUs` / `convergenceUsOrder`), and Germany in the identity lane alone
+ * (`convergenceGermanyWithoutOrder` / `convergenceGermanyOrder`), where its ~5 minutes of
+ * replays bounded the lane's wall clock. The other countries keep it inline — Poland's
+ * costs 287s — and every SAMPLE leg keeps it too, so the ~100-film version of this claim
+ * is checked on every country on every run regardless.
  *
  * A ScalaTest `Tag` rather than a `@TagAnnotation` like `@CorpusReplay`: those tag a
  * whole SPEC, and this has to tag one test inside a spec whose other tests stay where

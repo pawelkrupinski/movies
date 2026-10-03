@@ -95,6 +95,12 @@ object RepoFile {
    */
   /** A workflow's `matrix:` rows written as flow maps (`- { country: poland, code: pl, … }`),
    *  each as its fields; a value is a bare word (quoted or expression values are not read). */
+  /** What build.sbt's `addCommandAlias("<name>", …)` maps `name` to. Read by name rather than
+   *  matched as a whole line, so the alias table stays free to align its columns. */
+  def commandAlias(name: String): String =
+    ("addCommandAlias\\(\"" + name + "\",\\s*\"([^\"]*)\"").r.findFirstMatchIn(read("build.sbt"))
+      .getOrElse(throw new AssertionError(s"build.sbt defines no `$name` alias")).group(1)
+
   def matrixRows(yaml: String): Seq[Map[String, String]] =
     """-\s*\{([^}]*)}""".r
       .findAllMatchIn(block(yaml, "matrix"))

@@ -117,12 +117,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   /** The ScalaTest tag the split filters on, spelled once. */
   private val OrderTag = "services.movies.OrderIndependence"
 
-  /** What `addCommandAlias("<name>", …)` maps `name` to. Read by name rather than
-   *  matched as a whole line, so the alias table stays free to align its columns. */
-  private def aliasBody(alias: String): String =
-    ("addCommandAlias\\(\"" + alias + "\",\\s*\"([^\"]*)\"").r.findFirstMatchIn(build)
-      .getOrElse(fail(s"build.sbt defines no `$alias` alias")).group(1)
-
   /** The spec an alias' `testOnly` names, before any `--` runner flags. */
   private def specOf(aliasBody: String): String = aliasBody.split(" -- ").head
 
@@ -397,8 +391,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     splitOrder should not be empty
     splitOrder.foreach { case (country, orderAlias) =>
       val fullAlias = countries(country)._1
-      val full  = aliasBody(fullAlias)
-      val order = aliasBody(orderAlias)
+      val full  = RepoFile.commandAlias(fullAlias)
+      val order = RepoFile.commandAlias(orderAlias)
       withClue(s"$country full leg ($fullAlias) = `$full`: ") {
         full should include(s"-l $OrderTag")
         full should not include s"-n $OrderTag"
