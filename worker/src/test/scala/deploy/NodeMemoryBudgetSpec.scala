@@ -129,7 +129,9 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     ("web", "de") ->  813, ("worker", "de") ->  963,
     ("web", "uk") ->  816, ("worker", "uk") -> 1073,   // worker re-measured 2026-09-29: the 640m heap the identity take-up needs
     ("web", "es") ->  762, ("worker", "es") ->  757,
-    ("web", "us") -> 1716, ("worker", "us") -> 1647,
+    // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
+    // 256 MiB its heap then gave back (-Xmx768m). Replace with a measured 7d peak after 2026-10-10.
+    ("web", "us") -> 1268, ("worker", "us") -> 1647,
   )
 
   /** How far above its measured peak a request may sit. `-Xms` equals `-Xmx` on every deployment
@@ -231,7 +233,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** Floors bought by a measured heap exhaustion, per tier+country. See the test
    *  below for what each one cost. */
-  private val HeapFloorsMib = Map(("worker", "us") -> 1280, ("web", "us") -> 1024)
+  private val HeapFloorsMib = Map(("worker", "us") -> 1280, ("web", "us") -> 768)
 
   // The MIRROR of the test above, and the failure it missed. That one stops a heap
   // outgrowing its container; this one stops a heap the container has already paid
@@ -245,6 +247,10 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   //   web-us     G1 Old Gen peaked at 760.5MiB of a 768MiB cap (99% of the heap LIVE)
   //              while RSS peaked at 1515MiB of 2048MiB -- the shape behind its
   //              ~40-restart crash loop of 2026-08-30..09-02.
+  // web-us's floor went back to 768MiB on 2026-10-03, when what filled that heap was gone: its live
+  // set fell from ~565 to ~350 MiB (booking URLs held split, showtime instants shared), a listing
+  // render's allocation from ~320 MB to ~5 MB, and a drift reload no longer holds two corpora.
+  // Below 768 is untested against a US evening peak.
   // US carries ~5000 venues against Germany's ~1500, and one US "city" (California)
   // renders an 18.9MB page, which is why it is the country that runs out first.
   "the US deployments' heaps" should "claim the container limit they were already given" in {
