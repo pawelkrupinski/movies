@@ -87,12 +87,14 @@ class FilmPageUrls(reader: ReadModelReader, country: Country, clock: Clock) exte
    *  range), not a scan of every screening: a burst re-scrapes hundreds of films. */
   def apply(filmId: String): Seq[String] = {
     val card   = reader.findCard(filmId).getOrElse(throw new IllegalStateException(s"read-model card $filmId unreadable"))
-    val slug   = slugFor(filmId)
     val cities = card.screenings.map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
-    (for {
+    val pagesIn = country.cities.filter(c => cities(c.slug))
+    // A film screening nowhere (retired since its render) has no page: no slug read for it.
+    if (pagesIn.isEmpty) Seq.empty
+    else (for {
       origin <- country.webOrigin.toSeq
-      s      <- slug.toSeq
-      city   <- country.cities.filter(c => cities(c.slug))
+      s      <- slugFor(filmId).toSeq
+      city   <- pagesIn
     } yield origin + CityPath.film(city, s)).sorted
   }
 

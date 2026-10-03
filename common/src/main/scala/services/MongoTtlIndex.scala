@@ -69,19 +69,19 @@ object MongoTtlIndex extends Logging {
     // of the same name — the gauge would fall to zero and the alert clear itself while the
     // index was still wrong. That is the exact false negative this metric exists to prevent.
     val key = collection.namespace.getFullName
-    currentExpiry(collection, field) match {
+    currentIndex(collection, field) match {
       // A read that FAILED says nothing about the index. Taken as "none", it went on to a
       // create the existing index then rejected, and RECORDED a mismatch — an alert about an
       // index that may well be right. Leave the gauge as it is; the next boot looks again.
       case Failure(exception) =>
         logger.warn(s"$label: $name TTL index on `$field` could not be read, so it is left as it is: ${exception.getMessage}")
 
-      case Success(Some(actual)) if actual == wantedSeconds =>
+      case Success(Some((_, actual))) if actual == wantedSeconds =>
         mismatches.resolved(key)
 
-      case Success(Some(actual)) =>
+      case Success(Some((index, actual))) =>
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — rebuilding it.")
-        rebuild(collection, field, wantedSeconds, label, mismatches)
+        rebuild(collection, field, index, wantedSeconds, label, mismatches)
 
       case Success(None) =>
         create(collection, field, wantedSeconds, label).map { _ =>
@@ -151,18 +151,25 @@ object MongoTtlIndex extends Logging {
       ()
     }
 
-  /** The `expireAfterSeconds` of the existing single-field TTL index on `field`, None when
+  /** The existing single-field TTL index on `field`: its name and `expireAfterSeconds`. None when
    *  there is no such index, and a Failure when the indexes could not be read. */
-  private def currentExpiry(collection: MongoCollection[Document], field: String): Try[Option[Long]] =
+  private def currentIndex(collection: MongoCollection[Document], field: String): Try[Option[(String, Long)]] =
     Try {
       Await.result(collection.listIndexes().toFuture(), 10.seconds).flatMap { index =>
         val onFieldAlone = index.get("key")
           .collect { case keys: org.bson.BsonDocument => keys }
           .exists(keys => keys.size == 1 && keys.containsKey(field))
-        if (onFieldAlone) index.get("expireAfterSeconds").collect { case seconds: org.bson.BsonNumber => seconds.longValue() }
-        else None
+        if (!onFieldAlone) None
+        else for {
+          name    <- index.get("name").collect { case name: org.bson.BsonString => name.getValue }
+          seconds <- index.get("expireAfterSeconds").collect { case seconds: org.bson.BsonNumber => seconds.longValue() }
+        } yield name -> seconds
       }.headOption
     }
+
+  /** The `expireAfterSeconds` of [[currentIndex]]. */
+  private def currentExpiry(collection: MongoCollection[Document], field: String): Try[Option[Long]] =
+    currentIndex(collection, field).map(_.map(_._2))
 
   /** DROP AND RECREATE, because `collMod` is the one operation `readWrite` does not
    *  carry. Asked directly (`db.getRole("readWrite", {showPrivileges: true})` on
@@ -184,12 +191,14 @@ object MongoTtlIndex extends Logging {
    *  expiry is READ BACK AGAIN afterwards and a disagreement is recorded in
    *  [[TtlIndexMismatches]] for `TtlIndexMetrics` to publish, because this is exactly the
    *  class of failure that spent months invisible in a `logger.debug`. */
-  private def rebuild(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String,
-                      mismatches: TtlIndexMismatches): Unit = {
+  private def rebuild(collection: MongoCollection[Document], field: String, index: String, wantedSeconds: Long,
+                      label: String, mismatches: TtlIndexMismatches): Unit = {
     val name = collection.namespace.getCollectionName
     val key  = collection.namespace.getFullName
     Try {
-      Await.result(collection.dropIndex(Indexes.ascending(field)).toFuture(), 10.seconds)
+      // By the name read: the read accepts any single-field index on `field`, and one whose key spec
+      // is not the ascending one (descending, say) is "not found" when dropped by that spec.
+      Await.result(collection.dropIndex(index).toFuture(), 10.seconds)
       Await.result(collection.createIndex(
         Indexes.ascending(field),
         new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)

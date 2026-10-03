@@ -106,6 +106,19 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A census pass asks every venue of the corpus for its showtime set; one slot's showtimes are nearly
+  // always distinct already, and copying them per venue was ~2% of a US pass's allocation.
+  it should "give a one-slot venue's distinct showtimes as the slot holds them, and each once when they repeat" in {
+    def multikino(r: MovieRecord) =
+      ReadModelProjection.partition(StoredMovieRecord.synthesised("Skazani na Shawshank", Some(1994), r, services.movies.SingleCountryNormalizer.titleNormalizer), titleNormalizer)
+        .venuesAll.flatten.find(_._id.contains("Multikino")).get
+    val slot     = record.data(Multikino)
+    slot.showtimes.size should be > 1
+    multikino(record).showtimes should be theSameInstanceAs slot.showtimes
+    val repeated = record.copy(data = record.data.updated(Multikino, slot.copy(showtimes = slot.showtimes ++ slot.showtimes.reverse)))
+    multikino(repeated).showtimes shouldBe slot.showtimes
+  }
+
   // The identity migration's dual write into the read model (§16): the row names every listing
   // its showtimes come from — here two, since the venue's two slots are unioned into one row —
   // by the same key the slots' side rows are stamped with, whatever order the record holds them in.

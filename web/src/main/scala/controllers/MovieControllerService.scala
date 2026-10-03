@@ -67,12 +67,12 @@ class MovieControllerService(
    *  through the sitemap and nothing else. Same `isUpcoming` predicate
    *  [[schedulesFor]] applies, checked per city instead of building each
    *  city's whole schedule. */
-  def citiesShowing(filmId: String, excluding: City, country: Country, now: LocalDateTime): Seq[City] =
+  def citiesShowing(filmId: String, excluding: City, country: Country, now: LocalDateTime): Seq[City] = {
+    val film = Set(filmId)
     country.allSorted.filter { c =>
-      c != excluding && readModel.screeningsForCity(c.slug).exists(sc =>
-        sc.filmId == filmId && sc.showtimes.exists(_.isUpcoming(now))
-      )
+      c != excluding && readModel.screeningsOfFilms(c.slug, film).exists(_.showtimes.exists(_.isUpcoming(now)))
     }
+  }
 
   /** Overload with an injectable `now` so tests can pin the clock to a fixture's
    * capture date. Scoped to `city`: `readModel.screeningsForCity` already
@@ -91,7 +91,7 @@ class MovieControllerService(
    *  request for one film used to build the whole city's list and pick its own out
    *  of it: 2,000 joins for one card, ~4 ms a request on a 2,000-card city. */
   private def schedulesFor(city: City, filmIds: Set[String]): Seq[FilmSchedule] =
-    schedulesFor(city, readModel.screeningsForCity(city.slug).filter(s => filmIds(s.filmId)), nowIn(city))
+    schedulesFor(city, readModel.screeningsOfFilms(city.slug, filmIds), nowIn(city))
 
   private def schedulesFor(city: City, cityScreenings: Seq[CityScreening], now: LocalDateTime): Seq[FilmSchedule] = {
     // `Showtime.isUpcoming(now)` is `dateTime.isAfter(now.minus(Grace))`: the cutoff once,

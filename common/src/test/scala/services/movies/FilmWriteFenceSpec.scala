@@ -73,6 +73,42 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     fence.ifUndisturbed(other, mark)(()) shouldBe true
   }
 
+  // A stripe is shared by many films, and another film's write rings only ITS OWN event: a read
+  // of this film refused for it would never be re-delivered, leaving the cache on the older row
+  // until the backstop rehydrate hours later. One stripe makes every film collide.
+  it should "apply a read whose only disturbance was another film's write on the same stripe" in {
+    val fence = new FilmWriteFence(stripes = 1)
+    val other = FilmId("other|2026")
+    val mark  = fence.mark(film.value)
+    fence.writing(other)(())
+    applies(fence, mark) shouldBe true
+  }
+
+  it should "apply a read taken while only another film's write on the same stripe was in flight" in {
+    val fence = new FilmWriteFence(stripes = 1)
+    val other = FilmId("other|2026")
+    val mark  = fence.writing(other)(fence.mark(film.value))
+    mark should not be FilmWriteFence.InFlight
+    fence.writing(other)(applies(fence, mark)) shouldBe true
+    fence.writing(other)(fence.markAll().of(film.value)) should not be FilmWriteFence.InFlight
+  }
+
+  it should "still refuse a read of a film written since, among other films' writes on its stripe" in {
+    val fence = new FilmWriteFence(stripes = 1)
+    val mark  = fence.mark(film.value)
+    fence.writing(FilmId("a|2026"))(())
+    fence.writing(film)(())
+    fence.writing(FilmId("b|2026"))(())
+    applies(fence, mark) shouldBe false
+  }
+
+  it should "refuse, conservatively, once more writes landed on the stripe than it remembers" in {
+    val fence = new FilmWriteFence(stripes = 1)
+    val mark  = fence.mark(film.value)
+    (0 to FilmWriteFence.RememberedWrites).foreach(i => fence.writing(FilmId(s"other$i|2026"))(()))
+    applies(fence, mark) shouldBe false
+  }
+
   // The check and the apply are one step with respect to a write's START: a write that
   // begins while a read is being applied waits for that apply, then overwrites it.
   it should "hold a write's start until an apply already under way has finished" in {

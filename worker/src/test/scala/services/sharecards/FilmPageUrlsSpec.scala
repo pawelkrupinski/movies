@@ -67,4 +67,16 @@ class FilmPageUrlsSpec extends AnyFlatSpec with Matchers {
     pages(second._id) shouldBe Seq("https://kinowo.net/poznan/movie/oppenheimer")   // new since: read again
     rig.readModel.findAllMoviesCalls.get - before shouldBe 2
   }
+
+  // A re-scrape fires a delay after the render; a film retired in between screens nowhere, so it
+  // has no page to refresh — and the slug read it skipped was the whole of web_movies, once per
+  // such film, since a film the read lacks re-reads.
+  it should "read no film slugs for a film that screens nowhere" in {
+    val rig     = new Rig
+    val retired = film()
+    rig.readModel.upsertMovie(retired)
+    val before = rig.readModel.findAllMoviesCalls.get
+    new FilmPageUrls(rig.readModel, Country.default, rig.clock)(retired._id) shouldBe empty
+    rig.readModel.findAllMoviesCalls.get - before shouldBe 0
+  }
 }

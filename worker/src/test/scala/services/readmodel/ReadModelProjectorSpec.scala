@@ -226,6 +226,28 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "report a row whose projection failed, so a caller asserting on the read model reconciles again" in {
+    // A loaded Mongo times a read-model write out client-side AFTER the server applied it
+    // (HardClusterConvergenceIntegrationSpec under itAll, 2026-10-03: `upsertMovie … timed out
+    // after [10 seconds]`). The card document stands, its screenings were never written — a
+    // served film with nothing under it — while the scan itself was complete.
+    val rm = new InMemoryReadModelRepository {
+      @volatile var timeOutOnce = true
+      override def upsertMovie(m: ResolvedMovie): Unit = {
+        super.upsertMovie(m)
+        if (timeOutOnce) { timeOutOnce = false; throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]") }
+      }
+    }
+    val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
+    val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
+
+    projector.reconcile() shouldBe false
+    rm.findAllScreenings().map(_.filmId) should not contain fid   // the premise: the card is served bare
+
+    projector.reconcile() shouldBe true
+    rm.findAllScreenings().map(_.filmId) should contain(fid)
+  }
+
   "a showtime-only change" should "move only the one screening document" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
@@ -654,6 +676,33 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.delete("Foo", Some(2024))
     projector.pruneOrphans()
     rm.movieDeletes should contain(fid)
+  }
+
+  // The prune diffs the cards against the rows its scan saw, so it must diff the cards as they were
+  // BEFORE that scan: a card another process writes after the scan read its source is one the scan
+  // could not have seen the row of, and reading the cards again then pruned it as an orphan.
+  it should "not prune a card another process wrote after its scan had read the source" in {
+    val rm = new InMemoryReadModelRepository()
+    val written = new java.util.concurrent.atomic.AtomicBoolean(false)
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+        val complete = super.foreachRecordWithSlots(f)
+        if (written.compareAndSet(false, true)) {
+          repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+          new ReadModelProjector(repository, rm, rm, clock = specClock)
+            .onMovieUpsert(repository.findAll().find(_.record.tmdbId.contains(2)).get)
+        }
+        complete
+      }
+    }
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    projector.reconcile()
+    val cards = rm.findAllMovieIds().toSet
+    projector.pruneOrphans()
+    written.get shouldBe true
+    rm.findAllMovieIds().toSet should have size (cards.size + 1L)
+    rm.movieDeletes shouldBe empty
   }
 
   // A VENUE THE SOURCE DROPPED, UNDER A CARD THAT STAYS. The prune removed screenings only of a

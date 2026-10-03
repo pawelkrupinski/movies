@@ -46,4 +46,14 @@ class MovieRecordAgeRatingSpec extends AnyFlatSpec with Matchers {
     )
     record.ageRating shouldBe Some("12A")
   }
+
+  // Equality is what every write guard asks ("did this slot change?") — `SlotKeyed.changedRows`,
+  // the slots repository's skip-if-stored, the cache's skip-if-equal write. A certificate left out
+  // of it was never persisted when it was the only thing a venue changed.
+  "SourceData" should "differ when only its certificate does" in {
+    val rated = SourceData(title = Some("Film"), ageRating = Some("12A"))
+    rated should not equal rated.copy(ageRating = Some("15"))
+    rated should not equal rated.copy(ageRating = None)
+    rated.hashCode shouldBe rated.copy().hashCode
+  }
 }

@@ -255,6 +255,29 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // A pass for "this-code" stopped at slice 30; the deploy was rolled back to the older code, whose
+  // change-stream projections rewrote cards in slices before 30 under ITS derivation; then the roll
+  // forward. Resuming at 30 would leave those cards on the older derivation until the rolling
+  // content check — so a boot that finds its own version recorded voids any other pass's progress.
+  it should "start over after a rollback to the recorded version's code, whose projections the progress does not cover" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"),
+                                                           Some(DerivationProgress(DerivationVersion("this-code"), 30)))
+    val rolledBack = booted(repository, rm, marker, history = history(DerivationScope.Full).take(1))
+    rolledBack.pruneOrphans()   // the older code finds its own version recorded: nothing owed
+    rolledBack.stop()
+
+    val rolledForward = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    rolledForward.pruneOrphans()
+    repository.resetCounts()
+    (1 to 48).foreach(_ => rolledForward.advanceDerivationPass())
+
+    repository.wholeReads shouldBe Films.size
+    marker.current shouldBe Some("this-code")
+    rolledForward.stop()
+  }
+
   "a pass that could not read a row" should "stop recording progress, so a restart re-reads from the slice that missed it" in {
     val repository = new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
     repository.failing = false

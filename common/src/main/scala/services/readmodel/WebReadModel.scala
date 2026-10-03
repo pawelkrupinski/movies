@@ -34,7 +34,9 @@ class WebReadModel(
     // `…_COLD_RETRY_SECONDS`, resolved by the web root); the compiled-in ones for specs.
     reloadInterval:    ReadModelReloadInterval    = WebReadModel.DefaultReloadInterval,
     coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval,
-    driftSettle:       WebReadModel.DriftSettle   = WebReadModel.DefaultDriftSettle) extends Stoppable with Logging {
+    driftSettle:       WebReadModel.DriftSettle   = WebReadModel.DefaultDriftSettle,
+    // What the change stamps are read from; the system clock outside specs.
+    clock:             java.time.Clock            = java.time.Clock.systemUTC()) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -49,7 +51,7 @@ class WebReadModel(
   // backwards — after which a later advance can re-issue a value a client
   // already holds, which is a 304 for changed bytes. `advance` is a pure
   // function of its argument, so it is safe to re-apply on a CAS retry.
-  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](java.time.Instant.now())
+  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](clock.instant())
   /** Model-wide change stamp — moves when ANYTHING in the corpus changes. The
    *  sitemap's `<lastmod>`, the `filmSlugs` memo and `/debug/readmodel` all want
    *  exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
@@ -67,12 +69,7 @@ class WebReadModel(
   // costs one revalidation, a missed one serves stale showtimes behind a 304.
   private val cityStamps = new ConcurrentHashMap[String, java.time.Instant]()
 
-  // filmId -> the cities screening it, so a movie document's change bumps only
-  // those. Deliberately allowed to be a SUPERSET: a screening delete cannot tell
-  // whether the city still shows the film at another venue, so entries are added
-  // but never removed incrementally, and the index is rebuilt exactly on every
-  // `reload()`. Drift therefore only ever over-invalidates.
-  private val filmCities = new ConcurrentHashMap[String, java.util.Set[String]]()
+  private val filmCities = new FilmCities
 
   // The floor under every city's stamp: changes no per-city bump can scope.
   //
@@ -101,17 +98,19 @@ class WebReadModel(
    *  same `Instant` twice; a repeated validator is a 304 for changed bytes. A
    *  clock that steps backwards must not stall invalidation either. */
   private def advance(previous: java.time.Instant): java.time.Instant = {
-    val now = java.time.Instant.now()
+    val now = clock.instant()
     if (now.isAfter(previous)) now else previous.plusNanos(1)
   }
 
   private def touch(): Unit = { _lastModified.updateAndGet(previous => advance(previous)); () }
 
-  /** Bump one city's validator (and the model-wide stamp with it). */
+  /** Bump one city's validator (and the model-wide stamp with it): past its own stamp AND
+   *  the floor, so `lastModifiedFor` moves even when the clock reads no later than the floor
+   *  a reload just advanced (a stamp under the floor is no move at all). */
   private def touchCity(citySlug: String): Unit = {
     touch()
-    cityStamps.compute(citySlug, (_, previous) =>
-      if (previous == null) java.time.Instant.now() else advance(previous))
+    cityStamps.compute(citySlug, (_, previous) => advance(laterOf(_globalFloor.get(), previous)))
+    ()
   }
 
   /** Bump the floor, and with it every city. */
@@ -139,11 +138,7 @@ class WebReadModel(
       .filter(slug => previous.synopsisByCity.get(slug) != current.synopsisByCity.get(slug))
       .toSeq
 
-  private def citiesScreening(filmId: String): Seq[String] =
-    Option(filmCities.get(filmId)).map(_.asScala.toSeq).getOrElse(Nil)
-
-  private def indexFilmCity(filmId: String, citySlug: String): Unit =
-    filmCities.computeIfAbsent(filmId, _ => ConcurrentHashMap.newKeySet[String]()).add(citySlug)
+  private def citiesScreening(filmId: String): Seq[String] = filmCities.of(filmId)
 
   // ── Read surface (controllers) ──────────────────────────────────────────────
 
@@ -184,8 +179,18 @@ class WebReadModel(
   /** Title→film for the legacy `?title=` address ([[FilmTitles]] explains why
    *  it is a fold, not a string match). */
   def filmTitles: FilmTitles = filmTitlesIndex.get
-  def screeningsForCity(citySlug: String): Seq[CityScreening] = {
-    val current = bucket(citySlug)
+  def screeningsForCity(citySlug: String): Seq[CityScreening] = cityRows(citySlug, _ => true)
+
+  /** [[screeningsForCity]] narrowed to the films `filmIds` names: the same rows, found
+   *  without first copying the city's whole bucket. A film page asks this of every city
+   *  of its country (`citiesShowing`), and copying each city's rows to find one film's
+   *  was most of what the page allocated. Exact, because the former-slug fill below
+   *  only ever compares rows of the same film. */
+  def screeningsOfFilms(citySlug: String, filmIds: Set[String]): Seq[CityScreening] =
+    cityRows(citySlug, row => filmIds(row.filmId))
+
+  private def cityRows(citySlug: String, keep: CityScreening => Boolean): Seq[CityScreening] = {
+    val current = bucket(citySlug, keep)
     // A city that changed slug still has most of its rows projected under the
     // OLD one (see `City.formerSlugs`), and would otherwise serve almost nothing
     // until every one of its films had been projected again. Rows under the
@@ -197,7 +202,7 @@ class WebReadModel(
     // venue, so unfiltered Anchorage would serve Juneau's cinemas, 1,400 km and
     // no road away. `City.ownVenuesOfSplitCity` is absent for a plain rename,
     // whose rows are this city's already.
-    val former = City.formerSlugs(citySlug).flatMap(bucket)
+    val former = City.formerSlugs(citySlug).flatMap(bucket(_, keep))
     if (former.isEmpty) current
     else {
       val projected = current.map(s => (s.filmId, s.cinema)).toSet
@@ -207,8 +212,8 @@ class WebReadModel(
     }
   }
 
-  private def bucket(citySlug: String): Seq[CityScreening] =
-    Option(byCity.get(citySlug)).map(_.values.asScala.toSeq).getOrElse(Seq.empty)
+  private def bucket(citySlug: String, keep: CityScreening => Boolean): Seq[CityScreening] =
+    Option(byCity.get(citySlug)).map(_.values.asScala.iterator.filter(keep).toSeq).getOrElse(Seq.empty)
   /** Every cached screening across all cities — the read cache's full
    *  `web_screenings` view, used by the dev `/debug/readmodel` dump. */
   def allScreenings(): Seq[CityScreening] =
@@ -217,6 +222,7 @@ class WebReadModel(
   // ── Change-stream appliers ──────────────────────────────────────────────────
 
   private def applyMovieUpsert(m: ResolvedMovie): Unit = {
+    streamed(m._id)
     val previous = Option(movies.put(m._id, m))
     // A REWRITE THAT CHANGED NOTHING INVALIDATES NOTHING. The stream carries
     // document WRITES, not content changes: a re-key or a venue re-projection
@@ -248,6 +254,7 @@ class WebReadModel(
     // Only a film we actually held frees a slug for a namesake in another city.
     // Deletes on this collection are mostly RE-KEYS, so one naming an id this
     // model never saw is ordinary traffic — and it re-addresses nothing.
+    streamed(id)
     if (movies.remove(id) != null) touchEveryCity()
   }
 
@@ -272,9 +279,11 @@ class WebReadModel(
 
   private def applyScreeningUpsert(projected: CityScreening): Unit = {
     val s        = onCurrentPage(projected)
+    streamed(s._id)
+    streamedDuringReload.get.foreach(_.placements.add((s.filmId, s.city)))
     val bucket   = byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
     val previous = bucket.put(s._id, s)
-    indexFilmCity(s.filmId, s.city)
+    filmCities.add(s.filmId, s.city)
     // Only a row that actually differs changes what the city renders — see the
     // note on `applyMovieUpsert`. `previous` is null for a genuinely new row,
     // which is never equal to `s`, so a first insert still bumps.
@@ -284,6 +293,7 @@ class WebReadModel(
     // The delete event carries only the id; it's globally unique, so drop it
     // from whichever city bucket holds it -- and bump only the cities that
     // actually held it.
+    streamed(id)
     var found = false
     byCity.forEach { (city, bucket) =>
       if (bucket.remove(id) != null) { found = true; touchCity(city) }
@@ -308,39 +318,57 @@ class WebReadModel(
    *  buckets, ~400 MB each, in a 1 GiB heap. What the stream keeps per row is its
    *  id, which the row already holds. */
   def reload(): Int = {
+    val during = new WebReadModel.Streamed
+    streamedDuringReload.set(Some(during))
+    try reloadAround(during) finally streamedDuringReload.set(None)
+  }
+
+  // What the change streams applied while a reload runs: newer than the reload's read, so the reload
+  // neither overwrites nor evicts it. Each applier records it BEFORE it writes, and the reload
+  // decides on each atomically with its own write of it.
+  private val streamedDuringReload = new java.util.concurrent.atomic.AtomicReference[Option[WebReadModel.Streamed]](None)
+  private def streamed(id: String): Unit = streamedDuringReload.get.foreach(_.ids.add(id))
+
+  private def reloadAround(during: WebReadModel.Streamed): Int = {
+    val applied = during.ids
     val (ms, moviesComplete) = reader.findAllMoviesChecked()
-    ms.foreach(m => movies.put(m._id, m))
+    ms.foreach(m => movies.compute(m._id, (id, held) => if (applied.contains(id)) held else m))
     if (moviesComplete) {
       val liveMovieIds = ms.iterator.map(_._id).toSet
-      movies.keySet().asScala.toSeq.filterNot(liveMovieIds).foreach(movies.remove)
+      movies.keySet().removeIf(id => !liveMovieIds(id) && !applied.contains(id))
     }
 
     val seenByCity      = new java.util.HashMap[String, java.util.HashSet[String]]()
-    val nextFilmCities  = new java.util.HashMap[String, java.util.HashSet[String]]()
+    val nextFilmCities  = new java.util.HashMap[String, java.util.Set[String]]()
     val screeningsComplete = reader.foreachScreening { projected =>
       val s = onCurrentPage(projected)
-      byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]()).put(s._id, s)
+      byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
+        .compute(s._id, (id, held) => if (applied.contains(id)) held else s)
       seenByCity.computeIfAbsent(s.city, _ => new java.util.HashSet[String]()).add(s._id)
       nextFilmCities.computeIfAbsent(s.filmId, _ => new java.util.HashSet[String]()).add(s.city)
     }
     if (screeningsComplete) {
+      // A bucket left empty stays: removing it would race a stream apply already holding it.
       byCity.forEach { (city, bucket) =>
-        val seen = seenByCity.get(city)
-        if (seen == null) byCity.remove(city)
-        else bucket.keySet().removeIf(id => !seen.contains(id))
+        val seen = Option(seenByCity.get(city)).getOrElse(java.util.Collections.emptySet[String]())
+        bucket.keySet().removeIf(id => !seen.contains(id) && !applied.contains(id))
       }
-      // Rebuild the film->cities index exactly; this is the point at which the
-      // incrementally-grown superset is made true again.
-      filmCities.clear()
-    }
-    nextFilmCities.forEach((filmId, cities) => cities.forEach(city => indexFilmCity(filmId, city)))
+      // The incrementally-grown superset made exact again — with the rows the streams applied
+      // meanwhile, which the scan may not have read.
+      filmCities.rebuild(nextFilmCities, (filmId, city) => during.placements.contains((filmId, city)))
+    } else filmCities.addAll(nextFilmCities)
     if (!moviesComplete || !screeningsComplete)
       logger.warn(s"WebReadModel reload: incomplete read (movies complete=$moviesComplete, " +
         s"screenings complete=$screeningsComplete) — added what was read, evicted nothing it could not see.")
     // Every city is re-derived, so no per-city stamp survives as evidence of
-    // anything; the floor alone answers for all of them.
-    cityStamps.clear()
-    touchEveryCity()
+    // anything; the floor alone answers for all of them — advanced past the latest of
+    // them FIRST, so no city's validator moves backwards when its stamp goes (a cached
+    // copy at the old stamp would otherwise look newer than the reload's data).
+    // Only stamps the floor now covers go: one a stream stamped meanwhile is past it, and stays.
+    val latestCity = cityStamps.values.asScala.foldLeft(_globalFloor.get())(laterOf)
+    val floor      = _globalFloor.updateAndGet(previous => advance(laterOf(previous, latestCity)))
+    touch()
+    cityStamps.values.removeIf(stamp => !stamp.isAfter(floor))
     ms.size
   }
 
@@ -452,6 +480,13 @@ class WebReadModel(
 }
 
 object WebReadModel {
+  /** What the change streams applied during one reload: row and movie ids, and each screening's
+   *  (film, city) placement. */
+  private final class Streamed {
+    val ids        = ConcurrentHashMap.newKeySet[String]()
+    val placements = ConcurrentHashMap.newKeySet[(String, String)]()
+  }
+
   val DefaultReloadInterval: ReadModelReloadInterval       = ReadModelReloadInterval(30.minutes)
   val DefaultColdRetryInterval: ReadModelColdRetryInterval = ReadModelColdRetryInterval(30.seconds)
 

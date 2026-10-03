@@ -146,10 +146,14 @@ object ReadModelProjection {
    *  the heal (its id exists). Unioning is the only answer that cannot lose a showtime and
    *  does not depend on which slot came first; a venue with one slot, the overwhelming
    *  case, is untouched by it. */
+  /** A venue row's id: its card's, the city's slug and the venue's display name. */
+  private[readmodel] def screeningId(card: String, city: City, cinema: Cinema): String =
+    s"$card|${city.slug}|${cinema.displayName}"
+
   private def venuesFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[VenueScreening] =
     showings.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None
-      else City.forCinema(cinema).map(city => (s"$fid|${city.slug}|${cinema.displayName}", city, cinema, slot))
+      else City.forCinema(cinema).map(city => (screeningId(fid, city, cinema), city, cinema, slot))
     }
       .groupBy(_._1).toSeq
       .map { case (id, entries) =>
@@ -162,6 +166,17 @@ object ReadModelProjection {
    *  showtimes or the cinema maps to no city. The single-venue form of [[venuesFor]]. */
   private[readmodel] def venueOf(cinema: Cinema, slot: SourceData, fid: String): Option[VenueScreening] =
     venuesFor(Seq(cinema -> slot), fid).headOption
+
+  object VenueScreening {
+    /** `showtimes` each once, in their order — `showtimes` itself when no two are equal, as one
+     *  slot's nearly always are, so the census's every venue builds no second copy of them. */
+    private[readmodel] def distinct(showtimes: Seq[Showtime]): Seq[Showtime] =
+      if (showtimes.lengthCompare(1) <= 0) showtimes
+      else {
+        val seen = new java.util.HashSet[Showtime](showtimes.size * 2)
+        if (showtimes.forall(seen.add)) showtimes else showtimes.distinct
+      }
+  }
 
   /** One venue's screenings row, before it is built: its id and EVERYTHING the row is
    *  built from — the card, the city, the cinema and the venue's slots in this variant, in
@@ -188,7 +203,10 @@ object ReadModelProjection {
     /** The venue's showtimes across its slots, each once — the SET its row lists, before the
      *  row's canonical ordering. What a census counts, without building the row. Derived once: a
      *  census pass asks it of every venue three times over, and its row a fourth. */
-    lazy val showtimes: Seq[Showtime] = slots.flatMap(_.showtimes).distinct
+    lazy val showtimes: Seq[Showtime] = slots match {
+      case Seq(only) => VenueScreening.distinct(only.showtimes)
+      case _         => slots.flatMap(_.showtimes).distinct
+    }
 
     /** Showtimes are sorted into a canonical order so the row is a pure function of the
      *  showtime SET, not of upstream scrape order. Each showtime's sort key is built once, not on
@@ -248,7 +266,7 @@ object ReadModelProjection {
      *  nothing, so over-asking costs one idempotent re-projection, never a wrong row. */
     def screeningIds: Seq[String] = {
       def idsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[String] =
-        showings.flatMap { case (cinema, _) => City.forCinema(cinema).map(city => s"$fid|${city.slug}|${cinema.displayName}") }
+        showings.flatMap { case (cinema, _) => City.forCinema(cinema).map(screeningId(fid, _, cinema)) }
       if (split.isEmpty) idsFor(stored.record.cinemaShowings, filmId(stored, normalizer))
       else split.flatMap(variant => idsFor(variant.scoped.cinemaShowings, variant.filmId))
     }

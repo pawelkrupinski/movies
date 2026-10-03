@@ -45,4 +45,66 @@ class ScreeningMemoSpec extends AnyFlatSpec with Matchers {
     memo.holdsAny("lalka|2026") shouldBe false
     memo.of("lalka|2026") shouldBe Map.empty
   }
+
+  it should "keep finding a whole id by id alone after some of the card's rows are replaced" in {
+    val memo = new ScreeningMemo
+    memo.update("c", Map("c|v" -> written(1), "stray1" -> written(2)))
+    memo.updateRows("c", Seq("stray1" -> written(3), "stray2" -> written(4), "c|w" -> written(5)))
+    memo.get("c", "stray1") shouldBe Some(written(3))
+    memo.size("c") shouldBe 4
+    memo.forget("stray1")
+    memo.holds("stray2") shouldBe true
+    memo.forget("stray2")
+    memo.holds("stray2") shouldBe false
+    memo.holds("c|w") shouldBe true
+  }
+
+  it should "find a row by id alone through its card prefix, and a whole one only while any is held" in {
+    val memo = new ScreeningMemo
+    memo.update("a|b", Map("a|b|c|d" -> written(1)))
+    memo.update("a", Map("a|x" -> written(2), "stray" -> written(3)))
+    memo.holds("a|b|c|d") shouldBe true
+    memo.holds("a|x") shouldBe true
+    memo.holds("stray") shouldBe true
+    memo.holds("a|b|c") shouldBe false
+    memo.forget("stray")
+    memo.holds("stray") shouldBe false
+    memo.update("b", Map("stray2" -> written(4)))
+    memo.holds("stray2") shouldBe true
+    memo.update("b", Map("b|y" -> written(5)))
+    memo.holds("stray2") shouldBe false
+    memo.forget("a|b|c|d")
+    memo.holdsAny("a|b") shouldBe false
+    memo.forgetCard("a")
+    memo.holds("a|x") shouldBe false
+  }
+
+  // The heal asks `holds` / `forget` by id alone, ~3 times per missing venue, under the projector's
+  // lock: a walk of every card, building a key per card, made a mass heal on the US corpus millions
+  // of allocations long. A lookup now costs the id's own few `|`-prefixes.
+  it should "look a row up by id without walking every card" in {
+    val memo  = new ScreeningMemo
+    (0 until 50_000).foreach(n => memo.update(s"film$n|2026", Map(s"film$n|2026|chicago|Venue $n" -> written(n))))
+    val clock = tools.Stopwatch.start()
+    (0 until 2_000).foreach { n =>
+      memo.holds(s"absent$n|2026|chicago|Venue") shouldBe false
+      memo.forget(s"absent$n|2026|chicago|Venue")
+    }
+    memo.holds("film7|2026|chicago|Venue 7") shouldBe true
+    clock.millis should be < 1000L
+  }
+
+  it should "read and replace single rows of a card, the card's own and a legacy one, keeping the rest" in {
+    val memo = new ScreeningMemo
+    memo.update("lalka|2026", Map("lalka|2026|poznan|Kino Muza" -> written(1), "lalka|2026|poznan|Rialto" -> written(2)))
+    memo.get("lalka|2026", "lalka|2026|poznan|Rialto") shouldBe Some(written(2))
+    memo.contains("lalka|2026", "lalka|2026|poznan|Absent") shouldBe false
+    memo.size("lalka|2026") shouldBe 2
+    memo.updateRows("lalka|2026", Seq("lalka|2026|poznan|Rialto" -> written(7), "legacy-row-id" -> written(8)))
+    memo.of("lalka|2026") shouldBe Map("lalka|2026|poznan|Kino Muza" -> written(1),
+      "lalka|2026|poznan|Rialto" -> written(7), "legacy-row-id" -> written(8))
+    memo.holds("legacy-row-id") shouldBe true
+    memo.forget("legacy-row-id")
+    memo.holds("legacy-row-id") shouldBe false
+  }
 }

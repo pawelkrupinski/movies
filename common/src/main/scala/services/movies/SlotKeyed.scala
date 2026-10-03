@@ -78,10 +78,18 @@ object SlotKeyed {
    *  collection: an `_id` range per venue — a venue's slot keys are its name, `␟`, the title key —
    *  served by the `_id` index, so a change at one venue of a wide film reads that venue's rows. */
   def atCinemasFilter(filmId: String, cinemas: Set[String]): Bson =
-    Filters.or(cinemas.toSeq.map { cinema =>
-      val prefix = idOf(filmId, s"$cinema${models.CinemaShowing.Separator}")
-      Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", s"$prefix\uffff"))
-    }*)
+    if (cinemas.isEmpty) Filters.in("_id", Seq.empty[String]*) // matches nothing; an empty `$or` the server refuses
+    else Filters.or(cinemas.toSeq.map(cinema => prefixRange("_id", idOf(filmId, s"$cinema${models.CinemaShowing.Separator}")))*)
+
+  /** Every string starting with `prefix`, as an index range: from the prefix up to (excluding) the
+   *  prefix with its last character's successor — Mongo orders strings by their UTF-8 bytes, which
+   *  is code-point order, so no continuation of the prefix (an astral character's included, which
+   *  a `prefix + '\uffff'` bound left out) sorts past it. `prefix` ends in an ordinary BMP character. */
+  private def prefixRange(field: String, prefix: String): Bson = {
+    val last = prefix.last
+    require(last != Char.MaxValue && !last.isSurrogate, s"a prefix range needs a BMP last character: $prefix")
+    Filters.and(Filters.gte(field, prefix), Filters.lt(field, s"${prefix.init}${(last + 1).toChar}"))
+  }
 
   /** Whether `slotKey` is a slot at one of `cinemas` — [[atCinemasFilter]] for rows already in hand. */
   def isAtCinemas(slotKey: String, cinemas: Set[String]): Boolean = {

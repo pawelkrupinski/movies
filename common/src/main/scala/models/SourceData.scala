@@ -112,7 +112,8 @@ case class SourceData(
   // `language` IS included, unlike those two: the cache write-guard skips the
   // repository write when the new record `==` the stored one, so a re-resolve that
   // corrected ONLY the language stamp (TMDB returning the same text under a freshly
-  // -confirmed tag) would never persist — and the row would be re-swept forever.
+  // -confirmed tag) would never persist — and the row would be re-swept forever. `ageRating`
+  // is included for the same reason: a venue re-rating a film changes nothing else.
   //
   // `cast` compares as a SET (`SourceData.castSet`): a venue re-billing the same people
   // ("Fiona Shaw, Daisy Edgar-Jones" one day, "Daisy Edgar-Jones, Fiona Shaw" the next,
@@ -124,13 +125,14 @@ case class SourceData(
       englishTitle == o.englishTitle && synopsis == o.synopsis && SourceData.castSet(cast) == SourceData.castSet(o.cast) &&
       director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
       countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
-      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language && titleSearches == o.titleSearches
+      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language && ageRating == o.ageRating &&
+      titleSearches == o.titleSearches
     case _ => false
   }
   override def hashCode(): Int =
     (title, rawTitle, originalTitle, englishTitle, synopsis, SourceData.castSet(cast), director,
      runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
-     language, titleSearches).hashCode()
+     language, ageRating, titleSearches).hashCode()
 
   /** The BCP-47 tag this slot's localized text was actually fetched in, reading an
    *  unstamped slot as the historical hardcoded default. Every caller that compares

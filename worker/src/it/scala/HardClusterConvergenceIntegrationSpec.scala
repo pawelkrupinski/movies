@@ -129,13 +129,15 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   /** The read model every claim reads, from a COMPLETE scan. Passes boot side by side against
    *  one local Mongo, and under a loaded `itAll` a page's side read can time out: the scan then
    *  skips that page, so its films are simply not projected yet — which production's next sweep
-   *  repairs and nothing here would. Reconciling again until a scan completes is that next
-   *  sweep; one that never completes fails as what it is, not as a missing showtime. */
+   *  repairs and nothing here would. A read-model write can time out too, leaving a card's
+   *  document without its screenings. Reconciling again until a scan completes with every row
+   *  projected is that next sweep; one that never does fails as what it is, not as a missing
+   *  showtime. */
   private def project(w: ArchiveReplayWiring): Unit = {
     val attempts = Iterator.continually(w.readModelProjector.reconcile()).take(ReconcileAttempts)
     if (!attempts.contains(true))
-      throw new IllegalStateException(s"read-model reconcile: no complete source scan in $ReconcileAttempts attempts — " +
-        "Mongo reads kept failing, so the projected read model is not the corpus's")
+      throw new IllegalStateException(s"read-model reconcile: no complete, wholly projected sweep in $ReconcileAttempts attempts — " +
+        "Mongo reads or read-model writes kept failing, so the projected read model is not the corpus's")
   }
   private val ReconcileAttempts = 3
 

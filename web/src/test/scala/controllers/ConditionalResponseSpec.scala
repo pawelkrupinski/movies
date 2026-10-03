@@ -143,4 +143,40 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
     status(responses(now = afterMidnight).serve(gzipRequest("/poznan/").withHeaders("If-None-Match" -> etag),
       "text/html", CachePolicy.RevalidatedAnywhere, city = Some(city))("<p>")) shouldBe OK
   }
+
+  // ── Two changes inside one second ───────────────────────────────────────────
+
+  /** A response builder whose model stamp the test moves, the clock `now` to match. */
+  private final class MovingStamp(var stamp: Instant, var now: Instant) {
+    private val cache      = TestResponseCache()
+    private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now)
+    def serve(request: play.api.mvc.RequestHeader)(body: => String): Future[play.api.mvc.Result] =
+      Future.successful(underlying.serve(request, "text/html", CachePolicy.RevalidatedAnywhere)(ResponseBody.text(body)))
+  }
+
+  // A film's projection lands as a burst — its movie document, then its venue rows — well
+  // inside one second. Truncated to the second, the stamp after the burst named the same
+  // version as a page rendered mid-burst, so the cache kept serving that page and every
+  // client holding it was told 304, until the city next changed in some other second.
+  "a stamp that moves within one second" should "retire the copy rendered before the move" in {
+    val serve = new MovingStamp(stamp.plusMillis(100), stamp.plusMillis(150))
+    val first = serve.serve(gzipRequest("/poznan/"))("<p>before</p>")
+    serve.stamp = stamp.plusMillis(700)
+    serve.now   = stamp.plusMillis(750)
+    serve.serve(gzipRequest("/poznan/"))("<p>after</p>")         // the held copy, while it re-renders
+    val third = serve.serve(gzipRequest("/poznan/"))("<p>after</p>")
+    gunzip(contentAsBytes(third).toArray) shouldBe "<p>after</p>"
+    header("ETag", third) should not be header("ETag", first)
+    status(serve.serve(gzipRequest("/poznan/").withHeaders("If-None-Match" -> header("ETag", first).value))("<p>after</p>")) shouldBe OK
+  }
+
+  it should "let If-None-Match decide alone, as RFC 9110 requires, when both are sent" in {
+    val serve = new MovingStamp(stamp.plusMillis(700), stamp.plusSeconds(5))
+    val both = FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip", "Host" -> "kinowo.net",
+      "If-None-Match" -> "W/\"stale-1\"", "If-Modified-Since" -> "Sat, 5 Sep 2026 10:20:31 GMT")
+    status(serve.serve(both)("<p>")) shouldBe OK
+  }
+
+  private def gunzip(bytes: Array[Byte]): String =
+    new String(new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(bytes)).readAllBytes(), "UTF-8")
 }

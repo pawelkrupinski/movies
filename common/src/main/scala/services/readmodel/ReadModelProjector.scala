@@ -205,11 +205,10 @@ class ReadModelProjector(
           // Only the changed venues' rows: every other row of the card is carried as written — the
           // whole-film projection would plan it unbuilt from the same inputs (and a row whose stored
           // content drifted is the content check's, as it is under any venue apply).
-          val written  = lastScreenings.of(card)
           var upserted = 0
           val updated  = changed.map { venue =>
             val input = venue.inputHash
-            val prior = written(venue._id) // present: `planVenues` declines a venue appearing
+            val prior = lastScreenings.get(card, venue._id).get // present: `planVenues` declines a venue appearing
             if (prior.input.contains(input)) venue._id -> prior
             else {
               val screening = venue.screening
@@ -219,8 +218,8 @@ class ReadModelProjector(
             }
           }
           if (upserted > 0) metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
-          metrics.recordVenueProjection(rebuilt = changed.size, reused = written.size - changed.size)
-          lastScreenings.update(card, written ++ updated)
+          metrics.recordVenueProjection(rebuilt = changed.size, reused = lastScreenings.size(card) - changed.size)
+          lastScreenings.updateRows(card, updated)
         }
         if (held.nonEmpty) releaseExpired()
         services.movies.VenueVerdict.Applied
@@ -235,7 +234,6 @@ class ReadModelProjector(
       val RowGroups(anchor, cardByGroup, multiSlot) = lastGroups.getOrElse(rowId, scala.util.boundary.break(Left(Why.ProjectorRowUnprojected)))
       def refuse(reason: String) = scala.util.boundary.break(Left(reason))
       val cards   = cardByGroup.values.toSeq.distinct
-      val written = cards.map(card => card -> lastScreenings.of(card)).toMap
       val planned = scala.collection.mutable.ArrayBuffer.empty[(String, ReadModelProjection.VenueScreening)]
       venues.atCinemas.foreach { case (cinema, slots) =>
         val byCard = slots.map { case (_, slot) =>
@@ -243,8 +241,8 @@ class ReadModelProjector(
         }.groupMap(_._1)(_._2)
         if (byCard.exists(_._2.sizeIs > 1)) refuse(Why.ProjectorTwoSlots)
         cards.foreach { card =>
-          val before = models.City.forCinema(cinema).map(city => s"$card|${city.slug}|${cinema.displayName}")
-            .filter(written(card).contains)
+          val before = models.City.forCinema(cinema).map(ReadModelProjection.screeningId(card, _, cinema))
+            .filter(lastScreenings.contains(card, _))
           val after  = byCard.get(card).flatMap(slots => ReadModelProjection.venueOf(cinema, slots.head, card))
           (before, after) match {
             case (None, None)                                  => ()
@@ -513,10 +511,9 @@ class ReadModelProjector(
    *  built into one. A memo that cannot vouch — seeded from the read model at boot, or
    *  dropped by a heal — has no input hash, so every such venue is rebuilt. */
   private def planScreenings(filmId: String, venues: Seq[ReadModelProjection.VenueScreening]): Seq[PlannedScreening] = {
-    val previous = lastScreenings.of(filmId)
     val planned  = venues.map { venue =>
       val input = venue.inputHash
-      val built = if (previous.get(venue._id).exists(_.input.contains(input))) None else Some(venue.screening)
+      val built = if (lastScreenings.get(filmId, venue._id).exists(_.input.contains(input))) None else Some(venue.screening)
       PlannedScreening(venue._id, input, built)
     }
     val rebuilt = planned.count(_.built.isDefined)
@@ -626,6 +623,11 @@ class ReadModelProjector(
     // The ids of the ready rows this scan saw — what the content check walks its slice of.
     val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[services.movies.FilmId]
     var reprojected = 0
+    // A row whose re-projection THREW (a read-model write timed out client-side, often after the
+    // server applied it) leaves that card part-written — its document without its screenings — on
+    // a scan that was itself complete. `reconcile` reports it, so a caller asserting on the read
+    // model reconciles again rather than reading a served film with nothing under it.
+    var projectionFailed = false
     // The cards as they are BEFORE this sweep. A ready row ANY of whose ids has no card
     // is healed here, in the same pass, before anything is pruned: on 2026-09-07 the
     // card id scheme changed under a live read model, the prune removed 509 Polish
@@ -680,6 +682,7 @@ class ReadModelProjector(
         }
         if (reproject)
           continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition, ProjectTrigger.Reproject))
+            .getOrElse { projectionFailed = true }
         else if (cardsRead) {
           val metadataHash = ReadModelProjection.metadataHash(row)
           val absentCards  = ids.filterNot(cardsBefore)
@@ -710,7 +713,12 @@ class ReadModelProjector(
       // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
       // Each delete guarded: a read-model write THROWS on failure, and one refused delete must
       // not skip every other orphan, the content slice, the catch-up and the sweep's metrics.
-      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id =>
+      // The cards as they were BEFORE the scan, when that read was complete: a card written since
+      // (another process, during a rolling deploy) belongs to a row the scan may not have seen, and
+      // diffing a fresh read against `liveIds` pruned it as an orphan. Those cards are the next
+      // sweep's to judge; this one's heals are in `liveIds` either way.
+      val cardsToJudge = if (!reproject && cardsRead) cardsBeforeSeq else reader.findAllMovieIds()
+      cardsToJudge.iterator.filterNot(liveIds).foreach { id =>
         val rowOfCard = id.takeWhile(_ != '~')
         continuing(s"read-model $kind: pruning card $id failed") {
           deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
@@ -806,7 +814,7 @@ class ReadModelProjector(
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
-    (healed.toSeq, scanComplete)
+    (healed.toSeq, scanComplete && !projectionFailed)
   }
 
   /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
@@ -841,9 +849,10 @@ class ReadModelProjector(
    *  (it stitches split films via `foreachRecord`, which a per-row `onMovieUpsert` seed
    *  would not). Mirrors `scripts.BackfillReadModel`.
    *
-   *  Returns whether the source scan was COMPLETE. An incomplete one (a page whose read failed)
-   *  projected only the rows it could read whole, so a caller seeding a read model it then
-   *  asserts on owes another reconcile once reads recover. */
+   *  Returns whether the source scan was COMPLETE and every row it read projected. An incomplete
+   *  one (a page whose read failed) projected only the rows it could read whole, and a row whose
+   *  projection threw may stand half-written, so a caller seeding a read model it then asserts on
+   *  owes another reconcile once Mongo recovers. */
   def reconcile(): Boolean = sweep(reproject = true)._2
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
@@ -921,7 +930,17 @@ class ReadModelProjector(
           "asking again next sweep.")
       case scala.util.Success((recorded, progress)) =>
         ReadModelDerivation.owedSince(recorded, derivationHistory) match {
-          case None => derivationPass = DerivationPass.Current
+          case None =>
+            derivationPass = DerivationPass.Current
+            // Progress towards some other version is void once this store is current under this
+            // code: a pass for version B stopped at slice k, then a rollback to A (current), and
+            // A's change-stream projections rewrite cards in slices before k under A. Resumed at k
+            // on the roll forward, B's pass would never reach them — so the progress starts over.
+            val reset = DerivationProgress(derivationHistory.last.version, 0)
+            if (progress.exists(_ != reset))
+              continuing("read-model derivation pass: resetting a stale pass's progress failed; a later pass may resume past rows it owes") {
+                derivationMarker.recordProgress(reset)
+              }
           case Some(scope) =>
             val current = derivationHistory.last.version
             val from    = progress.collect { case DerivationProgress(`current`, next) => next }.getOrElse(0)
@@ -1122,12 +1141,11 @@ class ReadModelProjector(
     if (seeded && partition.stored.record.readyToProject && !lastGroups.contains(rowId)) {
       val cards = partition.filmIds.zip(partition.venuesAll)
       cards.foreach { case (card, venues) =>
-        val written = lastScreenings.of(card)
         val vouched = venues.flatMap { venue =>
-          written.get(venue._id).filter(row => row.input.isEmpty && row.output == venue.screening.##)
+          lastScreenings.get(card, venue._id).filter(row => row.input.isEmpty && row.output == venue.screening.##)
             .map(row => venue._id -> row.copy(input = Some(venue.inputHash)))
         }
-        if (vouched.nonEmpty) lastScreenings.update(card, written ++ vouched)
+        lastScreenings.updateRows(card, vouched)
       }
       lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
         cards.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))

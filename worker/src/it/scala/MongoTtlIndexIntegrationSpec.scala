@@ -155,6 +155,23 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     mismatches.names should not contain collection.namespace.getCollectionName
   }
 
+  // The read accepts any single-field index on the field, so the drop must name the index it read:
+  // dropped by an ascending key spec, a descending one (or any whose key spec differs) is "not
+  // found", and the index stays wrong while the gauge reports it.
+  it should "rebuild a disagreeing index whose key spec is not the ascending one, by its name" in {
+    val collection = sentinel("descending")
+    val local      = new TtlIndexMismatches
+    Await.result(collection.createIndex(
+      Indexes.descending("at"),
+      new com.mongodb.client.model.IndexOptions().name("at_ttl_custom").expireAfter(100L, TimeUnit.SECONDS)
+    ).toFuture(), 10.seconds)
+
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", local)
+
+    expiryOf(collection, "at") shouldBe Some(86400L)
+    local.names shouldBe empty
+  }
+
   it should "report a mismatch when the index cannot be reconciled at all" in {
     // A collection that does not exist and cannot be created is the only way to reach
     // the un-reconcilable branch without a restricted user: an invalid collection name

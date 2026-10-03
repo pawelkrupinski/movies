@@ -357,6 +357,35 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.allScreenings().map(_._id) shouldBe Seq("s1")
   }
 
+  // A drift reload runs with the change streams live, and its scan takes tens of seconds on the US
+  // corpus. What the streams apply meanwhile is newer than the scan's read: a row inserted must not
+  // be evicted for missing from the scan, a row deleted must not come back from it, and the film a
+  // new row screens must still name that row's city, or its next metadata change leaves that
+  // city's validator — and its cached page — where it was.
+  it should "keep what the change streams apply while its scan runs" in {
+    @volatile var during: () => Unit = () => ()
+    val repository = new InMemoryReadModelRepository {
+      override def foreachScreening(f: CityScreening => Unit): Boolean = {
+        val read = super.findAllScreenings()
+        val now = during; during = () => (); now()
+        read.foreach(f); true
+      }
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s2", "belle|2021", "wroclaw"))
+    val rm = started(repository)
+    during = () => { repository.upsertScreening(screening("new", "belle|2021", "krakow")); repository.deleteScreening("s2") }
+
+    rm.reload()
+
+    rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "new")
+    val krakowBefore = rm.lastModifiedFor("krakow")
+    repository.upsertMovie(movie("belle|2021").copy(runtimeMinutes = Some(100)))
+    rm.lastModifiedFor("krakow") should be > krakowBefore
+    rm.stop()
+  }
+
   // An incomplete keyset scan hands back only the pages it reached. Evicting against that
   // would drop every row past the failure from a model that was serving them correctly.
   it should "keep the rows it holds when the screenings read comes back incomplete" in {
@@ -471,6 +500,42 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.lastModifiedFor("london") shouldBe londonBefore
     // The model-wide stamp still moves -- the sitemap and the filmSlugs memo want it.
     rm.lastModified should be > londonBefore
+    rm.stop()
+  }
+
+  // A city's FIRST stamp after a reload used to be the bare clock reading, never compared with
+  // the floor the reload had just advanced — so a reading not past that floor (a clock that
+  // stepped back, or one too coarse to have moved) left the city's validator where it was:
+  // a cached page and every client's 304 kept naming bytes the city no longer renders.
+  it should "move a city's validator on its first change after a reload, whatever the clock reads" in {
+    val clock      = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T10:00:00Z"), java.time.ZoneOffset.UTC)
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = clock)
+    rm.start()
+    val before = rm.lastModifiedFor("warszawa")
+
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+
+    rm.lastModifiedFor("warszawa") should be > before
+    rm.stop()
+  }
+
+  // A reload re-derives every city and drops their stamps for the floor — which it advanced
+  // only past ITSELF. A city stamped after the floor then fell back below where it stood, and a
+  // validator that moves backwards is a cached copy that looks newer than the reload's data.
+  it should "never move a city's validator backwards across a reload" in {
+    val clock      = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T10:00:00Z"), java.time.ZoneOffset.UTC)
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = clock)
+    rm.start()
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+    val before = rm.lastModifiedFor("warszawa")
+
+    rm.reload()
+
+    rm.lastModifiedFor("warszawa") should be > before
     rm.stop()
   }
 
@@ -829,5 +894,22 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
 
     rm.lastModifiedFor("london") should be > londonBefore
     rm.stop()
+  }
+
+  "screeningsOfFilms" should "answer exactly the city's rows of those films, former-slug fill included" in {
+    val repository = new InMemoryReadModelRepository
+    Seq("dune|2021", "alien|1979").foreach(id => repository.upsertMovie(movie(id)))
+    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("fill", "dune|2021", "san-francisco", "Castro", None, Nil))
+    repository.upsertScreening(CityScreening("other", "alien|1979", "san-francisco-bay-area", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("other-old", "alien|1979", "san-francisco", "Castro", None, Nil))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    for (films <- Seq(Set("dune|2021"), Set("alien|1979"), Set("dune|2021", "alien|1979"), Set("nope")))
+      rm.screeningsOfFilms("san-francisco-bay-area", films).map(_._id) should contain theSameElementsAs
+        rm.screeningsForCity("san-francisco-bay-area").filter(s => films(s.filmId)).map(_._id)
+    rm.screeningsOfFilms("san-francisco-bay-area", Set("dune|2021")).map(_._id) should contain theSameElementsAs Seq("new", "fill")
   }
 }

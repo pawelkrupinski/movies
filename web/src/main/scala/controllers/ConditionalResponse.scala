@@ -52,13 +52,18 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
   private def acceptsGzip(request: RequestHeader): Boolean =
     AcceptEncoding.acceptsGzip(request.headers.get("Accept-Encoding"))
 
-  private def ifModifiedSinceCurrent(request: RequestHeader, lastMod: Instant): Boolean =
-    request.headers.get("If-Modified-Since").exists { ims =>
-      scala.util.Try(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
-        .map(Instant.from)
-        .toOption
-        .exists(!lastMod.isAfter(_))
-    }
+  /** Is the client's `If-Modified-Since` still current for `version` — at the second an
+   *  HTTP-date carries, so it cannot tell two versions inside one second apart. Hence it is
+   *  not consulted at all when the request carries `If-None-Match` (RFC 9110 §13.1.3): the
+   *  ETag carries the full version and decides alone. */
+  private def ifModifiedSinceCurrent(request: RequestHeader, version: Instant): Boolean =
+    request.headers.get("If-None-Match").isEmpty &&
+      request.headers.get("If-Modified-Since").exists { ims =>
+        scala.util.Try(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
+          .map(Instant.from)
+          .toOption
+          .exists(!version.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).isAfter(_))
+      }
 
   /** The conditional response for `request`: a 304 when the client already holds
    *  the current version, otherwise `body` — gzipped from the cache when
@@ -95,8 +100,12 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // the day's start retires every held copy at the boundary the payload
     // itself names, and stays monotonic because both inputs only ever advance.
     val instant  = now()
+    // FULL PRECISION, not truncated to the HTTP-date's second: a film's projection lands as a
+    // burst well inside one second, and a page rendered mid-burst would otherwise share its
+    // version with the finished one — kept by the cache and 304'd to every client holding it
+    // until the city next changed in another second. Only `Last-Modified` is second-grained,
+    // which is why `If-None-Match`, when sent, decides alone (`ifModifiedSinceCurrent`).
     val lastMod  = ConditionalResponse.dayFlooredValidator(modelStamp(city), city.map(_.zoneId), instant)
-      .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     // `no-transform` IS WHAT LETS THE ETAG BELOW REACH ANYONE. Cloudflare deletes
     // the ETag from every `text/html` response these two zones serve -- measured
     // 2026-09-06 on an UNCACHED (`cf-cache-status: BYPASS`) page, so it is not a
@@ -187,7 +196,9 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // THAT copy. Stamping the new version on the old body would let a client
     // revalidate the old bytes into a 304 for the new ones and keep them.
     def etagAt(version: Instant): String =
-      "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + version.getEpochSecond.toHexString + "\""
+      "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + version.getEpochSecond.toHexString +
+        (if (version.getNano == 0) "" else "." + version.getNano.toHexString) + "\""
+    // `Last-Modified` is second-grained by its format; the ETag carries the full version.
     def validatorsAt(version: Instant): Seq[(String, String)] = {
       val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
         .format(version.atOffset(java.time.ZoneOffset.UTC))
