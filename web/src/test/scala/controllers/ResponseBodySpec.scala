@@ -64,6 +64,21 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
     recorded should have size 2
   }
 
+  // A cached film card goes out as the string it is kept as. Its bytes must be the
+  // ones `Html.body` renders, and writing it must not copy it whole first — 15 MB a
+  // New York render when `writer.write(String)` did exactly that, card by card.
+  it should "write a prewritten fragment's bytes exactly, without copying it whole" in {
+    val card = "<div class=\"col\">Łódź ↗ " + ("<a data-s=\"x\">18:00</a>" * 40000) + "</div>"
+    val page = new Html(Seq(Html("<main>"), new Html(List(new PrewrittenHtml(card))), Html("</main>")))
+    val expected = ByteString(page.body, StandardCharsets.UTF_8)
+    ResponseBody.html(page).plain shouldBe expected
+    gunzip(ResponseBody.html(page).gzipped) shouldBe expected
+    for (_ <- 1 to 3) ResponseBody.html(page).gzipped                       // warm
+    val allocated = allocatedBy(ResponseBody.html(page).gzipped)
+    withClue(s"card ${card.length / 1024} K chars, writing it allocated ${allocated / 1024} KB: ")(
+      allocated should be < card.length.toLong)
+  }
+
   it should "say the same of a text body" in {
     val json = """{"title":"Łódź ↗"}"""
     ResponseBody.text(json).plain.utf8String shouldBe json

@@ -46,8 +46,8 @@ object FilmCardFragments {
       case cache =>
         val text = cache.fragment(Key(city.slug, messages.lang.code, film))(card.body)
         // Wrapped in a plain `Html`: see `StreamedHtml` on why a template must never
-        // be handed a subclass.
-        new Html(List(new StreamedHtml((out, flush) => { out.append(text); flush() })))
+        // be handed a subclass. Written straight from the kept string (`PrewrittenHtml`).
+        new Html(List(new PrewrittenHtml(text)))
     }
 }
 

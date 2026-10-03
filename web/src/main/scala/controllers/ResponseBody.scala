@@ -105,10 +105,23 @@ object ResponseBody {
       scratch.clear()
     }
     val flushIfFull: () => Unit = () => if (scratch.length >= FlushAt) flush()
+    def writeChunked(text: String): Unit = {
+      var from = 0
+      while (from < text.length) {
+        val n = math.min(chars.length, text.length - from)
+        text.getChars(from, from + n, chars, 0)
+        writer.write(chars, 0, n)
+        from += n
+      }
+    }
     // ONE function value for the whole walk: `children.foreach(walk)` eta-expands a
     // fresh one at every node, ~1 MB a page across a listing's fragments.
     lazy val walk: Html => Unit = {
       case streamed: StreamedHtml => streamed.renderInto(scratch.underlying, flushIfFull)
+      // Encoded straight from the string it already is, a buffer's worth at a time — not
+      // copied through `scratch`, and not handed to `writer.write(String)`, which copies
+      // the whole string into a fresh array first.
+      case written: PrewrittenHtml => flush(); writeChunked(written.whole)
       case node =>
         val children = TwirlTree.children(node)
         if (children.nonEmpty) children.foreach(walk)
@@ -139,4 +152,13 @@ object ResponseBody {
 final class StreamedHtml(val renderInto: (java.lang.StringBuilder, () => Unit) => Unit) extends Html(Nil) {
   override protected def buildString(builder: scala.collection.mutable.StringBuilder): Unit =
     renderInto(builder.underlying, () => ())
+}
+
+/** A fragment that already exists as one string — a cached film card — which
+ *  [[ResponseBody.html]] encodes straight from that string instead of copying it
+ *  through its buffer (~1 MB of copying a New York render, a card at a time). Rendered
+ *  any other way it appends itself, so the bytes are identical either way. Wrap it in a
+ *  plain `Html` before a template sees it, for [[StreamedHtml]]'s reason. */
+final class PrewrittenHtml(val whole: String) extends Html(Nil) {
+  override protected def buildString(builder: scala.collection.mutable.StringBuilder): Unit = builder.append(whole)
 }
