@@ -1710,10 +1710,10 @@ abstract class CountryConvergenceBehaviour(
           }
           else services.cinemas.common.PreScrapedCinemaScraper.replaying(c, if (blank.contains(c)) Nil else reported.getOrElse(c, Nil))
         }
-        // A venue that goes down is meant to: its failure is the case under test, not a gap. A cut-over
-        // intake lands venues side by side; the pipeline's landing folds into shared rows, in order.
-        if (w.identityCutover) step("  landing")(w.landCutover(scrapers)(_ => ()))
-        else scrapers.foreach(scraper => Try(w.cinemaScrapeRunner.run(scraper)))
+        // A venue that goes down is meant to: its failure is the case under test, not a gap. Both paths
+        // land venues side by side, as production's scrape pool does: a cut-over intake into each venue's
+        // own state, the pipeline into shared rows under the cache's per-title lock.
+        step("  landing")((if (w.identityCutover) w.landCutover(scrapers) else w.landPipeline(scrapers))(_ => ()))
         // A cut-over country decides the day's films by projecting what its intake now holds;
         // the pipeline drains staging around its settle.
         if (w.identityCutover) settleOnce(w)

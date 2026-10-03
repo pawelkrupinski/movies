@@ -293,7 +293,20 @@ trait TestWiring extends WorkerWiring {
    *  whole set, so the order they land in decides nothing — serially, a US walk was 4,462 venues of
    *  round-trips one after another, ~47 s of every tick. Submitted in `scrapers`' order. */
   def landCutover(scrapers: Seq[services.cinemas.common.CinemaScraper])(failed: String => Unit): Unit =
-    BoundedParallel.foreach(s"cutover-landing-${country.code}", scrapers, TestWiring.CutoverLandingThreads) { scraper =>
+    land("cutover", scrapers, TestWiring.CutoverLandingThreads)(failed)
+
+  /** Land each of `scrapers`' listings through the production runner on the PIPELINE — into the shared
+   *  film rows — [[drainClaimants]] venues at a time, as production's `TaskWorker` pool works the scrape
+   *  tasks: side by side, each row's writes under the cache's per-title lock. Every landing waits on a
+   *  few Mongo round-trips per film it writes, so one after another a US walk was ~66-75 s of round
+   *  trips (run 37111868620). A failed venue goes to `failed`, as [[landCutover]]'s do. The boot's and
+   *  the fixpoint's ticks keep [[runOneScrapeTick]]'s serial walk: what they collect and announce, in
+   *  order, after the whole tick has landed is a different shape from the runner's announce-as-it-lands. */
+  def landPipeline(scrapers: Seq[services.cinemas.common.CinemaScraper])(failed: String => Unit): Unit =
+    land("pipeline", scrapers, drainClaimants)(failed)
+
+  private def land(path: String, scrapers: Seq[services.cinemas.common.CinemaScraper], threads: Int)(failed: String => Unit): Unit =
+    BoundedParallel.foreach(s"$path-landing-${country.code}", scrapers, threads) { scraper =>
       try { cinemaScrapeRunner.run(scraper); () }
       catch { case e: Exception => failed(s"${scraper.cinema.displayName}: $e") }
     }
