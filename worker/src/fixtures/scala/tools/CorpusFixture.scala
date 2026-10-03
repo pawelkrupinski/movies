@@ -70,13 +70,18 @@ object CorpusFixture {
   def parse(json: String): Seq[ArchivedScrape] =
     Json.parse(json).as[Seq[StoredScrapeDto]].flatMap(StoredScrapeDto.toDomain)
 
-  def write(countryCode: String, rows: Seq[ArchivedScrape]): Path = {
+  /** A written fixture, and how much JSON it compressed — the number worth logging is how much
+   *  did NOT have to cross the tunnel. Measured here, from the one render, because the capture
+   *  log used to render the whole corpus a SECOND time just to count it (296 MB for the US). */
+  final case class Written(path: Path, jsonBytes: Long)
+
+  def write(countryCode: String, rows: Seq[ArchivedScrape]): Written = {
     val path = pathFor(countryCode)
     Files.createDirectories(path.getParent)
-    val json = render(rows)
+    val json = render(rows).getBytes(java.nio.charset.StandardCharsets.UTF_8)
     val out  = new GZIPOutputStream(new FileOutputStream(path.toFile))
-    try out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8)) finally out.close()
-    path
+    try out.write(json) finally out.close()
+    Written(path, json.length.toLong)
   }
 
   def read(countryCode: String): Seq[ArchivedScrape] = readFrom(pathFor(countryCode))
@@ -105,9 +110,4 @@ object CorpusFixture {
     }
     rows.size
   }
-
-  /** Uncompressed size of the rendered JSON, for the capture log line — the number
-   *  worth knowing is how much did NOT have to cross the tunnel. */
-  def renderedBytes(rows: Seq[ArchivedScrape]): Int =
-    render(rows).getBytes(java.nio.charset.StandardCharsets.UTF_8).length
 }

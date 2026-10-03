@@ -51,8 +51,7 @@ object RecordCorpusFixture {
         sys.exit(1)
       }
 
-      val path = CorpusFixture.write(country.code, rows)
-      val raw  = CorpusFixture.renderedBytes(rows)
+      val CorpusFixture.Written(path, raw) = CorpusFixture.write(country.code, rows)
       val gz   = java.nio.file.Files.size(path)
       println(s"[corpus] ${country.displayName}: ${rows.size} venues, ${rows.map(_.films.size).sum} listings")
       println(f"[corpus] wrote $path%s — ${raw / 1048576.0}%.1f MB JSON, ${gz / 1048576.0}%.2f MB gzipped")
@@ -83,7 +82,7 @@ object RecordCorpusFixture {
       val sample = CorpusSample.draw(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
       val keys   = CorpusSample.filmKeys(sample, titles).toSet
       val sampleKey  = s"${country.code}-sample"
-      val samplePath = CorpusFixture.write(sampleKey, sample)
+      val samplePath = CorpusFixture.write(sampleKey, sample).path
       // Slot keys of the SAMPLE, not of the whole corpus: a wide release is replayed from
       // only the venues the draw kept, so the baseline counts prod's rows for those.
       val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotKeys = Some(CorpusSample.slotKeysOf(sample, keys, titles))))

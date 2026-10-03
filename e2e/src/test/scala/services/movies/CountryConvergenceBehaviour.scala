@@ -795,9 +795,9 @@ abstract class CountryConvergenceBehaviour(
 
     // Only a COMPLETE read is worth capturing — the guard above already refused an
     // empty one, and a short read would bake a truncated corpus into the repo.
-    val path = CorpusFixture.write(corpusKey, rows)
+    val CorpusFixture.Written(path, jsonBytes) = CorpusFixture.write(corpusKey, rows)
     info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas — " +
-         s"captured ${CorpusFixture.renderedBytes(rows) / 1048576} MB of JSON to $path " +
+         s"captured ${jsonBytes / 1048576} MB of JSON to $path " +
          s"(${java.nio.file.Files.size(path) / 1048576} MB gzipped); future runs replay it without a tunnel")
     rows
   }

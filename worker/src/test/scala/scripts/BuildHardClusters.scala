@@ -40,7 +40,7 @@ object BuildHardClusters {
     val share   = budget / present.size.max(1)
     present.foreach { case (country, path) =>
       val (rows, picked) = HardClusters.select(country, CorpusFixture.readFrom(path), seeds, share)
-      val out = CorpusFixture.write(HardClusters.corpusKey(country), rows)
+      val out = CorpusFixture.write(HardClusters.corpusKey(country), rows).path
       HardClusters.appendSeeds(picked)
       println(s"[hard-clusters] ${country.code}: ${rows.size} venues, ${rows.map(_.films.size).sum} listings " +
               s"(${picked.size} automatic clusters) -> $out")
@@ -62,7 +62,7 @@ object BuildHardClusters {
           val existing = if (CorpusFixture.exists(key)) CorpusFixture.read(key) else Nil
           val before   = existing.map(_.films.size).sum
           val grown    = HardClusters.extend(country, existing, CorpusFixture.readFrom(path), seeds)
-          CorpusFixture.write(key, grown)
+          val _ = CorpusFixture.write(key, grown)
           HardClusters.appendSeeds(seeds)
           println(s"[hard-clusters] $code: +${grown.map(_.films.size).sum - before} listings for " +
                   s"${seeds.map(_.title).mkString(", ")}")
