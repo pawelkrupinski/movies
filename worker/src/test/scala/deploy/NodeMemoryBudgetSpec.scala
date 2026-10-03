@@ -66,13 +66,11 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  Deliberately NOT tolerant of a missing value, for the same reason the CPU
    *  spec is not: a country silently inheriting the base's request would be
    *  invisible to the sum below, which is the one thing this must never be. */
-  private def requestedMib(tier: String, cc: String): Int = {
-    val path  = s"infra/kubernetes/$tier/overlays/$cc/patch.yaml"
-    val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
-    val underRequests = lines.dropWhile(_ != "requests:").drop(1)
-    val memory = underRequests.takeWhile(_ != "limits:").collectFirst {
-      case l if l.startsWith("memory:") => l.stripPrefix("memory:").trim.replace("\"", "").replace("'", "")
-    }
+  private def requestedMib(tier: String, cc: String): Int =
+    requestedMibAt(s"infra/kubernetes/$tier/overlays/$cc/patch.yaml")
+
+  private def requestedMibAt(path: String): Int = {
+    val memory = ManifestRequests.declared(path, "memory")
     withClue(s"$path declares no memory request under `requests:`: ")(memory should not be empty)
     parseMib(memory.get)
   }
@@ -96,12 +94,13 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   "the node's memory request budget" should "leave room for the extra pod a rolling update surges" in {
-    val total   = requests.map(_._2).sum
+    val others  = ManifestRequests.OtherWorkloads.map(requestedMibAt).sum
+    val total   = requests.map(_._2).sum + others
     val surge   = requests.filter(_._1._1 == "web").map(_._2).max   // maxSurge: 1 on the web tier
     val ceiling = NodeAllocatableMib - SystemReserveMib
 
     withClue(
-      s"kinowo requests ${total}Mi + a ${surge}Mi surge pod = ${total + surge}Mi against a ${ceiling}Mi " +
+      s"kinowo + other workloads (${others}Mi) request ${total}Mi + a ${surge}Mi surge pod = ${total + surge}Mi against a ${ceiling}Mi " +
       s"ceiling (${NodeAllocatableMib}Mi allocatable - ${SystemReserveMib}Mi for system pods). " +
       "Over it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
       "Giving a country a bigger heap means taking the memory from another pod or adding a node: ") {

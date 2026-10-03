@@ -72,13 +72,11 @@ class NodeCpuBudgetSpec extends AnyFlatSpec with Matchers {
    *  has. Deliberately NOT tolerant of a missing value: a country that inherits
    *  the base's request silently would be invisible to the sum below, which is
    *  the one thing this spec must never be. */
-  private def requestedMillis(tier: String, cc: String): Int = {
-    val path  = s"infra/kubernetes/$tier/overlays/$cc/patch.yaml"
-    val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
-    val underRequests = lines.dropWhile(_ != "requests:").drop(1)
-    val cpu = underRequests.takeWhile(_ != "limits:").collectFirst {
-      case l if l.startsWith("cpu:") => l.stripPrefix("cpu:").trim.replace("\"", "").replace("'", "")
-    }
+  private def requestedMillis(tier: String, cc: String): Int =
+    requestedMillisAt(s"infra/kubernetes/$tier/overlays/$cc/patch.yaml")
+
+  private def requestedMillisAt(path: String): Int = {
+    val cpu = ManifestRequests.declared(path, "cpu")
     withClue(s"$path declares no cpu request under `requests:`: ")(cpu should not be empty)
     parseMillis(cpu.get)
   }
@@ -99,12 +97,13 @@ class NodeCpuBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   "the node's CPU request budget" should "leave room for the extra pod a rolling update surges" in {
-    val total   = requests.map(_._2).sum
+    val others  = ManifestRequests.OtherWorkloads.map(requestedMillisAt).sum
+    val total   = requests.map(_._2).sum + others
     val surge   = requests.filter(_._1._1 == "web").map(_._2).max   // maxSurge: 1 on the web tier
     val ceiling = NodeAllocatableMillis - SystemReserveMillis
 
     withClue(
-      s"kinowo requests ${total}m + a ${surge}m surge pod = ${total + surge}m against a ${ceiling}m " +
+      s"kinowo + other workloads (${others}m) request ${total}m + a ${surge}m surge pod = ${total + surge}m against a ${ceiling}m " +
       s"ceiling (${NodeAllocatableMillis}m allocatable - ${SystemReserveMillis}m for system pods). " +
       "Over it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
       "Either right-size the requests against measured peaks or add a node: ") {

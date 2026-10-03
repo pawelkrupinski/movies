@@ -121,7 +121,7 @@ in
     };
     # ⚠️ ONLY THE PROXIED NAMES. A Cloudflare Origin certificate is trusted by Cloudflare and by
     # nothing else, so putting one on a name a browser reaches directly hands every visitor a
-    # certificate they reject. All four vhosts here are behind Cloudflare; `grafana` and `headlamp`
+    # certificate they reject. All the vhosts here are behind Cloudflare; `grafana` and `headlamp`
     # are dns-only and live on monitoring-1, so they are not reachable from this list at all.
     kinowoOrigin = {
       certFile = ../../files/origin-certs/kinowo.net.crt;
@@ -184,6 +184,12 @@ in
         originCertificate = showtimesOrigin;
       };
       "www.showtimes.cc" = { redirectTo = "showtimes.cc"; originCertificate = showtimesOrigin; inherit shareCardsDir; };
+
+      # FILMOWO IS A SEPARATE PRODUCT (github.com/pawelkrupinski/recommend) sharing this node, moved
+      # off Fly.io. A plain proxy to its NodePort (movies-gitops filmowo/all.yaml); the
+      # *.kinowo.net origin certificate already covers the name. No share cards, no crawler
+      # throttle: neither is filmowo's.
+      "filmowo.kinowo.net" = { upstream = "127.0.0.1:30920"; originCertificate = kinowoOrigin; };
     };
   };
 

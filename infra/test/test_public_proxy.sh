@@ -98,10 +98,11 @@ vhost="$(printf '%s\n' "$vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
 # THE SHARE CARDS ARE SERVED OFF A HOST DIRECTORY, so the rendered path is swapped for a scratch one
 # holding fixtures. Read off the config rather than spelled here, so a moved directory is followed.
 # And EVERY vhost on the product host must serve them, the redirecting www. names included, because
-# og:image carries whichever host the page was reached on.
+# og:image carries whichever host the page was reached on. filmowo.kinowo.net is NOT a kinowo product
+# vhost -- a separate app sharing the node -- so it is left out.
 echo "==> every product vhost serves the share cards"
 share_dirs="$(nix "${nix_flags[@]}" eval --json "$infra/nix#nixosConfigurations.k3s-worker-1.config.fleet.publicProxy.vhosts" \
-  --apply 'vs: builtins.mapAttrs (_: v: v.shareCardsDir) vs' 2>"$work/eval.err")"
+  --apply 'vs: builtins.mapAttrs (_: v: v.shareCardsDir) (builtins.removeAttrs vs [ "filmowo.kinowo.net" ])' 2>"$work/eval.err")"
 share_dir="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(json.load(sys.stdin)["showtimes.cc"] or "")')"
 missing="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(sorted(k for k,v in d.items() if v != d["showtimes.cc"] or not v)))')"
 if [ -n "$share_dir" ] && [ -z "$missing" ]; then echo "  ok  all of $(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(", ".join(sorted(json.load(sys.stdin))))') serve $share_dir"
@@ -131,6 +132,20 @@ printf 'BASE'    > "$cards/pl/.base/f0123456789abcd.jpg"
 printf 'HIDDEN'  > "$cards/pl/.hidden.jpg"
 printf 'SHALLOW' > "$cards/shallow.jpg"
 printf 'SECRET'  > "$work/secret.jpg"
+
+# FILMOWO is a different product on the same node: its vhost must reach ITS NodePort and present the
+# *.kinowo.net origin certificate (Cloudflare Full-strict refuses anything else).
+echo "==> rendering filmowo.kinowo.net's vhost out of k3s-worker-1"
+filmowo_vhost="$(nix "${nix_flags[@]}" eval --raw \
+  "$infra/nix#nixosConfigurations.k3s-worker-1.config.services.caddy.virtualHosts.\"filmowo.kinowo.net\".extraConfig" 2>"$work/eval.err")"
+case "$filmowo_vhost" in
+  *"reverse_proxy 127.0.0.1:30920"*) echo "  ok     filmowo.kinowo.net proxies to filmowo's NodePort" ;;
+  *) echo "  FAILED filmowo.kinowo.net does not proxy to 127.0.0.1:30920:"; sed 's/^/    /' "$work/eval.err" | tail -5; failed=1 ;;
+esac
+case "$filmowo_vhost" in
+  *"tls "*"kinowo.net.crt"*) echo "  ok     filmowo.kinowo.net presents the kinowo.net origin certificate" ;;
+  *) echo "  FAILED expected the kinowo.net originCertificate tls line in filmowo.kinowo.net's vhost"; failed=1 ;;
+esac
 
 echo "==> rendering logs.kinowo.net's vhost out of monitoring-1"
 logs_port=8898
