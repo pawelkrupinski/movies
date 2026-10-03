@@ -42,7 +42,18 @@ object RecordCorpusFixture {
     val known    = CountryScrapeCorpus.cinemasOf(country).toSet
 
     try {
-      val rows = archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+      // Prod's coverage of the repertoire, read BESIDE the archive rather than after it: its
+      // aggregations are server-side counts on other collections, ~7 s of the US recording's
+      // critical path behind the corpus read (run 37111868620), and captured together they are
+      // only closer to the same instant — the reason they are captured here at all (below).
+      val database = client.getDatabase(databaseName)
+      val read     = tools.Stopwatch.start()
+      val (rows, baseline) = alongside(
+        archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
+        // …and what production's NEW model decided for it (its latest shadow run), which a cut-over
+        // leg must reproduce. Only the full corpus: the sample's films are resolved apart from the rest.
+        ProdCoverage.of(database).copy(shadow = ShadowCoverage.latest(database)))
+      println(f"[corpus] read ${rows.size} venues and prod's coverage in ${read.seconds}%.1fs")
       if (rows.isEmpty) {
         System.err.println(
           s"[corpus] ${country.displayName}: read came back empty across all ${known.size} catalogue cinemas. " +
@@ -51,24 +62,20 @@ object RecordCorpusFixture {
         sys.exit(1)
       }
 
+      val written = tools.Stopwatch.start()
       val CorpusFixture.Written(path, raw) = CorpusFixture.write(country.code, rows)
       val gz   = java.nio.file.Files.size(path)
       println(s"[corpus] ${country.displayName}: ${rows.size} venues, ${rows.map(_.films.size).sum} listings")
-      println(f"[corpus] wrote $path%s — ${raw / 1048576.0}%.1f MB JSON, ${gz / 1048576.0}%.2f MB gzipped")
+      println(f"[corpus] wrote $path%s — ${raw / 1048576.0}%.1f MB JSON, ${gz / 1048576.0}%.2f MB gzipped, in ${written.seconds}%.1fs")
 
-      // Capture what prod has ENRICHED for this same repertoire, from the connection
-      // that is already open. This is the only moment the two can be captured
-      // together, and together is the only way they compare: the corpus is what was
-      // screening at instant T, and the baseline is prod's coverage of exactly that
-      // set at exactly T. Recorded anywhere else it would drift against the corpus
-      // and the band it guards would become a flake.
-      val database     = client.getDatabase(databaseName)
-      // …and what production's NEW model decided for it (its latest shadow run), which a cut-over
-      // leg must reproduce. Only the full corpus: the sample's films are resolved apart from the rest.
-      val shadow       = ShadowCoverage.latest(database)
-      val baselinePath = ProdCoverageBaseline.write(country.code, ProdCoverage.of(database).copy(shadow = shadow))
+      // What prod has ENRICHED for this same repertoire, read above from the connection the
+      // corpus came through. This is the only moment the two can be captured together, and
+      // together is the only way they compare: the corpus is what was screening at instant T,
+      // and the baseline is prod's coverage of exactly that set at exactly T. Recorded anywhere
+      // else it would drift against the corpus and the band it guards would become a flake.
+      val baselinePath = ProdCoverageBaseline.write(country.code, baseline)
       println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire" +
-        shadow.fold(" (no shadow run)")(s => s", and its new model's ${s.films} films, ${s.tmdbId} on TMDB (shadow run ${s.runAt})"))
+        baseline.shadow.fold(" (no shadow run)")(s => s", and its new model's ${s.films} films, ${s.tmdbId} on TMDB (shadow run ${s.runAt})"))
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs
       // ahead of the full matrix. The draw happens HERE, once, and the files pin it:
@@ -91,5 +98,13 @@ object RecordCorpusFixture {
               s"${sample.map(_.films.map(_.showtimes.size).sum).sum} showtimes")
       println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")
     } finally client.close()
+  }
+
+  /** `first` on this thread with `second` running beside it; both results, once both are in.
+   *  A `first` that throws leaves `second` to finish unobserved. */
+  private[scripts] def alongside[A, B](first: => A)(second: => B): (A, B) = {
+    val pending = scala.concurrent.Future(second)(using scala.concurrent.ExecutionContext.global)
+    val result  = first
+    (result, scala.concurrent.Await.result(pending, scala.concurrent.duration.Duration(10, "minutes")))
   }
 }
