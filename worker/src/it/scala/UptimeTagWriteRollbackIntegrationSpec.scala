@@ -1,11 +1,12 @@
 package integration
 
 import org.mongodb.scala.model.{CreateCollectionOptions, Filters, ValidationOptions}
-import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
+import com.mongodb.{ConnectionString, MongoClientSettings}
+import org.mongodb.scala.{Document, MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.UptimeMonitor
+import services.{ServiceTags, UptimeMonitor}
 import tools.Eventually
 
 import scala.concurrent.Await
@@ -76,16 +77,47 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
     super.afterAll()
   }
 
+  /** How long the rejection may take to arrive. It is asynchronous and unbounded — the write
+   *  has no deadline of its own — and a loaded shared mongod (the 2026-10-03 itAll, where single
+   *  commands took 11-15 s) answered it well past the 2 s `eventually` gives by default. */
+  private val RejectionBudgetMs = 60000L
+
   "tagService" should "forget a tag whose write Mongo rejected, so the next call retries it" in {
     monitor.tagService(service, Set("custom:RejectedClient")) shouldBe true
+
+    // The rejection arrives asynchronously; once it does, the in-memory claim is gone.
+    Eventually.eventually(monitor.serviceTagsSnapshot().keySet should not contain service, timeoutMs = RejectionBudgetMs)
 
     // The write really was refused — nothing to reconcile against.
     Await.result(tagCollection.countDocuments(Filters.eq("service", service)).toFuture(), 30.seconds) shouldBe 0L
 
-    // The rejection arrives asynchronously; once it does, the in-memory claim is gone.
-    Eventually.eventually(monitor.serviceTagsSnapshot().keySet should not contain service)
-
     // Which is the point: the same tags are attempted again instead of being skipped.
     monitor.tagService(service, Set("custom:RejectedClient")) shouldBe true
+  }
+
+  it should "forget it however late the rejection arrives" in {
+    // A client with ONE connection, held by a query that sleeps on the server: the tag write
+    // queues behind it, so Mongo's refusal arrives seconds later — as a loaded server's did.
+    val slow = MongoClient(MongoClientSettings.builder().applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY)
+      .applyToConnectionPoolSettings(pool => { pool.maxSize(1); () }).build())
+    try {
+      val slowDb = slow.getDatabase(db.name)
+      // A document for the sleeping query to visit (the tag collection accepts none).
+      Await.result(db.getCollection[Document]("held").insertOne(Document("_id" -> 1)).toFuture(), 30.seconds)
+      val holding = slowDb.getCollection[Document]("held").find(Filters.where("sleep(5000) || true")).toFuture()
+      // Wait until it is running server-side, i.e. holds the client's one connection.
+      Eventually.eventually({
+        val active = Await.result(isolatedDb.client.getDatabase("admin").aggregate[Document](Seq(
+          Document("$currentOp" -> Document()), Document("$match" -> Document("ns" -> s"${db.name}.held")))).toFuture(), 10.seconds)
+        active should not be empty
+      }, timeoutMs = 5000)
+      val tags = new ServiceTags(Some(slowDb.getCollection[Document]("uptimeServiceTags")))
+      tags.tagService(service, Set("custom:RejectedClient")) shouldBe true
+
+      Eventually.eventually(tags.snapshot().keySet should not contain service, timeoutMs = RejectionBudgetMs)
+      tags.tagService(service, Set("custom:RejectedClient")) shouldBe true
+      Await.result(holding, 60.seconds)
+    } finally slow.close()
   }
 }
