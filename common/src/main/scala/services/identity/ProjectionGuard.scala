@@ -21,6 +21,8 @@ object ProjectionGuard {
   /** The shares §11 names: a card is a film, a showtime an upcoming screening. */
   val MaxVanishedShare: Double     = 0.02
   val MaxShowtimeLossShare: Double = 0.005
+  /** How many of the films a refusal names in its reason. */
+  val NamedFilms: Int = 20
   /** Consecutive refusals before a shrink is accepted — the scrape guards' own grace. */
   val Grace: Int = services.movies.ScrapeHealth.MaxConsecutiveDepthRejections
 
@@ -30,9 +32,15 @@ object ProjectionGuard {
       .collect { case (source, sd) if Source.cinemaOf(source).isDefined => ShowtimesDigest.upcomingShowtimeCount(sd, now).toLong }.sum
     val before = upcoming(stored.map(_.record))
     val after  = upcoming(draft.drafts.map(_.record))
-    val cards  = draft.vanished.size
+    // A card is a film with a showtime still to come: one whose screenings are all past is on no
+    // page, so its leaving takes nothing off the site (the old path held such films until its daily
+    // cleanup, so a first projection would otherwise count a day of finished films as lost).
+    val vanished = draft.vanished.toSet
+    val leaving  = stored.filter(s => vanished(s.id) && upcoming(Seq(s.record)) > 0)
+    val cards    = leaving.size
     if (stored.nonEmpty && cards > stored.size * MaxVanishedShare)
-      Some(s"$cards of ${stored.size} films would vanish (more than ${percent(MaxVanishedShare)})")
+      Some(s"$cards of ${stored.size} films would vanish (more than ${percent(MaxVanishedShare)}): " +
+        leaving.map(_.title).sorted.take(NamedFilms).mkString(", ") + (if (cards > NamedFilms) ", …" else ""))
     else if (before > 0 && after < before * (1 - MaxShowtimeLossShare))
       Some(s"upcoming showtimes would fall from $before to $after (more than ${percent(MaxShowtimeLossShare)})")
     else None

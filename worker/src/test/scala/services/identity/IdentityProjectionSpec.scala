@@ -140,6 +140,24 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.cache.snapshot().map(_.title) should not contain "Obcy"
   }
 
+  it should "be written at once when the films leaving have no showtime still to come, as they are on no card" in {
+    val w = new World
+    // "Obcy" screened yesterday (start − 40 h is before the clock) and is listed nowhere now.
+    w.scrape(programme.map { case (c, fs) => c -> fs.map(f => if (f.movie.title == "Obcy") film(c, "Obcy", Some(1979), -40) else f) })
+    w.projection.tick()
+    w.scrape(Map(Rialto -> Seq(film(Rialto, "Diuna", Some(2021), 9)), Multikino -> programme(Multikino).take(1)))
+    w.projection.tick().refused shouldBe None
+    w.repository.findAll().map(_.title) should not contain "Obcy"
+  }
+
+  it should "name the films it would take off the site" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick()
+    w.scrape(Map(Rialto -> Seq(film(Rialto, "Diuna", Some(2021), 9)), Multikino -> programme(Multikino).take(1)))
+    w.projection.tick().refused.get should include("Obcy")
+  }
+
   "Switching a country OVER" should "seed ids from the old path's films and keep every showtime" in {
     val w = new World
     w.landOldPath(programme)
