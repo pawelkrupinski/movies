@@ -17,7 +17,7 @@ import services.resolution.YearWindow
  * through the cache's own funnels — `put` (the tmdbId identity gate), `putIfPresent`
  * (the `$set`-diff for a resident row) and its one-slot form `putSlotIfPresent`, `rekey`
  * (a retitle) — under `withTitleLock`, the per-title lock the cache shares with its
- * settle paths. `residentCount` and `rehydrate` serve the cold-mirror guard;
+ * settle paths. `residentCount` and `rehydrateChecked` serve the cold-mirror guard;
  * `skippedUnreadable` is the cache's own counter of writes it declined, which the
  * landing increments for the same reason.
  */
@@ -36,7 +36,9 @@ private[movies] trait LandingStore {
   private[services] def putSlotIfPresent(key: CacheKey, source: Source, slot: SourceData): Boolean
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A
-  def rehydrate(): Int
+  /** Rehydrate from the corpus, and whether that read was complete — one read, so the
+   *  cold-mirror sync never reads the corpus twice to warm the mirror once. */
+  private[services] def rehydrateChecked(): (Int, Boolean)
   private[services] def skippedUnreadable: java.util.concurrent.atomic.AtomicLong
 }
 
@@ -148,7 +150,7 @@ private[movies] final class ScrapeLanding(
       val now = clock.instant()
       if (coldMirrorRetry.exists { case (at, _) => now.isBefore(at) }) false   // backing off: discarded unread
       else {
-        val (corpus, complete) = repository.findAllChecked()
+        val (_, complete) = store.rehydrateChecked()
         if (!complete) {
           val next = coldMirrorRetry.fold(ScrapeLanding.ColdMirrorRetryMin)(_._2 * 2).min(ScrapeLanding.ColdMirrorRetryMax)
           coldMirrorRetry = Some(now.plusMillis(next.toMillis) -> next)
@@ -158,7 +160,6 @@ private[movies] final class ScrapeLanding(
         } else {
           coldMirrorRetry = None
           coldMirrorSyncArmed.set(false)
-          if (corpus.nonEmpty) store.rehydrate()
           true
         }
       }
@@ -281,9 +282,9 @@ private[movies] final class ScrapeLanding(
     // 812→670→814 after a brief worker restart; ColdMirrorReDivertSpec). Sync the mirror
     // from the repository before deciding, restoring the prod invariant that the mirror
     // reflects `movies`. Cheap in steady state (the `estimatedSize` check short-circuits);
-    // the `findAll` runs only while the mirror is genuinely cold, and `rehydrate` only
-    // when the corpus actually has rows — a genuinely-empty corpus (a fresh deploy, where
-    // a brand-new film SHOULD incubate) skips it and diverts as before. ONE-SHOT, on the
+    // the rehydrate's one corpus read runs only while the mirror is genuinely cold, and
+    // puts nothing unless that read was complete — a genuinely-empty corpus (a fresh deploy,
+    // where a brand-new film SHOULD incubate) warms nothing and diverts as before. ONE-SHOT, on the
     // first scrape: at a real boot the repo already holds the corpus when the first scrape
     // lands, so the sync fires and warms the mirror for the rest; a fresh harness starts
     // with an empty repo, so the first scrape no-ops and the latch disarms — the sync can

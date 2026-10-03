@@ -1437,7 +1437,13 @@ class CaffeineMovieCache(
       case kept                      => (kept, false)
     }
 
-  def rehydrate(): Int = {
+  def rehydrate(): Int = rehydrateChecked()._1
+
+  /** [[LandingStore]]: [[rehydrate]], plus whether the corpus read was COMPLETE. An incomplete
+   *  read (a page the scan could not read is skipped whole) changes nothing — no row put, none
+   *  evicted: its missing films are not gone, and a cold mirror partly filled from it would read
+   *  as warm to the cold-mirror sync. The 30-s tick, or the sync's backoff, reads again. */
+  private[services] def rehydrateChecked(): (Int, Boolean) = {
     // Additive sync — never blank the cache mid-rehydrate. The periodic
     // 30-s tick (see `start()` below) runs while page loads are flying
     // through `snapshot()`; an `invalidateAll()` window would briefly
@@ -1453,6 +1459,11 @@ class CaffeineMovieCache(
     val marks         = repository.writeFence.markAll()
     val (rows, complete) = repository.findAllChecked()
     val tFindAllMs    = findingAll.millis
+    if (!complete) {
+      logger.warn(s"MovieCache rehydrate: the corpus read was incomplete (${rows.size} row(s) read in ${tFindAllMs}ms) — " +
+        "nothing put or evicted; the next tick reads again.")
+      return (0, false)
+    }
     // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
     // surface as "no rows". Treating that as "Mongo is genuinely empty,
@@ -1464,7 +1475,7 @@ class CaffeineMovieCache(
     if (rows.isEmpty && cachedSize > 0) {
       logger.warn(s"MovieCache rehydrate: findAll() returned empty while cache holds $cachedSize row(s) — " +
                   "treating as a transient Mongo failure; cache left intact.")
-      return 0
+      return (0, true)
     }
     // Cold-boot empty result — `findAll()` returned nothing AND the cache was
     // already empty. Don't silently start serving an empty repertoire; surface
@@ -1503,12 +1514,8 @@ class CaffeineMovieCache(
       }
     }
     // Only a key whose film nobody wrote since the snapshot: one this cache created or
-    // retitled meanwhile is absent from the snapshot because it is NEWER, not gone. And only
-    // after a COMPLETE read: a page the scan could not read is skipped whole, so its films are
-    // missing from `rows` without being gone from Mongo.
-    if (!complete) logger.warn(s"MovieCache rehydrate: the corpus read was incomplete (${rows.size} row(s)) — " +
-      "refreshed what it read, evicted nothing.")
-    val removed = if (!complete) Seq.empty else positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
+    // retitled meanwhile is absent from the snapshot because it is NEWER, not gone.
+    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
       corpusIndex.idOf(k).fold { evict(k); true }(id => repository.writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
     }
     cacheMetrics.recordRehydrate(changed, removed.size)
@@ -1561,7 +1568,7 @@ class CaffeineMovieCache(
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()
-    rows.size
+    (rows.size, true)
   }
 
   // ── Mongo → cache sync ─────────────────────────────────────────────────────
