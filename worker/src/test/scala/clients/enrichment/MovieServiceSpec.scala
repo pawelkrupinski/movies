@@ -70,6 +70,27 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
   }
 
+  // The projection fetches a film's TMDB details once — while its record lacks them. A 5xx on the
+  // film's `external_ids` used to be read as "no IMDb id": the details landed without one, so the
+  // record never lacked them again, and the film stayed unrated after any TMDB blip.
+  "withFilmDetails" should "apply nothing while TMDB fails to answer the film's ids, so the next projection asks again" in {
+    val failing = new java.util.concurrent.atomic.AtomicBoolean(true)
+    val fixture = new clients.tools.FakeHttpFetch("08-06-2026")
+    val fetch = new tools.HttpFetch {
+      private def check(url: String): Unit =
+        if (failing.get && url.contains("/external_ids")) throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
+      override def get(url: String): String = { check(url); fixture.get(url) }
+      override def get(url: String, headers: Map[String, String]): String = { check(url); fixture.get(url, headers) }
+      override def post(url: String, body: String, contentType: String): String = fixture.post(url, body, contentType)
+    }
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val svc = new MovieService(cache, new InProcessEventBus(),
+      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()))
+    svc.withFilmDetails(MovieRecord(), 1018) shouldBe None
+    failing.set(false)
+    svc.withFilmDetails(MovieRecord(), 1018).flatMap(_.imdbId) shouldBe Some("tt0166924")
+  }
+
   private val pradyEnrichment = MovieRecord(
     imdbId        = Some("tt33612209"),
     imdbRating    = Some(6.7),

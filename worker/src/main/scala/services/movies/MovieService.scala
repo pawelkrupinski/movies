@@ -998,11 +998,17 @@ class MovieService(
     detailsOf(tmdbId, existing).map(_(existing))
 
   /** The resolution builder applied with `tmdbId`'s fetched details, the cross-reference ids falling
-   *  back to `row`'s when TMDB's own lookup fails. */
+   *  back to `row`'s when TMDB answers that it has none. When TMDB does not answer at all (an outage,
+   *  a rate limit, a timeout — not [[MovieService.failedDefinitively]]) nothing is applied: details
+   *  without the film's ids would read as a film with none, and never be asked for again. */
   private def detailsOf(tmdbId: Int, row: MovieRecord): Option[MovieRecord => MovieRecord] =
-    tmdb.fullDetails(tmdbId).map { details =>
-      val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(row.imdbId, row.wikidataId))
-      cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None)
+    tmdb.fullDetails(tmdbId).flatMap { details =>
+      Try(tmdb.externalIds(tmdbId)) match {
+        case Failure(e) if !MovieService.failedDefinitively(e) => None
+        case read =>
+          val ids = read.getOrElse(TmdbClient.ExternalIds(row.imdbId, row.wikidataId))
+          Some(cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
+      }
     }
 
   /** Dispatch a row's TMDB resolution with its `data`-merged director +
