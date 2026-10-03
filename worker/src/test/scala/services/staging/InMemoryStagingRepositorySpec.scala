@@ -16,10 +16,13 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
       cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = year)))
 
   /** Capture the WARN lines `body` emits from `InMemoryStagingRepository`'s logger. */
+  // The capture is the logger's, across every suite running beside this one — FoldOnStagingEnrichedSpec stages
+  // "Dune" under two years and warns just the same — so only the warnings about this spec's own film are its.
   private def warnsDuring(body: => Unit): Seq[String] =
     LogCapture.capture(classOf[InMemoryStagingRepository].getName)(body)
       .filter(_.getLevel == Level.WARN)
       .map(_.getFormattedMessage)
+      .filter(_.toLowerCase.contains("kumotry"))
 
   "InMemoryStagingRepository" should "keep one row per (cinema, title, year) and read them back" in {
     val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
