@@ -10,7 +10,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
-import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
+import tools.{Alongside, ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring, ConvergenceKnownIssues}
 
@@ -99,7 +99,7 @@ abstract class CountryConvergenceBehaviour(
    *  set once the corpus is read. Every failure carries its verdict, so a red leg says up
    *  front whether the DATA moved under it (run 35948292875's UK leg went red on new data
    *  and was bisected through commits first). */
-  @volatile private var corpusProvenance: Option[CorpusProvenance] = None
+  @volatile private var corpusProvenance: Option[Alongside.Started[CorpusProvenance]] = None
 
   override def withFixture(test: NoArgTest): Outcome =
     // A hermetic gap found by an EARLIER test fails this one before it boots anything: the
@@ -108,7 +108,8 @@ abstract class CountryConvergenceBehaviour(
     // reported a second time.
     hermeticGaps.fold(super.withFixture(test) match {
       case Failed(e: TestFailedException) =>
-        corpusProvenance.fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
+        corpusProvenance.flatMap(p => Try(p.join()).toOption)
+          .fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
       // A test whose body passed over a request the tree could not answer proved nothing
       // about the recording — its green came from a refused fetch.
       case other => hermeticGaps.fold(other)(Failed(_))
@@ -143,16 +144,24 @@ abstract class CountryConvergenceBehaviour(
   private lazy val missingFixtures: Option[MissingFixtures] =
     Option.when(ArchiveReplayWiring.hermeticIn(configuration))(new MissingFixtures)
 
-  private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
-    val provenance = CorpusProvenance.of(corpusKey, rows, configuration)
-    corpusProvenance = Some(provenance)
-    info(s"${country.displayName}: ${provenance.verdict}")
-    configuration.stepSummaryFile.foreach { summary =>
-      Try(java.nio.file.Files.writeString(summary.value,
-        provenance.markdown(corpusKey) + "\n\n",
-        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
+  /** Which corpus this leg replays against its last green one's, read BESIDE the boot: the diff
+   *  parses the green leg's whole corpus, ~7 s of the US recording's critical path before its first
+   *  scrape (run 37111868620), for a verdict nothing reads until the boot is done or a claim fails. */
+  private def readCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit =
+    corpusProvenance = Some(Alongside.start(s"corpus-provenance-$corpusKey")(CorpusProvenance.of(corpusKey, rows, configuration)))
+
+  /** Reported ONCE, by whichever of the shared boot and the order-independence replays gets there first. */
+  private val provenanceReported = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+  private def reportCorpusProvenance(): Unit =
+    corpusProvenance.filter(_ => provenanceReported.compareAndSet(false, true)).map(_.join()).foreach { provenance =>
+      info(s"${country.displayName}: ${provenance.verdict}")
+      configuration.stepSummaryFile.foreach { summary =>
+        Try(java.nio.file.Files.writeString(summary.value,
+          provenance.markdown(corpusKey) + "\n\n",
+          java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
+      }
     }
-  }
 
   override def afterAll(): Unit = {
     missingFixtures.filter(m => measuresNewModel && !m.isEmpty).foreach { m =>
@@ -418,6 +427,29 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: storage — ${storage.describe}")
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
+    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9): a
+    // RECORDING leg asked for it files every answer into the tree it then pins and marks the tree;
+    // a HERMETIC leg runs it whenever its tree carries that mark, and names each gap below — so
+    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and neither a tree
+    // recorded before the sweep existed nor one recorded before the resolver's latest query change
+    // is failed for lacking what its recording was never asked.
+    //
+    // BESIDE the boot, not after it: the sweep reads the corpus's listings and asks the lookups,
+    // never a row the boot writes, so nothing it does waits on the boot or moves it — and after the
+    // boot it was 35 s of the US recording's critical path (run 37111868620), on the cores the
+    // boot's Mongo-bound drains leave idle. Joined before the boot is declared complete.
+    val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
+    val sweepRequested = IdentityLookupSweep.enabledIn(configuration)
+    val sweep = Option.when(IdentityLookupSweep.runsIn(sweepRequested, missingFixtures.isDefined, treeRoot)) {
+      val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+      // Run because the tree is marked, a hermetic leg asks only what the tree's recording asked
+      // (`IdentityLookupSweep.RecordedMarker`), so a resolver query added since then is never a
+      // request of this leg. Asked for by name, it asks the whole set: that is the coverage check.
+      val recorded = if (sweepRequested || missingFixtures.isEmpty) None else IdentityLookupSweep.recordedIn(treeRoot)
+      // Timed like every other phase: in a recording leg it is minutes of live lookups.
+      asked -> Alongside.start(s"identity-sweep-${country.code}")(
+        step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, recorded, IdentityLookupSweep.LookupThreads)))
+    }
     bootSettled(w)
     // Every replayed venue must LAND: the claims below are all "nothing changed", which a
     // venue that threw satisfies by never arriving. Checked before the hermetic gap, which
@@ -427,23 +459,9 @@ abstract class CountryConvergenceBehaviour(
              s"says anything about them:\n  ${w.scrapeFailures.asScala.take(8).mkString("\n  ")}\n") {
       w.scrapeFailures.asScala shouldBe empty
     }
-    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9): a
-    // RECORDING leg asked for it files every answer into the tree it then pins and marks the tree;
-    // a HERMETIC leg runs it whenever its tree carries that mark, and names each gap below — so
-    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and neither a tree
-    // recorded before the sweep existed nor one recorded before the resolver's latest query change
-    // is failed for lacking what its recording was never asked.
-    val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
-    val sweepRequested = IdentityLookupSweep.enabledIn(configuration)
-    if (IdentityLookupSweep.runsIn(sweepRequested, missingFixtures.isDefined, treeRoot)) {
-      val asked = scala.collection.mutable.ArrayBuffer.empty[String]
-      // Run because the tree is marked, a hermetic leg asks only what the tree's recording asked
-      // (`IdentityLookupSweep.RecordedMarker`), so a resolver query added since then is never a
-      // request of this leg. Asked for by name, it asks the whole set: that is the coverage check.
-      val recorded = if (sweepRequested || missingFixtures.isEmpty) None else IdentityLookupSweep.recordedIn(treeRoot)
-      // Timed like every other phase: in a recording leg it is minutes of live lookups, and it
-      // used to show only as a silent gap between `reloadReadModel` and `boot complete`.
-      val lookups = step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, recorded, IdentityLookupSweep.LookupThreads))
+    reportCorpusProvenance()
+    sweep.foreach { case (asked, running) =>
+      val lookups = running.join()
       info(s"${country.displayName}: identity resolver lookups — $lookups")
       if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot, asked)
     }
@@ -770,7 +788,7 @@ abstract class CountryConvergenceBehaviour(
       // divergence found against the live read could not be re-examined afterwards.
       val rows = step("readCorpusFixture")(CorpusFixture.read(corpusKey))
       info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(corpusKey)}")
-      recordCorpusProvenance(rows)
+      readCorpusProvenance(rows)
       rows
     } else fetchAndCaptureCorpus
 
@@ -1218,6 +1236,7 @@ abstract class CountryConvergenceBehaviour(
       // own database (see `replay`), so they still cannot tread on each other.
       val archive = storage.archive
       seedArchive(archive)
+      reportCorpusProvenance()
 
       // Concurrently: the passes are independent whole-corpus replays and running
       // them back-to-back made this the leg's long pole (three boots serially, on

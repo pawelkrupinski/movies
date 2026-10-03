@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ShadowCoverage, TunnelTunedUri}
+import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ShadowCoverage, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -48,7 +48,7 @@ object RecordCorpusFixture {
       // only closer to the same instant — the reason they are captured here at all (below).
       val database = client.getDatabase(databaseName)
       val read     = tools.Stopwatch.start()
-      val (rows, baseline) = alongside(
+      val (rows, baseline) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
         // …and what production's NEW model decided for it (its latest shadow run), which a cut-over
         // leg must reproduce. Only the full corpus: the sample's films are resolved apart from the rest.
@@ -98,13 +98,5 @@ object RecordCorpusFixture {
               s"${sample.map(_.films.map(_.showtimes.size).sum).sum} showtimes")
       println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")
     } finally client.close()
-  }
-
-  /** `first` on this thread with `second` running beside it; both results, once both are in.
-   *  A `first` that throws leaves `second` to finish unobserved. */
-  private[scripts] def alongside[A, B](first: => A)(second: => B): (A, B) = {
-    val pending = scala.concurrent.Future(second)(using scala.concurrent.ExecutionContext.global)
-    val result  = first
-    (result, scala.concurrent.Await.result(pending, scala.concurrent.duration.Duration(10, "minutes")))
   }
 }
