@@ -191,6 +191,26 @@ class MovieController( cc: ControllerComponents,
   private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
     com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(512).build[StructuredData.CityPageKey, String]()
 
+  // Each film's object in a city's JSON payloads (`/api/repertoire`, `/api/details`),
+  // kept under the schedule it is serialized from. A payload is re-rendered whenever its
+  // city's stamp moves, and building every film's play-json tree again was ~26 MB and
+  // ~20 ms a Warsaw `/api/repertoire`, for the handful of films that had moved. The key
+  // holds everything an object is a function of — the payload and its day window, the
+  // city (its language), the day, the schedule — so a changed film asks for another key
+  // and a superseded entry only ages out of the byte bound — every entry weighing at least
+  // `FilmJsonEntryBytes`, a film left out (`None`) too: Caffeine never evicts a zero-weight
+  // entry, and each pins its key's whole schedule.
+  private val filmJson: com.github.benmanes.caffeine.cache.Cache[MovieController.FilmJsonKey, Option[String]] =
+    com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+      .maximumWeight(MovieController.FilmJsonMaxBytes)
+      .weigher[MovieController.FilmJsonKey, Option[String]]((_, json) => MovieController.filmJsonWeight(json))
+      .build[MovieController.FilmJsonKey, Option[String]]()
+
+  /** How many films' API JSON this controller is holding — for the spec. */
+  private[controllers] def filmJsonHeld: Long = { filmJson.cleanUp(); filmJson.estimatedSize() }
+  /** What the held films' API JSON weighs against [[MovieController.FilmJsonMaxBytes]] — for the spec. */
+  private[controllers] def filmJsonWeighed: Long = filmJson.policy().eviction().get().weightedSize().getAsLong
+
   /** How many listings' JSON-LD this controller is holding — for the spec. */
   private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
 
@@ -207,8 +227,9 @@ class MovieController( cc: ControllerComponents,
   // of the region-less codes actually registered in `play.i18n.langs`.
   private val deploymentDefaultLang: play.api.i18n.Lang = play.api.i18n.Lang(servingCountry.language.getLanguage)
 
-  // The one `Messages` every render on this deployment uses.
-  private val deploymentMessages: play.api.i18n.Messages = cc.messagesApi.preferred(Seq(deploymentDefaultLang))
+  // The one `Messages` every render on this deployment uses — memoised, since it is
+  // the one language and its fixed labels never change (`MemoisedMessages`).
+  private val deploymentMessages: play.api.i18n.Messages = new MemoisedMessages(cc.messagesApi.preferred(Seq(deploymentDefaultLang)))
 
   // Validators, `Cache-Control`, the 304 short-circuit and the gzip blob for
   // every client-independent response this controller serves. The validator
@@ -252,6 +273,12 @@ class MovieController( cc: ControllerComponents,
   private def cacheablePlainPage(request: RequestHeader): Boolean = request.queryString.isEmpty
 
   private val HtmlContentType = "text/html; charset=utf-8"
+
+  /** `page` as a 200, its bytes written fragment by fragment (`ResponseBody.html`)
+   *  rather than through Play's `Writeable[Html]`, which flattens the page into one
+   *  `String` and then copies it into bytes: two thirds of what a Warsaw film page
+   *  allocated, and most of a browse page. Same bytes, same content type. */
+  private def okHtml(page: play.twirl.api.Html): Result = Ok(ResponseBody.html(page).plain).as(HtmlContentType)
 
   // Every city-scoped handler wraps its body in this so resolution + not-found
   // behaviour lives in one place — see `ServedCity` for the country scope. The
@@ -384,7 +411,7 @@ class MovieController( cc: ControllerComponents,
     implicit val messages: play.api.i18n.Messages = deploymentMessages
     // Client-independent like the listing (nobody is rendered into it), but a
     // facet URL is one of combinatorially many and earns no edge entry.
-    Ok(views.html.browse(
+    okHtml(views.html.browse(
       films, heading, minifier, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       pageTags = pageTags(),
@@ -524,21 +551,30 @@ class MovieController( cc: ControllerComponents,
    *  is served from the shared gzip cache under `RevalidatedAnywhere`, so the
    *  edge may hold it too. Both the listing and the details payload track the
    *  same city's stamp, so a 304 on one is a 304 on the other. */
-  private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
+  private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => ResponseBody): Result =
     conditionalResponse.serve(request, "application/json", CachePolicy.RevalidatedAnywhere,
-                              cacheKey = cacheKey, city = Some(city))(
-      ResponseBody.text(play.api.libs.json.Json.stringify(body))
-    )
+                              cacheKey = cacheKey, city = Some(city))(body)
+
+  /** A city's JSON payload as an array of one object per film, each film's object
+   *  serialized once and kept (see `filmJson`); a film for which `json` answers `None`
+   *  is left out. `payload` names what the objects are, so two payloads never share one. */
+  private def filmJsonArray(payload: String, city: City, today: LocalDate, films: Seq[FilmSchedule])
+                           (json: FilmSchedule => Option[play.api.libs.json.JsValue]): ResponseBody =
+    ResponseBody.jsonArray(films.iterator.flatMap { film =>
+      filmJson.get(MovieController.FilmJsonKey(payload, city.slug, today, film), _ => json(film).map(Json.stringify))
+    })
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */
   def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
-      val window = MovieController.dayWindow(days)
-      conditionalJson(request, c, cacheKey = MovieController.windowCacheKey(window)) {
-        val today     = movieControllerService.nowIn(c).toLocalDate
-        val schedules = movieControllerService.toSchedules(c)
-        Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from(_, c.country.language)))
+      val window   = MovieController.dayWindow(days)
+      val cacheKey = MovieController.windowCacheKey(window)
+      conditionalJson(request, c, cacheKey) {
+        val today = movieControllerService.nowIn(c).toLocalDate
+        filmJsonArray("repertoire" + cacheKey, c, today, movieControllerService.toSchedules(c)) { film =>
+          MovieController.withinWindow(film, today, window).map(windowed => Json.toJson(ApiFilm.from(windowed, c.country.language)))
+        }
       }
     }
   }
@@ -549,10 +585,9 @@ class MovieController( cc: ControllerComponents,
   def apiDetails(city: String): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
       conditionalJson(request, c) {
-        val details = movieControllerService.toSchedules(c)
-          .map(ApiFilmDetails.from)
-          .filter(ApiFilmDetails.hasContent)
-        Json.toJson(details)
+        filmJsonArray("details", c, movieControllerService.nowIn(c).toLocalDate, movieControllerService.toSchedules(c)) { film =>
+          Some(ApiFilmDetails.from(film)).filter(ApiFilmDetails.hasContent).map(Json.toJson(_))
+        }
       }
     }
   }
@@ -561,7 +596,7 @@ class MovieController( cc: ControllerComponents,
    *  once per city to render the collapsible, per-area cinema filter — the
    *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
   def apiCinemas(city: String): Action[AnyContent] = Action { request =>
-    withCity(city)(c => conditionalJson(request, c)(Json.toJson(ApiCityCinemas.from(c))))
+    withCity(city)(c => conditionalJson(request, c)(ResponseBody.text(Json.stringify(Json.toJson(ApiCityCinemas.from(c))))))
   }
 
   /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
@@ -673,7 +708,7 @@ class MovieController( cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
+    okHtml(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }
@@ -723,7 +758,7 @@ object MovieController {
    *  on the same entry instead of two identical ones. */
   def windowCacheKey(window: Option[Int]): String = window.fold("")(n => s"|days=$n")
 
-  /** Films that have at least one showing inside the window, carrying only the
+  /** The film, if it has at least one showing inside the window, carrying only the
    *  showings inside it.
    *
    *  CALENDAR DAYS FROM TODAY, not "the first N dates that have showings": a film
@@ -732,16 +767,29 @@ object MovieController {
    *  the window is dropped entirely rather than emitted with an empty
    *  `showings` -- an empty film is a card the client would have to render and
    *  then hide. */
-  def withinWindow(schedules: Seq[FilmSchedule], today: java.time.LocalDate,
-                   window: Option[Int]): Seq[FilmSchedule] = window match {
-    case None => schedules
+  def withinWindow(film: FilmSchedule, today: java.time.LocalDate, window: Option[Int]): Option[FilmSchedule] = window match {
+    case None => Some(film)
     case Some(n) =>
       val limit = today.plusDays(n.toLong)
-      schedules.flatMap { fs =>
-        val kept = fs.showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
-        if (kept.isEmpty) None else Some(fs.copy(showings = kept))
-      }
+      val kept  = film.showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
+      if (kept.isEmpty) None else Some(film.copy(showings = kept))
   }
+
+  /** What a controller's `filmJson` keys a film's serialized object by: which
+   *  payload (and day window) it belongs to, the city, the day and the schedule. */
+  private[controllers] final case class FilmJsonKey(payload: String, city: String, today: java.time.LocalDate, film: FilmSchedule)
+
+  /** The per-film API JSON a controller keeps: a few cities' payloads several times over
+   *  (a Warsaw `/api/repertoire` is ~1.5 MB of JSON before gzip). */
+  val FilmJsonMaxBytes: Long = 16L * 1024 * 1024
+
+  /** The least a kept film's API JSON weighs: its entry and the schedule its key pins, which
+   *  outlive the schedule's own rebuild until evicted. A film left out of a payload holds no
+   *  JSON but still pins its schedule — weighed as nothing, Caffeine would never evict it. */
+  val FilmJsonEntryBytes: Int = 1024
+
+  private[controllers] def filmJsonWeight(json: Option[String]): Int =
+    FilmJsonEntryBytes + json.fold(0)(CaffeineFilmCardFragments.bytesHeld)
 
   /** What the faceted browse pages tell a crawler about themselves.
    *

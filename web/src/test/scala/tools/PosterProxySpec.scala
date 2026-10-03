@@ -120,4 +120,17 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     val lookalike = "https://notacsta.net/img/a/b/c.jpg"
     PosterProxy.proxy(lookalike) should startWith ("https://images.weserv.nl/")
   }
+
+  // Built by hand (`FormEncoding`) rather than through `URLEncoder`, so it is pinned to
+  // what the encoder spells, scheme stripped or not.
+  it should "carry the origin URL exactly as URLEncoder spells it, minus its scheme" in {
+    Seq("https://kinomuza.pl/wp-content/uploads/Milcząca przyjaciółka.jpg?a=1&b=2",
+        "http://kinobulgarska19.pl/x/y.jpg",
+        "HTTPS://Example.com/Poster.JPG",
+        "example.com/no-scheme.jpg").foreach { url =>
+      val stripped = url.replaceFirst("^https?://", "")
+      PosterProxy.proxy(url) shouldBe
+        s"https://images.weserv.nl/?url=${java.net.URLEncoder.encode(stripped, "UTF-8")}&w=480&h=720&fit=cover&a=attention&output=webp"
+    }
+  }
 }

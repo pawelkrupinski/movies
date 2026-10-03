@@ -22,7 +22,7 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
   private val day = LocalDate.of(2026, 5, 13)
   private val cinemas = Cinema.all.distinct.filter(c => City.forCinema(c).contains(city)).take(6)
 
-  private def film(n: Int, firstHour: Int = 10, imdb: Double = 7.1): FilmSchedule = FilmSchedule(
+  private def film(n: Int, firstHour: Int = 10, imdb: Double = 7.1, cinemas: Seq[Cinema] = cinemas): FilmSchedule = FilmSchedule(
     movie = Movie(s"Film $n", Some(110)), posterUrl = Some(s"https://image.example/$n.jpg"), synopsis = None,
     cast = Seq("Actor One", "Actor Two"), director = Seq("A Director"),
     cinemaFilmUrls = cinemas.take(2).map(c => c -> s"https://kino.example/film-$n"),
@@ -83,5 +83,17 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
     val rendered = allocatedBy(cardsBody(films, FilmCardFragments.Uncached))
     val reused   = allocatedBy(cardsBody(films, cache))
     withClue(s"rendered ${rendered / 1024} KB, from the cache ${reused / 1024} KB: ")(reused should be < rendered / 4)
+  }
+
+  // A Java string holds one byte per char until its first char outside Latin-1, then two
+  // for all of it — and a kept card is that string. An English card's one such char was
+  // the hide button's literal ✕, which doubled every card the cache holds on a
+  // non-Polish host; the entity renders the same glyph.
+  it should "hold an English card at one byte per char" in {
+    val london   = City.bySlug("london").getOrElse(fail("no city 'london'"))
+    val venues   = Cinema.all.distinct.filter(c => City.forCinema(c).contains(london)).take(6)
+    val card = views.html._filmCards(Seq(film(1, cinemas = venues)))(using london, testsupport.TestMessages.forLang("en"),
+      FilmCardFragments.Uncached).body
+    card.filter(_ > 0xFF).distinct.map(c => f"U+${c.toInt}%04X") shouldBe empty
   }
 }

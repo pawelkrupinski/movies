@@ -1,0 +1,7 @@
+@*
+   `_minified` for a block whose markup is the same on every render: `content` is
+   by-name, so a memoising minifier renders and processes it once under `block`
+   (`tools.Minifier.constant`) rather than rebuilding it on every page. `block`
+   must be unique to the call site.
+*@
+@(minifier: tools.Minifier, block: String)(content: => Html)@minifier.constant(block)(content)

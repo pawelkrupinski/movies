@@ -84,6 +84,8 @@ object ShowingsMarkup {
   private def writeDays(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],
                         zone: ZoneId, locale: java.util.Locale, out: java.lang.StringBuilder, flush: () => Unit): Unit = {
     val rules = zone.getRules
+    // Looked up once per cinema group: the first URL listed for a cinema, as `find` took.
+    val filmUrlOf = film.cinemaFilmUrls.groupMapReduce(_._1)(_._2)((first, _) => first)
     for ((date, cinemas) <- film.showings) {
       val day = Day(date, expiresFrom(date, zone), rules.getOffset(date.atStartOfDay.plus(Showtime.Grace)))
       out.append("<div class=\"date-group\" data-date=\"").append(date)
@@ -96,8 +98,8 @@ object ShowingsMarkup {
         out.append("<div class=\"cinema-group\"")
         if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
         out.append("><div class=\"cinema-label\">")
-        film.cinemaFilmUrls.find(_._1 == cinema) match {
-          case Some((_, url)) if firstListing.get(cinema).contains(date) =>
+        filmUrlOf.get(cinema) match {
+          case Some(url) if firstListing.get(cinema).contains(date) =>
             out.append("<a href=\""); escapeInto(out, url)
             out.append("\" target=\"_blank\" rel=\"nofollow\" class=\"cinema-label-link\">")
             escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
@@ -115,9 +117,6 @@ object ShowingsMarkup {
     }
   }
 
-  /** The pill for `slot`, filed under `date`, into `out`. `commonToks` are the format
-   *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
-   *  `prefix` is the URL prefix its cinema group's slots share. */
   /** One `.date-group`'s day: its date, its [[expiresFrom]], and the zone offset that
    *  base was taken at — what lets a pill on an ordinary day skip the zone arithmetic. */
   private final case class Day(date: LocalDate, expiresFrom: Long, offset: java.time.ZoneOffset)
@@ -139,6 +138,9 @@ object ShowingsMarkup {
     }
   }
 
+  /** The pill for `slot`, filed under `day`, into `out`. `commonToks` are the format
+   *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
+   *  `prefix` is the URL prefix its cinema group's slots share. */
   private def badgeInto(out: java.lang.StringBuilder, slot: Showtime, day: Day, zone: ZoneId,
                         commonToks: Set[String], prefix: String): Unit = {
     val tag = slot.bookingUrl match {

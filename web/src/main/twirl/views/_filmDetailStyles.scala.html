@@ -6,7 +6,7 @@
   `film.scala.html` so the dev-only `/debug/tune/movie` page renders the REAL
   detail chrome. `.badge-*` pills still come from `_pillStyles`/`_sharedStyles`.
 *@
-  @_minified(minifier) {
+  @_minifiedConstant(minifier, "filmDetailStyles") {
   <style>
     body { background: #111; color: #eee; }
     .navbar { background: #1a1a2e; }

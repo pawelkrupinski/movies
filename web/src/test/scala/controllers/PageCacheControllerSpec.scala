@@ -49,7 +49,6 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val (ctrl, cache) = buildController()
     ctrl.index("poznan")(gzipRequest("/poznan/"))
 
-    Thread.sleep(1100) // mtime is second-resolution; ensure the rehydrate advances it
     cache.reload()
 
     val after = ctrl.index("poznan")(gzipRequest("/poznan/"))

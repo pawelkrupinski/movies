@@ -33,6 +33,30 @@ object ResponseBody {
     def plain: ByteString   = ByteString.fromString(render, StandardCharsets.UTF_8)
   }
 
+  /** A JSON array of elements that each already are their own JSON text — what
+   *  `Json.stringify` of the array writes (`[`, the elements joined by `,`, `]`), encoded
+   *  element by element rather than first joined into one `String` and copied into bytes. */
+  def jsonArray(elements: => Iterator[String]): ResponseBody = new ResponseBody {
+    def gzipped: ByteString = gzip(writeArray)
+    def plain: ByteString = {
+      val out = new ChunkedOutput
+      writeArray(out)
+      out.result
+    }
+    private def writeArray(out: OutputStream): Unit = {
+      val writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)
+      writer.write('[')
+      var first = true
+      elements.foreach { element =>
+        if (!first) writer.write(',')
+        writer.write(element)
+        first = false
+      }
+      writer.write(']')
+      writer.flush()
+    }
+  }
+
   /** `body`, recording to `record` how much heap producing its bytes allocated on this
    *  thread — the render it wraps included, since a body renders when its bytes are
    *  first asked for. Where the JVM cannot say, it records nothing. */

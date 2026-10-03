@@ -38,7 +38,12 @@ case class FilmSchedule(
                          // "upcoming" meant, and the year its date labels are read from
                          // (`CardFormat.date`). From the service's clock, never the system's.
                          asOf: LocalDate
-                       )
+                       ) {
+  // Hashed once per schedule, not per lookup: it keys the card cache (`FilmCardFragments`)
+  // on every listing render, a deep hash of every showtime, and a reused schedule
+  // (`MovieControllerService.Built`) is the same immutable object render after render.
+  override lazy val hashCode: Int = scala.util.hashing.MurmurHash3.caseClassHash(this)
+}
 
 /**
  * Builds the per-city [[FilmSchedule]] view from the denormalised read model:
@@ -146,16 +151,31 @@ class MovieControllerService(
    *  upcoming; [[stillHolds]] checks every one of them, so a reused schedule is the one
    *  a rebuild would produce. The read model replaces a row or a movie document on any
    *  write rather than mutating it, so "the same object" is "unchanged". */
-  private final case class Built(rows: Seq[CityScreening], resolved: ResolvedMovie, asOf: LocalDate,
+  private final case class Built(rows: Vector[CityScreening], resolved: ResolvedMovie, asOf: LocalDate,
                                  earliest: LocalDateTime, schedule: FilmSchedule) {
-    def stillHolds(current: Seq[CityScreening], currentResolved: ResolvedMovie, today: LocalDate,
+    def stillHolds(current: Vector[CityScreening], currentResolved: ResolvedMovie, today: LocalDate,
                    cutoff: LocalDateTime, slug: Option[String]): Boolean =
       (resolved eq currentResolved) && asOf == today &&
         // No showtime has lapsed since: the earliest one is still upcoming, so all are —
         // and the cutoff only moves forward, so none has become upcoming either.
         cutoff.isBefore(earliest) &&
         schedule.slug == slug &&
-        rows.size == current.size && rows.forall(row => current.exists(_ eq row))
+        rows.size == current.size && sameRows(current)
+
+    // Every row still one of `current`'s, by identity — indexed loops rather than
+    // `forall`/`exists`, whose closures were a fifth of what a sitemap allocated (it
+    // checks every film of every city).
+    private def sameRows(current: Vector[CityScreening]): Boolean = {
+      var i = 0
+      while (i < rows.length) {
+        val row = rows(i)
+        var j = 0
+        while (j < current.length && !(current(j) eq row)) j += 1
+        if (j == current.length) return false
+        i += 1
+      }
+      true
+    }
   }
 
   private val built: com.github.benmanes.caffeine.cache.Cache[(String, String), Built] =

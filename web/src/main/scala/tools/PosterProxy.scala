@@ -1,7 +1,5 @@
 package tools
 
-import java.net.URLEncoder
-
 /**
  * Wrap a cinema-side poster URL through the free `images.weserv.nl`
  * image proxy. Solves three concrete problems we measured on the
@@ -117,7 +115,7 @@ object PosterProxy {
    *  callers shouldn't pass `None` in but the empty-string case can
    *  happen from `SourceData(posterUrl = Some(""))` corner cases. */
   def proxy(url: String): String =
-    weserv(url, TargetWidth, TargetHeight, "webp").getOrElse(url)
+    weserv(url).getOrElse(url)
 
   /** True when `host` is, or sits under, a [[SkipDomains]] entry. The `.`
    *  boundary is what stops a lookalike like `notacsta.net` matching
@@ -125,18 +123,27 @@ object PosterProxy {
   private def skipsDomain(host: String): Boolean =
     SkipDomains.exists(domain => host == domain || host.endsWith(s".$domain"))
 
+  private val Query = s"https://$ProxyHost/?url="
+  private val Hints = s"&w=$TargetWidth&h=$TargetHeight&fit=cover&a=attention&output=webp"
+
   /** Build the weserv URL, or `None` for empty input / a [[SkipHosts]] or
    *  [[SkipDomains]] origin the caller should fetch directly. weserv accepts
-   *  the URL with or without
-   *  the scheme prefix; stripping it avoids double-encoding `://` and lets the
-   *  proxy pick the scheme (HTTPS when available, HTTP for origins like
-   *  kinobulgarska19.pl). */
-  private def weserv(url: String, w: Int, h: Int, output: String): Option[String] = {
+   *  the URL with or without the scheme prefix; stripping it avoids
+   *  double-encoding `://` and lets the proxy pick the scheme (HTTPS when
+   *  available, HTTP for origins like kinobulgarska19.pl).
+   *
+   *  Written into one builder rather than through a regex strip, a
+   *  `URLEncoder` pass and an interpolation: a card proxies its poster and
+   *  every fallback, and that was ~3.6 MB of a Warsaw listing render whose
+   *  cards were not cached. */
+  private def weserv(url: String): Option[String] = {
     if (url == null || url.isEmpty) return None
-    val stripped = url.replaceFirst("^https?://", "")
-    val host     = stripped.takeWhile(_ != '/').toLowerCase
+    val from = if (url.startsWith("https://")) 8 else if (url.startsWith("http://")) 7 else 0
+    val slash = url.indexOf('/', from)
+    val host  = url.substring(from, if (slash < 0) url.length else slash).toLowerCase
     if (SkipHosts.contains(host) || skipsDomain(host)) return None
-    val encoded = URLEncoder.encode(stripped, "UTF-8")
-    Some(s"https://$ProxyHost/?url=$encoded&w=$w&h=$h&fit=cover&a=attention&output=$output")
+    val out = new java.lang.StringBuilder(Query.length + (url.length - from) * 2 + Hints.length)
+    FormEncoding.append(url, from, out.append(Query))
+    Some(out.append(Hints).toString)
   }
 }

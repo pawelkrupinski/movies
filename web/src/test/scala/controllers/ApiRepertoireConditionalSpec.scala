@@ -185,7 +185,6 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val (ctrl, cache) = buildController()
     ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
 
-    Thread.sleep(1100)
     cache.reload()
 
     val after = ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
@@ -392,8 +391,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   it should "move the etag when the read model does" in {
     val (ctrl, readModel) = buildController()
     val before = header("ETag", ctrl.apiRepertoire("poznan")(FakeRequest())).value
-    Thread.sleep(1100)          // the validator is second-resolution
-    readModel.reload()
+    readModel.reload()          // the ETag carries the stamp whole, so no second need pass
     val after = header("ETag", ctrl.apiRepertoire("poznan")(FakeRequest())).value
     after should not be before
   }
@@ -432,13 +430,9 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     // Poznan gains a venue. Warsaw's bytes are untouched, so its cached copy —
     // in the browser, the phone, or Cloudflare — must remain valid.
     //
-    // ⚠️ THE SLEEP IS WHAT GIVES THIS CASE ITS TEETH. The validator is truncated
-    // to whole seconds, so a Poznan change in the SAME second as Warsaw's
-    // response leaves even a model-wide stamp's ETag unchanged — the case would
-    // then pass against the very bug it exists to catch. Crossing the boundary
-    // first makes the old behaviour genuinely produce a different ETag, so a 304
-    // here can only mean the validator is scoped to the city.
-    Thread.sleep(1100)
+    // The ETag carries the stamp at full precision, so a model-wide stamp would
+    // move Warsaw's ETag even inside one second: a 304 here can only mean the
+    // validator is scoped to the city.
     store.upsertScreening(models.CityScreening("s-poz-2", "belle|2021", "poznan", "Palacowe", None, Nil))
 
     val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
@@ -450,11 +444,8 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val (ctrl, store, readModel) = twoCities()
     val warsawEtag = header(ETAG, ctrl.apiRepertoire("warszawa")(FakeRequest())).value
 
-    // The validator is truncated to whole seconds (an HTTP date has no finer
-    // resolution), so a change landing in the same second as the response it
-    // must invalidate is genuinely invisible. Cross the boundary deliberately
-    // rather than race it — the point of the case is the scoping, not the clock.
-    Thread.sleep(1100)
+    // No second need pass: the ETag carries the stamp at full precision (only
+    // `Last-Modified` is second-grained, and If-None-Match decides alone).
     store.upsertScreening(models.CityScreening("s-waw-2", "belle|2021", "warszawa", "Atlantic", None, Nil))
 
     val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
@@ -469,11 +460,54 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val (ctrl, store, readModel) = twoCities()
     val warsawEtag = header(ETAG, ctrl.apiRepertoire("warszawa")(FakeRequest())).value
 
-    Thread.sleep(1100)
     store.upsertMovie(resolved("dune|2021", "Dune"))
 
     val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
     status(revalidated) shouldBe OK
+    readModel.stop()
+  }
+
+  // ── Per-film JSON reuse ──────────────────────────────────────────────────────
+  //
+  // A payload re-renders on every move of its city's stamp, but only the films that
+  // moved need serializing again: each film's object is kept under the schedule it
+  // came from. The kept objects must still add up to exactly what serializing the
+  // whole payload writes.
+
+  private def twoFilmController(): (MovieController, WebReadModel) = {
+    val now = TestMovieController.now
+    def record(title: String, synopsis: Option[String]) = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some(title), releaseYear = Some(2024), synopsis = synopsis,
+                           showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil), models.Showtime(now.plusDays(3), None, None, Nil)))))
+    TestMovieController.build(Seq(("Pierwszy", Some(2024), record("Pierwszy", Some("Opis."))), ("Drugi", Some(2024), record("Drugi", None))))
+  }
+
+  "a city's API payloads" should "serialize each film once, writing what serializing the payload whole does" in {
+    val (ctrl, readModel) = twoFilmController()
+    val service   = new MovieControllerService(readModel, TestMovieController.clock)
+    val schedules = service.toSchedules(models.Poznan)
+    val today     = service.nowIn(models.Poznan).toLocalDate
+    val language  = models.Poznan.country.language
+    def whole(films: Seq[FilmSchedule]) = play.api.libs.json.Json.stringify(play.api.libs.json.Json.toJson(films.map(ApiFilm.from(_, language))))
+
+    contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())) shouldBe whole(schedules)
+    contentAsString(ctrl.apiRepertoire("poznan", Some(1))(FakeRequest())) shouldBe
+      whole(schedules.flatMap(MovieController.withinWindow(_, today, Some(1))))
+    contentAsString(ctrl.apiDetails("poznan")(FakeRequest())) shouldBe
+      play.api.libs.json.Json.stringify(play.api.libs.json.Json.toJson(schedules.map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)))
+    ctrl.filmJsonHeld shouldBe 6                                  // two films × three payloads
+
+    readModel.reload()                                            // the stamp moves; no film does
+    gunzip(contentAsBytes(ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire")))) shouldBe whole(schedules)
+    ctrl.filmJsonHeld shouldBe 6
+  }
+
+  it should "weigh a film a payload leaves out, so the byte bound can evict it" in {
+    val (ctrl, readModel) = twoFilmController()
+    contentAsString(ctrl.apiDetails("poznan")(FakeRequest())) should not include "Drugi"   // no detail content: left out
+    ctrl.filmJsonHeld shouldBe 2                                                            // kept all the same
+    // Caffeine never evicts a zero-weight entry: each held film must weigh something.
+    ctrl.filmJsonWeighed should be >= ctrl.filmJsonHeld * MovieController.FilmJsonEntryBytes
     readModel.stop()
   }
 }

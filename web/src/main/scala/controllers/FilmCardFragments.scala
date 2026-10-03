@@ -20,6 +20,16 @@ import services.metrics.CacheOccupancy
  * dates count from), its city (zone and language) and the deployment's messages, and
  * all of them are the key. A film that changed in any of them asks for another key;
  * superseded entries are never invalidated, only aged out by the byte bound.
+ *
+ * WHAT THE BOUND DOES NOT COUNT: the key's `FilmSchedule`. A live entry's schedule is the
+ * one `MovieControllerService` keeps for reuse anyway, and its showtimes and metadata are
+ * the read model's own objects; a superseded entry's schedule is mostly those same shared
+ * objects plus its list wrappers. A content FINGERPRINT in its place was rejected: a
+ * 32-bit-per-element hash can collide, and a collision serves another schedule's card.
+ *
+ * A card is kept as one Java string, one byte per char only while every char is Latin-1:
+ * keep non-Latin-1 glyphs in card markup as entities (`&#10005;`), or every card of a
+ * non-Polish host doubles (`FilmCardFragmentsSpec`).
  */
 trait FilmCardFragments {
   /** The card for `key`, rendering it with `render` only when it is not held. */
@@ -75,7 +85,8 @@ object CaffeineFilmCardFragments {
   val DefaultMaxBytes: Long = 24L * 1024 * 1024
 
   /** A string's bytes: one per char while every char is Latin-1, two for all of them
-   *  once one is not (Java's compact strings). */
-  private def bytesHeld(card: String): Int =
+   *  once one is not (Java's compact strings). Also what weighs the API's per-film JSON
+   *  (`MovieController`). */
+  private[controllers] def bytesHeld(card: String): Int =
     if (card.chars().allMatch(_ <= 0xFF)) card.length else card.length * 2
 }

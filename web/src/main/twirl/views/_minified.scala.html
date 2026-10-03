@@ -7,8 +7,8 @@
 
    `minifier` is the one the web composition root chose
    (`tools.Minifier.forMode`): production gets a `tools.MemoisingMinifier`,
-   so the per-request cost after the first hit is one
-   `ConcurrentHashMap.get` lookup; dev mode gets `tools.PassThroughMinifier`,
+   so the per-request cost after the first hit is one bounded Caffeine
+   lookup; dev mode gets `tools.PassThroughMinifier`,
    so DevTools-style debugging (readable, indented source) keeps working
    while running `sbt run` locally.
 

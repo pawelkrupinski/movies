@@ -21,6 +21,23 @@ class MinifierSpec extends AnyFlatSpec with Matchers {
     new MemoisingMinifier().cachedBlocks shouldBe 0
   }
 
+  "A constant block" should "be rendered once by a memoising minifier, and processed as process would" in {
+    val minifier = new MemoisingMinifier
+    var renders  = 0
+    def content  = { renders += 1; play.twirl.api.Html(block) }
+    minifier.constant("shared")(content).body shouldBe Minify.process(block)
+    minifier.constant("shared")(content).body shouldBe Minify.process(block)
+    renders shouldBe 1
+  }
+
+  it should "be rendered every time by a minifier that keeps nothing" in {
+    var renders = 0
+    def content = { renders += 1; play.twirl.api.Html(block) }
+    PassThroughMinifier.constant("shared")(content).body shouldBe block
+    PassThroughMinifier.constant("shared")(content).body shouldBe block
+    renders shouldBe 2
+  }
+
   "PassThroughMinifier" should "leave the markup untouched" in {
     PassThroughMinifier.process(block) shouldBe block
   }

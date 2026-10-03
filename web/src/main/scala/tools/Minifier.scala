@@ -1,6 +1,5 @@
 package tools
 
-
 import play.api.Mode
 
 /** Rewrites an HTML fragment's inline `<script>` / `<style>` blocks — what
@@ -9,6 +8,13 @@ import play.api.Mode
  *  templates by the controllers. */
 trait Minifier {
   def process(html: String): String
+
+  /** `content` processed, for a block whose markup is the same on every render — one
+   *  whose template takes nothing that varies (`_sharedStyles`). `block` names it and
+   *  must be unique to the call site. Here the block is rendered and processed on every
+   *  call; [[MemoisingMinifier]] does both once. */
+  def constant(block: String)(content: => play.twirl.api.Html): play.twirl.api.Html =
+    play.twirl.api.Html(process(content.body))
 }
 
 object Minifier {
@@ -49,6 +55,15 @@ class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends
 
   def process(html: String): String =
     blockCache.get(html, Minify.process(_, minifyJs, minifyCss))
+
+  // Keyed by the call site's name, not the markup: rendering a constant block only to
+  // look it up by its text was the cost being saved — `_sharedStyles` rebuilt ~1,200
+  // lines of Twirl tree and hashed the resulting string on every page render (~0.9 MB
+  // of a Warsaw film page). Bounded by the call sites that exist.
+  private val constants = new java.util.concurrent.ConcurrentHashMap[String, play.twirl.api.Html]()
+
+  override def constant(block: String)(content: => play.twirl.api.Html): play.twirl.api.Html =
+    constants.computeIfAbsent(block, _ => play.twirl.api.Html(process(content.body)))
 
   /** How many distinct blocks this instance has memoised. */
   def cachedBlocks: Int = { blockCache.cleanUp(); blockCache.estimatedSize().toInt }
