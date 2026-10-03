@@ -93,49 +93,6 @@ runs:
           "$GITHUB_WORKSPACE"/scripts/ci/drop-microsoft-apt-sources.sh
           "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start socat-install "$GITHUB_WORKSPACE"/scripts/ci/install-apt-package.sh socat
 
-    # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
-    # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
-    # restored enrichment tree is up to 127k files that every such glob walks for nothing —
-    # ~50 s of the United States' setup.
-    - uses: ./.github/actions/setup-jdk
-      with:
-          distribution: temurin
-          java-version: 27
-          cache: sbt
-    # sbt 1.x keeps no sbt-2 disk cache: the step restored nothing and saved nothing, at ~30 s a
-    # leg in its key's workspace glob.
-    - uses: sbt/setup-sbt@v1
-      with:
-          disk-cache: false
-
-    # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
-    # inputs for its post-job save, and by then the restored fixture trees put 127k files
-    # (US) under the `**` globs — 17 s to restore and 21 s to save, hashing sources that
-    # tree holds none of.
-    - name: Key the sbt build cache
-      id: sbt-key
-      shell: bash
-      run: echo "key=sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}" >> "$GITHUB_OUTPUT"
-    # NOT the root `target/`: every module writes its JUnit XML into the one root-level
-    # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
-    # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
-    # directory full of specs it never ran — the United States' leg died on an OOM before
-    # ScalaTest reported a result on 2026-09-01, and its check-run went green naming
-    # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
-    # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
-    - uses: actions/cache@v5
-      with:
-          path: |
-              project/target
-              project/project/target
-              */target/scala-*
-              !*/target/scala-*/*.jar
-          key: ${{ steps.sbt-key.outputs.key }}
-          restore-keys: |
-              sbt-target-convergence-${{ runner.os }}-
-              sbt-target-e2e-${{ runner.os }}-
-              sbt-target-${{ runner.os }}-
-
     # WHICH recording to replay, decided once and before anything is downloaded.
     #
     # A HERMETIC leg replays a PAIR: a corpus and the enrichment tree recorded against it,
@@ -182,6 +139,72 @@ runs:
           echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$corpus" >> "$GITHUB_ENV"
           echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree" >> "$GITHUB_ENV"
           echo "pair=$pair" >> "$GITHUB_OUTPUT"
+
+    # The enrichment tree, fetched and unpacked in the BACKGROUND from here on — beside the
+    # JDK, sbt and build-cache restores below, which it shares nothing with — into a stage
+    # OUTSIDE the workspace, so their workspace globs never walk it; "Unpack whichever fixtures
+    # are present" waits for it and moves it in. 13-19 s of every leg's setup, queued behind
+    # those restores until 2026-10-03 (run 37105119296). See restore-enrichment-tree.sh.
+    #
+    # The tree lives in a ROLLING RELEASE, one asset per country, overwritten in place. Three
+    # storage options, and only one of them fits. The actions CACHE is out on space: this repo
+    # already sits at 9.46 GB of a 10 GB ceiling, so these tarballs were evicted the moment
+    # they were written — with `actions/cache/save` still reporting success, because a save
+    # succeeding says nothing about whether the entry SURVIVES — and forcing them through that
+    # ceiling evicts the sbt caches every job depends on. MONGO has the space but is only
+    # reachable over a tunnel, the component that has broken more runs than everything else
+    # combined. ARTIFACTS work, and are what this used to use, but they are per-run: every
+    # country at 84-434 MB every deploy, when the only copy anyone reads is the newest. A
+    # release asset is 2 GB per file, outside the Actions storage quota, comes off the CDN with
+    # no tunnel in the path, and `--clobber` replaces it in place.
+    - name: Fetch the enrichment tree in the background
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start tree-restore "$GITHUB_WORKSPACE"/.github/scripts/restore-enrichment-tree.sh "${{ inputs.code }}" "${{ inputs.mode }}" "$RUNNER_TEMP/tree-stage"'
+
+    # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
+    # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
+    # restored enrichment tree is up to 127k files that every such glob walks for nothing —
+    # ~50 s of the United States' setup.
+    - uses: ./.github/actions/setup-jdk
+      with:
+          distribution: temurin
+          java-version: 27
+          cache: sbt
+    # sbt 1.x keeps no sbt-2 disk cache: the step restored nothing and saved nothing, at ~30 s a
+    # leg in its key's workspace glob.
+    - uses: sbt/setup-sbt@v1
+      with:
+          disk-cache: false
+
+    # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
+    # inputs for its post-job save, and by then the restored fixture trees put 127k files
+    # (US) under the `**` globs — 17 s to restore and 21 s to save, hashing sources that
+    # tree holds none of.
+    - name: Key the sbt build cache
+      id: sbt-key
+      shell: bash
+      run: echo "key=sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}" >> "$GITHUB_OUTPUT"
+    # NOT the root `target/`: every module writes its JUnit XML into the one root-level
+    # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
+    # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
+    # directory full of specs it never ran — the United States' leg died on an OOM before
+    # ScalaTest reported a result on 2026-09-01, and its check-run went green naming
+    # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
+    # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
+    - uses: actions/cache@v5
+      with:
+          path: |
+              project/target
+              project/project/target
+              */target/scala-*
+              !*/target/scala-*/*.jar
+          key: ${{ steps.sbt-key.outputs.key }}
+          restore-keys: |
+              sbt-target-convergence-${{ runner.os }}-
+              sbt-target-e2e-${{ runner.os }}-
+              sbt-target-${{ runner.os }}-
 
     # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
     # pinned one, else the newest) — not from the actions cache it also writes.
@@ -272,95 +295,37 @@ runs:
               echo "recording run $green's corpus is no longer downloadable — no diff"
           fi
 
-    # The enrichment tree — recorded responses AND the remembered-answer cache —
-    # lives in a ROLLING RELEASE, one asset per country, overwritten in place.
-    #
-    # Three storage options, and only one of them fits. The actions CACHE is out
-    # on space: this repo already sits at 9.46 GB of a 10 GB ceiling, so these
-    # tarballs were evicted the moment they were written — with
-    # `actions/cache/save` still reporting success, because a save succeeding
-    # says nothing about whether the entry SURVIVES — and forcing them through
-    # that ceiling evicts the sbt caches every job depends on. MONGO has the
-    # space and is where this cache started, but it is only reachable over a
-    # `flyctl proxy`, which is the single component that has broken more runs
-    # this week than everything else combined (three legs cancelled at the
-    # 75-minute ceiling paying 5s a write to a socket nobody was listening to).
-    # ARTIFACTS work, and are what this used to use, but they are per-run: three
-    # countries at 84-434 MB every deploy, retained for days, when the only copy
-    # anyone ever reads is the newest one.
-    #
-    # A release asset is 2 GB per file, doesn't touch the Actions storage quota,
-    # comes off the CDN with no tunnel in the path, and `--clobber` replaces it
-    # in place — so there is exactly one copy per country and no history to
-    # prune. It is also a far simpler read than scanning runs for an artifact.
-    #
-    # Never fails the leg: no release yet is the normal first-run state, and the
-    # leg then falls through to the artifact bootstrap, and failing that to
-    # fetching live and publishing what it learns.
-    - name: Restore the enrichment tree and remembered answers
-      shell: bash
-      # A recording leg falls through to bootstrapping; a replay leg's missing pin ENDS the leg.
-      continue-on-error: ${{ inputs.mode == 'record' }}
-      env:
-          GH_TOKEN: ${{ inputs.token }}
-      run: |
-          set -uo pipefail
-          # FIXTURE_RELEASE_TAG comes from the workflow-level `env`, which is
-          # exported into every step's shell.
-          TAG="$FIXTURE_RELEASE_TAG"
-          # The pinned pair's tree for a hermetic leg, the working tree for a recording one
-          # (see "Resolve the recorded pair"). Unpacked by whatever name it downloads under —
-          # the tarball's paths are what place it, and its magic what inflates it.
-          ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-${{ inputs.code }}.tar.*}"
-          mkdir -p enrichment-archive
-          if gh release download "$TAG" --pattern "$ASSET" --dir enrichment-archive --clobber 2>/dev/null; then
-              # Both spellings of the working tree only in the moment between a first zstd
-              # publish and its deleting the gzip it replaced: the zstd one is the newer.
-              if compgen -G "enrichment-archive/*.tar.zst" >/dev/null; then rm -f enrichment-archive/*.tar.gz; fi
-              echo "enrichment tree $ASSET from release $TAG"
-              ls -l enrichment-archive/
-              exit 0
-          fi
-          if [ "${{ inputs.mode }}" != "record" ]; then
-              echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest two) — a hermetic leg replays nothing else"
-              exit 1
-          fi
-
-          # One-off bootstrap: before the release existed, legs published
-          # artifacts. Read the newest of those so the switch doesn't throw away
-          # captures already paid for. Conclusion deliberately NOT filtered — a
-          # leg that failed or was cancelled still recorded everything it
-          # enriched before it stopped, and today's largest captures came from
-          # cancelled legs.
-          echo "no asset in release $TAG — falling back to the newest artifact"
-          for run in $(gh run list --workflow "Country convergence" --limit 10 \
-                       --json databaseId --jq '.[].databaseId' 2>/dev/null); do
-                  [ "$run" = "${{ github.run_id }}" ] && continue
-                  if gh run download "$run" --name "enrichment-fixtures-${{ inputs.code }}" \
-                     --dir enrichment-archive 2>/dev/null; then
-                      echo "enrichment fixtures from run $run"
-                      ls -l enrichment-archive/
-                      exit 0
-                  fi
-          done
-          echo "no enrichment capture found for ${{ inputs.code }} — this leg fetches live and publishes the result"
-
     - name: Unpack whichever fixtures are present
       shell: bash
+      env:
+          MODE: ${{ inputs.mode }}
       run: |
           set -euo pipefail
-          # By each archive's magic (`unpack-fixture-archive.sh`): the enrichment tree is zstd,
-          # an older pinned tree and the scrape corpus gzip.
-          tree=$(compgen -G "enrichment-archive/*" | head -1 || true)
-          for archive in "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
-                         "${tree:-enrichment-archive/enrichment-${{ inputs.code }}.tar.*}"; do
-              if [ -f "$archive" ]; then
-                  "$GITHUB_WORKSPACE/.github/scripts/unpack-fixture-archive.sh" "$archive"
-                  echo "restored $archive ($(du -h "$archive" | cut -f1))"
-              else
-                  echo "no $archive — this leg fetches live for it and the recorder captures it next"
-              fi
+          # The enrichment tree, fetched and unpacked in the background since the top of this
+          # action ("Fetch the enrichment tree in the background"). A replay leg's missing pin
+          # (exit 3) ends the leg; a recording falls through to fetching live.
+          tree_status=0
+          "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh wait tree-restore 900 || tree_status=$?
+          if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$MODE" = "record" ]; }; then
+              exit "$tree_status"
+          fi
+          # Moved in by rename (same filesystem), entry by entry; a directory already present is
+          # merged into rather than replaced.
+          stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"
+          mkdir -p test/resources/fixtures
+          for entry in "$stage"/* "$stage"/.[!.]*; do
+              [ -e "$entry" ] || continue
+              target="test/resources/fixtures/$(basename "$entry")"
+              if [ -e "$target" ]; then cp -a "$entry/." "$target/"; else mv "$entry" "$target"; fi
           done
+          # The scrape corpus, by its magic (`unpack-fixture-archive.sh`), as the tree was.
+          archive="scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
+          if [ -f "$archive" ]; then
+              "$GITHUB_WORKSPACE/.github/scripts/unpack-fixture-archive.sh" "$archive"
+              echo "restored $archive ($(du -h "$archive" | cut -f1))"
+          else
+              echo "no $archive — this leg fetches live for it and the recorder captures it next"
+          fi
           # `|| true` and a subshell: a MISSING fixture directory is the normal
           # fallback path, not an error — the leg then fetches live and the
           # recorder captures it next. Without this, `find` exiting non-zero on

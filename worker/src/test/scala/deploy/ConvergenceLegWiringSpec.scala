@@ -578,6 +578,25 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       "scripts/ci/in-background.sh wait mongo-start 240")
   }
 
+  /** The enrichment tree's download and unpack (13-19 s, run 37105119296) overlap the JDK, sbt
+   *  and build-cache restores rather than queueing behind them — unpacked OUTSIDE the workspace,
+   *  because those restores' keys glob it and 130k tree files would cost them more than the
+   *  overlap saves — and are waited for, and moved in, before anything reads the tree. */
+  it should "fetch the enrichment tree in the background, outside the workspace, before the JDK and caches" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
+    def at(fragment: String) = steps.indexWhere(_.contains(fragment))
+    RepoFile.step(setup, "Fetch the enrichment tree in the background") should include(
+      "scripts/ci/in-background.sh start tree-restore \"$GITHUB_WORKSPACE\"/.github/scripts/restore-enrichment-tree.sh " +
+        "\"${{ inputs.code }}\" \"${{ inputs.mode }}\" \"$RUNNER_TEMP/tree-stage\"")
+    withClue("the pair it fetches is resolved first: ")(at("Resolve the recorded pair") should be < at("Fetch the enrichment tree"))
+    at("Fetch the enrichment tree") should be < at("./.github/actions/setup-jdk")
+    val unpack = RepoFile.step(setup, "Unpack whichever fixtures are present")
+    unpack should include("scripts/ci/in-background.sh wait tree-restore")
+    unpack should include("""stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"""")
+    withClue("moved in before the overlay is laid over it: ")(at("Unpack whichever fixtures") should be < at("Unpack the identity model's overlay"))
+  }
+
   /** The prod-Mongo tunnel's `socat` is not on the runner image, and installing it inside the
    *  tunnel step was 9-17 s of every recording's critical path (run 37105119296). Setup starts it
    *  at the top of a RECORDING job, beside the JDK and caches, and the tunnel waits for the rest —

@@ -32,6 +32,7 @@ test/resources/fixtures/corpus/**
 .github/scripts/carry-overlay.sh
 .github/scripts/pack-enrichment-tree.sh
 .github/scripts/unpack-fixture-archive.sh
+.github/scripts/restore-enrichment-tree.sh
 .github/scripts/convergence-bisect.sh
 # The CI plumbing a leg runs: its preflight, the release reads and writes behind its pinned
 # pair, and the status that IS its verdict on the commit. (ConvergenceDispatchGateSpec walks

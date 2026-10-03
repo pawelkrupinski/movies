@@ -58,14 +58,23 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // older pin (`identity-measure-ci.sh`'s RECORDING) finds nothing; the step said `::error::` and
   // exited 0, and a 2026-09-29 PL measurement "succeeded" with 0 of 9,981 listings matched.
   it should "fail, not replay nothing, when the pinned pair's corpus or tree is gone" in {
-    Seq("Restore the recorded scrape corpus", "Restore the enrichment tree and remembered answers").foreach { name =>
-      val lines = RepoFile.step(setup, name).linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
+    def exitsAfterErrors(name: String, text: String, exit: String): Unit = {
+      val lines = text.linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
       val afterErrors = lines.zip(lines.drop(1)).collect { case (line, next) if line.startsWith("echo \"::error::") => next }
-      withClue(s"$name: ")(afterErrors should (not be empty and contain only "exit 1"))
-      // ...and the exit must END the leg: a step that continues on error swallowed it, and run
-      // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
-      withClue(s"$name: ")(lines.filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}"))
+      withClue(s"$name: ")(afterErrors should (not be empty and contain only exit))
     }
+    val corpus = RepoFile.step(setup, "Restore the recorded scrape corpus")
+    exitsAfterErrors("the corpus", corpus, "exit 1")
+    // ...and the exit must END the leg: a step that continues on error swallowed it, and run
+    // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
+    corpus.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
+    // The tree is fetched in the background (restore-enrichment-tree.sh) and its verdict collected
+    // where it is moved in: a missing pin exits 3 there, which only a RECORDING may pass.
+    exitsAfterErrors("the tree", RepoFile.read(".github/scripts/restore-enrichment-tree.sh"), "exit 3")
+    val unpack = RepoFile.step(setup, "Unpack whichever fixtures are present")
+    unpack should not include "continue-on-error"
+    unpack should include("""if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$MODE" = "record" ]; }; then""")
+    unpack should include("""exit "$tree_status"""")
   }
 
   // The sample, the full leg and the bisect of one run must replay ONE pair, or a recorder
