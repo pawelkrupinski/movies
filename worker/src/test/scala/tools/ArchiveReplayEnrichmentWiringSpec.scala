@@ -111,6 +111,38 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
+  /** Production's queue sits behind a dedup cache (`TaskQueueWiring.taskDedupCache`): a key it
+   *  queued and has not completed is answered `Duplicate` from memory. The replay wiring went
+   *  straight to the store, paying a write round trip per repeat that production never makes —
+   *  ~45% of a UK replay's staging drain, the reaper re-enqueueing every venue still owing a
+   *  film's detail each time one venue's lands (2026-10-03). */
+  "the archive replay queue" should "answer a repeat enqueue from production's dedup cache, not the store" in {
+    import services.tasks.{EnqueueResult, TaskType}
+    val reachedStore = new java.util.concurrent.atomic.AtomicInteger(0)
+    val storage = new FetchOnlyStorage {
+      override lazy val tasks = new services.tasks.InMemoryTaskQueue {
+        override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: java.time.Instant,
+                             notBefore: Option[java.time.Instant], claimAhead: scala.concurrent.duration.FiniteDuration): EnqueueResult = {
+          reachedStore.incrementAndGet()
+          super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
+        }
+      }
+    }
+    val queue = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, storage, fixtureTree,
+      settings.FixtureRoot.RepositoryRelative).taskQueue
+
+    queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Duplicate
+    withClue("the repeat is answered from memory: ")(reachedStore.get shouldBe 1)
+
+    val task = queue.claim("replay", scala.concurrent.duration.Duration(1, "minute")).getOrElse(fail("nothing to claim"))
+    queue.complete(task.id, "replay")
+    withClue("and completing the task lets the key be queued again, through the store: ") {
+      queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Added
+      reachedStore.get shouldBe 2
+    }
+  }
+
   // An unconfigured run is the EMPTY case of a configured one, not a second mode. It used
   // to be a second mode — no directory meant a fetch that refused every call, which took
   // TMDB's key away with it — and the leg then ran to completion having enriched nothing.

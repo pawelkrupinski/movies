@@ -186,7 +186,14 @@ class ArchiveReplayWiring(
   // and why leaving them faked narrowed the claim without looking as though it did: a
   // settle that enqueues a task, stamps freshness, coordinates a chunk or records an
   // OMDb attempt does real writes in production and none at all against a fake.
-  override protected def queueStore      = storage.tasks
+  //
+  // The queue goes behind production's dedup cache too (`TaskQueueWiring.taskDedupCache`): a
+  // re-enqueue of a key this wiring queued and has not completed is answered `Duplicate` from
+  // memory, as production answers it, instead of a write round trip Mongo also answers
+  // `Duplicate`. Without it the harness paid what production never does — the staging reaper
+  // re-enqueues every venue still owing a film's detail each time one venue's lands, O(venues²)
+  // per wide release, ~45% of a UK replay's staging drain (2026-10-03).
+  override protected def queueStore      = new services.tasks.CachingTaskQueue(storage.tasks)
   override lazy val freshnessStore       = storage.freshness
   override lazy val chunkScrapeStore     = storage.chunkScrape
   override lazy val omdbAttemptStore     = storage.omdbAttempt
