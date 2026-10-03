@@ -301,13 +301,17 @@ trait TestWiring extends WorkerWiring {
   /** One identity projection of a cut-over country, then the enrichment it kicked (venue detail pages,
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
   def projectIdentity(): services.identity.ProjectionTick = {
-    val tick = identityProjection.getOrElse(throw new IllegalStateException(s"${country.code} is not cut over")).tick()
+    val projection = identityProjection.getOrElse(throw new IllegalStateException(s"${country.code} is not cut over"))
+    // Each stage timed, as `bootCorpus`'s are: a cut-over replay is this one call, and its log said only
+    // how long the whole of it took, not whether the projection or the enrichment after it spent it.
+    val scope = country.code
+    val tick  = PhaseTimer.timed(scope, "  identityTick")(projection.tick())
     // The venue pages of the films it wrote, enriched as a cut-over worker's detail reaper does: the
     // model reads them from the slots and re-asks each page the enrichment announces, so the next
     // projection decides with them.
-    enrichDetailsUntilQuiet()
-    drainServices()
-    enrichRatingsSync()
+    PhaseTimer.timed(scope, "  identityDetails")(enrichDetailsUntilQuiet())
+    PhaseTimer.timed(scope, "  identityDrainServices")(drainServices())
+    PhaseTimer.timed(scope, "  identityRatings")(enrichRatingsSync())
     tick
   }
 
