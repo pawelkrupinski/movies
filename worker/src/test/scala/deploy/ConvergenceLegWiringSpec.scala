@@ -215,7 +215,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated — only a " +
              "RECORDING places its sample (which gates nothing there) in one row of its choosing: ") {
       sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
+        Seq("if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))")
     }
     withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
              "implicit success(), and this one only spares a recording's sample row: ") {
@@ -479,16 +479,15 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  6-hour cancellation the split exists to escape — and one row's failure must not cancel
    *  the other's answer.
    *
-   *  BOTH rows run the sample. No row can wait on a step of another row (`needs:` joins
-   *  jobs), so the order row either runs its own sample or runs ungated; its own costs no
-   *  wall time beside a row of hours, and gates the very pair that row's suite replays. */
-  it should "gate every row on its own sample, independently of the other row" in {
+   *  ONLY the convergence row runs the sample. No row can wait on a step of another row, so the
+   *  order row would either run its own copy or run ungated; its own copy sat 97 s in front of the
+   *  identity lane's critical path (run 37144949783), so it runs ungated — a red sample then costs
+   *  that row's runner, never wall time, and the convergence row still gates and reports. */
+  it should "run the sample in the convergence row only, never ahead of the order row's suite" in {
     val block = RepoFile.block(leg, "convergence")
     block should include("fail-fast: false")
-    // The phase appears only to spare a RECORDING's order row (see above); every other row's
-    // sample runs whatever the other row does.
-    RepoFile.step(block, SampleStep).replace("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)", "") should
-      not include "matrix.phase"
+    RepoFile.step(block, SampleStep) should include(
+      "if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))")
   }
 
   /** ONE writer to the rolling release per leg.

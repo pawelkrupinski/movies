@@ -473,9 +473,13 @@ jobs:
             # In a RECORDING it runs in exactly one row: the sample row when there is one, else the
             # convergence row — never the order row, whose recordings no one publishes. A recording's
             # sample gates nothing either way.
+            # NEVER in the order-independence row, in any mode: it sat in front of that row's suite —
+            # the identity lane's critical path — for 97 s (run 37144949783). The convergence row
+            # still runs it, gates its own suite on it and posts the sample verdict; the order row
+            # just runs ungated, which costs a runner on a red sample, never wall time.
             - name: Run the ${{ inputs.country }} sample ahead of the suite
               id: sample
-              if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)
+              if: matrix.phase != 'order-independence' && (inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row))
               continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
