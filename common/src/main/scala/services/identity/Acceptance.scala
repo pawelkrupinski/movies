@@ -247,12 +247,20 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         (own.sizeIs >= 2 || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
     }
   }
+  /** Denied only by the probability cut — no learned rule, no pin — while every word of the listing's title is the
+   *  film's: the cut is then the title's reading of a reordered banner, not a fact against it. ES Ocine's "Manon
+   *  (BALLET LIVE)" ×7 is TMDB's "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE", the one film its search returns, denied
+   *  at 2.4% for its original title "Manon" reading as a fragment of that. */
+  private def cutOnly(scored: Scored): Boolean =
+    !scored.deniedByPin && !scored.suggestedOnly && scored.denial.exists(_.contains(ProbabilityCut)) && wordsOfIts(scored)
+  private val ProbabilityCut = "probability below the cannot-link cut"
   private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
       any   <- ranked.headOption.toRight(Refused("no candidate"))
-      sole  <- one(eligible.filter(_.soleResult), "no search of its returned a single film", "its searches returned different single films",
+      sole  <- one(ranked.filter(scored => scored.soleResult && (eligible.contains(scored) || cutOnly(scored))),
+                 "no search of its returned a single film", "its searches returned different single films",
                  s"${ranked.count(_.rank.isDefined)} film(s) found by its searches")
       _     <- needOf(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film", sole,
                  s"title=${sole.category("title").getOrElse("absent")}")
@@ -261,7 +269,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _     <- needOf(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
                    IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),
                  "its piece cannot stand for the whole title", sole)
-      _     <- noneOf(eligible.find(other => (other ne sole) && other.titleNamesIt), "the title names another film", sole)
+      // a film the title names by fewer of its words is no rival to one carrying them all ("Manon" beside "BALLET LIVE.
+      // MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)")
+      _     <- noneOf(eligible.find(other => (other ne sole) && other.titleNamesIt && !(wordsOfIts(sole) && !wordsOfIts(other))),
+                 "the title names another film", sole)
       _     <- needOf(!sole.category("numeral").exists(IdentityMeasures.OtherInstalment), "the title numbers another instalment", sole,
                  s"numeral=${sole.category("numeral").getOrElse("")}")
       titled = sole.copy(measures = sole.measures ++ Map("title" -> IdentityMeasures.Category("exact"),

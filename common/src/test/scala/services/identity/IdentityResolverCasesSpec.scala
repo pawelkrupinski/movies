@@ -65,6 +65,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(512470))
   }
 
+  "A listing whose own whole-title search returns one film" should "take it though the title's shorter form names others, when the film carries every word" in {
+    // ES Ocine's "Manon (BALLET LIVE)" [165′] ×7, published as "Manon": its whole-title search returns only TMDB's
+    // "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE", denied at 2.4% by the cut alone (the original title reads as a
+    // fragment of it); "Manon" names twenty films, none of them a ballet.
+    val films = Seq(F(471328, "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE", 2018, "", 0, 0.3),
+      F(132332, "Manon", 1949, "Henri-Georges Clouzot", 101, 8), F(1071117, "Manon", 2001, "Someone", 163, 2))
+    val l = listing(Multikino, "Manon (BALLET LIVE)", None, None, Some(165)).copy(originalTitle = Some("Manon"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(471328))
+  }
+
   it should "not take a one-word work's film when no year says which" in {
     val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
     val l = listing(Multikino, "Leonas", None, Some("Juan Manuel Cotelo"))
