@@ -44,6 +44,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1651192)))
   }
 
+  it should "take the film whose work is the original title the venue publishes, by its director and year" in {
+    // DE, Goli Theater's "Ein Hund namens Quill" (2004, Yōichi Sai, 100 min), published as "Quill": TMDB's German
+    // record is "Quill - Ein Freund für´s Leben", which TMDB's search does not return for either title (only the
+    // director's filmography reaches it), so the title and original title read as overlap and fragment.
+    val films = Seq(F(49258, "Quill - Ein Freund für´s Leben", 2004, "Yōichi Sai", 100, 0.6, searched = false),
+      F(9201, "Quill", 2015, "Anna Berg", 12, 40))
+    val l = listing(Multikino, "Ein Hund namens Quill", Some(2004), Some("Yōichi Sai"), Some(100)).copy(originalTitle = Some("Quill"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(49258))
+  }
+
   it should "not take a one-word work's film when no year says which" in {
     val films = Seq(F(1651192, "Leonas, el instinto más salvaje", 2026, "Juan Manuel Cotelo", 94, 2))
     val l = listing(Multikino, "Leonas", None, Some("Juan Manuel Cotelo"))

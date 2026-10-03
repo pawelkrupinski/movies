@@ -353,7 +353,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
    *  the director it credits, that no published year or runtime contradicts
-   *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`; three venues' "Leonas" is Cotelo's "Leonas, el
+   *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`, or the original title the venue publishes, `originalTitleIsWorkOf`:
+   *  DE "Ein Hund namens Quill", published as "Quill" by Yōichi Sai, 2004, is his "Quill - Ein Freund für´s Leben"; three venues' "Leonas" is Cotelo's "Leonas, el
    *  instinto más salvaje", fifth in TMDB's search for the word): Multikino's "Cirque du Soleil:
    *  Kurios - Gabinet osobliwości" by Michel Laprise is his "…: KURIOS - Cabinet des curiosités".
    *  The pipeline took such hits by their director on 3,247 listings with no wrong match; two
@@ -361,8 +362,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  also needs the published year, a word being many films' title. */
   def directorsWork(ranked: Seq[Scored]): Option[Accepted] = directorsWorkWhy(ranked).toOption
   private def directorsWorkWhy(ranked: Seq[Scored]): Verdict = {
-    def bareWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(words =>
-      words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
+    def bareWork(scored: Scored) =
+      (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
+        .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
     eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored)) && !contradicted(scored)) match {
       case found => one(found, "no film of its credited director shares its work", "two films of its director share its work").map(f => f -> f.probability)

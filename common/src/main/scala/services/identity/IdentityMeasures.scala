@@ -617,8 +617,12 @@ object IdentityMeasures {
   /** Is the listing's whole title the film's WORK — its title before a subtitle, after a dash, a comma
    *  or a colon ("Leonas" of "Leonas, el instinto más salvaje", "BTS WORLD TOUR 'ARIRANG' IN BUENOS
    *  AIRES" of "…: Live Viewing")? The words of the work, or None. */
-  def titleIsWorkOf(l: Listing, f: Film): Option[Int] = {
-    val own = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
+  def titleIsWorkOf(l: Listing, f: Film): Option[Int] = workNamedBy(Seq(l.title) ++ l.rawTitle, f)
+  /** Is the original title the venue publishes the film's WORK, as [[titleIsWorkOf]] — DE "Ein Hund namens Quill",
+   *  published as "Quill", of "Quill - Ein Freund für´s Leben"? */
+  def originalTitleIsWorkOf(l: Listing, f: Film): Option[Int] = workNamedBy(l.originalTitle.toSeq, f)
+  private def workNamedBy(titles: Seq[String], f: Film): Option[Int] = {
+    val own = titles.map(key).filter(_.nonEmpty).toSet
     (Seq(f.title) ++ f.originalTitle).flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
   }
 
