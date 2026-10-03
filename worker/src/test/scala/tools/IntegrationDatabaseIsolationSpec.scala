@@ -20,7 +20,9 @@ import java.nio.file.{Files, Path, Paths}
  * Two rules, each naming file:line:
  *
  *  1. No it/ source opens the SHARED database: no `"MONGODB_DB"` read, no
- *     `MongoAddress.fromEnv` (which carries it), no literal `getDatabase("kinowo")`. Take a database of the
+ *     `MongoAddress.fromEnv` (which carries it), no literal `getDatabase("kinowo")`, and no fixed
+ *     `"kinowo_…"` name (one with no `nanoTime`/`pid()` in it), which every run on the same
+ *     server shares. Take a database of the
  *     spec's own from `IsolatedMongoDatabase` (unique per run) or
  *     `IntegrationCorpusDatabase` (`<MONGODB_DB>_<suite>`), and drop it afterwards.
  *
@@ -43,7 +45,12 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
 
   // The shared database is the resolved MONGODB_DB — `IntegrationMongoTarget.databasePrefix`, which
   // every per-suite database name is derived from — or the raw key / literal name.
+  // A FIXED database name ("kinowo_…") is shared too: by every run on the same server, so two
+  // itAll runs side by side drop each other's database mid-test (seen 2026-10-04: "Cannot create
+  // collection kinowo_it_wiring_de.database_owner - database is in the process of being dropped").
   private val SharedDatabase = """"MONGODB_DB"|\.databasePrefix\b|\bMongoAddress\s*\.\s*fromEnv\b|getDatabase\(\s*"kinowo"\s*\)""".r
+  private val FixedName      = """\bs?"kinowo_""".r
+  private val UniquePerRun   = """nanoTime|\bpid\(\)""".r
   private val Delete         = """\.delete(?:Many|One)\s*\(""".r
   private val PatternFilter  = """Filters\.regex\(|\$regex|BsonRegularExpression|Pattern\.compile""".r
 
@@ -51,7 +58,9 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
 
   private def sharedDatabaseLines(path: Path): Seq[String] =
     read(path).linesIterator.zipWithIndex.collect {
-      case (line, index) if SharedDatabase.findFirstIn(code(line)).isDefined => s"$path:${index + 1}: ${line.trim}"
+      case (line, index) if SharedDatabase.findFirstIn(code(line)).isDefined ||
+          (FixedName.findFirstIn(code(line)).isDefined && UniquePerRun.findFirstIn(code(line)).isEmpty) =>
+        s"$path:${index + 1}: ${line.trim}"
     }.toSeq
 
   private def regexDeletes(path: Path): Seq[String] = {

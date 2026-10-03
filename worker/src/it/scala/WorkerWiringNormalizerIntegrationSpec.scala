@@ -33,7 +33,9 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
 
   /** A real wiring on a database of its own, so nothing it touches is shared. */
   private def isolated(forCountry: Country): WorkerWiring = {
-    val ownDatabase = s"kinowo_it_wiring_${forCountry.code}"
+    // Under the run's own MONGODB_DB, never a fixed name: two itAll runs on one server shared
+    // `kinowo_it_wiring_de`, and one's afterAll dropped it under the other's boot.
+    val ownDatabase = tools.IntegrationCorpusDatabase.named(mongoTarget, s"wiring_${forCountry.code}")
     // The run's own Env (its MONGODB_URI): a wiring built without one is hermetic and dials nothing.
     val wiring = new WorkerWiring(forCountry, env = configuration.env) {
       override protected def mongoDbName: settings.MongoDatabaseName = settings.MongoDatabaseName(ownDatabase)
@@ -50,7 +52,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
    * `w.mongoConnection`, which `w.stop()` has already CLOSED — so it raised
    * `state should be: open`, straight into a `Try` that discarded it. And it was never
    * awaited, so even on an open client the JVM would have exited before the command
-   * landed. `kinowo_it_wiring_de` / `_pl` / `_uk` survived every run for both reasons.
+   * landed. The per-country wiring databases survived every run for both reasons.
    */
   override def afterAll(): Unit = {
     built.foreach(w => scala.util.Try(w.stop()))
