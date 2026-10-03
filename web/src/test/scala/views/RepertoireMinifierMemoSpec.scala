@@ -32,4 +32,14 @@ class RepertoireMinifierMemoSpec extends AnyFlatSpec with Matchers {
     minifier.cachedBlocks shouldBe held
     first should include ("data-rendered-at=")
   }
+
+  // What production watches (`kinowo_web_cache_*{cache="minifier"}`): with the blocks
+  // constant, every render after the first is a hit, and the entry count stays put.
+  it should "report its blocks and a hit ratio that climbs with every render" in {
+    val minifier = new tools.MemoisingMinifier
+    for (minute <- 0 until 10) views.html._repertoireView(films, minifier, LocalDateTime.of(2026, 6, 10, 9, minute)).body
+    val occupancy = minifier.occupancy
+    occupancy.entries shouldBe minifier.cachedBlocks.toLong
+    occupancy.hitRatio.get should be >= 0.9
+  }
 }

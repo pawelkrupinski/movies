@@ -36,7 +36,11 @@ object PassThroughMinifier extends Minifier {
 class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends Minifier {
   private def cache(): com.github.benmanes.caffeine.cache.Cache[String, String] =
     com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(maxEntries).build[String, String]()
-  private val blockCache = cache()
+  // Stats on the block cache alone: its hit ratio is what says the blocks are what they
+  // should be. A per-render value inside one would show as a ratio near zero and an
+  // entry count that only grows (published as `kinowo_web_cache_*{cache="minifier"}`).
+  private val blockCache = com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+    .maximumSize(maxEntries).recordStats().build[String, String]()
   private val jsCache    = cache()
   private val cssCache   = cache()
 
@@ -48,6 +52,12 @@ class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends
 
   /** How many distinct blocks this instance has memoised. */
   def cachedBlocks: Int = { blockCache.cleanUp(); blockCache.estimatedSize().toInt }
+
+  /** The block cache's size and hit ratio, for `WebCacheMetrics`. */
+  def occupancy: services.metrics.CacheOccupancy = {
+    blockCache.cleanUp()
+    services.metrics.CacheOccupancy.of(blockCache, weighted = false)
+  }
 }
 
 object MemoisingMinifier {

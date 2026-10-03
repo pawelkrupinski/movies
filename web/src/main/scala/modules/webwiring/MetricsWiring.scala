@@ -42,7 +42,12 @@ trait MetricsWiring { self: Wiring =>
   // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family.
   private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
     "response" -> (() => encodedResponseCache.occupancy),
-    "cards" -> (() => filmCards.occupancy)))
+    "cards" -> (() => filmCards.occupancy)) ++
+    // Only the production minifier memoises; dev mode's pass-through has nothing to report.
+    (minifier match {
+      case memoising: tools.MemoisingMinifier => Seq("minifier" -> (() => memoising.occupancy))
+      case _                                  => Nil
+    }))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code, clock)
   // Retirement signal for the legacy PUT /api/me/state — see the class doc.
   // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController
