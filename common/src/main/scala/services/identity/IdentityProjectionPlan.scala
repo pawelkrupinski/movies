@@ -2,7 +2,7 @@ package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens,
-  StoredMovieRecord, TitleNormalizer}
+  ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.resolution.TmdbAttempt
 
 import java.time.Instant
@@ -38,7 +38,70 @@ final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: O
  *  map extended over the previous films, the regroupings, and the canary — how the resolver's
  *  clusters relate to the films stored before it ran ([[ShadowDiff]]'s relations). */
 final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
-                                 additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int])
+                                 additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int],
+                                 fullSlots: Map[Long, () => Seq[(Source, SourceData)]] = Map.empty) {
+  /** `film` as it is written: a film whose venue slots were taken LEAN from the memo (no showtimes,
+   *  only their digest and starts — enough to compare and guard by) gets them built in full. */
+  def complete(film: ProjectedFilm): ProjectedFilm =
+    fullSlots.get(film.counter).fold(film)(slots => film.copy(record = film.record.copy(data = film.record.data ++ slots())))
+}
+
+/**
+ * The venue slots a projection built, kept from one tick to the next by what they were built FROM —
+ * the venue, its rows on the film (every showtime included) and the prior slots their previous films
+ * held there — so a film whose listings did not change is not rebuilt every five minutes: on the US
+ * corpus that rebuild was ~60 s and ~2.4 GB a tick for the ~50 films that changed of ~2,200.
+ *
+ * Kept LEAN ([[ShowtimesDigest.stripSlot]]: the showtimes' digest and starts, not the showtimes), as
+ * the cache keeps them, so the memo holds a fraction of the corpus; a film taken from it that turns
+ * out to differ from what is stored is built in full before it is written ([[ProjectionDraft.complete]]).
+ * Only what the last tick used is kept.
+ */
+class VenueSlotMemo {
+  private var previous = Map.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
+  private val current  = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
+  private var hits     = 0
+  private var builds   = 0
+
+  /** The slots of `key`, and whether they are lean: the memo's, else `build`'s in full. */
+  private[identity] def apply(key: VenueSlotMemo.Key)(build: => Seq[(Source, SourceData)]): (Seq[(Source, SourceData)], Boolean) =
+    synchronized {
+      previous.get(key) match {
+        case Some(lean) => current(key) = lean; hits += 1; (lean, true)
+        case None =>
+          val full = build
+          current(key) = full.map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
+          builds += 1
+          (full, false)
+      }
+    }
+
+  /** Close a projection: keep only the slots it used, and say how many it took from the memo and built. */
+  def endTick(): (Int, Int) = synchronized {
+    previous = current.toMap
+    current.clear()
+    val counts = (hits, builds)
+    hits = 0; builds = 0
+    counts
+  }
+}
+
+object VenueSlotMemo {
+  /** What one venue's slots on a film are built from: the venue, its rows (content and listing keys)
+   *  and the detail fields of the slots the rows' previous films held at the venue — every input of
+   *  `ScrapeListing.prepare` and `CinemaSlotBuilder.build` that is not fixed for the worker. */
+  final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int)
+
+  /** A memo of nothing: every film's slots built in full. */
+  def none: VenueSlotMemo = new VenueSlotMemo {
+    override private[identity] def apply(key: Key)(build: => Seq[(Source, SourceData)]): (Seq[(Source, SourceData)], Boolean) = (build, false)
+  }
+
+  /** The fields `CinemaSlotBuilder.build` carries forward from a prior slot. */
+  private[identity] def carried(slot: SourceData): Int =
+    (slot.originalTitle, slot.synopsis, slot.cast, slot.director, slot.runtimeMinutes, slot.releaseYear, slot.countries,
+      slot.genres, slot.posterUrl, slot.trailerUrl, slot.ageRating).##
+}
 
 /** A projection ready to write: the films (every key unique, every TMDB id on one film), the ids to
  *  retire, the FilmId-map entries it adds, and the draft's regroupings and canary. */
@@ -76,7 +139,8 @@ object IdentityProjectionPlan {
   val ResolverVerdict: String = "identity-resolver"
 
   def draft(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
-            normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant): ProjectionDraft = {
+            normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant,
+            memo: VenueSlotMemo = VenueSlotMemo.none): ProjectionDraft = {
     // One listing per key — the smallest by the total order, as the resolver takes it — carrying the
     // showtimes of every row published under that key, so a venue printing one listing twice loses none.
     val byKey: Map[ListingKey, ProjectedListing] = listings.groupBy(_.listing.key).map { case (key, rows) =>
@@ -111,11 +175,14 @@ object IdentityProjectionPlan {
     val previousIdOf: Long => Option[String] = c => Option.when(c < covered.nextCounter)(covered.filmIdOf(c)).flatten
 
     // 3. Each film's record.
+    val full = Map.newBuilder[Long, () => Seq[(Source, SourceData)]]
     val drafts = assigned.ids.map { case (counter, members) =>
       val previous = previousIdOf(counter).flatMap(storedById.get)
       val film     = filmOf(members)
-      val rows     = members.toSeq.sorted.map(byKey)
-      val (venueSlots, anchor) = slotsOf(rows, previousOf, storedById, normalizer, slots, tokens)
+      val sorted   = members.toSeq.sorted
+      val rows     = sorted.map(byKey)
+      val (venueSlots, anchor, lean) = slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, memo)
+      if (lean) full += counter -> (() => slotsOf(rows, previousOf, storedById, normalizer, slots, tokens, VenueSlotMemo.none)._1)
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
@@ -129,7 +196,7 @@ object IdentityProjectionPlan {
         data          = base.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++
                           previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) }) ++
                           venueSlots)
-      FilmDraft(counter, previous.map(_.id), members.toSeq.sorted, record, anchor)
+      FilmDraft(counter, previous.map(_.id), sorted, record, anchor)
     }
 
     // Retired: a previous film no cluster kept, and a stored film none of whose listings is published.
@@ -149,7 +216,7 @@ object IdentityProjectionPlan {
       ResolverDecision(members.toSeq.sorted, film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)()
     })
     ProjectionDraft(drafts, retired, retired.filterNot(id => placed(id.value)), covered, additions, regroupings,
-      ShadowDiff.counts(ShadowDiff.of(asStored, previousOf)._1))
+      ShadowDiff.counts(ShadowDiff.of(asStored, previousOf)._1), full.result())
   }
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
@@ -182,22 +249,32 @@ object IdentityProjectionPlan {
    *  listing's previous film held there. Also the title most of its listings carry. */
   private def slotsOf(rows: Seq[ProjectedListing], previousOf: Map[ListingKey, PipelineFilmRef],
                       storedById: Map[String, StoredMovieRecord], normalizer: TitleNormalizer,
-                      slots: CinemaSlotBuilder, tokens: ScreeningTokens): (Seq[(Source, SourceData)], String) = {
+                      slots: CinemaSlotBuilder, tokens: ScreeningTokens, memo: VenueSlotMemo): (Seq[(Source, SourceData)], String, Boolean) = {
+    var lean = false
     val built = rows.groupBy(_.listing.cinema).toSeq.sortBy(_._1.displayName).flatMap { case (cinema, ofVenue) =>
-      val prepared = ScrapeListing.prepare(cinema, ofVenue.map(_.row), normalizer, tokens)
-      prepared.movies.groupBy(cm => CinemaShowing.keyFor(cinema, prepared.cleaned(cm), normalizer)).toSeq
-        .sortBy(_._1.titleKey).map { case (source, group) =>
-          val representative =
-            if (group.sizeIs == 1) group.head
-            else MovieRecordMerge.slotRepresentative(group).copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
-          val prior = previousOf.get(ListingKey.of(cinema, representative)).flatMap(ref => storedById.get(ref.id))
-            .flatMap(_.record.data.get(source))
-          (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior)
-        }
+      // The prior slots any of these rows' previous films held at the venue: a superset of the one
+      // each built slot carries forward, so a change to any of them is a change to the key.
+      val priors = ofVenue.flatMap(r => previousOf.get(r.listing.key)).map(_.id).distinct.sorted.flatMap(storedById.get)
+        .map(_.record.data.collect { case (cs: CinemaShowing, slot) if cs.cinema == cinema => cs.titleKey -> VenueSlotMemo.carried(slot) }.toSeq.sorted)
+      val key = VenueSlotMemo.Key(cinema.displayName, ofVenue.map(_.row).##, ofVenue.map(_.listing.key).##, priors.##, ofVenue.size)
+      val (venue, fromMemo) = memo(key) {
+        val prepared = ScrapeListing.prepare(cinema, ofVenue.map(_.row), normalizer, tokens)
+        prepared.movies.groupBy(cm => CinemaShowing.keyFor(cinema, prepared.cleaned(cm), normalizer)).toSeq
+          .sortBy(_._1.titleKey).map { case (source, group) =>
+            val representative =
+              if (group.sizeIs == 1) group.head
+              else MovieRecordMerge.slotRepresentative(group).copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
+            val prior = previousOf.get(ListingKey.of(cinema, representative)).flatMap(ref => storedById.get(ref.id))
+              .flatMap(_.record.data.get(source))
+            (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior)
+          }
+      }
+      lean = lean || fromMemo
+      venue
     }
     val anchor = rows.map(r => r.listing.cleanTitle).groupMapReduce(identity)(_ => 1)(_ + _).toSeq
       .sortBy { case (t, n) => (-n, t) }.headOption.map(_._1).getOrElse("")
-    (built, anchor)
+    (built, anchor, lean)
   }
 
 }

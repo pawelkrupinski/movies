@@ -126,6 +126,50 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     phases.map(_.allocatedBytes).sum should be > 0L
   }
 
+  // The first projection builds every slot over no stored film; the second over what the first stored
+  // (the prior slots a slot carries detail forward from), and from then on only what moves is rebuilt.
+  "A projection over unchanged listings" should "build no venue slot again, reusing the last projection's" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick().slotsReused shouldBe 0
+    val first = w.projection.tick()
+    first.slotsBuilt should be > 0
+    val again = w.projection.tick()
+    again.slotsBuilt shouldBe 0
+    again.slotsReused shouldBe first.slotsBuilt
+    again.wroteNothing shouldBe true
+  }
+
+  it should "rebuild only the venue whose listing changed, and write that film with every showtime" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick()
+    val first = w.projection.tick()
+    val later = film(KinoMuza, "Diuna", Some(2021), 7, 8, 9)
+    w.scrape(Map(KinoMuza -> Seq(later)))
+    val tick = w.projection.tick()
+    tick.slotsBuilt shouldBe 1
+    tick.slotsReused shouldBe first.slotsBuilt - 1
+    tick.written shouldBe 1
+    w.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
+  }
+
+  it should "write in full a film whose stored showtimes went astray, though its slots came from the memo" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick(); w.projection.tick()
+    // The stored film loses its showtimes behind the projection's back; nothing it is built from moves.
+    val obcy = w.repository.findAll().find(_.title == "Obcy").get
+    w.repository.upsert(obcy.id, CacheKey.stored(obcy.title, obcy.key(normalizer)),
+      obcy.record.copy(data = obcy.record.data.map { case (source, slot) => source -> slot.copy(showtimes = Nil) }))
+    w.cache.rehydrate()
+    w.showtimes should not be allShowtimes
+    val tick = w.projection.tick()
+    tick.slotsBuilt shouldBe 0
+    tick.written shouldBe 1
+    w.showtimes shouldBe allShowtimes
+  }
+
   "A second projection over the same listings" should "write nothing (P2)" in {
     val w = new World
     w.scrape(programme)

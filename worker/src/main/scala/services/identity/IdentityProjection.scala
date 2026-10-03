@@ -14,7 +14,8 @@ import scala.util.{Failure, Success, Try}
  *  them), how many films it wrote and retired, the writes the store declined, and why it was
  *  refused, if it was. */
 final case class ProjectionTick(resolution: Option[Resolution], plan: Option[ProjectionPlan], listings: Int, written: Int,
-                                retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil) {
+                                retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil,
+                                slotsReused: Int = 0, slotsBuilt: Int = 0) {
   def wroteNothing: Boolean = written == 0 && retired == 0
 }
 
@@ -36,8 +37,13 @@ private[identity] final class ProjectionPhases {
     timed.value
   }
 
+  private var notes = Vector.empty[String]
+
+  /** A fact about the projection the log line carries beside its phases. */
+  def note(text: String): Unit = notes :+= text
+
   def all: Seq[ProjectionPhase] = done.result()
-  def render: String            = all.map(_.render).mkString(", ")
+  def render: String            = (all.map(_.render) ++ notes).mkString(", ")
 }
 
 /** Where a projection reports: its films and listings, what moved, the canary (the resolver's
@@ -97,6 +103,8 @@ final class IdentityProjection(
 
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0
+  /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
+  private val slotMemo = new VenueSlotMemo
 
   /** One projection. Throws only what reading its inputs throws. */
   def tick(): ProjectionTick = synchronized {
@@ -124,7 +132,9 @@ final class IdentityProjection(
             // Exactly the listings the resolution decided: one that reached the intake after the
             // model's snapshot is projected by the next tick, never left out of its film by this one.
             val draft = phases("draft")(IdentityProjectionPlan.draft(corpus.filter(row => held(row.listing.key)), resolution, stored,
-              counters, normalizer, slots, tokens, at))
+              counters, normalizer, slots, tokens, at, slotMemo))
+            val slotCounts = slotMemo.endTick()
+            phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2}")
             phases("guard")(ProjectionGuard.refusal(draft, stored, LocalDateTime.ofInstant(at, ZoneOffset.UTC))) match {
               case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
                 consecutiveShrinks += 1
@@ -133,7 +143,7 @@ final class IdentityProjection(
               case shrink =>
                 if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
                 consecutiveShrinks = 0
-                write(resolution, draft, stored, corpus.size, started, phases)
+                write(resolution, draft, stored, corpus.size, started, phases).copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2)
             }
         }
     }
@@ -154,7 +164,7 @@ final class IdentityProjection(
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
     val changed = phases("compare")(plan.films.filter { f =>
       before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
-    })
+    }.map(detailed.complete))
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer)))
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))
