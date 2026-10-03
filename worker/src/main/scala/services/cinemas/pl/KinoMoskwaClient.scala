@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, SlotsToMovies}
 
@@ -55,13 +55,13 @@ class KinoMoskwaClient(
   /** The mini-calendar on today's page lists the event-days (today inclusive) =
    *  one chunk per day. Fetching today's page here is the nav fetch. */
   def planChunks(): Seq[String] =
-    miniCalendarEventDays(Jsoup.parse(http.get(dayUrl(today))), today).map(_.toString)
+    miniCalendarEventDays(Jsoup.parse(HttpRead.page(http, dayUrl(today))), today).map(_.toString)
 
   /** One day's page → that day's films (folded by title). A throw reschedules
    *  just this day's chunk. */
   def fetchChunk(date: String): Seq[CinemaMovie] = {
     val d = LocalDate.parse(date)
-    moviesFrom(parseDayDocument(Jsoup.parse(http.get(dayUrl(d))), d))
+    moviesFrom(parseDayDocument(Jsoup.parse(HttpRead.page(http, dayUrl(d))), d))
   }
 
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =

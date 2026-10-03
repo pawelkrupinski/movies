@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -87,7 +87,7 @@ object KinoZaRogiemSiedlecClient {
       if (page > MaxPages) acc
       else {
         val url  = if (page == 1) RepertoireUrl else s"$RepertoireUrl?product-page=$page"
-        val html = http.get(url)
+        val html = HttpRead.page(http, url)
         if (Jsoup.parse(html, BaseUrl).select("ul.products li.product").isEmpty) acc
         else loop(page + 1, html :: acc)
       }

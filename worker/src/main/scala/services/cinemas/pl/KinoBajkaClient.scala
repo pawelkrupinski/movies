@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -44,13 +44,13 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: Titl
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
     // jsoup decodes the `data-dane` HTML entities, handing back the raw JSON.
     val dane = Option(Jsoup.parse(html).selectFirst("#rep2"))
       .map(_.attr("data-dane")).filter(_.nonEmpty)
-      .flatMap(s => Try(Json.parse(s)).toOption)
+      .map(Json.parse)   // the whole programme: a blob that is not JSON throws, it is not an empty one
 
     val slots = dane.toSeq.flatMap { root =>
       val booking = (root \ "buy").asOpt[String].filter(_.nonEmpty)

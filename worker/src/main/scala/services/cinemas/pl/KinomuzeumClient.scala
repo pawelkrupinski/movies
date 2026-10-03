@@ -5,7 +5,7 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -39,7 +39,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Zone
   protected def fetchUnfiltered(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val document = Jsoup.parse(http.get(ListingUrl))
+    val document = Jsoup.parse(HttpRead.page(http, ListingUrl))
 
     var date: Option[LocalDate] = None
     val slots = document.select("div.section_title_small, h3.h4").asScala.toSeq.flatMap { element =>
@@ -80,7 +80,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Zone
    *  recording an empty result as fresh; a 404/410 escapes so a withdrawn event
    *  page is stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = KinomuzeumClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

@@ -39,6 +39,29 @@ object HttpRead {
       }
     }
 
+  /** A page that must be there — a cinema's listing or one of its day pages: its body, and a
+   *  throw for anything else, a 404 included (rethrown as the original status, so a gone page
+   *  still reads as gone upstream) and a challenge page served with a 200. */
+  def page(fetch: HttpFetch, url: String, headers: Map[String, String] = Map.empty): String =
+    text(fetch, url, headers)(ReadOutcome.Answered(_)).required
+
+  /** [[page]] for a page served in reply to a POST (a WordPress admin-ajax day, a GraphQL
+   *  listing query): its body, and a throw for anything else, a challenge page included. */
+  def postPage(fetch: HttpFetch, url: String, body: String, contentType: String = "application/json"): String =
+    ReadOutcome.of(fetch.post(url, body, contentType)).flatMap { answer =>
+      ChallengePage.detect(answer).fold[ReadOutcome[String]](ReadOutcome.Answered(answer))(vendor =>
+        unexpected(url, s"a $vendor challenge page", answer))
+    }.required
+
+  /** [[page]]'s undecoded bytes, for a legacy single-byte site that ships no charset. The
+   *  interstitials are ASCII, so they are recognised in any single-byte reading. */
+  def pageBytes(fetch: HttpFetch, url: String): Array[Byte] =
+    ReadOutcome.of(fetch.getBytes(url)).flatMap { bytes =>
+      val ascii = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+      ChallengePage.detect(ascii).fold[ReadOutcome[Array[Byte]]](ReadOutcome.Answered(bytes))(vendor =>
+        unexpected(url, s"a $vendor challenge page", ascii))
+    }.required
+
   /** A page's body, `None` when the upstream answers that it has none (404/410), and a
    *  throw for any other failure, a challenge page included — the shape a rating client
    *  that parses a page it may legitimately not find wants. */

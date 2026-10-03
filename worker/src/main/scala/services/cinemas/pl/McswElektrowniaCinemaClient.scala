@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
@@ -67,7 +67,7 @@ class McswElektrowniaCinemaClient(
     // See [[ScrapeHorizon.liveDays]] — same walk as the other per-day clients.
     val byDate = scala.collection.mutable.LinkedHashMap.empty[LocalDate, Try[Seq[RawSlot]]]
     ScrapeHorizon.liveDays(today) { date =>
-      byDate.getOrElseUpdate(date, Try(http.get(dayUrl(date))).map(parseDayPage(_, date))).toOption.exists(_.nonEmpty)
+      byDate.getOrElseUpdate(date, Try(HttpRead.page(http, dayUrl(date))).map(parseDayPage(_, date))).toOption.exists(_.nonEmpty)
     }
     ListingPages.requireAnyReached(byDate.values)
     val slots: Seq[RawSlot] = byDate.values.toSeq.flatMap(_.toOption).flatten

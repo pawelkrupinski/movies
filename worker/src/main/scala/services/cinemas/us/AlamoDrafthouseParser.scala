@@ -59,7 +59,8 @@ object AlamoDrafthouseParser {
    *  stops a garbage far-future date landing in the read model.
    */
   def parse(json: String, venueSlug: String, cinema: Cinema, notAfter: LocalDate): Seq[CinemaMovie] = {
-    val data          = (Try(Json.parse(json)).getOrElse(JsNull) \ "data")
+    // A body that is not JSON throws: it is no programme, and as JsNull it landed an empty one.
+    val data          = (Json.parse(json) \ "data")
     val presentations = parsePresentations(data)
     val formats       = parseFormatTitles(data)
     val venueId       = cinemaIdFor(data, venueSlug)

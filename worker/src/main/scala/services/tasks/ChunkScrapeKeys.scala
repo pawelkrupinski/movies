@@ -22,4 +22,13 @@ object ChunkScrapeKeys {
 
   def reducePayload(cinema: String, runId: String): Map[String, String] =
     Map(CinemaKey -> cinema, RunIdKey -> runId)
+
+  /** A run's record that one of its reads failed — the plan's day walk, or a page inside a
+   *  chunk ([[services.cinemas.common.ListingReads]]). Stored beside the slices, so the reduce
+   *  publishes the listing as INCOMPLETE and the cache keeps the films that read lacked. Never
+   *  an expected key: the run still completes when every chunk has stored. */
+  private val IncompletePrefix = "incomplete|"
+  val PlanIncomplete: String = IncompletePrefix + "plan"
+  def chunkIncomplete(key: String): String = IncompletePrefix + key
+  def isIncompleteMarker(key: String): Boolean = key.startsWith(IncompletePrefix)
 }

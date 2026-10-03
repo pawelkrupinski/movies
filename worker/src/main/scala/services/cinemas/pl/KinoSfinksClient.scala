@@ -3,14 +3,12 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, ListingPages}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Sfinks (Kraków, Nowa Huta) — the film screen run by Ośrodek Kultury im.
@@ -78,20 +76,17 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
-    val firstHtml = http.get(PageUrl)
+    val firstHtml = HttpRead.page(http, PageUrl)
     val firstDocument  = Jsoup.parse(firstHtml)
 
-    // Follow the "next page" chain off page 1. Extra pages are fetched in
-    // parallel and tolerantly — a fetch failure (or a fixture that only
-    // recorded page 1) drops that page rather than failing the scrape.
+    // Follow the "next page" chain off page 1. A next page that fails is left out, and
+    // the listing is then incomplete (ListingPages.readMore) — its films are kept.
     val extraPaths = nextPagePaths(firstDocument)
-    val extraDocuments  = ParallelDetailFetch.keyed("kino-sfinks-pages", extraPaths, 1.minute)(p => BaseUrl + p) { url =>
-      Try(Jsoup.parse(http.get(url))).toOption
-    }
-    val documents = firstDocument +: extraPaths.flatMap(p => extraDocuments.getOrElse(p, None))
+    val documents = firstDocument +:
+      ListingPages.readMore("kino-sfinks-pages", extraPaths, (p: String) => BaseUrl + p)(url => Jsoup.parse(HttpRead.page(http, url))).map(_._2)
 
     val slots = documents.flatMap(parseDocument)
 

@@ -2,8 +2,8 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
@@ -49,7 +49,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
   override def sourceUrl: Option[String] = Some(ListingUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val cards = parseListing(http.get(ListingUrl))
+    val cards = parseListing(HttpRead.page(http, ListingUrl))
 
     // Multi-day cards have no listing hour — fetch their detail pages and read
     // the Seans block for the real times. Single cards are already complete.
@@ -58,9 +58,9 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
     val detailUrls = cards.filter(_.listingTimes.isEmpty).map(_.detailUrl).distinct
     val detailByUrl =
       if (detailUrls.isEmpty) Map.empty[String, Detail]
-      else ParallelDetailFetch.keyed("kino-zak-details", detailUrls, 1.minute)(identity) { url =>
-        Try(http.get(url)).toOption.map(parseDetail).getOrElse(Detail.empty)
-      }
+      else ListingPages.readMore("kino-zak-details", detailUrls, identity, timeout = 1.minute) { url =>
+        Option(HttpRead.page(http, url)).map(parseDetail).getOrElse(Detail.empty)
+      }.toMap
 
     cards.flatMap { c =>
       val detail = detailByUrl.getOrElse(c.detailUrl, Detail.empty)

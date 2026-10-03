@@ -9616,8 +9616,17 @@ services.cinemas.common.KinoprogrammClient
 services.cinemas.common.KinoprogrammClient$
 services.cinemas.common.KinoprogrammClient$Film
 services.cinemas.common.KinoprogrammClient$Film$
+services.cinemas.common.ListingCompleteness
+services.cinemas.common.ListingCompleteness$
+services.cinemas.common.ListingCompleteness$$anon$1
+services.cinemas.common.ListingCompleteness$$anon$2
+services.cinemas.common.ListingCompleteness$$anon$3
+services.cinemas.common.ListingCompletenessRecorder
+services.cinemas.common.ListingCompletenessRecorder$
 services.cinemas.common.ListingPages
 services.cinemas.common.ListingPages$
+services.cinemas.common.ListingReads
+services.cinemas.common.ListingReads$
 services.cinemas.common.MultiListingScraper
 services.cinemas.common.NearTermProgramme
 services.cinemas.common.NearTermProgramme$

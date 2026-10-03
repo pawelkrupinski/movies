@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsArray, Json}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -47,7 +47,7 @@ class KinoRemusClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(TicketManagerUrl, FilmListUrl)
   override def sourceUrl: Option[String] = Some(TicketManagerUrl)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = parse(http.get(FeedUrl), http.get(FilmListUrl), cinema)
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = parse(HttpRead.page(http, FeedUrl), HttpRead.page(http, FilmListUrl), cinema)
 
   override val detailGroup: String = "kino-remus"
   override def defersTmdbResolution: Boolean = false
@@ -55,7 +55,7 @@ class KinoRemusClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   /** A durable 404/410 escapes (see [[DetailFetchOutcome]]); a loaded page is a
    *  detail even when it parses to nothing, so it is stamped, not retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object KinoRemusClient {

@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
@@ -38,7 +38,7 @@ class CharlieClient(http: HttpFetch, override val cinema: Cinema = KinoCharlie) 
   override def sourceUrl: Option[String] = Some(CharlieClient.PageUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    CharlieClient.parse(new String(http.getBytes(CharlieClient.PageUrl), CharlieClient.PageCharset), cinema)
+    CharlieClient.parse(new String(HttpRead.pageBytes(http, CharlieClient.PageUrl), CharlieClient.PageCharset), cinema)
 }
 
 object CharlieClient {

@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 
@@ -94,7 +94,7 @@ class WebediaShowtimesClient(
    *  stray attribute date can't balloon the chunk fan-out. */
   def planChunks(): Seq[String] = {
     val url  = sourceUrl.getOrElse(throw new IllegalStateException("WebediaShowtimesClient has no sourceUrl"))
-    val html = http.get(url)
+    val html = HttpRead.page(http, url)
     parseShowtimeDates(html)
       .getOrElse(throw new IllegalStateException(
         s"$url carries no data-showtimes-dates attribute — ${market.host} markup changed?"))
@@ -106,8 +106,8 @@ class WebediaShowtimesClient(
    *  so ONLY that day's chunk task reschedules (the per-day retry); the other
    *  days are unaffected. A day that ANSWERS with no films is a valid empty
    *  result, not a failure — Webedia serves an empty `results` for far-future
-   *  days. Spillover pages (>20 films/day, rare) are best-effort: page 1 already
-   *  answered, so a lost page 2 drops a few films rather than failing the day.
+   *  days. Spillover pages (>20 films/day, rare): page 1 already answered, so a lost
+   *  page 2 leaves its films out and marks the listing incomplete rather than failing the day.
    *
    *  (The old monolithic fetch swallowed a day's failure to None and threw only
    *  if ALL days failed, to avoid feeding AdaptiveTimeoutScraper a fast-empty
@@ -116,11 +116,9 @@ class WebediaShowtimesClient(
    *  keeps last-known data.) */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
     val date  = LocalDate.parse(dateKey)
-    val first = parsePage(http.get(showtimesUrl(market.host, theaterId, date, 1)), market)
-    val extra = (2 to first.totalPages).flatMap { p =>
-      Try(http.get(showtimesUrl(market.host, theaterId, date, p))).toOption.toSeq
-        .flatMap(parsePage(_, market).films)
-    }
+    val first = parsePage(HttpRead.page(http, showtimesUrl(market.host, theaterId, date, 1)), market)
+    val extra = ListingPages.readMore("webedia-spillover", 2 to first.totalPages, (p: Int) => showtimesUrl(market.host, theaterId, date, p))(HttpRead.page(http, _))
+      .flatMap { case (_, page) => parsePage(page, market).films }
     (first.films ++ extra).map(raw => toCinemaMovie(raw, raw.showtimes))
   }
 
@@ -243,7 +241,8 @@ object WebediaShowtimesClient {
    *  because two things inside a result are language-shaped rather than
    *  structural: the `runtime` string's unit words and the version tokens. */
   def parsePage(json: String, market: WebediaMarket): Page = {
-    val js = Try(Json.parse(json)).getOrElse(JsNull)
+    // A body that is not JSON throws: as JsNull it read as a day with no films.
+    val js = Json.parse(json)
     val totalPages = (js \ "pagination" \ "totalPages").asOpt[Int].getOrElse(1)
     val films = (js \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(parseResult(_, market))

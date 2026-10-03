@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import play.api.libs.json._
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
@@ -35,14 +35,14 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
    *  scrape as failed (red, with its cause) instead of as empty. */
   def dates(cinemaId: String): Seq[LocalDate] = {
     val datesUrl = s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$FarFuture?attr=&lang=pl_PL"
-    (Json.parse(http.get(datesUrl)) \ "body" \ "dates").as[Seq[String]]
+    (Json.parse(HttpRead.page(http, datesUrl)) \ "body" \ "dates").as[Seq[String]]
       .flatMap(d => Try(LocalDate.parse(d)).toOption)
   }
 
   /** One day's film-events response → that day's films (bare, with that day's
    *  showtimes). A throw reschedules just this day's chunk task. */
   def fetchDay(cinemaId: String, cinema: Cinema, date: LocalDate): Seq[CinemaMovie] =
-    parseDay(http.get(s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL"), cinema)
+    parseDay(HttpRead.page(http, s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL"), cinema)
 
   /** Merge per-day films by Cinema City film id (externalIds "cc"), concatenating
    *  + sorting their showtimes — the cross-day fold the old whole-venue scrape did
@@ -60,7 +60,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
    *  after its run must be stamped, not retried every minute forever — see
    *  [[DetailFetchOutcome]]. */
   def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(detailFetch, ref)).map { html =>
       val detail = CinemaCityClient.parseDetails(html)
       FilmDetail(
         synopsis   = detail.synopsis,

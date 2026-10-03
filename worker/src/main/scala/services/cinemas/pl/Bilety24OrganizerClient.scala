@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Document
 import services.movies.TitleNormalizer
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
@@ -76,10 +76,10 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] =
-    Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema, titles)
+    Bilety24OrganizerClient.parse(HttpRead.page(http, organizerUrl), cinema, titles)
 }
 
 object Bilety24OrganizerClient {

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -40,7 +40,7 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
     val slots = Jsoup.parse(html).select("div.event-item").asScala.toSeq.flatMap(parseEvent)

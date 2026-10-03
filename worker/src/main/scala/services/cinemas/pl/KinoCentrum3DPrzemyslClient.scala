@@ -3,7 +3,7 @@ package services.cinemas.pl
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
@@ -40,7 +40,7 @@ class KinoCentrum3DPrzemyslClient(http: HttpFetch, override val cinema: Cinema)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val slots = Jsoup.parse(http.get(RepertoireUrl))
+    val slots = Jsoup.parse(HttpRead.page(http, RepertoireUrl))
       .select("div.ic-event-div").asScala.toSeq.flatMap(parseEvent)
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.url))) { (title, group, showtimes) =>

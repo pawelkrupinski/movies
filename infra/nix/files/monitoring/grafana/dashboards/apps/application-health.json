@@ -2236,6 +2236,54 @@
               }
             }
           ]
+        },
+        {
+          "id": 9025,
+          "title": "Worker — listings landed INCOMPLETE (no prune), and venues stuck incomplete, by country",
+          "description": "An incomplete listing — a page the scrape read failed (page_failed), or a chunked run came up short (chunk_incomplete) — lands without pruning: the films it could not read are kept. Right for one scrape; for a venue incomplete EVERY scrape it is silent staleness, its stopped films never retired. Bars: incomplete landings per hour by reason, from kinowo_worker_scrape_listing_incomplete_total (CinemaScrapeRunner via ListingIncompleteMetrics). Line: venues whose last 24+ landings were all incomplete (kinowo_worker_scrape_listing_incomplete_streak_venues); each one is named once in a WARN 'has landed 24 incomplete listings in a row' in the worker log. Read the line: it should sit at 0.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 219
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (country, reason) (increase(kinowo_worker_scrape_listing_incomplete_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} {{reason}} /h",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "max by (country) (kinowo_worker_scrape_listing_incomplete_streak_venues{country=~\"$country\"})",
+              "legendFormat": "{{country}} venues stuck incomplete",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {

@@ -2,7 +2,7 @@ package services.cinemas.us
 
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
 
@@ -119,7 +119,7 @@ class AmcClient(
    *   - picker present, no day options → the venue simply has nothing on.
    *     EXPECTED DATA, so it returns empty. */
   def planChunks(): Seq[String] = {
-    val html  = http.get(venueUrl(marketSlug, theatreSlug))
+    val html  = HttpRead.page(http, venueUrl(marketSlug, theatreSlug))
     val day   = today
     val dates = AmcParser.parseDates(html)
       .filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
@@ -135,7 +135,7 @@ class AmcClient(
    *  result, not a failure. */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] =
     AmcParser.parseDay(
-      http.post(GraphUrl, showtimesQuery(theatreSlug, LocalDate.parse(dateKey)), "application/json"),
+      HttpRead.postPage(http, GraphUrl, showtimesQuery(theatreSlug, LocalDate.parse(dateKey)), "application/json"),
       cinema)
 }
 

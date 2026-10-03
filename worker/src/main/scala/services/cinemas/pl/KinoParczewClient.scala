@@ -2,9 +2,9 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScraperParse, ListingPages}
 import models._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.CinemaScraper
@@ -40,10 +40,10 @@ class KinoParczewClient(http: HttpFetch, override val cinema: Cinema = KinoParcz
   override def sourceUrl: Option[String] = Some(KinoParczewClient.HomeUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val filmUrls = KinoParczewClient.filmLinks(http.get(KinoParczewClient.HomeUrl))
-    val byUrl = ParallelDetailFetch("kino-parczew", filmUrls, 30.seconds) { url =>
-      Try(http.get(url)).toOption.flatMap(KinoParczewClient.parseFilm(_, url, cinema))
-    }
+    val filmUrls = KinoParczewClient.filmLinks(HttpRead.page(http, KinoParczewClient.HomeUrl))
+    val byUrl = ListingPages.readMore("kino-parczew", filmUrls, identity[String], timeout = 30.seconds) { url =>
+      Option(HttpRead.page(http, url)).flatMap(KinoParczewClient.parseFilm(_, url, cinema))
+    }.toMap
     filmUrls.flatMap(byUrl.get).flatten.sortBy(_.movie.title)
   }
 }

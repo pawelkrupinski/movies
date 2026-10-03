@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -74,7 +74,7 @@ class IksorisBookingClient(http: HttpFetch, page: IksorisBookingPage, override v
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page.origin.value)
   override def sourceUrl: Option[String] = Some(page.url)
 
-  def fetch(): Seq[CinemaMovie] = IksorisBookingClient.parse(http.get(page.url), page, cinema)
+  def fetch(): Seq[CinemaMovie] = IksorisBookingClient.parse(HttpRead.page(http, page.url), page, cinema)
 }
 
 object IksorisBookingClient {

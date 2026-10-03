@@ -6,7 +6,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -45,14 +45,14 @@ class KinoTomiClient(http: HttpFetch, override val cinema: Cinema = KinoTomi) ex
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] = parse(http.get(RepertoireUrl), cinema)
+  def fetch(): Seq[CinemaMovie] = parse(HttpRead.page(http, RepertoireUrl), cinema)
 
   override val detailGroup: String = "kino-tomi"
 
   /** A durable 404/410 escapes (see [[DetailFetchOutcome]]); a loaded page is a
    *  detail even when it parses to nothing, so it is stamped, not retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object KinoTomiClient {

@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import models.{Cinema, CinemaMovie}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -103,8 +103,8 @@ class GatsbyBoxOfficeClient(
    *  cache in front collapses it across the chain's venues.
    */
   def fetch(): Seq[CinemaMovie] = {
-    val catalogue = http.get(catalogueUrl(baseUrl))
-    val schedule  = http.get(scheduleUrl(baseUrl, theaterId, timeZone, today, today.plusDays(MaxHorizonDays.toLong)))
+    val catalogue = HttpRead.page(http, catalogueUrl(baseUrl))
+    val schedule  = HttpRead.page(http, scheduleUrl(baseUrl, theaterId, timeZone, today, today.plusDays(MaxHorizonDays.toLong)))
     GatsbyBoxOfficeParser.parse(schedule, catalogue, theaterId, cinema, baseUrl,
       details(GatsbyBoxOfficeParser.scheduledMovieIds(schedule, theaterId)), ageRatings)
   }
@@ -118,7 +118,7 @@ class GatsbyBoxOfficeClient(
       // venues' whole batches came back unparseable on 2026-09-29, and every film there was listed
       // bare ("Nosferatu", Eggers' 132 minutes, then resolved as the 1922 film).
       def ask(): Map[String, GatsbyBoxOfficeParser.FilmDetails] = {
-        val answered = GatsbyBoxOfficeParser.parseDetails(http.get(detailsUrl(baseUrl, batch)))
+        val answered = GatsbyBoxOfficeParser.parseDetails(HttpRead.page(http, detailsUrl(baseUrl, batch)))
         if (answered.isEmpty) throw new IllegalStateException(s"the response named none of the ${batch.size} film(s) asked")
         answered
       }

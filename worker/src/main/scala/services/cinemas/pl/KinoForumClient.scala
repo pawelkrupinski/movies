@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import tools.HttpRead
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -44,7 +46,7 @@ class KinoForumClient(
   override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val document   = Jsoup.parse(http.get(PageUrl))
+    val document   = Jsoup.parse(HttpRead.page(http, PageUrl))
     val slots = document.select("div.repertoire-row[data-date][data-hour]").asScala.toSeq
       .flatMap(parseRow)
       .filter(!_.dateTime.toLocalDate.isBefore(today))

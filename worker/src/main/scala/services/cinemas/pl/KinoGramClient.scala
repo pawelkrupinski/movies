@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import services.movies.TrailerEmbed
@@ -33,7 +33,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val body = Json.obj("query" -> Query).toString
     // A failed POST propagates: swallowed into `{}` it read as a venue with no screenings.
-    val json = Json.parse(http.post(ApiUrl, body, "application/json"))
+    val json = Json.parse(HttpRead.postPage(http, ApiUrl, body, "application/json"))
     val screenings = (json \ "data" \ "getScreeningList").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 
     screenings.groupBy(s => (s \ "movie" \ "id").asOpt[String].getOrElse("")).toSeq.flatMap { case (movieId, group) =>

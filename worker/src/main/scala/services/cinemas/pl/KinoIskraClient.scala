@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -64,9 +64,9 @@ class KinoIskraClient(
   // metadata to what the listing already shows, so one that fails to load leaves
   // that film bare rather than failing the venue. Records load side by side.
   def fetch(): Seq[CinemaMovie] = {
-    val slots   = listing(http.get(RepertoireUrl), today)
+    val slots   = listing(HttpRead.page(http, RepertoireUrl), today)
     val records = ParallelDetailFetch.keyed("kino-iskra", slots.map(_.movieId), 30.seconds)(movieUrl)(url =>
-      Try(record(http.get(url))).toOption).flatMap((id, r) => r.map(id -> _))
+      Try(record(HttpRead.page(http, url))).toOption).flatMap((id, r) => r.map(id -> _))
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val record = group.map(_.movieId).distinct.flatMap(records.get).foldLeft(Record())((known, next) => known.orElse(next))
       CinemaMovie(

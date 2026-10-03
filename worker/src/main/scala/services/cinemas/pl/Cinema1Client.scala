@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{AgeRating, CinemaScraper}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages}
 
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -53,15 +53,15 @@ class Cinema1Client(
     // Not wrapped in a Try: the listing is the whole scrape, so a failed fetch has
     // to surface as a failed (red) scrape with its cause, not an empty (white) one.
     // The per-film and room lookups below stay tolerant — they only enrich.
-    val screenings = parseScreenings(http.get(screeningsUrl(cinemaId, today.atStartOfDay, today.plusYears(1).atStartOfDay)))
+    val screenings = parseScreenings(HttpRead.page(http, screeningsUrl(cinemaId, today.atStartOfDay, today.plusYears(1).atStartOfDay)))
     if (screenings.isEmpty) return Seq.empty
 
-    val roomByScreen = Try(http.get(screenHeadUrl(cinemaId))).toOption.map(parseScreenHeads).getOrElse(Map.empty)
+    val roomByScreen = Try(HttpRead.page(http, screenHeadUrl(cinemaId))).toOption.map(parseScreenHeads).getOrElse(Map.empty)
 
     val movieIds  = screenings.map(_.movieId).distinct
-    val movieById = ParallelDetailFetch.keyed("cinema1-movies", movieIds, 1.minute)(identity) { id =>
-      Try(http.get(movieUrl(id))).toOption.flatMap(parseMovie)
-    }
+    val movieById = ListingPages.readMore("cinema1-movies", movieIds, identity, timeout = 1.minute) { id =>
+      Option(HttpRead.page(http, movieUrl(id))).flatMap(parseMovie)
+    }.toMap
 
     screenings.groupBy(_.movieId).toSeq.flatMap { case (movieId, slots) =>
       movieById.getOrElse(movieId, None).map { m =>

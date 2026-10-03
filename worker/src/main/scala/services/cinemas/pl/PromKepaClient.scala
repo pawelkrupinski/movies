@@ -2,14 +2,13 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Kino Kępa at PROM Kultury Saska Kępa (Warszawa). The "kino-kepa" category
@@ -29,12 +28,12 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val listing = http.get(ListingUrl)
+    val listing = HttpRead.page(http, ListingUrl)
     val slugs   = EventPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct
 
-    val pages = ParallelDetailFetch.keyed("prom-kepa-events", slugs, 1.minute)(s => s"$BaseUrl/wydarzenie/$s") { url =>
-      Try(http.get(url)).toOption
-    }
+    val pages = ListingPages.readMore("prom-kepa-events", slugs, s => s"$BaseUrl/wydarzenie/$s", timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url))
+    }.toMap
     val events = slugs.flatMap(s => pages.getOrElse(s, None).flatMap(html => PromKepaClient.parseEvent(html, s)))
 
     // The source formats the same film inconsistently (quoted vs ALL-CAPS), so

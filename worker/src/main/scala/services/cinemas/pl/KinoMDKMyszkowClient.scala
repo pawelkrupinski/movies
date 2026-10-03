@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -47,8 +47,8 @@ class KinoMDKMyszkowClient(http: HttpFetch, override val cinema: Cinema = KinoMD
   override def sourceUrl: Option[String] = Some(KinoMDKMyszkowClient.CategoryUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val urls = KinoMDKMyszkowClient.eventUrls(http.get(KinoMDKMyszkowClient.CategoryUrl))
-    urls.flatMap(url => KinoMDKMyszkowClient.parseEvent(http.get(url), url, cinema))
+    val urls = KinoMDKMyszkowClient.eventUrls(HttpRead.page(http, KinoMDKMyszkowClient.CategoryUrl))
+    urls.flatMap(url => KinoMDKMyszkowClient.parseEvent(HttpRead.page(http, url), url, cinema))
   }
 }
 

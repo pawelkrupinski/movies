@@ -292,7 +292,8 @@ trait ScrapeWiring { self: WorkerWiring =>
     new GoneVenueAlertingArchive(
       copiedFeedDetector.foldLeft(scrapeArchive)(new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,
-      fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)))
+      fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)),
+    completeness = workerMetrics.listingIncomplete.recorderFor(country.code))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

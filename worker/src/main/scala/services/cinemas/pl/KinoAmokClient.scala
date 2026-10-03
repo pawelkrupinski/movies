@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
@@ -46,7 +46,7 @@ class KinoAmokClient(
   // The repertoire also sells the venue's own evenings — "Siesta – Trylogia Afrykańska | Spotkanie autorskie z Marcinem
   // Kydryńskim i koncert muzyki na żywo" — which the identity resolver then matched to the 1987 film "Sjesta".
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val html = http.get(RepertoireUrl)
+    val html = HttpRead.page(http, RepertoireUrl)
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 

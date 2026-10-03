@@ -3,7 +3,7 @@ package services.cinemas.us
 import models.{Cinema, CinemaMovie, RegalChain, Source}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome,
   FilmDetail, ScrapeHorizon}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -110,7 +110,7 @@ class RegalClient(
    *  durable 404/410 escapes so a film that is gone for good gets stamped
    *  instead of retried every tick. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(RegalParser.parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(RegalParser.parseDetail)
 
   /** The days to scrape, read off the batch's own index response rather than
    *  guessed as a fixed grid — one cheap (and batch-shared) call names precisely
@@ -133,7 +133,7 @@ class RegalClient(
    *  scrape, which keeps the venue's last-known listing rather than narrowing it
    *  to a guess. An EMPTY list is expected data for a batch with nothing on. */
   def planChunks(): Seq[String] =
-    RegalParser.parseDates(http.get(indexUrl(batch)))
+    RegalParser.parseDates(HttpRead.page(http, indexUrl(batch)))
       .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
       .map(_.toString)
 
@@ -142,7 +142,7 @@ class RegalClient(
    *  alone. A date this theatre simply has nothing on parses to EMPTY — an idle
    *  venue is data, not an outage. */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] =
-    RegalParser.parseDay(http.get(dayUrl(batch, LocalDate.parse(dateKey))), theatreCode, cinema)
+    RegalParser.parseDay(HttpRead.page(http, dayUrl(batch, LocalDate.parse(dateKey))), theatreCode, cinema)
 }
 
 object RegalClient {

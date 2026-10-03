@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -43,8 +43,8 @@ class KinoDKFRumcajsClient(
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    currentMonthPostUrl(http.get(RepertoireUrl))
-      .map(url => parsePost(http.get(url), cinema, today))
+    currentMonthPostUrl(HttpRead.page(http, RepertoireUrl))
+      .map(url => parsePost(HttpRead.page(http, url), cinema, today))
       .getOrElse(Seq.empty)
 }
 

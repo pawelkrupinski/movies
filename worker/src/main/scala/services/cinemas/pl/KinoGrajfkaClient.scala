@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -49,7 +49,7 @@ class KinoGrajfkaClient(
   override def sourceUrl: Option[String] = Some(KinoGrajfkaClient.RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    KinoGrajfkaClient.parse(http.get(KinoGrajfkaClient.RepertoireUrl), cinema)
+    KinoGrajfkaClient.parse(HttpRead.page(http, KinoGrajfkaClient.RepertoireUrl), cinema)
 }
 
 object KinoGrajfkaClient {

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages}
@@ -36,9 +36,9 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val items = listingPages().flatMap(parseListPage)
 
-    val details = ParallelDetailFetch("sdk-details", items.map(_.detailUrl).distinct, 1.minute) { url =>
-      Try(http.get(url)).toOption.map(Jsoup.parse)
-    }
+    val details = ListingPages.readMore("sdk-details", items.map(_.detailUrl).distinct, identity[String], timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).map(Jsoup.parse)
+    }.toMap
 
     items.groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val primary = group.head
@@ -70,7 +70,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
     var more  = true
     val attempts = Seq.newBuilder[Try[String]]
     while (more && start <= 200) {
-      val page  = Try(http.get(s"$ListingUrl?start=$start"))
+      val page  = Try(HttpRead.page(http, s"$ListingUrl?start=$start"))
       attempts += page
       val html  = page.getOrElse("")
       val items = parseListPage(html)

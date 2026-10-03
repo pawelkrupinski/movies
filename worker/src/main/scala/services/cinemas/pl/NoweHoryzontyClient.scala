@@ -6,13 +6,12 @@ import services.cinemas.common.ScraperParse
 import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Nowe Horyzonty (Wrocław) — the largest arthouse cinema in Poland, with
@@ -75,14 +74,14 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Z
    *  `project_scrape_caps_count_venues_not_tasks` is about. */
   def planChunks(): Seq[String] =
     DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
-      listaHtml(http.get(dayUrl(day))).exists(FilmIdPat.findFirstIn(_).isDefined)
+      listaHtml(HttpRead.page(http, dayUrl(day))).exists(FilmIdPat.findFirstIn(_).isDefined)
     })
 
   /** One chunk's days → their films (slots grouped by film id). A throw
    *  reschedules just this chunk's task. */
   def fetchChunk(key: String): Seq[CinemaMovie] =
     moviesFrom(DayChunks.days(key).flatMap { d =>
-      listaHtml(http.get(dayUrl(d))).toSeq.flatMap(parseDay(_, d))
+      listaHtml(HttpRead.page(http, dayUrl(d))).toSeq.flatMap(parseDay(_, d))
     })
 
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
@@ -115,7 +114,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Z
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = NoweHoryzontyClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,
@@ -131,7 +130,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Z
 
   /** Pull the `lista` HTML blob out of a `rep.json` response. */
   private def listaHtml(body: String): Option[String] =
-    Try((Json.parse(body) \ "lista").asOpt[String]).toOption.flatten.filter(_.trim.nonEmpty)
+    (Json.parse(body) \ "lista").asOpt[String].filter(_.trim.nonEmpty)   // not JSON: a failed read, thrown
 
   /** Parse one day's `lista` blob: each `div.boks` is a film, its
    *  `div.seanserep a.xseans` anchors are that day's slots. The date is the

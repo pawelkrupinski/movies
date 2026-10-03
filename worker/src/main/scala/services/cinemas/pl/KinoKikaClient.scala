@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -37,7 +37,7 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html  = http.get(RepertoireUrl)
+    val html  = HttpRead.page(http, RepertoireUrl)
     val slots = parseDocument(html)
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), s.room)) { (title, _, showtimes) =>

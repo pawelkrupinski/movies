@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -34,7 +34,7 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html  = http.get(RepertoireUrl)
+    val html  = HttpRead.page(http, RepertoireUrl)
     val slots = parseDocument(html)
 
     val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
@@ -82,7 +82,7 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object KinoParadoxClient {

@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScraperParse, ListingPages}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import services.cinemas.common.CinemaScraper
 
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Tatry — the independent repertory cinema at ul. Sienkiewicza 40 in Łódź.
@@ -53,13 +52,13 @@ class KinoTatryClient(
 
   def fetch(): Seq[CinemaMovie] = {
     // The homepage IS the listing: a failed fetch fails the scrape (red), not an empty one.
-    val cards = parseHomepage(http.get(HomepageUrl), today, cinema)
+    val cards = parseHomepage(HttpRead.page(http, HomepageUrl), today, cinema)
     if (cards.isEmpty) return Seq.empty
 
     val detailUrls = cards.flatMap(_.filmUrl).distinct
-    val yearByUrl = ParallelDetailFetch.keyed("kino-tatry-detail", detailUrls, 1.minute)(identity) { url =>
-      Try(http.get(url)).toOption.flatMap(yearOf)
-    }
+    val yearByUrl = ListingPages.readMore("kino-tatry-detail", detailUrls, identity, timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).flatMap(yearOf)
+    }.toMap
     cards.map { card =>
       val year = card.filmUrl.flatMap(yearByUrl.getOrElse(_, None))
       card.copy(movie = card.movie.copy(releaseYear = year))

@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -50,7 +50,7 @@ class VisualTicketClient(
   override def sourceUrl: Option[String] = Some(baseUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    VisualTicketClient.parse(http.get(s"$baseUrl/"), cinema, locationId, baseUrl)
+    VisualTicketClient.parse(HttpRead.page(http, s"$baseUrl/"), cinema, locationId, baseUrl)
 }
 
 object VisualTicketClient {

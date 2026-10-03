@@ -101,4 +101,16 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     stored("Film 5") shouldBe 8
     stored("Fallback Only") shouldBe 0   // the recovered primary's ordinary prune
   }
+
+  // Completeness is the SERVING source's: the primary's half-read pages say nothing about the
+  // fallback listing that replaced it, and the primary's own failed page makes its listing short.
+  "a tick's completeness" should "be the serving source's reads, not the other source's" in {
+    def scraper(primary: CinemaScraper) = new SourceFallbackScraper(primary,
+      fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
+      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
+    val pageThenThrow = new Source(Primary, { ListingReads.pageFailed(new RuntimeException("day 2 down")); throw new RuntimeException("primary down") })
+    scraper(pageThenThrow).fetchWithSource() should have (Symbol("viaFallback")(true), Symbol("complete")(true))
+    val pageThenServe = new Source(Primary, { ListingReads.pageFailed(new RuntimeException("day 2 down")); listing })
+    scraper(pageThenServe).fetchWithSource() should have (Symbol("viaFallback")(false), Symbol("complete")(false))
+  }
 }

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import play.api.libs.json.Json
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -47,7 +47,7 @@ class KinoKreskaClient(
   def fetch(): Seq[CinemaMovie] = {
     // A failed POST or an unparseable answer propagates: swallowed into "" it read as a
     // venue with no screenings — a white scrape instead of a red one.
-    val json = http.post(TermsUrl, PostBody, "application/x-www-form-urlencoded")
+    val json = HttpRead.postPage(http, TermsUrl, PostBody, "application/x-www-form-urlencoded")
     if (json.isEmpty) return Seq.empty
 
     val itemsHtml = (Json.parse(json) \ "items").asOpt[String].getOrElse("")

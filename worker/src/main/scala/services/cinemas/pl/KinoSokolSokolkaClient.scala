@@ -3,11 +3,11 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, SlotsToMovies, ListingPages}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.concurrent.duration._
@@ -46,12 +46,12 @@ class KinoSokolSokolkaClient(http: HttpFetch, override val cinema: Cinema = Kino
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val series = parseGrid(http.get(RepertoireUrl))
+    val series = parseGrid(HttpRead.page(http, RepertoireUrl))
     val urls   = series.map(_.detailUrl).distinct
 
-    val timeByUrl = ParallelDetailFetch("kino-sokolka", urls, 1.minute) { url =>
-      Try(http.get(url)).toOption.flatMap(parseStartTime)
-    }
+    val timeByUrl = ListingPages.readMore("kino-sokolka", urls, identity[String], timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).flatMap(parseStartTime)
+    }.toMap
 
     val slots = series.flatMap { s =>
       timeByUrl.get(s.detailUrl).flatten.toSeq.flatMap { time =>

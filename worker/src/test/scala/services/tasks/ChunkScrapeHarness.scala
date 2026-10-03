@@ -22,12 +22,21 @@ class FakeChunkedScraper(
   circuitOpen: Set[String] = Set.empty,
   gone:        Set[String] = Set.empty,
   val cinema:  Cinema = Multikino,
-  planSaysNoSchedule: Boolean = false
+  planSaysNoSchedule: Boolean = false,
+  // A page inside these chunks fails while the rest of the chunk reads (a multi-page walk's
+  // tolerated failure); `planPageFails` does the same to the plan's day walk.
+  pageFailsIn: Set[String] = Set.empty,
+  planPageFails: Boolean = false
 ) extends ChunkedCinemaScraper {
   import FakeChunkedScraper.{CircuitBlockMs, Host}
   private val failed = mutable.Set.empty[String]
   def scrapeHosts: Set[String] = Set(Host)
-  def planChunks(): Seq[String] = if (planThrows) throw new RuntimeException("nav down") else slices.keys.toSeq.sorted
+  def planChunks(): Seq[String] =
+    if (planThrows) throw new RuntimeException("nav down")
+    else {
+      if (planPageFails) services.cinemas.common.ListingReads.pageFailed(new RuntimeException("a day probe failed"))
+      slices.keys.toSeq.sorted
+    }
   override def planSchedule(): services.cinemas.common.ChunkPlan =
     if (planSaysNoSchedule) services.cinemas.common.ChunkPlan.NoScheduleListed else super.planSchedule()
   def fetchChunk(k: String): Seq[CinemaMovie] =
@@ -35,7 +44,10 @@ class FakeChunkedScraper(
     else if (gone.contains(k)) throw new tools.HttpStatusException(404, "GET", s"https://$Host/$k", None)
     else if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
     else if (failOnce.contains(k) && failed.add(k)) throw new RuntimeException(s"chunk $k transient")
-    else slices.getOrElse(k, Nil)
+    else {
+      if (pageFailsIn.contains(k)) services.cinemas.common.ListingReads.pageFailed(new RuntimeException(s"a page of chunk $k failed"))
+      slices.getOrElse(k, Nil)
+    }
 }
 
 object FakeChunkedScraper {

@@ -2,10 +2,10 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
+import tools.{HeliosFetch, HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ListingPages}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
 
 import java.time.format.DateTimeFormatter
@@ -52,7 +52,7 @@ class HeliosClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val rest = fetchRestData()
-    val nuxt = HeliosNuxt.buildMovies(http.get(PageUrl), config, titles)
+    val nuxt = HeliosNuxt.buildMovies(HttpRead.page(http, PageUrl), config, titles)
     // The NUXT `/repertuar` page is Helios's authoritative full-repertoire source
     // (it lists every screening, well beyond REST's 6-day window). helios.pl
     // intermittently 302-redirects it to the films-less homepage — server-side,
@@ -113,9 +113,15 @@ class HeliosClient(
     // per-host 4s timeout + circuit breaker bound how long each one holds it.
     // A window that fails yields nothing rather than killing the scrape — the near
     // window is what most of the programme lives in, and losing the tail to a blip
-    // must not cost us that.
-    val regular         = screeningsUrls.map(u => parseApiScreenings(Try(http.get(u)).getOrElse("[]"))).reduce(_ ++ _)
-    val eventScreenings = eventsUrls.map(u => parseEventScreenings(Try(http.get(u)).getOrElse("[]"))).reduce(_ ++ _)
+    // must not cost us that — but it is reported as a failed page, so the listing is
+    // incomplete and nothing is pruned on the strength of it (ListingPages.reportFailed).
+    def window(urls: Seq[String])(parse: String => Map[String, ApiScreening]): Map[String, ApiScreening] = {
+      val reads = urls.map(u => Try(parse(HttpRead.page(http, u))))
+      ListingPages.reportFailed(reads)
+      reads.flatMap(_.toOption).foldLeft(Map.empty[String, ApiScreening])(_ ++ _)
+    }
+    val regular         = window(screeningsUrls)(parseApiScreenings)
+    val eventScreenings = window(eventsUrls)(parseEventScreenings)
     val screeningsById  = eventScreenings ++ regular
 
     val movieBodies    = fetchBodies("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
@@ -252,9 +258,9 @@ class HeliosClient(
   // Detail bodies (movie metadata, screen names) go through `detailFetch` so the
   // shared chain cache dedups them across locations and passes.
   private def fetchBodies(label: String, ids: Seq[String])(urlFor: String => String): Map[String, String] =
-    ParallelDetailFetch.keyed(label, ids, 1.minute)(urlFor) { url =>
-      Try(detailFetch.get(url)).toOption
-    }.collect { case (id, Some(body)) => id -> body }
+    ListingPages.readMore(label, ids, urlFor, timeout = 1.minute) { url =>
+      Option(HttpRead.page(detailFetch, url))
+    }.toMap.collect { case (id, Some(body)) => id -> body }
 
   // ── REST enrichment of NUXT movies ────────────────────────────────────────
   //

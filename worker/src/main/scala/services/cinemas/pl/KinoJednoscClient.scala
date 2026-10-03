@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
@@ -34,12 +34,12 @@ class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJedno
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val films = parseListing(http.get(ListingUrl))
+    val films = parseListing(HttpRead.page(http, ListingUrl))
     val urls  = films.map(_._2).distinct
 
-    val byUrl = ParallelDetailFetch("kino-jednosc", urls, 1.minute) { url =>
-      Try(http.get(url)).toOption.map(parseShowtimes)
-    }
+    val byUrl = ListingPages.readMore("kino-jednosc", urls, identity[String], timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).map(parseShowtimes)
+    }.toMap
 
     films.groupBy(_._1).toSeq.flatMap { case (title, group) =>
       val showtimes = group

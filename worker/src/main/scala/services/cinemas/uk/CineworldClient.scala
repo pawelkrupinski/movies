@@ -4,7 +4,7 @@ import java.util.Locale
 
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
 
@@ -111,7 +111,7 @@ class CineworldClient(
    *  deferred-detail client does — that is the one case this client still
    *  reports `Failed`/retries. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(movieDetailUrl(BaseUrl, movieIdOf(ref))))
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, movieDetailUrl(BaseUrl, movieIdOf(ref))))
       .flatMap(CineworldParser.parseMovieDetail)
 }
 

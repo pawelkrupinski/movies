@@ -2,12 +2,11 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -42,12 +41,10 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val today = http.get(s"$CinemaUrl/repertuar.php")
+    val today = HttpRead.page(http, s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct
-    val dayPages = ParallelDetailFetch.keyed("nove-kino-days", dates, 1.minute, maxConcurrent = 1)(d => s"$CinemaUrl/repertuar.php?data=$d") { url =>
-      Try(http.get(url)).toOption
-    }
-    val htmls = today +: dates.flatMap(d => dayPages.getOrElse(d, None))
+    val htmls = today +:
+      ListingPages.readMore("nove-kino-days", dates, (d: String) => s"$CinemaUrl/repertuar.php?data=$d", maxConcurrent = 1)(HttpRead.page(http, _)).map(_._2)
 
     val slots = htmls.flatMap(parsePage)
     // The same film is listed once per presentation variant ("- napisy" /
@@ -84,7 +81,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = NoveKinoClient.parseDetail(html)
       FilmDetail(
         synopsis    = detail.synopsis,

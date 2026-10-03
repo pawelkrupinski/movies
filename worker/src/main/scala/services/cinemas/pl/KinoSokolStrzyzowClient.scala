@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -46,7 +46,7 @@ class KinoSokolStrzyzowClient(
   override def sourceUrl: Option[String] = Some(KinoSokolStrzyzowClient.RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    KinoSokolStrzyzowClient.parse(http.get(KinoSokolStrzyzowClient.RepertoireUrl), cinema, today)
+    KinoSokolStrzyzowClient.parse(HttpRead.page(http, KinoSokolStrzyzowClient.RepertoireUrl), cinema, today)
 }
 
 object KinoSokolStrzyzowClient {

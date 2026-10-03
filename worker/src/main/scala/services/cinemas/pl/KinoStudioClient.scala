@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -51,7 +51,7 @@ class KinoStudioClient(
     // "Strona nie znaleziona" body carries `ckeditor` elements of its own, so
     // only the content div tells a real page from it.
     val content = KinoStudioClient.PageUrls.iterator.map { url =>
-      val body = Try(http.get(url))
+      val body = Try(HttpRead.page(http, url))
       body.failed.foreach(error => lastFailure = Some(error))
       body.toOption.filter(KinoStudioClient.hasContent)
     }.collectFirst { case Some(html) => html }

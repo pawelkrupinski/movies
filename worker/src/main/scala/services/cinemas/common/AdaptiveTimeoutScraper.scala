@@ -43,8 +43,10 @@ class AdaptiveTimeoutScraper(
   def fetch(): Seq[CinemaMovie] = {
     val budget = stats.deadlineFor(hostKey)
     val t0     = tools.Stopwatch.start()
+    // On the executor's thread, the pages still report to this scrape's ListingReads.
+    val read   = ListingReads.carry(delegate.fetch())
     val task   = executor.submit(new Callable[Seq[CinemaMovie]] {
-      override def call(): Seq[CinemaMovie] = delegate.fetch()
+      override def call(): Seq[CinemaMovie] = read()
     })
     try {
       val result = task.get(budget.toMillis, TimeUnit.MILLISECONDS)

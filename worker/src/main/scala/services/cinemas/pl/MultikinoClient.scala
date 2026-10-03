@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.CinemaScraper
 import services.movies.TitleNormalizer
 
@@ -48,10 +48,10 @@ class MultikinoClient(
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema, titles)
 
   private def getApiWithRetry(): String =
-    try http.get(apiUrl)
+    try HttpRead.page(http, apiUrl)
     catch { case _: Exception =>
-      try http.get(HomeUrl) catch { case _: Exception => () }
-      http.get(apiUrl)
+      try HttpRead.page(http, HomeUrl) catch { case _: Exception => () }
+      HttpRead.page(http, apiUrl)
     }
 }
 

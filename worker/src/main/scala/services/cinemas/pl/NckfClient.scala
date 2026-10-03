@@ -7,7 +7,7 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -56,7 +56,7 @@ class NckfClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema)
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, RepertoireUrl), today, cinema)
 }
 
 object NckfClient {

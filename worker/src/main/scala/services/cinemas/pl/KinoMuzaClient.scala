@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.Document
 import models.*
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -45,7 +45,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, RepertoireUrl))
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed
   // column of the film header — `div.col-lg-7.paragraph`. A second
@@ -111,7 +111,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
         synopsis   = parseSynopsis(document),

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import tools.{DaemonExecutors, HttpFetch, ParallelDetailFetch}
+import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, ListingPages}
 
@@ -77,7 +77,7 @@ class FilmwebShowtimesClient(
    *  failure (network, missing fields) yields `None` and the caller keeps the
    *  `/cinema/-<id>` [[sourceUrl]] fallback. */
   def resolveSourceUrl(): Option[String] =
-    Try(http.get(cinemaInfoUrl(cinemaId))).toOption.flatMap(parseCinemaInfo)
+    Try(HttpRead.page(http, cinemaInfoUrl(cinemaId))).toOption.flatMap(parseCinemaInfo)
       .map(info => canonicalSourceUrl(info.name, info.city, cinemaId))
 
   def fetch(): Seq[CinemaMovie] = {
@@ -89,7 +89,7 @@ class FilmwebShowtimesClient(
     val seancesByDate = ParallelDetailFetch.keyed(
       "filmweb-seances", dates, pageTimeout, maxConcurrent = 1
     )(d => seancesUrl(cinemaId, d)) { url =>
-      Try(http.get(url)).map(body => parseSeancesForUrl(body, url))
+      Try(HttpRead.page(http, url)).map(body => parseSeancesForUrl(body, url))
     }
     // A day missing from the map timed out — a failed page like any other, or a
     // Filmweb that hangs on every day would read as a quiet venue.
@@ -102,11 +102,9 @@ class FilmwebShowtimesClient(
 
     // One /title/{id}/info per unique film, in parallel.
     val filmIds = seances.map(_.filmId).distinct
-    val infos = ParallelDetailFetch.keyed(
-      "filmweb-title-info", filmIds, 1.minute
-    )(id => titleInfoUrl(id)) { url =>
-      Try(http.get(url)).toOption.flatMap(parseFilmInfo)
-    }
+    val infos = ListingPages.readMore("filmweb-title-info", filmIds, id => titleInfoUrl(id), timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).flatMap(parseFilmInfo)
+    }.toMap
 
     seances.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
       val info = infos.get(filmId).flatten
@@ -170,7 +168,8 @@ class FilmwebShowtimesClient(
   /** Parse one /title/{id}/info response into title + originalTitle + year +
    *  poster URL. Pure + public so the spec can feed fixture bytes. */
   def parseFilmInfo(json: String): Option[FilmInfo] =
-    Try(Json.parse(json)).toOption.map { j =>
+    // Not JSON throws: the page read fails (ListingPages reports it), it is not "no info".
+    Option(Json.parse(json)).map { j =>
       FilmInfo(
         title         = (j \ "title").asOpt[String],
         originalTitle = (j \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),

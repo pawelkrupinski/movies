@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -44,7 +44,7 @@ class KinoZbyszekClient(http: HttpFetch, override val cinema: Cinema = KinoZbysz
   override def sourceUrl: Option[String] = Some(KinoZbyszekClient.RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    KinoZbyszekClient.parse(http.get(KinoZbyszekClient.RepertoireUrl), cinema)
+    KinoZbyszekClient.parse(HttpRead.page(http, KinoZbyszekClient.RepertoireUrl), cinema)
 }
 
 object KinoZbyszekClient {

@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Expiry, Ticker}
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.net.URI
 import scala.concurrent.duration._
@@ -54,7 +54,7 @@ class BiletynaNationalFeed(http: HttpFetch, halls: Set[BiletynaPlacePage],
 
   private def load(): Map[HallPath, Vector[JsValue]] = {
     def records(feedPage: Int): Seq[JsValue] =
-      BiletynaClient.feedRecords(s"national feed page $feedPage", http.get(pageUrl(feedPage)))
+      BiletynaClient.feedRecords(s"national feed page $feedPage", HttpRead.page(http, pageUrl(feedPage)))
     def ours(page: Seq[JsValue]): Seq[(HallPath, JsValue)] =
       page.flatMap(r => (r \ "v2_hall_seo_url").asOpt[String].map(HallPath(_)).filter(wanted).map(_ -> r))
 

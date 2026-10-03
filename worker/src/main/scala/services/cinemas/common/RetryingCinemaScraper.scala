@@ -43,6 +43,8 @@ class RetryingCinemaScraper(
       maxAttempts    = maxAttempts,
       initialBackoff = initialBackoff
     ) {
-      delegate.fetch()
+      // Each attempt reads in its own scope: a page that failed on an attempt that then threw
+      // says nothing about the attempt that succeeded.
+      ListingReads.attempt(delegate.fetch())
     }
 }

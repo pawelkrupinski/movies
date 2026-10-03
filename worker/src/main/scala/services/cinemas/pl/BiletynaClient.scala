@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import play.api.Logging
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
@@ -78,7 +78,7 @@ class BiletynaClient(http: HttpFetch, page: BiletynaPlacePage, override val cine
     }
 
   private def fromPlacePage(): Seq[CinemaMovie] = {
-    val html = http.get(page.url)
+    val html = HttpRead.page(http, page.url)
     BiletynaClient.parse(html, cinema, BiletynaClient.remainingEvents(http, page, html))
   }
 }
@@ -266,7 +266,7 @@ object BiletynaClient {
       def fetchFrom(feedPage: Int, acc: Vector[JsValue]): Vector[JsValue] = {
         if (feedPage > MaxFeedPages)
           throw new IllegalStateException(s"${page.url}: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
-        val records = feedRecords(page.url, http.get(
+        val records = feedRecords(page.url, HttpRead.page(http, 
           s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$feedPage"))
         // Records none of which read (a renamed field, a new date format) would
         // cut the venue at 50 again as surely as an error would.

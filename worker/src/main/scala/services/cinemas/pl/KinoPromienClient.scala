@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
@@ -51,9 +51,9 @@ class KinoPromienClient(
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val detailUrls = filmUrls(http.get(RepertoireUrl))
+    val detailUrls = filmUrls(HttpRead.page(http, RepertoireUrl))
     val slots = detailUrls.flatMap { url =>
-      val (title, dateTimes) = parseDetail(Try(http.get(url)).getOrElse(""), today)
+      val (title, dateTimes) = parseDetail(Try(HttpRead.page(http, url)).getOrElse(""), today)
       dateTimes.map(dt => (title, dt, url))
     }
 

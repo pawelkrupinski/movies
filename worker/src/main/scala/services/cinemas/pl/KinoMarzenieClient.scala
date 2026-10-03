@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -55,7 +55,7 @@ class KinoMarzenieClient(
   def fetch(): Seq[CinemaMovie] = {
     val slots = (0 until windowDays).flatMap { offset =>
       val date = today.plusDays(offset.toLong)
-      parseDay(http.get(eventsUrl(date)), date)
+      parseDay(HttpRead.page(http, eventsUrl(date)), date)
     }
 
     SlotsToMovies.fold(slots, titleOf = _.title, showtimeOf = _.showtime) { (_, group, showtimes) =>

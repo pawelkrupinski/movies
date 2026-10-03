@@ -8,7 +8,7 @@ import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -75,7 +75,7 @@ class ModernEventsCalendarClient(
   override val detailGroup: String = s"modern-events-calendar-${cinema.slug}"
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val html     = http.get(page.url)
+    val html     = HttpRead.page(http, page.url)
     val calendar = calendarOf(html).getOrElse(
       throw new IllegalStateException(s"no Modern Events Calendar skin initialised on ${page.url}"))
 
@@ -84,7 +84,7 @@ class ModernEventsCalendarClient(
     // as live by slots IN it — a load also carries the edge weeks of its neighbours.
     val later = Seq.newBuilder[Slot]
     ScrapeHorizon.liveMonths(calendar.month.plusMonths(1)) { month =>
-      val slots = slotsIn(monthFragments(http.post(calendar.ajaxUrl, calendar.loadMonthBody(month),
+      val slots = slotsIn(monthFragments(HttpRead.postPage(http, calendar.ajaxUrl, calendar.loadMonthBody(month),
         "application/x-www-form-urlencoded")))
       later ++= slots
       slots.exists(slot => YearMonth.from(slot.dateTime) == month)
@@ -94,7 +94,7 @@ class ModernEventsCalendarClient(
   }
 
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object ModernEventsCalendarClient {

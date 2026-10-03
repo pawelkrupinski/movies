@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
@@ -165,7 +165,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       // A page with no parseable meta block still LOADED, so it is an empty
       // detail rather than a failure — see the note above.
       parseFilmMeta(html).fold(FilmDetail()) { meta =>
@@ -197,7 +197,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
   }
 
   private def fetchPage(page: Int): (Seq[ScreeningEntry], Boolean) =
-    parseJson(http.get(s"$ApiBase&page=$page"))
+    parseJson(HttpRead.page(http, s"$ApiBase&page=$page"))
 
   private case class ScreeningEntry(
     movieTitle:     String,

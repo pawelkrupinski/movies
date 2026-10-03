@@ -3,7 +3,7 @@ package services.cinemas.common
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -47,7 +47,7 @@ class KinoprogrammClient(
     // EVERY week failed fails the scrape (`ScrapeHorizon` rethrows), so one bad
     // week still lets the rest of the programme through.
     ScrapeHorizon.liveWeeks(referenceDay) { weekStart =>
-      val week = parseWeek(http.get(weekUrl(weekStart)))
+      val week = parseWeek(HttpRead.page(http, weekUrl(weekStart)))
         .map(film => film.copy(showtimes = film.showtimes.filterNot(_.dateTime.toLocalDate.isBefore(referenceDay))))
         .filter(_.showtimes.nonEmpty)
       films ++= week

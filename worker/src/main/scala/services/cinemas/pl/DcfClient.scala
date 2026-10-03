@@ -5,7 +5,7 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -42,7 +42,7 @@ class DcfClient(http: HttpFetch
   def fetch(): Seq[CinemaMovie] = parseListing()
 
   private def parseListing(): Seq[CinemaMovie] = {
-    val document = Jsoup.parse(http.get(RepertoireUrl))
+    val document = Jsoup.parse(HttpRead.page(http, RepertoireUrl))
 
     // A film can repeat under several date sections; each repeat is its own
     // `.film__item` block. Group by the numeric film id so all its slots merge.
@@ -87,7 +87,7 @@ class DcfClient(http: HttpFetch
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = DcfClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

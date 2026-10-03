@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -31,7 +31,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
   override def sourceUrl: Option[String] = Some(ListingUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    Jsoup.parse(http.get(ListingUrl)).select("div.cks-movie-card").asScala.toSeq.flatMap(parseCard)
+    Jsoup.parse(HttpRead.page(http, ListingUrl)).select("div.cks-movie-card").asScala.toSeq.flatMap(parseCard)
 
   private def parseCard(card: Element): Option[CinemaMovie] = {
     val title = Option(card.selectFirst("h2")).map(_.text.trim).filter(_.nonEmpty)

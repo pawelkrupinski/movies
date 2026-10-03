@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, PagedChunkScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, ListingReads, PagedChunkScraper}
 import tools.{CircuitOpenException, ReadOutcome}
 
 import java.time.Clock
@@ -44,7 +44,13 @@ class ScrapeChunkHandler(
       case None => Done // cinema dropped from the catalogue
       case Some(scraper) =>
         try {
-          store.storeChunk(cinema, runId, key, sliceOf(cinema, key, scraper), clock.instant())
+          val (slice, reads) = ListingReads.during(sliceOf(cinema, key, scraper))
+          // The marker first: a reduce that runs between the two stores must not miss it.
+          if (!reads.complete) {
+            logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: ${reads.failed.size} page(s) failed")
+            store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), CinemaMovieJson.encode(Nil), clock.instant())
+          }
+          store.storeChunk(cinema, runId, key, slice, clock.instant())
           Done
         } catch {
           // The host's breaker is open, so this chunk never reached the wire. Give

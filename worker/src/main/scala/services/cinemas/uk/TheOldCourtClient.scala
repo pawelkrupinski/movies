@@ -3,7 +3,7 @@ package services.cinemas.uk
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -63,7 +63,7 @@ class TheOldCourtClient(
   override def sourceUrl: Option[String] = Some(EventsUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val slots = Jsoup.parse(http.get(EventsUrl), BaseUrl)
+    val slots = Jsoup.parse(HttpRead.page(http, EventsUrl), BaseUrl)
       .select(s"a[href^=/event/]").asScala.toSeq
       .flatMap(anchor => Option(anchor.parent).toSeq.flatMap(parseEvent(_, today)))
 

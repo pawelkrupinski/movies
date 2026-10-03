@@ -21,7 +21,9 @@ class CinemaScrapeRunner(
   // Keeps each cinema's last consolidated listing so it can be replayed later
   // (into a test, into an empty database) without re-scraping. Defaults to the
   // no-op store so specs and scripts that don't care needn't wire one.
-  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty
+  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty,
+  // Told each landing's completeness, so a venue that is never complete (never pruned) shows.
+  completeness:  ListingCompletenessRecorder = ListingCompletenessRecorder.none
 ) extends Logging {
 
   /** Scrape `scraper`'s cinema, hand the listing to the sink and archive it; the listing as fetched,
@@ -32,11 +34,11 @@ class CinemaScrapeRunner(
     // A throw is archived as a barren attempt and then rethrown untouched, so
     // callers keep deciding what a failure means while the archive still records
     // that the cinema was tried and failed.
-    val CinemaScraper.Scraped(movies, viaFallback) =
+    val CinemaScraper.Scraped(movies, viaFallback, readsComplete) =
       try scraper.fetchWithSource()
       catch {
         case failure: Throwable =>
-          archive(scraper, Seq.empty, Some(messageOf(failure)))
+          archive(scraper, Seq.empty, listingComplete = true, Some(messageOf(failure)))
           throw failure
       }
     // The sink decides FIRST, then the scrape is archived — in a `finally`, so a sink that throws
@@ -47,20 +49,24 @@ class CinemaScrapeRunner(
     // (`movies` as fetched) — what a replay needs. Both scrape paths reach here: a non-chunked
     // `fetch()` is the live scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
     // the already-reduced chunks.
-    try sink.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
-    finally archive(scraper, movies, error = None)
-    logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${t0.millis}ms")
+    // Complete only when the scraper's structure says so AND every page it read answered.
+    val verdict  = ListingCompleteness.of(scraper.listingIsComplete, readsComplete)
+    val complete = verdict == ListingCompleteness.Complete
+    completeness.landed(cinema, verdict)
+    try sink.recordCinemaScrape(cinema, movies, complete, scraper.sourceKey, viaFallback)
+    finally archive(scraper, movies, complete, error = None)
+    logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${t0.millis}ms" +
+      (if (complete) "" else " — listing INCOMPLETE (a page failed or a chunk is missing), so nothing is pruned"))
     movies
   }
 
-  /** File one scrape attempt in the archive — the runner's own step, public so a harness that
-   *  drives the scrape itself archives exactly as `run` does. */
-  def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], error: Option[String]): Unit =
+  /** File one scrape attempt in the archive. */
+  private def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], listingComplete: Boolean, error: Option[String]): Unit =
     scrapeArchive.record(ScrapeAttempt(
       cinema           = scraper.cinema,
       city             = Cinema.cityOf(scraper.cinema),
       at               = Instant.now(),
-      listingComplete  = scraper.listingIsComplete,
+      listingComplete  = listingComplete,
       films            = movies,
       error            = error,
       noScheduleListed = scraper.noScheduleListed

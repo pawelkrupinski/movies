@@ -130,4 +130,32 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
       slotTitles(cache) should contain ("Daily Blockbuster")
     }
   }
+
+  // A chunk that STORED, but read only part of its pages, is as short as one that never
+  // landed: the film on the failed page is missing for the same reason. It used to reduce as
+  // a complete listing and prune it.
+  it should "not prune a film whose chunk stored with a failed page" in {
+    val (cache, healthy) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))
+    healthy.planner.plan(cinemaName)
+    healthy.drain(now)
+    slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
+
+    val pageDown = healthy.rescraping(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq.empty), pageFailsIn = Set("b")))
+    pageDown.planner.plan(cinemaName)
+    pageDown.drain(now)
+    withClue(s"cinema now holds ${slotTitles(cache)}: ") {
+      slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
+    }
+  }
+
+  it should "not prune when the plan's own day walk lost a page" in {
+    val (cache, healthy) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))
+    healthy.planner.plan(cinemaName)
+    healthy.drain(now)
+
+    val planShort = healthy.rescraping(new FakeChunkedScraper(Map("a" -> Seq(daily)), planPageFails = true))
+    planShort.planner.plan(cinemaName)
+    planShort.drain(now)
+    slotTitles(cache) should contain ("Met Opera 2026/27 Macbeth")
+  }
 }

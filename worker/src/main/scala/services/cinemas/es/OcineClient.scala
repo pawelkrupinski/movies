@@ -2,7 +2,7 @@ package services.cinemas.es
 
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
 
@@ -65,13 +65,13 @@ class OcineClient(
    *  a 200 that is not a cartelera throws too, rather than reading an error
    *  page as an empty venue. An empty cartelera is a legitimately empty venue. */
   def planChunks(): Seq[String] =
-    OcineParser.filmIds(http.post(s"$baseUrl/api/v1/sessions", listingBody(baseUrl)))
+    OcineParser.filmIds(HttpRead.postPage(http, s"$baseUrl/api/v1/sessions", listingBody(baseUrl)))
       .getOrElse(throw new IllegalStateException(s"$baseUrl/api/v1/sessions answered without a cartelera"))
 
   /** One film's detail → its row. A throw reschedules only this film's chunk. */
   def fetchChunk(filmId: String): Seq[CinemaMovie] =
     OcineParser.film(
-      http.get(s"$baseUrl/api/v1/pelicula/$filmId?lang=es"),
+      HttpRead.page(http, s"$baseUrl/api/v1/pelicula/$filmId?lang=es"),
       baseUrl, cinema, notAfter = referenceDay.plusDays(ScrapeHorizon.MaxDays.toLong)
     ).toSeq
 }

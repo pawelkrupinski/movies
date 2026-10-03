@@ -6,7 +6,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -55,7 +55,7 @@ class KinoStylowyClient(
   /** A durable 404/410 escapes (see [[DetailFetchOutcome]]); a loaded page is a
    *  detail even when it parses to nothing, so it is stamped, not retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object KinoStylowyClient {

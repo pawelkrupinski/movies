@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -44,7 +44,7 @@ class KinoIkmClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoIkmClient.PageUrl)
   override def sourceUrl: Option[String] = Some(KinoIkmClient.PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(KinoIkmClient.PageUrl))
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, KinoIkmClient.PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
     val document     = Jsoup.parse(html)

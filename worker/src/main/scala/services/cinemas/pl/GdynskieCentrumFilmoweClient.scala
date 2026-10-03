@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -54,7 +54,7 @@ class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema)
   override val maxFetchAttempts: Int = 5
 
   def fetch(): Seq[CinemaMovie] = {
-    val html = http.get(RepertoireUrl)
+    val html = HttpRead.page(http, RepertoireUrl)
     parseHtml(html, cinema)
   }
 }

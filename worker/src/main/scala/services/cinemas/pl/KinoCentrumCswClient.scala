@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -33,7 +33,7 @@ class KinoCentrumCswClient(
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/kino/kino-w-centrum/")
 
   def fetch(): Seq[CinemaMovie] = {
-    val slots = parseRepertoire(http.get(ApiUrl))
+    val slots = parseRepertoire(HttpRead.page(http, ApiUrl))
 
     SlotsToMovies.fold(
       slots,

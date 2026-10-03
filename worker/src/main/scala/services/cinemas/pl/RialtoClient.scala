@@ -3,9 +3,9 @@ package services.cinemas.pl
 import java.util.Locale
 
 import models._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -65,12 +65,12 @@ class RialtoClient(http: HttpFetch
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val filmEntries = parseRepertoire(http.get(RepertoireUrl))
+    val filmEntries = parseRepertoire(HttpRead.page(http, RepertoireUrl))
 
     val eventDataByUrl: Map[String, Option[EventData]] =
-      ParallelDetailFetch("rialto-events", filmEntries.map(_.eventUrl).distinct, 1.minute, maxConcurrent = 1) { url =>
-        Try(http.get(url)).toOption.map(html => EventData(parseEventPage(html), parseGenres(html)))
-      }
+      ListingPages.readMore("rialto-events", filmEntries.map(_.eventUrl).distinct, identity[String], maxConcurrent = 1, timeout = 1.minute) { url =>
+        Option(HttpRead.page(http, url)).map(html => EventData(parseEventPage(html), parseGenres(html)))
+      }.toMap
 
     filmEntries
       .groupBy(_.title.toUpperCase(Locale.ROOT))
@@ -106,7 +106,7 @@ class RialtoClient(http: HttpFetch
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val document    = Jsoup.parse(html)
       val genres = parseGenres(html)
       val synopsisOpt = Option(document.selectFirst("span.text")).flatMap { span =>

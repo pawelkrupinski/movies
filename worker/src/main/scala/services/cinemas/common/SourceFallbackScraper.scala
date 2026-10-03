@@ -99,6 +99,12 @@ class SourceFallbackScraper(
 
   private val service = cinema.displayName
 
+  // Whether the primary's / the fallback's read of this tick was complete (ListingReads): each
+  // source's pages are read in a scope of their own, and the listing that SERVED says which.
+  // Per-tick state on a scraper a tick at a time — `fetchWithSource` sets both before reading them.
+  @volatile private var primaryComplete  = true
+  @volatile private var fallbackComplete = true
+
   def fetch(): Seq[CinemaMovie] = fetchWithSource().movies
 
   /** The tick's listing, and whether the fallback served it (see the class doc). */
@@ -181,8 +187,10 @@ class SourceFallbackScraper(
   private def thin(movies: Seq[CinemaMovie]): Boolean =
     NearTermProgramme.isThin(cinema, movies, Clock.fixed(now(), ZoneOffset.UTC))
 
-  private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  = CinemaScraper.Scraped(movies, viaFallback = false)
-  private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, viaFallback = true)
+  private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  =
+    CinemaScraper.Scraped(movies, viaFallback = false, complete = primaryComplete)
+  private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped =
+    CinemaScraper.Scraped(movies, viaFallback = true, complete = fallbackComplete)
 
   /** The stored state as THIS fallback's: a state another fallback wrote describes
    *  that feed's spell — German venues carried Filmweb-wrapper state before
@@ -216,7 +224,8 @@ class SourceFallbackScraper(
   private def runPrimary(): PrimaryOutcome = {
     val t0 = tools.Stopwatch.start()
     try {
-      val movies = primary.fetch()
+      val (movies, reads) = ListingReads.during(primary.fetch())
+      primaryComplete = reads.complete
       val ms = t0.millis
       if (showtimeCount(movies) > 0) PrimaryOutcome.Healthy(movies, ms) else PrimaryOutcome.Empty(movies, ms)
     } catch {
@@ -229,7 +238,8 @@ class SourceFallbackScraper(
   private def fetchFallback(): (scala.util.Try[Seq[CinemaMovie]], Long, FallbackAnswer) = fallback() match {
     case Some(fw) =>
       val t0 = tools.Stopwatch.start()
-      val movies = scala.util.Try(fw.fetch())
+      val (movies, reads) = ListingReads.during(scala.util.Try(fw.fetch()))
+      fallbackComplete = reads.complete
       (movies, t0.millis, FallbackAnswer.of(movies))
     case None => (scala.util.Success(Seq.empty), 0L, FallbackAnswer.Absent)
   }

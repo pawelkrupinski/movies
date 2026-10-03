@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -36,7 +36,7 @@ class CytadelaClient(http: HttpFetch
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseListing(http.get(ListingUrl))
+  def fetch(): Seq[CinemaMovie] = parseListing(HttpRead.page(http, ListingUrl))
 
   private def parseListing(html: String): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
@@ -75,7 +75,7 @@ class CytadelaClient(http: HttpFetch
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val document      = Jsoup.parse(html)
       // The description tails into an inline venue/ticket footer — a "♦ Bilety:
       // …", a "Kino Cytadela znajduje się …" venue blurb, a "◊ sprawdź dojazd

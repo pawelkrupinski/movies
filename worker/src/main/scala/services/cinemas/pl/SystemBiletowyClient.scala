@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -65,13 +65,13 @@ class SystemBiletowyClient(http: HttpFetch, portal: VisualSoftPortal, override v
     SystemBiletowyClient.parse(feed(), cinema, portal, titles, filmGroups, institution)
 
   private def feed(): String = {
-    val advanced = http.get(SystemBiletowyClient.advancedFeedUrl(portal))
+    val advanced = HttpRead.page(http, SystemBiletowyClient.advancedFeedUrl(portal))
     if (!SystemBiletowyClient.lacksAdvancedTemplate(advanced)) advanced
     else if (institution.nonEmpty || filmGroups.nonEmpty)
       // The plain feed carries no venue or category to scope by, so every record
       // would be filtered out and the venue would read empty.
       throw new IllegalStateException(s"${portal.url} has no advanced feed, which ${cinema.displayName}'s scope needs")
-    else http.get(SystemBiletowyClient.basicFeedUrl(portal))
+    else HttpRead.page(http, SystemBiletowyClient.basicFeedUrl(portal))
   }
 }
 

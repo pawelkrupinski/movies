@@ -1,16 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
 import models._
 import play.api.libs.json.Json
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Bajka, the cinema of Centrum Kultury w Błoniu (`kino.blonie.pl`, a bespoke
@@ -52,17 +51,17 @@ class KinoBajkaBlonieClient(
   // single film page that fails drops only that film, like every
   // ParallelDetailFetch client.
   def fetch(): Seq[CinemaMovie] = {
-    val filmUrls = Seq(FilmsUrl, HomeUrl).map(http.get).flatMap(filmLinks).distinct
-    val byUrl = ParallelDetailFetch("kino-blonie", filmUrls, 30.seconds) { url =>
-      Try(filmOf(url)).toOption.flatten
-    }
+    val filmUrls = Seq(FilmsUrl, HomeUrl).map(HttpRead.page(http, _)).flatMap(filmLinks).distinct
+    val byUrl = ListingPages.readMore("kino-blonie", filmUrls, identity[String], timeout = 30.seconds) { url =>
+      Option(filmOf(url)).flatten
+    }.toMap
     filmUrls.flatMap(byUrl.get).flatten.filter(_.showtimes.nonEmpty).sortBy(_.movie.title)
   }
 
   private def filmOf(url: String): Option[CinemaMovie] = {
-    val page = Jsoup.parse(http.get(url), url)
+    val page = Jsoup.parse(HttpRead.page(http, url), url)
     filmIdOf(page).flatMap { id =>
-      parseFilm(page, url, showtimesOf(http.post(AjaxUrl, datesBody(id, today), FormContentType)), cinema)
+      parseFilm(page, url, showtimesOf(HttpRead.postPage(http, AjaxUrl, datesBody(id, today), FormContentType)), cinema)
     }
   }
 }

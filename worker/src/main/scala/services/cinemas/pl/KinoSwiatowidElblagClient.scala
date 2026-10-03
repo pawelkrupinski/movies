@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
@@ -65,12 +65,12 @@ class KinoSwiatowidElblagClient(
 
   def planChunks(): Seq[String] =
     DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
-      KinoSwiatowidElblagClient.parseDay(http.get(KinoSwiatowidElblagClient.dayUrl(day)), day, cinema).nonEmpty
+      KinoSwiatowidElblagClient.parseDay(HttpRead.page(http, KinoSwiatowidElblagClient.dayUrl(day)), day, cinema).nonEmpty
     })
 
   def fetchChunk(key: String): Seq[CinemaMovie] =
     DayChunks.days(key).flatMap { day =>
-      KinoSwiatowidElblagClient.parseDay(http.get(KinoSwiatowidElblagClient.dayUrl(day)), day, cinema)
+      KinoSwiatowidElblagClient.parseDay(HttpRead.page(http, KinoSwiatowidElblagClient.dayUrl(day)), day, cinema)
     }
 
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -82,7 +82,7 @@ class EkobiletClient(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   // The landing decides the skin. Chrono-row: every showtime is already fully
   // known (title + date/time + booking link) on the ONE landing fetch, so each
@@ -93,7 +93,7 @@ class EkobiletClient(
   // `title<US>detailUrl` because the title (tags and all) comes from the listing, not
   // the detail page.
   def planChunks(): Seq[String] = {
-    val landing    = http.get(s"$BaseUrl/$slug")
+    val landing    = HttpRead.page(http, s"$BaseUrl/$slug")
     val chronoRows = parseChronoRows(landing, today)
     if (chronoRows.nonEmpty)
       chronoRows.map { case (title, dateTime, booking) =>
@@ -103,7 +103,7 @@ class EkobiletClient(
       // Per-date discovery is best-effort — a failed day just contributes no films —
       // unless every day failed: then the strip is down, and the landing alone (often
       // today's films only, or none) must not read as the venue's whole programme.
-      val days = availableDates(landing).map(d => Try(parseLanding(http.get(s"$BaseUrl/$slug?date=$d"))))
+      val days = availableDates(landing).map(d => Try(parseLanding(HttpRead.page(http, s"$BaseUrl/$slug?date=$d"))))
       ListingPages.requireAnyReached(days)
       val films = (parseLanding(landing) ++ days.flatMap(_.getOrElse(Nil))).distinctBy(_._2)
       films.map { case (title, url) => s"$title$KeySep$url" }
@@ -121,7 +121,7 @@ class EkobiletClient(
       val i        = key.indexOf(KeySep)
       val rawTitle = key.substring(0, i)
       val url      = key.substring(i + 1)
-      val showtimes = parseShowtimes(http.get(url), today)
+      val showtimes = parseShowtimes(HttpRead.page(http, url), today)
       if (showtimes.isEmpty) Seq.empty
       else Seq(film(rawTitle, Some(url), showtimes))
     }

@@ -2,7 +2,7 @@ package services.cinemas.us
 
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
 
@@ -86,7 +86,7 @@ class AlamoDrafthouseClient(
    */
   def fetch(): Seq[CinemaMovie] =
     AlamoDrafthouseParser.parse(
-      http.get(scheduleUrl(venueSlug)),
+      HttpRead.page(http, scheduleUrl(venueSlug)),
       venueSlug,
       cinema,
       notAfter = referenceDay.plusDays(MaxHorizonDays.toLong)

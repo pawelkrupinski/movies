@@ -1,6 +1,6 @@
 package services.cinemas.uk
 
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
@@ -64,14 +64,14 @@ class OdeonClient(
    *  THROWS, failing the whole scrape as a normal recorded outcome, which keeps
    *  the venue's last-known listing rather than narrowing it to a guess. */
   def planChunks(): Seq[String] =
-    OdeonParser.parseScreeningDates(http.get(datesUrl, authHeaders()))
+    OdeonParser.parseScreeningDates(HttpRead.page(http, datesUrl, authHeaders()))
       .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
       .map(_.toString)
 
   /** Fetch + parse ONE business date's showtimes into that day's films. Throws
    *  on failure so only this date's chunk task reschedules (the per-day retry). */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] =
-    OdeonParser.parseShowtimes(http.get(showtimesUrl(dateKey), authHeaders()), cinema)
+    OdeonParser.parseShowtimes(HttpRead.page(http, showtimesUrl(dateKey), authHeaders()), cinema)
 
   private def datesUrl: String =
     s"$ApiBase/ocapi/v1/film-screening-dates?siteIds=$siteId"

@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import models.{Cinema, CinemaMovie}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 /**
  * One client for the whole **Vue Cinemas platform** — the showings backend Vue
@@ -75,10 +75,10 @@ class VueCinemasPlatformClient(
    *  See the token-bootstrap note in the class doc for why this is optimistic
    *  rather than an unconditional POST-then-GET. */
   private def filmsJsonWithTokenBootstrap(): String =
-    try http.get(filmsUrl)
+    try HttpRead.page(http, filmsUrl)
     catch { case _: Exception =>
       try http.post(tokenUrl, EmptyTokenRequestBody) catch { case _: Exception => () } // best-effort
-      http.get(filmsUrl)
+      HttpRead.page(http, filmsUrl)
     }
 }
 

@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -45,7 +45,7 @@ class KinoRomaRawaClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val day = today
-    ListingPages.readEach("kino-roma-rawa", filmPostUrls(http.get(PlanUrl)), identity[String])(http.get)
+    ListingPages.readEach("kino-roma-rawa", filmPostUrls(HttpRead.page(http, PlanUrl)), identity[String])(HttpRead.page(http, _))
       .flatMap { case (url, page) => parseFilmPost(page, url, day, cinema) }
       .sortBy(_.movie.title)
   }

@@ -116,4 +116,29 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
   it should "fail the scrape when a full page's event feed holds records none of which parse" in {
     an[Exception] should be thrownBy lenWithFeed("""{"status":true,"events":[{"event_id":1,"artist_name":"X","event_date":"soon"}]}""").fetch()
   }
+
+  // These parsed in Try(Json.parse(...)).getOrElse(JsNull) and read an error page as a venue
+  // (or day) with nothing on.
+  "AlamoDrafthouseParser.parse" should "throw on a body that is not JSON" in {
+    an[Exception] should be thrownBy services.cinemas.us.AlamoDrafthouseParser.parse(ErrorPage, "x", models.KinoDiana, day)
+  }
+
+  "KinoAurumClient.parse" should "throw on a body that is not JSON but read no documents as no screenings" in {
+    an[Exception] should be thrownBy services.cinemas.pl.KinoAurumClient.parse(ErrorPage, models.KinoAurum)
+    services.cinemas.pl.KinoAurumClient.parse("{}", models.KinoAurum) shouldBe empty
+  }
+
+  "KinoDianaClient.parseFeed" should "throw on an error object but read an empty feed as no screenings" in {
+    an[Exception] should be thrownBy services.cinemas.pl.KinoDianaClient.parseFeed("""{"error":"rest_forbidden"}""")
+    an[Exception] should be thrownBy services.cinemas.pl.KinoDianaClient.parseFeed(ErrorPage)
+    services.cinemas.pl.KinoDianaClient.parseFeed("[]") shouldBe empty
+  }
+
+  "WebediaShowtimesClient.parsePage" should "throw on a body that is not JSON" in {
+    an[Exception] should be thrownBy services.cinemas.common.WebediaShowtimesClient.parsePage(ErrorPage, services.cinemas.common.WebediaMarket.Germany)
+  }
+
+  "FilmwebShowtimesClient.parseFilmInfo" should "throw on a body that is not JSON" in {
+    an[Exception] should be thrownBy new FilmwebShowtimesClient(new UrlFragmentHttpFetch(Nil), 1, KinoDiana).parseFilmInfo(ErrorPage)
+  }
 }

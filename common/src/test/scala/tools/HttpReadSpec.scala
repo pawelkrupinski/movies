@@ -108,4 +108,22 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     HttpRead.postJsonObject(graphQl, url, "ok")(o => Answered(o.keys)) shouldBe Answered(Set("data"))
     HttpRead.postJsonObject(graphQl, url, "x")(o => Answered(o)) shouldBe a[Failed]
   }
+
+  "page" should "return a page, rethrow a 404 as the original status, and refuse a challenge" in {
+    HttpRead.page(answering("<html>films</html>"), url) shouldBe "<html>films</html>"
+    val gone = new HttpStatusException(404, "GET", url, None)
+    (the[HttpStatusException] thrownBy HttpRead.page(throwing(gone), url)) shouldBe gone
+    an[UnexpectedBodyException] should be thrownBy HttpRead.page(answering(CloudflareChallenge), url)
+  }
+
+  "postPage and pageBytes" should "refuse a challenge page like page does" in {
+    val graph = new HttpFetch {
+      def get(u: String): String = CloudflareChallenge
+      def post(u: String, body: String, contentType: String): String = if (body == "ok") "{}" else CloudflareChallenge
+    }
+    HttpRead.postPage(graph, url, "ok") shouldBe "{}"
+    an[UnexpectedBodyException] should be thrownBy HttpRead.postPage(graph, url, "x")
+    an[UnexpectedBodyException] should be thrownBy HttpRead.pageBytes(graph, url)
+    new String(HttpRead.pageBytes(answering("caf\u00e9"), url), "UTF-8") shouldBe "caf\u00e9"
+  }
 }

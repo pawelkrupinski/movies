@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import models._
 import org.jsoup.Jsoup
@@ -91,7 +91,7 @@ class KinoZamekClient(
   override def sourceUrl: Option[String] = Some(ListingUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val urls = eventUrls(http.get(ListingUrl))
+    val urls = eventUrls(HttpRead.page(http, ListingUrl))
 
     // Per-event fetches are best-effort: one flaky page must not throw away the
     // rest of the programme. But a source that is wholly down must never read as
@@ -99,7 +99,7 @@ class KinoZamekClient(
     // `RetryingCinemaScraper` retries and the bar goes red, rather than recording
     // a silent "0 showtimes" success that scrape-prune would read as the films
     // having stopped. (Same total-outage guard as `MsiClient`'s month walk.)
-    val fetched = urls.map(url => url -> Try(http.get(url)))
+    val fetched = urls.map(url => url -> Try(HttpRead.page(http, url)))
     ListingPages.requireAnyReached(fetched.map(_._2))
 
     val films = fetched.collect { case (url, Success(html)) => parseEvent(html, url, today, cinema) }.flatten

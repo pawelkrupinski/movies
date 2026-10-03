@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
@@ -57,7 +57,7 @@ class KinoKijowClient(
     val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Try[Seq[RawSlot]]]
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
       byMonth.getOrElseUpdate(month,
-        Try(http.get(monthUrl(month))).map(html => parseDocument(html, month, titles)))
+        Try(HttpRead.page(http, monthUrl(month))).map(html => parseDocument(html, month, titles)))
         .toOption.exists(_.nonEmpty)
     }
     ListingPages.requireAnyReached(byMonth.values)

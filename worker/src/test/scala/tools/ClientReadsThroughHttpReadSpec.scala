@@ -30,7 +30,10 @@ class ClientReadsThroughHttpReadSpec extends AnyFlatSpec with Matchers {
   private val RawRead: Regex = """\b\w*(?:[Hh]ttp|[Ff]etch)\w*\s*\.\s*(?:get|getBytes|post|getAsync)\s*\(""".r
 
   /** File → why its raw read is right. */
-  private val Allowlist: Map[String, String] = Map.empty
+  private val Allowlist: Map[String, String] = Map(
+    "worker/src/main/scala/services/cinemas/common/VueCinemasPlatformClient.scala" ->
+      "the token POST only mints a session cookie; its answer is never read, and the films GET after it is read through HttpRead.page and fails the scrape on its own"
+  )
 
   private def rawReads(source: String): Int =
     source.linesIterator.map(code).map(line => RawRead.findAllIn(line).size).sum

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
@@ -45,7 +45,7 @@ class KinoZorzaClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html = http.get(RepertoireUrl)
+    val html = HttpRead.page(http, RepertoireUrl)
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 

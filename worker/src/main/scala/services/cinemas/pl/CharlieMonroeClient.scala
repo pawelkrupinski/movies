@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
@@ -34,7 +34,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val movies = parseHtml(http.get(PageUrl))
+    val movies = parseHtml(HttpRead.page(http, PageUrl))
     val urls   = movies.flatMap(_.filmUrl).distinct
     if (urls.isEmpty) movies
     else {
@@ -53,7 +53,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     ParallelDetailFetch("charlie-monroe-detail", urls, 1.minute)(fetchDetailFactsFor)
 
   private def fetchDetailFactsFor(detailUrl: String): DetailFacts =
-    Try(http.get(detailUrl)).toOption
+    Try(HttpRead.page(http, detailUrl)).toOption
       .map(html => DetailFacts(parseCountries(html), parseDirector(html)))
       .getOrElse(DetailFacts.empty)
 

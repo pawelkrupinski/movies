@@ -2,9 +2,9 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
 
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -48,20 +48,25 @@ class UjazdowskiClient(
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val main   = http.get(ListingUrl)
+    val main   = HttpRead.page(http, ListingUrl)
     val navUts = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq
 
     // Each day is read once, whether it arrived from the nav or from the walk
     // below — the walk has to parse a day to know whether the programme goes on,
     // so caching here is what keeps that from costing a second fetch.
     val byUt = scala.collection.mutable.LinkedHashMap.empty[String, Seq[RawSlot]]
-    def slotsFor(ut: String): Seq[RawSlot] = byUt.getOrElseUpdate(ut,
-      (for {
-        date <- Try(Instant.ofEpochSecond(ut.toLong).atZone(WarsawZone).toLocalDate).toOption
-        html <- Try(http.get(s"$ListingUrl/week.ajax?ut=$ut")).toOption
-      } yield parseDay(html, date)).getOrElse(Seq.empty))
+    // A day whose read fails is not cached and reports itself: to the walk below, which counts
+    // it, or — for a nav day — through ListingPages, either way leaving the listing incomplete.
+    def slotsFor(ut: String): Seq[RawSlot] = byUt.get(ut).getOrElse {
+      val slots = ut.toLongOption.map(Instant.ofEpochSecond(_).atZone(WarsawZone).toLocalDate)
+        .fold(Seq.empty[RawSlot])(date =>
+          // A day past the programme 404s: an answer — no slots — not a failed read.
+          HttpRead.pageOrNone(http, s"$ListingUrl/week.ajax?ut=$ut").fold(Seq.empty[RawSlot])(parseDay(_, date)))
+      byUt.update(ut, slots)
+      slots
+    }
 
-    navUts.foreach(slotsFor)
+    ListingPages.reportFailed(navUts.map(ut => Try(slotsFor(ut))))
     // `ut` is the day's midnight-Warsaw epoch (DST-aware). Walk forward from
     // today for as long as the programme runs; a missing day 404s → no slots,
     // and enough of those in a row ends the walk.
@@ -101,7 +106,7 @@ class UjazdowskiClient(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(Jsoup.parse).map { document =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(Jsoup.parse).map { document =>
       FilmDetail(
         // Some descriptions embed a source/related link as plain-text URL; strip
         // it so the synopsis stays prose-only. cleanSynopsis also keeps the

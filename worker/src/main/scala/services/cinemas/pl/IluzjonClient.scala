@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -44,7 +44,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val document = Jsoup.parse(http.get(ListingUrl))
+    val document = Jsoup.parse(HttpRead.page(http, ListingUrl))
 
     // h3 date headers and screening rows in document order; fold to attach each
     // row to the most recent date.
@@ -83,7 +83,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate = LocalDate.now(ZoneId.
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = IluzjonClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

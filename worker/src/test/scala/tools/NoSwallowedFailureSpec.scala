@@ -149,10 +149,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())") ->
       "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
     ("worker/src/main/scala/services/cinemas/pl/FilmwebCinemaIdResolver.scala", "resolveAll",
-      "Try(parseTowns(http.get(TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)") ->
+      "Try(parseTowns(HttpRead.page(http, TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)") ->
       "no town list leaves every fuzzy cinema Unmatched (reported, never a wrong id) while the pinned overrides — Kinoteka's fallback — still resolve",
     ("worker/src/main/scala/services/cinemas/pl/BokClient.scala", "fetch",
-      "Try(http.get(url)).toOption.getOrElse(\"\")") ->
+      "Try(HttpRead.page(http, url)).toOption.getOrElse(\"\")") ->
       "a later day's page: the first is fetched outside the Try, so a dead source fails the scrape (ScraperOutageSpec); one failed day is tolerated as ListingPages does",
     ("worker/src/main/scala/services/cinemas/pl/Cinema1Client.scala", "parseScreenHeads",
       "private[cinemas] def parseScreenHeads(raw: String): Map[String, String] = Try {") ->
@@ -164,7 +164,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "val parameterMap = Try {") ->
       "a NUXT page whose IIFE values do not parse is the degraded redirect page, which HeliosClient.fetch reads as film-less and hands to the empty-scrape guard",
     ("worker/src/main/scala/services/cinemas/pl/KinoPromienClient.scala", "fetch",
-      "val (title, dateTimes) = parseDetail(Try(http.get(url)).getOrElse(\"\"), today)") ->
+      "val (title, dateTimes) = parseDetail(Try(HttpRead.page(http, url)).getOrElse(\"\"), today)") ->
       "one film's detail page: the listing is fetched outside the Try, so a dead source fails the scrape (ScraperOutageSpec); a failed detail loses only its film",
     ("worker/src/main/scala/services/cinemas/uk/OdeonAuthHarvester.scala", "jwtExpiryMillis",
       "} catch { case NonFatal(_) => None }") ->
@@ -248,6 +248,52 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "}.recover { case e => logger.warn(s\"startRun replace for $cinema failed: ${e.getMessage}\"); None }") ->
       "None is \"no run started\": the chunked scrape is skipped this tick and the next reaper tick tries again",
+    // ── moved off the TODO-HttpRead backlog, each read and judged ──
+    ("worker/src/main/scala/services/cinemas/common/GatsbyBoxOfficeParser.scala", "parseDetails",
+      "Try(Json.parse(json)).toOption.flatMap(_.asOpt[Seq[JsValue]]).getOrElse(Nil).flatMap { n =>") ->
+      "the film details are optional credits beside the schedule (GatsbyBoxOfficeClient.ask's own allowlist entry): an unparseable answer lists the films without credits, never without screenings",
+    ("worker/src/main/scala/services/cinemas/es/OcineParser.scala", "filmIds",
+      "val root = Try(Json.parse(json)).getOrElse(JsNull)") ->
+      "not a swallow into data: a body that is not JSON yields None, which OcineClient turns into a failed scrape; only a parsed pelicules array is an answer",
+    ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "parseEvents",
+      "Try(Json.parse(block)).toOption.toSeq.flatMap { json =>") ->
+      "one of several JSON-LD blocks on a page that answered; a block that is not JSON (a malformed CMS embed) is skipped, the page's other blocks stand",
+    ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "pageEventCount",
+      "Try(Json.parse(block)).toOption.flatMap(json => (json \\ \"events\").asOpt[JsArray]).fold(0)(_.value.size)") ->
+      "counts the events the same blocks parseEvents reads, for the paging cap; a block it cannot parse is one parseEvents skipped too",
+    ("worker/src/main/scala/services/cinemas/pl/CharlieClient.scala", "parseEvent",
+      "Try(Json.parse(block)).toOption") ->
+      "one JSON-LD block of many on a page that answered — most are not ScreeningEvents at all; a malformed one is skipped",
+    ("worker/src/main/scala/services/cinemas/pl/CharlieMonroeClient.scala", "parseHtml",
+      ".flatMap(element => Try(Json.parse(element.data())).toOption)") ->
+      "the page's JSON-LD blocks, of which only ScreeningEvents count; a malformed block is skipped, the page that carried it answered",
+    ("worker/src/main/scala/services/cinemas/pl/CinemaCityClient.scala", "parseDetails",
+      "val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)") ->
+      "optional fields (cast, runtime) off a film-details page; a missing or malformed embedded JSON leaves them empty, the listing comes from the dates/events API",
+    ("worker/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala", "parseCinemaInfo",
+      "Try(Json.parse(body)).toOption.flatMap { js =>") ->
+      "only feeds resolveSourceUrl, the /uptime link; None keeps the /cinema/-<id> fallback link, and nothing is decided from it",
+    ("worker/src/main/scala/services/cinemas/pl/HeliosClient.scala", "window",
+      "Try((Json.parse(body) \\ \"name\").asOpt[String]).toOption.flatten.map(id -> _)") ->
+      "a screen's display name for room enrichment; an unparseable screen body loses the room name, not a screening",
+    ("worker/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseApiMovieBody",
+      "Try(Json.parse(body)).toOption.flatMap { js =>") ->
+      "per-film REST metadata enriching films the NUXT listing already carries; a malformed body loses those fields, not the film",
+    ("worker/src/main/scala/services/cinemas/uk/CineworldParser.scala", "parseMovieDetail",
+      "Try(Json.parse(json)).toOption") ->
+      "a deferred detail read: None is DetailFetchOutcome.Failed, which retries the detail next tick; it is never stored as 'no fields'",
+    ("worker/src/main/scala/services/cinemas/us/AmcParser.scala", "items",
+      "val parsed = Try(Json.parse(json)).getOrElse(") ->
+      "not a swallow: the getOrElse THROWS (\"AMC response was not JSON\"), turning a parse failure into a named failed read",
+    ("worker/src/main/scala/services/cinemas/us/RegalParser.scala", "body",
+      "Try(Json.parse(json)).getOrElse(") ->
+      "not a swallow: the getOrElse THROWS (\"…not JSON\"), turning a parse failure into a named failed read",
+    ("worker/src/main/scala/services/enrichment/scraping/JsonLdAggregateRating.scala", "of",
+      "def of(html: String): JsonLd = JsonLd(scripts(html).flatMap(raw => Try(Json.parse(raw)).toOption))") ->
+      "the JSON-LD blocks of a rating page that answered (read through HttpRead); a malformed block is skipped and the page's other blocks still give the score",
+    ("worker/src/main/scala/services/enrichment/scraping/RottenTomatoesScorecard.scala", "criticsScore",
+      "Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>") ->
+      "a data island inside a page that answered (read through HttpRead); JSON-LD is the fallback parseScore tries next, so a malformed island is not 'no score' by itself",
     ("worker/src/main/scala/tools/ParallelDetailFetch.scala", "timed",
       "case _: TimeoutException     => attempt.cancel(true); timedOut.add(url); None") ->
       "a timed-out fetch is recorded in `timedOut`, which the caller reports and meters; None only drops it from the results"

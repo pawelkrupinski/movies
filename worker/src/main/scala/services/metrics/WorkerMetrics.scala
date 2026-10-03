@@ -94,6 +94,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // A cut-over country's identity projection — see IdentityCutoverMetrics.
   val identityCutover: IdentityCutoverMetrics = new IdentityCutoverMetrics(registry)
 
+  // Listings landed incomplete, and venues stuck incomplete — see ListingIncompleteMetrics.
+  val listingIncomplete: ListingIncompleteMetrics = new ListingIncompleteMetrics(countryCodes, registry)
+
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 

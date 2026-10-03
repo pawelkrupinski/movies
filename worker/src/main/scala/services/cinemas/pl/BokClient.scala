@@ -2,8 +2,8 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, ParallelDetailFetch}
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
@@ -45,13 +45,13 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
   override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/$prefix")
 
   def fetch(): Seq[CinemaMovie] = {
-    val listing = http.get(s"$BaseUrl/$prefix")
+    val listing = HttpRead.page(http, s"$BaseUrl/$prefix")
     val days    = dayLinks(listing)
 
     // Fetch every day page (today's is the listing we already have); parse the
     // showing cards on each into per-slug, per-day screenings.
     val dayHtml = listing :: days.tail.map { case (_, url) =>
-      Try(http.get(url)).toOption.getOrElse("")
+      Try(HttpRead.page(http, url)).toOption.getOrElse("")
     }
     val showings: Seq[DayShowing] =
       days.map(_._1).zip(dayHtml).flatMap { case (date, html) => showingsOn(html, date) }
@@ -60,9 +60,9 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     val bySlug = showings.groupBy(_.slug)
     val slugs  = bySlug.keys.toSeq.distinct
 
-    val detailPages = ParallelDetailFetch.keyed("bok-films", slugs, 1.minute)(s => s"$BaseUrl/$prefix/$s") { url =>
-      Try(http.get(url)).toOption
-    }
+    val detailPages = ListingPages.readMore("bok-films", slugs, s => s"$BaseUrl/$prefix/$s", timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url))
+    }.toMap
 
     slugs.flatMap { slug =>
       val group = bySlug(slug)

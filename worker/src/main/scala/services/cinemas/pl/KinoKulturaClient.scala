@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingPages}
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,15 +38,13 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val main  = http.get(s"$BaseUrl/")
+    val main  = HttpRead.page(http, s"$BaseUrl/")
     val nonce = NoncePat.findFirstMatchIn(main).map(_.group(1)).getOrElse("")
     val dates = DatePat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
     if (nonce.isEmpty || dates.isEmpty) return Seq.empty
 
-    val pages = ParallelDetailFetch.keyed("kino-kultura-days", dates, 1.minute)(d => s"$PostersUrl?ajax=1&u_time=$nonce&rep_date=$d") { url =>
-      Try(http.get(url)).toOption
-    }
-    val slots = dates.flatMap(d => pages.getOrElse(d, None).toSeq.flatMap(parseDay))
+    val slots = ListingPages.readMore("kino-kultura-days", dates, (d: String) => s"$PostersUrl?ajax=1&u_time=$nonce&rep_date=$d")(HttpRead.page(http, _))
+      .flatMap { case (_, page) => parseDay(page) }
 
     slots.groupBy(_.filmId).toSeq.flatMap { case (_, group) =>
       val primary    = group.head

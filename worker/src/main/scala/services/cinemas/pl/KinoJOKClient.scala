@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
 
@@ -41,7 +41,7 @@ class KinoJOKClient(
   override def sourceUrl: Option[String] = Some(KinoJOKClient.EventsPageUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    KinoJOKClient.parse(http.get(KinoJOKClient.apiUrl(today, today.plusDays(ScrapeHorizon.MaxDays.toLong))), cinema)
+    KinoJOKClient.parse(HttpRead.page(http, KinoJOKClient.apiUrl(today, today.plusDays(ScrapeHorizon.MaxDays.toLong))), cinema)
 }
 
 object KinoJOKClient {

@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -37,7 +37,7 @@ class KinoOrzelClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    parse(http.get(ListingUrl), cinema)
+    parse(HttpRead.page(http, ListingUrl), cinema)
 }
 
 object KinoOrzelClient {

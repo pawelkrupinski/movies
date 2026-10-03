@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth, ZoneId}
@@ -113,7 +113,7 @@ class MsiClient(
     val slots    = Seq.newBuilder[MsiScraper.RawSlot]
 
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
-      val body = Try(http.get(monthUrl(baseUrl, mvcPath, month)))
+      val body = Try(HttpRead.page(http, monthUrl(baseUrl, mvcPath, month)))
       attempts += body
       val monthSlots = body.toOption.filter(_.nonEmpty).toSeq
         .flatMap(MsiScraper.parseMonthWithYear(_, month, baseUrl, titleCleaner))

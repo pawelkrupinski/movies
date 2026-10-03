@@ -2,11 +2,11 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingPages}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -44,10 +44,10 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val detailUrls = parseListing(http.get(ListingUrl))
-    val byUrl = ParallelDetailFetch("teatr-ziemi-rybnickiej", detailUrls, 1.minute) { url =>
-      Try(http.get(url)).toOption.flatMap(html => parseDetail(html, url))
-    }
+    val detailUrls = parseListing(HttpRead.page(http, ListingUrl))
+    val byUrl = ListingPages.readMore("teatr-ziemi-rybnickiej", detailUrls, identity[String], timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).flatMap(html => parseDetail(html, url))
+    }.toMap
     detailUrls.flatMap(byUrl.get).flatten
   }
 

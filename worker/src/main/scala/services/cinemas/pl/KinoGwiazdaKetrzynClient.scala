@@ -6,7 +6,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -55,7 +55,7 @@ class KinoGwiazdaKetrzynClient(http: HttpFetch, override val cinema: Cinema = Ki
   // screenings — a white scrape instead of a red one. The film pages load side by
   // side; one that fails drops only its film, unless every one did.
   def fetch(): Seq[CinemaMovie] =
-    ListingPages.readEach("kino-gwiazda-ketrzyn", cards(http.get(RepertoireUrl)), (_: Card).filmUrl)(http.get)
+    ListingPages.readEach("kino-gwiazda-ketrzyn", cards(HttpRead.page(http, RepertoireUrl)), (_: Card).filmUrl)(HttpRead.page(http, _))
       .flatMap { case (card, html) => film(card, html, cinema) }
 }
 

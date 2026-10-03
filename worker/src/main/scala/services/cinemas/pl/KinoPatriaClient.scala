@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
@@ -48,7 +48,7 @@ class KinoPatriaClient(
     // A fetch or parse failure propagates and surfaces as a red uptime error, rather
     // than being swallowed into an empty list that reads as a successful "0 showtimes"
     // scrape (white — indistinguishable from a genuinely film-dormant venue).
-    parseRepertoire(http.get(RepertoireUrl), cinema, today)
+    parseRepertoire(HttpRead.page(http, RepertoireUrl), cinema, today)
   }
 }
 

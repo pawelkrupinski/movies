@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.{HttpFetch, PersonName}
+import tools.{HttpFetch, PersonName, HttpRead}
 import models._
 import org.jsoup.parser.Parser
 import org.jsoup.nodes.Element
@@ -109,7 +109,7 @@ class FlicksClient(
    *  the season renders. An empty plan without that notice (only far-out tabs, or a
    *  bare block) vouches for nothing and stays a plain empty. */
   override def planSchedule(): ChunkPlan = {
-    val html  = http.get(programmeUrl)
+    val html  = HttpRead.page(http, programmeUrl)
     val all   = parseProgrammeDates(html)
     val dates = all.filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
     if (dates.isEmpty && !hasTimetable(html))
@@ -124,7 +124,7 @@ class FlicksClient(
    *  retry); the other days are unaffected. A day that ANSWERS with an empty
    *  fragment (no programme) is a valid empty result, not a failure. */
   def fetchChunkPage(dateKey: String): String =
-    http.get(sessionsUrl(market, cinemaSlug, LocalDate.parse(dateKey)), AjaxHeaders)
+    HttpRead.page(http, sessionsUrl(market, cinemaSlug, LocalDate.parse(dateKey)), AjaxHeaders)
 
   def parseChunkPage(dateKey: String, page: String): Seq[CinemaMovie] = {
     val date = LocalDate.parse(dateKey)

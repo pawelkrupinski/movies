@@ -4,7 +4,7 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
@@ -42,7 +42,7 @@ class KinoFenomenClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html = http.get(ListingUrl)
+    val html = HttpRead.page(http, ListingUrl)
     val document  = Jsoup.parse(html)
 
     val slots = document.select("div.iframe_all").asScala.toSeq.flatMap(parseSlot)
@@ -87,7 +87,7 @@ class KinoFenomenClient(
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 }
 
 object KinoFenomenClient {

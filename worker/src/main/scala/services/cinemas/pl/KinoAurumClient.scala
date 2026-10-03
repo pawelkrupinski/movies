@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import scala.util.Try
 
 /**
  * Kino Aurum (Złotoryja). The site kinoaurum.pl is a JS app backed by a public
@@ -29,7 +28,7 @@ class KinoAurumClient(http: HttpFetch, override val cinema: Cinema = KinoAurum)
   override def sourceKey: Option[String] = Some(CinemaScraper.urlKey(KinoAurumClient.SeanseUrl.takeWhile(_ != '?')))
 
   def fetch(): Seq[CinemaMovie] =
-    KinoAurumClient.parse(http.get(KinoAurumClient.SeanseUrl), cinema)
+    KinoAurumClient.parse(HttpRead.page(http, KinoAurumClient.SeanseUrl), cinema)
 }
 
 object KinoAurumClient {
@@ -41,7 +40,8 @@ object KinoAurumClient {
 
 
   def parse(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val documents = (Try(Json.parse(json)).toOption.getOrElse(JsNull) \ "documents")
+    // A body that is not JSON throws rather than reading as a venue with no documents.
+    val documents = (Json.parse(json) \ "documents")
       .asOpt[Seq[JsValue]].getOrElse(Seq.empty)
 
     val slots = documents.flatMap { document =>

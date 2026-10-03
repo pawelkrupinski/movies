@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
@@ -69,11 +69,11 @@ class AlternatywyClient(
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
-      parseRepertoire(http.get(RepertoireUrl)).filter(_.title.nonEmpty),
+      parseRepertoire(HttpRead.page(http, RepertoireUrl)).filter(_.title.nonEmpty),
       titleOf    = _.title,
       showtimeOf = _.showtime,
       distinctBy = s => (s.dateTime, s.room)

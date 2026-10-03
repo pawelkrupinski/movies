@@ -5,7 +5,7 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 
@@ -39,13 +39,13 @@ class Bilety24Client(
   /** The repertoire page links one `/wydarzenie/?id=N` per event = one chunk per
    *  event. */
   def planChunks(): Seq[String] =
-    EventLinkPat.findAllMatchIn(http.get(baseUrl + listingPath)).map(_.group(1)).toSeq.distinct
+    EventLinkPat.findAllMatchIn(HttpRead.page(http, baseUrl + listingPath)).map(_.group(1)).toSeq.distinct
 
   /** One event page → its film (0 or 1). A throw reschedules just this event's
    *  chunk. The default `reduceChunks` groups by `filmUrl` (the unique event URL),
    *  so each event stays its own entry exactly as the old flat scrape produced. */
   def fetchChunk(eventId: String): Seq[CinemaMovie] =
-    Bilety24Client.parseEvent(http.get(s"$baseUrl/wydarzenie/?id=$eventId"), cinema, baseUrl, eventId, titles).toSeq
+    Bilety24Client.parseEvent(HttpRead.page(http, s"$baseUrl/wydarzenie/?id=$eventId"), cinema, baseUrl, eventId, titles).toSeq
 }
 
 object Bilety24Client {

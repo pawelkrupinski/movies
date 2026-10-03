@@ -3,7 +3,7 @@ package services.tasks
 import settings.ScrapeChunkSpread
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, PreScrapedCinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, ListingReads, PreScrapedCinemaScraper}
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -69,17 +69,20 @@ class ChunkScrapePlanner(
       // such no-ops an hour on the UK worker, each paying that fetch.
       if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter.value))) return 0
 
-      val plan =
-        try scraper.planSchedule()
+      val (plan, planReads) =
+        try ListingReads.during(scraper.planSchedule())
         catch { case e: Exception => publishFailure(scraper, e); return 0 }
       val keys = plan.keys
 
-      if (keys.isEmpty) { publishEmpty(scraper, plan.noScheduleListed); return 0 }
+      if (keys.isEmpty) { publishEmpty(scraper, plan.noScheduleListed, planReads.complete); return 0 }
 
       val now = clock.instant()
       store.startRun(cinema, keys, now, staleAfter.value) match {
         case None => 0 // a run is already active for this cinema
         case Some(runId) =>
+          // A day the plan's walk could not probe may hold films no chunk will read.
+          if (!planReads.complete)
+            store.storeChunk(cinema, runId, ChunkScrapeKeys.PlanIncomplete, CinemaMovieJson.encode(Nil), now)
           // Stagger the fan-out's eligibility evenly across the (clamped) spread
           // window so this venue's chunks don't all become claimable at once and
           // monopolise the pool — see `chunkSpread`. `Zero` window → no offset.
@@ -111,8 +114,8 @@ class ChunkScrapePlanner(
    *  repertoire, so it counts as a SUCCESSFUL scrape and advances the due schedule.
    *  (Uptime still records it white — empty is visible, just not overdue.) Whether the
    *  page SAID it has nothing on travels with it to the archive (`noScheduleListed`). */
-  private def publishEmpty(scraper: ChunkedCinemaScraper, noScheduleListed: Boolean): Unit = {
-    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, noScheduleListed = noScheduleListed))
+  private def publishEmpty(scraper: ChunkedCinemaScraper, noScheduleListed: Boolean, complete: Boolean): Unit = {
+    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, listingComplete = complete, noScheduleListed = noScheduleListed))
     catch { case _: Exception => () }
     // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
     // with SOME showtimes about to run dry, not one advertising nothing at all.

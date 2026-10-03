@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
@@ -114,7 +114,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, "https://bilety.kinoapollo.pl")
   override def sourceUrl: Option[String] = Some(PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
 
   override val detailGroup: String = "kino-apollo"
 
@@ -125,7 +125,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val m = parseDetail(html)
       FilmDetail(
         synopsis       = m.synopsis,

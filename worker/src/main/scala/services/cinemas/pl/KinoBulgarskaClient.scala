@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -58,7 +58,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Z
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
 
   override val detailGroup: String = "kino-bulgarska"
 
@@ -75,7 +75,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate = LocalDate.now(Z
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => FilmDetail(trailerUrl = parseTrailer(html)))
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => FilmDetail(trailerUrl = parseTrailer(html)))
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;

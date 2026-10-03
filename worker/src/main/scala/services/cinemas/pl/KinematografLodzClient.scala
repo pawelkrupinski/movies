@@ -7,7 +7,7 @@ import services.cinemas.common.CinemaScraper
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -62,7 +62,7 @@ class KinematografLodzClient(
   // The scraped page itself, so /uptime's link opens what the parser read.
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema, titles)
+  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, RepertoireUrl), today, cinema, titles)
 }
 
 object KinematografLodzClient {

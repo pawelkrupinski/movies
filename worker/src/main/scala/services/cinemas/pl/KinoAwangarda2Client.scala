@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
@@ -51,7 +51,7 @@ class KinoAwangarda2Client(
   // `RetryingCinemaScraper` records as a successful "0 showtimes" scrape (white on the
   // uptime bar, indistinguishable from a genuinely film-dormant venue).
   def fetch(): Seq[CinemaMovie] =
-    KinoAwangarda2Client.parse(http.get(KinoAwangarda2Client.RepertoireUrl), today, cinema)
+    KinoAwangarda2Client.parse(HttpRead.page(http, KinoAwangarda2Client.RepertoireUrl), today, cinema)
 }
 
 object KinoAwangarda2Client {

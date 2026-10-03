@@ -57,9 +57,12 @@ trait CinemaScraper {
    *  single-venue scraper is fallback-eligible. */
   def chain: Boolean = false
 
-  /** Whether `fetch()` returned the venue's WHOLE listing. False only where the caller
-   *  knows it did not — a chunked scrape reduced from some of its date-chunks. The cache
-   *  skips its prune on a short listing, so a film that merely wasn't looked at is not
+  /** Whether `fetch()` returned the venue's WHOLE listing as far as the scraper's own
+   *  structure knows — false for a chunked scrape reduced from some of its date-chunks. Only
+   *  the shared wrappers in this package answer it; a client never does
+   *  (`ListingCompletenessSpec`). A page that failed to read makes a listing incomplete on top
+   *  of this, decided from the read outcomes ([[ListingReads]], [[Scraped.complete]]). The
+   *  cache skips its prune on a short listing, so a film that merely wasn't looked at is not
    *  mistaken for one that stopped screening. */
   def listingIsComplete: Boolean = true
 
@@ -108,12 +111,16 @@ trait CinemaScraper {
    *  scraper but `SourceFallbackScraper`, whose tick may be its fallback's. It is the
    *  outermost decorator; one wrapped around it would have to forward this, not re-derive
    *  it from its own `fetch()`. */
-  def fetchWithSource(): CinemaScraper.Scraped = CinemaScraper.Scraped(fetch(), viaFallback = false)
+  def fetchWithSource(): CinemaScraper.Scraped = {
+    val (movies, reads) = ListingReads.during(fetch())
+    CinemaScraper.Scraped(movies, viaFallback = false, complete = reads.complete)
+  }
 }
 
 object CinemaScraper {
-  /** A scrape's listing and whether a fallback served it — see [[CinemaScraper.fetchWithSource]]. */
-  final case class Scraped(movies: Seq[CinemaMovie], viaFallback: Boolean)
+  /** A scrape's listing, whether a fallback served it, and whether every page it read
+   *  answered ([[ListingReads]]) — see [[CinemaScraper.fetchWithSource]]. */
+  final case class Scraped(movies: Seq[CinemaMovie], viaFallback: Boolean, complete: Boolean)
 
   /** Lower-cased hosts of the given URLs, skipping any that don't parse to a
    *  host. The canonical way a scraper derives `scrapeHosts` from the base

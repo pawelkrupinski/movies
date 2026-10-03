@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
@@ -35,7 +35,7 @@ class KinoSlezaClient(http: HttpFetch, override val cinema: Cinema = KinoSleza)
   override def sourceUrl: Option[String] = Some(KinoSlezaClient.BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    KinoSlezaClient.parse(http.get(KinoSlezaClient.RepertoireUrl), cinema)
+    KinoSlezaClient.parse(HttpRead.page(http, KinoSlezaClient.RepertoireUrl), cinema)
 }
 
 object KinoSlezaClient {

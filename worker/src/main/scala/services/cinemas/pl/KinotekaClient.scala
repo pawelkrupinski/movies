@@ -5,7 +5,7 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.movies.TitleNormalizer
 
@@ -50,12 +50,12 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
   /** The date nav off the listing page = one chunk per day. A failed fetch here
    *  fails the whole scrape (recorded as a normal outcome), as before. */
   def planChunks(): Seq[String] =
-    DatePat.findAllMatchIn(http.get(ListingUrl)).map(_.group(1)).toSeq.distinct
+    DatePat.findAllMatchIn(HttpRead.page(http, ListingUrl)).map(_.group(1)).toSeq.distinct
 
   /** One day page → that day's films (slots grouped by slug). A throw reschedules
    *  just this day's chunk task. */
   def fetchChunk(date: String): Seq[CinemaMovie] =
-    moviesFrom(parsePage(http.get(s"$ListingUrl?date=$date")))
+    moviesFrom(parsePage(HttpRead.page(http, s"$ListingUrl?date=$date")))
 
   /** Merge the per-day films by `/film/<slug>/`, unioning showtimes — the same
    *  cross-day fold the old whole-scrape did (deterministic by film URL; poster is
@@ -98,7 +98,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val detail = KinotekaClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

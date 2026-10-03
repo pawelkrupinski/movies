@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
@@ -41,8 +41,8 @@ class KinoChatkaZakaClient(http: HttpFetch, override val cinema: Cinema = KinoCh
   override def sourceUrl: Option[String] = Some(KinoChatkaZakaClient.CalendarUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val pairs = KinoChatkaZakaClient.parseList(http.get(KinoChatkaZakaClient.CalendarUrl)).flatMap { entry =>
-      KinoChatkaZakaClient.parseDetail(http.get(entry.detailUrl)).map(entry -> _)
+    val pairs = KinoChatkaZakaClient.parseList(HttpRead.page(http, KinoChatkaZakaClient.CalendarUrl)).flatMap { entry =>
+      KinoChatkaZakaClient.parseDetail(HttpRead.page(http, entry.detailUrl)).map(entry -> _)
     }
     KinoChatkaZakaClient.fold(cinema, pairs)
   }

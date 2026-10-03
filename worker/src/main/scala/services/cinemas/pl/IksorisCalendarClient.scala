@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -52,17 +52,17 @@ class IksorisCalendarClient(
   // day, unless every one did.
   def fetch(): Seq[CinemaMovie] = {
     val first     = YearMonth.from(today)
-    val thisMonth = scheduledDays(http.get(calendarUrl(page, first)))
+    val thisMonth = scheduledDays(HttpRead.page(http, calendarUrl(page, first)))
     val later     = Seq.newBuilder[LocalDate]
     ScrapeHorizon.liveMonths(first.plusMonths(1)) { month =>
-      val days = scheduledDays(http.get(calendarUrl(page, month)))
+      val days = scheduledDays(HttpRead.page(http, calendarUrl(page, month)))
       later ++= days
       days.nonEmpty
     }
     val days = (thisMonth ++ later.result()).filterNot(_.isBefore(today))
     // Parsed inside the day's Try: a day answering 200 with an HTML session page
     // drops that day, not the whole scrape.
-    val attempts = days.map(day => Try(Json.parse(http.get(dayUrl(page, day)))))
+    val attempts = days.map(day => Try(Json.parse(HttpRead.page(http, dayUrl(page, day)))))
     ListingPages.requireAnyReached(attempts)
     parse(attempts.flatMap(_.toOption), cinema)
   }

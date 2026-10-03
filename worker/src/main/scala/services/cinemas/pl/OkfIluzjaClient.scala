@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
@@ -51,7 +51,7 @@ class OkfIluzjaClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html = http.get(WeeklyUrl)
+    val html = HttpRead.page(http, WeeklyUrl)
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document)
 

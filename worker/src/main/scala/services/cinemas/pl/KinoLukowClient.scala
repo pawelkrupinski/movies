@@ -6,7 +6,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -45,7 +45,7 @@ class KinoLukowClient(http: HttpFetch, override val cinema: Cinema = KinoLukow) 
 
   // A failed fetch propagates: swallowed, it would read as a venue with no
   // screenings — a white scrape instead of a red one.
-  def fetch(): Seq[CinemaMovie] = KinoLukowClient.parse(http.get(KinoLukowClient.RepertoireUrl), cinema)
+  def fetch(): Seq[CinemaMovie] = KinoLukowClient.parse(HttpRead.page(http, KinoLukowClient.RepertoireUrl), cinema)
 }
 
 object KinoLukowClient {

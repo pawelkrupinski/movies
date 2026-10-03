@@ -34,7 +34,7 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("Kino Bułgarska", new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"))),
     ("Nowe Horyzonty", new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6))),
     ("Nove Kino",      new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", models.KinoAtlantic)),
-    ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"))),
+    ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"), java.time.LocalDate.of(2026, 6, 13))),
     ("Ekobilet",       new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy", models.KinoMeduza, LocalDate.of(2026, 6, 8))),
     ("Kino Wars",      new KinoWarsClient(new FakeHttpFetch("kino-wars"))),
     ("Cinema City",    new CinemaCityScraper(new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer), "1078", models.CinemaCityPoznanPlaza))

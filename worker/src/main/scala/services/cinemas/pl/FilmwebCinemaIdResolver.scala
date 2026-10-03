@@ -4,7 +4,7 @@ import java.util.Locale
 
 import models.{Cinema, City, Country}
 import play.api.libs.json.{Json, Reads}
-import tools.{BoundedParallel, HttpFetch}
+import tools.{BoundedParallel, HttpFetch, HttpRead}
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
@@ -44,12 +44,12 @@ class FilmwebCinemaIdResolver(http: HttpFetch) {
       .flatMap(city => city.cinemas.map(cinema => cinema -> city.townsOf(cinema)))
 
     val townIds: Map[String, Seq[Int]] =
-      Try(parseTowns(http.get(TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)
+      Try(parseTowns(HttpRead.page(http, TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)
     def idsOf(towns: Seq[String]): Seq[Int] = towns.flatMap(townIds.getOrElse(_, Nil)).distinct
 
     val listings = new ConcurrentHashMap[Int, Seq[FilmwebCinema]]()
     BoundedParallel.foreach("filmweb-town-cinemas", cinemas.flatMap((_, towns) => idsOf(towns)).distinct, MaxConcurrent) { id =>
-      Try(parseCinemaListing(http.get(townCinemasUrl(id)))).foreach(listings.put(id, _))
+      Try(parseCinemaListing(HttpRead.page(http, townCinemasUrl(id)))).foreach(listings.put(id, _))
     }
     val listingOf = listings.asScala
 

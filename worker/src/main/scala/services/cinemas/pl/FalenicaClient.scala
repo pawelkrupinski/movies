@@ -3,13 +3,12 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * KINOkawiarnia Stacja Falenica (Warszawa). The `/repertuar/` page lists each
@@ -52,12 +51,12 @@ class FalenicaClient(http: HttpFetch
     // the editorial post but the film keeps live "Dostępne terminy" (Romeria,
     // Znaki Pana Śliwki did, with future showtimes). Don't exclude by slug —
     // the `showtimes.isEmpty` drop below already removes genuinely-dead pages.
-    val films = Jsoup.parse(http.get(ListingUrl)).select("div.repe-box").asScala.toSeq.flatMap(parseListItem)
+    val films = Jsoup.parse(HttpRead.page(http, ListingUrl)).select("div.repe-box").asScala.toSeq.flatMap(parseListItem)
       .distinctBy(_.slug)
 
-    val pages = ParallelDetailFetch.keyed("falenica-details", films.map(_.slug), 1.minute)(s => s"$BaseUrl/filmy/$s/") { url =>
-      Try(http.get(url)).toOption.map(Jsoup.parse)
-    }
+    val pages = ListingPages.readMore("falenica-details", films.map(_.slug), s => s"$BaseUrl/filmy/$s/", timeout = 1.minute) { url =>
+      Option(HttpRead.page(http, url)).map(Jsoup.parse)
+    }.toMap
 
     films.flatMap { f =>
       val detail    = pages.getOrElse(f.slug, None)
@@ -88,7 +87,7 @@ class FalenicaClient(http: HttpFetch
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
         // `article.entry-description` holds only the synopsis prose (the

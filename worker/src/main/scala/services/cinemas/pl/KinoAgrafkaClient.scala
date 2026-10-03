@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
@@ -41,7 +41,7 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html = http.get(RepertoireUrl)
+    val html = HttpRead.page(http, RepertoireUrl)
     val slots = parseDocument(html)
 
     val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))

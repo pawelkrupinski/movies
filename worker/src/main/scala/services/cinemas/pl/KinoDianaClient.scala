@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
@@ -38,7 +38,7 @@ class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
   // The feed IS the listing: a failed fetch fails the scrape (red), not an empty one.
   def fetch(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
-      parseFeed(http.get(FeedUrl)),
+      parseFeed(HttpRead.page(http, FeedUrl)),
       titleOf    = _._1,
       showtimeOf = { case (_, dt, booking) => Showtime(dt, booking) }
     ) { (title, _, showtimes) =>
@@ -64,8 +64,12 @@ object KinoDianaClient {
    *  eventCalendar feed. Date comes from the JSON `date`; time + title +
    *  booking from the HTML blob inside the `title` field. */
   private[cinemas] def parseFeed(body: String): Seq[(String, LocalDateTime, Option[String])] = {
-    val records = Try(Json.parse(body)).toOption.collect { case a: JsArray => a.value.toSeq }
-      .getOrElse(Seq.empty)
+    // The feed is an array; anything else — an error object, an HTML page — is no programme,
+    // and throws rather than landing as an empty one.
+    val records = Json.parse(body) match {
+      case a: JsArray => a.value.toSeq
+      case other      => throw new IllegalStateException(s"Kino Diana feed is not an array: ${other.toString.take(120)}")
+    }
     records.flatMap { record =>
       val date = (record \ "date").asOpt[String].map(_.take(10)).flatMap(d => Try(LocalDate.parse(d)).toOption)
       val document  = Jsoup.parse((record \ "title").asOpt[String].getOrElse(""), BaseUrl)

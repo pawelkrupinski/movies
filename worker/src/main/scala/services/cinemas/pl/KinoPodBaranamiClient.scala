@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.nodes.{Element, TextNode}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -45,7 +45,7 @@ class KinoPodBaranamiClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val html  = http.getBytes(RepertoireUrl)
+    val html  = HttpRead.pageBytes(http, RepertoireUrl)
     val str   = new String(html, "ISO-8859-2")
     val slots = parseDocument(str, today)
 
@@ -99,7 +99,7 @@ class KinoPodBaranamiClient(
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.getBytes(ref))
+    DetailFetchOutcome.transientToNone(HttpRead.pageBytes(http, ref))
       .map(bytes => parseDetail(new String(bytes, "ISO-8859-2")))
 }
 

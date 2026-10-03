@@ -4,7 +4,6 @@ import models.{Cinema, CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.StubCinemaScraper
-import services.movies.ScrapeSink
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeOutcome}
 
 import java.time.LocalDateTime
@@ -24,13 +23,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
       (0 until showtimes).map(i => Showtime(LocalDateTime.of(2026, 8, 1, 18, 0).plusHours(i), Some("https://book"))),
       ageRating = Some("15"))
 
-  /** A sink that takes the scrape and does nothing: what these specs pin is the runner's archive. */
-  private object DiscardingSink extends ScrapeSink {
-    def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie], listingIsComplete: Boolean, sourceKey: Option[String],
-                           viaFallback: Boolean): Unit = ()
-  }
-
-  private def runnerWith(archive: InMemoryScrapeArchiveRepository) = new CinemaScrapeRunner(DiscardingSink, archive)
+  private def runnerWith(archive: InMemoryScrapeArchiveRepository) = new CinemaScrapeRunner(DiscardingScrapeSink, archive)
 
   "CinemaScrapeRunner" should "archive a cinema's listing as the client produced it" in {
     val archive = new InMemoryScrapeArchiveRepository
@@ -118,7 +111,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still scrape normally when no archive is wired" in {
-    val runner = new CinemaScrapeRunner(DiscardingSink)
+    val runner = new CinemaScrapeRunner(DiscardingScrapeSink)
     runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")))) should have size 1
   }
 }

@@ -6,7 +6,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import models._
 import play.api.libs.json.{JsValue, Json}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
@@ -67,7 +67,7 @@ class KinoPortClient(
   override def sourceUrl: Option[String] = Some(ProgrammePageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val slots = Json.parse(http.get(ProgrammeApiUrl)).as[Seq[JsValue]].flatMap { post =>
+    val slots = Json.parse(HttpRead.page(http, ProgrammeApiUrl)).as[Seq[JsValue]].flatMap { post =>
       for {
         rendered <- (post \ "content" \ "rendered").asOpt[String].toSeq
         link     <- (post \ "link").asOpt[String].toSeq

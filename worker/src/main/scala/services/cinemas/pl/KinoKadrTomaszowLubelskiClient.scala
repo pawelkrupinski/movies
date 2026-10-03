@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import services.movies.FormatTags
-import tools.HttpFetch
+import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
@@ -69,11 +69,11 @@ class KinoKadrTomaszowLubelskiClient(
   }
 
   private def fetchNonce(): String =
-    NoncePat.findFirstMatchIn(http.get(RepertoireUrl)).map(_.group(1))
+    NoncePat.findFirstMatchIn(HttpRead.page(http, RepertoireUrl)).map(_.group(1))
       .getOrElse(throw new RuntimeException(s"KinoKadrTomaszowLubelskiClient: no AJAX nonce found on $RepertoireUrl"))
 
   private def postDay(nonce: String, day: LocalDate): String =
-    http.post(AjaxUrl, s"action=$Action&date=${DateFormat.format(day)}&security=$nonce",
+    HttpRead.postPage(http, AjaxUrl, s"action=$Action&date=${DateFormat.format(day)}&security=$nonce",
       "application/x-www-form-urlencoded")
 }
 
