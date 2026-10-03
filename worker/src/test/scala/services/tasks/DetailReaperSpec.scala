@@ -34,11 +34,11 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
-    cache.recordCinemaScrape(KinoApollo, Seq(bare))
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(bare))
     cache
   }
 
@@ -64,7 +64,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     derived shouldBe 1
     r.tick()
     derived shouldBe 1                                   // the same record: its pages are remembered
-    cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
       filmUrl = Some("http://kinoapollo/dune-2"), synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))))
     r.tick()
@@ -82,11 +82,11 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   private def splitCacheWith(filmUrl: Option[String]) = {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots      = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
-    val cache = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
-    cache.recordCinemaScrape(KinoApollo, Seq(bare))
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(bare))
     (cache, repository)
   }
 
@@ -113,13 +113,13 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
    *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
   private def cacheWithMany(n: Int) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val films = (1 to n).map { i =>
       CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
         synopsis = None, cast = Seq.empty, director = Seq.empty,
         showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
     }
-    cache.recordCinemaScrape(KinoApollo, films)
+    services.movies.ListingSeed.land(cache, KinoApollo, films)
     cache
   }
 
@@ -168,7 +168,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  pipeline keeps one page per venue and film. */
   it should "ask one page per venue and film by default, and every page a venue slot names per page" in {
     def cacheWithTwoPages = {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
       cache.put(cache.keyOf("Dune", None), MovieRecord(data = Map(
         CinemaShowing(KinoApollo, "dune")         -> SourceData(title = Some("Dune"), filmUrl = Some("http://ref/dune")),
         CinemaShowing(KinoApollo, "dunesingalong") -> SourceData(title = Some("Dune sing-along"), filmUrl = Some("http://ref/dune-sing-along")))))

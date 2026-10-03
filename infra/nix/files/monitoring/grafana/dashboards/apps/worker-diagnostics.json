@@ -1685,57 +1685,6 @@
       ]
     },
     {
-      "id": 29,
-      "title": "TMDB re-try resolves that landed on a queued resolve — upgraded or not",
-      "description": "`kinowo_worker_resolve_retry_duplicates_total`: a re-try resolve (mode=retry-miss, the scheduled unresolved re-try; mode=force, the operator's re-enrich) whose film already had a ResolveTmdb task queued under the same dedupKey. upgraded = the WAITING task now searches in the re-try's mode or above (raised to it, or already there); not-upgraded = the queued task was already being worked on with its old mode, so this re-try's search did not happen.\n\nWhy it exists: until 2026-09-23 every one of these was DROPPED by the queue's dedup, visible only as `tasks_enqueued{result=deduped}` — indistinguishable from a harmless duplicate plain resolve — and the plain resolve then stopped at the remembered miss the re-try existed to look past, for another 24h. A sustained not-upgraded rate means re-tries keep arriving while their film is mid-resolve. Panel only; no alert.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 153
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "expr": "sum by (country, mode, outcome) (increase(kinowo_worker_resolve_retry_duplicates_total{country=~\"$country\"}[1h]))",
-          "legendFormat": "{{country}} {{mode}} {{outcome}} per hour"
-        }
-      ]
-    },
-    {
       "id": 30,
       "title": "Side rows under venues the roster no longer lists, by country",
       "description": "`kinowo_worker_retired_venue_side_rows` (lines): `screenings` / `movie_slots` rows filed under a venue name missing from the country's roster (RetiredVenueCensus: at boot, hourly, and right after each cleanup run; id-only reads). `kinowo_worker_retired_venue_future_showtimes` (bars, right): the upcoming showtimes on those screenings rows. ZERO IS HEALTHY.\n\nDropping a cinema stops its scrape and the read path ignores its rows; the daily RetiredVenueRows cleanup deletes a screenings/slot pair once BOTH twins are older than its 24h grace, so a freshly dropped venue sits here for up to about two days (before that cleanup existed, Kino Etiuda OBK's rows stayed for days). A foreign country's venue here means rows landed in the wrong database. Alerted by RetiredVenueRowsLingering (above zero for 50h: the cleanup's 24h grace plus its daily tick) — the watchdog for the retired-venue cleanup.",
@@ -1982,91 +1931,9 @@
       ]
     },
     {
-      "id": 34,
-      "title": "Staging newcomer kicks — rows decoded per kick, and kicks per min",
-      "description": "`kinowo_worker_staging_newcomer_kick_rows_total / kinowo_worker_staging_newcomer_kicks_total`: how many staging rows the StagingReaper decoded each time a StagingNewcomerDiverted kicked a film's chain. A kick is due only for a film NEW to staging, so its group is that venue's own row(s) and the line sits near 1 (a few when venues land the same new film concurrently). Until 2026-09-23 every venue JOINING an incubating film kicked too, and the k-th of N venues decoded k rows: rows/kick of ~N/2 -- ~1,220 for the presale staged at 2,441 US venues, which took the US scrape tick from 27s to 1,419s. A line climbing with a wide release's venue count is that quadratic back; StagingNewcomerKickReadsWide fires on it. Kicks/min (dashed, right axis) is the denominator: a ratio over a handful of kicks is noise. Reads ZERO, not blank, while nothing is being kicked.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 193
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": 300000
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*kicks/min.*"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    10
-                  ],
-                  "fill": "dash"
-                }
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "refId": "A",
-          "expr": "sum by (country) (rate(kinowo_worker_staging_newcomer_kick_rows_total{country=~\"$country\"}[$__rate_interval])) / (sum by (country) (rate(kinowo_worker_staging_newcomer_kicks_total{country=~\"$country\"}[$__rate_interval])) > 0) or (sum by (country) (rate(kinowo_worker_staging_newcomer_kicks_total{country=~\"$country\"}[$__rate_interval])) * 0)",
-          "legendFormat": "{{country}} rows/kick"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "refId": "B",
-          "expr": "sum by (country) (rate(kinowo_worker_staging_newcomer_kicks_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{country}} kicks/min"
-        }
-      ]
-    },
-    {
       "id": 35,
       "title": "Repository writes that FAILED — by country, collection, op and exception",
-      "description": "`kinowo_worker_repository_write_failed_total`: a movies / movie_slots / screenings / pending_movies write that THREW (every Mongo repository write goes through services.movies.RepositoryWrite). ZERO IS THE HEALTHY READING. Each failure is also a WARN line naming the film, and the cache rolls the row back so the next identical scrape retries the write — so a short blip heals itself, while a sustained line is a write that keeps failing (a codec that cannot encode a field, a validator, a full disk). Alerted by RepositoryWritesFailing (worker-pipeline.rules). Added 2026-09-24: a codec bug failed 34 upserts over ~6h with nothing counting it, and two new films never reached the site until a restart. The exception label is the class's simple name. Every known collection/op is seeded at 0 for the expected exception classes, so the first failure shows; any other class appears on its first failure and shows from its second.",
+      "description": "`kinowo_worker_repository_write_failed_total`: a movies / movie_slots / screenings write that THREW (every Mongo repository write goes through services.movies.RepositoryWrite). ZERO IS THE HEALTHY READING. Each failure is also a WARN line naming the film, and the cache rolls the row back so the next identical scrape retries the write — so a short blip heals itself, while a sustained line is a write that keeps failing (a codec that cannot encode a field, a validator, a full disk). Alerted by RepositoryWritesFailing (worker-pipeline.rules). Added 2026-09-24: a codec bug failed 34 upserts over ~6h with nothing counting it, and two new films never reached the site until a restart. The exception label is the class's simple name. Every known collection/op is seeded at 0 for the expected exception classes, so the first failure shows; any other class appears on its first failure and shows from its second.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2111,57 +1978,6 @@
           },
           "expr": "sum by (country, collection, op, exception) (increase(kinowo_worker_repository_write_failed_total{country=~\"$country\"}[$__rate_interval]))",
           "legendFormat": "{{country}} {{collection}}.{{op}} {{exception}}"
-        }
-      ]
-    },
-    {
-      "id": 57,
-      "title": "Staging folds ABANDONED — by country",
-      "description": "`kinowo_worker_staging_fold_aborts_total`: staging folds MongoStagingFolder gave up on -- out of retries, or a failure retrying cannot help -- and rethrew, so the newcomer stays in pending_movies with its listing off the site until a later fold succeeds. ZERO IS THE HEALTHY READING. A transient abort is retried by the reaper's next tick and heals; a line that never drops is one film failing deterministically, and the worker's ERROR line (`Staging fold '<title>' aborted after N attempt(s): ...`) names it. Alerted by StagingFoldsAborting (worker-pipeline.rules). Added 2026-10-01: one UK film's fold died on E11000 every minute for six days from 2026-09-25 with nothing counting it -- the fold runs in an event listener, not as a task.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 209
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "expr": "sum by (country) (increase(kinowo_worker_staging_fold_aborts_total{country=~\"$country\"}[$__rate_interval]))",
-          "legendFormat": "{{country}}"
         }
       ]
     },
@@ -2700,7 +2516,7 @@
     {
       "id": 43,
       "title": "Env-gated alerters and integrations — 1 wired, 0 switched off by a missing env var",
-      "description": "`kinowo_worker_alerter_enabled{alerter}` (the in-app Telegram alerters: Filmweb fallback, Filmweb drops, staging stuck) and `kinowo_worker_integration_enabled{integration}` (TMDB, OMDb, the residential proxy, Zyte, Sentry, the Facebook re-scrape). ONE IS THE ONLY HEALTHY VALUE.\n\nWHY THIS IS WORTH A PANEL. Each of these is wired as `Env.get(...)` in a for-comprehension, so a missing secret becomes a `None` and the feature is simply not there -- no error, no log line. When the workers moved from Fly to k3s the Telegram chat ids were left behind and all three alerters were off for weeks with nothing noticing. WHICH key is missing is in the worker's boot log: `kubectl -n kinowo logs deploy/worker-pl | grep 'is OFF: missing'`. `WorkerAlerterDisabled` / `WorkerIntegrationDisabled` (worker-pipeline.rules) fire after 30 minutes at 0.",
+      "description": "`kinowo_worker_alerter_enabled{alerter}` (the in-app Telegram alerters: Filmweb fallback, Filmweb drops) and `kinowo_worker_integration_enabled{integration}` (TMDB, OMDb, the residential proxy, Zyte, Sentry, the Facebook re-scrape). ONE IS THE ONLY HEALTHY VALUE.\n\nWHY THIS IS WORTH A PANEL. Each of these is wired as `Env.get(...)` in a for-comprehension, so a missing secret becomes a `None` and the feature is simply not there -- no error, no log line. When the workers moved from Fly to k3s the Telegram chat ids were left behind and the alerters were off for weeks with nothing noticing. WHICH key is missing is in the worker's boot log: `kubectl -n kinowo logs deploy/worker-pl | grep 'is OFF: missing'`. `WorkerAlerterDisabled` / `WorkerIntegrationDisabled` (worker-pipeline.rules) fire after 30 minutes at 0.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3154,7 +2970,7 @@
       "id": 58,
       "interval": "2m",
       "title": "In-app Telegram alerts — sent and failed per kind",
-      "description": "`kinowo_worker_telegram_notifications_total{kind,outcome}`: every page the worker's own Telegram alerters tried to send (Filmweb fallback ENTER / RECOVERED / UNCOVERED, the gone-venue and venue-closure pages, Filmweb drops, staging stuck), by whether the Bot API took it. Each attempt also logs `Telegram notify sent` (INFO) or `Telegram notify failed` (WARN) with `kind=` and `country=`, so the messages behind a bar are one log query away. `WorkerTelegramAlertsFailing` (worker-pipeline.rules) fires when a kind keeps failing with nothing getting through.",
+      "description": "`kinowo_worker_telegram_notifications_total{kind,outcome}`: every page the worker's own Telegram alerters tried to send (Filmweb fallback ENTER / RECOVERED / UNCOVERED, the gone-venue and venue-closure pages, Filmweb drops), by whether the Bot API took it. Each attempt also logs `Telegram notify sent` (INFO) or `Telegram notify failed` (WARN) with `kind=` and `country=`, so the messages behind a bar are one log query away. `WorkerTelegramAlertsFailing` (worker-pipeline.rules) fires when a kind keeps failing with nothing getting through.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

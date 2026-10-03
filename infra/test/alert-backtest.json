@@ -1271,28 +1271,6 @@
       "series_episodes": 0,
       "status": "ok"
     },
-    "StagingFoldsAborting": {
-      "episodes": 0,
-      "file": "worker-pipeline.rules",
-      "firing_fraction": 0.0,
-      "for": "30m",
-      "metrics_rolled_out_at": "2026-10-01T16:53:00Z",
-      "observed_firing_fraction": 0.0,
-      "peak_series": 0,
-      "series_episodes": 0,
-      "status": "quiet"
-    },
-    "StagingNewcomerKickReadsWide": {
-      "episodes": 0,
-      "file": "read-model-projection.rules",
-      "firing_fraction": 0.0,
-      "for": "15m",
-      "metrics_rolled_out_at": "2026-09-24T03:23:00Z",
-      "observed_firing_fraction": 0.0,
-      "peak_series": 0,
-      "series_episodes": 0,
-      "status": "quiet"
-    },
     "SystemdUnitFailed": {
       "episodes": 1,
       "file": "host-health.rules",

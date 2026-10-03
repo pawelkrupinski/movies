@@ -35,12 +35,21 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
     """robustness:[\s\S]*?default:\s*'off'""".r.findFirstIn(workflow) shouldBe defined
   }
 
-  // A resolver-only variant must reuse the boot; a pipeline change must not.
-  it should "key the booted pipeline on the corpus and on every non-resolver source" in {
-    val key = RepoFile.step(measure, "Restore the booted pipeline")
+  // The baseline is production at the BASE — the resolver included — so a variant is never measured
+  // against itself: keyed on the base's code, booted before the variant's patch is applied.
+  it should "key the booted production on the corpus and the base's whole source, the resolver included" in {
+    val key = RepoFile.step(measure, "Key the base's booted production")
     key should include("env.KINOWO_CONVERGENCE_CORPUS_RUN")
-    key should include("'!**/services/identity/**'")
     key should include("'**/src/main/**/*.scala'")
+    key should not include "!**/services/identity/**"
+  }
+
+  it should "boot the base's production before the variant's patch is applied" in {
+    val boot  = measure.indexOf("- name: Boot the base's production into the cache")
+    val patch = measure.indexOf("- name: Apply the variant's patch")
+    boot should be > 0
+    patch should be > boot
+    RepoFile.step(measure, "Boot the base's production into the cache") should include("KINOWO_IDENTITY_BOOT_ONLY:      'true'")
   }
 
   // Only main reaches origin: a variant travels as a patch on a base commit.

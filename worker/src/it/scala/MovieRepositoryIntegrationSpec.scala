@@ -588,7 +588,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
     // The system clock on purpose: the Mongo repositories stamp with it too.
-    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = java.time.Clock.systemUTC())
+    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     val title  = "__integration-test-cache-delete__"
     val year   = Some(1910)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -2137,55 +2137,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         withClue(s"$scan delivered the film stripped of its showtimes: ")(seen.map(showtimesOf) shouldBe empty)
       }
     } finally { repository.delete(title, year); slots.deleteFilm(id); scr.deleteFilm(id) }
-  }
-
-  // END TO END, against real Mongo: the whole 2026-07-27 failure in one test.
-  //
-  // The unit specs pin each link — a failed read reports itself, a scrape defers on one —
-  // but the damage came from the COMBINATION, and only real storage shows it: an
-  // unreadable corpus leaves the cache cold, the scrape lands anyway, and
-  // `screenings.replaceFilm` prunes with `$nin` against a record built from that one
-  // cinema. This asserts the thing that actually matters to a user: the OTHER cinema's
-  // showtimes are still in Mongo afterwards.
-  it should "leave a film's other cinemas' showtimes alone when a scrape lands on an unreadable corpus" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
-      UnreadableSlotsRepository, CaffeineMovieCache}
-    import models.CinemaMovie
-    val db     = specDb
-    val scr    = new MongoScreeningsRepository(Some(db))
-    val slots  = new MongoSlotsRepository(Some(db))
-    val title  = "__integration-test-unreadable-scrape__"
-    val year   = Some(1911)
-    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
-    val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
-    try {
-      // A live film showing at TWO cinemas, written through the real repository.
-      val healthy = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer)
-      healthy.upsert(title, year, MovieRecord(imdbId = Some("tt0000081"), tmdbId = Some(4243),
-        data = Map[Source, SourceData](
-          Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
-          KinoMuranow -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))))))
-      scr.findForFilm(id).keySet should have size 2
-
-      // Now the corpus goes unreadable — the state the decode bug produced — so the cache
-      // boot-hydrates EMPTY and the per-film read fails too.
-      val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr),
-        slots = Some(new UnreadableSlotsRepository), normalizer = titleNormalizer)
-      // The system clock on purpose: the showtime below is relative to it, as Mongo's stamps are.
-      val cache = new CaffeineMovieCache(blindRepo, normalizer = titleNormalizer, clock = java.time.Clock.systemUTC())
-
-      // …and Multikino's scrape lands, as it would on any ordinary tick.
-      cache.recordCinemaScrape(Multikino, Seq(CinemaMovie(
-        movie = models.Movie(title, releaseYear = year), cinema = Multikino, posterUrl = None,
-        filmUrl = None, synopsis = None, cast = Seq.empty, director = Seq.empty,
-        showtimes = Seq(Showtime(when, None)))))
-
-      // Kino Muranów never went anywhere. Before the fix this scrape rebuilt the film
-      // from itself alone and `$nin` deleted Muranów's showtimes from `screenings`.
-      withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
-        scr.findForFilm(id).keySet should contain (KinoMuranow.displayName))
-      cache.stop()
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // The same family one collection over, and the one member that never got a checked read.

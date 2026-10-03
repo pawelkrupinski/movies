@@ -17,8 +17,7 @@ import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository,
  * second swallowed with a log line) stranded three prod films permanently
  * invisible on 2026-09-16: each kept its previous `tmdbId: null`, while its
  * `movie_slots` `TMDB` slot silently carried a match the `movies` document never
- * recorded. Nothing ever revisited them — `UnresolvedTmdbReaper` treats
- * `tmdbId`+`tmdbAttempt` both absent as "never even tried" — so the read model
+ * recorded. Nothing ever revisited them, so the read model
  * pruned their cards while their cinemas still sold tickets. See
  * `docs/misresolution-sweep.md`.
  *

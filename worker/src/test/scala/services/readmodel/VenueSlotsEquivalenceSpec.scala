@@ -108,7 +108,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
       val rng = new Random(10000 + round)
       // Showtimes in their own collection, as in production: what the cache strips its slots for.
       def cache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer,
-        screenings = Some(new InMemoryScreeningsRepository)), new services.events.InProcessEventBus(), normalizer = titleNormalizer, clock = clock)
+        screenings = Some(new InMemoryScreeningsRepository)), normalizer = titleNormalizer)
       val (whole, venue) = (cache(), cache())
       var record = film(rng)
       whole.applyUpsert(stored(record), FilmWriteFence.Unfenced); venue.applyUpsert(stored(record), FilmWriteFence.Unfenced)
@@ -127,8 +127,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         val key = now.cacheKey(titleNormalizer)
         withClue(s"round $round step $step: ") {
           venue.get(key).map(everyField) shouldBe whole.get(key).map(everyField)
-          // …and its index is the one the cached rows rebuild — as the whole-row store's is.
-          deep(venue.indexSnapshot) shouldBe deep(venue.rowsRebuiltIndexSnapshot)
+          // …and its index is the whole-row store's.
           deep(venue.indexSnapshot) shouldBe deep(whole.indexSnapshot)
         }
       }

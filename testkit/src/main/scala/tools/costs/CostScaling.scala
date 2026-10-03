@@ -65,9 +65,6 @@ final class Work {
 
 object Work {
 
-  /** `StagingRepository`'s reads that the Mongo repository answers off its anchor index. */
-  val StagingIndexReads: Set[String] = Set("holdsAnchor", "cinemasUnder")
-
   /** Method-name stems that mean a WRITE; every other call is a read. */
   private val WriteStems =
     Seq("upsert", "replace", "delete", "update", "put", "insert", "amend", "save", "remove", "write", "patch", "change", "move", "merge")
@@ -78,11 +75,8 @@ object Work {
    * write, the rows it names (a batch's size, else one). Calls the delegate makes on ITSELF
    * are not seen — this counts what its callers ask for, which is what the delegate's real
    * counterpart would be asked.
-   *
-   * `indexOnly` names reads the real store answers off an in-memory index, decoding nothing
-   * (`StagingRepository.cinemasUnder` / `holdsAnchor`): each costs one, not one per element.
    */
-  def counting[T](contract: Class[T], delegate: T, work: Work, indexOnly: Set[String] = Set.empty): T =
+  def counting[T](contract: Class[T], delegate: T, work: Work): T =
     Proxy.newProxyInstance(contract.getClassLoader, Array(contract), new InvocationHandler {
       def invoke(proxy: AnyRef, method: Method, args: Array[AnyRef]): AnyRef = {
         val result =
@@ -90,7 +84,7 @@ object Work {
           catch { case e: InvocationTargetException => throw e.getCause }
         if (WriteStems.exists(method.getName.startsWith))
           work.addWrite(method.getName, Option(args).flatMap(_.collectFirst { case rows: Iterable[?] => rows.size.toLong }).getOrElse(1L))
-        else work.addRead(method.getName, if (indexOnly(method.getName)) 1L else rows(result))
+        else work.addRead(method.getName, rows(result))
         result
       }
     }).asInstanceOf[T]

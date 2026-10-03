@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * the plain hydrate reaps rows whose `_id` has drifted from their derived title. None of
  * those look at who owns a row. Proved against a shared database: seeding
  * `StagingFoldIntegrationSpec`'s two sentinels and running only
- * `RekeyScreeningsIntegrationSpec` logged `[movies.delete] film removed:
+ * `RekeyScreeningsIntegrationSpec` (both since deleted) logged `[movies.delete] film removed:
  * id=foldorphansitsentinel|2026` — a neighbour's rows destroyed, with their `screenings`
  * and `movie_slots` cascaded away behind them. In a parallel run that lands inside the
  * neighbour's test window often enough to flake it.

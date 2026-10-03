@@ -61,7 +61,6 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   /** Every non-GET route, as the routes file spells it. */
   private val Matrix: Map[(String, String), Protection] = Map(
-    ("POST",   "/debug/reenrich")                        -> Protection(Auth.DevOnly,  Csrf.CrossSiteFilter),
     ("POST",   "/:city/debug/rehydrate")                 -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
     // Signing out needs no identity: the worst a forged one does is sign you out,
     // and the cross-site filter refuses even that.

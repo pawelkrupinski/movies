@@ -107,20 +107,14 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   // A booted corpus has asked each question once, so a tick alone never reaches a HIT: a
-  // resolved row is not re-resolved and a fresh rating is not re-fetched. Production re-asks
-  // them anyway — a repair script strips a resolution, a merge re-kicks a film's ratings — and
-  // each re-ask is answered from memory. So re-ask EVERY question the corpus has settled:
-  // once against empty caches, which searches and fills them, and once more, which is
-  // answered from them. The two must conclude the same — the same film, on the same evidence
-  // basis, with the same ratings — and the first must match the passthrough doing the same.
-  //
-  // Emptied first because the boot's own answers came through the staging graduation, which
-  // records no `tmdbBasis`: a hit on one of those keeps "unknown" (by design — see
-  // 79d5b30f2), so comparing it against a fresh search would measure the staging path, not
-  // the cache.
+  // fresh IMDb id is not re-recovered and a fresh rating is not re-fetched. Production re-asks
+  // them anyway — a re-identified film re-kicks its ratings — and each re-ask is answered from
+  // memory. So re-ask EVERY question the corpus has settled: once against empty caches, which
+  // searches and fills them, and once more, which is answered from them. The two must conclude
+  // the same — the same ids and ratings — and the first must match the passthrough doing the same.
   it should "conclude from a warm cache exactly what it concluded by searching" in {
     val searched = reask(cold)
-    Seq(warm.tmdbIdCache, warm.imdbIdCache, warm.rtLinkCache, warm.mcLinkCache, warm.filmwebLinkCache).foreach(_.forgetAll())
+    Seq(warm.imdbIdCache, warm.rtLinkCache, warm.mcLinkCache, warm.filmwebLinkCache).foreach(_.forgetAll())
     val filled = reask(warm)
     withClue(s"with its caches empty the memoising wiring concluded differently from the passthrough:\n" +
              s"${differences(searched, filled)}\n") {
@@ -133,19 +127,15 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** Strip every resolution and run the row's whole enrichment again — what a repair script
-   *  and a merge re-kick do to a settled row in production. */
+  /** Run every matched film's enrichment again — what a re-identification does to a settled
+   *  film in production. */
   private def reask(w: FixtureTestWiring): Seq[StoredMovieRecord] = {
-    w.movieCache.snapshot().filter(_.record.tmdbId.isDefined).foreach { row =>
-      w.movieCache.putIfPresent(w.movieCache.keyOf(row.title, row.year),
-        r => r.copy(tmdbId = None, data = r.data.filterNot { case (source, _) => source == models.Tmdb }))
-      w.fullySyncOne(row.title, row.year)
-    }
+    w.movieCache.snapshot().filter(_.record.tmdbId.isDefined).foreach(row => w.fullySyncOne(row.title, row.year))
     w.drainServices()
     corpus(w)
   }
 
-  // Its OWN wiring, not the shared `warm`: the re-ask above strips and re-resolves every row of
+  // Its OWN wiring, not the shared `warm`: the re-ask above re-enriches every row of
   // that one, so measuring it here measured whatever the re-ask left behind — and only when the
   // specs ran in file order. Run alone (`-z`), the same test measured a different pass.
   it should "do no work at all on a second tick, every lookup answered from its warm cache" in {

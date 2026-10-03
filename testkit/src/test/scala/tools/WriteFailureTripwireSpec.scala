@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters.*
  * The tripwire's own half: which log lines it records, where, and when it stops. The build
  * half (`project/WriteFailureTripwire.scala`) only reads the files this writes and fails the
  * run when there are any; its end-to-end proof is in the commit that added it (the
- * reintroduced codec bug trips `RekeyScreeningsIntegrationSpec`, which otherwise passes).
+ * reintroduced codec bug tripped `RekeyScreeningsIntegrationSpec`, since deleted, which otherwise passed).
  *
  * Every line here carries a per-test token, and only lines with it are counted: the
  * reporter listens on the ROOT logger, so a parallel suite's failed write could land in the file.

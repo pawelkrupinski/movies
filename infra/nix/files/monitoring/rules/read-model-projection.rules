@@ -196,11 +196,9 @@ groups:
       # Threshold is a plain > 0 because the measured baseline IS zero: on 2026-09-06 all five
       # countries had 0 such rows (504 unresolved rows across the corpus, every one of them
       # concluded `tmdbNoMatch` with its cinema detail done, so all of them project and are
-      # visible). Newcomers do not trip this either -- an unresolved new film incubates in
-      # `pending_movies` and reaches `movies` already concluded. `for: 2h` rides out a genuine
-      # transient (a re-key or title-rule wave leaving a row briefly un-concluded) without
-      # letting a stuck row hide: the reaper's own retry period is 24h, so anything still here
-      # after two hours is waiting a day, not a tick.
+      # visible). `for: 2h` rides out a genuine transient (a re-key or title-rule wave leaving
+      # a row briefly un-concluded) without letting a stuck row hide: the reaper's own retry
+      # period is 24h, so anything still here after two hours is waiting a day, not a tick.
       #
       # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in cinema-scrape.rules:
       # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
@@ -898,10 +896,10 @@ groups:
             (`movie-change-apply`).
 
   # ===============================================================================================
-  # IS THE PROJECTION / STAGING WORK STILL PROPORTIONATE TO WHAT CHANGED?
+  # IS THE PROJECTION WORK STILL PROPORTIONATE TO WHAT CHANGED?
   #
-  # Two fixes on 2026-09-23 took quadratic work out of the pipeline, and nothing would have said so
-  # if either came back. Both regressions are SILENT until they are enormous: the read model stays
+  # A fix on 2026-09-23 took quadratic work out of the pipeline, and nothing would have said so
+  # if it came back. The regression is SILENT until it is enormous: the read model stays
   # correct, only slower, and the first user-visible symptom (ChangeStreamApplyLagging, stale
   # showtimes) arrives long after the cost did. These rules watch the COST PER UNIT OF WORK, which
   # moves the day the regression ships, rather than the backlog, which moves once it has won.
@@ -910,14 +908,10 @@ groups:
   #       ~2,500 rows rebuilt to write one for a wide US release, up to ~2s of the single apply
   #       thread per film. Now each row carries the hash of the slots it was built from and is
   #       skipped while they are unchanged (`kinowo_worker_readmodel_venue_projections_total`).
-  #   (2) Every venue JOINING a film already in staging fired `StagingNewcomerDiverted`, and each
-  #       kick decoded the film's whole staging group: O(venues^2) for a presale blockbuster
-  #       (2,441 US venues, 326k showtimes, a 27s scrape tick became 1,419s). Now only a film NEW
-  #       to staging kicks (`kinowo_worker_staging_newcomer_kick_rows_total`).
   #
   # Thresholds are MEASURED against Prometheus over 2026-09-17..24 (see each rule), with the
   # pre-fix reading beside them where history has one. Code-level regression tests guard the same
-  # two invariants on every build; these are what notice when production disagrees with them.
+  # invariant on every build; these are what notice when production disagrees with it.
   # ===============================================================================================
   - name: projection-efficiency
     rules:
@@ -1014,44 +1008,6 @@ groups:
             too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves --
             the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid
             compute line), a slow mongod, or a film's city fan-out.
-
-      # -----------------------------------------------------------------------------------------
-      # (2) STAGING KICKS ARE READING WIDE GROUPS AGAIN.
-      #
-      # Rows decoded per newcomer kick. A kick is due only for a film NEW to staging, so the group
-      # it decodes is that venue's own row(s) -- 1, or a few when venues of the same brand-new film
-      # land inside one another's tick (the pool is 4 wide per worker). Kicking every JOINING venue
-      # made the k-th of N venues decode k rows: ~N/2 per kick, ~1,220 for the 2,441-venue US
-      # presale of 2026-09-23. MODELLED, NOT MEASURED -- the counter ships with this rule, so there
-      # is no history either side of the fix; revisit 25 against a week of panel 34. It is 5x the
-      # worst concurrent-landing case and a twentieth of what one wide presale did.
-      #
-      # 20 KICKS MINIMUM so a single late kick of a mid-size film cannot be the whole average, and
-      # increase() over 6h rides a worker restart (a ~3 minute gap and a counter reset both absorb
-      # into the window).
-      - alert: StagingNewcomerKickReadsWide
-        expr: >-
-          (
-            sum by (country) (increase(kinowo_worker_staging_newcomer_kick_rows_total[6h]))
-            / sum by (country) (increase(kinowo_worker_staging_newcomer_kicks_total[6h]))
-          ) > 25
-          and on (country) sum by (country) (increase(kinowo_worker_staging_newcomer_kicks_total[6h])) >= 20
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: "{{ $labels.country }}'s staging kicks decode {{ $value | printf \"%.0f\" }} rows each"
-          description: >-
-            Each `StagingNewcomerDiverted` the StagingReaper handled in "{{ $labels.country }}" over
-            the last 6h decoded {{ $value | printf "%.0f" }} staging rows on average; a kick should
-            only fire for a film NEW to staging, whose group is one venue's row. A wide average
-            means kicks are firing for venues JOINING a film already incubating, and each re-reads
-            the whole group -- quadratic in a wide release's venue count, the shape that took the US
-            scrape tick from 27s to 1,419s on 2026-09-23. Panel 34 on the worker diagnostics
-            dashboard draws rows/kick against kicks/min. Look at the newcomer test in
-            `ScrapeLanding` (`newlyDiverted`, which must ask `StagingRepository.holdsAnchor` across
-            every cinema, not just this venue's prior rows) and at `MongoStagingRepository`'s anchor
-            index, a stale-empty answer from which reads as "new" for every venue.
 
       # -----------------------------------------------------------------------------------------
       # THE APPLY THREAD IS FALLING FURTHER BEHIND -- the early tier under ChangeStreamApplyLagging.

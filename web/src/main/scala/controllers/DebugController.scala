@@ -12,12 +12,12 @@ import scala.concurrent.duration.{DurationInt, DurationLong}
 
 /**
  * The dev-only `/debug*` pages: the corpus table, its per-row detail, the
- * staging queue, the read-model dump, the rating cadence, the per-row re-enrich
+ * the read-model dump, the rating cadence, the per-row re-enrich
  * button and the card / film tuning pages — plus `rehydrate`, the one endpoint
  * here that runs in prod (admin-gated).
  *
  * ⚠️ THE ONLY CONTROLLER IN THE WEB TIER THAT READS THE SOURCE CORPUS. Every
- * page here pulls `movies` / `pending_movies` / the task queue from Mongo on
+ * page here pulls `movies` / the task queue from Mongo on
  * demand and blocks on it (`Await`) — full-collection scans over the local→prod
  * tunnel, ~6 s apiece. That is fine for an operator's tab and would not be for a
  * public route, which is why none of this lives beside the listing handlers:
@@ -25,7 +25,7 @@ import scala.concurrent.duration.{DurationInt, DurationLong}
  * learns a `MovieRepository` exists.
  */
 class DebugController(cc: ControllerComponents,
-                      // Every collaborator the /debug pages read (corpus, staging,
+                      // Every collaborator the /debug pages read (corpus,
                       // queue, cadence, read-model dump), keyed by country. In
                       // prod a single stack — this deployment's country; locally
                       // in Dev one per switchable country, so /debug can switch
@@ -46,8 +46,7 @@ class DebugController(cc: ControllerComponents,
                       // used by the /debug table to link cinema names.
                       cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
                       // The ONE country this deployment serves — which city slugs
-                      // the tuning pages resolve, and whose title rules order the
-                      // staging rows by the same anchor the worker wrote. Injected
+                      // the tuning pages resolve. Injected
                       // rather than read from `Country.fromEnv` at each use so a
                       // spec can exercise another country's host without mutating
                       // the process-global env that parallel suites share.
@@ -79,26 +78,12 @@ class DebugController(cc: ControllerComponents,
       // even off the local mirror. `findAllForListing` drops each row's per-cinema
       // `showtimes` server-side — the table renders only metadata + counts; the
       // showtimes are fetched per-row on expand via `/debug/details`.
-      //
-      // Staging + the queue stay per-request reads: both are small and bounded,
-      // and the queue is what the staging rows are ORDERED by (the page renders only
-      // the first `StagingRowLimit`, so the most imminent rows must sort to the top
-      // server-side; the client poll then repaints the live badge in place, but does
-      // not reorder). Fired concurrently with the listing, which only waits on its
-      // very first read.
-      implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val listingFuture = Future(stack.listing())
-      val stagingFuture = Future(stack.stagingRepository.findAll())
-      val queueFuture   = Future(stack.taskQueue.monitor(DebugController.DebugQueueActiveLimit))
-      val (listing, (staging, queue)) =
-        Await.result(listingFuture.zip(stagingFuture.zip(queueFuture)), 70.seconds)
-      val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
+      val listing = stack.listing()
       Ok(views.html.debug(
         listing.value.table,
         // The SELECTED country's rules, not the deployment's: /debug can switch
         // countries, and a row's display title must read as its own corpus keyed it.
         stack.movieRepository.normalizer,
-        DebugController.orderStagingByQueue(staged, queue.active, normalizer),
         current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(listing)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
@@ -171,29 +156,6 @@ class DebugController(cc: ControllerComponents,
     }
   }
 
-  /** Dev-only: the active tasks in the durable queue (worked-on first, then the
-   *  waiting block oldest-first), so the /debug staging table's queue columns can
-   *  show, per row, whether an enrichment task already exists and its place in the
-   *  queue. The page polls this; it's a bounded, index-backed `monitor` read (the
-   *  same one `/tasks/data` serves), so the cost scales with viewers-while-open,
-   *  not queue churn. Only the fields the page matches on are shipped — type,
-   *  dedup key, state; a waiting task's place is already encoded by its list
-   *  position. */
-  def debugQueue(): Action[AnyContent] = Action { request =>
-    devOnly {
-      val snap = debugCountries.stackFor(debugCountries.resolve(request)).taskQueue.monitor(DebugController.DebugQueueActiveLimit)
-      Ok(play.api.libs.json.Json.obj(
-        "active" -> snap.active.map { t =>
-          play.api.libs.json.Json.obj(
-            "taskType" -> t.taskType,
-            "dedupKey" -> t.dedupKey,
-            "state"    -> t.state
-          )
-        }
-      ))
-    }
-  }
-
   /** Dev-only: dump the read cache the web actually serves from — `web_movies` plus
    *  per-film `web_screenings` counts — so you can see exactly what a request would
    *  resolve against (vs `/debug`, which shows the source `movies` corpus). A row's
@@ -218,34 +180,6 @@ class DebugController(cc: ControllerComponents,
         case Some(screenings) => Ok(views.html.debugReadModelScreenings(id, screenings))
         // Not an empty list: that reads as "this film has no screenings".
         case None             => ServiceUnavailable(s"could not read the screenings of $id")
-      }
-    }
-  }
-
-  /** Dev-only: force a TMDB re-enrich of one film from the /debug row button.
-   *  Enqueues a `ResolveTmdb` task the worker's `ResolveTmdbHandler` consumes;
-   *  that re-resolves the row and writes the TMDB-side fields, and the worker's
-   *  `EnrichmentReaper` then re-runs every rating refresher for the row on its
-   *  next pass. Idempotent per (title, year): a repeat
-   *  click while one is queued returns `duplicate`. Returns JSON for the page's
-   *  fetch. */
-  def reenrich(title: String, year: Option[Int]): Action[AnyContent] = Action { request =>
-    devOnly {
-      if (title.isEmpty) BadRequest(play.api.libs.json.Json.obj("error" -> "missing title"))
-      else {
-        val result = debugCountries.stackFor(debugCountries.resolve(request)).taskQueue.enqueue(
-          services.tasks.TaskType.ResolveTmdb,
-          services.tasks.EnrichTaskKeys.resolveTmdbDedup(title, year),
-          // `force` so the operator's explicit re-enrich re-resolves even an
-          // already-resolved row (the normal flow's guard would otherwise skip it).
-          services.tasks.EnrichTaskKeys.resolveTmdbPayload(title, year, mode = services.tasks.ResolveMode.Force)
-        )
-        Ok(play.api.libs.json.Json.obj(
-          "title"     -> title,
-          "year"      -> year,
-          "enqueued"  -> (result == services.tasks.EnqueueResult.Added),
-          "duplicate" -> (result == services.tasks.EnqueueResult.Duplicate)
-        ))
       }
     }
   }
@@ -288,65 +222,10 @@ class DebugController(cc: ControllerComponents,
 
 object DebugController {
 
-  /** Cap on the active tasks `/debug/queue` returns per poll — high enough to
-   *  cover a backed-up enrichment queue so a pending movie's place is still
-   *  resolvable, without an unbounded scan. */
-  private val DebugQueueActiveLimit = 1000
 
   /** A snapshot younger than this is what the warm-up keeps them at (~1 min) and is
    *  not called out; an older one — restored after a restart — says how old it is. */
   private[controllers] val SnapshotAgeShownAfter: scala.concurrent.duration.FiniteDuration = 2.minutes
-
-  /** How many staging rows `/debug` renders. The header still shows the full
-   *  `pending_movies` count; only the table is capped (and the page's live
-   *  count-tracking JS caps appends to the same number). */
-  val StagingRowLimit = 20
-
-  /**
-   * Order staging rows by their place in the durable queue — the same ranking
-   * the /debug "Queue #" badge shows, so the rows that sort to the top (and thus
-   * survive the `StagingRowLimit` cap) are the ones the worker is about to touch:
-   *   1. a row with a worked-on `staging-*` task (▶ running) sorts first;
-   *   2. then by best waiting place (1-based, oldest-first among waiting tasks);
-   *   3. then queued-but-past-the-snapshot, then no-task last.
-   * Ties keep the incoming order (the caller pre-sorts by title, cinema).
-   *
-   * `active`'s waiting tasks must be oldest-first, as `TaskQueue.monitor` returns
-   * them (in one block, after the worked-on rows). This mirrors
-   * the page's `waitingPlaces`/`badgeFor` JS (debug.scala.html) — keep the two in
-   * sync so the server order and the live badge agree.
-   */
-  def orderStagingByQueue(
-    staging: Seq[services.staging.StagingRecord],
-    active:  Seq[services.tasks.TaskSummary],
-    normalizer: TitleNormalizer,
-  ): Seq[services.staging.StagingRecord] = {
-    import services.tasks.TaskState
-    // 1-based place of each waiting dedupKey among the waiting tasks (first seen).
-    val waitingPlaces = {
-      val b = scala.collection.mutable.LinkedHashMap.empty[String, Int]
-      var i = 0
-      active.foreach { t =>
-        if (t.state == TaskState.Waiting) { i += 1; b.getOrElseUpdate(t.dedupKey, i) }
-      }
-      b.toMap
-    }
-    // Active `staging-*` tasks grouped by the film anchor their dedupKey embeds
-    // (the segment after the `staging-*` prefix). Mirrors the JS `stagingTasksFor`.
-    val byAnchor: Map[String, Seq[services.tasks.TaskSummary]] =
-      active.flatMap { t =>
-        if (t.taskType.startsWith("Staging")) t.dedupKey.split('|').lift(1).map(_ -> t) else None
-      }.groupMap(_._1)(_._2)
-    def rank(anchor: String): Double = byAnchor.get(anchor) match {
-      case None | Some(Nil)                                        => Double.PositiveInfinity // no task
-      case Some(ts) if ts.exists(_.state == TaskState.WorkedOn)    => 0d                       // ▶ running
-      case Some(ts) =>
-        val places = ts.flatMap(t => waitingPlaces.get(t.dedupKey))
-        if (places.isEmpty) 1e9d else places.min.toDouble                                      // waiting / queued-past-snapshot
-    }
-    // sortBy is stable, so equal-rank rows keep the caller's (title, cinema) order.
-    staging.sortBy(r => rank(normalizer.sanitize(r.title)))
-  }
 
   /** Deterministic sample cards for the `/debug/tune` page — built in process
    *  so the tuning page renders the real `_movieCard` partial without depending

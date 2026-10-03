@@ -346,7 +346,7 @@ groups:
         annotations:
           summary: "{{ $labels.country }}'s worker has been failing repository writes for 10 minutes"
           description: >-
-            Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing.
+            Writes to `movies`, `movie_slots` or `screenings` are throwing.
             Nothing is lost silently -- each failed row is rolled out of the worker's cache and
             retried by its next scrape -- but until the cause clears, new films and changed
             showtimes do not reach the site. The worker's WARN lines name each write
@@ -355,35 +355,6 @@ groups:
             writes that FAILED") say which store and why: a codec exception is a model field the
             DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the
             database itself.
-
-      # -----------------------------------------------------------------------------------------
-      # A STAGING FOLD THAT KEEPS GIVING UP. A newcomer graduates from `pending_movies` into
-      # `movies` through `MongoStagingFolder`'s transaction; when that abandons, the fold is
-      # rethrown and rescheduled and the listing stays OFF the site. From 2026-09-25 to 10-01 one
-      # UK film ("The Hunger Games: Sunrise on the Reaping") died on E11000 about once a minute,
-      # ~4,300 aborts in six days, and nothing but an ERROR line said so: the fold runs in an event
-      # listener, not as a task, so `WorkerTasksFailingRepeatedly` never counted it.
-      # `kinowo_worker_staging_fold_aborts_total` is that give-up, seeded at 0 per country.
-      #
-      # SUSTAINED, NOT ANY: a transient abort (a commit whose reply was lost and did not land, a
-      # stepdown) is retried by the reaper's next tick and graduates then. A deterministic one
-      # comes back on every tick, so `[15m]` with `for: 30m` asks for aborts in every 15-minute
-      # window for half an hour -- the incident's once-a-minute fires after half an hour; one bad
-      # minute never does. `increase` over a window bridges a worker restart's ~3-minute gap.
-      - alert: StagingFoldsAborting
-        expr: sum by (country) (increase(kinowo_worker_staging_fold_aborts_total[15m])) > 0
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "{{ $labels.country }}'s worker has been abandoning staging folds for 30 minutes"
-          description: >-
-            A concluded newcomer keeps failing to fold into `movies`, so its listing is resolved
-            and never shown. The worker's ERROR lines name the film and the cause
-            (`Staging fold '<title>' aborted after N attempt(s): ...`). The same film every time is
-            a deterministic failure -- an E11000 on `tmdbId_1` is the fold planning two documents
-            for one film, a decode error a row it cannot read -- and only a code or data fix clears
-            it; many different films at once is the database (timeouts, elections).
 
       # -----------------------------------------------------------------------------------------
       # A TASK TYPE WHOSE HEAD HAS WAITED HOURS. `WorkerQueueStalled` fires only when NOTHING is
@@ -451,7 +422,7 @@ groups:
   # external integrations are each built from `Env.get(...)` in a for-comprehension, so a missing
   # env var is not an error -- it is a `None`, and the feature is simply not there. When the
   # workers moved from Fly to k3s the Telegram chat ids were left behind and all three alerters
-  # (Filmweb fallback, Filmweb drops, staging stuck) were OFF for weeks with nothing noticing. The
+  # (Filmweb fallback, Filmweb drops, and the since-removed staging-stuck one) were OFF for weeks with nothing noticing. The
   # worker now publishes 1/0 per feature (`EnvGatedFeature`), and the WARN line at boot names the
   # key: `kubectl -n kinowo logs deploy/worker-<country> | grep 'is OFF: missing'`.
   #

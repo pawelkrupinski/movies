@@ -5,7 +5,6 @@ import services.cadence.RatingCadenceReader
 import services.movies.{MovieRepository, ScreeningsRepository, SlotsRepository}
 import services.readmodel.MongoReadModelRepository
 import services.scrapes.ScrapeArchiveRepository
-import services.staging.StagingRepository
 
 /**
  * The collections the dev-only `/debug*` pages read through the local read-mirror
@@ -44,8 +43,6 @@ object DebugMirror {
     // The per-row expand: each rating source's last fetch and its refresh cadence.
     EnrichmentAttempts.Collection,
     RatingCadenceReader.Collection,
-    // The "pending enrichment (staging)" table.
-    StagingRepository.Collection,
     // The /debug/readmodel dump of what the serving app actually serves.
     MongoReadModelRepository.MoviesCollection,
     MongoReadModelRepository.ScreeningsCollection,

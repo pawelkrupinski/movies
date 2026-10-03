@@ -60,16 +60,13 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/tools/FileEnrichmentCacheStoreSpec.scala"    -> FileAges,
     "worker/src/test/scala/tools/EnrichmentFreshnessSpec.scala"         -> FileAges
   ) ++ Seq(
-    "FoldFixture", "FreshnessStoreIntegrationSpec", "MergeScreeningsIntegrationSpec", "MongoTaskQueueIntegrationSpec",
-    "MoveFilmDurabilitySpec", "MovieRepositoryIntegrationSpec", "MovieRepositoryUpdatedSinceIntegrationSpec",
-    "MoviesWriteSkippedWhenUnchangedIntegrationSpec", "ProdCoverageIntegrationSpec", "RekeyScreeningsIntegrationSpec",
-    "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "RetryResolveServingIntegrationSpec", "ScanStitchedPagingSpec",
+    "FreshnessStoreIntegrationSpec", "MongoTaskQueueIntegrationSpec",
+    "MovieRepositoryIntegrationSpec", "MovieRepositoryUpdatedSinceIntegrationSpec",
+    "MoviesWriteSkippedWhenUnchangedIntegrationSpec", "ProdCoverageIntegrationSpec",
+    "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "ScanStitchedPagingSpec",
     "ScreeningsRewriteOnUpsertIntegrationSpec", "SideRowIdScanPagingSpec", "SlotsWatchProjectionIntegrationSpec",
-    "StagingFoldIntegrationSpec", "UnreadyRoundTripProjectionIntegrationSpec"
-  ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath) ++ Map(
-    // Claims from the real Mongo queue, whose enqueue stamps `submittedAt` with the system clock.
-    "worker/src/it/scala/contracts/ResolveDispatcherContractSpec.scala" -> MongoPath
-  )
+    "UnreadyRoundTripProjectionIntegrationSpec"
+  ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
 
   import ScalaSourceScan.{argumentsAt, code, read, scalaFiles}
 
@@ -201,7 +198,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       }
     }.toMap
 
-    clockDefaulted should contain ("CaffeineMovieCache")
+    clockDefaulted should contain ("EnrichDetailsHandler")
     val constructions = clockDefaulted.toSeq.sorted.map(name => name -> s"""\\bnew\\s+$name\\b\\s*(?:\\[[^\\]]*\\])?\\s*\\(""".r)
     val offenders = held.toSeq.sortBy(_._1.toString).flatMap { case (path, why) =>
       val src = sources(path)

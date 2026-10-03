@@ -76,29 +76,6 @@ object MovieDetailsComplete {
       row.map(_.evidence.directors).filter(_.nonEmpty).map(_.mkString(", ")))
 }
 
-/** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and
- *  written through to Mongo) by `recordCinemaScrape`. Fires only on the
- *  *first* observation of that tuple on the row — repeat ticks for the same
- *  combination are suppressed (the scrape's `isNew` gate).
- *  Published from inside `MovieCache.recordCinemaScrape` so the slot's
- *  visibility and the event are atomic: any handler reading the cache for
- *  the just-published tuple sees the newly-written slot.
- *
- *  Carries `filmUrl` so a cinema-specific listener (a `DetailTaskEnqueuer`
- *  for a deferred-detail cinema) can enqueue a per-film detail-page fetch
- *  without re-reading the slot.
- *
- *  Periodic safety net: detail-page enrichers should NOT rely solely on
- *  this event — handlers can be lost across a restart between publish and
- *  consumption, so each detail-page enricher should also expose a slower
- *  periodic scan that picks up any rows the event-driven path missed. */
-case class CinemaMovieAdded(
-  cinema:  models.Cinema,
-  title:   String,
-  year:    Option[Int],
-  filmUrl: Option[String]
-) extends DomainEvent
-
 /** TMDB resolved a `(title, year)` to a film but TMDB had no IMDb cross-
  *  reference for it (common for very recent films and festival items, e.g.
  *  "Mortal Kombat II" 2026). `searchTitle` is the title we want to search
@@ -110,36 +87,11 @@ case class CinemaMovieAdded(
  *  `EnrichmentReaper` picks up the now-eligible IMDb rating on its next pass. */
 case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) extends DomainEvent
 
-/** A newcomer film incubating in the `pending_movies` staging collection has
- *  reached a definitive TMDB conclusion (a hit, or `tmdbNoMatch`). The
- *  `StagingFolder` listens for this to fold the film's per-cinema staging rows
- *  (every year-variant of the `sanitize(title)` group) into the merged `movies`
- *  collection (in a transaction) and delete them. Carries only the title: the
- *  group-scoped fold settles across years itself, and the promoter may publish
- *  one of these per concluded year — `foldGroup` is idempotent. */
-case class StagingFilmEnriched(cleanTitle: String) extends DomainEvent
-
-/** A brand-new film was just diverted into the `pending_movies` staging
- *  collection for the FIRST time by `recordCinemaScrape` (this cinema had no
- *  prior staging row for the film). `StagingReaper` subscribes to fire the
- *  film's first incubation step (a `StagingDetail` fetch) immediately, rather
- *  than leaving it to wait up to a full backstop-tick interval for the initial
- *  kick — the same low-latency, event-driven advance the rest of the chain
- *  already gets off `TaskFinished`. Repeat scrapes of an already-incubating film
- *  don't republish (the divert re-fires every tick until the film folds, but the
- *  first-time gate suppresses all but the initial observation).
- *
- *  Carries only the display title; the reaper sanitizes it to the per-film
- *  `anchor` the same way `tick()` does. Lost across a restart? The periodic
- *  backstop still kicks it — this event only shrinks the initial latency. */
-case class StagingNewcomerDiverted(title: String) extends DomainEvent
-
 /** A queue task ran to a successful conclusion (`Done`/`Skipped` — NOT a
  *  reschedule). Published by `TaskWorker` (via an injected hook) the moment a
  *  task completes, so a consumer can chain follow-up work off it without the
- *  handler having to know what comes next. `StagingReaper` subscribes to advance
- *  the staging pipeline (detail → resolve → imdb → fold) one step per completion;
- *  every other task type's `TaskFinished` is simply ignored. */
+ *  handler having to know what comes next (a chunked scrape's reduce, a share
+ *  card's follow-up); every other task type's `TaskFinished` is simply ignored. */
 case class TaskFinished(taskType: TaskType, dedupKey: String, payload: Map[String, String]) extends DomainEvent
 
 /**

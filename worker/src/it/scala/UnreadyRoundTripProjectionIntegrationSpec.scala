@@ -15,16 +15,15 @@ import java.time.{Instant, LocalDateTime}
  * A row that goes unready and comes back ready gets its card back from the change stream,
  * at once — not at the next 30-minute prune.
  *
- * Pinned while diagnosing the 2026-09-23 serving gap (`UnresolvedTmdbReaper` cleared a
- * no-match row's `tmdbAttempt`, the projector retired its card as `stream-row-unready`, and
+ * Pinned while diagnosing the 2026-09-23 serving gap (a re-try cleared a no-match row's
+ * `tmdbAttempt`, the projector retired its card as `stream-row-unready`, and
  * the prune's "projected N ready row(s) missing a card" looked like the only way back). The
  * stream half was suspected of dropping the ready transition; this replays ready → unready →
  * ready against real Mongo with the real projector on the real cursor — the writes spaced
  * out, and back-to-back as the ~1s resolve lands them — and the card comes back both ways.
- * Prod agrees: 441 unready retirements in PL/UK/DE over 24h against 9 prune heals. The gap
- * was the un-conclusion itself, fixed at `MovieService.retryResolve` (see
- * `RetryResolveKeepsRowReadySpec`); this spec keeps the recovery half honest, since the
- * readiness gate still retires cards for every other reason a row can lose it.
+ * Prod agrees: 441 unready retirements in PL/UK/DE over 24h against 9 prune heals. This
+ * spec keeps the recovery half honest, since the readiness gate still retires cards for
+ * every reason a row can lose it.
  *
  * Requires MONGODB_URI.
  */

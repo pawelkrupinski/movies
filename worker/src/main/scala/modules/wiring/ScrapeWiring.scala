@@ -280,18 +280,14 @@ trait ScrapeWiring { self: WorkerWiring =>
   // rating enrichment are governed by KINOWO_DEFERRED_DETAIL and
   // KINOWO_QUEUE_ENRICHMENT independently.
 
-  // The shared scrape core: record + decide-trigger, injected into
-  // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
-  // CinemaMovieAdded) plus the DetailReaper backstop; the runner publishes
-  // MovieDetailsComplete only for rows that don't await deferred detail.
-  // Wrapped to hand each landing to the copied-feed detector (where one runs), and once more, outermost, to page
-  // for a gone venue nothing else pages for.
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
+  // The shared scrape core, injected into ScrapeCinemaHandler: every scrape archived and handed to the
+  // identity intake. The archive is wrapped to hand each landing to the copied-feed detector (where one
+  // runs), and once more, outermost, to page for a gone venue nothing else pages for.
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(identityListingIntake,
     new GoneVenueAlertingArchive(
       copiedFeedDetector.foldLeft(scrapeArchive)(new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,
-      fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)),
-    landing = Some(identityListingIntake))
+      fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

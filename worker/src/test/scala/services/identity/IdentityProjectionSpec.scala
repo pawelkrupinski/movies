@@ -11,8 +11,7 @@ import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
 /**
  * The identity projection wired over the real cache and an in-memory store: what a cut-over
- * country's worker writes, that a second projection over the same listings writes nothing (P2),
- * and that switching a country over and back loses no showtime and leaves rows each path reads.
+ * country's worker writes, and that a second projection over the same listings writes nothing (P2).
  * The lookups know no film, so every cluster is concluded unmatched — the identity decisions
  * themselves are the resolver's and the plan's specs'.
  */
@@ -41,7 +40,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
 
   private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
                             venues: Seq[Cinema] = programme.keys.toSeq) {
-    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = clock)
+    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer)
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
     val filmIds    = new InMemoryFilmIdCounterStore
@@ -58,10 +57,6 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
       archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))
       intake.recordCinemaScrape(c, fs)
-    }
-    def landOldPath(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.toSeq.sortBy(_._1.displayName).foreach { case (c, fs) =>
-      archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))
-      cache.recordCinemaScrape(c, fs)
     }
     /** Every (venue, showtime) the stored films hold, and each listing's film id. */
     def showtimes: Set[(String, LocalDateTime)] = repository.findAll().flatMap(_.record.data.collect {
@@ -244,27 +239,6 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.projection.tick()
     w.scrape(Map(Rialto -> Seq(film(Rialto, "Diuna", Some(2021), 9)), Multikino -> programme(Multikino).take(1)))
     w.projection.tick().refused.get should include("Obcy")
-  }
-
-  "Switching a country OVER" should "seed ids from the old path's films and keep every showtime" in {
-    val w = new World
-    w.landOldPath(programme)
-    val oldIds = w.repository.findAll().map(r => r.title -> r.id).toMap
-    w.projection.tick().refused shouldBe None
-    w.repository.findAll().map(r => r.title -> r.id).toMap shouldBe oldIds
-    w.showtimes shouldBe allShowtimes
-    w.filmIds.allChecked()._1.map(_.filmId).toSet shouldBe oldIds.values.map(_.value).toSet
-  }
-
-  "Switching a country BACK" should "leave rows the old landing reads and re-lands onto, with no showtime lost" in {
-    val w = new World
-    w.scrape(programme)
-    w.projection.tick()
-    val projected = w.repository.findAll().map(r => r.title -> r.id).toMap
-    w.landOldPath(programme)
-    w.repository.findAll().map(r => r.title -> r.id).toMap shouldBe projected
-    w.showtimes shouldBe allShowtimes
-    w.cache.keyCollisions.get() shouldBe 0
   }
 
   /** A country's first projection fetches the TMDB details of every film it matched (~2,250 on a US

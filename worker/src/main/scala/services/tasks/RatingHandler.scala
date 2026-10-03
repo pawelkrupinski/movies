@@ -64,7 +64,7 @@ object BulkCadenceRecorder {
 /** Records how long after a film's TMDB resolution each rating site FIRST tried
  *  to fetch its rating — the latency the [[EnrichmentReaper]]'s first pass now
  *  owns, since ratings are no longer enqueued the instant a film resolves. A
- *  narrow seam (like `MergeMetrics`) so [[RatingHandler]] doesn't depend on the
+ *  narrow seam (like `ReadModelProjectionMetrics`) so [[RatingHandler]] doesn't depend on the
  *  Prometheus sink; `WorkerTaskMetrics` implements it, tests pass a spy or NoOp. */
 trait RatingLatencyMetrics {
   /** `site` is a [[FreshnessKind]] label (imdb/fw/rt/mc); `seconds` is clamped ≥ 0. */

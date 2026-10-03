@@ -4,8 +4,7 @@ import models.{CinemaMovie, Movie, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, DepthGuardTime, InMemoryMovieRepository, InMemoryScrapeGuardLedger}
+import services.movies.{DepthGuardTime, InMemoryScrapeGuardLedger}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.scrapes.InMemoryScrapeArchiveRepository
 
@@ -29,10 +28,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
     val ledger  = new InMemoryScrapeGuardLedger
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, ledger, titleNormalizer, 3,
       DepthGuardTime.clock, services.movies.ScrapeLandingMetrics.noop)
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
-      normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
-    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty,
-      scrapeArchive = archive, landing = Some(intake))
+    val runner  = new CinemaScrapeRunner(intake, archive)
     val board   = new Board(films(10))
     runner.run(board)
     board.listing = films(1) // 40 upcoming showtimes → 4, under the guard's floor

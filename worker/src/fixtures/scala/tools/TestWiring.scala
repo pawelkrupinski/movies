@@ -4,12 +4,11 @@ import clients.TmdbClient
 import models.Cinema
 import modules.WorkerWiring
 import services.{Drainable, MongoConnection}
-import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
+import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, UnresolvedPolicy}
-import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType, TaskWorker}
+import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType, TaskWorker}
 
-import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.concurrent.duration._
 
 /** Test seam over the worker's [[WorkerWiring]] composition root: pins a
@@ -50,7 +49,6 @@ trait TestWiring extends WorkerWiring {
   override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] = None
 
   // Run the adaptive-timeout scrape inline on the calling thread, so the
-  // deterministic record-all-then-publish harness (`runOneScrapeTick`) and the
   // order-determinism specs see no scrape thread to race. Fixture scrapes are
   // instant, so the timeout never fires here regardless — this just removes the
   // virtual thread production uses to make a real timeout interruptible.
@@ -87,14 +85,9 @@ trait TestWiring extends WorkerWiring {
   override lazy val taskQueue: TaskQueue = new services.metrics.MeteredTaskQueue(reaskCountingQueue, taskMetrics)
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
-  // The harness's detail handler publishes its `MovieDetailsComplete` (the TMDB
-  // re-trigger after a deferred detail lands) to THIS buffer rather than straight
-  // to the bus. `enrichDetailsSync` flushes the buffer to the real bus only after
-  // EVERY detail in the pass has merged — preserving the "settle the whole tick,
-  // THEN publish" invariant `runOneScrapeTick` relies on (publishing mid-drain
-  // would let the async TMDB stage race other films' detail merges → an
-  // order-dependent single-pass corpus). Production publishes inline (no buffer)
-  // so a detail-complete film enriches immediately.
+  // The harness's detail handler publishes to THIS buffer rather than straight to the bus, and
+  // each detail pass flushes it only after EVERY detail in the pass has merged, so no listener
+  // races the pass's other merges. Production publishes inline (no buffer).
   private val detailEventBuffer = scala.collection.mutable.ListBuffer.empty[DomainEvent]
   private val detailCaptureBus: EventBus = new EventBus {
     def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
@@ -128,36 +121,6 @@ trait TestWiring extends WorkerWiring {
   override def tmdbClientOver(http: tools.HttpFetch): TmdbClient =
     new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-api-key")), bodies = tmdbJsonBodies)
 
-  // Resolve TMDB INLINE in fixture replay. Production dispatches single-movie
-  // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the
-  // harness never runs the worker — it drives enrichment synchronously
-  // (`drainServices` / `converge`) and relies on `taskQueue` staying drained.
-  // Omitting the production `QueueResolveDispatcher` falls back to the inline
-  // `ResolveDispatcher` default, so a `MovieDetailsComplete` resolves on the
-  // `executionContext` pool exactly as before and the determinism + snapshot
-  // harness is unchanged. The shared `resolveTmdbOnce` is the same work either
-  // way; the queue dispatch seam is covered by the unit + WorkerWiring specs. A
-  // missing fixture is a permanent miss (the inline path drops a transient
-  // failure without retrying — no cascade churn).
-  // Resolve TMDB INLINE: production dispatches a `ResolveTmdb` worker task, and the
-  // harness never runs the worker — it drives enrichment synchronously and relies on
-  // the queue staying drained. `None` falls back to the inline dispatcher.
-  //
-  // ONE seam, deliberately. This used to rebuild `MovieService` to change it, and each
-  // rebuild silently dropped whatever it forgot to restate: `letterboxdIdResolver` and
-  // `wikidata` — the last two rungs of `resolveTmdbId`'s ladder, missing for months —
-  // and `enqueueNewcomerRatings`, without which the rating sweep enqueues nothing.
-  // Everything else now comes from the composition root unchanged.
-  override protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = None
-
-  // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
-  // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
-  // diverted newcomers and MongoStagingFolder couldn't open a transaction. The
-  // fixture wiring drives promote+fold explicitly (see FixtureTestWiring.drainStaging).
-  override lazy val stagingRepository: services.staging.StagingRepository = new services.staging.InMemoryStagingRepository(normalizer = titleNormalizer)
-  override lazy val stagingFolder: services.staging.StagingFolder =
-    new services.staging.InMemoryStagingFolder(stagingRepository, movieRepository, normalizer = titleNormalizer)
-
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time
   // (FixtureServerMain scrapes the whole 40+-city catalogue; the retry churn was
@@ -167,14 +130,13 @@ trait TestWiring extends WorkerWiring {
   override def scrapeAttemptCeiling: Int = 1
 
   /** Synchronously force one title all the way through the enrichment cascade:
-   *  TMDB resolve → IMDb id recovery → the four `*Ratings.refreshOneSync` URL
+   *  IMDb id recovery → the four `*Ratings.refreshOneSync` URL
    *  discovery + rating scrapes. Idempotent — safe to call after the bus-driven
    *  path; already-resolved rows re-hit the same URLs (so `RecordingHttpFetch`
    *  overwrites each fixture with byte-identical content). Test/tooling-only:
    *  the fixture recorder uses it as a belt-and-braces pass so no row is left
    *  half-enriched by an async retry that outlived the drain. */
   def fullySyncOne(title: String, year: Option[Int]): Unit = {
-    if (movieService.get(title, year).flatMap(_.tmdbId).isEmpty) movieService.reEnrichSync(title, year)
     for {
       row <- movieService.get(title, year)
       _   <- row.tmdbId if row.imdbId.isEmpty
@@ -192,35 +154,13 @@ trait TestWiring extends WorkerWiring {
     filmwebRatings.auditOneSync(title, year)
   }
 
-  /** Synchronously refresh all four ratings for every TMDB-resolved row — the
-   *  same per-row `refreshOneSync` the queue's `RatingHandler` runs per task,
-   *  applied to the whole corpus in a deterministic title order. Production's
-   *  `EnrichmentReaper` enqueues a rating task only for rows TMDB matched (a
-   *  `tmdbId`, or an `imdbId` for the IMDb source); rows with no TMDB match get no
-   *  rating enrichment. We mirror that gate here, so a row Filmweb could find by
-   *  title but TMDB couldn't isn't enriched in the harness when it wouldn't be
-   *  in prod. Production drains these as queue tasks on the `TaskWorker`; the
-   *  harness doesn't run the worker, so it drives the same refresh inline (after
-   *  the async TMDB + IMDb-id cascade has settled in `drainServices`). */
   /** The web's read seam over whatever read model this harness wired. Lives here
    *  rather than on one harness because every end-to-end shape — fixture replay
    *  and archive replay alike — has to be able to render through the SAME seam
    *  the web app serves from, not through the raw worker cache. */
   lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository)
 
-  /** One scrape tick over every wired cinema, recording ALL of them before
-   *  publishing any enrichment event.
-   *
-   *  Production publishes enrichment INLINE as each cinema lands, so a film's
-   *  TMDB resolution can run against a partially-merged row and the scrape comes
-   *  out order-dependent (the events-seen count wobbles run to run). Recording
-   *  every cinema first settles each row to its final scraped shape before any
-   *  event fires. The order-INDEPENDENCE this side-steps is proved directly by
-   *  `ScrapeOrderDeterminismSpec`.
-   *
-   *  Shared by every harness that boots a corpus — the HTTP-fixture replay and
-   *  the archive replay both need exactly this tick. */
-  /** Every venue whose scrape THREW inside [[runOneScrapeTick]], as `venue: exception`,
+  /** Every venue whose scrape THREW inside [[cutoverTick]], as `venue: exception`,
    *  over the wiring's life. The tick carries on past a throwing venue, as production's
    *  scheduler does, so a venue that no longer lands at all reads exactly like one that
    *  landed and changed nothing. A harness whose corpus should land whole (the convergence
@@ -236,53 +176,21 @@ trait TestWiring extends WorkerWiring {
   val scrapeOutcomeFlips = new java.util.concurrent.atomic.AtomicLong()
   def scrapeOutcomeFlipped: Set[String] = lastTickFlips
 
-  def runOneScrapeTick(): Unit = {
-    val threw   = scala.collection.mutable.Set.empty[String]
-    val ready   = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
-    val started = System.nanoTime()
-    val total   = cinemaScrapers.size
-    var done    = 0
-    cinemaScrapers.foreach { scraper =>
-      try {
-        val movies  = scraper.fetch()
-        // Landed, then archived, as the runner's `run` does.
-        val touched =
-          try movieCache.recordCinemaScrape(scraper.cinema, movies)
-          finally cinemaScrapeRunner.archive(scraper, movies, error = None)
-        // `classify` marks rows that await deferred detail `detailPending` (held
-        // back, no event yet) and returns the ready-now MovieDetailsComplete.
-        ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case e: Exception =>
-        scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); threw += scraper.cinema.displayName; () }
-      done += 1
-      // A heartbeat, because this loop is where a slow persistence layer shows up: each
-      // venue's rows are written through, so a per-row cost that grows with the corpus
-      // reads here as a rate that visibly decays rather than as one long silence.
-      if (PhaseTimer.shouldReport(done, total)) PhaseTimer.progress(country.code, "scraped", done, total, started)
-    }
-    // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
-    // the EnrichDetails queue tasks NOW. `enrichDetailsSync` then publishes the
-    // detail-complete films' MovieDetailsComplete (the deferred TMDB trigger), so
-    // every TMDB resolution runs after the tick has settled, with the detail-page
-    // director/originalTitle/year already on the row. The ready-now events publish
-    // last — same "settle the whole tick, THEN publish" rule for both groups.
-    enrichDetailsSync()
-    ready.foreach(eventBus.publish)
-    val now = threw.toSet
-    lastTickFlips = lastTickThrew.fold(Set.empty[String])(before => (before diff now) ++ (now diff before))
-    scrapeOutcomeFlips.addAndGet(lastTickFlips.size.toLong)
-    lastTickThrew = Some(now)
-  }
-
-  /** A CUT-OVER country's boot (docs/design/identity-resolver.md §8, phase 5; the wiring must run with
-   *  `KINOWO_IDENTITY_CUTOVER` naming its country): every venue scraped into the listing intake
-   *  through the production runner, then one identity projection and the enrichment it announces. */
+  /** A country's boot: every venue scraped into the listing intake through the production runner,
+   *  then one identity projection and the enrichment it announces. */
   def bootCutover(): services.identity.ProjectionTick = cutoverTick()
 
   /** One production tick of a CUT-OVER country — the boot is its first: every venue scraped into the
    *  listing intake through the production runner, then one identity projection and its enrichment. */
   def cutoverTick(): services.identity.ProjectionTick = {
-    landCutover(cinemaScrapers)(failure => { scrapeFailures.add(failure); () })
+    val threw = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    landCutover(cinemaScrapers) { failure =>
+      scrapeFailures.add(failure); threw.add(failure.takeWhile(_ != ':')); ()
+    }
+    val now = { import scala.jdk.CollectionConverters._; threw.asScala.toSet }
+    lastTickFlips = lastTickThrew.fold(Set.empty[String])(before => (before diff now) ++ (now diff before))
+    scrapeOutcomeFlips.addAndGet(lastTickFlips.size.toLong)
+    lastTickThrew = Some(now)
     projectIdentity()
   }
 
@@ -293,20 +201,7 @@ trait TestWiring extends WorkerWiring {
    *  whole set, so the order they land in decides nothing — serially, a US walk was 4,462 venues of
    *  round-trips one after another, ~47 s of every tick. Submitted in `scrapers`' order. */
   def landCutover(scrapers: Seq[services.cinemas.common.CinemaScraper])(failed: String => Unit): Unit =
-    land("cutover", scrapers, TestWiring.CutoverLandingThreads)(failed)
-
-  /** Land each of `scrapers`' listings through the production runner on the PIPELINE — into the shared
-   *  film rows — [[drainClaimants]] venues at a time, as production's `TaskWorker` pool works the scrape
-   *  tasks: side by side, each row's writes under the cache's per-title lock. Every landing waits on a
-   *  few Mongo round-trips per film it writes, so one after another a US walk was ~66-75 s of round
-   *  trips (run 37111868620). A failed venue goes to `failed`, as [[landCutover]]'s do. The boot's and
-   *  the fixpoint's ticks keep [[runOneScrapeTick]]'s serial walk: what they collect and announce, in
-   *  order, after the whole tick has landed is a different shape from the runner's announce-as-it-lands. */
-  def landPipeline(scrapers: Seq[services.cinemas.common.CinemaScraper])(failed: String => Unit): Unit =
-    land("pipeline", scrapers, drainClaimants)(failed)
-
-  private def land(path: String, scrapers: Seq[services.cinemas.common.CinemaScraper], threads: Int)(failed: String => Unit): Unit =
-    BoundedParallel.foreach(s"$path-landing-${country.code}", scrapers, threads) { scraper =>
+    BoundedParallel.foreach(s"cutover-landing-${country.code}", scrapers, TestWiring.CutoverLandingThreads) { scraper =>
       try { cinemaScrapeRunner.run(scraper); () }
       catch { case e: Exception => failed(s"${scraper.cinema.displayName}: $e") }
     }
@@ -315,7 +210,7 @@ trait TestWiring extends WorkerWiring {
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
   def projectIdentity(): services.identity.ProjectionTick = {
     val projection = identityProjection
-    // Each stage timed, as `bootCorpus`'s are: a cut-over replay is this one call, and its log said only
+    // Each stage timed: a cut-over replay is this one call, and its log said only
     // how long the whole of it took, not whether the projection or the enrichment after it spent it.
     val scope = country.code
     val tick  = PhaseTimer.timed(scope, "  identityTick")(projection.tick())
@@ -326,77 +221,6 @@ trait TestWiring extends WorkerWiring {
     PhaseTimer.timed(scope, "  identityDrainServices")(drainServices())
     PhaseTimer.timed(scope, "  identityRatings")(enrichRatingsSync())
     tick
-  }
-
-  /** Conclude what PRODUCTION would conclude, and nothing else: one whole period of
-   *  `UnresolvedTmdbReaper` — the sweep production runs continuously — with the resolves it
-   *  enqueues worked as the TaskWorker works them. A row TMDB answers is resolved or
-   *  concluded no-match by production's own resolve; a row whose resolve keeps FAILING stays
-   *  unconcluded and off the read model, exactly where production leaves it.
-   *
-   *  It used to stamp every unconcluded row a no-match, which production never does: after
-   *  a TMDB outage the harness published as "no such film" rows production would still be
-   *  retrying, so no claim about an outage could be made over it.
-   *
-   *  Public because WHEN it runs matters and only the caller knows: a row the SETTLE created
-   *  (a fold's merge target, a re-key) was never seen by the pass `bootCorpus` runs, and
-   *  `MovieRecord.readyToProject` requires `tmdbConcluded`. */
-  def concludeEnrichment(): Unit = {
-    services.tasks.ReaperSweeps.unresolvedTmdbPeriod(unresolvedTmdbReaper, clock.instant())
-    drainServices()
-  }
-
-  /** Boot the corpus to the shape production reaches ~20s in: scrape once, drain
-   *  the cascade, refresh ratings, drop unscreened films, conclude enrichment.
-   *  Stops short of the read model — a harness that owns one projects on top of
-   *  this (see `FixtureTestWiring.bootStartup`). */
-  /** Each stage timed separately, because `bootCorpus` is the long pole of every replay
-   *  and used to be one opaque block: a leg that spent 56 of its 62 minutes here said
-   *  only `bootCorpus …` and then nothing, so finding the cost meant sampling a live
-   *  JVM. Now the log names the stage that is spending the budget. */
-  def bootCorpus(): Unit = {
-    val scope = country.code
-    PhaseTimer.timed(scope, "scrapeTick")(runOneScrapeTick())
-    PhaseTimer.timed(scope, "drainServices")(drainServices())
-    PhaseTimer.timed(scope, "drainStaging")(drainStaging())
-    // A SECOND scrape pass, because one is not enough to reach the state production
-    // rests in once per-film DETAIL is fetched.
-    //
-    // A cinema's rows take the direct `movies` path when the film is already known and
-    // go to staging when it is not. Detail is what creates a film under its plain title
-    // — Cinema City's detail page gives "GHOST: 2 Big To Rig" — so every venue scraped
-    // BEFORE that film existed has its rows sitting in staging, and the drain cannot
-    // progress them (staging held 248 rows at 6975 → 248 → 248, stable). The moment any
-    // later scrape runs, the film exists, those rows take the direct path, and 31
-    // Helios/Multikino slots land at once. Production scrapes continuously and passes
-    // through this on its own; a boot that stops after one pass hands the work to
-    // whoever scrapes next — which, in this suite, is the assertion that nothing should
-    // be written.
-    //
-    // Deliberately the whole scrape+drain pair and not a bare drain: the rows are not
-    // stuck because the drain missed them, they are stuck because nothing has re-offered
-    // them since the film appeared.
-    // UNCONDITIONAL, and it is much cheaper than it looks: measured on Poland the second
-    // pass is 21.7s against the first pass's 177s scrape + 141s drain, because the
-    // archive replay and every detail fetch are warm by then. ~7% on the boot, not the
-    // doubling it reads as.
-    //
-    // Gating it on `stagingRepository.findAll().nonEmpty` — "only re-scrape when rows
-    // are actually stuck" — was tried and is WRONG twice over. It is unnecessary, per
-    // the timings above; and it silently breaks, because that read came back EMPTY
-    // while staging demonstrably held 229 rows, so the pass was skipped and the leg went
-    // straight back to 31 writes. An empty read is not evidence of an empty collection,
-    // and a guard that skips the fix whenever its own query fails makes convergence
-    // depend on whether a read succeeded.
-    PhaseTimer.timed(scope, "scrapeTickSecondPass")(runOneScrapeTick())
-    PhaseTimer.timed(scope, "drainServicesSecondPass")(drainServices())
-    PhaseTimer.timed(scope, "drainStagingSecondPass")(drainStaging())
-    // Ratings are queue tasks in production (drained by the TaskWorker). The
-    // harness doesn't run the worker, so refresh them synchronously here — the
-    // TMDB + IMDb-id cascade has already settled in drainServices.
-    PhaseTimer.timed(scope, "enrichRatings")(enrichRatingsSync())
-    PhaseTimer.timed(scope, "unscreenedCleanup")(unscreenedCleanup.removeUnscreened())
-    PhaseTimer.timed(scope, "concludeEnrichment")(concludeEnrichment())
   }
 
   /** The enrichment reaper's per-tick cap is a burst-shedding lever in production;
@@ -464,15 +288,11 @@ trait TestWiring extends WorkerWiring {
   /** How many claimants the queue drains run — production's own pool size, read off
    *  the SAME `backgroundBudget` that caps every other background consumer.
    *
-   *  Shared by [[drainRatingQueueOnce]] and [[drainStagingQueueOnce]]: both stand in
-   *  for the one `TaskWorker` pool, so they answer "how many at once?" the same way.
-   *
    *  Derived rather than declared, so it cannot drift from the lever callers already
    *  use. The convergence suite's order-independence passes and the determinism specs
    *  swap in a `SameThreadExecutionBudget` to leave their seeded shuffle as the only
    *  nondeterminism; that budget reports 1, so those drains stay strictly serial with
-   *  nothing extra to remember. Everything else — `bootCorpus` above all — gets the
-   *  real budget's cap. An unbounded budget (`<= 0`) means "no cap", which is not a
+   *  nothing extra to remember. Everything else gets the real budget's cap. An unbounded budget (`<= 0`) means "no cap", which is not a
    *  usable claimant count, so the pool default stands in. */
   private[tools] def drainClaimants: Int =
     backgroundBudget.maxConcurrent match {
@@ -524,18 +344,6 @@ trait TestWiring extends WorkerWiring {
     handled.get()
   }
 
-  /** Apply deferred per-film detail to the bare-scraped rows, the way the
-   *  production TaskWorker does — but synchronously, in one pass. First
-   *  `detailReaper.tick()` enqueues a detail task per (deferred cinema, CURRENT
-   *  film) keyed off each row's present CacheKey (robust to a film re-keyed by a
-   *  later cinema in the same tick, which the CinemaMovieAdded-driven enqueue
-   *  can't follow — prod's reaper fixes that across ticks). Then drain every
-   *  EnrichDetails task through the real `EnrichDetailsHandler` (fetch the detail
-   *  page + merge into the slot). Called right after the bare scrape and BEFORE
-   *  TMDB resolution, so a detail-page director/originalTitle/year is on the row
-   *  when the TMDB stage runs (the pre-deferral inline path had it in fetch()). */
-  def enrichDetailsSync(): Unit = { enrichDetailsOnce(); () }
-
   /** One detail pass — the reaper's tick (capped at its `maxEnqueuePerTick`) and the tasks it
    *  enqueued worked — answering how many it enqueued. */
   private def enrichDetailsOnce(): Int = {
@@ -582,209 +390,17 @@ trait TestWiring extends WorkerWiring {
    *  the same `cascadeDrainOrder` production shutdown does — single source of
    *  truth for the producer→consumer ordering.
    *
-   *  DRAIN, not `stop()`. This is called more than once — `bootCorpus` runs it
-   *  before AND after each `drainStaging`, and each replay pass calls it again —
-   *  and `stop()` shuts the executors down for good. So the very first call ended
-   *  the id-recovery pool, and every `ImdbIdMissing` the staging fold published
-   *  afterwards (`announceResolvedNewMovie`, which is where a `tmdbNoMatch`
-   *  newcomer asks for an id) was submitted to a dead pool and dropped. Poland's
+   *  DRAIN, not `stop()`. This is called once per projection — and `stop()` shuts
+   *  the executors down for good. So the very first call ended the id-recovery
+   *  pool, and every `ImdbIdMissing` published afterwards (`announceResolvedNewMovie`,
+   *  which is where a `tmdbNoMatch` newcomer asks for an id) was submitted to a
+   *  dead pool and dropped. Poland's
    *  leg logged zero event-driven recoveries as a result, and the bare-title long
    *  tail prod identifies through IMDb — "Stop Making Sense", "Złoto", "La La
    *  Land", 42 films in all — came out unresolved.
-   *
-   *  Kino Muza's detail-page synopsis/poster/trailer is no longer settled here:
-   *  it now rides the standard deferred-detail pipeline (a deduped
-   *  `EnrichDetails` task), which `enrichDetailsSync` drains to completion
-   *  alongside every other `DetailEnricher` before the snapshot is taken. */
+ */
   def drainServices(): Unit =
     quiesce(cascadeDrainOrder*)
-
-  /** Drive the staging incubation the worker's `StagingReaper` + `TaskWorker` run
-   *  in prod — synchronously, the same way `enrichDetailsSync` drives the detail
-   *  tasks: each pass, `stagingReaper.tick()` enqueues every pending film's next
-   *  step, then we drain those staging tasks through the real handlers. Completing
-   *  a step advances the reaper (`onTaskFinished`), which enqueues the next step
-   *  for the same claim-loop to pick up — so a film flows detail → resolve → imdb
-   *  → fold within the drain, and a concluded film auto-folds into `movies` via the
-   *  `StagingFilmEnriched` subscription. Loop until no further fold, then FORCE-fold
-   *  any leftover (TMDB-fixture-less) GROUP — `concludeEnrichment` then marks those
-   *  still-unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture
-   *  film reaches on the direct route. The harness has no `movies` change stream, so
-   *  finally rehydrate the cache from the repository (prod's stream does this) — a
-   *  PURE LOAD now (the per-hydrate settle moved to the periodic SettleReaper), so
-   *  the cache mirrors the folded repo for the caller's own settle pass to act on.
-   *
-   *  Staging ingest is always-on in prod, so EVERY newcomer is diverted to
-   *  `pending_movies` on a cold cache. Both the replay harness (bootStartup /
-   *  converge) and the fixture recorder must drive this, or the `movies` cache
-   *  stays empty and no TMDB/IMDb/rating enrichment ever runs. */
-  def drainStaging(): Unit = {
-    var folded  = true
-    val started = System.nanoTime()
-    var round   = 0
-    while (folded) {
-      val before = stagingRepository.findAll().size
-      if (before == 0) folded = false
-      else {
-        stagingReaper.tick()
-        drainStagingQueueOnce()
-        val after = stagingRepository.findAll().size
-        round += 1
-        // Backlog remaining per round. A fold that is converging shrinks this steadily;
-        // one that is thrashing does not, and the two are indistinguishable from a
-        // phase that simply prints nothing until it finishes — which this one did not,
-        // on the run that timed out inside it.
-        println(f"[${country.code}] staging round $round: $before → $after rows in ${PhaseTimer.elapsedSeconds(started)}%.1fs")
-        folded = after < before
-      }
-    }
-    // Fold each remaining staging GROUP (sanitize title). `foldGroup` settles as
-    // it folds (`StagingFold.planGroup` runs the same `canonicalizeBySanitize`
-    // collapse over staging+movies), so the production-year and release-year
-    // variants merge into ONE deterministically-keyed `movies` row and the
-    // resolved cluster is already re-keyed to its TMDB year — no separate settle
-    // pass needed. The trailing `rehydrate` is a pure load of the folded repo.
-    // One `foldGroup` per distinct staging title graduates the whole sanitize
-    // group; a second title sharing that group then no-ops (rows already folded).
-    // Failures COUNTED and the first one reported, rather than swallowed. A blanket
-    // `catch { case _: Exception => () }` here hid a fold that threw on every single
-    // group: the harness produced no folds, no errors and no trace, and the corpus sat
-    // in staging looking as though nothing needed doing. A swallow is defensible — one
-    // bad group must not stop the rest — but a SILENT one turns a total failure into an
-    // absence of evidence.
-    var foldFailures = 0
-    var firstFailure = Option.empty[String]
-    // Grouped by ANCHOR, and each fold told which rows are its own. Folding per distinct
-    // TITLE re-entered the same sanitize group once per title spelling, and every fold
-    // read the entire staging collection: on the UK leg that was 3,629 folds over 28,572
-    // rows — ~104M decodes, 47 of the leg's 62 minutes.
-    val rowsByAnchor = stagingRepository.findAll().groupBy(row => stagingRepository.normalizer.sanitize(row.title))
-    rowsByAnchor.foreach { case (_, rows) =>
-      val title = rows.head.title
-      try stagingFolder.foldGroup(title, Some(rows.map(_.id).toSet))
-      catch {
-        case exception: Exception =>
-          foldFailures += 1
-          if (firstFailure.isEmpty)
-            firstFailure = Some(s"'$title': ${exception.getClass.getName}: ${exception.getMessage}")
-      }
-    }
-    if (foldFailures > 0)
-      println(s"[${country.code}] staging fold FAILED for $foldFailures group(s); first: ${firstFailure.getOrElse("—")}")
-    movieCache.rehydrate()
-  }
-
-  /** Advance staging by ONE prod-like pass: enqueue the next step for every
-   *  pending film, then drain those tasks. Unlike `drainStaging` (which loops to
-   *  quiescence with every cinema already present), this resolves against
-   *  WHATEVER has arrived so far — used to interleave reaper ticks with cinema
-   *  arrival, reproducing prod's always-on reaper firing between 2-min ticks
-   *  while cinemas trickle in (a film's hint group can resolve before its last
-   *  cinema — and its director spelling — has landed). */
-  def advanceStagingOnce(): Unit = {
-    stagingReaper.tick()
-    drainStagingQueueOnce()
-  }
-
-  private lazy val stagingHandlerByType = stagingHandlers.map(h => h.taskType -> h).toMap
-
-  /** Drain every staging task currently claimable through the real handlers — the
-   *  synchronous stand-in for the prod `TaskWorker`. Completing a step advances
-   *  `StagingReaper` (which enqueues the next step for this same loop to pick up),
-   *  so a film flows detail → resolve → imdb → fold in one drain. A transient step
-   *  (Reschedule — e.g. a TMDB-fixture-less film) is completed-and-dropped so it
-   *  can't spin this drain; `drainStaging`'s force-fold handles the leftover. A
-   *  stray non-staging task is completed too, matching `enrichDetailsSync`.
-   *
-   *  A POOL of [[drainClaimants]], for the reason [[drainRatingQueueOnce]] became one
-   *  — and it is now the phase that pays for it. Poland's leg on 2026-09-03 spent
-   *  287.8s of a 454.1s boot right here, draining 7,770 tasks one at a time at ~37ms
-   *  each; the enrichment tree was warm (2,914 hits against 421 live fills), so that
-   *  time is not upstream network but a serial file of Mongo round-trips —
-   *  claim, handle, complete, `onTaskFinished` — that production overlaps four ways.
-   *
-   *  Safe for the same reasons: `claim` is atomic per task, so N claimants partition
-   *  the queue rather than race for a row, and these are the handlers prod's pool
-   *  already runs side by side — `onTaskFinished` included, which prod dispatches from
-   *  whichever worker thread finished the step.
-   *
-   *  Determinism needs no rule of its own here: the order-independence replay passes
-   *  and the determinism specs swap in a `SameThreadExecutionBudget`, which reports a
-   *  cap of 1, so their drains stay strictly serial and their seeded shuffle stays the
-   *  only nondeterminism. */
-  private def drainStagingQueueOnce(): Unit = {
-    // Counted by outcome, because a staging drain that folds nothing is otherwise
-    // indistinguishable from one with nothing to do — and the two have very different
-    // causes: no tasks CLAIMED means the queue isn't handing them over, while claimed
-    // tasks that never advance means the handlers are refusing them. Atomics, because
-    // the claimants below count into them from several threads.
-    val claimed   = new java.util.concurrent.atomic.AtomicInteger(0)
-    val advanced  = new java.util.concurrent.atomic.AtomicInteger(0)
-    val unhandled = new java.util.concurrent.atomic.AtomicInteger(0)
-    val claimants = (0 until drainClaimants).map { i =>
-      val workerId = s"staging-sync-$i"
-      val thread = new Thread(
-        () =>
-          Iterator.continually(taskQueue.claim(workerId, 5.minutes))
-            .takeWhile(_.isDefined).flatten
-            .foreach { task =>
-              claimed.incrementAndGet()
-              if (!stagingHandlerByType.contains(task.taskType)) unhandled.incrementAndGet()
-              val advance = stagingHandlerByType.get(task.taskType).exists { h =>
-                (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
-                  case HandlerOutcome.Done | HandlerOutcome.Skipped => true
-                  // Reschedule or Deferred — either way the step didn't finish, so the
-                  // chain doesn't advance and the task is dropped rather than spun.
-                  case _                                            => false
-                }
-              }
-              if (advance) advanced.incrementAndGet()
-              taskQueue.complete(task.id, workerId)
-              if (advance)
-                stagingReaper.onTaskFinished.applyOrElse(
-                  services.events.TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
-            },
-        workerId)
-      thread.start()
-      thread
-    }
-    claimants.foreach(_.join())
-    if (claimed.get() > 0 || unhandled.get() > 0)
-      println(s"[${country.code}] staging queue: claimed ${claimed.get()}, " +
-              s"advanced ${advanced.get()}, no-handler ${unhandled.get()}")
-  }
-
-  /** Scrape every cinema once in parallel, blocking until all have settled.
-   *  Each scraper runs the shared `cinemaScrapeRunner` (record + publish), so
-   *  every `MovieDetailsComplete` is published synchronously before this returns
-   *  and the caller can drain the downstream pools without racing the scrape. */
-  def scrapeAllOnce(): Unit = {
-    val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
-    try Await.ready(
-      Future.sequence(cinemaScrapers.map(s =>
-        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using executionContext)))(using implicitly, executionContext),
-      Duration.Inf)
-    finally executionContext.shutdown()
-    ()
-  }
-
-  /** Cold cache → fully-scraped, staging-drained `movies` cache: the boot
-   *  sequence the fixture recorder shares with its regression spec
-   *  (`RecorderStagingDrainSpec`). Scrape every cinema, apply deferred detail,
-   *  drain the async cascade, THEN graduate newcomers out of always-on staging.
-   *
-   *  The `drainStaging` step is load-bearing: staging ingest is always-on, so on
-   *  a cold cache `recordCinemaScrape` diverts every scraped film to
-   *  `pending_movies`. Omit the drain and `movies` stays EMPTY — nothing
-   *  downstream (TMDB/IMDb/MC/RT/Filmweb) has a row to enrich, and a fixture
-   *  recording captures only the cinema scrapes. Keeping the sequence here, not
-   *  inline in the recorder, is what lets the spec catch a dropped stage. */
-  def scrapeAndDrainToCache(): Unit = {
-    scrapeAllOnce()
-    enrichDetailsSync()
-    drainServices()
-    drainStaging()
-  }
 }
 
 object TestWiring {

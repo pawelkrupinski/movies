@@ -4,8 +4,6 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
-import services.cinemas.CountryNames
-import services.events.{EventBus, InProcessEventBus}
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
 import tools.DaemonExecutors
 
@@ -77,10 +75,6 @@ trait MovieCacheReader {
    *  process default is how a German title came to be keyed `minionsimonster`. */
   def normalizer: TitleNormalizer
 
-  /** True when some existing cache row's cleanTitle normalises to the same
-   *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */
-  def hasResolvedSiblingByTitle(rawTitle: String): Boolean
-
   /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
   def snapshot(): Seq[StoredMovieRecord]
 
@@ -89,28 +83,25 @@ trait MovieCacheReader {
 
   // ── Internal read surface (services.* only) ──────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
-  /** The key of the existing row whose normalised cleanTitle matches `key`'s,
-   *  regardless of year. An event can carry a pre-canonicalisation `(title,
-   *  year)` that no longer addresses the row after `recordCinemaScrape`
-   *  promoted it; every enrichment stage resolves through this so its read /
-   *  write hits the live row, never a stale or phantom key. None when no row
-   *  exists yet. */
-  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey]
   private[services] def get(key: CacheKey): Option[MovieRecord]
   private[services] def entries: Seq[(CacheKey, MovieRecord)]
 }
 
 /**
- * Where a venue's fresh scrape goes: `MovieCache` lands it (the landing / staging path), a cut-over
- * country's `IdentityListingIntake` takes it as the venue's published listing for the identity
- * projection (docs/design/identity-resolver.md §8, phase 5). Returns the rows it placed on a film
- * and whether each is new there — nothing, for a sink that places none itself.
+ * Where a venue's fresh scrape goes: `IdentityListingIntake` takes it as the venue's published listing
+ * for the identity projection (docs/design/identity-resolver.md §8).
+ *
+ * `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked scrape reduced
+ * from only some of its date-chunks — so a film missing from it is not evidence that it stopped
+ * screening. Every scrape DECORATOR must forward it ([[services.cinemas.common.DelegatingCinemaScraper]]).
+ * `sourceKey` names the upstream listing this scrape read (`CinemaScraper.sourceKey`); `viaFallback`
+ * says a FALLBACK served it because the venue's own source is down ([[ScrapeHealth]]).
  */
 trait ScrapeSink {
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true,
                          sourceKey: Option[String] = None,
-                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
+                         viaFallback: Boolean = false): Unit
 }
 
 /**
@@ -122,35 +113,7 @@ trait ScrapeSink {
  * the production implementation; tests can swap in any other implementation if
  * they ever need to.
  */
-trait MovieCache extends MovieCacheReader with ScrapeSink {
-  /** Apply one cinema's fresh scrape to the cache. Returns one
-   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie WHOSE SLOT WAS WRITTEN —
-   *  a listing whose write was skipped (its stored row could not be read) yields none,
-   *  so a caller cannot classify or announce a row the cache does not hold.
-   *
-   *  `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
-   *  scrape reduced from only some of its date-chunks. The prune is then skipped outright,
-   *  because a film missing from a listing nobody finished is not evidence that it stopped
-   *  screening. Every scrape DECORATOR must forward this
-   *  ([[services.cinemas.common.DelegatingCinemaScraper]]); one that answers the default
-   *  instead silently turns the guard off.
-   *
-   *  `sourceKey` names the upstream listing this scrape read (`CinemaScraper.sourceKey`).
-   *  When it differs from the one the venue's stored listing came from, the venue has
-   *  been rewired and the scrape lands as its new baseline, guards skipped
-   *  ([[ScrapeHealth.isRewire]]). `None` never counts as a change.
-   *
-   *  `viaFallback` says a FALLBACK served this listing (Filmweb, Flicks) because the venue's
-   *  own source is down. That is not a rewire — `sourceKey` is still the primary's — and the
-   *  listing is judged against nothing: it lands ADDITIVELY, never pruning the primary's
-   *  films it does not list, and leaves the guards' state alone. A fallback serves exactly
-   *  when the primary is broken and is usually thinner, so pruning on it retired a venue's
-   *  films on every outage and restored them on every recovery. */
-  override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                                  listingIsComplete: Boolean = true,
-                                  sourceKey: Option[String] = None,
-                                  viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
-
+trait MovieCache extends MovieCacheReader {
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
    *  rows loaded. Used at construction and by the admin rehydrate endpoint. */
@@ -167,30 +130,6 @@ trait MovieCache extends MovieCacheReader with ScrapeSink {
   /** Remove film `id` — one the projection retired — with its side rows, from the store and the cache. */
   private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
-  /** Settle-path persistence for the title-embedded year: re-key every yearless
-   *  row whose cinema-slot titles carry an unambiguous delimited `EmbeddedYear`
-   *  ("Konwicki: Lawa (1989)", "Following (1998)") onto that year, and stamp the
-   *  year onto its yearless slots — so a scrape that reported no year still keys,
-   *  resolves and displays as if it had. Runs OFF the async scrape/resolve path
-   *  (over the already-settled corpus), so — unlike a scrape-time re-key — it can't
-   *  race `canonicalRank`: TMDB-resolved rows are already keyed on their TMDB year,
-   *  so this only ever moves rows a year source hasn't otherwise claimed. Reuses the
-   *  vetted `rekey` (merging into any existing occupant so a sister row isn't
-   *  clobbered) and always ends with a `canonicalizeBySanitize`; returns the count
-   *  re-keyed. Driven by `MovieService.settle` (the periodic `SettleReaper`). */
-  def backfillEmbeddedYears(): Int
-  def canonicalizeBySanitize(): Unit
-  /** Conclusion-time scoped settle: the just-resolved record `resolved` is the
-   *  new state of the row at `oldKey`. Write it (re-keyed onto its TMDB year if
-   *  `oldKey` was yearless) AND fold any YEARLESS + IDLESS same-title stray onto
-   *  it in ONE write — the unambiguous `clusterByFilm` rule-(4) rows a concurrent
-   *  scrape can strand beside the resolved one. The single write means the
-   *  resolved row's first `readyToProject` upsert already carries every cinema,
-   *  so the read model is never shown a partial, single-cinema split. The broader
-   *  ±1-year / distinct-tmdbId clustering needs the FULL corpus and so stays in
-   *  `canonicalizeBySanitize` (order-independent); this stays on the resolved
-   *  row's own key for the same reason. Returns that key. */
-  private[services] def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey
   /** Like [[get]], but falls back to a direct `movies` read when the cache doesn't
    *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
    *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
@@ -203,33 +142,12 @@ trait MovieCache extends MovieCacheReader with ScrapeSink {
    *  the current scrape saw. See [[MovieRepository.findByIdChecked]]. */
   private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
 
-  /** The film as STORED — its slots carrying the showtime LISTS, re-stitched from
-   *  `screenings`. `(row, readOk)` like [[storedChecked]].
-   *
-   *  Not the same read: [[storedChecked]] answers from the cache when the row is
-   *  resident, and a resident row has been through `ShowtimesDigest.stripForCache`,
-   *  so every slot on it holds `showtimes = Nil` (the lists live in `screenings`,
-   *  keyed by film id). That is the right shape for the cache and the wrong shape
-   *  for anyone MOVING a slot somewhere the screenings don't follow it — which is
-   *  what `MixedFilmSplitter` does when it sends a stray cinema back to staging.
-   *  Skipping the cache is therefore the point, not an oversight.
-   *
-   *  A caller that hands the result somewhere else must honour `readOk`: staging a
-   *  slot on the strength of a FAILED read writes an empty board over a real one. */
-  private[services] def restitchedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
-
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
    *  happen inside this block to be serialised against `recordCinemaScrape`,
    *  `rekey`, and other concurrent operations on the same title. */
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A
-  /** Move a row from `oldKey` to `newKey`. The `update` function receives
-   *  the CURRENT state at `oldKey` (under the per-title lock) and returns
-   *  the record to write at `newKey` — so a concurrent cinema-slot write
-   *  that landed before `update` runs is visible to it. */
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit
-
   /** Re-kick the enrichments whose INPUT fields an enrichment write (not a merge)
    *  changed — e.g. Filmweb writing a director / originalTitle onto its slot
    *  re-attempts the TMDB / IMDb resolution its new hint might now crack, and the
@@ -269,83 +187,37 @@ trait MovieCache extends MovieCacheReader with ScrapeSink {
  */
 class CaffeineMovieCache(
   repository: MovieRepository,
-  bus:  EventBus = new InProcessEventBus(),
   // Boot-hydrate retry — OFF by default (0 attempts) so tests and a genuine
   // cold start pay nothing. Prod turns it on via the Fly env
   // `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` so a not-ready Mongo at boot can't leave
   // the cache empty (see `bootHydrate`).
   bootHydrateMaxAttempts: BootHydrateMaxAttempts   = BootHydrateMaxAttempts(0),
   bootHydrateRetry:       BootHydrateRetryInterval = BootHydrateRetryInterval(1.second),
-  // A genuinely-NEW film (one whose `sanitize(title)` group isn't already in
-  // `movies`) is diverted to this staging sink — one row per `cinema|title|year`
-  // — to incubate until TMDB concludes, instead of landing in the merged
-  // `movies` cache; known films keep the direct path. The worker wires this
-  // `Some(stagingRepository)`. `None` (the default, used by unit tests that exercise the
-  // cache directly) disables diversion — every scrape lands in `movies`. Read by
-  // `ScrapeLanding` alone, as are `bus`, `enrichmentLanguage` and `screeningTokens`
-  // below: they stay here so every caller's construction is unchanged, and are
-  // handed straight to the landing.
-  staging: Option[services.staging.StagingRepository] = None,
   // Called after a merge whose inputs changed an enrichment's resolution, to
   // re-kick that enrichment as a worker task (per case). Default no-op for unit
   // tests + non-worker builds; the worker wires `QueueEnrichmentRetrigger`.
   retrigger: EnrichmentRetrigger = EnrichmentRetrigger.noop,
-  // Counts each movie-row fold by reason (canonicalize / resolved-settle /
-  // tmdb-identity) so the worker can chart the merge rate that drives re-key
-  // re-enrichment load. No-op for web + unit tests; the worker wires
-  // `WorkerTaskMetrics`.
-  mergeMetrics: MergeMetrics = MergeMetrics.noop,
   // Measures what the periodic backstop rehydrate catches that the incremental change
   // stream missed — the redundancy signal for retiring the rehydrate. No-op for web/tests.
   cacheMetrics: CacheSyncMetrics = CacheSyncMetrics.noop,
-  // The deployment's language, used to canonicalise cinema-reported production
-  // countries into the deployment's own (Polish "USA"/"Wielka Brytania" on
-  // `kinowo`, the source's already-localised name elsewhere — see
-  // `CountryNames.canonical`). The worker wires `country.language`; defaults to
-  // Polish so every existing single-country construction is unchanged.
-  enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage,
-  // The country's badge vocabulary. Sibling of `enrichmentLanguage` above and
-  // wired from the same `country`: one token in it — the voice-over version — is
-  // the country's own to spell (`LEK` in Poland, `LEC` in the English-speaking
-  // deployments). Defaults to the default country like its siblings, so every
-  // existing single-country construction is unchanged. Unlike `normalizer` a
-  // wrong value here mis-SPELLS a badge rather than mis-keying a row, which is
-  // why this one may default at all.
-  screeningTokens: ScreeningTokens = ScreeningTokens.forDefaultCountry(),
-  // The country's title rules. Sibling of `enrichmentLanguage` above and wired
-  // from the same `country` by the worker; both default to Poland so existing
-  // single-country constructions are unchanged. Every `CacheKey` this cache
+  // The country's title rules, wired from the worker's `country`. Every `CacheKey` this cache
   // builds — including the ones built on the change-stream driver thread and in
   // the rehydrate scheduler — keys through THIS instance, which is what makes
   // the cache's identity country-correct rather than process-global. REQUIRED,
   // not defaulted: this is the production cache, and every CacheKey it builds
   // is a row identity.
   override val normalizer: TitleNormalizer,
-  // How many consecutive thin ticks `ScrapeLanding`'s depth AND breadth guards each
-  // hold a venue before accepting a degraded listing, forwarded verbatim to it.
-  // Defaults from THIS deployment's own scrape cadence (`KINOWO_SCRAPE_FRESHNESS_
-  // MINUTES`, read once here rather than by `ScrapeLanding` itself so the guards'
-  // pure functions stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat
-  // "3" isn't safe for the slower-cadence countries.
-  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.DefaultScrapeFreshness),
-  // Guard-verdict + silent-write-skip counters, forwarded verbatim to `ScrapeLanding`
-  // — see `ScrapeLandingMetrics`. No-op for web/tests; the worker wires `WorkerTaskMetrics`.
+  // The silent-write-skip counter (`putIfPresent`) — see `ScrapeLandingMetrics`. No-op for
+  // web/tests; the worker wires `WorkerTaskMetrics`.
   scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
-  // Where `ScrapeLanding`'s guards keep their per-venue state (rejection counts and the
-  // venue's recorded source), forwarded verbatim to it. In-memory by default; the
-  // worker wires the durable `MongoScrapeGuardLedger` so the state survives a restart.
-  scrapeGuardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger,
-  // What "now" is to `ScrapeLanding`'s depth guard, which counts only a venue's
-  // UPCOMING showtimes. System time in production; specs move it by hand.
-  val clock: java.time.Clock = java.time.Clock.systemUTC(),
-  // Where `ScrapeLanding` interns the strings a fresh slot repeats across cinemas, forwarded
-  // verbatim to it. The worker hands every country's cache the process's one pool (owned by
-  // `WorkerMetrics`, whose gauges read it); a lone cache — tests included — gets its own.
+  // Where the cache interns the strings a slot repeats across cinemas. The worker hands every
+  // country's cache the process's one pool (owned by `WorkerMetrics`, whose gauges read it); a
+  // lone cache — tests included — gets its own.
   val stringPool: StringPool = new StringPool,
   // The backstop rehydrate (`KINOWO_CACHE_REHYDRATE_SECONDS`, resolved by the worker's root);
   // the compiled-in 6 hours for specs.
   rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours)
-) extends MovieCache with LandingStore with Stoppable with Logging {
+) extends MovieCache with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
   // here under another country's rules.
@@ -371,23 +243,13 @@ class CaffeineMovieCache(
    *  to `positive` goes through `store` / `evict` / the `computeResident` compute, and
    *  nothing else may call `positive.put` or `positive.invalidate` directly. The cache
    *  is unbounded, so there is no eviction path to miss. */
-  /** What makes a row a valid ALIAS target: resolved, and a bare presentation of its
-   *  film rather than a decorated edition of it.
-   *
-   *  Named once because the index is built twice — live, and rebuilt from the rows by
-   *  [[rebuiltIndexSnapshot]] for the consistency check. Two copies of a predicate that
-   *  MUST agree is how the check starts comparing an index against a differently-defined
-   *  one and calls the disagreement drift. */
-  private val isConcludedBareRow: (CacheKey, MovieRecord) => Boolean =
-    (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer)
-
   private[movies] val corpusIndex: CorpusIndex =
-    new CorpusIndex(normalizer, isConcludedBareRow)
+    new CorpusIndex
 
   /** Write a row and keep the index with it. The ONLY way into `positive`. */
   private def store(key: CacheKey, record: MovieRecord, id: FilmId): Unit = {
     positive.put(key, record)
-    corpusIndex.put(key, record, id)
+    corpusIndex.put(key, id)
   }
 
   /** The permanent id behind `key`: the one the index holds, else the stored row's, else
@@ -435,13 +297,12 @@ class CaffeineMovieCache(
    *  stopped updating the index would otherwise fail SILENTLY and far away — as a film
    *  re-diverting into staging every tick, which is the exact flap the widened divert
    *  gate was built to stop. */
-  private[services] def indexSnapshot: CorpusIndex.Snapshot = corpusIndex.snapshot
+  private[services] def indexSnapshot: Map[CacheKey, FilmId] = corpusIndex.snapshot
 
-  private[services] def rowsRebuiltIndexSnapshot: CorpusIndex.Snapshot = {
+  /** The keys resident in the cache, for [[indexSnapshot]] to cover exactly. */
+  private[services] def residentKeys: Set[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val rebuilt = new CorpusIndex(normalizer, isConcludedBareRow)
-    positive.asMap().asScala.foreach { case (k, r) => rebuilt.put(k, r, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k))) }
-    rebuilt.snapshot
+    positive.asMap().keySet().asScala.toSet
   }
   /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
    *  the hydrated corpus, not a working set — so it reports entries and no maximum:
@@ -542,38 +403,8 @@ class CaffeineMovieCache(
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome =
     idFor(key).fold(deferUnreadableWrite(key))(putAs(key, e, _))
 
-  /** [[put]] for a caller that holds the row's id — a retitle, where the index no
-   *  longer maps the new key and a lookup would mint a fresh id for a film that has one. */
-  private def putAs(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = e.tmdbId match {
-    case Some(tid) =>
-      tmdbLockFor(tid).synchronized {
-        siblingKeyByTmdb(tid, excluding = key) match {
-          case Some(siblingKey) => foldDeterministically(key, e, id, siblingKey, MergeReason.TmdbIdentity)
-          case None =>
-            // The settle's imdbId edge, at write time: the same IMDb id under another
-            // tmdbId is one film TMDB holds twice — unless the cinemas describe two
-            // films, the edge's own veto. The sibling's tmdbId is locked too, in id
-            // order, so a concurrent write under it cannot race this fold.
-            siblingKeyByImdb(e, excluding = key) match {
-              case Some(siblingKey) =>
-                val siblingTmdb = get(siblingKey).flatMap(_.tmdbId).getOrElse(tid)
-                withTmdbLocks(Seq(tid, siblingTmdb).filter(_ != tid)) {
-                  foldDeterministically(key, e, id, siblingKey, MergeReason.ImdbIdentity)
-                }
-              case None => persist(key, e, id)
-            }
-        }
-      }
-    case None =>
-      persist(key, e, id)
-  }
-
-  /** Nested per-tmdbId locks in ascending id order (the caller already holds the
-   *  incoming row's), so two writers folding the same pair cannot deadlock. */
-  private def withTmdbLocks[A](ids: Seq[Int])(body: => A): A = ids.sorted match {
-    case Seq()        => body
-    case head +: rest => tmdbLockFor(head).synchronized(withTmdbLocks(rest)(body))
-  }
+  /** [[put]] for a caller that holds the row's id. */
+  private def putAs(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = persist(key, e, id)
 
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
@@ -615,7 +446,7 @@ class CaffeineMovieCache(
         // concurrent writer or an eviction may have replaced it since. A failure itself is
         // logged and counted by the repository.
         prior match {
-          case Some(previous) => if (positive.asMap().replace(key, cached, previous)) corpusIndex.put(key, previous, id)
+          case Some(previous) => if (positive.asMap().replace(key, cached, previous)) corpusIndex.put(key, id)
           case None           => if (positive.asMap().remove(key, cached)) corpusIndex.remove(key)
         }
       }
@@ -644,37 +475,6 @@ class CaffeineMovieCache(
     e.imdbRating.exists(_ <= 0.0) || e.metascore.exists(_ <= 0) ||
     e.filmwebRating.exists(_ <= 0.0) || e.rottenTomatoes.exists(_ <= 0)
 
-  /** Find an existing cache key carrying the same tmdbId as `excluding` — the
-   *  same film, whatever its cleanTitle spelling (the display split into a card
-   *  per shown title now lives in the read-model projection, see the `put`
-   *  docstring above).
-   *
-   *  `minByOption`, not `find`: a same-tmdbId row can have more than one sibling
-   *  (year + yearless + a dub variant), and `asMap` iteration order is not
-   *  stable across JVM builds / platforms. Pick the canonical-rank minimum so
-   *  the chosen sibling — and therefore the fold result — is a pure function of
-   *  the cache contents, not iteration order. */
-  private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] =
-    (corpusIndex.keysWithTmdbId(tid) - excluding).minByOption(canonicalRank)
-
-  /** A resolved row under a DIFFERENT tmdbId that carries this record's imdbId, and
-   *  whose cinemas do not describe a different film — the row the settle's imdbId edge
-   *  would union this one with. */
-  private def siblingKeyByImdb(e: MovieRecord, excluding: CacheKey): Option[CacheKey] =
-    e.imdbId.flatMap { imdb =>
-      (corpusIndex.keysWithImdbId(imdb) - excluding).iterator
-        .filter { k => get(k).exists(v => v.tmdbId.isDefined && v.tmdbId != e.tmdbId &&
-                                            ListingConstraints.cinemasDescribeDifferentFilms(v, e, normalizer).isEmpty) }
-        .minByOption(canonicalRank)
-    }
-
-  /** Total order picking the canonical (surviving) key among same-tmdbId,
-   *  same-normalised-title rows — see `FilmCanonicalizer.canonicalRank` for the
-   *  rule. Delegates so there is ONE definition shared with the pure
-   *  canonicaliser. */
-  private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
-    FilmCanonicalizer.canonicalRank(k)
-
   private[services] def writeProjected(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
     corpusIndex.idOf(key).filter(_ != id) match {
       case Some(_) => WriteOutcome.IdentityHeld
@@ -698,196 +498,6 @@ class CaffeineMovieCache(
       touch()
     }
     outcome
-  }
-
-  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
-    // The index's per-title map, not a walk of the whole cache: this runs up to four
-    // times per listing resolved, against a corpus of thousands.
-    val sameTitle = corpusIndex.entriesFor(key.normalized).map(_._1)
-    // Prefer a row at this EXACT year. A same-title row at a DIFFERENT year is a
-    // distinct film — a remake or re-release carrying the original's name
-    // ("Zaproszenie" 2022 "The Invitation" vs 2026 "The Invite", "Diuna" 1984 vs
-    // 2021) — not a stale-key alias of this one, so a resolve/read must never
-    // redirect onto it (year-blind `minByOption` clobbered the lowest-year row).
-    // The year-blind fallback still fires when NO exact-year row exists, which is
-    // the only shape the genuine redirect needs: `recordCinemaScrape`'s rekeys
-    // change spelling at the SAME year (case/separator) and a yearless key whose
-    // row gained a resolved year both reach their row through it.
-    sameTitle.filter(_.year == key.year).minByOption(canonicalRank)
-      .orElse(sameTitle.minByOption(canonicalRank))
-  }
-
-  /** Collapse every set of rows that are the SAME FILM into ONE row under the
-   *  canonical key, unioning their records. Film identity is `groupByFilm`: rows
-   *  sharing a normalised cleanTitle, OR (both bare film titles) a tmdbId — so a
-   *  film keyed under two languages ("Tangled" + "Zaplątani", same tmdbId) folds
-   *  to one row, while a decorated edition that merely carries the base tmdbId
-   *  stays separate. A concurrent scrape/enrichment can transiently split a film
-   *  across two spellings — a stale-keyed TMDB write seeds a phantom ("Nowa fala"
-   *  beside the canonical "Nowa Fala"), and once two same-sanitize rows exist
-   *  `ScrapeLanding.redirectToExistingVariant` stops merging (it only redirects on a UNIQUE
-   *  match), so the split persists and which spelling a film ends under depends
-   *  on order. This re-asserts the invariant deterministically: a pure function
-   *  of the current row set, run after a pass settles.
-   *
-   *  A single normalised title can legitimately cover SEVERAL films — a remake
-   *  carrying the original's name ("Diuna" 1984 vs 2021), or adjacent-year
-   *  variants of one film where cinemas disagree on the year (production vs
-   *  theatrical). So the group is sub-clustered into per-film clusters
-   *  (`clusterByFilm`), each of which then collapses on its own. Two DISTINCT
-   *  resolved tmdbIds are never merged; year-bearing unresolved rows attach to a
-   *  resolved cluster within ±1 of its TMDB year, otherwise pack into greedy
-   *  2-year windows; yearless+idless rows fold into the group's canonical
-   *  cluster. */
-  def canonicalizeBySanitize(): Unit = {
-    import scala.jdk.CollectionConverters._
-    canonicalizeGroups(positive.asMap().asScala.toSeq)
-  }
-
-  def backfillEmbeddedYears(): Int = {
-    import scala.jdk.CollectionConverters._
-    val moved = positive.asMap().asScala.toSeq.iterator.collect {
-      // Only YEARLESS rows — a row that already carries a year keeps it (a scraped
-      // year wins over a title annotation, exactly as `recordCinemaScrape` orders
-      // them). Scan the raw slot spellings: the canonical key strips the annotation.
-      case (key, rec) if key.year.isEmpty =>
-        EmbeddedYear.ofAll(EmbeddedYear.slotTitles(rec)).flatMap { year =>
-          val newKey = keyOf(key.cleanTitle, Some(year))
-          Option.when(newKey != key) {
-            // Merge into any existing occupant of the target year-key so a sister
-            // row already there isn't overwritten; `settle` then reconciles the
-            // wider cluster deterministically (±1-year windows, distinct tmdbIds).
-            val occupant = Option(positive.getIfPresent(newKey))
-            rekey(key, newKey, cur => {
-              val stamped = cur.copy(data = cur.data.view.mapValues(sd =>
-                if (sd.releaseYear.isEmpty) sd.copy(releaseYear = Some(year)) else sd).toMap)
-              occupant.fold(stamped)(o => MovieRecordMerge.union(stamped, o))
-            }, RekeyReason.EmbeddedYear)
-          }
-        }.isDefined
-    }.count(identity)
-    // Always settle: fold the re-keyed rows' ±year / distinct-tmdbId clusters, and
-    // (when nothing moved) keep the plain settle semantics callers rely on.
-    canonicalizeBySanitize()
-    moved
-  }
-
-  private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit =
-    FilmCanonicalizer.groupByFilm(pairs, normalizer)
-      .foreach(component => FilmCanonicalizer.clusterByFilm(component, normalizer).foreach(collapseCluster))
-
-  /** Collapse ONE cluster (rows that are the same film) to a single canonical
-   *  row, unioning their records. The `(canonical, merged)` DECISION — which
-   *  year, which spelling, which merged record — lives in the pure
-   *  `FilmCanonicalizer.canonical`; this method owns only the cache MUTATION.
-   *
-   *  `CacheKey` equality is by NORMALISED title + year, so a case/separator
-   *  variant compares EQUAL to the canonical even though its stored string
-   *  differs (and the Caffeine-side first-inserted key can disagree with the
-   *  repository's last-written title). So `invalidate` every key, then `put` under the
-   *  canonical string, rewriting BOTH stores — but only when something differs. */
-  private def collapseCluster(cluster: Seq[(CacheKey, MovieRecord)]): Unit = {
-    val (canonical, merged) = FilmCanonicalizer.canonical(cluster, normalizer)
-    val keys = cluster.map(_._1)
-    // The union base `canonical()` merged onto — the row that would have stood
-    // without the merge (mirrors `MovieRecordMerge.unionAll`'s pick). Comparing
-    // the merged result against it tells us which enrichment inputs the merge
-    // changed (re-key, gained tmdbId/imdbId/searchTitle), to re-kick those.
-    val sorted              = cluster.sortBy { case (k, _) => canonicalRank(k) }
-    val (baseKey, baseRec)  = sorted.find { case (_, e) => e.tmdbId.isDefined }.getOrElse(sorted.head)
-    // Only an actual stored ROW key drives the "anything to fix?" guard: a row is
-    // the only thing `collapseCluster` can re-key onto the canonical. A cinema's
-    // reported SLOT title is immutable display data — it can never be re-written —
-    // so folding slot keys in here left `needsFix` permanently true for any film a
-    // cinema SHOUTS: "DZIEŃ OBJAWIENIA" sanitize-equals the canonical "Dzień
-    // objawienia" but never string-equals it, so the settled row was
-    // delete+upsert-ed on EVERY hydrate/settle tick — pointless Mongo churn that
-    // pins the worker at full CPU-credit AND re-kicks the row's enrichment, the
-    // "merge→split" flap. (`f2dd5be1` killed this churn for cross-LANGUAGE slots
-    // via the sanitize guard below but missed the same-language CASE-drift slot;
-    // restricting the guard to row keys covers both.) A slot reporting a genuinely
-    // new spelling still drives a re-key: `recordCinemaScrape` merges it onto the
-    // row and `FilmCanonicalizer.canonical` moves the canonical, so the ROW key
-    // then differs and trips the guard.
-    //
-    // A lone row is re-keyed whenever its key is not its canonical — including a
-    // canonical that SANITIZES differently. That happens when later venues land on a
-    // RESOLVED row (a scrape never re-keys one) and out-vote the spelling it was created
-    // under: a split arrival stored "Ktoś całkiem obcy" under "DKF: Ktoś całkiem obcy"
-    // for good, where a fold of every venue at once stores the bare key — one film, two
-    // read-model ids by arrival order. Unless the canonical key belongs to ANOTHER film
-    // (the collision below keeps the survivor's key), which would re-write it each pass.
-    val canonicalSanitized = canonical.normalized
-    val needsFix = keys.sizeIs > 1 ||
-      keys.exists(k => k.normalized == canonicalSanitized &&
-        (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year)) ||
-      keys.exists(_.normalized != canonicalSanitized) &&
-        !corpusIndex.idOf(canonical).exists(holder => !keys.exists(k => residentIdOf(k) == holder))
-    if (needsFix) {
-      withTitleLock(canonical.cleanTitle) {
-        // Split the keys: rows that genuinely go away, versus the canonical row itself.
-        //
-        // `invalidate` deletes from BOTH stores, and `MovieRepository.delete` cascades to
-        // `screenings`/`movie_slots`. Applying it to the CANONICAL key deleted the very
-        // row `put` then rewrites — and since `CacheKey` equality is normalised, that is
-        // the SAME `_id`. So the side rows went, `upsert`'s re-stitch read the id it had
-        // just emptied, and the film lost its showtimes. Measured on prod 2026-07-27:
-        // 735 of 941 rows delete+re-inserted under byte-identical ids every 30 minutes,
-        // each losing its showtimes until the next scrape restored them — the sawtooth.
-        //
-        // The canonical row does not need deleting at all: `put` rewrites it in place
-        // (`replaceOne` on the same id). Only its CAFFEINE key object needs replacing, so
-        // the stored spelling follows the canonical — which is what this invalidate was
-        // for. `positive.invalidate` does exactly that and touches no stored row.
-        // The SURVIVOR is an existing row — the one already at the canonical key, else the
-        // best-ranked member — and the film keeps its id: a canonical spelling or year no
-        // row holds yet is a RETITLE of that member, not a new document (see `FilmId`).
-        // Every other member is a victim: going away, so carry its cinemas onto the
-        // survivor first — same rule as the fold and the re-key. Only a victim whose rows
-        // ACTUALLY reached the survivor may then be deleted: `moveFilm` reports false when a
-        // read or write it depended on didn't happen, and deleting on that basis destroys
-        // the film's only copy. A victim left behind is a duplicate row the next pass folds
-        // again (and `scripts.ReapOrphanedFilmRows` clears), which is the recoverable
-        // direction.
-        val members     = keys.map(k => k -> residentIdOf(k))
-        val survivorId  = FilmCanonicalizer.survivor(members, canonical).get   // members is non-empty
-        val survivorKey = members.collectFirst { case (k, id) if id == survivorId => k }.get
-        // The canonical key may already belong to a film OUTSIDE this cluster — two films
-        // sharing a title and a year, clustered apart by tmdbId. Re-keying onto it would put
-        // two documents under one key and drop this cluster's rows out of the cache
-        // (found by `FilmIdentityInvariantsSpec`). The cluster keeps its keys instead.
-        // The canonical key may belong to a film OUTSIDE this cluster — two films sharing a
-        // title and a year, clustered apart by tmdbId. The cluster still collapses (its rows
-        // are one film), but onto the survivor's CURRENT key, never by taking another
-        // film's: that put two documents under one key and dropped the cluster's rows out
-        // of the cache (found by `FilmIdentityInvariantsSpec`).
-        val target = corpusIndex.idOf(canonical).filterNot(id => members.exists(_._2 == id)) match {
-          case Some(holder) =>
-            logger.info(s"canonicalize '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): another film " +
-              s"($holder) holds the canonical key; the cluster collapses onto '${survivorKey.cleanTitle}' " +
-              s"(${survivorKey.year.getOrElse("—")}) instead.")
-            keyCollisions.incrementAndGet()
-            survivorKey
-          case None => canonical
-        }
-        locally {
-            val victims     = keys.filterNot(_ == survivorKey)
-            val (moved, stranded) = victims.partition(v =>
-              repository.moveFilm(residentIdOf(v), survivorId))
-            if (stranded.nonEmpty)
-              logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
-                "cinemas could not be carried onto the winner — they fold again on the next pass.")
-            moved.foreach(invalidate)
-            evict(survivorKey)
-            putAs(target, merged, survivorId)
-        }
-      }
-      // Victims = every other row in the cluster folded away; a lone respelled
-      // key (keys.size == 1) is a re-key, not a merge, so it counts 0.
-      if (keys.sizeIs > 1) mergeMetrics.recordMerge(MergeReason.Canonicalize, keys.size - 1)
-      else mergeMetrics.recordRekey(RekeyReason.Canonicalize)
-      retriggerChangedEnrichments(baseRec, baseKey, merged, canonical)
-    }
   }
 
   /** Re-kick (as worker tasks) the enrichments whose input fields a merge
@@ -925,201 +535,9 @@ class CaffeineMovieCache(
         (row.map(_.record), readOk)
     }
 
-  // Straight to the repository, never `get`: the resident copy is the stripped one,
-  // and stripped is exactly what this read exists to avoid (see the trait's note).
-  private[services] def restitchedChecked(key: CacheKey): (Option[MovieRecord], Boolean) = {
-    val (row, readOk) = findStoredChecked(key)
-    (row.map(_.record), readOk)
-  }
-
   /** The stored row behind `key` — by id when the index knows it, by key otherwise. */
   private def findStoredChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
     corpusIndex.idOf(key).fold(repository.findByKeyChecked(key))(repository.findByIdChecked)
-
-  def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
-    withTitleLock(oldKey.cleanTitle) {
-      import scala.jdk.CollectionConverters._
-      // TMDB's resolved year re-keys a YEARLESS row onto it; a row that already
-      // carries a year keeps its key — re-keying a yeared row across the async
-      // resolve races `canonicalRank` (`canonicalizeBySanitize` owns that
-      // migration — run by the staging fold and on every rehydrate).
-      val wanted =
-        if (oldKey.year.isEmpty && resolved.resolvedYear.isDefined)
-          keyOf(oldKey.cleanTitle, resolved.resolvedYear)
-        else oldKey
-      // Fold any prior occupant of `wanted` into the resolved record up front so
-      // re-keying onto an occupied year can't drop its cinema slots.
-      // `storedChecked` (cache-or-Mongo), not a Caffeine-only read: a cold/evicted
-      // prior occupant must still be folded in, else the union below drops it and
-      // the replaced record nulls its ratings + slots.
-      //
-      // …and not `stored` either, because that collapses "the year is empty" into the
-      // same `None` as "the read failed", and the two want opposite actions. `wanted`
-      // is a key this caller never touched, so the repository read is the NORMAL path
-      // here, not a cold-cache fallback — a Mongo blip therefore re-keys the row onto
-      // an occupied year with an EMPTY merge base and writes over whatever lived
-      // there, which is how a rated row loses its scores while its showtimes (carried
-      // by `moveFilm`) look fine.
-      //
-      // A failed read defers the RE-KEY rather than throwing: the row keeps its
-      // current key and is written there, exactly as it would be had TMDB not
-      // resolved a year. Nothing is lost and nothing is overwritten; the periodic
-      // `canonicalizeBySanitize` re-keys it once the read works. Throwing is wrong at
-      // THIS site specifically — the no-match caller (`MovieService`, the
-      // `Success(None)` branch) is outside the `Try` that turns a failure into a
-      // retry, so an exception would escape into the task runner and park the task.
-      val (priorTarget, targetReadable) =
-        if (wanted != oldKey) storedChecked(wanted) else (None, true)
-      if (!targetReadable)
-        logger.warn(s"settle: could not read '${wanted.cleanTitle}' (${wanted.year.getOrElse("?")}) " +
-          s"to fold into the resolved row; leaving '${oldKey.cleanTitle}' on its own key this pass.")
-      val target = if (targetReadable) wanted else oldKey
-      val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
-      val norm        = oldKey.normalized
-      // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.
-      // These are exactly `clusterByFilm`'s rule (4) rows: with no year and no
-      // tmdbId they can belong to no OTHER film in the group, so attaching them
-      // here is unambiguous and order-independent — a concurrent scrape that
-      // stranded the Multikino "Dzień objawienia" in its own (title, None) row is
-      // healed the moment Helios resolves, instead of waiting for the periodic
-      // settle. ±1-year and distinct-tmdbId clustering is deliberately NOT done
-      // here: that depends on the FULL corpus (which variants have arrived), so
-      // doing it on a partial corpus at resolve time is order-dependent — it
-      // stays in `canonicalizeBySanitize`, a pure function of the settled corpus
-      // (the `ScrapeOrderDeterminismSpec` guard). We also land on the resolved
-      // row's OWN key, not a recomputed canonical spelling, for the same reason.
-      val strays = positive.asMap().asScala.toSeq.filter { case (k, e) =>
-        k != oldKey && k != target && k.year.isEmpty && e.tmdbId.isEmpty &&
-        k.normalized == norm
-      }
-      // ONE write carrying every cinema (the resolved row's first
-      // `readyToProject` upsert is already complete), so the read model is
-      // projected to `web_movies` only after this settle — never the single-
-      // cinema (Helios-only) split that made the card flicker.
-      // The resolved row's own document is RETITLED, never deleted: it keeps its id, so its
-      // showtimes (in `screenings`, under that id — the resident record carries only a
-      // digest) are still there when the record is written under the new key. A row folded
-      // in — a prior occupant of `target`, a stray — has its side rows MOVED onto the
-      // survivor before its document goes, as `rekey` and the fold do. Deleting them first,
-      // the `invalidate` this used to be, cascaded `screenings.deleteFilm`: a film that
-      // resolved late (a yearless row re-keyed onto TMDB's year) lost every showtime it had
-      // — UK convergence 2026-09-25, 136 Vue listings served as nothing.
-      val ownId      = corpusIndex.idOf(oldKey).orElse(findStoredChecked(oldKey)._1.map(_.id))
-      // The document already stored under `target` — resident or cold — is the film's row.
-      val targetId   = if (target == oldKey) None
-                       else corpusIndex.idOf(target).orElse(findStoredChecked(target)._1.map(_.id))
-      val survivorId = targetId.orElse(ownId).getOrElse(FilmId.fresh(target, corpusIndex.holdsId))
-      def carried(id: Option[FilmId]): Boolean = id.forall(i => i == survivorId || repository.moveFilm(i, survivorId))
-      if (!carried(ownId)) {
-        // The row's own showtimes could not follow it: stay on its key this pass, as a failed
-        // read does above, and let the periodic settle re-key it.
-        logger.warn(s"settle: could not carry '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("?")})'s side rows onto " +
-          s"'${target.cleanTitle}' (${target.year.getOrElse("?")}); leaving it on its own key this pass.")
-        put(oldKey, resolved)
-        oldKey
-      } else {
-        val folded = strays.filter { case (k, _) => carried(corpusIndex.idOf(k)) }
-        val merged = folded.foldLeft(base) { case (acc, (_, e)) => MovieRecordMerge.union(acc, e) }
-        (folded.map(_._1) :+ oldKey).distinct.filterNot(_ == target).foreach { k =>
-          if (corpusIndex.idOf(k).forall(_ == survivorId)) evict(k) else invalidate(k)
-        }
-        putAs(target, merged, survivorId)
-        val foldedCount = folded.size + priorTarget.size
-        if (foldedCount > 0) mergeMetrics.recordMerge(MergeReason.ResolvedSettle, foldedCount)
-        if (target != oldKey) mergeMetrics.recordRekey(RekeyReason.ResolvedYear)
-        target
-      }
-    }
-
-  /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
-   *  `canonicalRank` (NOT arrival order), and the record is the union of every
-   *  per-source slot — so no scraped data is lost whichever key wins, and the
-   *  displayed title/year/ratings are derived from that union at read time.
-   *  The stored result is therefore identical no matter which row was written
-   *  first; enrichment-thread arrival order (which varies across machines, and
-   *  used to flip the canonical here, drifting the whole-corpus snapshot
-   *  between arm64 dev boxes and amd64 CI) no longer matters. */
-  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, newId: FilmId, siblingKey: CacheKey, reason: MergeReason): WriteOutcome = {
-    // `stored` (cache-or-Mongo): a cold/evicted sibling read EMPTY would be merged
-    // as absent, then full-replaced and its Mongo doc deleted — losing the ratings
-    // the `*Ratings` refreshers wrote onto it.
-    val siblingRecord = stored(siblingKey).getOrElse(newRecord)
-    // Key the surviving row exactly as the settle's `canonicalizeBySanitize`
-    // does — `FilmCanonicalizer.canonical` derives the key from the merged
-    // record's `displayTitle` (the dominant cinema spelling) and unions onto the
-    // tmdbId-bearing base. Picking the alphabetical-min raw key instead would, for
-    // a CROSS-language fold ("Tangled" + "Zaplątani"), land on the original-
-    // language title no cinema dominantly reports — so the next localised scrape
-    // (matched by sanitize via `ScrapeLanding.concludedKeyFor`) wouldn't find it and would
-    // re-spawn the duplicate. One rule for both fold paths keeps the stored
-    // result a pure function of the row set, not arrival order.
-    val (canonical, merged) = FilmCanonicalizer.canonical(Seq(siblingKey -> siblingRecord, newKey -> newRecord), normalizer)
-    // The sibling is the film's EXISTING row, so the film keeps the sibling's id whichever
-    // key wins: a canonical key the sibling does not hold is a retitle of the sibling. A
-    // stored row of its own under the incoming key is the victim — carry its screenings +
-    // slots onto the survivor BEFORE anything is written or deleted. A merge is a rename
-    // too: the losing row's showtimes are filed under ITS id, while the record we are about
-    // to write holds that row STRIPPED (cache residency), so `upsert`'s re-stitch — which
-    // looks under the id it is WRITING to — would find nothing and store nothing, and the
-    // delete would then destroy the only copy. Same rule as the merge arm of
-    // `MovieCache.rekey`; a `movies` row disappearing almost never means the film left.
-    // Only a victim whose rows actually reached the survivor is deleted — `moveFilm`
-    // reports false when a read or write it depended on didn't happen, and the delete
-    // would otherwise destroy the film's only copy. A stranded victim stays a duplicate
-    // row that folds again next pass, which is the recoverable direction.
-    //
-    // The victim is deleted BY ID, never through `invalidate(newKey)`: when the incoming
-    // key is the canonical one, the survivor is about to be stored under it, and a
-    // key-addressed delete after the write would take the survivor with it.
-    // The incoming row's own id is a victim too whenever it is not the survivor: it may
-    // have a document (a retitle arriving here, a cold key `idFor` found in the store)
-    // whose side rows must reach the survivor — a brand-new id simply has nothing to move.
-    val survivorId = residentIdOf(siblingKey)
-    // The canonical key may belong to a THIRD film (two films sharing a title and a
-    // year, clustered apart by tmdbId). The merge still happens — these two rows are one
-    // film — but under the sibling's current key, never by taking another film's.
-    val target =
-      if (corpusIndex.idOf(canonical).exists(id => id != survivorId && id != newId)) { keyCollisions.incrementAndGet(); siblingKey }
-      else canonical
-    val victimIds  = (Seq(newId) ++ corpusIndex.idOf(newKey)).distinct.filter(_ != survivorId)
-    val (moved, stranded) = victimIds.partition(repository.moveFilm(_, survivorId))
-    if (stranded.nonEmpty) {
-      // A move that did not land defers the WHOLE fold, as `rekey` does: writing the
-      // survivor under the incoming key would drop the stranded document out of the
-      // index while it still holds the key — two documents, one key, and nothing left
-      // to fold it on the next pass.
-      logger.warn(s"Deferring fold of '${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}) into " +
-        s"'${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): its screenings/slots could not be carried " +
-        "onto the survivor; the rows stay as they are and the settle asks again.")
-      skippedUnreadable.incrementAndGet()
-      return WriteOutcome.Declined("side-rows-not-carried")
-    }
-    if (corpusIndex.idOf(newKey).exists(moved.contains)) evict(newKey)
-    if (target != siblingKey) evict(siblingKey)
-    // The victims go only once the survivor carries their union (see
-    // `writeSurvivorThenRetireLosers`). Kept, and evicted from the cache, their documents make
-    // the next scrape of the title fold again, which is the retry.
-    val (outcome, retired) = writeSurvivorThenRetireLosers(moved)(() => persist(target, merged, survivorId))
-    if (outcome.failed) {
-      if (!retired) logger.warn(s"Keeping the stored row(s) ${moved.mkString(", ")} of '${newKey.cleanTitle}' " +
-        s"(${newKey.year.getOrElse("—")}): the survivor's write failed, so the fold is retried next scrape.")
-      return outcome
-    }
-    // The merge may have filled enrichment inputs the canonical lacked (e.g. an
-    // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
-    retriggerChangedEnrichments(siblingRecord, siblingKey, merged, target)
-    // Counted whether the incoming key had a stored row of its own or was a fresh write
-    // that never became one: either way a would-be duplicate was folded at write time.
-    if (newKey != siblingKey) {
-      mergeMetrics.recordMerge(reason, 1)
-      val shared = if (reason == MergeReason.ImdbIdentity) s"same imdbId=${newRecord.imdbId.getOrElse("?")}, tmdbId ${merged.tmdbId.getOrElse("?")} kept"
-                   else s"same tmdbId=${newRecord.tmdbId.get}"
-      logger.info(s"Folded duplicate '${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}) " +
-                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — $shared" +
-                  (if (moved.nonEmpty) ", its stored row retired." else "."))
-    }
-    outcome
-  }
 
   /** Conditional write — applies `updater` to the row if it currently exists
    *  in the cache, otherwise a no-op. Returns true if the write landed.
@@ -1178,7 +596,7 @@ class CaffeineMovieCache(
         // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
         // `store`; index the value it produced instead. Same contract, one line later.
         val id = residentIdOf(key)
-        corpusIndex.put(key, updated, id)
+        corpusIndex.put(key, id)
         val fullAfter = full.get()
         // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
         // ⇒ no real change, skip the write. See ShowtimesDigest.leanEqual.
@@ -1228,7 +646,6 @@ class CaffeineMovieCache(
         else {
           val id        = residentIdOf(key)
           val priorSlot = prior.data.get(source)
-          corpusIndex.putSlot(key, source, priorSlot, cached, updated)
           def only(sd: Option[SourceData]) = prior.copy(data = sd.map(source -> _).toMap)
           writeThrough(key, id, prior, updated, only(priorSlot), only(Some(slot)))
         }
@@ -1281,7 +698,7 @@ class CaffeineMovieCache(
       // reported as success, the failure healed in memory and never in Mongo. `replace`
       // only if it is still ours — under the title lock nothing else wrote this key,
       // but an eviction may have.
-      if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, prior, id)
+      if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, id)
     }
     touch()
     wrote
@@ -1295,117 +712,6 @@ class CaffeineMovieCache(
     id.orElse(repository.findByKeyChecked(key)._1.map(_.id)).foreach(repository.delete)
     touch()
   }
-
-  /** Atomically rename a row from `oldKey` to `newKey`, computing the new
-   *  value from the row's CURRENT state at `oldKey`. Both the read and
-   *  the write happen under the per-cleanTitle lock that
-   *  `recordCinemaScrape` also acquires — so:
-   *
-   *    1. A concurrent scrape can never observe the cache in the empty
-   *       window between the invalidate and the put. Without this, a
-   *       year=2026 scrape that lands mid-rekey would see no sibling
-   *       for "Straszny film" and create a phantom row at (Some(2026))
-   *       while the rekey settles at (Some(2000)) — two rows for the
-   *       same Polish title.
-   *    2. A cinema slot that was written under the same title-lock
-   *       just before the rekey acquired it is visible to `update`,
-   *       so the new record carries it forward. Without this, the
-   *       rekey would overwrite the just-written slot with stale data
-   *       the caller captured before the lock — losing the slot
-   *       entirely.
-   *
-   *  Both keys must share the same cleanTitle (same lock). Used by the
-   *  TMDB stage when a no-year scrape's resolved year promotes the row
-   *  to a year-keyed identity. */
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit = {
-    require(oldKey.normalized == newKey.normalized,
-      s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
-    withTitleLock(oldKey.cleanTitle) {
-      // `stored` (cache-or-Mongo): a cold `oldKey` read EMPTY would be re-`put` at
-      // `newKey` rating-less, nulling the scores the `*Ratings` refreshers own.
-      //
-      // A read that FAILED is worse still, and the cold-read fix above does not cover it:
-      // the record would be re-`put` at `newKey` with no ratings AND no cinemas, so
-      // `upsert` prunes every one of the film's showtimes. Defer instead — the row stays
-      // at `oldKey`, nothing is invalidated, and the settle that asked for this re-key
-      // runs again on its next tick. See [[MovieRepository.findByIdChecked]].
-      val (storedRow, readOk) = get(oldKey) match {
-        case Some(resident) => (Some(StoredMovieRecord(oldKey.cleanTitle, oldKey.year, resident, residentIdOf(oldKey))), true)
-        case None           => findStoredChecked(oldKey)
-      }
-      (storedRow.map(_.record), readOk) match {
-        case (_, false) =>
-          logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
-            s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): the stored row could not be READ, " +
-            "and re-keying a row we cannot see would write it back with neither ratings nor cinemas.")
-          skippedUnreadable.incrementAndGet()
-          ()
-        case (row, true) =>
-          val updated = update(row.getOrElse(MovieRecord()))
-          // A re-key is a RETITLE: the film keeps its id, so its screenings, slots and
-          // read-model rows stay where they are and only the document's `key` moves
-          // (see `FilmId` for what the id-as-key era cost here). The one case that is
-          // still a merge is a DIFFERENT film already holding `newKey` — then this row
-          // folds into it the way every same-film duplicate does, through `put`'s
-          // identity gate, and the loser's side rows are carried across first.
-          val id = corpusIndex.idOf(oldKey).orElse(storedRow.map(_.id)).getOrElse(FilmId.fresh(oldKey, corpusIndex.holdsId))
-          corpusIndex.idOf(newKey).filter(_ != id) match {
-            case Some(holder) if oldKey != newKey =>
-              if (repository.moveFilm(id, holder)) {
-                // A MERGE, not a retitle: the holder keeps its id, and the two records are
-                // merged the way every fold merges — `canonical` picks the union base by
-                // runtime corroboration when the tmdbIds differ — never one written over
-                // the other. (The holder's record was replaced, silently, before 2026-09-07.)
-                val merged = get(newKey).fold(updated)(holderRecord =>
-                  FilmCanonicalizer.canonical(Seq(newKey -> holderRecord, oldKey -> updated), normalizer)._2)
-                invalidate(oldKey)
-                mergeMetrics.recordMerge(MergeReason.Canonicalize, 1)
-                putAs(newKey, merged, holder)
-              } else {
-                logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
-                  s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): another row holds the new key and " +
-                  "this one's screenings/slots could not be carried onto it.")
-                skippedUnreadable.incrementAndGet()
-              }
-            case _ =>
-              val resident = Option(positive.getIfPresent(oldKey))
-              if (oldKey != newKey) {
-                evict(oldKey)
-                mergeMetrics.recordRekey(reason)
-                logger.info(s"retitle ${StoredMovieRecord.keyFor(oldKey)} -> ${StoredMovieRecord.keyFor(newKey)} ($id, $reason)")
-              }
-              // A retitle whose write did not land — it failed, or it was declined and the
-              // new key does not hold this film — is still stored under the old key: put the
-              // row back there, or the cache holds it under neither key while Mongo holds it
-              // under the old one, and a scrape standing on the new key then strips the old
-              // row's slots as if the retitle had landed.
-              val outcome = putAs(newKey, updated, id)
-              if (outcome != WriteOutcome.Written && oldKey != newKey && !corpusIndex.idOf(newKey).contains(id) &&
-                  !positive.asMap().containsKey(oldKey))
-                resident.foreach(store(oldKey, _, id))
-          }
-      }
-    }
-  }
-
-  /** Scrape-time landing — [[ScrapeLanding]] owns the whole path; this cache is its
-   *  [[LandingStore]]. Constructed here, on `this`, because the store IS this cache;
-   *  the landing reads nothing from it until the first scrape, so the not-yet-built
-   *  `this` it receives is never observed. */
-  private val landing = new ScrapeLanding(this, repository, staging, bus, screeningTokens, enrichmentLanguage,
-    maxConsecutiveGuardRejections, scrapeLandingMetrics, scrapeGuardLedger, clock, stringPool)
-  /** [[LandingStore]]: how many rows are resident — zero is the cold mirror the
-   *  landing's first scrape guards against. */
-  private[services] def residentCount: Long = positive.estimatedSize()
-
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                         listingIsComplete: Boolean = true,
-                         sourceKey: Option[String] = None,
-                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)] =
-    landing.recordCinemaScrape(cinema, movies, listingIsComplete, sourceKey, viaFallback)
-
-  def hasResolvedSiblingByTitle(rawTitle: String): Boolean =
-    corpusIndex.entriesFor(normalizer.sanitize(rawTitle)).exists { case (_, e) => e.tmdbId.isDefined }
 
   def snapshot(): Seq[StoredMovieRecord] = {
     import scala.jdk.CollectionConverters._
@@ -1421,21 +727,6 @@ class CaffeineMovieCache(
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.toSeq
   }
-
-  /** Write a merge's survivor, and delete its losers only on the strength of that write —
-   *  shared by the write-time fold and the rehydrate's duplicate reconcile, so the two cannot
-   *  disagree on when the losers go. Deleting them first lost every field only they held
-   *  whenever the survivor's write then did not land. A write DECLINED because a loser still
-   *  holds the key or tmdbId is the ordinary case — the losers are what hold them — so they
-   *  go and the survivor is written again. Any other outcome (a failure, a client closing)
-   *  landed nothing, and the losers are kept. Returns the survivor's outcome and whether the
-   *  losers were deleted. */
-  private def writeSurvivorThenRetireLosers(losers: Seq[FilmId])(write: () => WriteOutcome): (WriteOutcome, Boolean) =
-    write() match {
-      case WriteOutcome.IdentityHeld => losers.foreach(repository.delete); (write(), true)
-      case WriteOutcome.Written      => losers.foreach(repository.delete); (WriteOutcome.Written, true)
-      case kept                      => (kept, false)
-    }
 
   def rehydrate(): Int = rehydrateChecked()._1
 
@@ -1522,48 +813,8 @@ class CaffeineMovieCache(
     if (changed > 0 || removed.nonEmpty)
       logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + ${removed.size} orphan-delete(s) " +
         "the change stream missed.")
-    // Reconcile duplicate documents. Two stored rows that collapse onto ONE CacheKey
-    // here (a merge-key rule added after they were written; a row whose display title
-    // drifted onto another row's key) are the same film twice in `movies`, and the
-    // cross-title settle never sees them — they are one entry in this cache. `byKey`
-    // already unioned them; carry the losers' cinemas onto the survivor, rewrite it
-    // whole, and delete the loser documents. Gated on a duplicate existing, so a clean
-    // corpus writes nothing.
-    val duplicates = byKey.collect { case (k, rs) if rs.sizeIs > 1 => k -> rs.map(_.id).sortBy(_.value) }
-    if (duplicates.nonEmpty) {
-      duplicates.foreach { case (k, ids) =>
-        val survivor = ids.head
-        val (moved, stranded) = ids.tail.partition(repository.moveFilm(_, survivor))
-        val union = Option(positive.getIfPresent(k))
-        val (outcome, retired) = writeSurvivorThenRetireLosers(moved)(() =>
-          union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _)))
-        if (!retired)
-          logger.warn(s"MovieCache rehydrate: kept ${moved.size} duplicate document(s) of '${k.cleanTitle}' — the " +
-            s"survivor's write did not land ($outcome); reconciled again next pass.")
-        // The losers are gone, so a rewrite that did not land leaves the union in the cache
-        // alone — and every later scrape patches only what it changed against it, so the
-        // union's own fields would never reach Mongo. Drop the key; the next read finds the
-        // survivor as Mongo has it (its side rows are moved; the losers' own fields are lost).
-        else if (outcome != WriteOutcome.Written) {
-          logger.warn(s"MovieCache rehydrate: the survivor of '${k.cleanTitle}' could not be rewritten after " +
-            s"its ${moved.size} duplicate document(s) were deleted ($outcome) — dropped from the cache so it " +
-            "is re-read as stored; fields only the duplicates held are lost.")
-          evict(k)
-        }
-        if (stranded.nonEmpty)
-          logger.warn(s"MovieCache rehydrate: kept ${stranded.size} duplicate document(s) of '${k.cleanTitle}' whose " +
-            "cinemas could not be carried onto the survivor — reconciled again next pass.")
-      }
-      logger.info(s"MovieCache rehydrate: reconciled ${duplicates.size} key(s) stored as several `movies` documents.")
-    }
-    // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo (`fromStorage`, which
-    // keys each row by `displayTitle`) and stops. It deliberately does NOT
-    // re-canonicalise. The raw `positive.put` above can leave same-film rows split
-    // across years/spellings (`Kumotry|2025` + `Kumotry|2026`, both one tmdbId);
-    // collapsing them is the periodic `SettleReaper`'s job (`MovieService.settle`),
-    // NOT the load's — re-merging here, right after `fromStorage` re-derives every
-    // key, was the per-deploy re-key flap. The newcomer path stays settled via the
-    // staging fold; cross-title/cross-year splits are reconciled by the reaper.
+    // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo and stops. Which listings are one
+    // film is the identity projection's to decide, never the load's.
     val tPopulateMs = populating.millis
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
@@ -1649,7 +900,6 @@ class CaffeineMovieCache(
             val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) => source -> forCacheSlot(slot) }.toSeq
             val updated = resident.copy(data = resident.data ++ slots)
             positive.put(key, updated)
-            slots.foreach { case (source, slot) => corpusIndex.putSlot(key, source, resident.data.get(source), slot, updated) }
           }
           if (applied) touch()
           VenueVerdict.Applied

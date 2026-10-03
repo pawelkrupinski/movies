@@ -78,13 +78,6 @@
       <a href="@u" target="_blank" rel="noopener" title="@u">T@{idx + 1}</a>
     }
   </td>
-  @* Force a TMDB re-enrich of this row (then the event chain re-runs the
-     other enrichments). stopPropagation in the handler keeps the click
-     from toggling the details row. *@
-  <td class="actions">
-    <button type="button" class="reenrich" data-url="@routes.DebugController.reenrich(title, year)"
-            title="Re-enrich TMDB, then ratings">↻</button>
-  </td>
 </tr>
 @* `data-digest` is the change-stream NO-OP GUARD. A frame fires on ANY write to
    the film's document — a re-asserted scrape slot bumps only `updatedAt`, which

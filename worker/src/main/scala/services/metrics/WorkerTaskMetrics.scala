@@ -3,10 +3,9 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
 import services.readmodel.ReadModelProjectionMetrics
-import services.staging.{StagingFoldMetrics, StagingMetrics, StagingStep}
-import services.tasks.{QueueSnapshot, RatingLatencyMetrics, ResolveMode, Task, TaskState, TaskType}
+import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
 
 import java.time.Instant
 
@@ -55,7 +54,7 @@ object TaskObserver {
  * never collide on the single `/metrics` endpoint. This class is the cheap
  * PER-COUNTRY facade a wiring holds: it binds one `countryCode` and forwards every
  * record to the shared `Series`, so all existing call sites (which see the narrow
- * `TaskObserver` / `MergeMetrics` / … traits) stay unchanged.
+ * `TaskObserver` / `ReadModelProjectionMetrics` / … traits) stay unchanged.
  *
  * Counters are monotonic since-boot totals — `rate()` handles the reset on each
  * worker reboot. Every `TaskType` (× every label value × every country) is
@@ -68,15 +67,10 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with StagingFoldMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
+  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
-
-  // ── MergeMetrics / SplitMetrics ─────────────────────────────────────────────
-  def recordMerge(reason: MergeReason, victims: Int): Unit = series.recordMerge(countryCode, reason, victims)
-  override def recordRekey(reason: RekeyReason): Unit      = series.recordRekey(countryCode, reason)
-  def recordSplit(fragments: Int): Unit                    = series.recordSplit(countryCode, fragments)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
@@ -94,17 +88,8 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
 
-  // ── StagingMetrics ──────────────────────────────────────────────────────────
-  def recordNewcomerKick(groupRows: Int): Unit = series.recordStagingNewcomerKick(countryCode, groupRows)
-
-  // ── StagingFoldMetrics ──────────────────────────────────────────────────────
-  def recordFoldAborted(): Unit = series.recordStagingFoldAborted(countryCode)
-
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
-
-  // ── ResolveDuplicateMetrics ─────────────────────────────────────────────────
-  def recordDuplicate(mode: ResolveMode, upgraded: Boolean): Unit = series.recordResolveDuplicate(countryCode, mode, upgraded)
 
   // ── ScrapeLandingMetrics ────────────────────────────────────────────────────
   def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
@@ -155,33 +140,29 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
 object WorkerTaskMetrics {
 
-  /** The per-country queue/staging sample [[Series.scrape]] folds into the gauges
+  /** The per-country queue sample [[Series.scrape]] folds into the gauges
    *  for one country on each scrape. `snapshot` is that country's live queue
-   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()` — each None when its read
-   *  FAILED, which holds that read's gauges at their last reading — and
+   *  monitor — None when its read FAILED, which holds its gauges at their last reading — and
    *  `changeStreamLiveness` the repository's record of when each change-stream cursor
    *  last delivered and what it has handed the apply thread that has not been applied yet —
    *  read at scrape time, so a silent cursor's age and a stuck apply's lag keep climbing. */
-  case class CountryQueueSample(countryCode: String, snapshot: Option[QueueSnapshot], stagingByStep: Option[Map[StagingStep, Int]],
-                                changeStreamLiveness: ChangeStreamLiveness)
+  case class CountryQueueSample(countryCode: String, snapshot: Option[QueueSnapshot], changeStreamLiveness: ChangeStreamLiveness)
 
   object CountryQueueSample extends play.api.Logging {
-    def apply(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int],
-              changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample =
-      CountryQueueSample(countryCode, Some(snapshot), Some(stagingByStep), changeStreamLiveness)
+    def apply(countryCode: String, snapshot: QueueSnapshot, changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample =
+      CountryQueueSample(countryCode, Some(snapshot), changeStreamLiveness)
 
-    /** Take one country's sample from its live reads, each on its own. Both THROW on a failed
-     *  read (an unreadable queue is not an empty one), and the worker renders its whole
+    /** Take one country's sample from its live reads. The queue read THROWS on a failure
+     *  (an unreadable queue is not an empty one), and the worker renders its whole
      *  exposition — every country, the JVM, every counter — in one pass that keeps the last
      *  good bytes when it throws: a read escaping here froze every series the worker exports
      *  for as long as it kept failing. A failed read holds only its own gauges. */
-    def read(countryCode: String, snapshot: => QueueSnapshot, stagingByStep: => Map[StagingStep, Int],
-             changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample = {
+    def read(countryCode: String, snapshot: => QueueSnapshot, changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample = {
       def held[A](what: String, read: => A): Option[A] =
         scala.util.Try(read).fold(e => {
           logger.warn(s"metrics: $countryCode $what read failed, holding its gauges at their last reading: ${e.getMessage}"); None
         }, Some(_))
-      CountryQueueSample(countryCode, held("queue", snapshot), held("staging", stagingByStep), changeStreamLiveness)
+      CountryQueueSample(countryCode, held("queue", snapshot), changeStreamLiveness)
     }
   }
 
@@ -276,12 +257,6 @@ object WorkerTaskMetrics {
       .help("Configured worker pool size (shared across countries) — pair with queue_depth{state=\"worked_on\"} for utilization.")
       .register(registry)
 
-    private val stagingMovies = Gauge.builder()
-      .name("kinowo_worker_staging_movies")
-      .help("Incubating films currently in pending_movies, by country and the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
-      .labelNames("country", "step")
-      .register(registry)
-
     // A GAUGE COMPUTED AT SCRAPE TIME, never a stored age: the value is `now - lastDelivered`
     // on every scrape, so a cursor that stalls draws a straight diagonal instead of freezing
     // at whatever it last said. The event COUNTERS beside it cannot tell a stalled cursor
@@ -307,24 +282,6 @@ object WorkerTaskMetrics {
       .name("kinowo_worker_change_stream_apply_lag_seconds")
       .help("Seconds the OLDEST not-yet-applied change event of each cursor (collection=movies|screenings|movie_slots) has waited since delivery, by country; 0 when nothing is waiting. Recomputed on every scrape, so an apply thread that is stuck climbs in a straight line. The delivered-vs-applied lag: the read model is at least this stale for that change. Alerted by ChangeStreamApplyLagging (over 10 minutes for 10 minutes).")
       .labelNames("country", "collection")
-      .register(registry)
-
-    private val merges = Counter.builder()
-      .name("kinowo_worker_merges")
-      .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by country and reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate, normalize-rebuild=title-rule change re-merges rows that now share a key. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val rekeys = Counter.builder()
-      .name("kinowo_worker_rekeys")
-      .help("Movie rows that stayed the same film but moved to a new title|year key since boot, by country and reason — resolved-year=TMDB concluded a year for a yearless row, canonicalize=the settle re-spelled or re-yeared a lone row, embedded-year=a year a venue wrote into its title promoted a yearless key, forced-reset=the operator's forced re-enrich re-keyed onto the scraped year. A re-key is the one cost a stable film id would remove, so rate() is the measurement that decides that change.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val splits = Counter.builder()
-      .name("kinowo_worker_splits")
-      .help("Cinema slots the settle pass re-diverted to staging since boot because their row held a SECOND film (MixedFilmSplitter), by country — the inverse of a merge. Each re-resolves on its own hints, so rate() is the un-merge re-enrichment load; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films.")
-      .labelNames("country")
       .register(registry)
 
     private val readModelWrites = Counter.builder()
@@ -421,18 +378,6 @@ object WorkerTaskMetrics {
       .labelNames("country", "outcome")
       .register(registry)
 
-    private val stagingNewcomerKicks = Counter.builder()
-      .name("kinowo_worker_staging_newcomer_kicks")
-      .help("StagingNewcomerDiverted events the StagingReaper handled since boot, by country — each one decodes the film's whole staging group to pick its next step. The denominator for kinowo_worker_staging_newcomer_kick_rows_total.")
-      .labelNames("country")
-      .register(registry)
-
-    private val stagingNewcomerKickRows = Counter.builder()
-      .name("kinowo_worker_staging_newcomer_kick_rows")
-      .help("Staging rows decoded by newcomer kicks since boot, by country. A kick is due only for a film NEW to staging, so rows/kick sits near 1; a kick per venue JOINING an incubating film (the pre-2026-09-23 shape) makes the k-th of N venues decode k rows, rows/kick ~N/2 and the scrape tick quadratic in a wide film's venues.")
-      .labelNames("country")
-      .register(registry)
-
     private val cacheRehydrateChanges = Counter.builder()
       .name("kinowo_worker_cache_rehydrate_changes")
       .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by country and kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
@@ -512,12 +457,6 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
-    private val resolveRetryDuplicates = Counter.builder()
-      .name("kinowo_worker_resolve_retry_duplicates")
-      .help("TMDB re-try resolves (mode=retry-miss|force) that found their film's resolve already queued, by country, mode and outcome: upgraded = merged into the WAITING task, which now searches in the re-try's mode; not-upgraded = the queued task was already being worked on with its old mode (or already carried this mode), so this re-try did not add a search. Before 2026-09-23 every one of these was DROPPED, invisible behind tasks_enqueued{result=deduped}, and a plain resolve then stopped at the remembered miss the re-try existed to look past, for another 24h. A plain duplicate loses nothing and is not counted.")
-      .labelNames("country", "mode", "outcome")
-      .register(registry)
-
     private val scrapeGuardVerdicts = Counter.builder()
       .name("kinowo_worker_scrape_guard_verdicts")
       .help("ScrapeLanding's depth and breadth guards (services.movies.ScrapeHealth) rejecting or accepting a tick, by country, guard (depth|breadth) and verdict (reject|accept). `healthy` is not counted — the overwhelming default on every tick of every cinema, and answered better by a scrape-completed counter elsewhere. Added 2026-09-13: before this, a guard stuck rejecting (or repeatedly giving up) for hours was visible only by grepping [scrape-depth]/[scrape-prune] log lines by cinema name — which is how long Kino Aurum's breadth-guard deadlock (57 accumulated slot-keys against an 11-film board, permanently below the prune-floor ratio) went unnoticed. A `reject` RATE that never falls is the signal to alert on; a sustained run of `accept`s on one axis means a scraper that has been degraded in the SAME shape for hours, not a one-off.")
@@ -532,14 +471,8 @@ object WorkerTaskMetrics {
 
     private val repositoryWriteFailed = Counter.builder()
       .name("kinowo_worker_repository_write_failed")
-      .help("A MovieRepository / SlotsRepository / ScreeningsRepository / StagingRepository write that THREW, by country, collection (movies|movie_slots|screenings|pending_movies), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Every known (collection, op) is seeded at 0 for the expected exception classes (RepositoryWriteMetrics.SeededExceptions) so increase() sees the first failure; any other class appears on its first failure and counts from its second.")
+      .help("A MovieRepository / SlotsRepository / ScreeningsRepository write that THREW, by country, collection (movies|movie_slots|screenings|pending_movies), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Every known (collection, op) is seeded at 0 for the expected exception classes (RepositoryWriteMetrics.SeededExceptions) so increase() sees the first failure; any other class appears on its first failure and counts from its second.")
       .labelNames("country", "collection", "op", "exception")
-      .register(registry)
-
-    private val stagingFoldAborts = Counter.builder()
-      .name("kinowo_worker_staging_fold_aborts")
-      .help("Staging folds MongoStagingFolder GAVE UP on, by country: out of retries or a failure retrying cannot help, rethrown so the fold reschedules and the newcomer stays in pending_movies, its listing off the site. ZERO IS THE HEALTHY READING. Added 2026-10-01: one UK film's fold died on E11000 about once a minute from 2026-09-25 for six days and only an ERROR line said so -- the fold runs in an event listener, not as a task, so tasks_finished never counted it. Each abort is also an ERROR line naming the film. Alerted by StagingFoldsAborting (worker-pipeline.rules). Seeded at 0 so increase() sees the first.")
-      .labelNames("country")
       .register(registry)
 
     private val decodeFailures = Counter.builder()
@@ -566,11 +499,6 @@ object WorkerTaskMetrics {
         }
         RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(c, s))
         QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
-        StagingStep.all.foreach(s => stagingMovies.labelValues(c, s.label).set(0.0))
-        MergeReason.all.foreach(r => merges.labelValues(c, r.label))
-        RekeyReason.all.foreach(r => rekeys.labelValues(c, r.label))
-        stagingFoldAborts.labelValues(c).inc(0.0)
-        splits.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
         ScrapeLandingMetrics.Guards.foreach(g =>
           ScrapeLandingMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
         ScrapeLandingMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
@@ -578,7 +506,6 @@ object WorkerTaskMetrics {
           RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
         }
         services.readmodel.DecodeFailureMetrics.Collections.foreach(coll => decodeFailures.labelValues(c, coll).inc(0.0))
-        RetryModes.foreach(m => ResolveDuplicateOutcomes.foreach(o => resolveRetryDuplicates.labelValues(c, m, o).inc(0.0)))
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
         // Materialize at 0 so Grafana draws a continuous line — and for the prune, so the
@@ -599,8 +526,6 @@ object WorkerTaskMetrics {
         ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
-        stagingNewcomerKicks.labelValues(c).inc(0.0)    // materialize so rate() has a baseline from boot
-        stagingNewcomerKickRows.labelValues(c).inc(0.0)
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         movieCoalesced.labelValues(c)
@@ -625,18 +550,6 @@ object WorkerTaskMetrics {
     // ── RatingLatencyMetrics ──────────────────────────────────────────────────
     def recordFirstRatingDelay(country: String, site: String, seconds: Double): Unit =
       ratingFirstAttemptDelay.labelValues(country, site).observe(math.max(0.0, seconds))
-
-    /** Each absorbed victim row is one increment under its fold's reason. */
-    def recordMerge(country: String, reason: MergeReason, victims: Int): Unit =
-      if (victims > 0) merges.labelValues(country, reason.label).inc(victims.toDouble)
-
-    /** One increment per row whose key moved while it stayed the same film. */
-    def recordRekey(country: String, reason: RekeyReason): Unit =
-      rekeys.labelValues(country, reason.label).inc()
-
-    /** Each cinema slot re-diverted by a mixed-row split is one increment. */
-    def recordSplit(country: String, fragments: Int): Unit =
-      if (fragments > 0) splits.labelValues(country).inc(fragments.toDouble)
 
     // ── ReadModelProjectionMetrics ────────────────────────────────────────────
     def recordWrite(country: String, target: String, op: String, count: Int): Unit =
@@ -687,21 +600,11 @@ object WorkerTaskMetrics {
     def recordReconcileSweep(country: String, kind: String, didWork: Boolean): Unit =
       readModelReconcileSweeps.labelValues(country, kind, didWork.toString).inc()
 
-    // ── StagingMetrics ────────────────────────────────────────────────────────
-    def recordStagingNewcomerKick(country: String, groupRows: Int): Unit = {
-      stagingNewcomerKicks.labelValues(country).inc()
-      stagingNewcomerKickRows.labelValues(country).inc(math.max(0, groupRows).toDouble)
-    }
-
     // ── CacheSyncMetrics ──────────────────────────────────────────────────────
     def recordRehydrate(country: String, changedUpserts: Int, deletes: Int): Unit = {
       if (changedUpserts > 0) cacheRehydrateChanges.labelValues(country, "changed").inc(changedUpserts.toDouble)
       if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
     }
-
-    def recordResolveDuplicate(country: String, mode: ResolveMode, upgraded: Boolean): Unit =
-      resolveRetryDuplicates.labelValues(country, modeLabel(mode),
-        if (upgraded) ResolveDuplicateOutcome.Upgraded else ResolveDuplicateOutcome.NotUpgraded).inc()
 
     // ── ScrapeLandingMetrics ──────────────────────────────────────────────────
     def recordScrapeGuardVerdict(country: String, guard: String, verdict: String): Unit =
@@ -712,9 +615,6 @@ object WorkerTaskMetrics {
     // ── RepositoryWriteMetrics ─────────────────────────────────────────────────
     def recordRepositoryWriteFailed(country: String, collection: String, op: String, exception: String): Unit =
       repositoryWriteFailed.labelValues(country, collection, op, exception).inc()
-
-    // ── StagingFoldMetrics ─────────────────────────────────────────────────────
-    def recordStagingFoldAborted(country: String): Unit = stagingFoldAborts.labelValues(country).inc()
 
     // ── DecodeFailureMetrics ───────────────────────────────────────────────────
     def recordDecodeFailure(country: String, collection: String): Unit =
@@ -751,16 +651,13 @@ object WorkerTaskMetrics {
       if (outcome == Outcome.Done) duration.labelValues(country, task.taskType.name).observe(handleMillis / 1000.0)
     }
 
-    /** Refresh each country's queue + staging gauges from its live sample and
+    /** Refresh each country's queue gauges from its live sample and
      *  render the full exposition (task pipeline + census + JVM, all on the shared
      *  registry). Called from the worker's `/metrics` handler on each Fly scrape
      *  with one [[CountryQueueSample]] per running country. */
     def scrape(samples: Seq[CountryQueueSample], now: Instant): String = {
       samples.foreach { s =>
         s.snapshot.foreach(refreshQueueGauges(s.countryCode, _, now))
-        s.stagingByStep.foreach { byStep =>
-          StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(byStep.getOrElse(step, 0).toDouble))
-        }
         ChangeStreamLiveness.Collections.foreach { coll =>
           changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now))
           changeStreamApplyPending.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.pendingApplies(coll).toDouble)
@@ -822,18 +719,6 @@ object WorkerTaskMetrics {
   val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped, EnqueueResult.Failed)
 
   private val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
-
-  /** `outcome` of a re-try resolve that landed on an already-queued one. */
-  object ResolveDuplicateOutcome { val Upgraded = "upgraded"; val NotUpgraded = "not-upgraded" }
-  private val ResolveDuplicateOutcomes: Seq[String] = Seq(ResolveDuplicateOutcome.Upgraded, ResolveDuplicateOutcome.NotUpgraded)
-
-  /** The `mode` label of a re-try resolve; Normal is never reported (see ResolveDuplicateMetrics). */
-  private def modeLabel(mode: ResolveMode): String = mode match {
-    case ResolveMode.Normal    => "normal"
-    case ResolveMode.RetryMiss => "retry-miss"
-    case ResolveMode.Force     => "force"
-  }
-  private val RetryModes: Seq[String] = Seq(ResolveMode.RetryMiss, ResolveMode.Force).map(modeLabel)
 
   /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
    *  skip up to a slow multi-minute scrape/detail fetch. */

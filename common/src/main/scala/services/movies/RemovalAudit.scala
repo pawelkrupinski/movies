@@ -12,7 +12,7 @@ import play.api.Logger
  * sites logged what they dropped, from which film, or why.
  *
  * Every removal site in `services.movies` (corpus, screenings, cache),
- * `services.readmodel` (web_movies / web_screenings), `services.staging`, and the
+ * `services.readmodel` (web_movies / web_screenings), and the
  * worker's `UnscreenedCleanup` routes through here so the format, the id sampling,
  * and the level policy live in ONE place.
  *

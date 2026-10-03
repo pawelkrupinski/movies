@@ -4,8 +4,9 @@ import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.CinemaScrapeRunner
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
+import services.identity.IdentityListingIntake
+import services.movies.{InMemoryScrapeGuardLedger, ScrapeLandingMetrics}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
@@ -16,8 +17,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * `ChunkScrapeReaper` gives up waiting and `ScrapeChunkReduceHandler` publishes whatever
  * did arrive — deliberately, so one dead chunk degrades to a partial listing instead of
  * losing the venue. But it publishes it down the SAME path a complete scrape takes, so
- * `MovieCache.recordCinemaScrape` cannot tell the two apart and prunes every film the
- * listing does not mention.
+ * the listing intake could not tell the two apart and withdrew every film the listing does
+ * not mention.
  *
  * The films that lose is the point. A title screening daily appears in whichever chunks
  * DID land, so it survives; a title screening on ONE date lives entirely inside a single
@@ -50,13 +51,14 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
 
   private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
-  /** A cache, and the chunked stack over it publishing down the REAL path: runner →
-   *  `MovieCache.recordCinemaScrape`, which is where the prune lives. `ChunkScrapeFlowSpec`
-   *  stubs the publish out, which is exactly why it never saw this. */
-  private def harness(scraper: FakeChunkedScraper): (CaffeineMovieCache, ChunkScrapeHarness) = {
-    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
-    val runner = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
-    (cache, new ChunkScrapeHarness(scraper, s => { runner.run(s); () }, clock, staleAfter = stale))
+  /** The listing intake, and the chunked stack over it publishing down the REAL path: runner →
+   *  `IdentityListingIntake.recordCinemaScrape`, which is where a withdrawal lives.
+   *  `ChunkScrapeFlowSpec` stubs the publish out, which is exactly why it never saw this. */
+  private def harness(scraper: FakeChunkedScraper): (IdentityListingIntake, ChunkScrapeHarness) = {
+    val intake = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository,
+      new InMemoryScrapeGuardLedger, titleNormalizer, 3, clock, ScrapeLandingMetrics.noop)
+    val runner = new CinemaScrapeRunner(intake)
+    (intake, new ChunkScrapeHarness(scraper, s => { runner.run(s); () }, clock, staleAfter = stale))
   }
 
   /** Run every claimable task once and complete it, WITHOUT firing the coordinator —
@@ -71,11 +73,9 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** Every title this cinema currently holds a slot for, as the cache sees it. */
-  private def slotTitles(cache: CaffeineMovieCache): Set[String] =
-    cache.snapshot().flatMap(_.record.data.iterator.collect {
-      case (s, sd) if models.Source.cinemaOf(s).contains(cinema) => sd.title
-    }.flatten).toSet
+  /** Every title this cinema's accepted listing holds. */
+  private def slotTitles(intake: IdentityListingIntake): Set[String] =
+    intake.listingOf(cinema).map(_.movie.title).toSet
 
   "a healthy chunked scrape" should "hold both the daily and the advance-booking film" in {
     val (cache, h) = harness(new FakeChunkedScraper(Map("a" -> Seq(daily), "b" -> Seq(advance))))

@@ -2,14 +2,13 @@ package integration
 
 import services.movies.ListedShowtimes
 
-import models.{CityScreening, MovieRecord, Multikino, ResolvedMovie, ResolvedRatings, Showtime, Source, SourceData}
+import models.{CityScreening, MovieRecord, ResolvedMovie, ResolvedRatings, Showtime, SourceData}
 import org.mongodb.scala.{Document, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{DecodeFailureMetrics, MongoReadModelRepository}
-import services.staging.{MongoStagingRepository, StagingRecord}
 import tools.{IsolatedMongoDatabase, MalformedChangeEventProbe}
 
 import scala.concurrent.Await
@@ -90,16 +89,4 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
         s"screening$n"
       }
     }(Document("_id" -> "__malformed__", "showtimes" -> "not an array"))
-
-  "the pending_movies change stream" should "deliver a valid row after a document it cannot decode" in
-    survives("pending_movies") { (db, failures) => seen =>
-      new MongoStagingRepository(Some(db), normalizer = titleNormalizer, decodeFailures = failures).watchChanges(r => seen(r.id), _ => ()).get
-    } { db =>
-      val staging = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
-      n => {
-        val title = s"Valid $n"
-        staging.upsert(Multikino, title, Some(2026), MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some(title)))))
-        StagingRecord.idFor(Multikino, title, Some(2026), titleNormalizer)
-      }
-    }(undecodableFilm)
 }

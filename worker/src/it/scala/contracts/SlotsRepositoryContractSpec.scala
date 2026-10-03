@@ -6,7 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemorySlotsRepository, SlotsRepository, WriteOutcome}
-import services.staging.InMemoryStagingRepository
+import services.movies.InMemoryMovieRepository
 import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
 
@@ -42,7 +42,7 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
       cast = Seq("A", "B"), showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 1, 19, 15), Some("https://book"), Some("1"), List("2D"))))
 
   private val implementations =
-    Implementations.of(classOf[SlotsRepository], classOf[SlotsRepository], classOf[InMemoryStagingRepository])
+    Implementations.of(classOf[SlotsRepository], classOf[SlotsRepository], classOf[InMemoryMovieRepository])
 
   "the SlotsRepository implementations" should "include the in-memory store and the Mongo repository" in {
     implementations.map(_.getSimpleName) should contain allOf ("InMemorySlotsRepository", "MongoSlotsRepository")

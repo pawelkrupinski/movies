@@ -1111,7 +1111,7 @@
         {
           "id": 25,
           "title": "Worker — waiting tasks by type (claimable / held)",
-          "description": "Waiting tasks by type, split into CLAIMABLE (the real backlog the pool can pick up now) and HELD (deliberately held back: a chunked venue's staggered fan-out, retry backoff). A big held ScrapeChunk band is scheduled work, not a backlog; a type stuck in held for hours is one failing and retrying. Sampled from the bounded active snapshot. Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
+          "description": "Waiting tasks by type, split into CLAIMABLE (the real backlog the pool can pick up now) and HELD (deliberately held back: a chunked venue's staggered fan-out, retry backoff). A big held ScrapeChunk band is scheduled work, not a backlog; a type stuck in held for hours is one failing and retrying. Sampled from the bounded active snapshot. Shows WHICH work is piling up — e.g. a wave of detail-enrichment steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1277,48 +1277,6 @@
           ]
         },
         {
-          "id": 29,
-          "title": "Worker — staging incubation: movies by step (total = all in staging)",
-          "description": "Films currently incubating in pending_movies, stacked by the step each needs NEXT on its way into the live `movies` collection: detail (a cinema's synopsis/poster still owed) → resolve_tmdb (no TMDB match yet) → resolve_imdb (TMDB hit, IMDb cross-ref pending) → fold (concluded, about to graduate). Distinct films (a film's multiple cinema rows count once). The stacked total is the total movie count in staging; a step that keeps growing is where incubation is stalling (correlate with the staging task queue panels + StagingStuckAlerter).",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 136
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "min": 0,
-              "custom": {
-                "spanNulls": 300000,
-                "drawStyle": "line",
-                "fillOpacity": 25,
-                "stacking": {
-                  "mode": "normal"
-                }
-              }
-            },
-            "overrides": []
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "kinowo_worker_staging_movies{country=~\"$country\"}",
-              "legendFormat": "{{country}} {{step}}",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "local-prometheus"
-              }
-            }
-          ]
-        },
-        {
           "id": 9024,
           "title": "Worker — longest backoff hold by type (s)",
           "description": "The other half of the head-of-line age beside it: the longest REMAINING hold among waiting tasks the queue is deliberately holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due), which that panel leaves out. Every hold is capped at 30 minutes (TaskWorker.MaxBackoff), so the healthy line is a sawtooth under the 1800s threshold; anything above it is a task parked past the cap, alerted as WorkerTaskParkedTooLong. Empty is the all-clear: the `> 0` filter hides the flat zero every type publishes when nothing is held.",
@@ -1384,69 +1342,9 @@
     {
       "id": 104,
       "type": "row",
-      "title": "Corpus movement — merges, change stream, read model",
+      "title": "Corpus movement — change stream, read model",
       "collapsed": true,
       "panels": [
-        {
-          "id": 32,
-          "title": "Worker — movie-row merges, re-keys and splits (per min)",
-          "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — cinema slots the settle pass sent back to staging because their row held a SECOND film (MixedFilmSplitter), each re-resolving on its own hints; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films. The rekey series (kinowo_worker_rekeys_total) is a row that stayed the same film but moved to a new title|year key — the churn a stable film id would remove and nothing else, so it is the measurement that decides that change.",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 146
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "min": 0,
-              "custom": {
-                "spanNulls": 300000,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "stacking": {
-                  "mode": "normal"
-                }
-              }
-            },
-            "overrides": []
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (reason) (rate(kinowo_worker_merges_total{country=~\"$country\"}[$__rate_interval])) * 60",
-              "legendFormat": "{{reason}}",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "local-prometheus"
-              }
-            },
-            {
-              "refId": "B",
-              "expr": "sum(rate(kinowo_worker_splits_total{country=~\"$country\"}[$__rate_interval])) * 60",
-              "legendFormat": "splits",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "local-prometheus"
-              }
-            },
-            {
-              "refId": "C",
-              "expr": "sum by (reason) (rate(kinowo_worker_rekeys_total{country=~\"$country\"}[$__rate_interval])) * 60",
-              "legendFormat": "rekey {{reason}}",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "local-prometheus"
-              }
-            }
-          ]
-        },
         {
           "id": 39,
           "title": "Worker — movies change-stream events (per min, by op)",

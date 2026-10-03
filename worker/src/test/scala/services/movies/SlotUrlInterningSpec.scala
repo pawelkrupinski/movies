@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * A film's poster / film-page / trailer URL is the SAME string at every cinema
@@ -43,18 +42,12 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
     trailerUrl = Some(new String(trailer))
   )
 
-  private def cacheOn(pool: StringPool) =
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer), normalizer = titleNormalizer, stringPool = pool)
+  private def builderOn(pool: StringPool) = new CinemaSlotBuilder(java.util.Locale.ENGLISH, pool)
 
+  /** The slots the projection builds for one film at two cinemas. */
   private def slotsForOneFilmAtTwoCinemas(): Seq[SourceData] = {
-    val cache = cacheOn(new StringPool)
-    val a = OdeonNorwich
-    val b = BfiLondonSouthbank
-    cache.recordCinemaScrape(a, Seq(showing(a)))
-    cache.recordCinemaScrape(b, Seq(showing(b)))
-    val record = cache.entries.map(_._2).find(_.data.size >= 2)
-    withClue("expected ONE film row carrying a slot per cinema") { record.isDefined shouldBe true }
-    record.get.data.values.toSeq
+    val builder = builderOn(new StringPool)
+    Seq(OdeonNorwich, BfiLondonSouthbank).map(c => builder.build(showing(c), "Spider-Man: Brand New Day", None))
   }
 
   "the cinema slot builder" should "share one poster-URL instance across a film's cinema slots" in {
@@ -78,12 +71,10 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
     (urls.head eq urls(1)) shouldBe true
   }
 
-  "Two caches handed one pool" should "share a URL instance across them, as the worker's countries do" in {
+  "Two slot builders handed one pool" should "share a URL instance across them, as the worker's countries do" in {
     val pool = new StringPool
-    val (first, second) = (cacheOn(pool), cacheOn(pool))
-    first.recordCinemaScrape(OdeonNorwich, Seq(showing(OdeonNorwich)))
-    second.recordCinemaScrape(BfiLondonSouthbank, Seq(showing(BfiLondonSouthbank)))
-    val urls = Seq(first, second).flatMap(_.entries.flatMap(_._2.data.values.flatMap(_.posterUrl)))
+    val urls = Seq(builderOn(pool).build(showing(OdeonNorwich), "Spider-Man: Brand New Day", None),
+                   builderOn(pool).build(showing(BfiLondonSouthbank), "Spider-Man: Brand New Day", None)).flatMap(_.posterUrl)
     urls should have size 2
     (urls.head eq urls(1)) shouldBe true
     urls.head should be theSameInstanceAs pool.canonical(new String(poster))

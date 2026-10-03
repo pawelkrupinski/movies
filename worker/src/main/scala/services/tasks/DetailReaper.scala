@@ -18,13 +18,10 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Periodically re-enqueues `EnrichDetails` tasks for every deferred cinema's
- * current films whose detail is stale — the refresh/retry backstop the
- * event-driven [[DetailTaskEnqueuer]] can't provide. `CinemaMovieAdded` fires
- * only on a film's first appearance, so without this a detail fetch that failed
- * the first time would never retry, and a cinema whose showtime-bearing fetch is
- * itself deferred (Rialto) would never refresh its showtimes after the first
- * fetch. This is the detail-side analogue of [[ScrapeReaper]] /
+ * Periodically enqueues `EnrichDetails` tasks for every deferred cinema's
+ * current films whose detail is missing or stale — the first fetch, its retry
+ * after a failure, and the refresh a cinema whose showtime-bearing fetch is
+ * itself deferred (Rialto) needs. This is the detail-side analogue of [[ScrapeReaper]] /
  * [[EnrichmentReaper]].
  *
  * It is ALSO the backstop for the `detailPending` gate: a film a deferred cinema
@@ -135,8 +132,8 @@ class DetailReaper(
   }
 
   /** Enqueue every now-due `(deferred-cinema, film)` detail, keyed off the row's
-   *  CURRENT CacheKey (so it's robust to a row that was re-keyed since its
-   *  `CinemaMovieAdded` fired), up to `maxEnqueuePerTick`. Public so tests / the
+   *  CURRENT CacheKey (so it's robust to a row that was re-keyed since it was
+   *  scraped), up to `maxEnqueuePerTick`. Public so tests / the
    *  fixture harness can drive one pass directly, with an injectable `nowMillis`
    *  so tests can advance time. Returns how many tasks were enqueued. */
   def tick(nowMillis: Long = clock.millis()): Int = {
@@ -185,7 +182,7 @@ class DetailReaper(
    *  deferred slot/`filmUrl` to enrich at all (orphaned flag). Clears the flag
    *  and re-triggers TMDB via `MovieDetailsComplete`, so the row stops being held
    *  out of the read model. Returns how many were released. Scheduled (not run by
-   *  the fixture harness's `enrichDetailsSync`, which only calls `tick`). */
+   *  the fixture harness's `enrichDetailsUntilQuiet`, which only calls `tick`). */
   def reapStuckPending(): Int = {
     var released = 0
     cache.entries.foreach { case (key, record) =>

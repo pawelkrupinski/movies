@@ -282,32 +282,9 @@ trait MovieRepository {
    *  throws: a failure is logged, counted and reported as [[WriteOutcome.Failed]]. */
   def delete(id: FilmId): WriteOutcome
 
-  /** Move a film's SIDE-COLLECTION rows (`screenings`, `movie_slots`) from one document
-   *  id to another — a MERGE of two documents that turned out to be one film (the
-   *  tmdbId fold, an imdbId fold, a staging retirement, the hydrate's duplicate
-   *  reconcile). A retitle never comes here: the film keeps its id (see [[FilmId]]).
-   *
-   *  A merge loser is not a departure: its showtimes are filed under ITS id, and nothing
-   *  else moves them — `upsert` re-stitches from the id it is writing TO, so at the winner
-   *  it finds nothing and stores nothing, while the loser is deleted with its row. The
-   *  showtimes are destroyed in between. That is not hypothetical: when every re-key was
-   *  such a move, on 2026-07-27 prod shed ~10k upcoming showtimes per cycle in PL alone,
-   *  films left intact, rebuilt only by the next scrape — the sawtooth this method ended.
-   *
-   *  Rows already at `newId` are kept, with the moved ones taking precedence on a shared
-   *  slot key (the same direction `rekey`'s record merge carries state forward).
-   *  Best-effort and a no-op without side collections wired.
-   *
-   *  Returns whether the rename may now PROCEED — i.e. whether `oldId` is safe to delete.
-   *  `false` means a read or write the move depends on did not happen, so the caller must
-   *  leave the film where it is and try again next pass; deleting `oldId` on the strength
-   *  of a move that didn't land destroys the film's only copy. See [[SideCollectionMove]]
-   *  for the rule. A store with no side collections has nothing to move and reports true. */
-  def moveFilm(oldId: FilmId, newId: FilmId): Boolean = true
-
   /** Remove every side-collection row (`screenings`, `movie_slots`) whose film has no
    *  document in this store any more — the leftovers of deletes and merges from before
-   *  [[delete]] cascaded and [[moveFilm]] carried rows, which nothing else ever clears.
+   *  [[delete]] cascaded, which nothing else ever clears.
    *  The rule, its refusals (an incomplete or empty corpus scan deletes nothing) and the
    *  reason it exists are [[StrandedSideRows]]'s, shared with the in-memory fake.
    *  Best-effort; returns what was removed. A store with no side collections has
@@ -565,10 +542,8 @@ class MongoMovieRepository(
   decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
 
-
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:       Boolean = slots.isDefined
-
 
   /** Re-inject a stored row's showtimes from `screenings` (its authority under the
    *  split), given that film's `slotKey -> showtimes` map. No-op without a split. */
@@ -1002,28 +977,6 @@ class MongoMovieRepository(
     if (complete) Some(ids.result()) else None
   }
 
-  /** Carry a film's screenings + slots across a merge, so the loser's rows don't stay
-   *  stranded under an id that is about to be deleted. The read/verify/delete rule is
-   *  [[SideCollectionMove]]'s, shared with the in-memory fake so a merge spec cannot pass
-   *  against rules production doesn't follow. See the trait doc for what it cost. */
-  override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean = if (oldFilm == newFilm) true else {
-    val (oldId, newId) = (oldFilm.value, newFilm.value)
-    val screeningsMoved = screenings.forall(s => SideCollectionMove.move[ListedShowtimes](
-      oldId, newId,
-      read       = s.findListedForFilmChecked,
-      replace    = s.replaceFilm(_, _),
-      deleteFilm = s.deleteFilm,
-      onSkip     = message => logger.warn(s"merge $oldId -> $newId (screenings): $message."),
-      onMoved    = moved => logger.info(s"merge $oldId -> $newId: carried $moved screenings slot(s) across.")))
-    val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
-      oldId, newId,
-      read       = sl.findForFilmChecked,
-      replace    = (id, rows) => sl.replaceFilm(id, rows),
-      deleteFilm = sl.deleteFilm,
-      onSkip     = message => logger.warn(s"merge $oldId -> $newId (slots): $message.")))
-    screeningsMoved && slotsMoved
-  }
-
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     val id    = film.value
     val key   = StoredMovieRecord.keyFor(cacheKey)
@@ -1432,6 +1385,5 @@ class MongoMovieRepository(
   private def isDuplicateKey(exception: Throwable): Boolean =
     exception.isInstanceOf[com.mongodb.MongoWriteException] &&
       exception.asInstanceOf[com.mongodb.MongoWriteException].getError.getCategory == com.mongodb.ErrorCategory.DUPLICATE_KEY
-
 
 }

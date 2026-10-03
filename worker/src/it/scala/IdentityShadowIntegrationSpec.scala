@@ -13,8 +13,9 @@ import scala.collection.mutable
 import scala.util.{Random, Try}
 
 /**
- * The identity resolver in SHADOW over real corpora, head to head with today's pipeline
- * (docs/design/identity-resolver.md §phase 2). Per corpus it boots the pipeline the way the
+ * The identity resolver in SHADOW over real corpora, head to head with production — the identity
+ * projection, booted at the commit being measured or, in the CI measure, at the variant's BASE
+ * (docs/design/identity-resolver.md §phase 2). Per corpus it boots production the way the
  * convergence legs do, resolves the same raw listings from the same recorded answers, and
  * measures both:
  *
@@ -59,6 +60,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       configuration.identityCorpusDirectory.toSeq.flatMap(d => IdentityShadow.full(configuration.identityFullCorpora.value, d.value, fixtureRoot))
   private val permutations = configuration.identityShadowPermutations.value
   private val pipelineCache = configuration.identityPipelineCache
+  private val bootOnly      = configuration.identityPipelineBootOnly.value
   /** Off for a resolver-variant run: the measures below that resolve the corpus again. */
   private val robustness = configuration.identityShadowRobustness.value
   private val focus      = configuration.identityFocus
@@ -95,6 +97,9 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         cached.foreach(BootedPipeline.write(_, b))
         b
       }(BootedPipeline.read(_, listings))
+      // The CI measure boots the BASE commit's production this way before applying a variant's patch,
+      // so a variant is measured against production as it stands, never against itself.
+      if (bootOnly) cancel(s"${c.label}: pipeline booted into the cache; boot-only run measures nothing")
       val (films, pipelineOf, bootSeconds, pipelineRequests) = (booted.films, booted.filmOf, booted.seconds, booted.requests)
       report.line(f"[${c.label}] ${listings.size} listings at ${listings.map(_.venue).distinct.size} venues; pipeline: ${films.size} films " +
         f"(${films.count(_.tmdbId.isDefined)} with a tmdbId) in $bootSeconds%.0fs, $pipelineRequests HTTP requests, " +

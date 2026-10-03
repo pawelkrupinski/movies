@@ -27,18 +27,17 @@ class AlertingWiringSpec extends AnyFlatSpec with Matchers {
   "AlertingWiring.alerters" should "report every alerter off, naming its missing key, on the env k3s shipped with" in {
     AlertingWiring.alerters(resolved(tokenOnly), filmwebEnabled = true) shouldBe Seq(
       EnvGatedFeature("filmweb_fallback", Seq(MissingSetting("KINOWO_FALLBACK_TG_CHAT_ID"))),
-      EnvGatedFeature("filmweb_drop", Seq(MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID"))),
-      EnvGatedFeature("staging_stuck", Seq(MissingSetting("KINOWO_STAGING_STUCK_TG_CHAT_ID or KINOWO_FALLBACK_TG_CHAT_ID"))))
+      EnvGatedFeature("filmweb_drop", Seq(MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID"))))
   }
 
   it should "report every alerter on once the chat ids are back" in {
     val alerters = AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = true)
-    alerters.map(_.name) shouldBe Seq("filmweb_fallback", "filmweb_drop", "staging_stuck")
+    alerters.map(_.name) shouldBe Seq("filmweb_fallback", "filmweb_drop")
     alerters.filterNot(_.enabled) shouldBe empty
   }
 
   it should "not report the Filmweb alerters at all for a country that has no Filmweb path" in {
     // Off by design there, not by misconfiguration: exporting a 0 would page for nothing.
-    AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = false).map(_.name) shouldBe Seq("staging_stuck")
+    AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = false) shouldBe empty
   }
 }

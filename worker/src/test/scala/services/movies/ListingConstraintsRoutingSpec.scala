@@ -10,10 +10,9 @@ import scala.jdk.CollectionConverters._
  * Every stage asks the ONE constraint model, `ListingConstraints`, whether two pieces of
  * listing evidence may be one film — never a `MixedFilmDetector` veto directly.
  *
- * Five stages once composed the same predicates five ways (the TMDB candidate veto, the
- * decoration veto, the Faust containment refusal, the staging fold's denying venue, the
- * convergence harness's wrong-merge check), so a rule narrowed in one stage kept firing in the
- * others, and the identity resolver had no single rule set to draw its edges from. A new call
+ * Several stages once composed the same predicates several ways, so a rule narrowed in one
+ * stage kept firing in the others, and the identity resolver had no single rule set to draw its
+ * edges from. A new call
  * site that asks a predicate directly is the drift this guards against: route it through
  * `ListingConstraints` (adding the constraint there, with its reason, if it is new).
  */
@@ -56,7 +55,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
   it should "find the files it guards" in {
     // A positive control: a moved tree would make the guard pass vacuously.
     Roots.flatMap(sources).map(_.toString) should contain allOf (
-      "common/src/main/scala/services/movies/FilmCanonicalizer.scala",
+      "common/src/main/scala/services/movies/ListingConstraints.scala",
       "worker/src/main/scala/services/movies/MovieService.scala",
       "worker/src/fixtures/scala/tools/ServedCorpusInvariants.scala")
   }

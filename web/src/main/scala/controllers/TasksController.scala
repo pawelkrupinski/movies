@@ -36,8 +36,8 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
 
   /** The corpus-wide runs the `/tasks` page buttons trigger. Each maps a short
    *  job slug → the bulk TaskType the worker's `BulkRefreshHandler` consumes; the
-   *  worker calls that source's existing `refreshAll` / `retryUnresolvedTmdb`, or
-   *  `settle` (consolidate same-film rows, the SettleReaper's job) on demand. */
+   *  worker calls that source's existing `refreshAll`, or runs the
+   *  identity projection pass (`settle`) on demand. */
   private val BulkJobs: Map[String, TaskType] = Map(
     "tmdb"       -> TaskType.RefreshAllTmdb,
     "imdb"       -> TaskType.RefreshAllImdb,

@@ -75,11 +75,6 @@ GET     /debug/readmodel/screenings controllers.DebugController.debugReadModelSc
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.
 GET     /debug/cadence              controllers.DebugController.cadence()
-# Dev-only: the /debug row "re-enrich" button enqueues a per-movie ResolveTmdb
-# task (worker re-resolves TMDB, then the event chain re-runs the rest). 404 in
-# prod like the rest of /debug; nocsrf, posted by the page's fetch.
-+ nocsrf
-POST    /debug/reenrich             controllers.DebugController.reenrich(title: String, year: Option[Int])
 # Dev-only SSE feed of `movies` change-stream events so the /debug table live-
 # updates (merged rows vanish, new films appear). 404 in prod — the stream is
 # only ever opened in dev, never watching the worker's collection 24/7.
@@ -87,7 +82,6 @@ GET     /debug/stream               controllers.DebugStreamController.stream()
 # Dev-only JSON snapshot of the durable task queue's active tasks (oldest-first),
 # so the /debug "pending work" sections can show whether a movie already has an
 # enrichment task and its place in the queue. 404 in prod like the rest of /debug.
-GET     /debug/queue                controllers.DebugController.debugQueue()
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing

@@ -4,7 +4,7 @@ import settings.ConfigRefreshInterval
 
 import modules.WorkerWiring
 import services.config.{EnvConfigService, MongoEnvOverrideStore, MongoEnvRegistryStore}
-import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, ResolveTmdbHandler, TaskHandler, TaskType}
+import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, TaskHandler, TaskType}
 
 import scala.concurrent.duration.DurationLong
 
@@ -29,25 +29,20 @@ trait OperatorWiring { self: WorkerWiring =>
   lazy val bulkTaskResultStore: BulkTaskResultStore =
     new MongoBulkTaskResultStore(mongoConnection.database)
 
-  // Operator-triggered handlers — ALWAYS registered (not gated by
-  // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and
-  // the `/debug` row button enqueues a per-movie re-resolve, regardless of which
-  // enrichment mode the worker runs. The bulk handlers call each source's
-  // existing refreshAll / retryUnresolvedTmdb; ResolveTmdb forces one row and
-  // lets the event chain re-run the downstream ratings.
+  // Operator-triggered handlers — ALWAYS registered (not gated by queueEnrichment):
+  // the web `/tasks` buttons enqueue a corpus-wide refresh, regardless of which
+  // enrichment mode the worker runs. Each bulk handler calls its source's refreshAll.
   lazy val operatorHandlers: Seq[TaskHandler] = Seq(
-    // TMDB re-enrich + settle have no per-source count tally, so they report a
-    // generic "ran" message; the four `*Ratings` and OMDb walks return real counts.
+    // The projection has no per-source count tally, so it reports a generic message;
+    // the four `*Ratings` and OMDb walks return real counts.
     // Each operator button FORGETS that source's memoised resolutions before it
     // walks. Without this the walk re-derives from the very answers it exists to
     // re-check — the same trap the per-film re-enrich had, where a wrong URL was
     // replayed from `resolve_*` rather than re-probed (see `ResolutionCache.forgetAll`).
-    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => { tmdbIdCache.forgetAll(); movieService.retryUnresolvedTmdb(); BulkRefreshResult.message("re-enrich dispatched for unresolved-TMDB rows") }, bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { identityProjection.tickQuietly(); BulkRefreshResult.message("projection complete") }, bulkTaskResultStore),
-    new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.

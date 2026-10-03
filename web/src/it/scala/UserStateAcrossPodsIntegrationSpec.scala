@@ -1,7 +1,7 @@
 package integration
 
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes}
-import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture, ToSingleObservableUnit}
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -119,7 +119,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
       .insertOne(session, Document("userId" -> "held-by-a-neighbour")).toFuture())
     val released = new java.util.concurrent.atomic.AtomicBoolean(false)
     val hold: AutoCloseable = () => if (released.compareAndSet(false, true)) {
-      try services.staging.MongoStagingFolder.abortTransaction(session) finally session.close()
+      try await(ToSingleObservableUnit(session.abortTransaction()).toFuture()) finally session.close()
     }
     val timer = new Thread(() => { Thread.sleep(duration.toMillis); hold.close() }, "userstate-hold")
     timer.setDaemon(true)

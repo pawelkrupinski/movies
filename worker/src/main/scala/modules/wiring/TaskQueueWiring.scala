@@ -62,7 +62,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
   lazy val taskWorker = new TaskWorker(
     taskQueue, identityPathHandlers(Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
-      ratingHandlers ++ operatorHandlers ++ stagingHandlers ++ shareCardHandlers ++ auditHandlers),
+      ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers),
     poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.

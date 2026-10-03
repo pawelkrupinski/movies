@@ -13,13 +13,11 @@ final case class StrandedSideRows(screenings: Long, slots: Long, filmIds: Set[St
 /**
  * Removing side-collection rows (`screenings`, `movie_slots`) whose film no longer has a
  * `movies` document — one rule shared by [[MongoMovieRepository]] and the in-memory fake,
- * above the trait seam for the same reason [[SideCollectionMove]] is: deciding what is
- * stranded is business logic, and a fake that decided it differently would let the
+ * above the trait seam: deciding what is stranded is business logic, and a fake that decided it differently would let the
  * cleanup's specs pass against a rule production does not follow.
  *
- * Why the rows exist at all: every delete and merge now carries a film's side rows with
- * it (`delete` cascades, `moveFilm` copies-verifies-deletes), but the ones from before
- * that did not, and they never expire on their own. Measured on 2026-09-07: UK held 376
+ * Why the rows exist at all: every delete now carries a film's side rows with it (`delete`
+ * cascades), but the deletes and merges from before that did not, and they never expire on their own. Measured on 2026-09-07: UK held 376
  * `screenings` rows under 18 film ids with no document (169 of them with FUTURE showtimes,
  * `startrekivthevoyagehome40thann|1986` last written 07-28), DE 29. The worker's
  * served-films census counted every one of them as a film it serves, the web could serve

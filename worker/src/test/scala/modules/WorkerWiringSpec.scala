@@ -5,23 +5,21 @@ import org.scalatest.matchers.should.Matchers
 
 import models.Country
 import services.MongoConnection
-import services.events.{ImdbIdMissing, StagingFilmEnriched}
-import services.staging.FoldOnStagingEnriched
+import services.events.ImdbIdMissing
 import services.tasks.{ScrapeReaper, TaskType}
 import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
 import tools.{ExecutionBudget, GetOnlyHttpFetch, HttpFetch, SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._
 
-/** The worker composition root must boot BOTH halves of the write pipeline:
- *  the scrape side (the queue-driven `scrapeReaper`) and the enrich/TMDB side
- *  (the `unresolvedTmdbReaper`, which drives the phase-spread TMDB re-resolve —
- *  the role MovieService's old daily scheduler used to own). `start()` is what
- *  production calls; this asserts it reaches both cascade entry points.
+/** The worker composition root must boot BOTH halves of the pipeline: the scrape side
+ *  (the queue-driven `scrapeReaper`) and the identity projection (the `settleReaper`'s
+ *  projection tick). `start()` is what production calls; this asserts it reaches both
+ *  entry points.
  *
  *  Deterministic spy approach (no network): a `TestWiring` (disabled Mongo, stub
  *  TMDB key, in-memory task queue + freshness store so the unconditional queue
- *  path boots without a cluster) with `scrapeReaper` + `unresolvedTmdbReaper`
+ *  path boots without a cluster) with `scrapeReaper` + `settleReaper`
  *  overridden by spy subclasses whose `start()` only records the call — the real
  *  `start()` (which schedules background pools) is never invoked for those two,
  *  so nothing touches the network. We then assert both flags flipped. */
@@ -62,25 +60,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     def defaultScrapeCitiesForTest: Set[String] = scrapeCitiesDefault
   }
 
-  // The fold-on-conclusion policy lives in `FoldOnStagingEnriched` (its own spec);
-  // what the root owes is the SUBSCRIPTION. A spy stands in for the real subscriber
-  // so the assertion is exactly "publishing the event reaches it", with no fold run.
-  class FoldSpyWiring extends TestWiring {
-    val folded = scala.collection.mutable.ListBuffer.empty[String]
-    override lazy val foldOnStagingEnriched: FoldOnStagingEnriched =
-      new FoldOnStagingEnriched(stagingFolder, stagingRepository, (_, _) => ()) {
-        override def fold(title: String) = { folded += title; Seq.empty }
-      }
-  }
-
-  "Constructing WorkerWiring" should "subscribe the staging fold to StagingFilmEnriched" in {
-    val wiring = new FoldSpyWiring
-    wiring.eventBus.publish(StagingFilmEnriched("Newcomer"))
-    wiring.folded shouldBe Seq("Newcomer")
-    wiring.stop()
-  }
-
-  it should "hand every country's movie cache the one intern pool the metrics bundle publishes" in {
+  "Constructing WorkerWiring" should "hand every country's movie cache the one intern pool the metrics bundle publishes" in {
     val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = settings.WorkerPoolSize(1))
     def wiringOn(metrics: services.metrics.WorkerMetrics) =
       new WorkerWiring(Country.default, injectedWorkerMetrics = Some(metrics)) with TestWiring
@@ -117,7 +97,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.start()
     val text = PrometheusExposition.render(wiring.workerMetrics.registry)
     wiring.stop()
-    Seq("filmweb_fallback", "filmweb_drop", "staging_stuck").foreach { alerter =>
+    Seq("filmweb_fallback", "filmweb_drop").foreach { alerter =>
       text should include regex s"""kinowo_worker_alerter_enabled\\{alerter="$alerter",country="pl"\\} [01]"""
     }
   }
@@ -127,10 +107,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // rating tasks per event instantly (the unspread amplifier behind the midday
   // `kinowo_worker_tasks` rating spikes). Rating enqueues now come from only two
   // bounded paths: the EnrichmentReaper's capped + phase-spread corpus sweep, and the
-  // immediate newcomer-fold kick (a trickle — a few promotions a day). `ImdbIdMissing`
+  // identity projection's kick for the films it newly makes (a trickle). `ImdbIdMissing`
   // (the one surviving resolution event) drives id recovery alone, never a rating
   // enqueue — so publishing it on its own leaves the queue untouched.
-  it should "not fan out rating tasks when a resolution event fires (only the reaper + newcomer fold enqueue ratings)" in {
+  it should "not fan out rating tasks when a resolution event fires (only the reaper + the identity projection enqueue ratings)" in {
     val wiring = new SpyWiring
     val before = wiring.taskQueue.countByState().values.sum
     wiring.eventBus.publish(ImdbIdMissing("Dune", Some(2024), "Dune"))
@@ -414,68 +394,6 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  /** A wiring whose STAGING handlers report how many of them are in flight at once.
-   *
-   *  Same instrument as `ConcurrencyRecordingWiring` above, one seam further in: the
-   *  staging handlers are replaced by a single spy that holds its slot briefly, so a
-   *  serial drain peaks at one claimant and a pooled one peaks at the budget's cap.
-   *  `stagingHandlers` is the whole set the drain dispatches on, so overriding it also
-   *  keeps the real reaper from enqueuing anything this spy would then mis-handle. */
-  class StagingConcurrencyWiring(budget: ExecutionBudget) extends SpyWiring {
-    override lazy val backgroundBudget: ExecutionBudget = budget
-
-    private val inFlight = new java.util.concurrent.atomic.AtomicInteger(0)
-    private val peak     = new java.util.concurrent.atomic.AtomicInteger(0)
-    def peakInFlight: Int = peak.get()
-
-    override lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
-      new services.tasks.TaskHandler {
-        override def taskType: TaskType = TaskType.StagingFold
-        override def handle(task: services.tasks.Task): services.tasks.HandlerOutcome = {
-          val now = inFlight.incrementAndGet()
-          peak.updateAndGet(seen => math.max(seen, now))
-          try { Thread.sleep(120); services.tasks.HandlerOutcome.Done }
-          finally { inFlight.decrementAndGet(); () }
-        }
-      })
-  }
-
-  /**
-   * Production drains the staging queue with the same POOL it drains every other
-   * queue with. The harness claimed one task at a time, and by 2026-09-03 that was
-   * the single most expensive thing a convergence leg did: Poland spent 287.8s of a
-   * 454.1s boot in the staging drain, working 7,770 tasks at ~37ms each against a
-   * WARM enrichment tree (2,914 cache hits, 421 live fills) — so it was not upstream
-   * network but a serial file of Mongo round-trips production overlaps four ways.
-   */
-  "the harness staging drain" should "claim through as many workers as the background budget allows" in {
-    val wiring = new StagingConcurrencyWiring(new SharedExecutionBudget(4))
-    (1 to 8).foreach(i => wiring.taskQueue.enqueue(TaskType.StagingFold, s"film-$i"))
-
-    wiring.advanceStagingOnce()
-
-    withClue(s"peak in-flight staging handlers: ${wiring.peakInFlight}: ") {
-      wiring.peakInFlight should be > 1
-    }
-    wiring.stop()
-  }
-
-  it should "stay strictly serial under a same-thread budget, like every other drain" in {
-    // The order-independence replay passes wire `SameThreadExecutionBudget` so their
-    // seeded shuffle is the only nondeterminism left. A staging drain that pooled
-    // regardless would put a thread race under the very assertion written to catch
-    // order dependence — and it would flake rather than fail.
-    val wiring = new StagingConcurrencyWiring(new tools.SameThreadExecutionBudget)
-    (1 to 8).foreach(i => wiring.taskQueue.enqueue(TaskType.StagingFold, s"film-$i"))
-
-    wiring.advanceStagingOnce()
-
-    withClue(s"peak in-flight staging handlers: ${wiring.peakInFlight}: ") {
-      wiring.peakInFlight shouldBe 1
-    }
-    wiring.stop()
-  }
-
   /** …and follows that same budget DOWN. The convergence suite's order-independence
    *  passes wire `SameThreadExecutionBudget` precisely so the only nondeterminism left
    *  is their seeded shuffle; a drain that pooled regardless would put a thread race
@@ -536,38 +454,6 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.enrichRatingsSync()
 
     wiring.sources should contain ("filmweb")
-    wiring.stop()
-  }
-
-  /**
-   * `resolveTmdbId`'s last rungs — `viaLetterboxd` and `viaFilmwebWikidata` — are the
-   * ones that exist for the arthouse long tail TMDB's own search misses. Prod passes
-   * both resolvers in; the harness rebuilt `MovieService` with positional defaults and
-   * silently got `None` for each, so a suite whose entire purpose is to measure how
-   * much of a country's repertoire resolves was measuring it with two rungs sawn off.
-   */
-  "the harness MovieService" should "keep prod's Letterboxd rung of the resolution ladder" in {
-    val asked = new java.util.concurrent.atomic.AtomicReference[String]("")
-    val wiring = new SpyWiring {
-      // Valid-but-empty payloads: TMDB's own search and `/find` both conclude "nothing",
-      // which is what hands the row down to the fallback rungs.
-      override protected def realHttpLeaf: HttpFetch = new GetOnlyHttpFetch {
-        override def get(url: String): String = """{"results":[],"movie_results":[]}"""
-      }
-      override lazy val movieRepository: services.movies.MovieRepository =
-        new services.movies.InMemoryMovieRepository(
-          Seq(("Obscure Arthouse Film", Some(2019), models.MovieRecord(imdbId = Some("tt5555555")))), normalizer = titleNormalizer)
-      override lazy val letterboxdIdResolver: services.enrichment.LetterboxdIdResolver =
-        new services.enrichment.LetterboxdIdResolver(letterboxdClient) {
-          override def resolveTmdbId(imdbId: String): Option[Int] = { asked.set(imdbId); None }
-        }
-    }
-    wiring.movieCache.rehydrate()
-
-    wiring.movieService.retryResolve("Obscure Arthouse Film", Some(2019))
-    wiring.drainServices()
-
-    withClue("the Letterboxd rung was never consulted: ") { asked.get() shouldBe "tt5555555" }
     wiring.stop()
   }
 

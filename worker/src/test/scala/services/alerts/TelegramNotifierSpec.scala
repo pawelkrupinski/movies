@@ -66,12 +66,12 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "log a failed page at WARN and count it as failed, under its kind and country" in {
-    val (metrics, events) = sendOnce(failing, "pl", TelegramAlertKind.StagingStuck)
+    val (metrics, events) = sendOnce(failing, "pl", TelegramAlertKind.GoneVenue)
 
     events.map(e => (e.getLevel, e.getFormattedMessage)) shouldBe
-      Seq((Level.WARN, "Telegram notify failed: kind=staging_stuck country=pl: network down"))
-    metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="failed"} 1""")
-    metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="sent"} 0""")
+      Seq((Level.WARN, "Telegram notify failed: kind=gone_venue country=pl: network down"))
+    metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="gone_venue",outcome="failed"} 1""")
+    metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="gone_venue",outcome="sent"} 0""")
   }
 
   "TelegramNotificationMetrics" should "seed every country × known kind × outcome at 0, so the failure alert sees a first failure" in {

@@ -16,8 +16,8 @@
 #
 # It replays the PINNED recorded pair (`convergence-setup`, hermetic), the one the convergence
 # legs render verdicts from, so two variants measured on the same day compare on identical
-# inputs. The booted pipeline is cached per corpus and per non-identity code: a variant that
-# only touches `services/identity` skips the boot and spends its minutes resolving.
+# inputs. The baseline — production, the identity projection, booted at the BASE before the
+# variant's patch is applied — is cached per corpus and base code, so variants on one base share one boot.
 #
 name: Identity measure
 run-name: identity measure ${{ inputs.variant }}
@@ -108,16 +108,6 @@ jobs:
               with:
                   ref: ${{ inputs.base }}
 
-            - name: Apply the variant's patch
-              if: inputs.patch != ''
-              shell: bash
-              env:
-                  PATCH: ${{ inputs.patch }}
-              run: |
-                  set -euo pipefail
-                  base64 -d <<< "$PATCH" | gunzip | git apply --binary --index
-                  git diff --cached --stat | tail -1
-
             - name: Name the recording to replay
               id: recording
               shell: bash
@@ -133,12 +123,45 @@ jobs:
                   token:         ${{ secrets.GITHUB_TOKEN }}
                   hermetic-pair: ${{ steps.recording.outputs.pair }}
 
-            # The boot depends on the corpus and on every line of pipeline code EXCEPT the resolver.
-            - name: Restore the booted pipeline
+            # The baseline is production AT THE BASE: keyed on the base's code (the resolver included),
+            # and booted before the variant's patch is applied, so a variant never measures against itself.
+            - name: Key the base's booted production
+              id: base
+              shell: bash
+              run: echo "key=identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', 'worker/src/it/scala/IdentityShadow.scala') }}" >> "$GITHUB_OUTPUT"
+
+            - name: Restore the base's booted production
+              id: booted
               uses: actions/cache@v5
               with:
                   path: ${{ runner.temp }}/identity-pipeline-cache
-                  key: identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', 'worker/src/it/scala/IdentityShadow.scala', '!**/services/identity/**') }}
+                  key: ${{ steps.base.outputs.key }}
+
+            - name: Boot the base's production into the cache
+              if: steps.booted.outputs.cache-hit != 'true'
+              shell: bash
+              timeout-minutes: 120
+              run: |
+                  set -o pipefail
+                  sbt -J-Xmx10g -J-Duser.language=en -J-Duser.country=US \
+                      "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
+              env:
+                  MONGODB_URI:                    mongodb://127.0.0.1:27017/?directConnection=true
+                  KINOWO_IDENTITY_FULL:           ${{ matrix.code }}
+                  KINOWO_IDENTITY_CORPUS_DIR:     ${{ github.workspace }}/test/resources/fixtures/corpus
+                  KINOWO_IDENTITY_OUT:            ${{ runner.temp }}/identity-boot
+                  KINOWO_IDENTITY_PIPELINE_CACHE: ${{ runner.temp }}/identity-pipeline-cache
+                  KINOWO_IDENTITY_BOOT_ONLY:      'true'
+
+            - name: Apply the variant's patch
+              if: inputs.patch != ''
+              shell: bash
+              env:
+                  PATCH: ${{ inputs.patch }}
+              run: |
+                  set -euo pipefail
+                  base64 -d <<< "$PATCH" | gunzip | git apply --binary --index
+                  git diff --cached --stat | tail -1
 
             - name: Measure the ${{ matrix.code }} corpus
               shell: bash

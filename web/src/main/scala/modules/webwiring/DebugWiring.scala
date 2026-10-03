@@ -14,8 +14,6 @@ import services.tasks.MongoTaskQueue
  *  and, in Dev, one per switchable country on a shared client. */
 trait DebugWiring { self: Wiring =>
 
-  // The /debug "pending enrichment (staging)" table reads + live-watches this.
-  lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database, titleNormalizer)
   // Read-only view of the worker-written `rating_cadence` collection for the
   // dev-only /debug/cadence page. Read from the MIRROR alongside `movies`: both
   // this and the attempt log below are read per /debug row-expand, so leaving
@@ -80,7 +78,7 @@ trait DebugWiring { self: Wiring =>
   private lazy val bootDebugCadence = debugSnapshot(s"/debug/cadence ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
     ratingCadenceReader.all())
   private lazy val bootDebugStack: DebugStack = new DebugStack(
-    country, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
+    country, movieRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     // The WARM in-memory model the app actually serves from, read per request so
     // `/debug/readmodel` shows exactly what a request would resolve against.
     readModel              = DebugSnapshot.readNow(mirrorFreshnessOf(movieMirrorConnection))(ReadModelDump.of(webReadModel)),
@@ -127,7 +125,6 @@ trait DebugWiring { self: Wiring =>
           }, clock.instant())
         }
         val stack = new DebugStack(country, repository,
-          new services.staging.MongoStagingRepository(conn.database, normalizer = normalizer),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),
@@ -170,7 +167,7 @@ trait DebugWiring { self: Wiring =>
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
     servingCountry = country, clock = clock, normalizer = titleNormalizer) }
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
-  // `movies` + `pending_movies` via the same per-country stacks the /debug page
+  // `movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on
   // expand), so no cinema-URL snapshot is needed.
   lazy val debugStreamController = new DebugStreamController(controllerComponents, debugCountries, environmentMode)(using materializer)

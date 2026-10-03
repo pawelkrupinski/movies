@@ -145,8 +145,7 @@ class InMemoryMovieRepository(
    *  A read's stitch + `fromStorage` derivation is a pure function of the stored row, the
    *  film's slots and its screenings (and this repository's fixed normalizer), so an
    *  unchanged film re-derives to the same row. Without the memo every `findAll` re-derived
-   *  EVERY film — and `InMemoryStagingFolder.foldGroup` calls `findAll` once per fold, which
-   *  over the fixture corpus was over half the CPU of every end-to-end boot. A write
+   *  EVERY film, which over the fixture corpus was over half the CPU of every end-to-end boot. A write
    *  replaces the stored row (`put`) or its side rows, so the next read misses and
    *  re-derives: nothing a caller can observe changes, only how often it is recomputed. */
   private val readMemo = mutable.HashMap.empty[String, InMemoryMovieRepository.ReadMemo]
@@ -263,30 +262,6 @@ class InMemoryMovieRepository(
 
   private def sideRowsOf(id: String): (Option[Map[String, SourceData]], Option[Map[String, ListedShowtimes]]) =
     (slots.map(_.findForFilmChecked(id)._1), screenings.map(_.findListedForFilmChecked(id)._1))
-
-  /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
-   *  fold keeps the showtimes and loses the cinema metadata that names them.
-   *
-   *  The read/verify/delete rule is `SideCollectionMove`'s — the SAME object
-   *  `MongoMovieRepository.moveFilm` calls, not a re-statement of it. This fake used to
-   *  replace-and-delete with no verification at all, so every re-key spec passed against a
-   *  move production performs far more carefully, and the one condition that made the real
-   *  move destructive (an unreadable destination) could not be expressed here at all. */
-  override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean =
-    if (oldFilm == newFilm) true else lock.synchronized {
-      val (oldId, newId) = (oldFilm.value, newFilm.value)
-      val screeningsMoved = screenings.forall(s => SideCollectionMove.move[ListedShowtimes](
-        oldId, newId,
-        read       = s.findListedForFilmChecked,
-        replace    = s.replaceFilm(_, _),
-        deleteFilm = s.deleteFilm))
-      val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
-        oldId, newId,
-        read       = sl.findForFilmChecked,
-        replace    = (id, rows) => sl.replaceFilm(id, rows),
-        deleteFilm = sl.deleteFilm))
-      screeningsMoved && slotsMoved
-    }
 
   def updateIfPresent(film: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     val id = film.value

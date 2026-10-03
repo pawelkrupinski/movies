@@ -64,24 +64,28 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
     posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
     showtimes = Seq(Showtime(LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0), None)))
 
+  /** The film as the projection writes it: the venue's slot, its showtime on it. */
+  private val landed = models.MovieRecord(data = Map[models.Source, models.SourceData](
+    Multikino -> models.SourceData(title = Some(title), releaseYear = Some(2026), showtimes = listing.showtimes)))
+
   private def moviesDocuments: Long =
     await(db.getCollection(MovieRepository.Collection).countDocuments().toFuture())
 
-  "a new film whose movies write Mongo refuses" should "be counted, leave the cache, and land on the next identical scrape" in {
+  "a new film whose movies write Mongo refuses" should "be counted, leave the cache, and land on the next identical write" in {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val key   = cache.keyOf(title, Some(2026))
 
-    cache.recordCinemaScrape(Multikino, Seq(listing))
+    cache.put(key, landed)
 
     moviesDocuments shouldBe 0L
     Recording.failures shouldBe Vector((MovieRepository.Collection, "upsert", "MongoWriteException"))
-    withClue("the row Mongo refused must not stay resident — the next scrape would diff it as a no-op: ")(
+    withClue("the row Mongo refused must not stay resident — the next write would diff it as a no-op: ")(
       cache.get(key) shouldBe None)
 
     acceptWrites()
-    cache.recordCinemaScrape(Multikino, Seq(listing))
+    cache.put(key, landed)
 
-    withClue("the identical re-scrape must retry the write: ")(moviesDocuments shouldBe 1L)
+    withClue("the identical write must be retried: ")(moviesDocuments shouldBe 1L)
     repository.findAll().map(_.title) shouldBe Seq(title)
     Recording.failures should have size 1
   }

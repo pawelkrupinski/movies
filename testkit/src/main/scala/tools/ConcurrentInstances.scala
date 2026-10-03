@@ -29,9 +29,6 @@ import scala.jdk.CollectionConverters._
  *    interleaving that broke can be replayed (`KINOWO_RACE_SEED`);
  *  - [[matchesSomeSerialOrder]] is the correctness bar for concurrent writes: whatever order the
  *    writes landed in, the final state must be one that SOME serial order of them produces.
- *
- * Extracted from `ConcurrentFoldRaceHarness` (the fold-race specs' seed/barrier/thread/join/collect
- * plumbing), which now delegates its start here.
  */
 object ConcurrentInstances {
 

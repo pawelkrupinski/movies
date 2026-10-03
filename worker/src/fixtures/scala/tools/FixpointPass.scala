@@ -34,9 +34,6 @@ object FixpointPass {
    *  DESIGN (the content-drift check). What a projection wrote is `readmodel_writes`;
    *  a heal that looks without writing (the `dfe62a96c` loop) is its `trigger="heal"` share. */
   val WorkFamilies: Set[String] = Set(
-    "kinowo_worker_merges",
-    "kinowo_worker_rekeys",
-    "kinowo_worker_splits",
     "kinowo_worker_readmodel_writes",
     "kinowo_worker_readmodel_films_pruned",
     "kinowo_worker_readmodel_cards_retired",
@@ -45,14 +42,12 @@ object FixpointPass {
     "kinowo_worker_readmodel_project_calls",
     "kinowo_worker_readmodel_card_writes",
     "kinowo_worker_readmodel_drift_writes",
-    "kinowo_worker_staging_newcomer_kicks",
     "kinowo_worker_cache_rehydrate_changes",
     "kinowo_worker_tasks_enqueued",
     "kinowo_worker_movie_change_events",
     "kinowo_worker_screenings_change_events",
     "kinowo_worker_screenings_writes",
     "kinowo_worker_movie_slots_change_events",
-    "kinowo_worker_resolve_retry_duplicates",
     "kinowo_worker_repository_write_failed")
 
   /** An enqueue of one of these is a RETRY, a REFRESH or a RE-ASK, and only the last is

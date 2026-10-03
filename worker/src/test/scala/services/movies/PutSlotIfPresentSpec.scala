@@ -18,7 +18,7 @@ class PutSlotIfPresentSpec extends AnyFlatSpec with Matchers {
 
   private final class Side {
     val repository = new InMemoryMovieRepository(normalizer = normalizer, screenings = Some(new InMemoryScreeningsRepository))
-    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = DepthGuardTime.clock)
+    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer)
     /** What a reader can see: each stored row with its per-slot showtimes, and the cache's row. */
     def state: (Seq[(CacheKey, MovieRecord, Map[Source, Seq[Showtime]])], Option[(MovieRecord, Map[Source, Int])]) =
       (repository.findAll().map(r => (r.cacheKey(normalizer), r.record, r.record.data.view.mapValues(_.showtimes).toMap)),

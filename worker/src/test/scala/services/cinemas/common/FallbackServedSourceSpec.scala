@@ -4,10 +4,11 @@ import models.{Cinema, CinemaMovie, Movie, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
-import services.events.InProcessEventBus
 import services.fallback.InMemoryFallbackStore
-import services.movies.{CaffeineMovieCache, DepthGuardTime, InMemoryMovieRepository, InMemoryScrapeGuardLedger}
+import services.identity.IdentityListingIntake
+import services.movies.{DepthGuardTime, InMemoryScrapeGuardLedger, ScrapeLandingMetrics}
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import scala.concurrent.duration.Duration
 
@@ -15,9 +16,9 @@ import scala.concurrent.duration.Duration
  * A tick the FALLBACK served (Filmweb, Flicks) is still the primary venue's, merely covered
  * while its own source is down. Measured against the primary's full board, a sparse
  * fallback listing was discarded by the depth guard — the very ticks the fallback exists
- * to serve; read as a rewire instead, it pruned every primary film it does not list on
- * each outage. It must land additively: judged by neither guard, pruning nothing, and
- * leaving the primary as the venue's recorded source.
+ * to serve; read as a rewire instead, it dropped every primary film it does not list on
+ * each outage. The identity intake must take it additively: judged by neither guard,
+ * withdrawing nothing, and leaving the primary as the venue's recorded source.
  */
 class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
@@ -33,14 +34,17 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
   private val listing  = Seq(CinemaMovie(Movie("Dune"), Multikino, None, None, None, Nil, Nil,
     DepthGuardTime.showtimes(1)))
 
+  private def intakeOver(ledger: InMemoryScrapeGuardLedger) =
+    new IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository, ledger,
+      titleNormalizer, 3, DepthGuardTime.clock, ScrapeLandingMetrics.noop)
+
   private def run(primary: CinemaScraper): Option[String] = {
     val ledger  = new InMemoryScrapeGuardLedger
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
-      normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
+    val intake  = intakeOver(ledger)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
       new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
-    new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty).run(scraper)
+    new CinemaScrapeRunner(intake).run(scraper)
     ledger.get(Multikino).flatMap(_.sourceKey)
   }
 
@@ -54,7 +58,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
   // A fallback serves BECAUSE the primary is broken, and it is usually the thinner of the two.
   // Read as a rewire, its first tick landed as the new baseline with both guards off, and the
-  // prune retired every primary film the fallback does not list — on every primary outage —
+  // replacement withdrew every primary film the fallback does not list — on every primary outage —
   // only for the primary's recovery to rewire them back. A fallback tick only ADDS.
   private def films(titles: String*)(showtimesEach: Int): Seq[CinemaMovie] = titles.map { t =>
     CinemaMovie(Movie(t, releaseYear = Some(2026)), Multikino, None, None, None, Nil, Nil,
@@ -70,19 +74,15 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
   }
 
   "a primary outage served from a thinner fallback" should "keep the primary's films, and recovery land normally" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = titleNormalizer)
     val ledger  = new InMemoryScrapeGuardLedger
-    val cache   = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer,
-      scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
+    val intake  = intakeOver(ledger)
     val primary = new Switchable(Primary)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",
       fallbackRef = () => Some("2180"), new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore,
       baseBackoff = Duration.Zero, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero)) // re-probe the primary on the very next tick
-    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
-    def stored(title: String): Int = repository.findAll().find(_.title.contains(title))
-      .map(_.record.data.values.map(_.showtimes.size).sum).getOrElse(0)
+    val runner  = new CinemaScrapeRunner(intake)
+    def stored(title: String): Int = intake.listingOf(Multikino).find(_.movie.title == title).map(_.showtimes.size).getOrElse(0)
     val board = (1 to 10).map(i => s"Film $i")
 
     primary.listing = () => films(board*)(8)

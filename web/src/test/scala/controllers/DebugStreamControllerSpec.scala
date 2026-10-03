@@ -15,7 +15,6 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers
 import play.api.test.Helpers._
 import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
-import services.staging.{InMemoryStagingRepository, StagingRecord, StagingRepository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -35,10 +34,9 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
-  private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev,
-                         staging: StagingRepository = StagingRepository.empty(services.movies.SingleCountryNormalizer.titleNormalizer)) =
+  private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev) =
     new DebugStreamController(Helpers.stubControllerComponents(),
-      DebugCountries.single(new DebugStack(models.Country.default, repository, staging,
+      DebugCountries.single(new DebugStack(models.Country.default, repository,
         new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
         services.attempts.EnrichmentAttemptReader.empty,
         () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty))),
@@ -73,7 +71,6 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val html = (message \ "html").as[String]
     html should include("""data-id="""" + StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer))
     html should include("Belle")
-    html should include("class=\"reenrich\"") // the row's re-enrich button is present
   }
 
   it should "push a delete frame with just the id when a row is removed (a merge)" in {
@@ -95,42 +92,5 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val frames = Await.result(
       controller(repository).eventSource(FakeRequest()).takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
     frames shouldBe empty
-  }
-
-  // The same feed also watches `pending_movies`, tagged `staging-*` so the page
-  // routes them to the staging table: a newcomer INSERTs a staging row, a
-  // graduation DELETEs it.
-  "the live feed" should "push a staging-upsert frame (rendered row) when a pending_movies row appears" in {
-    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
-    val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
-      .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
-
-    Thread.sleep(100)
-    staging.upsert(CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))
-
-    val frames = Await.result(collecting, 3.seconds)
-    frames should have size 1
-    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
-    (message \ "type").as[String] shouldBe "staging-upsert"
-    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026), titleNormalizer)
-    val html = (message \ "html").as[String]
-    html should include ("Newcomer")
-    html should include ("""data-anchor="newcomer"""") // hidden source row the page folds by film
-  }
-
-  it should "push a staging-delete frame with just the id when a row graduates" in {
-    val staging = new InMemoryStagingRepository(Seq(
-      (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))), normalizer = titleNormalizer)
-    val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
-      .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
-
-    Thread.sleep(100)
-    staging.delete(CinemaCityWroclavia, "Newcomer", Some(2026))
-
-    val frames = Await.result(collecting, 3.seconds)
-    frames should have size 1
-    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
-    (message \ "type").as[String] shouldBe "staging-delete"
-    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026), titleNormalizer)
   }
 }

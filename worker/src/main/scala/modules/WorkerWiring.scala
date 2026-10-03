@@ -2,7 +2,7 @@ package modules
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityCutoverWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
+import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityCutoverWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -72,7 +72,7 @@ class WorkerWiring(
     val env: Env = Env.of()) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
-    with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring
+    with MetricsWiring with TaskQueueWiring with AlertingWiring with OperatorWiring with ShareCardWiring
     with InvariantAuditWiring with IdentityCutoverWiring {
 
   /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
@@ -367,18 +367,6 @@ class WorkerWiring(
   // model of every page whose answer that changed.
   eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page) }
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
-  // One detail enqueuer per deferred-detail cinema.
-  detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
-  // A concluded newcomer folds into `movies` the moment the StagingFold handler
-  // publishes — which rows are folded and what is announced afterwards is
-  // `FoldOnStagingEnriched`'s decision (see its doc), not this root's.
-  eventBus.subscribe(foldOnStagingEnriched.onStagingFilmEnriched)
-  // The reaper advances the staging chain (detail → resolve → imdb → fold) one
-  // step per finished staging task, and kicks a brand-new newcomer's first step
-  // the moment it's diverted into `pending_movies` — so the whole chain runs off
-  // events, with the periodic tick only a backstop for lost events / stalls.
-  eventBus.subscribe(stagingReaper.onTaskFinished)
-  eventBus.subscribe(stagingReaper.onNewcomerDiverted)
   // The coordinator enqueues a chunked scrape's reduce once its last chunk task
   // finishes (the ChunkScrapeReaper backstop covers lost completions).
   eventBus.subscribe(chunkScrapeCoordinator.onTaskFinished)
@@ -497,10 +485,10 @@ class WorkerWiring(
     logger.info(boot.summary)
   }
 
-  /** Event-cascade drain order, producer→consumer (see monolith comment). Only
-   *  the async stages need draining: the TMDB stage and the IMDb-id resolver.
-   *  Rating refresh is synchronous (queue-driven), so the *Ratings own no pool. */
-  def cascadeDrainOrder: Seq[Drainable] = Seq(movieService, imdbIdResolver)
+  /** Event-cascade drain order, producer→consumer (see monolith comment). Only the async stage
+   *  needs draining: the IMDb-id resolver. Rating refresh is synchronous (queue-driven), so the
+   *  *Ratings own no pool. */
+  def cascadeDrainOrder: Seq[Drainable] = Seq(imdbIdResolver)
 
   def stop(): Unit = {
     shadowLookupFill.foreach(_ => shadowLookupExecutor.shutdownNow())
@@ -511,13 +499,10 @@ class WorkerWiring(
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.
-    stagingStuckAlerter.foreach(_.stop())
-    stagingReaper.stop()
     scrapeReaper.stop()
     scrapePhasePlanner.stop()
     chunkScrapeReaper.stop()
     enrichmentReaper.stop()
-    unresolvedTmdbReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
     identityLookupRefreshSchedule.foreach(_.stop())

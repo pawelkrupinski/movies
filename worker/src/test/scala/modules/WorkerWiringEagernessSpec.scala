@@ -9,8 +9,7 @@ import tools.TestWiring
  *  split of `WorkerWiring` into per-subsystem `modules.wiring.*` traits cannot
  *  quietly turn a lazy subsystem eager. Construction runs the root's eager
  *  members — the bus subscriptions and the three `DueWindow`s — which reach the
- *  TMDB stage, the IMDb-id resolver, the detail enqueuers (and through them the
- *  scraper catalogue), the staging reaper and the chunk coordinator. Every
+ *  IMDb-id resolver, the venue-page index and the chunk coordinator. Every
  *  reaper, the task worker, the censuses, the read-model projector, the rating
  *  and operator handlers and the alerters stay unbuilt until `start()`.
  *
@@ -46,8 +45,6 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val unscreenedCleanup       = sentinel("unscreenedCleanup")
     override lazy val strandedSideRowsCleanup = sentinel("strandedSideRowsCleanup")
     // Resolution
-    override lazy val crewConfirmation        = sentinel("crewConfirmation")
-    override lazy val unresolvedTmdbReaper    = sentinel("unresolvedTmdbReaper")
     override lazy val settleReaper            = sentinel("settleReaper")
     // Ratings
     override lazy val imdbRatings             = sentinel("imdbRatings")
@@ -67,12 +64,7 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val taskWorker              = sentinel("taskWorker")
     override lazy val workerHeartbeat         = sentinel("workerHeartbeat")
     override lazy val livenessWatchdog        = sentinel("livenessWatchdog")
-    // Staging. `stagingFolder` is not pinned: it is a constructor collaborator of
-    // `foldOnStagingEnriched`, one of the bus subscriptions construction registers,
-    // and building it is a handful of field reads (no I/O, no thread).
-    override lazy val stagingHandlers         = sentinel("stagingHandlers")
     // Alerting
-    override protected lazy val stagingStuckAlerter   = sentinel("stagingStuckAlerter")
     override protected lazy val filmwebDropAlerter    = sentinel("filmwebDropAlerter")
     override protected lazy val scrapeOutcomeListener = sentinel("scrapeOutcomeListener")
     // Operator

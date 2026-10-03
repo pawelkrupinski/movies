@@ -2,7 +2,6 @@ package services.identity
 
 import org.bson.BsonDocument
 import services.enrichment.ImdbClient
-import services.movies.TmdbCandidateSearch
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
@@ -116,7 +115,7 @@ object StoredTmdbLookups {
   private final case class Held(document: Option[BsonDocument])
 
   private def personSearchOf(name: String): String =
-    TmdbStore.personSearchId(TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
+    TmdbStore.personSearchId(CandidateQuery.personName(name))
 
   private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = TmdbStore.intsOf(d.get(field))
 

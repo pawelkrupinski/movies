@@ -11,7 +11,7 @@ package services.movies
  * one-time BOOT hydrate legitimately counts every row as `changed`; exclude it by reading
  * the rate over steady state, not the raw counter.)
  *
- * Mirrors [[MergeMetrics]] / [[ReadModelProjectionMetrics]]: `noop` for web/tests, the
+ * Mirrors [[services.readmodel.ReadModelProjectionMetrics]]: `noop` for web/tests, the
  * Prometheus-backed [[services.metrics.WorkerTaskMetrics]] in the worker.
  */
 trait CacheSyncMetrics {

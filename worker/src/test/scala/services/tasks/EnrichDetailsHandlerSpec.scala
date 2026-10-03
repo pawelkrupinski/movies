@@ -3,7 +3,7 @@ package services.tasks
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.cinemas.FakeDetailEnricher
-import services.events.{InProcessEventBus, MovieDetailsComplete, RecordingEventBus}
+import services.events.{MovieDetailsComplete, RecordingEventBus}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
@@ -32,11 +32,11 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
   private def seededCache(title: String, listedYear: Option[Int] = None) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bare = CinemaMovie(Movie(title, releaseYear = listedYear), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
-    cache.recordCinemaScrape(KinoApollo, Seq(bare))
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(bare))
     cache
   }
 
@@ -75,7 +75,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // the row is keyed by the base title, but its KinoApollo listing slot is keyed
     // by the decorated shown title. The EnrichDetails task carries the base title.
     val decorated = CinemaShowing(KinoApollo, "decorateddune") // != sanitize("Dune")
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     // Seed the base "Dune" row directly (bypassing repo title-re-derivation) with only
     // the decorated KinoApollo slot, as the fold would leave it.
     cache.put(cache.keyOf("Dune", None), MovieRecord(data = Map(decorated -> SourceData(
@@ -103,7 +103,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val c = CinemaShowing(KinoApollo, "opokazprzedpremierowy")
     def slot(t: String) = SourceData(title = Some(t),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Ojczyzna", None),
       MovieRecord(data = Map(a -> slot("Pora dla seniora: Ojczyzna"), b -> slot("Za drzwiami: Ojczyzna"), c -> slot("Ojczyzna przedpremierowo"))))
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Jan Komasa"))))
@@ -129,7 +129,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val tea     = CinemaShowing(KinoApollo, "rozwaznairomantycznakinoprzyherbatce")
     def slot(title: String, url: String, runtime: Int) = SourceData(title = Some(title), filmUrl = Some(url),
       runtimeMinutes = Some(runtime), showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 11, 0), Some("https://book"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key   = cache.keyOf("Rozważna i romantyczna", Some(2026))
     cache.put(key, MovieRecord(data = Map(
       parents -> slot("Rozważna i romantyczna | Kino dla rodzica", "http://ref", 112),
@@ -181,12 +181,12 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
     // Two Cinema City venues scrape the same film (bare: showtimes only, no detail).
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     def bareAt(venue: models.Cinema) = CinemaMovie(Movie("Dune"), venue, posterUrl = None,
       filmUrl = Some("http://ref"), synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
-    cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(bareAt(CinemaCityPoznanPlaza)))
-    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(bareAt(CinemaCityKinepolis)))
+    services.movies.ListingSeed.land(cache, CinemaCityPoznanPlaza, Seq(bareAt(CinemaCityPoznanPlaza)))
+    services.movies.ListingSeed.land(cache, CinemaCityKinepolis, Seq(bareAt(CinemaCityKinepolis)))
 
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()

@@ -2,7 +2,6 @@ package services.tasks
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.QueueResolveDispatcher
 import tools.{MutableClock, RetryClassificationFailures}
 import tools.contracts.RetryClassificationTable
 import tools.contracts.RetryClassificationTable.Verdict
@@ -124,16 +123,9 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
 
   "a dedup'd resolve re-try" should "never lower the waiting task's mode" in {
     for (waiting <- ResolveMode.values; incoming <- ResolveMode.values) {
-      val queue = new InMemoryTaskQueue
-      val dispatcher = new QueueResolveDispatcher(queue)
-      dispatcher.dispatch("La luz", Some(2026), None, None, waiting)
-      dispatcher.dispatch("La luz", Some(2026), None, None, incoming)
-      queue.monitor().active should have size 1
-      val mode = queue.claim("w0", 1.minute, t0).map(task => EnrichTaskKeys.modeOf(task.payload))
-      withClue(s"waiting $waiting, then $incoming: ") {
-        mode shouldBe Some(EnrichTaskKeys.raisedMode(waiting, incoming))
-        mode.get.ordinal should be >= math.max(waiting.ordinal, incoming.ordinal)
-      }
+      val raised = EnrichTaskKeys.raisedMode(waiting, incoming)
+      withClue(s"waiting $waiting, then $incoming: ")(
+        raised.ordinal should be >= math.max(waiting.ordinal, incoming.ordinal))
     }
   }
 }

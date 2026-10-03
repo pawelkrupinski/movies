@@ -12,10 +12,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * source (a stale pre-locale-fix `Tmdb` slot vs the always-Polish `Filmweb` slot
  * vs a cinema slot) instead of guessed at.
  *
- * This is also how you VERIFY the stale-language backfill: the stamp tally at the
- * bottom should converge on the deployment's own tag as `UnresolvedTmdbReaper`
- * re-resolves the wrong-language rows (it spreads them over ~24h, so expect the
- * "(unstamped → pl-PL)" bucket to drain gradually rather than all at once).
+ * The stamp tally at the bottom shows how much of the corpus still holds a `Tmdb` slot
+ * enriched in a language other than the deployment's own tag.
  *
  * Run against a prod tunnel:
  *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
@@ -93,12 +91,11 @@ object GenreLanguageAudit {
 
     // The stamp is the authoritative signal (the word-list above only catches
     // distinctly-Polish spellings, so it UNDER-counts). Anything not on the
-    // deployment's own tag is what the reaper will force-re-resolve.
+    // deployment's own tag is stale.
     val expected = country.language.toLanguageTag
-    // Distinguish "no Tmdb slot at all" (never resolved — nothing for the reaper to
-    // correct) from "Tmdb slot present but unstamped" (a genuinely stale legacy row
-    // the reaper WILL re-resolve). Collapsing the two makes a healthy corpus look
-    // like it has permanent re-resolve debt.
+    // Distinguish "no Tmdb slot at all" (never resolved — nothing to
+    // correct) from "Tmdb slot present but unstamped" (a genuinely stale legacy row).
+    // Collapsing the two makes a healthy corpus look like it has permanent stale debt.
     val byTag = rows.map { s =>
       s.record.data.get(Tmdb) match {
         case None                              => "(no Tmdb slot — unresolved)"
@@ -109,9 +106,9 @@ object GenreLanguageAudit {
     }.groupBy(identity).view.mapValues(_.size).toSeq.sortBy(-_._2)
     println(s"\nTmdb slot enrichment-language stamp (deployment expects $expected):")
     byTag.foreach { case (tag, n) =>
-      // Only a stamped-but-wrong or unstamped-WITH-text slot is re-resolve debt.
+      // Only a stamped-but-wrong or unstamped-WITH-text slot is stale.
       val due = tag == "(unstamped → pl-PL)" || (!tag.startsWith("(") && !tag.startsWith(expected))
-      println(f"  $tag%-32s $n${if (due) "   ← re-resolve due" else ""}")
+      println(f"  $tag%-32s $n${if (due) "   ← stale" else ""}")
     }
 
     println("\nsample of rows with Polish effective genres:")

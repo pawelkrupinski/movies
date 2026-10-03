@@ -4,7 +4,6 @@ import clients.TmdbClient
 import models.Cinema
 import services.cinemas.common.DetailEnricher
 import services.enrichment.ImdbClient
-import services.movies.TmdbCandidateSearch
 
 import scala.util.Try
 
@@ -43,7 +42,7 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
     case CandidateQuery.Director(name)    =>
       // Every person the name could mean, each with what they directed — or, with no directing
       // credit, wrote (a venue may print the writer): the walk the pipeline makes, without its pick.
-      answered(tmdb.findPersonCandidates(TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
+      answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
         .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
       answered(imdb.suggestedIds(title).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))

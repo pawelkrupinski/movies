@@ -2,7 +2,6 @@ package services.metrics
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.staging.StagingStep
 import services.tasks.{EnqueueResult, InMemoryTaskQueue, QueueSnapshot, TaskQueue, TaskType}
 
 import java.time.Instant
@@ -22,7 +21,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.ImdbRating, "film|2026")        // added
     queue.enqueue(TaskType.ImdbRating, "film|2026")        // dup of the active one → deduped
 
-    val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil), Map.empty[StagingStep, Int],
+    val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
       services.movies.ChangeStreamLiveness.unwatched())), now)
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ImdbRating"} 1""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="deduped",task_type="ImdbRating"} 1""")
@@ -41,7 +40,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
 
     queue.enqueue(TaskType.ImdbRating, "film|2026") shouldBe EnqueueResult.Failed("mongo down")
 
-    val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil), Map.empty[StagingStep, Int],
+    val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
       services.movies.ChangeStreamLiveness.unwatched())), now)
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="failed",task_type="ImdbRating"} 1""")
   }

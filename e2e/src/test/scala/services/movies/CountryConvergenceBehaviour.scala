@@ -31,8 +31,8 @@ import scala.util.{Random, Try}
  *
  *   1. the first settle after boot CONVERGES — a further settle changes no key,
  *      moves no film's cinemas, folds no row and writes nothing;
- *   2. identical re-scrape ticks are CHURN-FREE — no row re-folded, no known film
- *      re-diverted into staging, on any tick;
+ *   2. identical re-scrape ticks are CHURN-FREE — no film re-keyed, merged or
+ *      split, on any tick;
  *   3. the corpus reaches an emission-free FIXPOINT — two consecutive ticks with
  *      zero persisted writes, within a bounded number of ticks. A pipeline that
  *      oscillates (the square-wave class of bug) never gets there, so the bound
@@ -179,7 +179,7 @@ abstract class CountryConvergenceBehaviour(
   /**
    * Where this run keeps the state it makes claims about: a real MongoDB when
    * `MONGODB_URI` names one, memory otherwise. CI names one, so the persistence layer
-   * — codecs, keyset-paged full scans, transactional staging folds — is on the path the
+   * — codecs, keyset-paged full scans, side-collection writes — is on the path the
    * assertions run over; a local run gets whichever it asks for.
    *
    * Every assertion is identical across the two. That is the point: if a claim holds in
@@ -401,7 +401,7 @@ abstract class CountryConvergenceBehaviour(
    *  the next-day test moves it, as production's clock moves between two days' scrapes. */
   private lazy val clock = new tools.MutableClock(TestWiring.FixedInstant)
 
-  private lazy val shared: (ArchiveReplayWiring, RecordingMergeMetrics, ScrapeArchiveRepository) = {
+  private lazy val shared: (ArchiveReplayWiring, ScrapeArchiveRepository) = {
     // In-memory archive: the leg no longer needs a Mongo at all.
     //
     // The corpus used to be READ from `cinema_scrapes`, so routing it back through a
@@ -415,14 +415,8 @@ abstract class CountryConvergenceBehaviour(
     //
     val archive = storage.archive
     val seeded   = seedArchive(archive)
-    val merges   = new RecordingMergeMetrics
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
-      // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
-      // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
-      // `enrichmentLanguage` once, and later the clock, which left the scrape guards judging
-      // the next day's listings by the wall clock and discarding them as degraded.
-      override protected def cacheMergeMetrics: MergeMetrics = merges
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
@@ -491,7 +485,7 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: ratings given a tmdbId — ${ratingsGivenTmdbId(booted)}")
     info(s"${country.displayName}: unresolved — ${unresolvedFilms(booted)}")
     requireEnrichmentReached(booted)
-    (w, merges, archive)
+    (w, archive)
   }
 
   /**
@@ -653,14 +647,8 @@ abstract class CountryConvergenceBehaviour(
       (if (unresolved.isEmpty) "" else s"; first ${shown.size}: ${shown.mkString(" | ")}")
   }
 
-  /** Boot the corpus to the steady state production reaches, settle it, and get
-   *  it into the read model.
-   *
-   *  The conclude pass AFTER the settles is load-bearing, not tidiness: a row the
-   *  settle created was never concluded by `bootCorpus`, and an unconcluded row
-   *  fails `readyToProject` and is silently skipped by the projector — which is
-   *  exactly how 32 of 80 films, 44 cinemas and 360 screenings went missing from
-   *  the read model while the corpus itself was complete. */
+  /** Boot the corpus to the steady state production reaches — projections until one writes
+   *  nothing — and get it into the read model. */
   private def bootSettled(w: ArchiveReplayWiring): Unit = {
       step("bootCutover")(w.bootCutover())
       // Production projects on an interval, and the first projection's films are enriched after it
@@ -714,7 +702,7 @@ abstract class CountryConvergenceBehaviour(
    * genuinely wedged on a dead tunnel, once on a leg that was working fine. The
    * elapsed time is what separates the two, so it goes to the stream that flushes.
    */
-  /** Shared with the harness's own phases (`TestWiring.bootCorpus`), so a run's timings
+  /** Shared with the harness's own phases (`TestWiring.projectIdentity`), so a run's timings
    *  all read the same way whichever layer emitted them. */
   private def step[A](label: String)(body: => A): A = PhaseTimer.timed(country.code, label)(body)
 
@@ -844,19 +832,11 @@ abstract class CountryConvergenceBehaviour(
   }
 
 
-  /** One production-shaped tick: re-serve every cinema's archived listing in a
-   *  shuffled order, then drain and settle. Returns the set of `(cinema, title)`
-   *  diversions the scrape phase pushed into staging — a KNOWN film landing back
-   *  in `pending_movies` is the churn we care about. */
-  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
-    rescrapeCutover(w, rnd, failures); Set.empty
-  }
-
 
   s"the ${country.displayName} pipeline" should
     "converge on the first settle and stay churn-free under identical re-scrapes" in {
     {
-      val (w, merges, _) = shared
+      val (w, _) = shared
 
       // ── 1) The settle is a fixpoint of itself ────────────────────────────────
       val before        = keySet(w)
@@ -866,7 +846,6 @@ abstract class CountryConvergenceBehaviour(
       val cinemasBefore = cinemasByFilm(recordsBefore)
       val screeningsBefore = w.screeningsRepository.findAll()
       val showtimesBefore  = showtimesByFilm(recordsBefore)
-      val mergesBefore  = merges.total
       info(s"${country.displayName}: ${showtimesBefore.count(_._2 > 0)} of ${showtimesBefore.size} films hold " +
            s"${showtimesBefore.values.sum} showtime(s)")
       // The axis this suite already carries for `screenings` compares two empty maps and
@@ -888,34 +867,16 @@ abstract class CountryConvergenceBehaviour(
         r  => { emissions.incrementAndGet(); written.add(s"upsert '${r.title}' (${r.year.getOrElse("—")}) id=${r.id}"); () },
         id => { emissions.incrementAndGet(); written.add(s"delete id=$id"); () })
 
-      val splitsBefore = w.movieService.mixedFilmSplits
       step("settle")(settleOnce(w))
-
-      // The settle also SPLITS a row found to hold two different films, and over a
-      // real country's corpus it must find none. A handful of genuine title
-      // collisions exist in production ("Joanna d'Arc" carrying both Besson's 1999
-      // film and Pálmason's 2025 one), but they are rare and none is in these
-      // replays — so a split firing here means the detector has begun reading
-      // ORDINARY data as two films, which costs a good row its cinemas. That
-      // failure mode is not hypothetical: a director disagreement (cinemas credit
-      // different roles), an uncorroborated title difference (one film named in two
-      // languages) and a screening year printed for a repertory title each had to
-      // be abandoned as evidence, and each was caught only by counting.
-      withClue(s"settle split ${w.movieService.mixedFilmSplits - splitsBefore} cinema slot(s) out of " +
-               s"${country.displayName}'s settled corpus as belonging to a second film — " +
-               s"on a corpus that holds no mixed row, so the detector is reading ordinary data as two films: ") {
-        w.movieService.mixedFilmSplits shouldBe splitsBefore
-      }
 
       val after        = keySet(w)
       val recordsAfter = recordSnapshot(w)
       val cinemasAfter = cinemasByFilm(recordsAfter)
       val screeningsAfter = w.screeningsRepository.findAll()
       withClue(
-        s"a settle on a settled ${country.displayName} corpus folded ${merges.total - mergesBefore} row(s); " +
-          s"keys APPEARED=${(after -- before).take(8).mkString(", ")} " +
+        s"a settle on a settled ${country.displayName} corpus moved keys: " +
+          s"APPEARED=${(after -- before).take(8).mkString(", ")} " +
           s"VANISHED=${(before -- after).take(8).mkString(", ")}\n") {
-        (merges.total - mergesBefore) shouldBe 0
         after shouldBe before
       }
       val moved = (cinemasBefore.keySet ++ cinemasAfter.keySet)
@@ -942,9 +903,8 @@ abstract class CountryConvergenceBehaviour(
                s"${CorpusDiff.slots(screeningsBefore, screeningsAfter, "before", "after")}\n") {
         screeningsAfter shouldBe screeningsBefore
       }
-      // A settle consolidates by MOVING a film's cinemas — folding a duplicate onto a
-      // winner, re-keying a yearless row, sending a mixed row's stray back to staging.
-      // Each of those is a rename, and a rename that doesn't carry the showtimes leaves
+      // A projection consolidates by MOVING a film's cinemas — onto another film, or under a
+      // new key. Each of those is a rename, and a rename that doesn't carry the showtimes leaves
       // the film holding none: still a row, still keyed, still listing its cinemas, with
       // an empty board. Records-equality above would catch it here, but it says nothing
       // about the ticks below, and this is the axis that names WHICH film emptied.
@@ -953,7 +913,7 @@ abstract class CountryConvergenceBehaviour(
                s"showtime:\n${emptiedBySettle.take(8).mkString("\n")}\n") {
         emptiedBySettle shouldBe empty
       }
-      withClue(s"a settle on a ${country.displayName} corpus that has cleared staging wrote " +
+      withClue(s"a settle on a settled ${country.displayName} corpus wrote " +
                s"${emissions.get} time(s) — it should have had nothing to do\n") {
         emissions.get shouldBe 0
       }
@@ -971,7 +931,6 @@ abstract class CountryConvergenceBehaviour(
       // is whether the FIRST identical re-scrape is already a no-op. The second
       // tick is there to catch a two-state oscillation, not to grant slack.
       (1 to 2).foreach { t =>
-        val mergesBeforeTick    = merges.byReason
         val emissionsBeforeTick = emissions.get
         // Snapshot the records so a tick that writes can say WHAT it wrote. The count
         // alone gives you nothing to check a hypothesis against — it cost two rounds of
@@ -983,11 +942,10 @@ abstract class CountryConvergenceBehaviour(
         // the only way to see a write whose stored record reads back unchanged.
         val tickWrites          = storage.corpusWrites()
         val failures     = mutable.ListBuffer.empty[String]
-        val diversions   = step(s"tick $t")(settleTick(w, rnd, failures))
+        step(s"tick $t")(rescrapeCutover(w, rnd, failures))
         if (failures.nonEmpty)
           churn += s"tick $t: ${failures.size} venue(s) FAILED to land their identical re-scrape, so the tick " +
                    s"proves nothing about them:\n  ${failures.take(6).mkString("\n  ")}"
-        val mergesDelta  = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBeforeTick(r))).filter(_._2 > 0)
         val emissionsDelta = emissions.get - emissionsBeforeTick
         val keysNow  = keySet(w)
         val recordsAfterTick = recordSnapshot(w)
@@ -995,9 +953,6 @@ abstract class CountryConvergenceBehaviour(
         val vanished = settledKeys -- keysNow
 
         perTick += emissionsDelta
-        mergesDelta.foreach { case (r, n) => churn += f"tick $t%d: $n%3d merge(s) reason=${r.label}" }
-        if (diversions.nonEmpty)
-          churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
         if (emissionsDelta != 0) {
           import scala.jdk.CollectionConverters._
           val named = written.asScala.toSeq.distinct
@@ -1226,7 +1181,7 @@ abstract class CountryConvergenceBehaviour(
   s"the ${country.displayName} pipeline's coverage" should
     "stay within 5% of what production achieves on the same repertoire" in {
     {
-      val (w, _, _) = shared
+      val (w, _) = shared
       val baseline = ProdCoverageBaseline.read(corpusKey).getOrElse(
         // Loud, not skipped. A silent pass here would restore precisely the failure
         // this assertion exists to catch: the suite reporting green while nothing
@@ -1321,10 +1276,10 @@ abstract class CountryConvergenceBehaviour(
    *
    *  - ORPHANED SIDE ROWS. `movie_slots` and `screenings` are keyed by film id and are meant
    *    to be emptied by `MovieRepository.delete`/`deleteById` when their film leaves. The
-   *    staging fold bypassed that with a direct in-transaction `deleteOne`, so a retired
-   *    key's cinemas stayed behind; prod carried 767 such rows across 90 films until they
-   *    were reaped on 2026-08-06. The fold now MIGRATES them onto the winner, and this is
-   *    what keeps that true. Deleting them instead is not the fix and must not become one —
+   *    old pipeline's staging fold (since deleted) bypassed that with a direct `deleteOne`,
+   *    so a retired key's cinemas stayed behind; prod carried 767 such rows across 90 films
+   *    until they were reaped on 2026-08-06. A retirement must MIGRATE them onto the film
+   *    that takes them, and this is what keeps that true. Deleting them is not the fix —
    *    @8033e39c6 tried it and took prod PL from 39,413 upcoming showtimes to 18,161, because
    *    most retirements are re-keys and the loser's rows are the film's only copy until the
    *    winner is written.
@@ -1338,7 +1293,7 @@ abstract class CountryConvergenceBehaviour(
    *    are how a film silently loses its board. */
   s"the ${country.displayName} corpus" should "strand no side rows and no drifted keys" in {
     {
-      val (w, _, _) = shared
+      val (w, _) = shared
       val normalizer = w.movieCache.normalizer
       val rows       = w.movieRepository.findAll()
       val live       = rows.map(r => r.id.value).toSet
@@ -1381,7 +1336,7 @@ abstract class CountryConvergenceBehaviour(
   s"the ${country.displayName} read model" should
     "emit every cinema, showtime and film the archive holds" in {
     {
-      val (w, _, archive) = shared
+      val (w, archive) = shared
 
       // ── what the DATABASE holds ──────────────────────────────────────────────
       val stored          = archive.findAll()
@@ -1439,7 +1394,7 @@ abstract class CountryConvergenceBehaviour(
   s"the ${country.displayName} read model" should
     "serve every archived listing under the one film that holds it, and nothing else" in {
     {
-      val (w, _, archive) = shared
+      val (w, archive) = shared
       val stored     = archive.findAll()
       val served     = w.readModelRepository.findAllMovies()
       val screenings = w.readModelRepository.findAllScreenings()
@@ -1488,7 +1443,7 @@ abstract class CountryConvergenceBehaviour(
   s"the ${country.displayName} pipeline" should
     "take the next day's listings — films leave, films gain venues, a failed venue keeps its own — and move nothing else" in {
     {
-      val (w, _, _) = shared
+      val (w, _) = shared
       val normalizer = w.movieCache.normalizer
       val today      = w.archivedListings
       // The day after the corpus's TYPICAL first day — the median venue's earliest showtime

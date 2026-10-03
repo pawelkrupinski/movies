@@ -18,29 +18,22 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *
  * Wait semantics — each step blocks until its outputs are fully on disk:
  *
- *   1. `scrapeAllOnce()` — submits every scraper to a bounded executor in
- *      parallel and joins on the resulting `Future`s. Each runs the shared
- *      `cinemaScrapeRunner` (fetch → `recordCinemaScrape` → publish), so it
- *      returns only after every `scraper.fetch()` HTTP call has come back,
- *      the result has been folded into the cache, and
- *      `bus.publish(MovieDetailsComplete(...))` has fired for each `isNew`
- *      slot. The bus listeners run synchronously and dispatch to the
- *      downstream worker pools before publish returns.
- *
- *   2. `drainServices()` — stops the cascade in producer→consumer
- *      order (`cascadeDrainOrder` on `Wiring`: `movieService` →
- *      `imdbIdResolver` → the four `*Ratings`). Each `stop()` shuts the
- *      worker pool down and `awaitTermination(15s)`s so all queued
- *      tasks complete. During each drain, resolution publishes its
- *      `ImdbIdMissing` (which `imdbIdResolver` consumes to recover the
- *      id); the next pool drains in the next step. After `drainServices()`
- *      returns every cache row has:
+ *   1. `bootCutover()` — the cut-over boot: every venue's scraper runs through
+ *      the shared `cinemaScrapeRunner` (fetch → identity intake → archive) on a
+ *      bounded pool and is joined, then ONE identity projection makes the films
+ *      from the accepted listings and the enrichment it announces is worked to
+ *      quiescence (venue detail pages, IMDb-id recovery, the four `*Ratings`).
+ *      Every HTTP call any of them makes is recorded into the fixture tree. After
+ *      it returns every film has, as far as upstream answers:
  *        - `tmdbId`/`imdbId`/`originalTitle` from TMDB
  *        - IMDb rating (GraphQL CDN) or suggestion-recovered `imdbId`
  *        - MC URL + metascore (slug probe + canonical-page scrape)
  *        - RT URL + Tomatometer (slug probe + canonical-page scrape)
  *        - Filmweb URL + rating (search + info + preview + rating)
- *      …each HTTP call recorded into the fixture tree.
+ *
+ *   2. The sync pass — every film the projection stored is forced once more
+ *      through IMDb-id recovery and the four ratings on the calling pool, so a
+ *      fixture an async retry dropped still lands on disk.
  *
  *   3. `unscreenedCleanup.removeUnscreened()` — exercise the daily
  *      cleanup pass too; matches what the live deploy does ~20 s after
@@ -113,27 +106,19 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
     new clients.TmdbClient(httoFetch, apiKey = configuration.tmdbApiKey)
 
   def run(): Unit = {
-    // 1. Production-shape pass: every cinema scrape fires (bare), the enqueued
-    //    EnrichDetails tasks are drained so each film's detail page is fetched +
-    //    recorded, every bus event cascades through the worker pools, the cascade
-    //    drains in producer→consumer order, and newcomers graduate out of the
-    //    always-on staging sink into `movies`. That last step (`drainStaging`,
-    //    inside `scrapeAndDrainToCache`) is what makes the sync-pass below have
-    //    anything to enrich — without it the cold cache diverts every film to
-    //    `pending_movies` and the recorder captures only cinema scrapes.
-    scrapeAndDrainToCache()
+    // 1. Production-shape pass: every cinema scrape lands in the identity intake, one
+    //    identity projection makes the films from them, and the enrichment it announces
+    //    (each film's detail page, IMDb-id recovery, the ratings) is worked to quiescence.
+    //    The projection is what gives the sync-pass below anything to enrich: the cache
+    //    holds films only once it has run.
+    bootCutover()
 
-    // 2. Safety-net pass: synchronously force every cache row through the
-    //    full pipeline. Belt-and-braces against the async path dropping
-    //    work via the retry-scheduler — when a transient TMDB rate-limit
-    //    blip during the first scrape burst schedules a retry with a
-    //    30-s+ backoff, the `movieService.worker` has already been shut
-    //    down by the time the retry fires, the `worker.execute` throws
-    //    `RejectedExecutionException`, and the row's enrichment is lost
-    //    silently. The sync pass re-runs TMDB / IMDb / MC / RT / FW on
-    //    the calling thread (no worker pools, no scheduled retries), so
-    //    every fixture file every client would ever touch ends up on disk
-    //    exactly once.
+    // 2. Safety-net pass: synchronously force every cache row through IMDb-id recovery
+    //    and the four ratings. Belt-and-braces against the async path dropping work —
+    //    a transient rate-limit blip during the first burst can leave a film's
+    //    enrichment unfinished. The sync pass re-runs IMDb / MC / RT / FW per row (no
+    //    scheduled retries), so every fixture file every client would ever touch ends
+    //    up on disk exactly once.
     //
     //    Wrapped in `Try` per row so a single bad upstream (HTTP timeout,
     //    parse error, 5xx) skips that row instead of killing the whole

@@ -179,6 +179,7 @@ final case class IdentityShadowPermutations(value: Int) extends AnyVal
 /** `KINOWO_IDENTITY_PIPELINE_CACHE` — where the identity shadow run keeps each corpus's booted
  *  pipeline answers, so resolver variants measure against one boot. */
 final case class IdentityPipelineCache(value: Path) extends AnyVal
+final case class IdentityPipelineBootOnly(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_ROBUSTNESS=off` — the identity shadow run skips its re-resolving robustness
  *  measures (arrival orders, outage, perturbation). */
 final case class IdentityShadowRobustness(value: Boolean) extends AnyVal

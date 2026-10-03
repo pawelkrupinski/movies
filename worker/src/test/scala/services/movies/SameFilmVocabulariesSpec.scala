@@ -7,7 +7,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.{Candidate, Contradiction, Support, Verdict}
 
 /**
- * "Are these two listings the same film?" is answered by three vocabularies, and
+ * "Are these two listings the same film?" is answered by two vocabularies, and
  * this spec pins what each says over ONE table of pairs, so the differences are on
  * record rather than rediscovered:
  *
@@ -20,12 +20,8 @@ import services.resolution.{Candidate, Contradiction, Support, Verdict}
  *     (±2 minutes) or, when a side has no minutes, by year
  *     (`YearWindow.PublishedAdjacency`), vetoed by an agreeing whole-name director.
  *     It never reads an id.
- *   - `ScrapeLanding.chooseConcluded` — which of several SAME-TITLED concluded rows a
- *     listing belongs on: the runtime it published against each film's own, then
- *     the film more venues screen, then where this venue already sits, then
- *     `canonicalRank`. It never reads a director or a title.
  *
- * They are not one rule in three coats, and the runtime arms alone say why: 120
+ * They are not one rule in two coats, and the runtime arms alone say why: 120
  * against 103 minutes is two films to the detector and a plausible candidate to the
  * verdict, and both are right for the question each answers — the detector splits a
  * row, the verdict vetoes a resolution. Folding one onto another would change an
@@ -87,41 +83,5 @@ class SameFilmVocabulariesSpec extends AnyFlatSpec with Matchers {
         Verdict.of(p.a.evidence, Candidate.fromSlot(p.b.tmdbId.get, p.b.data(Tmdb))) shouldBe p.verdict
       }
     }
-  }
-
-  // ── chooseConcluded ─────────────────────────────────────────────────────────
-
-  private val title = "Tylko jedna noc"
-
-  /** Antonioni's 1961 "La notte" (121 min) and the 2026 romcom (102 min), both
-   *  concluded under one Polish title, then a YEARLESS Helios listing: the row it
-   *  lands on. `extraNewVenues` puts more venues on the 2026 row first. */
-  private def landing(listingRuntime: Option[Int], extraNewVenues: Seq[Cinema] = Nil): Option[Int] = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
-    cache.put(cache.keyOf(title, Some(1961)), row(1, KinoMuranow, title, "La notte", 1961, Some(121)))
-    cache.put(cache.keyOf(title, Some(2026)), MovieRecord(tmdbId = Some(2), data =
-      (Multikino +: extraNewVenues).map(c => (c: Source) -> SourceData(title = Some(title), releaseYear = Some(2026))).toMap +
-        (Tmdb -> SourceData(title = Some(title), originalTitle = Some("One Night Only"), releaseYear = Some(2026), runtimeMinutes = Some(102)))))
-
-    cache.recordCinemaScrape(Helios, Seq(CinemaMovie(Movie(title = title, runtimeMinutes = listingRuntime), Helios,
-      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = Nil)))
-
-    Seq(1961, 2026).find(y => cache.get(cache.keyOf(title, Some(y))).exists(_.cinemaData.contains(Helios)))
-  }
-
-  "chooseConcluded" should "route a yearless listing by the minutes it published" in {
-    landing(Some(105)) shouldBe Some(2026)
-    landing(Some(118)) shouldBe Some(1961)
-  }
-
-  it should "route a listing with no minutes to the film more venues screen" in {
-    landing(None, extraNewVenues = Seq(CinemaCityArkadia)) shouldBe Some(2026)
-  }
-
-  // The tie: no minutes, one venue each, this venue on neither. Nothing the listing
-  // or the corpus says separates the films, and the pick is `canonicalRank`'s — the
-  // lower year. Pinned as what it IS, not as what it should be.
-  it should "fall back to canonicalRank when nothing separates the films" in {
-    landing(None) shouldBe Some(1961)
   }
 }

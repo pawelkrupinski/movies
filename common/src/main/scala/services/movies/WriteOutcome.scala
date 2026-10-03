@@ -68,8 +68,7 @@ object RepositoryWriteMetrics {
   val Writes: Seq[(String, String)] =
     Seq("upsert", "updateIfPresent", "delete").map(MovieRepository.Collection -> _) ++
     sideCollectionWrites.map(SlotsRepository.Collection -> _) ++
-    sideCollectionWrites.map(ScreeningsRepository.Collection -> _) ++
-    Seq("upsert", "delete").map(services.staging.StagingRepository.Collection -> _)
+    sideCollectionWrites.map(ScreeningsRepository.Collection -> _)
 
   /** The exception classes a repository write is expected to fail with, seeded at 0 so the
    *  FIRST failure moves `increase()`: a counter series born at 1 needs a second failure

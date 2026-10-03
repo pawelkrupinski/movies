@@ -53,42 +53,17 @@ trait CorpusWiring { self: WorkerWiring =>
     // token so a restart replays events missed while down instead of leaning on the backstop.
     persistResumeToken = true)
 
-  // Staging-ingest: a genuinely-new film incubates in `pending_movies`
-  // (resolve-then-fold) instead of landing straight in `movies`; a film already
-  // known to `movies` keeps the direct path. The `staging` sink is wired into the
-  // cache, the promoter scheduled and the fold subscribed (in the root)
-  // unconditionally.
-  /** The merge counter the cache reports to — production's task metrics. A seam, so a harness
-   *  that counts merges by reason overrides THIS rather than rebuilding the cache, which
-   *  silently drops every argument it forgets (the scrape-guard ledger, the clock, the
-   *  screening tokens — see `CountryConvergenceBehaviour`). */
-  protected def cacheMergeMetrics: services.movies.MergeMetrics = taskMetrics
-
   lazy val movieCache: CaffeineMovieCache =
-    new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
-      retrigger = enrichmentRetrigger, mergeMetrics = cacheMergeMetrics, cacheMetrics = taskMetrics,
-      // The composition root's clock, not the cache's own default: the scrape guards judge a
-      // tick by the showtimes still UPCOMING, and "upcoming" must mean the same instant for
-      // the cache as for everything else the root wires. Production's is the system clock
-      // either way; a harness that moves its clock a day on moved nothing here, so the depth
-      // guard measured the next day's listing against showtimes the day had already passed
-      // and discarded the tick.
-      clock = clock,
-      enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer,
+    new CaffeineMovieCache(movieRepository,
+      retrigger = enrichmentRetrigger, cacheMetrics = taskMetrics,
+      normalizer = titleNormalizer,
       scrapeLandingMetrics = taskMetrics,
-      // Durable, so the guards' grace and each venue's recorded source survive a
-      // rollout — held in memory they reset on every pod change.
-      scrapeGuardLedger = scrapeGuardLedger,
-      // The process's one intern pool, shared with every other country's cache.
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
-      maxConsecutiveGuardRejections =
-        services.movies.ScrapeHealth.maxRejectionsFor(scrapeFreshness),
       rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)))
 
-  /** Where the scrape guards keep each venue's state — the landing's, or a cut-over country's
-   *  listing intake's: one ledger, so a country switched between paths keeps one count. */
+  /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)
 
   // This deployment's badge vocabulary. One instance, shared by every path that

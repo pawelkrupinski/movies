@@ -8,8 +8,8 @@ import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
 import services.tasks.{InMemoryTaskQueue, TaskQueue}
 
-/** Shared builder for a fully-wired [[DebugController]]: an in-memory corpus,
- *  staging store and task queue behind a single-country [[DebugStack]], and the
+/** Shared builder for a fully-wired [[DebugController]]: an in-memory corpus
+ *  and task queue behind a single-country [[DebugStack]], and the
  *  read model projected from the same `records`. Returns the concrete
  *  [[WebReadModel]] too, so a spec can `reload()` or inspect what `rehydrate`
  *  reloaded. */
@@ -25,7 +25,6 @@ object TestDebugController {
     // the same `records`. Override to drive the /debug read path (e.g. to assert
     // the two scans run concurrently).
     movieRepository: Option[services.movies.MovieRepository] = None,
-    stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty(services.movies.SingleCountryNormalizer.titleNormalizer),
     ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
     attemptReader: services.attempts.EnrichmentAttemptReader = services.attempts.EnrichmentAttemptReader.empty,
     // The per-country /debug stacks. Defaults to a single-country holder wrapping
@@ -41,7 +40,7 @@ object TestDebugController {
       debugCountries   = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
         movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),
-        stagingRepository, taskQueue, ratingCadenceReader, attemptReader,
+        taskQueue, ratingCadenceReader, attemptReader,
         readModel              = DebugSnapshot.readNow(services.MirrorFreshness.notMirrored)(ReadModelDump.of(readModel)),
         readModelScreeningsFor = ReadModelDump.screeningsOf(readModel)))),
       readModel        = readModel,

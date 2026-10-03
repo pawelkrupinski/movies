@@ -36,7 +36,7 @@ final case class ScrapeTasksPerVenue(value: Int) extends AnyVal
 /** `KINOWO_SCRAPE_FRESHNESS_MINUTES` — how long a venue's scrape stays fresh. */
 final case class ScrapeFreshness(value: FiniteDuration) extends AnyVal
 
-// ── Enrichment, resolution and staging ───────────────────────────────────────
+// ── Enrichment and resolution ───────────────────────────────────────
 /** `KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK`. */
 final case class EnrichmentMaxEnqueuePerTick(value: Int) extends AnyVal
 /** `KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS`. */
@@ -51,14 +51,6 @@ final case class TmdbRetryMaxEnqueuePerTick(value: Int) extends AnyVal
 final case class SettleInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS`. */
 final case class OmdbBackfillInterval(value: FiniteDuration) extends AnyVal
-/** `KINOWO_STAGING_PROMOTE_INITIAL_SECONDS`. */
-final case class StagingPromoteInitialDelay(value: FiniteDuration) extends AnyVal
-/** `KINOWO_STAGING_PROMOTE_SECONDS`. */
-final case class StagingPromoteInterval(value: FiniteDuration) extends AnyVal
-/** `KINOWO_STAGING_STUCK_MINUTES` — how long a staging row may sit before it is alerted on. */
-final case class StagingStuckThreshold(value: FiniteDuration) extends AnyVal
-/** `KINOWO_STAGING_STUCK_SCAN_MINUTES`. */
-final case class StagingStuckScanInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_FILMWEB_DROP_THRESHOLD` — consecutive drops before the Filmweb alert fires. */
 final case class FilmwebDropThreshold(value: Int) extends AnyVal
 /** `KINOWO_ZYTE_SESSION_TTL_SECONDS`. */

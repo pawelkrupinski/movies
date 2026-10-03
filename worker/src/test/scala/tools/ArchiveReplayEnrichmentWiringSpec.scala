@@ -96,14 +96,11 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       screenings = Some(screenings), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     override lazy val readModel: services.readmodel.ReadModelReader & services.readmodel.ReadModelWriter =
       new services.readmodel.InMemoryReadModelRepository()
-    override lazy val staging     = new services.staging.InMemoryStagingRepository(normalizer = movies.normalizer)
     override lazy val archive     = new services.scrapes.InMemoryScrapeArchiveRepository
     override lazy val tasks       = new services.tasks.InMemoryTaskQueue
     override lazy val freshness   = new services.freshness.InMemoryFreshnessStore
     override lazy val chunkScrape = new services.tasks.InMemoryChunkScrapeStore()
     override lazy val omdbAttempt = new services.enrichment.InMemoryOmdbAttemptStore
-    override def stagingFolder(movieRepository: services.movies.MovieRepository): services.staging.StagingFolder =
-      new services.staging.InMemoryStagingFolder(staging, movieRepository, normalizer = movieRepository.normalizer)
   }
 
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
@@ -114,7 +111,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   /** Production's queue sits behind a dedup cache (`TaskQueueWiring.taskDedupCache`): a key it
    *  queued and has not completed is answered `Duplicate` from memory. The replay wiring went
    *  straight to the store, paying a write round trip per repeat that production never makes —
-   *  ~45% of a UK replay's staging drain, the reaper re-enqueueing every venue still owing a
+   *  ~45% of a UK replay's drain, the reaper re-enqueueing every venue still owing a
    *  film's detail each time one venue's lands (2026-10-03). */
   "the archive replay queue" should "answer a repeat enqueue from production's dedup cache, not the store" in {
     import services.tasks.{EnqueueResult, TaskType}
@@ -131,14 +128,14 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val queue = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, storage, fixtureTree,
       settings.FixtureRoot.RepositoryRelative).taskQueue
 
-    queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Added
-    queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Duplicate
+    queue.enqueue(TaskType.EnrichDetails, "detail|film|venue") shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.EnrichDetails, "detail|film|venue") shouldBe EnqueueResult.Duplicate
     withClue("the repeat is answered from memory: ")(reachedStore.get shouldBe 1)
 
     val task = queue.claim("replay", scala.concurrent.duration.Duration(1, "minute")).getOrElse(fail("nothing to claim"))
     queue.complete(task.id, "replay")
     withClue("and completing the task lets the key be queued again, through the store: ") {
-      queue.enqueue(TaskType.StagingDetail, "detail|film|venue") shouldBe EnqueueResult.Added
+      queue.enqueue(TaskType.EnrichDetails, "detail|film|venue") shouldBe EnqueueResult.Added
       reachedStore.get shouldBe 2
     }
   }
@@ -231,11 +228,10 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    * cinema under nothing but a title, carry an IMDB slot and a tmdbId that a year-less
    * search could never have produced.
    *
-   * In the replay harness the event fires from the STAGING FOLD
-   * (`announceResolvedNewMovie`), and `bootCorpus` runs `drainServices()` before
-   * `drainStaging()`. `drainServices` was `stop()` — a permanent
-   * `ExecutorService.shutdown()` — so every `ImdbIdMissing` published from the first
-   * fold onwards was submitted to a dead pool and silently dropped. Poland's leg logged
+   * In the replay harness the event fires when a film is announced
+   * (`announceResolvedNewMovie`), after the boot has run `drainServices()` once.
+   * `drainServices` was `stop()` — a permanent `ExecutorService.shutdown()` — so every
+   * `ImdbIdMissing` published from then on was submitted to a dead pool and silently dropped. Poland's leg logged
    * 0 event-driven recoveries against prod's populated IMDB slots, and 42 films prod
    * resolves came out `tmdbNoMatch`.
    */
@@ -261,7 +257,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
     seedUnidentifiedFilm(wiring)
 
-    // What the boot does before the staging fold publishes anything.
+    // What the boot does before any film is announced.
     wiring.drainServices()
 
     wiring.eventBus.publish(

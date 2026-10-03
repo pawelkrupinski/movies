@@ -111,7 +111,6 @@ rehydrates its in-memory cache from Mongo via 4-way parallel cursors
 - `/:city/api/repertoire`, `/:city/api/details` — the JSON feeds the mobile apps read
 - `/debug` — dev page exposing the source `movies` corpus;
   `/debug/readmodel` — the projected read model web actually serves
-- `POST /debug/reenrich?title=...` — drop one row and re-fetch every source
 - `POST /:city/debug/rehydrate` — reload the in-memory cache from Mongo
 - `/health` — liveness/readiness probe
 

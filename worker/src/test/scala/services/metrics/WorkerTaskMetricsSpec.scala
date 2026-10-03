@@ -3,8 +3,7 @@ package services.metrics
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.WorkerTaskMetrics.CountryQueueSample
-import services.movies.{ChangeStreamLiveness, MergeReason}
-import services.staging.StagingStep
+import services.movies.ChangeStreamLiveness
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary, TaskType}
 
 import java.time.Instant
@@ -33,7 +32,6 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
       workerId = None, leaseExpiresAt = None, lastError = None, nextEligibleAt = nextEligibleAt, enqueuedAt = enqueuedAt)
 
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
-  private val noStaging      = Map.empty[StagingStep, Int]
 
   /** A single-country ("pl") series + its facade — the common case. */
   private def newPl(): (WorkerTaskMetrics, WorkerTaskMetrics.Series) = {
@@ -43,9 +41,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def scrapePl(series: WorkerTaskMetrics.Series,
                        snapshot: QueueSnapshot = emptySnapshot,
-                       staging: Map[StagingStep, Int] = noStaging,
                       ): String =
-    series.scrape(Seq(CountryQueueSample("pl", snapshot, staging, ChangeStreamLiveness.unwatched())), now)
+    series.scrape(Seq(CountryQueueSample("pl", snapshot, ChangeStreamLiveness.unwatched())), now)
 
   it should "tag every task-pipeline series with the emitting country" in {
     val (m, series) = newPl()
@@ -69,8 +66,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     uk.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
 
     val out = series.scrape(Seq(
-      CountryQueueSample("pl", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched()),
-      CountryQueueSample("uk", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched())), now)
+      CountryQueueSample("pl", emptySnapshot, ChangeStreamLiveness.unwatched()),
+      CountryQueueSample("uk", emptySnapshot, ChangeStreamLiveness.unwatched())), now)
 
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 2""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="uk",result="added",task_type="ScrapeCinema"} 1""")
@@ -87,14 +84,14 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     clock.advanceSeconds(480)
     liveness.delivered(ChangeStreamLiveness.Movies)                 // the movies cursor delivered 120s before `now`
 
-    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now)
+    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, liveness)), now)
     out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 120.0""")
     // A cursor that never delivered ages from the boot, not from zero — "never" is the loudest silence.
     out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movie_slots",country="pl"} 600.0""")
     out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="screenings",country="pl"} 600.0""")
 
     // Nothing delivered since: the next scrape reads a LARGER age, not the same one.
-    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now.plusSeconds(60))
+    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, liveness)), now.plusSeconds(60))
     later should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 180.0""")
   }
 
@@ -111,25 +108,14 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     liveness.queued(ChangeStreamLiveness.Screenings)
     liveness.applied(ChangeStreamLiveness.Screenings, done)
 
-    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now)
+    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, liveness)), now)
     out should include ("""kinowo_worker_change_stream_apply_pending{collection="screenings",country="pl"} 2.0""")
     out should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl"} 300.0""")
     out should include ("""kinowo_worker_change_stream_apply_pending{collection="movies",country="pl"} 0.0""")
     out should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="movies",country="pl"} 0.0""")
 
-    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now.plusSeconds(60))
+    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, liveness)), now.plusSeconds(60))
     later should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl"} 360.0""")
-  }
-
-  it should "count re-try resolves that landed on a queued one by mode and whether they upgraded it" in {
-    val (pl, series) = newPl()
-    pl.recordDuplicate(services.tasks.ResolveMode.RetryMiss, upgraded = true)
-    pl.recordDuplicate(services.tasks.ResolveMode.Force, upgraded = false)
-
-    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched())), now)
-    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="retry-miss",outcome="upgraded"} 1""")
-    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="force",outcome="not-upgraded"} 1""")
-    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="retry-miss",outcome="not-upgraded"} 0""")
   }
 
   it should "count the rows the read-model sweep re-projected behind a silent change stream" in {
@@ -137,16 +123,6 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.recordCatchUp(3)
     m.recordCatchUp(0)   // a quiet sweep adds nothing, and the series exists from boot regardless
     scrapePl(series) should include ("""kinowo_worker_readmodel_catchup_rows_total{country="pl"} 3""")
-  }
-
-  it should "count newcomer kicks and the staging rows they decoded, from zero at boot" in {
-    val (m, series) = newPl()
-    scrapePl(series) should include ("""kinowo_worker_staging_newcomer_kicks_total{country="pl"} 0""")
-    m.recordNewcomerKick(1)
-    m.recordNewcomerKick(3)
-    val out = scrapePl(series)
-    out should include ("""kinowo_worker_staging_newcomer_kicks_total{country="pl"} 2""")
-    out should include ("""kinowo_worker_staging_newcomer_kick_rows_total{country="pl"} 4""")
   }
 
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
@@ -301,64 +277,6 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="done",task_type="RtRating"} 0""")
   }
 
-  it should "expose staging movie counts by step, seeding unused steps to 0" in {
-    val (_, series) = newPl()
-    val staging = Map[StagingStep, Int](StagingStep.Detail -> 3, StagingStep.Fold -> 1)
-
-    val out = scrapePl(series, staging = staging)
-
-    out should include ("""kinowo_worker_staging_movies{country="pl",step="detail"} 3""")
-    out should include ("""kinowo_worker_staging_movies{country="pl",step="fold"} 1""")
-    // A step with nobody waiting still appears at 0.
-    out should include ("""kinowo_worker_staging_movies{country="pl",step="resolve_tmdb"} 0""")
-    out should include ("""kinowo_worker_staging_movies{country="pl",step="resolve_imdb"} 0""")
-  }
-
-  it should "count movie-row merges by reason, summing victims and seeding unused reasons to 0" in {
-    val (m, series) = newPl()
-    m.recordMerge(MergeReason.Canonicalize, 2)
-    m.recordMerge(MergeReason.Canonicalize, 1)
-    m.recordMerge(MergeReason.TmdbIdentity, 1)
-    m.recordMerge(MergeReason.NormalizeRebuild, 2)
-    m.recordMerge(MergeReason.ResolvedSettle, 0)  // a no-victim fold contributes nothing
-
-    val out = scrapePl(series)
-
-    out should include ("""kinowo_worker_merges_total{country="pl",reason="canonicalize"} 3""")
-    out should include ("""kinowo_worker_merges_total{country="pl",reason="tmdb-identity"} 1""")
-    out should include ("""kinowo_worker_merges_total{country="pl",reason="normalize-rebuild"} 2""")
-    // Seeded so the series exists from boot; the 0-victim call left it at 0.
-    out should include ("""kinowo_worker_merges_total{country="pl",reason="resolved-settle"} 0""")
-  }
-
-  it should "count re-keys per reason and seed every reason to 0" in {
-    val (m, series) = newPl()
-    m.recordRekey(services.movies.RekeyReason.ResolvedYear)
-    m.recordRekey(services.movies.RekeyReason.ResolvedYear)
-    m.recordRekey(services.movies.RekeyReason.Canonicalize)
-
-    val out = scrapePl(series)
-    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="resolved-year"} 2""")
-    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="canonicalize"} 1""")
-    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="embedded-year"} 0""")
-    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="forced-reset"} 0""")
-    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="scrape-variant"} 0""")
-  }
-
-  it should "count movie-row splits, summing fragments and seeding the series to 0" in {
-    val (m, series) = newPl()
-    m.recordSplit(2)  // a settle pass re-diverted two slots
-    m.recordSplit(1)
-    m.recordSplit(0)  // a pass that found nothing contributes nothing
-
-    scrapePl(series) should include ("""kinowo_worker_splits_total{country="pl"} 3""")
-  }
-
-  it should "seed the splits series to 0 so it exists from boot" in {
-    val (_, series) = newPl()
-    scrapePl(series) should include ("""kinowo_worker_splits_total{country="pl"} 0""")
-  }
-
   it should "observe the TMDB-resolved → first-rating-attempt delay per site, seeding all four" in {
     val (m, series) = newPl()
     m.recordFirstRatingDelay("imdb", 300.0)
@@ -387,28 +305,26 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   // ONE READ, ONE COUNTRY'S GAUGES. The worker renders its whole exposition — every country, the
   // JVM, every counter in the registry — in one pass, and a render that throws keeps the LAST GOOD
-  // BYTES. The queue and staging reads throw on failure (an unreadable queue is not an empty one),
-  // so a sample that let them escape froze every series the worker exports for as long as either
+  // BYTES. The queue read throws on failure (an unreadable queue is not an empty one),
+  // so a sample that let it escape froze every series the worker exports for as long as the
   // read kept failing: counters flat, change-stream ages stopped, and no alert able to tell.
-  it should "render the rest of the exposition when a country's queue or staging read fails, holding only those gauges" in {
+  it should "render the rest of the exposition when a country's queue read fails, holding only that gauge" in {
     val (m, series) = newPl()
     val clock    = new tools.MutableClock(now.minusSeconds(10))
     val liveness = new ChangeStreamLiveness(clock)
     liveness.delivered(ChangeStreamLiveness.Movies)                 // 10s before `now`
     val queued   = QueueSnapshot(Map(TaskState.Waiting -> 5L), Nil)
-    series.scrape(Seq(CountryQueueSample.read("pl", queued, Map(StagingStep.Detail -> 3), liveness)), now)
+    series.scrape(Seq(CountryQueueSample.read("pl", queued, liveness)), now)
 
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
     val out = series.scrape(Seq(CountryQueueSample.read("pl",
-      throw new IllegalStateException("queue unreadable"),
-      throw new IllegalStateException("staging read incomplete"), liveness)), now.plusSeconds(60))
+      throw new IllegalStateException("queue unreadable"), liveness)), now.plusSeconds(60))
 
     // The render went ahead: a counter moved since the last good one shows its new value …
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 1""")
     // … the change-stream age kept climbing …
     out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 70.0""")
-    // … and the two gauges whose read failed hold their last reading rather than claim an empty queue.
+    // … and the gauge whose read failed holds its last reading rather than claim an empty queue.
     out should include ("""kinowo_worker_queue_depth{country="pl",state="waiting"} 5""")
-    out should include ("""kinowo_worker_staging_movies{country="pl",step="detail"} 3""")
   }
 }

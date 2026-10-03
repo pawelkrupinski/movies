@@ -20,7 +20,7 @@ import java.nio.file.{Files, Path, Paths, StandardOpenOption}
  *
  * THE BUG THIS PINS. On 2026-09-23 every write of a cache-stripped record threw "Can't find
  * a codec for class [I", logged as `MovieRepository.upsert(…) failed` and moved on.
- * `RekeyScreeningsIntegrationSpec` writes such records and stays green with those lines in
+ * `RekeyScreeningsIntegrationSpec` (since deleted) wrote such records and stayed green with those lines in
  * its output (reproduced by reverting 4596f6b20); under the tripwire the run fails.
  *
  * HOW IT IS WIRED. A ScalaTest reporter, registered for every `it` and `e2e` config by

@@ -258,7 +258,7 @@ object TmdbStore {
    *  suggestions — the one whose age says when it was last asked. */
   def questionId(language: String, query: CandidateQuery): String = query match {
     case CandidateQuery.Title(text)    => titleSearchId(language, text)
-    case CandidateQuery.Director(name) => personSearchId(services.movies.TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim)
+    case CandidateQuery.Director(name) => personSearchId(CandidateQuery.personName(name))
     case CandidateQuery.Imdb(title)    => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(title))
   }
 

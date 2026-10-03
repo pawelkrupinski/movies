@@ -21,7 +21,7 @@ class CostScalingSpec extends AnyFlatSpec with Matchers {
     intercept[TestFailedException](CostScaling.assertIndependent("creeping", n = 10)(n => 7L + n / 10))
   }
 
-  "Work.counting" should "count the rows reads return, per write the rows it names, and an index read as one" in {
+  "Work.counting" should "count the rows reads return, and per write the rows it names" in {
     val work  = new Work
     val store = Work.counting(classOf[CostScalingSpec.Store], new CostScalingSpec.Store {
       def all()                        = Seq("a", "b", "c")
@@ -29,11 +29,10 @@ class CostScalingSpec extends AnyFlatSpec with Matchers {
       def checked()                    = (Map("a" -> 1, "b" -> 2), true)
       def upsertAll(rows: Seq[String]) = ()
       def delete(id: String)           = ()
-      def venues()                     = Set("x", "y", "z")
-    }, work, indexOnly = Set("venues"))
-    store.all(); store.one("a"); store.checked(); store.venues()
+    }, work)
+    store.all(); store.one("a"); store.checked()
     store.upsertAll(Seq("a", "b")); store.delete("a")
-    (work.reads, work.writes) shouldBe (3L + 1L + 2L + 1L, 2L + 1L)
+    (work.reads, work.writes) shouldBe (3L + 1L + 2L, 2L + 1L)
     work.breakdown("all") shouldBe 3L
   }
 }
@@ -45,6 +44,5 @@ object CostScalingSpec {
     def checked(): (Map[String, Int], Boolean)
     def upsertAll(rows: Seq[String]): Unit
     def delete(id: String): Unit
-    def venues(): Set[String]
   }
 }

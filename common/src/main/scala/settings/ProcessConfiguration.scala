@@ -111,11 +111,10 @@ final class ProcessConfiguration(val env: Env) {
   /** Where an alerter posts, or the settings whose absence leaves it unrouted. */
   def telegramRoute(route: AlertRoute): Either[Seq[MissingSetting], TelegramRoute] = {
     val token = text(AlertRoute.TokenKey).map(TelegramBotToken(_))
-    val chat: Either[String, TelegramChatId] =
-      route.chatKeys.iterator.map(key => key -> text(key)).collectFirst { case (key, Some(raw)) => key -> raw } match {
-        case None             => Left(route.chatKeys.mkString(" or "))
-        case Some((key, raw)) => raw.toLongOption.map(TelegramChatId(_)).toRight(s"$key (not a number)")
-      }
+    val chat: Either[String, TelegramChatId] = text(route.chatKey) match {
+      case None      => Left(route.chatKey)
+      case Some(raw) => raw.toLongOption.map(TelegramChatId(_)).toRight(s"${route.chatKey} (not a number)")
+    }
     (token, chat) match {
       case (Some(bot), Right(chatId)) => Right(TelegramRoute(bot, chatId, text(route.topicKey).flatMap(_.toLongOption).map(TelegramTopicId(_))))
       case _                          => Left((token.fold(Seq(AlertRoute.TokenKey))(_ => Nil) ++ chat.left.toSeq).map(MissingSetting(_)))
@@ -189,14 +188,6 @@ final class ProcessConfiguration(val env: Env) {
   def settleInterval(default: SettleInterval): SettleInterval = SettleInterval(seconds("KINOWO_SETTLE_INTERVAL_SECONDS", default.value))
   def omdbBackfillInterval(default: OmdbBackfillInterval): OmdbBackfillInterval =
     OmdbBackfillInterval(seconds("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", default.value))
-  def stagingPromoteInitialDelay(default: StagingPromoteInitialDelay): StagingPromoteInitialDelay =
-    StagingPromoteInitialDelay(seconds("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", default.value))
-  def stagingPromoteInterval(default: StagingPromoteInterval): StagingPromoteInterval =
-    StagingPromoteInterval(seconds("KINOWO_STAGING_PROMOTE_SECONDS", default.value))
-  def stagingStuckThreshold(default: StagingStuckThreshold): StagingStuckThreshold =
-    StagingStuckThreshold(minutes("KINOWO_STAGING_STUCK_MINUTES", default.value))
-  def stagingStuckScanInterval(default: StagingStuckScanInterval): StagingStuckScanInterval =
-    StagingStuckScanInterval(minutes("KINOWO_STAGING_STUCK_SCAN_MINUTES", default.value))
   def filmwebDropThreshold(default: FilmwebDropThreshold): FilmwebDropThreshold =
     FilmwebDropThreshold(count("KINOWO_FILMWEB_DROP_THRESHOLD", default.value))
   def zyteSessionTtl(default: ZyteSessionTtl): ZyteSessionTtl = ZyteSessionTtl(seconds("KINOWO_ZYTE_SESSION_TTL_SECONDS", default.value))
@@ -330,6 +321,10 @@ final class ProcessConfiguration(val env: Env) {
    *  when a corpus's file is there, written after a boot when it is not. */
   def identityPipelineCache: Option[IdentityPipelineCache] =
     text("KINOWO_IDENTITY_PIPELINE_CACHE").map(dir => IdentityPipelineCache(Path.of(dir)))
+  /** `KINOWO_IDENTITY_BOOT_ONLY=true` — boot each corpus's pipeline into the cache and measure
+   *  nothing: the CI measure boots the BASE commit's projection this way before applying a variant. */
+  def identityPipelineBootOnly: IdentityPipelineBootOnly =
+    IdentityPipelineBootOnly(text("KINOWO_IDENTITY_BOOT_ONLY").contains("true"))
   /** `KINOWO_IDENTITY_ROBUSTNESS=off` — skip the robustness measures that resolve a corpus again. */
   def identityShadowRobustness: IdentityShadowRobustness =
     IdentityShadowRobustness(!text("KINOWO_IDENTITY_ROBUSTNESS").contains("off"))
@@ -380,12 +375,10 @@ object ProcessConfiguration {
   def resolveExported(): ProcessConfiguration = resolve(new java.io.File("/nonexistent/.env.local"))
 }
 
-/** Where an alerter's Telegram route is configured: its chat (the first of `chatKeys` set
- *  wins) and optional topic. */
-enum AlertRoute(val chatKeys: Seq[String], val topicKey: String) {
-  case FilmwebFallback extends AlertRoute(Seq("KINOWO_FALLBACK_TG_CHAT_ID"), "KINOWO_FALLBACK_TG_TOPIC_ID")
-  case FilmwebDrop     extends AlertRoute(Seq("KINOWO_FILMWEB_DROP_TG_CHAT_ID"), "KINOWO_FILMWEB_DROP_TG_TOPIC_ID")
-  case StagingStuck    extends AlertRoute(Seq("KINOWO_STAGING_STUCK_TG_CHAT_ID", "KINOWO_FALLBACK_TG_CHAT_ID"), "KINOWO_STAGING_STUCK_TG_TOPIC_ID")
+/** Where an alerter's Telegram route is configured: its chat and optional topic. */
+enum AlertRoute(val chatKey: String, val topicKey: String) {
+  case FilmwebFallback extends AlertRoute("KINOWO_FALLBACK_TG_CHAT_ID", "KINOWO_FALLBACK_TG_TOPIC_ID")
+  case FilmwebDrop     extends AlertRoute("KINOWO_FILMWEB_DROP_TG_CHAT_ID", "KINOWO_FILMWEB_DROP_TG_TOPIC_ID")
 }
 
 object AlertRoute {

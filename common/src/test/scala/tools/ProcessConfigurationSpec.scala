@@ -82,10 +82,15 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "route an alerter only when its token and a numeric chat are both set, naming what is missing" in {
-    resolvedFrom("TELEGRAM_BOT_TOKEN" -> "bot", "KINOWO_FALLBACK_TG_CHAT_ID" -> "-100", "KINOWO_STAGING_STUCK_TG_TOPIC_ID" -> "7")
-      .telegramRoute(AlertRoute.StagingStuck) shouldBe Right(TelegramRoute(TelegramBotToken("bot"), TelegramChatId(-100L), Some(TelegramTopicId(7L))))
+    resolvedFrom("TELEGRAM_BOT_TOKEN" -> "bot", "KINOWO_FALLBACK_TG_CHAT_ID" -> "-100", "KINOWO_FALLBACK_TG_TOPIC_ID" -> "7")
+      .telegramRoute(AlertRoute.FilmwebFallback) shouldBe Right(TelegramRoute(TelegramBotToken("bot"), TelegramChatId(-100L), Some(TelegramTopicId(7L))))
     resolvedFrom("KINOWO_FILMWEB_DROP_TG_CHAT_ID" -> "chat").telegramRoute(AlertRoute.FilmwebDrop) shouldBe
       Left(Seq(MissingSetting("TELEGRAM_BOT_TOKEN"), MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID (not a number)")))
+  }
+
+  it should "boot the identity measure's pipeline only when asked to" in {
+    resolvedFrom("KINOWO_IDENTITY_BOOT_ONLY" -> "true").identityPipelineBootOnly shouldBe IdentityPipelineBootOnly(true)
+    resolvedFrom().identityPipelineBootOnly shouldBe IdentityPipelineBootOnly(false)
   }
 
   it should "read a tuning knob, falling back to the caller's default for an unusable value" in {

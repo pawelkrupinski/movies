@@ -36,17 +36,10 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   /** file → why it may still name the shared database. */
   private val SharedDatabaseAllowlist: Map[String, String] = Map(
     "worker/src/it/scala/IntegrationCorpusDatabaseIntegrationSpec.scala" ->
-      "reads the base MONGODB_DB only to assert the per-suite names derive from it; opens no database by it",
-    "worker/src/it/scala/RekeyScreeningsIntegrationSpec.scala" ->
-      ("seeds neighbour rows in the shared database ON PURPOSE to prove its own corpus leaves them alone; it " +
-        "writes and removes those rows by exact _id, never by pattern"))
+      "reads the base MONGODB_DB only to assert the per-suite names derive from it; opens no database by it")
 
   /** file → why a pattern delete is the scenario itself, in a database the spec owns. */
-  private val RegexDeleteAllowlist: Map[String, String] = Map(
-    "worker/src/it/scala/StagingFoldIntegrationSpec.scala" ->
-      "inside FoldFixture's own corpus database: clears the anchor's movies rows between two folds of one test",
-    "worker/src/it/scala/StagingSiblingProjectionIntegrationSpec.scala" ->
-      "inside its own IsolatedMongoDatabase: re-seeds the sibling rows sharing the computed staging-id prefix")
+  private val RegexDeleteAllowlist: Map[String, String] = Map.empty
 
   // The shared database is the resolved MONGODB_DB — `IntegrationMongoTarget.databasePrefix`, which
   // every per-suite database name is derived from — or the raw key / literal name.

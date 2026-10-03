@@ -362,7 +362,7 @@ tests:
           - exp_labels: { severity: warning, country: pl }
             exp_annotations:
               summary: "pl's worker has been failing repository writes for 10 minutes"
-              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
+              description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
 
   # SEEDED AT BOOT, AS THE WORKER NOW DOES: the series reads 0 for ten minutes before the first
   # failure, so `increase` sees that first failure rather than needing a second. Failures from
@@ -381,7 +381,7 @@ tests:
           - exp_labels: { severity: warning, country: es }
             exp_annotations:
               summary: "es's worker has been failing repository writes for 10 minutes"
-              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
+              description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
 
   # A BLIP HEALS ITSELF. Three failures in one minute (a stepdown), then nothing: the rows were
   # rolled back and retried by the next scrape, so there is nothing to page about.
@@ -414,57 +414,7 @@ tests:
           - exp_labels: { severity: warning, country: de }
             exp_annotations:
               summary: "de's worker has been failing repository writes for 10 minutes"
-              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
-
-  # STAGING FOLDS ABORTING. The 2026-09-25 UK shape: one abandoned fold a minute, seeded at 0
-  # from boot. Quiet before half an hour of it, firing after.
-  - interval: 1m
-    input_series:
-      - series: 'kinowo_worker_staging_fold_aborts_total{country="uk",job="kinowo-worker"}'
-        values: '0x4 1+1x60'
-    alert_rule_test:
-      - eval_time: 20m
-        alertname: StagingFoldsAborting
-        exp_alerts: []
-      - eval_time: 45m
-        alertname: StagingFoldsAborting
-        exp_alerts:
-          - exp_labels: { severity: warning, country: uk }
-            exp_annotations:
-              summary: "uk's worker has been abandoning staging folds for 30 minutes"
-              description: "A concluded newcomer keeps failing to fold into `movies`, so its listing is resolved and never shown. The worker's ERROR lines name the film and the cause (`Staging fold '<title>' aborted after N attempt(s): ...`). The same film every time is a deterministic failure -- an E11000 on `tmdbId_1` is the fold planning two documents for one film, a decode error a row it cannot read -- and only a code or data fix clears it; many different films at once is the database (timeouts, elections)."
-
-  # A TRANSIENT ABORT HEALS ITSELF. Two aborts in one minute (a lost commit reply), then the
-  # reaper's retry graduates the film: nothing to page about, ever.
-  - interval: 1m
-    input_series:
-      - series: 'kinowo_worker_staging_fold_aborts_total{country="pl",job="kinowo-worker"}'
-        values: '0x4 2x55'
-    alert_rule_test:
-      - eval_time: 15m
-        alertname: StagingFoldsAborting
-        exp_alerts: []
-      - eval_time: 50m
-        alertname: StagingFoldsAborting
-        exp_alerts: []
-
-  # A ROLLOUT IN THE MIDDLE OF IT. The old pod aborts every minute until t=20 and goes stale; the
-  # new pod's series is absent for three minutes and then keeps aborting. The `for:` must carry
-  # across the gap -- firing by t=40, which a hold restarted at the gap could not reach.
-  - interval: 1m
-    input_series:
-      - series: 'kinowo_worker_staging_fold_aborts_total{country="de",job="kinowo-worker",pod="worker-de-a"}'
-        values: '0 1+1x20 stale'
-      - series: 'kinowo_worker_staging_fold_aborts_total{country="de",job="kinowo-worker",pod="worker-de-b"}'
-        values: '_x24 0 1+1x40'
-    alert_rule_test:
-      - eval_time: 40m
-        alertname: StagingFoldsAborting
-        exp_alerts:
-          - exp_labels: { severity: warning, country: de }
-            exp_annotations:
-              summary: "de's worker has been abandoning staging folds for 30 minutes"
-              description: "A concluded newcomer keeps failing to fold into `movies`, so its listing is resolved and never shown. The worker's ERROR lines name the film and the cause (`Staging fold '<title>' aborted after N attempt(s): ...`). The same film every time is a deterministic failure -- an E11000 on `tmdbId_1` is the fold planning two documents for one film, a decode error a row it cannot read -- and only a code or data fix clears it; many different films at once is the database (timeouts, elections)."
+              description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
 
   # A TASK PARKED PAST THE CAP. A Deferred that named an instant six hours out, before
   # TaskWorker clamped it: the hold falls a second per second from 21600. Fires once the
@@ -496,7 +446,7 @@ tests:
         values: '1800-60x29 1800-60x29 1800-60x20'
       - series: 'kinowo_worker_queue_parked_max_seconds{country="pl",job="kinowo-worker",task_type="ScrapeChunk"}'
         values: '300-10x30 300-10x30'
-      - series: 'kinowo_worker_queue_parked_max_seconds{country="de",job="kinowo-worker",task_type="StagingFold"}'
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="de",job="kinowo-worker",task_type="ScrapeChunk"}'
         values: '0x80'
     alert_rule_test:
       - eval_time: 75m
@@ -592,15 +542,13 @@ tests:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────
   # ENV-GATED FEATURES. The case the group exists for is the Fly→k3s move: PL booted with the bot
-  # token and no chat ids, so all three alerters read 0 -- and DE, a country with no Filmweb, never
-  # exports the Filmweb two at all, so only its staging_stuck series is there to judge.
+  # token and no chat ids, so both alerters read 0 -- and DE, a country with no Filmweb, never
+  # exports the Filmweb two at all, so it has no alerter series to judge.
   # ──────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     name: every alerter wired and every integration on is silent
     input_series:
       - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_fallback",country="pl",job="kinowo-worker"}'
-        values: '1x60'
-      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="de",job="kinowo-worker"}'
         values: '1x60'
       - series: 'kinowo_worker_integration_enabled{integration="tmdb",country="pl",job="kinowo-worker"}'
         values: '1x60'
@@ -618,8 +566,6 @@ tests:
     input_series:
       - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_drop",country="pl",job="kinowo-worker"}'
         values: '0x60'
-      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="de",job="kinowo-worker"}'
-        values: '1x60'
     alert_rule_test:
       - eval_time: 25m
         alertname: WorkerAlerterDisabled
@@ -640,19 +586,19 @@ tests:
   - interval: 1m
     name: a disabled alerter keeps its hold across a worker restart
     input_series:
-      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="uk",job="kinowo-worker"}'
+      - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_fallback",country="uk",job="kinowo-worker"}'
         values: '0x20 stale stale stale 0x30'
     alert_rule_test:
       - eval_time: 40m
         alertname: WorkerAlerterDisabled
         exp_alerts:
           - exp_labels:
-              alerter: staging_stuck
+              alerter: filmweb_fallback
               country: uk
               severity: warning
             exp_annotations:
-              summary: "uk: the worker's staging_stuck Telegram alerter is switched off"
-              description: "The worker wired the `staging_stuck` alerter OFF because an env var it needs is missing, so the incidents it exists to report are reaching nobody. The worker's boot log names the key: `kubectl -n kinowo logs deploy/worker-uk | grep 'is OFF: missing'`. The chat and topic ids live in the `worker-env` ConfigMap in movies-gitops (worker/base/all.yaml) and the bot token in `worker-secrets`; they were lost once already when the workers moved from Fly to k3s, and all three alerters were silently off for weeks."
+              summary: "uk: the worker's filmweb_fallback Telegram alerter is switched off"
+              description: "The worker wired the `filmweb_fallback` alerter OFF because an env var it needs is missing, so the incidents it exists to report are reaching nobody. The worker's boot log names the key: `kubectl -n kinowo logs deploy/worker-uk | grep 'is OFF: missing'`. The chat and topic ids live in the `worker-env` ConfigMap in movies-gitops (worker/base/all.yaml) and the bot token in `worker-secrets`; they were lost once already when the workers moved from Fly to k3s, and all three alerters were silently off for weeks."
 
   - interval: 1m
     name: an integration switched off by a missing secret fires, across a restart
@@ -724,9 +670,9 @@ tests:
         values: '0x10 1x10 2x10 3x30'
       - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="fallback_enter",outcome="sent",job="kinowo-worker"}'
         values: '0x15 1x45'
-      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="failed",job="kinowo-worker"}'
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="filmweb_drop",outcome="failed",job="kinowo-worker"}'
         values: '0x10 1x50'
-      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="staging_stuck",outcome="sent",job="kinowo-worker"}'
+      - series: 'kinowo_worker_telegram_notifications_total{country="pl",kind="filmweb_drop",outcome="sent",job="kinowo-worker"}'
         values: '0x60'
     alert_rule_test:
       - eval_time: 58m

@@ -8,8 +8,8 @@ import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
 
 import java.time.LocalDateTime
 
-/** THE RULE (Paweł, 2026-09-07): the prune is a no-op. Staging, enrichment and every
- *  update path must leave the read model in exactly the state the settle would produce,
+/** THE RULE (Paweł, 2026-09-07): the prune is a no-op. Enrichment and every
+ *  update path must leave the read model in exactly the state the reconcile would produce,
  *  so the scheduled prune finds nothing — a pruned card is a projection defect, never
  *  accepted churn. This spec drives the real projector through the change stream over
  *  every shape that used to leave a card behind, and after each step asserts that the
@@ -28,7 +28,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
 
     def row(title: String): StoredMovieRecord = repository.findAll().find(_.title == title).get
 
-    /** What the settle would produce: every card and screening of every ready row. */
+    /** What the reconcile would produce: every card and screening of every ready row. */
     def expected(): (Set[String], Set[String]) = {
       val rows = repository.findAll().filter(_.record.readyToProject)
       (rows.flatMap(ReadModelProjection.filmIds(_, titleNormalizer)).toSet,
@@ -38,7 +38,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     /** The invariant, asked after every step. */
     def convergedAfter(step: String): Unit = {
       val (cards, screenings) = expected()
-      withClue(s"after '$step' the read model must already be the settle's answer: ") {
+      withClue(s"after '$step' the read model must already be the reconcile's answer: ") {
         rm.findAllMovieIds().toSet shouldBe cards
         rm.findAllScreenings().map(_._id).toSet shouldBe screenings
       }
@@ -60,7 +60,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
   private def film(slots: (Source, SourceData)*): MovieRecord =
     MovieRecord(tmdbId = Some(1), imdbRating = Some(7.0), data = Map[Source, SourceData](slots*))
 
-  "the read model" should "already hold the settle's answer after every incremental step, so the prune is a no-op" in {
+  "the read model" should "already hold the reconcile's answer after every incremental step, so the prune is a no-op" in {
     val stage = new Stage
     import stage._
 
@@ -79,10 +79,8 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     val bar = row("Bar").id
     convergedAfter("a second film lands")
 
-    // A merge: Bar turns out to be Foo — its side rows move and its document goes.
-    repository.moveFilm(bar, row("Foo").id) shouldBe true
     repository.delete(bar)
-    convergedAfter("a film is merged away")
+    convergedAfter("a second film is deleted")
     metrics.retired should contain ("row-deleted")
 
     repository.upsert("Foo", Some(2024), film(plain("2026-06-12T20:00")).copy(tmdbId = None))
@@ -99,7 +97,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     stop()
   }
 
-  it should "stay the settle's answer under a shuffled sequence of the same steps" in {
+  it should "stay the reconcile's answer under a shuffled sequence of the same steps" in {
     val stage = new Stage
     import stage._
     val random = new scala.util.Random(20260907L)
@@ -113,7 +111,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
         case 4     => repository.findAll().find(_.title == title).foreach(r => repository.delete(r.id))
         case 5     =>
           val rows = repository.findAll()
-          if (rows.sizeIs >= 2) { val Seq(a, b) = random.shuffle(rows).take(2); repository.moveFilm(a.id, b.id); repository.delete(a.id) }
+          if (rows.sizeIs >= 2) repository.delete(random.shuffle(rows).head.id)
       }
       convergedAfter(s"random step $step")
     }

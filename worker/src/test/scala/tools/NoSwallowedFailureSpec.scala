@@ -114,9 +114,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
       "loaded = Try(loadScrape()).getOrElse(false)") ->
       "a boot retry loop: false is \"not loaded yet\" and is retried up to maxScrapeAttempts; readiness is released either way",
-    ("common/src/main/scala/services/staging/MongoStagingFolder.scala", "landed",
-      "staging: MongoCollection[StoredMovieDto]): Boolean = Try {") ->
-      "false is \"not landed\": the fold reschedules and re-verifies — the fail-safe direction, never a false \"done\"",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "amendWaiting",
       "case exception: Throwable =>") ->
       "false files the re-try as not upgraded — which a failed amend is (the mode never reached the task); logged at WARN",
@@ -238,12 +235,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseEventScreenings",
       "Try(Json.parse(body).as[JsArray]).map { array =>") ->
       "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
-    ("worker/src/main/scala/services/movies/MovieService.scala", "missed",
-      "case Failure(exception) =>") ->
-      "false is \"did not resolve\", which is true; the row stays unresolved and the reaper retries it",
-    ("worker/src/main/scala/services/movies/MovieService.scala", "resolveStagingRecord",
-      "case Failure(exception) =>") ->
-      "None is \"not concluded\": the staging row stays and the staging reaper retries it, as for a miss before TMDB answered",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "case e: Throwable => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
       "false is \"not inserted\"; the supersede step below then decides, and a run that cannot start is skipped this tick",

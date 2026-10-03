@@ -179,13 +179,8 @@ class ArchiveReplayWiring(
   override lazy val movieRepository      = storage.movies
   override lazy val readModelRepository: ReadModelReader & ReadModelWriter = storage.readModel
 
-  // `TestWiring` pins these in memory because its Mongo is disabled; with a real
-  // database they must follow the storage, or the staging fold — the half of the
-  // pipeline that needs a transaction — silently stays fake while everything around
-  // it is real.
+  // `TestWiring` pins the connection disabled; with a real database it must follow the storage.
   override lazy val mongoConnection      = storage.connection
-  override lazy val stagingRepository    = storage.staging
-  override lazy val stagingFolder        = storage.stagingFolder(movieRepository)
 
   // The collections production keeps BESIDE the pipeline's own state. None of them is
   // what an assertion reads, which is why they were the easiest things to leave faked —

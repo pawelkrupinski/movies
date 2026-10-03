@@ -4,7 +4,7 @@ import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import modules.WorkerWiring
 import services.cinemas.common.DetailEnricher
-import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler}
+import services.tasks.{DetailReaper, EnrichDetailsHandler}
 
 
 /** Deferred per-film detail: the cinemas that scrape BARE and fill their detail
@@ -54,14 +54,9 @@ trait DetailWiring { self: WorkerWiring =>
     detailEnrichers.map(de => de.detailGroup -> de).toMap,
     new services.venuepages.VenuePageReader(venuePageStore, freshnessStore, event => eventBus.publish(event), clock), uptimeMonitor,
     freshnessStore, clock)
-  // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
-  // first detail fetch off CinemaMovieAdded; the reaper is the periodic
-  // refresh/retry backstop (CinemaMovieAdded fires only on first appearance),
-  // phase-spread + capped so a re-key cohort trickles instead of dumping (~1k
-  // EnrichDetails in one tick, which cascaded into the ResolveTmdb/rating bursts
-  // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
-  lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
-    detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore, clock))
+  // The detail reaper enqueues every due fetch, phase-spread + capped so a re-key cohort trickles
+  // instead of dumping (~1k EnrichDetails in one tick, which pinned the shared-CPU credit). Same
+  // lever as the scrape/rating reapers.
   def maxDetailEnqueuePerTick: DetailMaxEnqueuePerTick = configuration.detailMaxEnqueuePerTick(DetailMaxEnqueuePerTick(50))
   // How often the detail reaper wakes to enqueue the now-due slice (the spread
   // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the

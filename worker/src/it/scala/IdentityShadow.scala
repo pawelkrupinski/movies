@@ -103,15 +103,10 @@ object IdentityShadow {
     FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, retrySleep = (_: Long) => (), environment = environment)
   }
 
-  /** Boot the pipeline the way the convergence legs do (`CountryConvergenceBehaviour.bootSettled`):
-   *  the whole-corpus scrape tick (twice) with staging drained, then the periodic settle pair,
-   *  staging, the enrichment conclusion and the projection. */
+  /** Boot production — the identity projection — the way the convergence legs do: every venue
+   *  scraped into the intake, one projection and the enrichment it announces, then the read model. */
   def bootPipeline(w: ArchiveReplayWiring): Seq[PipelineFilm] = {
-    w.bootCorpus()
-    w.movieService.settle()
-    w.movieCache.canonicalizeBySanitize()
-    w.drainStaging()
-    w.concludeEnrichment()
+    w.bootCutover()
     w.readModelProjector.reconcile()
     w.movieRepository.findAll().map { f =>
       val tmdb = f.record.data.get(Tmdb)

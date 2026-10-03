@@ -1,9 +1,9 @@
 package modules.wiring
 
-import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration, StagingStuckScanInterval, StagingStuckThreshold}
+import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration}
 
 import modules.WorkerWiring
-import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, StagingStuckAlerter, TelegramAlertKind, TelegramNotifier}
+import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, TelegramAlertKind, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
 
@@ -50,18 +50,6 @@ trait AlertingWiring { self: WorkerWiring =>
   protected lazy val scrapeOutcomeListener: ScrapeOutcomeListener =
     filmwebDropAlerter.getOrElse(ScrapeOutcomeListener.NoOp)
 
-  // Telegram alerter for newcomers the promoter can't conclude: a row sitting in
-  // `pending_movies` TMDB-unresolved for over an hour never folds into `movies`, so
-  // it never reaches the app — a silent data hole. Routes to its own chat if set,
-  // else the shared "Kinowo Monitoring" group (KINOWO_FALLBACK_TG_CHAT_ID), so it
-  // works on prod without a new secret; off in CI / local without any chat id.
-  protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] =
-    configuration.telegramRoute(AlertRoute.StagingStuck).toOption.map { route =>
-      new StagingStuckAlerter(stagingRepository, notifierFor(route).send(TelegramAlertKind.StagingStuck),
-        stuckThreshold = configuration.stagingStuckThreshold(StagingStuckThreshold(FiniteDuration(60L, TimeUnit.MINUTES))),
-        interval       = configuration.stagingStuckScanInterval(StagingStuckScanInterval(FiniteDuration(10L, TimeUnit.MINUTES))))
-    }
-
   /** Which of this country's alerters are wired, read from the same routes as the
    *  alerters above so the gauge and the wiring cannot disagree. */
   lazy val alerterFeatures: Seq[EnvGatedFeature] = AlertingWiring.alerters(configuration, filmwebEnabled)
@@ -81,6 +69,6 @@ object AlertingWiring {
     val filmweb =
       if (filmwebEnabled) Seq(feature("filmweb_fallback", AlertRoute.FilmwebFallback), feature("filmweb_drop", AlertRoute.FilmwebDrop))
       else Nil
-    filmweb :+ feature("staging_stuck", AlertRoute.StagingStuck)
+    filmweb
   }
 }

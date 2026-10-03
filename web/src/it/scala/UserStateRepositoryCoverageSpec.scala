@@ -2,7 +2,6 @@ package integration
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.staging.InMemoryStagingRepository
 import services.users.UserStateRepository
 import tools.contracts.Implementations
 
@@ -33,7 +32,7 @@ class UserStateRepositoryCoverageSpec extends AnyFlatSpec with Matchers {
       .mkString("\n")
 
   "every UserStateRepository implementation" should "run UserStateWritesContract" in {
-    val implementations = Implementations.of(classOf[UserStateRepository], classOf[UserStateRepository], classOf[InMemoryStagingRepository])
+    val implementations = Implementations.of(classOf[UserStateRepository], classOf[UserStateRepository])
     implementations.map(_.getSimpleName) should contain allOf ("InMemoryUserStateRepository", "MongoUserStateRepository")
     withClue("wire the store into UserStateWritesContract (`atomicWritesBehaviour(\"<name>\")`): ") {
       implementations.map(_.getSimpleName).filterNot(name => contractRuns.contains(s"""atomicWritesBehaviour("$name")""")) shouldBe empty

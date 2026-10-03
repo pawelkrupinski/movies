@@ -18,7 +18,6 @@ object TelegramAlertKind {
   val GoneVenue: TelegramAlertKind    = TelegramAlertKind("gone_venue")
   val VenueClosure: TelegramAlertKind = TelegramAlertKind("venue_closure")
   val FilmwebDrop: TelegramAlertKind  = TelegramAlertKind("filmweb_drop")
-  val StagingStuck: TelegramAlertKind = TelegramAlertKind("staging_stuck")
 
   /** A fallback transition's page: `ENTER` → `fallback_enter`. */
   def fallback(event: String): TelegramAlertKind = TelegramAlertKind(s"fallback_${event.toLowerCase(Locale.ROOT)}")
@@ -27,7 +26,7 @@ object TelegramAlertKind {
    *  sees the first attempt of each. A kind outside it still counts, unseeded. */
   val all: Seq[TelegramAlertKind] =
     Seq(FallbackEvent.Enter, FallbackEvent.Recovered, FallbackEvent.Uncovered).map(fallback) ++
-      Seq(GoneVenue, VenueClosure, FilmwebDrop, StagingStuck)
+      Seq(GoneVenue, VenueClosure, FilmwebDrop)
 }
 
 /** The `outcome` label values of `kinowo_worker_telegram_notifications_total`. */

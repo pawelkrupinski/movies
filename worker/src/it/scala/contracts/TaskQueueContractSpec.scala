@@ -4,7 +4,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.staging.InMemoryStagingRepository
+import services.movies.InMemoryMovieRepository
 import services.tasks.{EnqueueResult, InMemoryTaskQueue, TaskQueue, TaskType}
 import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
@@ -46,7 +46,7 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
     }).fold(missing => fail(missing), identity)
 
   private val implementations =
-    Implementations.of(classOf[TaskQueue], classOf[TaskQueue], classOf[MeteredTaskQueue], classOf[InMemoryStagingRepository])
+    Implementations.of(classOf[TaskQueue], classOf[TaskQueue], classOf[MeteredTaskQueue], classOf[InMemoryMovieRepository])
 
   "the TaskQueue implementations" should "include the in-memory fake and the Mongo queue" in {
     implementations.map(_.getSimpleName) should contain allOf ("InMemoryTaskQueue", "MongoTaskQueue")

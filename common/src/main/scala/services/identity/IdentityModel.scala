@@ -246,6 +246,15 @@ object CandidateQuery {
     case Array("i", text) => Some(Imdb(text))
     case _                => None
   }
+
+  /** A director credit as TMDB's person search knows it: without a trailing IMDb disambiguator —
+   *  " (I)", " (II)", " (III)", … Case-sensitive and limited to well-formed numerals below C, because
+   *  that is all IMDb ever writes: a lowercase "(mix)" or "(vi)", a malformed "(IIII)", or a word-like
+   *  "(MIX)" is part of the credit. */
+  def personName(name: String): String = ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim
+
+  private val ImdbDisambiguatorSuffix: scala.util.matching.Regex =
+    """\s+\((?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\)$""".r
 }
 
 /**

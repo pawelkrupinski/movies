@@ -43,15 +43,11 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
 
   /** "file: Owner.param" → why it still defaults to Poland. */
   private val Allowlist: Map[String, String] = Map(
-    "common/src/main/scala/services/movies/MovieCache.scala: CaffeineMovieCache.enrichmentLanguage" -> Tests,
-    "common/src/main/scala/services/movies/MovieCache.scala: CaffeineMovieCache.screeningTokens"    -> Tests,
     "worker/src/main/scala/services/TmdbClient.scala: TmdbClient.language"                          -> Tests,
     "worker/src/main/scala/services/enrichment/ImdbRatings.scala: ImdbRatings.enrichmentLanguage"   -> Tests,
-    "worker/src/main/scala/services/staging/StagingSteps.scala: StagingSteps.screeningTokens"       -> Tests,
     "worker/src/main/scala/services/tasks/EnrichDetailsHandler.scala: EnrichDetailsHandler.screeningTokens" -> Tests,
     "worker/src/main/scala/services/tasks/QueueEnrichmentRetrigger.scala: QueueEnrichmentRetrigger.country" -> Tests,
     "worker/src/main/scala/services/tasks/RatingEnqueuer.scala: RatingEnqueuer.country"             -> Tests,
-    "worker/src/main/scala/services/tasks/UnresolvedTmdbReaper.scala: UnresolvedTmdbReaper.country" -> Tests,
     "worker/src/main/scala/modules/WorkerWiring.scala: WorkerWiring.country" ->
       ("the worker test seam `TestWiring` is a trait, so it can only extend the no-argument constructor; " +
         "WorkerMain passes every country explicitly"),

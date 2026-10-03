@@ -5,13 +5,12 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import testsupport.TestMessages.given
 
 import com.sun.net.httpserver.HttpExchange
-import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, Showtime, SourceData}
+import models.{CinemaCityWroclavia, CinemaShowing, MovieRecord, Poznan, Showtime, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{Json, JsString}
 import services.movies.StoredMovieRecord
-import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 import tools.contracts.RetryClassificationTable
 
@@ -278,7 +277,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       }
 
       // The global-corpus /debug page (not city-scoped) — a few corpus rows to
-      // populate the main #t table behind the staging table under test.
+      // populate the main #t table under test.
       // Ratings are distinct so the "Ratings" column sorts by the COMBINED
       // weighted score (MovieRecord.weightedRating), like the main page does:
       //   Unresolved 0.0  <  Pending 6.0  <  Done 9.0.
@@ -290,17 +289,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StoredMovieRecord.synthesised("Unresolved Film", Some(2023), MovieRecord(), services.movies.SingleCountryNormalizer.titleNormalizer),
         StoredMovieRecord.synthesised("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90)), services.movies.SingleCountryNormalizer.titleNormalizer),
       )
-      // Staging (pending_movies) source rows the page FOLDS by film. "Staging
-      // Film" (anchor `stagingfilm`) is reported by TWO cinemas and is at its
-      // detail-fetch step → it folds to one row with Cinemas = 2. "Done Newcomer"
-      // (anchor `donenewcomer`, one cinema) has detail + TMDB concluded (so the
-      // folded row shows ✓, ✓) and is now at IMDb recovery.
-      val debugStaging = Seq(
-        StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
-        StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
-        StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
-          MovieRecord(detailPending = false, tmdbId = Some(550)), titleNormalizer))
-      val debugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(debugRows, titleNormalizer), titleNormalizer, debugStaging, current = models.Country.Poland).body
+      val debugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(debugRows, titleNormalizer), titleNormalizer, current = models.Country.Poland).body
       // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
       // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
       // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
@@ -312,7 +301,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         data = Map(
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))), services.movies.SingleCountryNormalizer.titleNormalizer)
-      val slotsDebugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(Seq(slotsRow), titleNormalizer), titleNormalizer, Seq.empty, current = models.Country.Poland).body
+      val slotsDebugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(Seq(slotsRow), titleNormalizer), titleNormalizer, current = models.Country.Poland).body
       slotsRowId = slotsRow.id.value
       // The /debug/readmodel page: one film with one showtime, whose booking URL is
       // the marker the lazy-screenings test looks for — in the fetched fragment,
@@ -337,17 +326,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           showing -> source.copy(showtimes = Seq(
             Showtime(LocalDateTime.of(2026, 6, 8, 18, 30), bookingUrl = Some("https://example.test/book"))))
         })), titleNormalizer).body
-      // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
-      // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
-      // waits at place #1 (the only waiting task). The dedup keys mirror the real
-      // staging ones (StagingTaskKeys): every key embeds the film's `anchor`
-      // (= sanitize(title)) as the segment after the `staging-*` prefix.
-      val debugQueueJson =
-        """{"active":[
-          {"taskType":"StagingDetail","dedupKey":"staging-detail|stagingfilm|cc","state":"worked_on"},
-          {"taskType":"StagingResolveImdbId","dedupKey":"staging-imdb|donenewcomer","state":"waiting"}
-        ]}"""
-
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
@@ -403,8 +381,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
               .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String]).body)
               .getOrElse("")
         },
-        // /debug/queue is JSON the page fetches and parses; served as such.
-        jsonRoutes = { case "/debug/queue" => debugQueueJson },
         dynamicRoute = hiddenFilmsDynamicRoute
       )
     }
@@ -5854,179 +5830,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("matchMedia('(pointer: coarse)').matches"),
       "expected a coarse pointer after touch emulation — swipe handlers are gated on it"
     )
-  }
-
-  // ── /debug staging table (folded by film) ──────────────────────────────────
-  // The "Pending enrichment (staging)" table folds the hidden per-cinema source
-  // rows (#staging-src) into one visible film row each (#staging-folded). The
-  // trailing "Queue #" column is painted from the /debug/queue poll, matched per
-  // film by `data-anchor` against its `staging-*` tasks. The fixture has "Staging
-  // Film"'s detail fetch worked-on (▶ running) and "Done Newcomer"'s IMDb recovery
-  // waiting at place #1.
-  private def foldedRow(anchor: String) =
-    s"""document.querySelector('#staging-folded tr.data[data-anchor="$anchor"]')"""
-
-  "the /debug staging table" should "fill its queue column live from the /debug/queue poll, matched by anchor" in {
-    onDebug { page =>
-      def queueBadge(anchor: String) = s"""${foldedRow(anchor)}.querySelector('.queue-q .badge')"""
-      // Wait for the queue poll to land and paint "Done Newcomer"'s waiting place.
-      page.waitFor(s"""(function(){var r=${foldedRow("donenewcomer")};var c=r&&r.querySelector('.queue-q .badge');return c && c.textContent==='#1';})()""")
-      page.evalString(queueBadge("donenewcomer") + ".textContent") shouldBe "#1"
-      // "Staging Film"'s detail fetch is being worked on → ▶ running.
-      page.evalString(queueBadge("stagingfilm") + ".textContent") shouldBe "▶ running"
-    }
-  }
-
-  // A film reported by several cinemas folds into ONE row whose "Cinemas" cell is
-  // the count; a single-cinema film shows that cinema's name instead. The hidden
-  // source tbody keeps every per-cinema row. The fixture's "Staging Film" is
-  // reported by two cinemas, "Done Newcomer" by one (Cinema City Wroclavia).
-  it should "fold cinema rows into one row — count for many, the name for one" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""") // 2 films
-      page.evalString(foldedRow("stagingfilm")  + """.querySelector('td.cinemas').textContent""") shouldBe "2"
-      page.evalString(foldedRow("donenewcomer") + """.querySelector('td.cinemas').textContent""") shouldBe CinemaCityWroclavia.displayName
-      // All three per-cinema source rows are still present (hidden).
-      page.evalInt("""document.querySelectorAll('#staging-src tr.data').length""") shouldBe 3
-    }
-  }
-
-  // Each folded row aggregates the stage ✓ marks: a green ✓ once the step has
-  // concluded, empty otherwise. "Done Newcomer" has detail + TMDB done but not
-  // yet IMDb, so its folded row shows ✓, ✓, then empty.
-  it should "show a green ✓ for each concluded stage and leave pending stages empty" in {
-    onDebug { page =>
-      def cell(col: String) = s"""${foldedRow("donenewcomer")}.querySelector('$col')"""
-      page.waitFor(s"""(function(){var r=${foldedRow("donenewcomer")};return r && r.querySelector('.stage-detail .stage-done');})()""")
-      page.evalBool(s"""!!${cell(".stage-detail .stage-done")} && !!${cell(".stage-tmdb .stage-done")}""") shouldBe true
-      page.evalBool(s"""!${cell(".stage-imdb .stage-done")}""") shouldBe true
-    }
-  }
-
-  // Only the tick columns are centred (header + cells); the rest stay left.
-  it should "centre the tick columns and leave the others left-aligned" in {
-    onDebug { page =>
-      page.waitFor(s"""(function(){var r=${foldedRow("donenewcomer")};return r && r.querySelector('td.stage-detail');})()""")
-      def align(sel: String) = s"""getComputedStyle(document.querySelector('$sel')).textAlign"""
-      page.evalString(align("#staging-t th.tick")) shouldBe "center"          // Detail header
-      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.stage-detail""")) shouldBe "center"
-      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.title""")) should not be "center"
-      // The Cinemas cell carries the shared `.cinemas` class (right-aligned in the
-      // movie table); the staging table overrides it back to left so the name reads
-      // left-to-right.
-      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.cinemas""")) shouldBe "left"
-    }
-  }
-
-  // Source rows are added/removed live off the pending_movies change stream
-  // (staging-* SSE frames), which the client COALESCES and applies on a 1s timer;
-  // the tests drive the router (applySse) then call flushSse() to apply the batch
-  // synchronously. The server frame shape is covered by DebugStreamControllerSpec.
-  // The header counts FILMS: a new anchor bumps it, an extra cinema of an existing
-  // film grows that film's count without bumping it, and a delete reverses each.
-  it should "fold live source rows by film and track the film count" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
-      def srcRow(id: String, cinema: String) =
-        s"""<tr class="data" hidden data-row-id="$id" data-anchor="liveone" data-cinema="$cinema" data-title="Live One" data-year="2031" data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>"""
-      def upsert(id: String, cinema: String) =
-        page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'$id', html:${Json.stringify(Json.toJson(srcRow(id, cinema)))}})); flushSse();""")
-      def films = page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""")
-      def liveCinemas = page.evalString(foldedRow("liveone") + """.querySelector('td.cinemas').textContent""")
-
-      // A newcomer film arrives (one cinema) → 3 films, count "3", its cell shows the name.
-      upsert("A|liveone|2031", "Cinema A")
-      films shouldBe 3
-      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "3"
-      liveCinemas shouldBe "Cinema A"
-      // A SECOND cinema reports the same film → still 3 films, but its cell shows the count.
-      upsert("B|liveone|2031", "Cinema B")
-      films shouldBe 3
-      liveCinemas shouldBe "2"
-      // That cinema drops out → back to one, so the name returns; the film survives.
-      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'B|liveone|2031'})); flushSse();""")
-      films shouldBe 3
-      liveCinemas shouldBe "Cinema A"
-      // The last cinema graduates → the film vanishes, count back to 2.
-      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'A|liveone|2031'})); flushSse();""")
-      films shouldBe 2
-      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "2"
-    }
-  }
-
-  // The list keeps the highest-in-queue film at the top: every poll re-folds and
-  // re-sorts by queue rank (running first, then lowest waiting place). Drive
-  // `queueActive` directly + rebuildStagingTable so the ranks are deterministic.
-  it should "re-sort the folded rows live so the highest-in-queue film is first" in {
-    onDebug { page =>
-      def topAnchor = """document.querySelector('#staging-folded tr.data').dataset.anchor"""
-      // Let the initial poll land (fixture: Staging Film is running → sorts first),
-      // then freeze the 2.5s auto-poll so it can't clobber our scripted queue.
-      page.waitFor(s"""(function(){var t=document.querySelector('#staging-folded tr.data');return t && t.dataset.anchor==='stagingfilm';})()""")
-      page.eval("""clearInterval(stagingPollTimer); pollQueue = function(){};""")
-      // Done Newcomer running, Staging Film merely waiting → Done Newcomer first.
-      page.eval("""queueActive = [
-        {taskType:'StagingDetail', dedupKey:'staging-detail|donenewcomer|cc', state:'worked_on'},
-        {taskType:'StagingResolveTmdb', dedupKey:'staging-tmdb|stagingfilm', state:'waiting'}
-      ]; rebuildStagingTable();""")
-      page.evalString(topAnchor) shouldBe "donenewcomer"
-      // Flip which one is running → the order inverts.
-      page.eval("""queueActive = [
-        {taskType:'StagingDetail', dedupKey:'staging-detail|stagingfilm|cc', state:'worked_on'},
-        {taskType:'StagingResolveImdbId', dedupKey:'staging-imdb|donenewcomer', state:'waiting'}
-      ]; rebuildStagingTable();""")
-      page.evalString(topAnchor) shouldBe "stagingfilm"
-    }
-  }
-
-  // Every film row lives in #staging-folded but only the first STAGING_CAP are
-  // shown (`.hidden` on the rest), so the film count can climb past the cap while
-  // the visible set stays bounded. Insert enough NEW films to exceed it.
-  it should "show only the first STAGING_CAP films even as the total grows past it" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
-      // Insert STAGING_CAP new films (distinct anchors, no queue tasks → they rank
-      // last, but they still inflate the film total and exercise the display cap).
-      page.eval("""for (var i = 0; i < STAGING_CAP; i++) {
-        var id = 'C|capfilm' + i + '|2026';
-        var html = '<tr class="data" hidden data-row-id="' + id + '" data-anchor="capfilm' + i + '"' +
-          ' data-cinema="C" data-title="Cap ' + i + '" data-year="2026"' +
-          ' data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>';
-        applySse(JSON.stringify({type:'staging-upsert', id:id, html:html}));
-      }
-      flushSse();""")
-      // Total films = 2 fixture + STAGING_CAP; visible (not .hidden) = the cap.
-      page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe
-        (page.evalInt("STAGING_CAP") + 2)
-      page.evalInt("""document.querySelectorAll('#staging-folded tr.data:not(.hidden)').length""") shouldBe
-        page.evalInt("STAGING_CAP")
-      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe
-        (page.evalInt("STAGING_CAP") + 2).toString
-    }
-  }
-
-  // SSE frames are COALESCED and applied on a 1s timer, not per-frame — that's what
-  // keeps a worker write-burst from hanging the tab. So a frame doesn't touch the
-  // table until the flush, and repeat frames for one id collapse to a single apply.
-  it should "defer SSE frames until flush and coalesce repeats by id" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
-      // Neutralise the wall-clock auto-flush so the "deferred" assertion below is
-      // deterministic: otherwise, if the CDP round-trips between buffering and the
-      // check exceed SSE_FLUSH_MS (e.g. under load), the real timer flushes early
-      // and the count is 3, not 2 — a flake. We drive the flush explicitly instead.
-      page.eval("""scheduleSseFlush = function () {};""")
-      val src = """<tr class="data" hidden data-row-id="X|buffered|2099" data-anchor="buffered" data-cinema="C" data-title="Buffered" data-year="2099" data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>"""
-      val frame = s"""applySse(JSON.stringify({type:'staging-upsert', id:'X|buffered|2099', html:${Json.stringify(Json.toJson(src))}}));"""
-      // Two frames for the same id arrive — nothing is applied yet (deferred).
-      page.eval(frame)
-      page.eval(frame)
-      page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe 2
-      // One flush applies the coalesced batch → the film appears exactly once.
-      page.eval("""flushSse();""")
-      page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe 3
-      page.evalInt("""document.querySelectorAll('#staging-src tr[data-anchor="buffered"]').length""") shouldBe 1
-    }
   }
 
   // Clicking a corpus-table (#t) column header sorts the data rows by that

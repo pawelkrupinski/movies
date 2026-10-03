@@ -6,14 +6,13 @@ import services.MirrorFreshness
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
 import services.movies.{MovieRepository, StoredMovieRecord}
-import services.staging.StagingRepository
 import services.tasks.TaskQueue
 
 import java.time.Instant
 
 /**
  * Everything a `/debug` page reads, bound to ONE country's Mongo database — the
- * corpus (`movies`), the staging table (`pending_movies`), the task queue, the
+ * corpus (`movies`), the task queue, the
  * rating-cadence collection, and the read-model dump.
  *
  * Every one of those reads can be a SNAPSHOT: with `MONGODB_MOVIES_MIRROR_URI`
@@ -37,7 +36,6 @@ import java.time.Instant
 final class DebugStack(
   val country:               Country,
   val movieRepository:       MovieRepository,
-  val stagingRepository:     StagingRepository,
   val taskQueue:             TaskQueue,
   val ratingCadenceReader:   RatingCadenceReader,
   val attemptReader:         EnrichmentAttemptReader,

@@ -22,8 +22,8 @@ import scala.concurrent.duration._
  * start without `MONGODB_URI` — building the root is the thing under test, so
  * there is nothing to fake. Each wiring is pointed at its OWN database through
  * the existing `mongoDbName` seam: an earlier version let them share the suite's
- * database and that alone broke `StagingFoldIntegrationSpec`'s retired-key case,
- * because constructing a root hydrates a cache and watches `movies`. Overriding
+ * database and that alone broke another suite's retired-key case, because constructing
+ * a root hydrates a cache and watches `movies`. Overriding
  * the seam rather than rebuilding the component keeps this a real wiring.
  */
 class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAfterAll with tools.IntegrationMongoSuite {
@@ -65,7 +65,6 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
     val de = isolated(Country.Germany)
     assert(de.titleNormalizer.rules == TitleRuleSet.forCountry(Country.Germany))
     assert(de.movieRepository.normalizer.eq(de.titleNormalizer))
-    assert(de.stagingRepository.normalizer.eq(de.titleNormalizer))
     assert(de.movieCache.normalizer.eq(de.titleNormalizer))
   }
 

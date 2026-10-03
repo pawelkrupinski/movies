@@ -1,29 +1,13 @@
 package integration
 
-import models.{Multikino, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.staging.MongoStagingRepository
 import tools.ConvergenceStorage
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
- * That every part of a Mongo-backed convergence run looks at the SAME database.
- *
- * The repositories are handed a `MongoDatabase` directly, while `MongoStagingFolder` is
- * built from a `MongoConnection` and resolves its collections by database NAME. Those are
- * two routes to what must be one place, and nothing checked that they agreed.
- *
- * They didn't. `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so generating
- * the name a second time for the connection produced a different database: staging wrote
- * 6,975 rows to one, the folder looked for them in the other, found none, and reported
- * nothing to fold. Every component behaved correctly and the corpus still never reached
- * `movies` — the suite said `resolved NOTHING — 0 films` with no error anywhere, and the
- * cause took three wrong diagnoses to find.
- *
- * Asserted through the seam that actually broke — a row written by the storage's own
- * staging repository must be visible through the storage's CONNECTION — rather than by
- * comparing two names, which would pass just as well if a third route appeared.
+ * Properties of a Mongo-backed convergence storage: it keys through the country it was built
+ * for, and its connection is its own client, closed with it.
  *
  * Requires MONGODB_URI; skips otherwise.
  */
@@ -53,27 +37,12 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers with t
       services.movies.TitleNormalizer.forCountry(models.Country.Germany))
     try {
       withClue("a German leg must not fold ' & ' to the Polish ' i ': ") {
-        de.movies.normalizer.sanitize("Minions & Monster")  shouldBe "minionsmonster"
-        de.staging.normalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
+        de.movies.normalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
       }
       // …and Poland's really does differ, so the assertion above is not vacuous.
       services.movies.TitleNormalizer.forCountry(models.Country.Poland)
         .sanitize("Minions & Monster") shouldBe "minionsimonster"
     } finally de.close()
-  }
-
-  "a Mongo convergence storage" should "expose one database to its repositories and its connection alike" in {
-    val storage = ConvergenceStorage.mongo(mongoTarget, "storage-agreement-spec", titleNormalizer)
-    try {
-      storage.staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
-
-      val throughConnection = new MongoStagingRepository(storage.connection.database, normalizer = titleNormalizer).findAll()
-
-      withClue("a row written through the storage's repository must be visible through its " +
-               "connection — the folder reaches staging that way: ") {
-        throughConnection.map(_.id) should contain (storage.staging.findAll().head.id)
-      }
-    } finally storage.close()
   }
 
   /** The storage's connection is the storage's own client, not a second one built from its URI. A
@@ -82,7 +51,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers with t
    *  a loopback one: on the US leg that was ~6 GB of zlib a run on both sides of the socket, every
    *  identity collection and the task queue read and written through it, an identical re-scrape tick
    *  ~9 s instead of ~4.5 s. It was also never closed. Closed with the storage, it is the same client. */
-  it should "reach its database through its own client, closed with it" in {
+  "a Mongo convergence storage" should "reach its database through its own client, closed with it" in {
     val storage = ConvergenceStorage.mongo(mongoTarget, "storage-client-spec", titleNormalizer)
     val database = storage.connection.database.get
     storage.close()

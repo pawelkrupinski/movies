@@ -14,12 +14,10 @@ package services.readmodel
  *    `filmId` changed) had all its derived documents dropped in `reconcile`. This
  *    is the event that can briefly 404 a film deep-link while the new key's
  *    documents propagate to the web (the web joins `web_movies`+`web_screenings`
- *    over two independent change streams, so it momentarily drops the film). Pair
- *    its rate with `kinowo_worker_merges_total` — the upstream re-key cause.
+ *    over two independent change streams, so it momentarily drops the film).
  *
  * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]];
- * the web and unit tests use [[ReadModelProjectionMetrics.noop]]. Mirrors
- * [[services.movies.MergeMetrics]].
+ * the web and unit tests use [[ReadModelProjectionMetrics.noop]].
  */
 trait ReadModelProjectionMetrics {
   def recordWrite(target: String, op: String, count: Int): Unit

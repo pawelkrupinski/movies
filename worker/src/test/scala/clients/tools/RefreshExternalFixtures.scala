@@ -11,7 +11,8 @@ import scala.util.Try
  *
  *  Mechanism ([[RecordMissingFetch]]): the cinema scrapes replay from the pinned
  *  fixtures (a missing cinema fixture still throws, so the corpus can't grow or
- *  drift), the NEW pipeline computes each row's `searchTitle`, and the enrichment
+ *  drift), the cut-over boot (`bootCutover()`: scrape → identity projection →
+ *  its enrichment) computes each film's `searchTitle`, and the enrichment
  *  sync fires the resulting queries. A query that already has a fixture replays
  *  byte-identical (untouched — no drift to today's ratings); only a query with NO
  *  fixture, and only on an external-metadata host, hits the live API and is
@@ -53,7 +54,7 @@ final class RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026"
     new clients.TmdbClient(httoFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   def run(): Unit = {
-    scrapeAndDrainToCache()
+    bootCutover()
     val rows = movieCache.snapshot()
     println(s"Refresh: enriching ${rows.size} rows (live only for missing external queries)…")
     val done = new java.util.concurrent.atomic.AtomicInteger(0)

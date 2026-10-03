@@ -1,12 +1,12 @@
 package services.identity
 
-import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
 import services.cinemas.FakeDetailEnricher
 import services.cinemas.common.FilmDetail
-import services.events.{InProcessEventBus, RecordingEventBus, VenueDetailRead}
+import services.events.{RecordingEventBus, VenueDetailRead}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -87,12 +87,12 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
   "The detail enrichment" should "make the page answer through venue_pages, and announce it" in {
     val world    = new World
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
-      normalizer = titleNormalizer, clock = clock)
-    cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = Some(Page),
-      synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))))
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val key      = cache.keyOf("Dune", None)
+    cache.put(key, MovieRecord(data = Map(models.CinemaShowing.keyFor(KinoApollo, "Dune", titleNormalizer) -> SourceData(
+      title = Some("Dune"), filmUrl = Some(Page),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val bus = new RecordingEventBus
-    val key = cache.keyOf("Dune", None)
     new EnrichDetailsHandler(Map(Group -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, new DueWindow(6.hours),
       clock = clock, pages = world.pages).handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
       EnrichDetailsTasks.payload(enricher, key, Page), attempts = 1))

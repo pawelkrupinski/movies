@@ -6,7 +6,6 @@ import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelW
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.enrichment.{MongoOmdbAttemptStore, OmdbAttemptStore}
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
-import services.staging._
 import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, TaskQueue}
 import services.movies.TitleNormalizer
 
@@ -19,7 +18,7 @@ import services.movies.TitleNormalizer
  * a claim that reads as though it covers the whole pipeline. Nothing in those runs could
  * have caught a BSON codec that drops a field, a `findAll` that recurses the async
  * driver into a StackOverflowError once a collection grows, a required DTO field that
- * fails a whole batch's decode, or a staging fold that needs a real transaction — all of
+ * fails a whole batch's decode — all of
  * which this repository has actually shipped.
  *
  * So there is no in-memory side any more — CI and a local run both go through a real
@@ -43,7 +42,6 @@ trait ConvergenceStorage {
   def screenings:  ScreeningsRepository
   def slots:       SlotsRepository
   def readModel:   ReadModelReader & ReadModelWriter
-  def staging:     StagingRepository
   def archive:     ScrapeArchiveRepository
 
   // The rest of the collections production keeps beside the pipeline's own state. They
@@ -56,13 +54,8 @@ trait ConvergenceStorage {
   def chunkScrape: ChunkScrapeStore
   def omdbAttempt: OmdbAttemptStore
 
-  /** Takes the repository rather than closing over one: the fold is defined in terms of
-   *  the `movies` the caller is using, and the Mongo folder reaches it through a
-   *  transaction on the connection rather than the repository handle. */
-  def stagingFolder(movieRepository: MovieRepository): StagingFolder
-
   /** A counter of the writes this storage has taken to the collections the pipeline's OUTPUT
-   *  lives in — the film documents, their side rows, staging and the read model — from the
+   *  lives in — the film documents, their side rows and the read model — from the
    *  moment it is called. What a fixpoint pass (`FixpointPass`) holds to zero; bookkeeping
    *  (the task queue, freshness stamps) is left out because a pass legitimately claims and
    *  stamps. `None` for a storage with no oplog to count off. */
@@ -110,10 +103,9 @@ object ConvergenceStorage {
     // The name is taken FROM the opened database, never generated a second time.
     // `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so calling it again for
     // the connection produced a DIFFERENT database from the one the repositories were
-    // handed: staging wrote 6,975 rows to one, `MongoStagingFolder` looked for them in
-    // the other, found none, and correctly reported nothing to fold. The corpus never
-    // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
-    // anywhere was in error — each half was doing exactly what it was told.
+    // handed: one half wrote its rows to one database and the other looked for them in
+    // the other, found none, and the suite reported `resolved NOTHING — 0 films` with
+    // nothing anywhere in error — each half was doing exactly what it was told.
     val isolated = IsolatedMongoDatabase.open(target, purpose)
     new MongoConvergenceStorage(isolated, target.uri.value, isolated.database.name, normalizer, changeDebounce)
   }
@@ -127,7 +119,7 @@ object ConvergenceStorage {
 
     override def corpusWrites(): Option[OplogWrites] = Some(new OplogWrites(uri, name, Seq(
       MovieRepository.Collection, ScreeningsRepository.Collection, SlotsRepository.Collection,
-      StagingRepository.Collection, "web_movies", "web_screenings")))
+      "web_movies", "web_screenings")))
 
     private val shared = Some(isolated.database)
 
@@ -152,9 +144,6 @@ object ConvergenceStorage {
     // The 2026-07-31 note this replaces said passing the two arguments took the read model
     // to 0 films with 3,079 churn writes. Re-tested 2026-08-06: it does not. The main path
     // gives 151 cinemas / 858 screenings / 100 films and the fixpoint leg is churn-free.
-    // What that attempt actually hit was the staging fold writing `movies` with its slots
-    // embedded and no side rows — every graduated film read back with no showtimes — which
-    // is fixed in `MongoStagingFolder.completeSideCollections`.
     // The leg's own `normalizer`, NOT a shared single-country instance: this storage
     // is built once per COUNTRY leg. A Poland default here keyed the German and UK
     // corpora through Polish rules — `minionsimonster` all over again, and the
@@ -165,15 +154,11 @@ object ConvergenceStorage {
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared)
-    override lazy val staging    = new MongoStagingRepository(shared, normalizer = normalizer)
     override lazy val archive    = new MongoScrapeArchiveRepository(shared)
     override lazy val tasks: TaskQueue              = new MongoTaskQueue(shared)
     override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared)
     override lazy val chunkScrape: ChunkScrapeStore = new MongoChunkScrapeStore(shared)
     override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared)
-
-    override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
-      new MongoStagingFolder(connection, normalizer = normalizer, movieRepository = movieRepository)
 
     // Only OURS: the handle drops the one database it opened.
     override def close(): Unit = isolated.drop()

@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, City}
-import services.movies.{CacheKey, ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
+import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
@@ -50,7 +50,7 @@ final class IdentityListingIntake(
   private val venueLocks = new StripedLocks()
 
   override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie], listingIsComplete: Boolean, sourceKey: Option[String],
-                                  viaFallback: Boolean): Seq[(CinemaMovie, CacheKey, Boolean)] = venueLocks.locking(Seq(cinema.displayName)) {
+                                  viaFallback: Boolean): Unit = venueLocks.locking(Seq(cinema.displayName)) {
     val stored = guards.get(cinema)
     val guard  = stored.getOrElse(ScrapeGuardState.Fresh)
     val known  = listingOf(cinema)
@@ -66,12 +66,11 @@ final class IdentityListingIntake(
     // kept none of its own — to whoever keeps a model of it (the identity model). Unrecorded, that is
     // still the listing just read: read again only when the archive's own rules decided what landed.
     published(cinema, if (recorded) listingOf(cinema) else known)
-    Seq.empty
   }
 }
 
 object IdentityListingIntake {
-  /** Where a cut-over country keeps its venues' accepted listings. */
+  /** Where each venue's accepted listing is kept. */
   val Collection = "identity_listings"
 
   /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time; empty

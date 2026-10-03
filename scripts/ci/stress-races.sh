@@ -32,7 +32,6 @@ Unit=(
 )
 It=(
     "web/IntegrationTest integration.HiddenFilmsConcurrentWritesIntegrationSpec"
-    "worker/IntegrationTest integration.StagingFoldConcurrentTmdbRaceIntegrationSpec"
 )
 
 case "$scope" in

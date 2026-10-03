@@ -305,7 +305,7 @@ object WorkerMain extends Logging {
       workerMetrics.taskSeries.scrape(
         wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
-          w.stagingReaper.stepCounts(), w.movieRepository.changeStreamLiveness)),
+          w.movieRepository.changeStreamLiveness)),
         Instant.now()))
     snapshot.start()
     server.createContext("/metrics", exchange => {

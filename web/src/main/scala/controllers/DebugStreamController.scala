@@ -7,7 +7,6 @@ import play.api.Mode
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.movies.StoredMovieRecord
-import services.staging.StagingRecord
 
 import scala.concurrent.ExecutionContext
 
@@ -19,18 +18,14 @@ import scala.concurrent.ExecutionContext
  * not watched 24/7 from the web side.
  *
  * On each change the affected row is rendered server-side via the same
- * `_debugRow` / `_stagingRow` partials the page uses, so a live-inserted row is
+ * `_debugRow` partial the page uses, so a live-inserted row is
  * byte-identical to the initial render and no row markup is duplicated in JS. A
  * delete carries only the `_id`, so the page can drop a merged-away row.
- *
- * Two collections are watched: `movies` (the corpus table) and `pending_movies`
- * (the staging table), with `staging-*`-typed frames for the latter so the page
- * routes each to the right table.
  */
 class DebugStreamController(
   cc:               ControllerComponents,
   // The per-country debug stacks; the stream watches the SELECTED country's
-  // `movies` + `pending_movies` (the sticky `debugCountry` cookie the /debug page
+  // `movies` (the sticky `debugCountry` cookie the /debug page
   // set carries the selection here, since an EventSource sends no query string).
   debugCountries:   DebugCountries,
   environment:      Mode
@@ -59,17 +54,6 @@ class DebugStreamController(
   private[controllers] def deleteFrame(id: String): String =
     s"data: ${Json.stringify(Json.obj("type" -> "delete", "id" -> id))}\n\n"
 
-  /** SSE frame for an upserted staging row: render `_stagingRow` and ship it with
-   *  the row's `pending_movies` `_id` so the page can replace-or-insert it. */
-  private[controllers] def stagingUpsertFrame(row: StagingRecord, normalizer: services.movies.TitleNormalizer): String = {
-    val html = views.html._stagingRow(row, normalizer.sanitize(row.title)).body
-    s"data: ${Json.stringify(Json.obj("type" -> "staging-upsert", "id" -> row.id, "html" -> html))}\n\n"
-  }
-
-  /** SSE frame for a removed staging row (the film graduated): just the `_id`. */
-  private[controllers] def stagingDeleteFrame(id: String): String =
-    s"data: ${Json.stringify(Json.obj("type" -> "staging-delete", "id" -> id))}\n\n"
-
   /** One change-stream subscription per connection per watched collection, all
    *  closed when the browser disconnects (watchTermination). A Mongo without a
    *  replica set just errors the streams — the page keeps its static tables. */
@@ -83,10 +67,6 @@ class DebugStreamController(
       stack.movieRepository.watchChanges(
         onUpsert = row => { queue.offer(upsertFrame(row, country, normalizer)); () },
         onDelete = id  => { queue.offer(deleteFrame(id.value)); () }
-      ),
-      stack.stagingRepository.watchChanges(
-        onUpsert = row => { queue.offer(stagingUpsertFrame(row, normalizer)); () },
-        onDelete = id  => { queue.offer(stagingDeleteFrame(id)); () }
       )
     ).flatten
     source.watchTermination() { (_, done) =>
