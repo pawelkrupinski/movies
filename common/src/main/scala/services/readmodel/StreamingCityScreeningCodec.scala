@@ -1,6 +1,7 @@
 package services.readmodel
 
 import models.{CityScreening, Showtime}
+import services.movies.ShowtimeCodec
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonReader, BsonType, BsonWriter}
 
@@ -13,7 +14,7 @@ import org.bson.{BsonReader, BsonType, BsonWriter}
  * through both, and a whole-collection read is ~108k rows and ~1.7M showtimes on the US (JFR).
  * Written by the macro codec. `ReadModelCodecsSpec` pins every stored shape to the old reading.
  */
-private[readmodel] final class StreamingCityScreeningCodec(macroCodec: Codec[CityScreening], showtimes: Codec[Showtime])
+private[readmodel] final class StreamingCityScreeningCodec(macroCodec: Codec[CityScreening])
     extends Codec[CityScreening] {
   override def getEncoderClass: Class[CityScreening] = classOf[CityScreening]
   override def encode(w: BsonWriter, v: CityScreening, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
@@ -22,6 +23,7 @@ private[readmodel] final class StreamingCityScreeningCodec(macroCodec: Codec[Cit
     var filmUrl     = Option.empty[String]
     var shows       = Seq.empty[Showtime]
     var listingKeys = Seq.empty[String]
+    var urlPrefix: String = null
     // A stored null reads as the macro reads it: `None` for the optional, null for anything else.
     def nullable[A](read: => A): A = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); null.asInstanceOf[A] } else read
     def array[A](element: => A): Seq[A] = {
@@ -39,12 +41,13 @@ private[readmodel] final class StreamingCityScreeningCodec(macroCodec: Codec[Cit
         case "city"        => city = nullable(r.readString())
         case "cinema"      => cinema = nullable(r.readString())
         case "filmUrl"     => filmUrl = Option(nullable(r.readString()))
-        case "showtimes"   => shows = nullable(array(showtimes.decode(r, c)))
+        case "showtimes"   => shows = nullable(array(ShowtimeCodec.read(r, c, urlPrefix)))
+        case ShowtimeCodec.RowPrefixField => urlPrefix = nullable(r.readString())
         case "listingKeys" => listingKeys = nullable(array(r.readString()))
         case _             => r.skipValue()
       }
     }
     r.readEndDocument()
-    CityScreening(id, filmId, city, cinema, filmUrl, shows, listingKeys)
+    CityScreening(id, filmId, city, cinema, filmUrl, if (shows == null) null else ShowtimeCodec.completed(shows, urlPrefix), listingKeys)
   }
 }

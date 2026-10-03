@@ -34,6 +34,7 @@ final class Showtime private (
 
   def bookingUrl: Option[String] = urlRest match {
     case null              => None
+    case _: Array[Byte] if urlPrefix eq Showtime.AwaitingPrefix => None
     case rest: Array[Byte] => Some(urlPrefix + new String(rest, UTF_8))
     case whole             => whole.asInstanceOf[Some[String]]
   }
@@ -45,11 +46,24 @@ final class Showtime private (
    *  instance — or itself when it has no URL that starts with it. */
   def withUrlPrefix(prefix: String): Showtime =
     if (urlPrefix eq prefix) this
+    else if (urlPrefix != null && urlPrefix == prefix) new Showtime(dateTime, prefix, urlRest, room, format)
     else bookingUrl match {
       case Some(url) if url.startsWith(prefix) =>
         new Showtime(dateTime, prefix, url.substring(prefix.length).getBytes(UTF_8), room, format)
       case _ => this
     }
+
+  /** Decoded from a row whose `bookingUrlPrefix` had not been read yet: its URL is a remainder
+   *  with no prefix, which [[withRowPrefix]] completes. Never outlives the decode. */
+  def awaitsRowPrefix: Boolean = urlPrefix eq Showtime.AwaitingPrefix
+
+  /** A showtime that [[awaitsRowPrefix]] with its row's prefix put in front of its remainder —
+   *  or with no URL at all when the row stored none, rather than a remainder posing as a URL.
+   *  Any other showtime as it is. */
+  def withRowPrefix(prefix: String): Showtime =
+    if (!awaitsRowPrefix) this
+    else if (prefix == null) new Showtime(dateTime, null, null, room, format)
+    else new Showtime(dateTime, prefix, urlRest, room, format)
 
   /** Is this showtime still worth showing at `now`? True until [[Showtime.Grace]]
    *  past its start, so a film whose screening just began still lists for a short
@@ -122,6 +136,14 @@ object Showtime {
   def apply(dateTime: LocalDateTime, bookingUrl: Option[String], room: Option[String] = None,
             format: List[String] = Nil): Showtime =
     new Showtime(dateTime, null, if (bookingUrl == null || bookingUrl.isEmpty) null else bookingUrl, room, format)
+
+  /** A showtime as a row stores it: its URL split at `prefix`, the row's `bookingUrlPrefix`, with
+   *  `rest` after it. A null `prefix` — the row's not read yet — leaves it [[Showtime.awaitsRowPrefix]]. */
+  def stored(dateTime: LocalDateTime, prefix: String, rest: String, room: Option[String], format: List[String]): Showtime =
+    new Showtime(dateTime, if (prefix == null) AwaitingPrefix else prefix, rest.getBytes(UTF_8), room, format)
+
+  /** Stands in for a row prefix not read yet — compared by identity, never spelled out. */
+  private val AwaitingPrefix: String = new String("")
 
   /** How long after a showtime starts it still counts as "upcoming" — a screening
    *  that began up to 30 min ago is still listed/counted, then drops. */

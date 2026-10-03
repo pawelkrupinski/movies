@@ -97,6 +97,19 @@ class ShowtimeDecodeSpec extends AnyFlatSpec with Matchers {
       StoredScreeningsDto("a", "a", "Helios", Nil, Instant.parse("2026-09-30T10:00:00Z"), None)
   }
 
+  it should "read its booking URLs split at the row's prefix, before or after its showtimes" in {
+    SplitBookingUrlShapes.rows.foreach { case (fields, showtimes) =>
+      val json = s"""{ "_id": "a", "filmId": "a", "slotKey": "Helios", $fields, "updatedAt": $updated }"""
+      withClue(json) {
+        val row = MovieCodecs.registry.get(classOf[StoredScreeningsDto])
+          .decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build())
+        row.showtimes shouldBe showtimes
+        row.showtimes.map(_.bookingUrl) shouldBe showtimes.map(_.bookingUrl)
+        row.showtimes.exists(_.awaitsRowPrefix) shouldBe false
+      }
+    }
+  }
+
   private val slots = Seq(
     s"""{ "_id": "a\u001fHelios", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "showtimes": [${showtimes.head}] }, "updatedAt": $updated, "listingKey": "k" }""",
     s"""{ "_id": "a", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "cast": "A, B" }, "updatedAt": $updated }""",

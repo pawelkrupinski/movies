@@ -112,4 +112,17 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  it should "read its booking URLs split at the row's prefix, before or after its showtimes" in {
+    services.movies.SplitBookingUrlShapes.rows.foreach { case (fields, showtimes) =>
+      val json = s"""{ "_id": "a", "filmId": "a", "city": "poznan", "cinema": "Helios", $fields }"""
+      withClue(json) {
+        val row = ReadModelCodecs.registry.get(classOf[CityScreening])
+          .decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build())
+        row.showtimes shouldBe showtimes
+        row.showtimes.map(_.bookingUrl) shouldBe showtimes.map(_.bookingUrl)
+        row.showtimes.exists(_.awaitsRowPrefix) shouldBe false
+      }
+    }
+  }
 }

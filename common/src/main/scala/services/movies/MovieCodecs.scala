@@ -261,29 +261,46 @@ private[services] object ShowtimeCodec extends Codec[Showtime] {
     w.writeEndArray()
     w.writeEndDocument()
   }
-  override def decode(r: BsonReader, c: DecoderContext): Showtime = {
+  override def decode(r: BsonReader, c: DecoderContext): Showtime = read(r, c, null)
+
+  /** A showtime of a row whose `bookingUrlPrefix` is `prefix` — null when the row stores none, or
+   *  stores it after its showtimes, which leaves a stored remainder [[Showtime.awaitsRowPrefix]]
+   *  until [[completed]] puts the prefix in front of it. */
+  def read(r: BsonReader, c: DecoderContext, prefix: String): Showtime = {
     var dateTime: java.time.LocalDateTime = null
     var bookingUrl, room = Option.empty[String]
+    var rest: String     = null
     var format           = List.empty[String]
     r.readStartDocument()
     while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
       r.readName() match {
-        case "dateTime"   => dateTime = JavaTimeCodecs.localDateTime.decode(r, c)
-        case "bookingUrl" => bookingUrl = BsonReads.optionalString(r)
-        case "room"       => room = BsonReads.optionalString(r)
-        case "format"     => format = BsonReads.strings(r)
-        case _            => r.skipValue()
+        case "dateTime"       => dateTime = JavaTimeCodecs.localDateTime.decode(r, c)
+        case "bookingUrl"     => bookingUrl = BsonReads.optionalString(r)
+        case "bookingUrlRest" => rest = BsonReads.optionalString(r).orNull
+        case "room"           => room = BsonReads.optionalString(r)
+        case "format"         => format = BsonReads.strings(r)
+        case _                => r.skipValue()
       }
     }
     r.readEndDocument()
     if (dateTime == null) throw new org.bson.codecs.configuration.CodecConfigurationException("Showtime: no dateTime")
-    Showtime(dateTime, bookingUrl, room, format)
+    if (rest != null && bookingUrl.isEmpty) Showtime.stored(dateTime, prefix, rest, room, format)
+    else Showtime(dateTime, bookingUrl, room, format)
   }
+
+  /** A row's showtimes, read before or after its `bookingUrlPrefix` (`prefix`, null if it has
+   *  none): each one still awaiting the prefix completed with it. The showtimes themselves when
+   *  none was — every row stored whole, and every row whose prefix came first. */
+  def completed(showtimes: Seq[Showtime], prefix: String): Seq[Showtime] =
+    if (showtimes.exists(_.awaitsRowPrefix)) showtimes.map(_.withRowPrefix(prefix)) else showtimes
+
+  /** The row field [[read]]'s remainders are split from. */
+  val RowPrefixField = "bookingUrlPrefix"
 }
 
 /** A `screenings` row read field by field — its showtimes through [[ShowtimeCodec]].
  *  ~108k rows a US pass. Written by the macro codec; read as it reads, as above. */
-private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScreeningsDto], showtimes: Codec[Showtime])
+private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScreeningsDto])
     extends Codec[StoredScreeningsDto] {
   override def getEncoderClass: Class[StoredScreeningsDto] = classOf[StoredScreeningsDto]
   override def encode(w: BsonWriter, v: StoredScreeningsDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
@@ -291,6 +308,7 @@ private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScr
     var id, filmId, slotKey: String = null
     var updatedAt: Instant          = null
     var listingKey                  = Option.empty[String]
+    var urlPrefix: String           = null
     val read                        = Vector.newBuilder[Showtime]
     var sawShowtimes                = false
     r.readStartDocument()
@@ -301,10 +319,11 @@ private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScr
         case "slotKey"    => slotKey = r.readString()
         case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
         case "listingKey" => listingKey = BsonReads.optionalString(r)
+        case ShowtimeCodec.RowPrefixField => urlPrefix = BsonReads.optionalString(r).orNull
         case "showtimes"  =>
           sawShowtimes = true
           r.readStartArray()
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += showtimes.decode(r, c)
+          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += ShowtimeCodec.read(r, c, urlPrefix)
           r.readEndArray()
         case _            => r.skipValue()
       }
@@ -312,7 +331,7 @@ private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScr
     r.readEndDocument()
     if (id == null || filmId == null || slotKey == null || updatedAt == null || !sawShowtimes)
       throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredScreeningsDto ${Option(id).getOrElse("?")}: a required field is missing")
-    StoredScreeningsDto(id, filmId, slotKey, read.result(), updatedAt, listingKey)
+    StoredScreeningsDto(id, filmId, slotKey, ShowtimeCodec.completed(read.result(), urlPrefix), updatedAt, listingKey)
   }
 }
 
@@ -394,7 +413,7 @@ object MovieCodecs extends PersistedCodecs {
       fromCodecs(JavaTimeCodecs.localDateTime,
         sourceData,
         showtimes,
-        new StreamingScreeningsCodec(writers.get(classOf[StoredScreeningsDto]), showtimes),
+        new StreamingScreeningsCodec(writers.get(classOf[StoredScreeningsDto])),
         new StreamingSlotCodec(writers.get(classOf[StoredSlotDto]), sourceData)),
       fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
       DEFAULT_CODEC_REGISTRY)

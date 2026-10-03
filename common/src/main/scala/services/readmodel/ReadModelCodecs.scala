@@ -75,7 +75,7 @@ object ReadModelCodecs extends PersistedCodecs {
       DefaultingCodec(withDefaultedLeaves.get(classOf[ResolvedMovie]),  emptyMovie),
       // A screening row reads as `DefaultingCodec` over its macro would, streamed: rows are many and
       // each carries every showtime (`StreamingCityScreeningCodec`).
-      new StreamingCityScreeningCodec(withDefaultedLeaves.get(classOf[CityScreening]), services.movies.ShowtimeCodec)
+      new StreamingCityScreeningCodec(withDefaultedLeaves.get(classOf[CityScreening]))
     ),
     withDefaultedLeaves
   )
