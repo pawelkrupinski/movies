@@ -633,4 +633,14 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     commands should not include regex ("""\|\s*head\s+-[0-9]+""")
     commands should include("sed -n 's/^\\[info\\] //; 1,150p'")
   }
+
+  /** Hosted runners differ in CPU model, and the same leg on the same pair cost ~50% more CPU on one
+   *  job than another (37150307201 vs 37153677455); the setup names the CPU so a slow leg can be told
+   *  from a slow machine. */
+  "a convergence leg's setup" should "name the runner's CPU before anything else" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- name:")).toList
+    steps.headOption shouldBe Some("- name: Name the runner's CPU")
+    setup should include("grep -m1 'model name' /proc/cpuinfo")
+  }
 }

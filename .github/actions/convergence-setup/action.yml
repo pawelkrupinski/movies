@@ -42,6 +42,15 @@ runs:
   using: composite
   steps:
 
+    # Which CPU this runner has. GitHub's hosted runners are not one machine model, and the same leg
+    # on the same pinned pair has cost ~50% more CPU-seconds on one job than another (identity lane
+    # 37150307201 vs 37153677455: Poland's take-up 165 → 250 CPU-s while US convergence stayed at
+    # ~240). Printed first so a slow leg can be told from a slow machine at a glance.
+    - name: Name the runner's CPU
+      shell: bash
+      run: |
+          echo "runner CPU: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//'), $(nproc) cores"
+
     # A real database under the assertions, because the suite spent its whole
     # life claiming a pipeline fixpoint with every repository faked out. Nothing
     # in those runs could have caught a BSON codec that drops a field, a
