@@ -567,10 +567,31 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "start MongoDB in the background and wait for it before it ends" in {
     val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
     val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- name:")).toSeq
-    setup should include("start-mongo-replset.sh")
-    setup should include regex """mongo-start\.rc\" \) \\\n\s+> \"\$RUNNER_TEMP/mongo-start\.log\" 2>&1 &"""
+    setup should include("scripts/ci/in-background.sh start mongo-start \"$GITHUB_WORKSPACE\"/scripts/ci/start-mongo-replset.sh")
     steps.last shouldBe "- name: Wait for MongoDB, started in the background above"
-    setup should include("""exit "$(cat "$RUNNER_TEMP/mongo-start.rc")"""")
+    RepoFile.step(setup, "Wait for MongoDB, started in the background above") should include(
+      "scripts/ci/in-background.sh wait mongo-start 240")
+  }
+
+  /** The prod-Mongo tunnel's `socat` is not on the runner image, and installing it inside the
+   *  tunnel step was 9-17 s of every recording's critical path (run 37105119296). Setup starts it
+   *  at the top of a RECORDING job, beside the JDK and caches, and the tunnel waits for the rest —
+   *  falling back to installing it itself, so a chore that never ran costs seconds, not the leg. */
+  it should "install a recording's socat in the background, and have the tunnel wait for it" in {
+    val setup  = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val socat  = RepoFile.step(setup, "Install socat for the prod-Mongo tunnel, in the background")
+    socat should include("if: inputs.mode == 'record'\n")
+    socat should include("scripts/ci/in-background.sh start socat-install \"$GITHUB_WORKSPACE\"/scripts/ci/install-apt-package.sh socat")
+    val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
+    withClue("started before the JDK and caches it is meant to overlap: ") {
+      steps.indexWhere(_.contains("Install socat")) should be < steps.indexWhere(_.contains("./.github/actions/setup-jdk"))
+    }
+    val tunnel = RepoFile.read("scripts/ci/wait-for-mongo-tunnel.sh")
+    val waits  = tunnel.indexOf("in-background.sh\" wait socat-install")
+    withClue("the tunnel waits for the background install: ")(waits should be >= 0)
+    withClue("...and still installs socat itself when that never ran or failed: ") {
+      tunnel.indexOf("install-apt-package.sh\" socat") should be > waits
+    }
   }
 
   /** A recording leg's identity lookup sweep is minutes of live lookups; untimed, it read as a

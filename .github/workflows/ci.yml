@@ -167,6 +167,7 @@ jobs:
                   bash scripts/ci/rerun-failed-sbt-test.sh
                   bash scripts/ci/start-mongo-replset-test.sh
                   bash scripts/ci/install-apt-package-test.sh
+                  bash scripts/ci/in-background-test.sh
                   bash scripts/ci/close-mongo-tunnel-test.sh
                   bash scripts/ci/install-playwright-test.sh
                   bash scripts/ci/prune-actions-caches-test.sh

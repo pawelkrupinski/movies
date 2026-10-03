@@ -73,14 +73,25 @@ runs:
     # durability for a database that dies with the runner.
     # IN THE BACKGROUND: pulling the image, booting mongod and electing the one-node replica set is
     # ~20 s of waiting that nothing before the suite needs — the JDK, the caches and the fixture unpack
-    # below run meanwhile, and the last step of this action waits for it (and fails as it would have).
+    # below run meanwhile, and the last step of this action waits for it (and fails as it would have),
+    # both through scripts/ci/in-background.sh.
     - name: Start MongoDB (single-node replica set, for change streams)
       shell: bash
       env:
           MONGO_MAJORITY_JOURNAL: 'false'
+      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
+
+    # A RECORDING leg's tunnel to prod Mongo relays through `socat`, which the runner image lacks:
+    # an `apt-get update` and install that took 9-17 s of every recording's critical path inside
+    # the tunnel step (run 37105119296). It needs no secret and nothing from the steps below, so
+    # it runs beside them, and wait-for-mongo-tunnel.sh waits for whatever is left of it (and
+    # installs it itself if this never ran or failed).
+    - name: Install socat for the prod-Mongo tunnel, in the background
+      if: inputs.mode == 'record'
+      shell: bash
       run: |
-          ( "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2; echo $? > "$RUNNER_TEMP/mongo-start.rc.part"; mv "$RUNNER_TEMP/mongo-start.rc.part" "$RUNNER_TEMP/mongo-start.rc" ) \
-              > "$RUNNER_TEMP/mongo-start.log" 2>&1 &
+          "$GITHUB_WORKSPACE"/scripts/ci/drop-microsoft-apt-sources.sh
+          "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start socat-install "$GITHUB_WORKSPACE"/scripts/ci/install-apt-package.sh socat
 
     # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
     # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
@@ -423,11 +434,4 @@ runs:
 
     - name: Wait for MongoDB, started in the background above
       shell: bash
-      run: |
-          deadline=$((SECONDS + 240))
-          until [ -f "$RUNNER_TEMP/mongo-start.rc" ]; do
-              [ "$SECONDS" -lt "$deadline" ] || { echo "::error::MongoDB start did not finish within 240 s"; cat "$RUNNER_TEMP/mongo-start.log"; exit 1; }
-              sleep 1
-          done
-          cat "$RUNNER_TEMP/mongo-start.log"
-          exit "$(cat "$RUNNER_TEMP/mongo-start.rc")"
+      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh wait mongo-start 240'

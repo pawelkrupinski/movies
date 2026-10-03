@@ -129,9 +129,14 @@ echo "::add-mask::$USERINFO"
 # place to change them.
 URI="mongodb://${USERINFO}@127.0.0.1:${PORT}/?authSource=admin&directConnection=true&maxPoolSize=8"
 
-# socat is what turns "one ssh session per connection" into a local port. It is on the
-# GitHub runner images, but installed rather than assumed — a missing tool should cost
-# twenty seconds, not a red nightly.
+# socat is what turns "one ssh session per connection" into a local port. The runner image
+# lacks it, so convergence-setup starts installing it in the background at the top of the job
+# (scripts/ci/in-background.sh) and this waits for whatever is left of that — but it is still
+# installed here rather than assumed: a chore that never started (`wait` exits 2 at once) or
+# failed should cost the install's seconds, not a red nightly.
+if ! command -v socat >/dev/null 2>&1; then
+  "$HERE/in-background.sh" wait socat-install "${SOCAT_WAIT_SECONDS:-180}" || true
+fi
 if ! command -v socat >/dev/null 2>&1; then
   echo "[tunnel] socat missing — installing"
   "$(dirname "${BASH_SOURCE[0]}")/drop-microsoft-apt-sources.sh"
