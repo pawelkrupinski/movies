@@ -8,17 +8,18 @@ import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.PersistedCodecs
-import services.movies.JavaTimeCodecs
+import services.movies.{JavaTimeCodecs, ShowtimeCodec}
 
 import scala.util.Try
 
-/** An archived listing's showtimes are read by the movies' streaming decoder — a venue's listing is
- *  read back as each of its scrapes lands — and must read every stored listing exactly as the macro
- *  codecs read it. */
+/** An archived listing's showtimes go through the movies' hand-written [[ShowtimeCodec]] — a venue's
+ *  listing is read back as each of its scrapes lands — and the rest of it through the macro codecs, so
+ *  every stored listing reads and writes exactly as the macro codecs around that showtime codec do.
+ *  (`ShowtimeDecodeSpec` pins the showtime's own shapes.) */
 class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
 
   private val macroRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
+    fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
     fromProviders(PersistedCodecs.omittingNone[ScrapeArchiveCodecs.OmittingNone]*),
     DEFAULT_CODEC_REGISTRY)
 
@@ -39,8 +40,8 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
     s"""{ "_id": "Helios", "lastBarren": { "at": $at, "outcome": "error" } }""",
     s"""{ "_id": "Helios", "films": [${film(s"""{ "bookingUrl": "https://x/1" }""")}] }""")
 
-  "the archive's registry" should "read showtimes with the streaming decoder" in {
-    ScrapeArchiveCodecs.registry.get(classOf[Showtime]).getClass.getName should include("StreamingShowtimeCodec")
+  "the archive's registry" should "read and write showtimes with the hand-written codec" in {
+    ScrapeArchiveCodecs.registry.get(classOf[Showtime]) shouldBe ShowtimeCodec
   }
 
   "an archived listing" should "read every stored shape exactly as the macro codecs read it" in {

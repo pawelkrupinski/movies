@@ -2,8 +2,8 @@ package services.movies
 
 import models.{Showtime, SourceData}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
-import org.bson.codecs.{Codec, DecoderContext}
-import org.bson.{BsonDocument, BsonDocumentReader}
+import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
+import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,13 +15,15 @@ import scala.util.Try
 /**
  * Showtimes and `screenings` rows are decoded by hand, field by field (a US corpus pass reads
  * ~1.7M showtimes, and the macro codec's per-document machinery was most of its CPU) — and must
- * read every stored shape EXACTLY as the macro codec reads it. Each document here goes through
- * both, and the two must agree: on the value, or on failing.
+ * read every stored shape EXACTLY as the macro codec reads it. A row goes through both, and the
+ * two must agree: on the value, or on failing. A showtime has no macro codec any more (`Showtime`
+ * is not a case class), so its shapes are pinned to what the macro read and wrote, captured from
+ * it on 2026-10-03.
  */
 class ShowtimeDecodeSpec extends AnyFlatSpec with Matchers {
 
   private val macroRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
+    fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
     fromProviders((PersistedCodecs.omittingNone[MovieCodecs.OmittingNone] ::: PersistedCodecs.writingNone[MovieCodecs.WritingNone])*),
     DEFAULT_CODEC_REGISTRY)
 
@@ -41,20 +43,37 @@ class ShowtimeDecodeSpec extends AnyFlatSpec with Matchers {
     s"""{ "bookingUrl": "https://x/1" }""")
 
   "the registry" should "decode showtimes and screenings rows with the streaming codecs, not the macros" in {
-    MovieCodecs.registry.get(classOf[Showtime]).getClass.getName should include("StreamingShowtimeCodec")
+    MovieCodecs.registry.get(classOf[Showtime]) shouldBe ShowtimeCodec
     MovieCodecs.registry.get(classOf[StoredScreeningsDto]).getClass.getName should include("StreamingScreeningsCodec")
   }
 
-  "a showtime" should "read every stored shape exactly as the macro codec reads it" in {
-    showtimes.foreach { json =>
-      val (viaMacro, streamed) = both(classOf[Showtime], json)
-      withClue(json) {
-        streamed.isSuccess shouldBe viaMacro.isSuccess
-        streamed.toOption shouldBe viaMacro.toOption
-      }
+  private def decoded(json: String): Try[Showtime] =
+    Try(ShowtimeCodec.decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build()))
+
+  private val dateTime = LocalDateTime.of(2026, 12, 17, 13, 0)
+
+  "a showtime" should "read every stored shape exactly as the macro codec read it" in {
+    showtimes.map(decoded(_).toOption) shouldBe Seq(
+      Some(Showtime(dateTime, Some("https://www.cinemark.com/refer.aspx?t=242&sid=738379"), Some("Sala 3"), List("2D", "NAP"))),
+      Some(Showtime(dateTime, None)),
+      Some(Showtime(dateTime, None)),
+      Some(Showtime(dateTime, Some("https://x/1"))),
+      Some(Showtime(dateTime, None, Some("1"), List("IMAX"))),
+      None)
+  }
+
+  it should "be written exactly as the macro codec wrote it, however its URL is held" in {
+    def written(showtime: Showtime) = {
+      val out = new BsonDocument()
+      ShowtimeCodec.encode(new BsonDocumentWriter(out), showtime, EncoderContext.builder().build())
+      out.toJson
     }
-    both(classOf[Showtime], showtimes.head)._2.get shouldBe
-      Showtime(LocalDateTime.of(2026, 12, 17, 13, 0), Some("https://www.cinemark.com/refer.aspx?t=242&sid=738379"), Some("Sala 3"), List("2D", "NAP"))
+    written(Showtime(dateTime, None)) shouldBe """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "format": []}"""
+    written(Showtime(dateTime, Some("u"), Some("r"), List("2D", "NAP"))) shouldBe
+      """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "bookingUrl": "u", "room": "r", "format": ["2D", "NAP"]}"""
+    written(Showtime(dateTime, None, None, List("X"))) shouldBe """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "format": ["X"]}"""
+    written(Showtime(dateTime, Some("https://x/1")).withUrlPrefix("https://x/")) shouldBe
+      """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "bookingUrl": "https://x/1", "format": []}"""
   }
 
   private val updated = """{ "$date": "2026-09-30T10:00:00Z" }"""

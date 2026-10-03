@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
+import models.{CityScreening, ResolvedMovie, ResolvedRatings}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
@@ -19,12 +19,12 @@ import services.movies.JavaTimeCodecs
 object ReadModelCodecs extends PersistedCodecs {
 
   /** `web_movies` + `web_screenings`, and what they nest. */
-  type OmittingNone = (Showtime, ResolvedRatings, ResolvedMovie, CityScreening)
+  type OmittingNone = (ResolvedRatings, ResolvedMovie, CityScreening)
   type WritingNone  = EmptyTuple
 
   /** The macro-derived registry — the shape everything is written with. */
   private val macroRegistry: CodecRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime),
+    fromCodecs(JavaTimeCodecs.localDateTime, services.movies.ShowtimeCodec),
     fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
     DEFAULT_CODEC_REGISTRY
   )
@@ -75,8 +75,7 @@ object ReadModelCodecs extends PersistedCodecs {
       DefaultingCodec(withDefaultedLeaves.get(classOf[ResolvedMovie]),  emptyMovie),
       // A screening row reads as `DefaultingCodec` over its macro would, streamed: rows are many and
       // each carries every showtime (`StreamingCityScreeningCodec`).
-      new StreamingCityScreeningCodec(withDefaultedLeaves.get(classOf[CityScreening]),
-        new services.movies.StreamingShowtimeCodec(macroRegistry.get(classOf[Showtime])))
+      new StreamingCityScreeningCodec(withDefaultedLeaves.get(classOf[CityScreening]), services.movies.ShowtimeCodec)
     ),
     withDefaultedLeaves
   )

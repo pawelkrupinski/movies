@@ -23,7 +23,7 @@ import models.{Cinema, Showtime}
  *    screening filed under the previous day, a time with seconds — keeps its own
  *    `data-expires`, so the rule is exact by construction, not approximately right.
  *  - A BOOKING URL AS A SUFFIX: the cinema group carries the URL prefix its slots
- *    share ([[urlPrefix]], `data-u`), each pill the rest (`data-s`) — and nothing a
+ *    share (`Showtime.commonUrlPrefix`, `data-u`), each pill the rest (`data-s`) — and nothing a
  *    link needs, since it is not one until its href exists: the browser adds
  *    `badge-time`, `target` and `nofollow` with it (2.5 MB of New York's 10.7 MB). The
  *    visible time stays server-rendered; only the outbound, `nofollow` link is put
@@ -45,25 +45,6 @@ object ShowingsMarkup {
    *  (`Showtime.Grace` after it), in the city's zone — `.date-group[data-expires-from]`. */
   def expiresFrom(date: LocalDate, zone: ZoneId): Long =
     date.atStartOfDay.plus(Showtime.Grace).atZone(zone).toInstant.toEpochMilli
-
-  /** The prefix every booking URL of `slots` shares — `.cinema-group[data-u]` — or empty
-   *  when fewer than two have one, where a shared prefix would save nothing. */
-  def urlPrefix(slots: Seq[Showtime]): String = {
-    var first: String = null
-    var length = 0
-    var count  = 0
-    for (slot <- slots; url <- slot.bookingUrl) {
-      if (first == null) { first = url; length = url.length }
-      else {
-        val limit = math.min(length, url.length)
-        var i = 0
-        while (i < limit && first.charAt(i) == url.charAt(i)) i += 1
-        length = i
-      }
-      count += 1
-    }
-    if (count < 2) "" else first.substring(0, length)
-  }
 
   /** For each cinema of `showings`, the first day it is listed on: the one listing whose
    *  label carries the cinema's page for the film as a real `href`. */
@@ -111,7 +92,7 @@ object ShowingsMarkup {
       out.append("</div>")
       for (cinemaShowtimes <- cinemas) {
         val cinema = cinemaShowtimes.cinema
-        val prefix = urlPrefix(cinemaShowtimes.showtimes)
+        val prefix = Showtime.commonUrlPrefix(cinemaShowtimes.showtimes)
         out.append("<div class=\"cinema-group\"")
         if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
         out.append("><div class=\"cinema-label\">")
@@ -136,7 +117,7 @@ object ShowingsMarkup {
 
   /** The pill for `slot`, filed under `date`, into `out`. `commonToks` are the format
    *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
-   *  `prefix` is its cinema group's [[urlPrefix]]. */
+   *  `prefix` is the URL prefix its cinema group's slots share. */
   /** One `.date-group`'s day: its date, its [[expiresFrom]], and the zone offset that
    *  base was taken at — what lets a pill on an ordinary day skip the zone arithmetic. */
   private final case class Day(date: LocalDate, expiresFrom: Long, offset: java.time.ZoneOffset)

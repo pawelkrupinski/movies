@@ -5,8 +5,8 @@ import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonReader, BsonType, BsonWriter}
 
 /**
- * A `web_screenings` row read field by field, its showtimes through the movies' streaming showtime
- * decoder. It reads as [[DefaultingCodec]] over the macro codec did — a missing field takes the empty
+ * A `web_screenings` row read field by field, its showtimes through the movies' hand-written
+ * `ShowtimeCodec`. It reads as [[DefaultingCodec]] over the macro codec did — a missing field takes the empty
  * screening's value, an absent or null `filmUrl` is `None`, any other null is null, an unknown field
  * is skipped — without
  * first decoding each row into a `BsonDocument` and then decoding that: every row's showtimes went

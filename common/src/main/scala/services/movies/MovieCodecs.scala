@@ -238,16 +238,29 @@ private[movies] final class BackwardCompatibleSourceDataCodec(
   }
 }
 
-/** Reads a showtime field by field off the reader. A US corpus pass, and a US boot's cache
- *  hydrate, each decode ~1.7M of them, and the macro codec's per-document machinery — a map of
- *  the fields read, the lookups and boxing to build one — was most of the census's CPU and a
- *  large share of its allocation (JFR over the US mirror, 2026-09-30). Written by the macro codec;
- *  read exactly as the macro reads (`ShowtimeDecodeSpec` pins every stored shape against it):
- *  an absent or null optional field is `None`, a missing `room`/`format` takes its default, an
- *  unknown field is skipped, a missing `dateTime` fails. */
-private[services] final class StreamingShowtimeCodec(macroCodec: Codec[Showtime]) extends Codec[Showtime] {
+/** A showtime, written and read by hand: `Showtime` is not a case class (see it), so no macro
+ *  derives its codec. Writes the shape the macro codec wrote with `IgnoreNone` — `dateTime`, then
+ *  `bookingUrl` and `room` when set, then `format`, always — and reads as it read (`ShowtimeDecodeSpec`
+ *  pins every stored shape): an absent or null optional field is `None`, a missing `room`/`format`
+ *  takes its default, an unknown field is skipped, a missing `dateTime` fails.
+ *
+ *  Field by field, too, for speed: a US corpus pass, and a US boot's cache hydrate, each decode
+ *  ~1.7M of them, and the macro codec's per-document machinery — a map of the fields read, the
+ *  lookups and boxing to build one — was most of the census's CPU and a large share of its
+ *  allocation (JFR over the US mirror, 2026-09-30). Stateless. */
+private[services] object ShowtimeCodec extends Codec[Showtime] {
   override def getEncoderClass: Class[Showtime] = classOf[Showtime]
-  override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = {
+    w.writeStartDocument()
+    w.writeName("dateTime")
+    JavaTimeCodecs.localDateTime.encode(w, v.dateTime, c)
+    v.bookingUrl.foreach(w.writeString("bookingUrl", _))
+    v.room.foreach(w.writeString("room", _))
+    w.writeStartArray("format")
+    v.format.foreach(w.writeString)
+    w.writeEndArray()
+    w.writeEndDocument()
+  }
   override def decode(r: BsonReader, c: DecoderContext): Showtime = {
     var dateTime: java.time.LocalDateTime = null
     var bookingUrl, room = Option.empty[String]
@@ -268,7 +281,7 @@ private[services] final class StreamingShowtimeCodec(macroCodec: Codec[Showtime]
   }
 }
 
-/** A `screenings` row read field by field — its showtimes through [[StreamingShowtimeCodec]].
+/** A `screenings` row read field by field — its showtimes through [[ShowtimeCodec]].
  *  ~108k rows a US pass. Written by the macro codec; read as it reads, as above. */
 private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScreeningsDto], showtimes: Codec[Showtime])
     extends Codec[StoredScreeningsDto] {
@@ -350,26 +363,25 @@ private[movies] object BsonReads {
 }
 
 /**
- * BSON codec wiring for the Mongo-backed repository. The macros handle `SourceData`,
- * `Showtime`, and `StoredMovieDto` directly; only `LocalDateTime` needs a
- * hand-written codec — see `JavaTimeCodecs.localDateTime`, shared with the
- * read-model collections.
+ * BSON codec wiring for the Mongo-backed repository. The macros write the case
+ * classes; `Showtime`, not one, has [[ShowtimeCodec]], and `LocalDateTime` has
+ * `JavaTimeCodecs.localDateTime` — both shared with the read-model collections.
  */
 object MovieCodecs extends PersistedCodecs {
 
-  /** `SourceData`, `Showtime`, `StoredScreeningsDto` and `StoredSlotDto` are READ by the hand-written codecs above,
-   *  each writing through the macro codec derived here. */
-  type OmittingNone = (SourceData, Showtime, TitleSearch)
+  /** `SourceData`, `StoredScreeningsDto` and `StoredSlotDto` are READ by the hand-written codecs above,
+   *  each writing through the macro codec derived here; `Showtime` has no macro codec — [[ShowtimeCodec]]. */
+  type OmittingNone = (SourceData, TitleSearch)
   /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
   type WritingNone  = (StoredTmdbAttempt, StoredMovieDto, StoredScreeningsDto, StoredSlotDto)
 
   val registry: CodecRegistry = {
     // Every macro codec, none shadowed — what the hand-written codecs write through.
     val macros = fromRegistries(
-      fromCodecs(JavaTimeCodecs.localDateTime),
+      fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
       fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
       DEFAULT_CODEC_REGISTRY)
-    val showtimes  = new StreamingShowtimeCodec(macros.get(classOf[Showtime]))
+    val showtimes  = ShowtimeCodec
     val sourceData = new BackwardCompatibleSourceDataCodec(macros.get(classOf[SourceData]), showtimes, macros.get(classOf[TitleSearch]))
     // The macro codecs a row codec WRITES through, their nested slots and showtimes going through
     // the codecs above — so a cache-stripped slot sheds its cache-only fields in a `movie_slots`

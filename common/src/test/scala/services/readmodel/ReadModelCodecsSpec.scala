@@ -77,10 +77,11 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   /** How a screening row read before it was streamed: the macro codec over a document whose missing
-   *  fields the empty screening filled. */
+   *  fields the empty screening filled (its showtimes through `ShowtimeCodec`, which
+   *  `ShowtimeDecodeSpec` pins to the macro's reading). */
   private val defaulting = {
     import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
-    val macros = fromRegistries(fromCodecs(services.movies.JavaTimeCodecs.localDateTime),
+    val macros = fromRegistries(fromCodecs(services.movies.JavaTimeCodecs.localDateTime, services.movies.ShowtimeCodec),
       fromProviders(services.PersistedCodecs.omittingNone[ReadModelCodecs.OmittingNone]*),
       org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY)
     DefaultingCodec(macros.get(classOf[CityScreening]), CityScreening("", "", "", "", None, Seq.empty))

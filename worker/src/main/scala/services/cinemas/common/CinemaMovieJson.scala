@@ -16,7 +16,7 @@ object CinemaMovieJson {
   private val Iso = DateTimeFormatter.ISO_LOCAL_DATE_TIME
   private implicit val ldtFormat: Format[LocalDateTime] =
     Format(Reads.localDateTimeReads(Iso), Writes(d => JsString(d.format(Iso))))
-  private implicit val showtimeFormat: Format[Showtime] = Json.format[Showtime]
+  private implicit val showtimeFormat: Format[Showtime] = models.ShowtimeJson.format
   private implicit val movieFormat: Format[Movie] = Json.format[Movie]
 
   /** A transport mirror of `CinemaMovie` minus `cinema`. Every OTHER field must

@@ -264,11 +264,11 @@ class WebReadModel(
       case _                            => s
     }
     // Every row enters through here (boot load, backstop reload, change stream), so this
-    // is where its showtimes join the shared instants — see `LocalDateTimePool`.
-    instants.showtimes(paged)
+    // is where its showtimes join the shared instants and URL prefixes — see `ShowtimePool`.
+    shared.share(paged)
   }
 
-  private val instants = new services.movies.LocalDateTimePool
+  private val shared = new services.movies.ShowtimePool
 
   private def applyScreeningUpsert(projected: CityScreening): Unit = {
     val s        = onCurrentPage(projected)

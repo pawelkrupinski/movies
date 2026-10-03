@@ -12,7 +12,7 @@ import org.mongodb.scala.model.{Filters, Indexes, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import services.PersistedCodecs
-import services.movies.{JavaTimeCodecs, StreamingShowtimeCodec}
+import services.movies.{JavaTimeCodecs, ShowtimeCodec}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -133,25 +133,18 @@ object StoredScrapeDto {
  *  `synopsis`/`room`/`ageRating` costs nothing on the wire and decodes back to
  *  `None` — the same trade `MovieCodecs` makes for `Showtime`. */
 object ScrapeArchiveCodecs extends PersistedCodecs {
-  type OmittingNone = (ContentStampDto, NoScheduleFlagDto, Showtime, Movie, ArchivedFilmDto, BarrenAttemptDto, StoredScrapeDto)
+  type OmittingNone = (ContentStampDto, NoScheduleFlagDto, Movie, ArchivedFilmDto, BarrenAttemptDto, StoredScrapeDto)
   type WritingNone  = EmptyTuple
 
-  /** Every showtime READ through the movies' streaming decoder, written through its macro codec: a
-   *  venue's listing carries every showtime it scraped, the identity intake reads a venue's back as
-   *  each scrape lands, and the projection the whole archive — on the US corpus the macro's
+  /** Every showtime through the movies' hand-written [[ShowtimeCodec]] (`Showtime` has no macro
+   *  codec): a venue's listing carries every showtime it scraped, the identity intake reads a venue's
+   *  back as each scrape lands, and the projection the whole archive — on the US corpus the macro's
    *  per-showtime machinery was most of the archive's decode, ~10% of a convergence leg's CPU (JFR).
    *  `ScrapeArchiveCodecsSpec` pins it to the macro's reading. */
-  val registry: CodecRegistry = {
-    val macros = fromRegistries(
-      fromCodecs(JavaTimeCodecs.localDateTime),
-      fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
-      DEFAULT_CODEC_REGISTRY)
-    fromRegistries(
-      // FIRST, so it shadows the macro codec of the same class wherever a listing nests a showtime.
-      fromCodecs(JavaTimeCodecs.localDateTime, new StreamingShowtimeCodec(macros.get(classOf[Showtime]))),
-      fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
-      DEFAULT_CODEC_REGISTRY)
-  }
+  val registry: CodecRegistry = fromRegistries(
+    fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
+    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
+    DEFAULT_CODEC_REGISTRY)
 }
 
 /**

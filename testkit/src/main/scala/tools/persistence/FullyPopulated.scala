@@ -43,6 +43,14 @@ object FullyPopulated extends DerivedFullyPopulated {
   given FullyPopulated[Instant]       = leaves => Instant.parse("2026-09-24T10:00:00Z").plusSeconds(leaves.next().toLong * 61)
   given FullyPopulated[LocalDateTime] = leaves => LocalDateTime.of(2026, 9, 24, 10, 0).plusMinutes(leaves.next().toLong * 7)
   given FullyPopulated[LocalDate]     = leaves => LocalDate.of(2026, 9, 24).plusDays(leaves.next().toLong)
+  // Not a case class, so it has no `Mirror` (see `models.Showtime`): every field set, by hand, with
+  // its booking URL held split — the form the web read model holds — so the codec writes the URL
+  // that form spells out.
+  given (using strings: FullyPopulated[String], at: FullyPopulated[LocalDateTime]): FullyPopulated[models.Showtime] = leaves => {
+    val prefix = s"https://book.example/${strings.make(leaves)}/"
+    models.Showtime(at.make(leaves), Some(prefix + strings.make(leaves)), Some(strings.make(leaves)),
+      List(strings.make(leaves), strings.make(leaves))).withUrlPrefix(prefix)
+  }
 
   given [A](using a: FullyPopulated[A]): FullyPopulated[Option[A]] = leaves => Some(a.make(leaves))
   given [A](using a: FullyPopulated[A]): FullyPopulated[Seq[A]]    = leaves => Seq(a.make(leaves), a.make(leaves))

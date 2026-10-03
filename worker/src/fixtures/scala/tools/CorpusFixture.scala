@@ -42,7 +42,7 @@ object CorpusFixture {
   private implicit val instantFormat: Format[Instant] =
     Format(Reads.DefaultInstantReads, Writes.DefaultInstantWrites)
 
-  private implicit val showtimeFormat: OFormat[Showtime]         = Json.format[Showtime]
+  private implicit val showtimeFormat: OFormat[Showtime]         = models.ShowtimeJson.format
   private implicit val movieFormat: OFormat[Movie]               = Json.format[Movie]
   private implicit val filmFormat: OFormat[ArchivedFilmDto]      = Json.format[ArchivedFilmDto]
   private implicit val barrenFormat: OFormat[BarrenAttemptDto]   = Json.format[BarrenAttemptDto]

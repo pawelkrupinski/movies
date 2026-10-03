@@ -33,7 +33,7 @@ object ReadModelSnapshot {
   private implicit val localDateTimeFormat: Format[LocalDateTime] =
     Format(Reads.DefaultLocalDateTimeReads, Writes.DefaultLocalDateTimeWrites)
 
-  private implicit val showtimeFormat: OFormat[Showtime]       = Json.format[Showtime]
+  private implicit val showtimeFormat: OFormat[Showtime]       = models.ShowtimeJson.format
   private implicit val ratingsFormat: OFormat[ResolvedRatings] = Json.format[ResolvedRatings]
   private implicit val movieFormat: OFormat[ResolvedMovie]     = Json.format[ResolvedMovie]
   private implicit val screeningFormat: OFormat[CityScreening] = Json.format[CityScreening]

@@ -279,6 +279,49 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     a should be theSameInstanceAs b
   }
 
+  // ── Booking URLs held split at the prefix their row shares ───────────────────
+  //
+  // A booking URL was ~150 bytes of web-us's heap per showtime (a String and its Some),
+  // ~70% of what a showtime still cost after the instants were shared — yet a row's URLs
+  // differ only in their last few characters. Held as the row's common prefix (one shared
+  // String) plus each showtime's own remainder as bytes, New York's cost ~44 bytes each.
+
+  "a row entering the model" should "hold its booking URLs split at the prefix they share, spelling each exactly" in {
+    val at   = java.time.LocalDateTime.of(2026, 6, 10, 18, 30)
+    val urls = Seq("https://kino.example/buy?show=101", "https://kino.example/buy?show=102", "https://kino.example/buy?show=2")
+    val stored = screening("s1", "belle|2021", "wroclaw").copy(showtimes = urls.map(url => models.Showtime(at, Some(url))))
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(stored)
+    repository.upsertScreening(screening("s2", "belle|2021", "krakow").copy(showtimes = urls.map(url => models.Showtime(at, Some(url)))))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    val Seq(held, other) = rm.allScreenings().sortBy(_._id)
+    held shouldBe stored
+    held.showtimes.flatMap(_.bookingUrl) shouldBe urls
+    val prefixes = (held.showtimes ++ other.showtimes).map(_.urlSplitPrefix.get)
+    prefixes.distinct shouldBe Seq("https://kino.example/buy?show=")
+    prefixes.foreach(_ should be theSameInstanceAs prefixes.head)
+  }
+
+  it should "split a re-read row at its NEW prefix when the cinema's booking domain changed" in {
+    val at = java.time.LocalDateTime.of(2026, 6, 10, 18, 30)
+    def row(host: String) = screening("s1", "belle|2021", "wroclaw")
+      .copy(showtimes = Seq(1, 2).map(n => models.Showtime(at, Some(s"https://$host/buy?show=$n"))))
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(row("old.example"))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+    repository.upsertScreening(row("tickets.new.example"))
+    rm.reload()
+
+    val Seq(held) = rm.allScreenings()
+    held.showtimes.flatMap(_.bookingUrl) shouldBe Seq("https://tickets.new.example/buy?show=1", "https://tickets.new.example/buy?show=2")
+    held.showtimes.map(_.urlSplitPrefix) shouldBe Seq.fill(2)(Some("https://tickets.new.example/buy?show="))
+  }
+
   "reload" should "stream the screenings rather than buffer the whole collection" in {
     val buffered = new java.util.concurrent.atomic.AtomicInteger(0)
     val repository = new InMemoryReadModelRepository {
