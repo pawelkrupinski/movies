@@ -117,6 +117,15 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     IdentityProjection.independent(twice, twice, Nil, normalizer) shouldBe first.films.tail.map(_.id).toSet
   }
 
+  "A projection" should "say how long each of its phases took and what it allocated" in {
+    val w = new World
+    w.scrape(programme)
+    val phases = w.projection.tick().phases
+    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "draft", "guard", "details", "finish", "compare", "writes")
+    phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
+    phases.map(_.allocatedBytes).sum should be > 0L
+  }
+
   "A second projection over the same listings" should "write nothing (P2)" in {
     val w = new World
     w.scrape(programme)
