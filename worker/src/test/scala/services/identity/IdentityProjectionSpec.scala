@@ -44,7 +44,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
     val filmIds    = new InMemoryFilmIdCounterStore
-    val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock)
+    val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
+      services.movies.ScrapeLandingMetrics.noop)
     val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
     val projection = new IdentityProjection(
       listings = () => intake.listings(programme.keys.toSeq),

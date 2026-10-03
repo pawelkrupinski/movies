@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, City}
-import services.movies.{CacheKey, ScrapeGuardLedger, ScrapeGuardState, ScrapeSink, TitleNormalizer}
+import services.movies.{CacheKey, ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
@@ -24,6 +24,7 @@ final class IdentityListingIntake(
   normalizer:    TitleNormalizer,
   maxRejections: Int,
   clock:         Clock,
+  metrics:       ScrapeLandingMetrics,
   published:     (Cinema, Seq[CinemaMovie]) => Unit = (_, _) => ()
 ) extends ScrapeSink {
 
@@ -55,6 +56,7 @@ final class IdentityListingIntake(
     val known  = listingOf(cinema)
     val verdict = ListingIntake.decide(cinema, known, ListingIntake.Offer(movies, listingIsComplete, sourceKey, viaFallback), guard,
       City.localNow(cinema, clock), maxRejections, normalizer)
+    verdict.guarded.foreach(g => metrics.recordGuardVerdict(g.guard, g.verdict))
     // An unreadable ledger is judged as fresh, and its state is never written back over it.
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)
     val recorded = verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known

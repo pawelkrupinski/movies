@@ -45,7 +45,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   // What each venue is taken to publish after every scrape reaches the identity model as its listings now.
   lazy val identityListingIntake: Option[IdentityListingIntake] = Option.when(identityCutover)(
     new IdentityListingIntake(acceptedListings, scrapeArchive, scrapeGuardLedger, titleNormalizer,
-      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock,
+      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, taskMetrics,
       published = (cinema, films) => identityModel.foreach(_.venueScraped(cinema, films))))
 
   lazy val identityProjection: Option[IdentityProjection] = identityListingIntake.map { intake =>

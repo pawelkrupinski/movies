@@ -34,7 +34,8 @@ class IdentityListingIntakeListingsSpec extends AnyFlatSpec with Matchers {
   private val live         = Seq(Multikino, Helios, KinoApollo, KinoMuza, Helios)
 
   private def intake(accepted: ScrapeArchiveRepository, archive: ScrapeArchiveRepository) =
-    new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock)
+    new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
+      services.movies.ScrapeLandingMetrics.noop)
 
   /** The listing set as the whole-archive read computed it, before the reader streamed. */
   private def wholeArchiveListings(accepted: Seq[ArchivedScrape], archive: Seq[ArchivedScrape]): Seq[(Cinema, Seq[CinemaMovie])] = {

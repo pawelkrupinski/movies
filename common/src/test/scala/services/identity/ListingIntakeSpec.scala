@@ -49,6 +49,8 @@ class ListingIntakeSpec extends AnyFlatSpec with Matchers {
     exhausted.outcome shouldBe Outcome.Replaced
     exhausted.accepted shouldBe thin
     exhausted.guard.depthRejections shouldBe 0
+    first.guarded shouldBe Seq(ListingIntake.Guarded.DepthReject)
+    exhausted.guarded shouldBe Seq(ListingIntake.Guarded.DepthAccept)
   }
 
   "A short scrape" should "be ADDED — what it failed to mention keeps its showtimes — until the breadth guard gives up" in {
@@ -57,6 +59,14 @@ class ListingIntakeSpec extends AnyFlatSpec with Matchers {
     v.outcome shouldBe Outcome.Added
     v.accepted.map(_.movie.title).toSet shouldBe board.map(_.movie.title).toSet
     v.guard.breadthRejections shouldBe 1
+    v.guarded shouldBe Seq(ListingIntake.Guarded.BreadthReject)
+  }
+
+  "A guard's decision" should "be named in the verdict only when a guard stepped in" in {
+    decide(board, board.tail :+ film("Film 11")).guarded shouldBe empty
+    val short = board.take(3).map(_.copy(showtimes = (1 to 30).map(d => Showtime(now.plusHours(d.toLong), None))))
+    decide(board, short, ScrapeGuardState(breadthRejections = ScrapeHealth.MaxConsecutiveDepthRejections)).guarded shouldBe
+      Seq(ListingIntake.Guarded.BreadthAccept)
   }
 
   "A scrape the scraper knows is incomplete" should "never replace the listing" in {

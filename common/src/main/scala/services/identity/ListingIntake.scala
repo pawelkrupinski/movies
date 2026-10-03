@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ScrapeLandingMetrics, ScrapeListing, TitleNormalizer}
 
 import java.time.LocalDateTime
 
@@ -41,8 +41,18 @@ object ListingIntake {
     case Kept
   }
 
-  /** What the venue's listing becomes, the guards' state after this scrape, and how. */
-  final case class Verdict(accepted: Seq[CinemaMovie], guard: ScrapeGuardState, outcome: Outcome)
+  /** What the venue's listing becomes, the guards' state after this scrape, how, and which guard
+   *  stepped in (none on a healthy scrape) — counted, so a guard stuck rejecting can be alerted on. */
+  final case class Verdict(accepted: Seq[CinemaMovie], guard: ScrapeGuardState, outcome: Outcome, guarded: Seq[Guarded] = Nil)
+
+  /** One guard's decision about a scrape: it rejected it as a bad fetch, or accepted a degraded one
+   *  after its grace ran out. */
+  enum Guarded(val guard: String, val verdict: String) {
+    case DepthReject   extends Guarded(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Reject)
+    case DepthAccept   extends Guarded(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Accept)
+    case BreadthReject extends Guarded(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Reject)
+    case BreadthAccept extends Guarded(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Accept)
+  }
 
   def decide(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, now: LocalDateTime,
              maxRejections: Int, normalizer: TitleNormalizer): Verdict = {
@@ -56,11 +66,15 @@ object ListingIntake {
         def upcoming(films: Seq[CinemaMovie]) = films.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum
         def slots(films: Seq[CinemaMovie])    = films.map(cm => ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)).distinct.size
         ScrapeHealth.depth(upcoming(known), upcoming(offer.films), guard.depthRejections, maxRejections) match {
-          case ScrapeHealth.Depth.Reject(consecutive) => Verdict(known, guard.copy(depthRejections = consecutive), Outcome.Kept)
+          case ScrapeHealth.Depth.Reject(consecutive) =>
+            Verdict(known, guard.copy(depthRejections = consecutive), Outcome.Kept, Seq(Guarded.DepthReject))
           case depth =>
+            val deep = depth match { case ScrapeHealth.Depth.AcceptDegraded(_) => Seq(Guarded.DepthAccept); case _ => Nil }
             ScrapeHealth.breadth(slots(known), slots(offer.films), offer.listingIsComplete, guard.breadthRejections, maxRejections, depth) match {
-              case ScrapeHealth.Breadth.Reject(consecutive) => Verdict(added, landed.copy(breadthRejections = consecutive), Outcome.Added)
-              case _                                        => Verdict(offer.films, landed, Outcome.Replaced)
+              case ScrapeHealth.Breadth.Reject(consecutive) =>
+                Verdict(added, landed.copy(breadthRejections = consecutive), Outcome.Added, deep :+ Guarded.BreadthReject)
+              case ScrapeHealth.Breadth.AcceptDegraded(_) => Verdict(offer.films, landed, Outcome.Replaced, deep :+ Guarded.BreadthAccept)
+              case ScrapeHealth.Breadth.Healthy           => Verdict(offer.films, landed, Outcome.Replaced, deep)
             }
         }
       }

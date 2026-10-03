@@ -28,7 +28,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
     val archive = new InMemoryScrapeArchiveRepository
     val ledger  = new InMemoryScrapeGuardLedger
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, ledger, titleNormalizer, 3,
-      DepthGuardTime.clock)
+      DepthGuardTime.clock, services.movies.ScrapeLandingMetrics.noop)
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
       normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty,
@@ -43,10 +43,13 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
   "the same shrink landed straight into the intake, the archive still holding the venue's last scrape" should
     "be held back by the depth guard (the control)" in {
     val archive = new InMemoryScrapeArchiveRepository
+    val metrics = new services.movies.RecordingScrapeLandingMetrics
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, new InMemoryScrapeGuardLedger,
-      titleNormalizer, 3, DepthGuardTime.clock)
+      titleNormalizer, 3, DepthGuardTime.clock, metrics)
     archive.record(services.scrapes.ScrapeAttempt(Multikino, None, DepthGuardTime.Now, listingComplete = true, films(10), error = None))
     intake.recordCinemaScrape(Multikino, films(1), listingIsComplete = true, sourceKey = None, viaFallback = false)
     intake.listingOf(Multikino).size shouldBe 10
+    // Counted as the landing counted it, so a guard stuck rejecting stays alertable on the new path.
+    metrics.verdicts shouldBe Vector("depth" -> "reject")
   }
 }
