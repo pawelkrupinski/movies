@@ -285,10 +285,11 @@
 
   <div id="overlay"></div>
 
-  @*  Every bar's detail, in ONE block instead of an escaped JSON blob per cell —
-      see controllers.UptimeBarPayload for why (the German roster OOM'd the page).
-      Slot labels are shared across services; `data` holds only buckets that
-      recorded something, so a bar with no entry is the "no data" case.  *@
+  @*  The whole grid, in ONE compact block the script below builds every row's bars
+      from — see controllers.UptimeBarPayload for the shape and why (the German
+      roster OOM'd the page; then ~70k server-rendered bars made every load ~1 s).
+      `data` holds only buckets that recorded something, so a bar with no entry is
+      the "no data" case.  *@
   <script type="application/json" id="uptime-bars">@Html(controllers.UptimeBarPayload(
     failing.map(_.row) ++ gone.map(_.row) ++ zero.map(_.row) ++ thin.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
 
@@ -296,8 +297,26 @@
     var overlay = document.getElementById('overlay');
     var statusLabels = {green:'All OK',yellow:'Degraded',red:'Unavailable',zero:'No screenings',empty:'No data'};
 
+    // Expand the compact payload (controllers.UptimeBarPayload) into the two maps
+    // hover and the live feed read: slot labels by timestamp, and each service's
+    // recorded buckets by timestamp.
     var barPayload = JSON.parse(document.getElementById('uptime-bars').textContent);
-    var barSlots = barPayload.slots, barDetail = barPayload.data;
+    var slotTimestamps = barPayload.slots.map(function(s) { return String(s[0]); });
+    var barSlots = {}, barDetail = {};
+    barPayload.slots.forEach(function(s) {
+      barSlots[String(s[0])] = {timeFrom: s[1], timeTo: s[2], dateLabel: s[3]};
+    });
+    Object.keys(barPayload.data).forEach(function(service) {
+      var buckets = barDetail[service] = {};
+      barPayload.data[service].forEach(function(b) {
+        buckets[slotTimestamps[b[0]]] = {
+          status: barPayload.statuses[b[1]], successes: b[2], failures: b[3], zeroes: b[4],
+          fallback: (b[5] & @controllers.UptimeBarPayload.FallbackFlag) !== 0,
+          thin: (b[5] & @controllers.UptimeBarPayload.ThinFlag) !== 0,
+          errors: b.slice(6).map(function(i) { return barPayload.errors[i]; })
+        };
+      });
+    });
 
     // A bucket with no entry never recorded anything — that IS "no data", and the
     // bar already renders grey for it. Keeps the payload to real activity only.
@@ -346,7 +365,16 @@
       var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
     }
 
-    document.querySelectorAll('.bar').forEach(attachBarHover);
+    // Build every row's bars: one per slot, coloured by its recorded bucket.
+    document.querySelectorAll('.row[data-service] .bars').forEach(function(barsDiv) {
+      var buckets = barDetail[barsDiv.parentNode.getAttribute('data-service')] || {};
+      var bars = document.createDocumentFragment();
+      slotTimestamps.forEach(function(ts) {
+        var d = buckets[ts];
+        bars.appendChild(makeBar(ts, d ? barClass(d) : 'bar empty'));
+      });
+      barsDiv.appendChild(bars);
+    });
 
     // Index rows by service once so a live update is an O(1) lookup, not a
     // full-document querySelectorAll per message. As the cinema roster grows,
@@ -453,11 +481,8 @@
         }
       }
     </div>
-    <div class="bars">
-      @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}@if(b.thin){ thin}" data-ts="@b.bucketTimestamp"></div>
-      }
-    </div>
+    @* Filled by the page script from `#uptime-bars` — see controllers.UptimeBarPayload. *@
+    <div class="bars"></div>
     <div class="latency" title="avg successful call latency — last 1h / all retained">
       @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
     </div>
@@ -477,11 +502,8 @@
 @enrichmentRow(s: ServiceRow) = {
   <div class="row enrichment-row" data-service="@s.name">
     <div class="name" title="@s.name">↳ enrichment</div>
-    <div class="bars">
-      @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}@if(b.thin){ thin}" data-ts="@b.bucketTimestamp"></div>
-      }
-    </div>
+    @* Filled by the page script from `#uptime-bars` — see controllers.UptimeBarPayload. *@
+    <div class="bars"></div>
     <div class="latency" title="avg successful detail-fetch latency — last 1h / all retained">
       @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
     </div>

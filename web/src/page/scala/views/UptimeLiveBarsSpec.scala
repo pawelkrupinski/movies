@@ -29,26 +29,31 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   private val step   = UptimeMonitor.BucketDurationMs
   private val lastTs = UptimeMonitor.bucketTimestamp(1_752_400_000_000L)
 
-  // One dense, contiguous row of 6 green 15-min bars ending at `lastTs`.
-  private def bar(ts: Long): BarData =
-    BarData("TestSvc", ts, "12:00", "12:15", "1 Jul", "green", 1, 0, 0, Seq.empty)
-  private val row = ServiceRow("TestSvc", (5 to 0 by -1).map(i => bar(lastTs - i * step)))
-
-  // A second row whose bars have real detail behind them: one bucket that
-  // recorded a failure (with an error string) and one that recorded nothing.
-  // The tooltip reads both from the shared `#uptime-bars` payload — the omitted
-  // idle bucket is what "no data" looks like there.
+  // A bucket that recorded a failure (with an error string) and one that recorded
+  // nothing — the tooltip reads both from the shared `#uptime-bars` payload, where
+  // the omitted idle bucket is what "no data" looks like.
   private val activeTs = lastTs - step
   private val idleTs   = lastTs
+
+  // A slot's labels are a function of its timestamp, as in the controller — the
+  // payload states them once per slot, for every row.
+  private def bar(service: String, ts: Long, status: String = "green", failures: Int = 0,
+                  errors: Seq[String] = Seq.empty, thin: Boolean = false): BarData = {
+    val (from, to) = if (ts == activeTs) ("09:30", "09:45") else if (ts == idleTs) ("09:45", "10:00") else ("12:00", "12:15")
+    BarData(service, ts, from, to, "13 Jul", status, if (status == "empty") 0 else 1 - failures.sign, failures, 0, errors, thin = thin)
+  }
+
+  // One dense, contiguous row of 6 green 15-min bars ending at `lastTs`.
+  private val row = ServiceRow("TestSvc", (5 to 0 by -1).map(i => bar("TestSvc", lastTs - i * step)))
+
   private val detailRow = ServiceRow("DetailSvc", Seq(
-    BarData("DetailSvc", activeTs, "09:30", "09:45", "13 Jul", "red", 0, 2, 0, Seq("connect timeout")),
-    BarData("DetailSvc", idleTs, "09:45", "10:00", "13 Jul", "empty", 0, 0, 0, Seq.empty),
+    bar("DetailSvc", activeTs, status = "red", failures = 2, errors = Seq("connect timeout")),
+    bar("DetailSvc", idleTs, status = "empty"),
   ))
 
   // A green bucket whose scrape held no screening in the next 72 hours
   // (services.cinemas.common.NearTermProgramme) — the Polonez shape.
-  private val thinRow = ServiceRow("ThinSvc", Seq(
-    BarData("ThinSvc", lastTs, "09:45", "10:00", "13 Jul", "green", 1, 0, 0, Seq.empty, thin = true)))
+  private val thinRow = ServiceRow("ThinSvc", Seq(bar("ThinSvc", lastTs, thin = true)))
 
   private val uptimeHtml: String =
     views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow, thinRow), current = models.Country.Poland).body

@@ -172,7 +172,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     val gone = Seq(controllers.FlaggedRow(ServiceRow("Acme Theatre Riverton", Seq(bar)), Some("Wyoming")))
     val out  = views.html.uptime(Seq.empty, gone, Seq.empty, Seq.empty, Nil, Nil, Nil, current = models.Country.Poland).body
 
-    out.split("""id="uptime-bars"""").last should include ("Acme Theatre Riverton")
+    UptimePayload.inPage(out).bucket("Acme Theatre Riverton", 1_700_000_000_000L).map(_.status) shouldBe Some("red")
   }
 
   it should "render the thin section, its bar marked, above the healthy cinemas" in {
@@ -183,8 +183,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
       thin = thin, current = models.Country.Poland).body
 
     out should include ("Nothing in the next 72h — last 3 scrapes")
-    out should include ("""class="bar green thin"""")
     out.indexOf("Kino Polonez") should be < out.indexOf("<h3>Poznań</h3>")
-    out.split("""id="uptime-bars"""").last should include (""""thin":true""")
+    UptimePayload.inPage(out).bucket("Kino Polonez", 1_700_000_000_000L).map(_.thin) shouldBe Some(true)
   }
 }

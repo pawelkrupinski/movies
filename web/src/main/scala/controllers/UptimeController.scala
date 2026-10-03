@@ -2,7 +2,7 @@ package controllers
 
 import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.libs.json.{JsObject, JsValue, Json, Writes}
+import play.api.libs.json.{JsObject, JsString, JsValue, Json, Writes}
 import play.api.mvc._
 import models.Cinema
 import services.UptimeMonitor
@@ -98,23 +98,34 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
-  private def barData(service: String, b: UptimeMonitor.BucketSnapshot): BarData = {
-    val from = Instant.ofEpochMilli(b.timestamp)
-    val to   = Instant.ofEpochMilli(b.timestamp + BucketDurationMs)
-    BarData(service, b.timestamp, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+  private def barData(service: String, b: UptimeMonitor.BucketSnapshot): BarData =
+    barData(service, b, slotLabels(b.timestamp))
+
+  private def barData(service: String, b: UptimeMonitor.BucketSnapshot, labels: SlotLabels): BarData =
+    BarData(service, b.timestamp, labels.timeFrom, labels.timeTo, labels.dateLabel,
       b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback, b.thin)
+
+  private final case class SlotLabels(timeFrom: String, timeTo: String, dateLabel: String)
+
+  private def slotLabels(timestamp: Long): SlotLabels = {
+    val from = Instant.ofEpochMilli(timestamp)
+    SlotLabels(timeFmt.format(from), timeFmt.format(Instant.ofEpochMilli(timestamp + BucketDurationMs)), dateFmt.format(from))
   }
 
   def index: Action[AnyContent] = adminAction {
     val now = clock.millis()
     val currentBucket = bucketTimestamp(now)
-    val slots = (0 until MaxBuckets).reverse.map(i => currentBucket - i * BucketDurationMs)
+    // Labelled once per request, not once per bar: every row shares these slots.
+    val slots = (0 until MaxBuckets).reverse.map { i =>
+      val timestamp = currentBucket - i * BucketDurationMs
+      timestamp -> slotLabels(timestamp)
+    }
     val active = monitor.services
 
     def barsFor(serviceName: String): Seq[BarData] = {
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
-      slots.map { timestamp =>
-        barData(serviceName, history.getOrElse(timestamp, UptimeMonitor.BucketSnapshot(timestamp, 0, 0, 0, Seq.empty)))
+      slots.map { case (timestamp, labels) =>
+        barData(serviceName, history.getOrElse(timestamp, UptimeMonitor.BucketSnapshot(timestamp, 0, 0, 0, Seq.empty)), labels)
       }
     }
 
@@ -422,48 +433,93 @@ object BarData {
   )
 }
 
-/** The per-bucket detail behind the uptime grid, emitted ONCE for the whole page
- *  instead of inlined into every bar's `data-info` attribute.
+/** The per-bucket detail behind the uptime grid, emitted ONCE for the whole page —
+ *  and the ONLY place the grid is described: the page's script builds every row's
+ *  bars from it, so the server emits no per-bar markup at all.
  *
- *  The grid renders a complete 96-slot row per service, empty slots included, so
- *  a large roster (Germany registers ~1550 services) means ~149k cells. Carrying
- *  an HTML-escaped JSON blob on each of those built ~57 MB of HTML through nested
- *  Twirl StringBuilders and OOM'd the 384 MB heap — which, with Pekko's
- *  exit-on-fatal-error, took the whole site down on every /uptime load.
+ *  History. Each bar used to carry an HTML-escaped JSON blob in `data-info`; on
+ *  Germany's ~1550 services × 96 slots that was ~57 MB of HTML, which OOM'd the
+ *  384 MB heap and (Pekko exits on a fatal error) took the site down. Moving the
+ *  detail into one payload fixed the OOM but still rendered ~70k bar `<div>`s with
+ *  their timestamps, and a payload of full JSON objects repeating every key name
+ *  and every error string per bucket: ~12–17 MB raw per load, built, serialised
+ *  and gzipped on every request — 0.6–1.3 s server-side in prod (Caddy, 2026-10-03).
  *
- *  Two things make this small. The 96 slot labels are shared by every service, so
- *  they're emitted once rather than once per cell. And only buckets that actually
- *  recorded something get an entry — an absent bucket IS the "no data" case, which
- *  the bar's `empty` class already renders. On the German deployment that's ~3.6k
- *  real buckets against ~149k cells. */
+ *  Compact shape, every repeated value written once and referenced by index:
+ *  {{{
+ *  { "slots":    [[ts, timeFrom, timeTo, dateLabel], …],   // the grid's columns, oldest first
+ *    "statuses": ["green", …],
+ *    "errors":   ["connect timeout", …],
+ *    "data":     { service: [[slot, status, successes, failures, zeroes, flags, error…], …] } }
+ *  }}}
+ *  `flags` is a bitmask — 1 fallback, 2 thin. Only buckets that recorded something
+ *  get an entry; an absent bucket IS the "no data" case. Safe to drop straight into
+ *  a `<script type="application/json">` block: `<` is escaped so an error string
+ *  containing `</script>` can't break out. */
 object UptimeBarPayload {
 
-  /** Serialised as `{"slots": {ts: {labels}}, "data": {service: {ts: {counts}}}}`,
-   *  safe to drop straight into a `<script type="application/json">` block: `<` is
-   *  escaped so an error string containing `</script>` can't break out. */
+  val FallbackFlag = 1
+  val ThinFlag     = 2
+
   def apply(rows: Seq[ServiceRow]): String = {
     val allRows = rows.flatMap(r => r +: r.enrichment.toSeq)
 
-    val slots = allRows.flatMap(_.bars).map { b =>
-      b.bucketTimestamp.toString -> Json.obj(
-        "timeFrom" -> b.timeFrom, "timeTo" -> b.timeTo, "dateLabel" -> b.dateLabel)
-    }.toMap
+    // Every row normally shares one grid; the union covers any that doesn't.
+    val slotBars = scala.collection.mutable.LongMap.empty[BarData]
+    allRows.foreach(_.bars.foreach(b => if (!slotBars.contains(b.bucketTimestamp)) slotBars(b.bucketTimestamp) = b))
+    val slots     = slotBars.values.toSeq.sortBy(_.bucketTimestamp)
+    val slotIndex = slots.iterator.map(_.bucketTimestamp).zipWithIndex.toMap
 
-    val data = allRows.map { row =>
-      row.name -> JsObject(row.bars.filter(_.status != "empty").map { b =>
-        b.bucketTimestamp.toString -> Json.obj(
-          "status"    -> b.status,
-          "successes" -> b.successes,
-          "failures"  -> b.failures,
-          "zeroes"    -> b.zeroes,
-          "errors"    -> b.errors,
-          "fallback"  -> b.fallback,
-          "thin"      -> b.thin
-        )
-      })
-    }.filter(_._2.value.nonEmpty).toMap
+    val statuses = new Interned
+    val errors   = new Interned
+    val out      = new StringBuilder(64 * 1024)
 
-    Json.stringify(Json.obj("slots" -> slots, "data" -> data)).replace("<", "\\u003c")
+    out ++= "{\"slots\":["
+    slots.iterator.zipWithIndex.foreach { case (b, i) =>
+      if (i > 0) out += ','
+      out += '[' ++= b.bucketTimestamp.toString += ','
+      quote(out, b.timeFrom) += ','; quote(out, b.timeTo) += ','; quote(out, b.dateLabel) += ']'
+    }
+    out ++= "],\"data\":{"
+    // A service rendered in two sections (triage AND its city) is written once.
+    val written = scala.collection.mutable.HashSet.empty[String]
+    allRows.foreach { row =>
+      val active = row.bars.filter(_.status != "empty")
+      if (active.nonEmpty && written.add(row.name)) {
+        if (written.size > 1) out += ','
+        quote(out, row.name) ++= ":["
+        active.iterator.zipWithIndex.foreach { case (b, i) =>
+          if (i > 0) out += ','
+          val flags = (if (b.fallback) FallbackFlag else 0) | (if (b.thin) ThinFlag else 0)
+          out += '[' ++= slotIndex(b.bucketTimestamp).toString += ',' ++= statuses.of(b.status).toString +=
+            ',' ++= b.successes.toString += ',' ++= b.failures.toString += ',' ++= b.zeroes.toString += ',' ++= flags.toString
+          b.errors.foreach(e => out += ',' ++= errors.of(e).toString)
+          out += ']'
+        }
+        out += ']'
+      }
+    }
+    out ++= "},\"statuses\":"
+    quoteAll(out, statuses.values)
+    out ++= ",\"errors\":"
+    quoteAll(out, errors.values)
+    out += '}'
+    out.toString.replace("<", "\\u003c")
+  }
+
+  /** Each distinct string once, in first-seen order, referenced by its index. */
+  private final class Interned {
+    private val index = scala.collection.mutable.LinkedHashMap.empty[String, Int]
+    def of(s: String): Int = index.getOrElseUpdate(s, index.size)
+    def values: Iterable[String] = index.keys
+  }
+
+  private def quote(out: StringBuilder, s: String): StringBuilder = out ++= Json.stringify(JsString(s))
+
+  private def quoteAll(out: StringBuilder, values: Iterable[String]): Unit = {
+    out += '['
+    values.iterator.zipWithIndex.foreach { case (v, i) => if (i > 0) out += ','; quote(out, v) }
+    out += ']'
   }
 }
 

@@ -64,7 +64,10 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     wiring.uptimeMonitor.recordFailure("Probe", "boom")
     val page = contentAsString(wiring.uptimeController.index(
       FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)))
-    page should include (s"""class="bar red" data-ts="${UptimeMonitor.bucketTimestamp(Pinned.toEpochMilli)}"""")
+    val payload = views.UptimePayload.inPage(page)
+    val bucket  = UptimeMonitor.bucketTimestamp(Pinned.toEpochMilli)
+    payload.slots.last.timestamp shouldBe bucket
+    payload.bucket("Probe", bucket).map(_.status) shouldBe Some("red")
   }
 
   "the wiring's DebugController" should "age the read-mirror on the wiring clock" in {
