@@ -53,6 +53,7 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, client: Tmdb
   private def sweepWindow(from: LocalDate, to: LocalDate): SweepResult = {
     val first            = client.changedMovies(from, to, 1)
     val changed          = (first._1 ++ (2 to first._2).flatMap(page => client.changedMovies(from, to, page)._1)).distinct
+    // Held ids only: a batch at a time, so a day's thousands of changed films never sit in memory as whole documents.
     val heldFilms        = changed.map(_.toString).grouped(500).flatMap(ids => store.get(TmdbKind.Film, ids).keySet).map(_.toInt).toSet
     var films            = Set.empty[Int]
     var people           = Set.empty[Int]

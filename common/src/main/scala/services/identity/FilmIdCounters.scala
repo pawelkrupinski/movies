@@ -138,7 +138,7 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
       Await.result(coll.insertMany(entries.map(e => Document("_id" -> e.filmId, "counter" -> e.counter)),
         InsertManyOptions().ordered(false)).toFuture(), 120.seconds).getInsertedIds.size()
     } catch {
-      case bulk: com.mongodb.MongoBulkWriteException if bulk.getWriteErrors.asScala.forall(_.getCode == 11000) =>
+      case bulk: com.mongodb.MongoBulkWriteException if MongoFilmIdCounterStore.onlyAlreadyMapped(bulk) =>
         logger.warn(s"${MongoFilmIdCounterStore.Collection}: ${bulk.getWriteErrors.size()} entr(ies) refused as already mapped")
         bulk.getWriteResult.getInsertedCount
     }
@@ -146,6 +146,12 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
 
 object MongoFilmIdCounterStore {
   val Collection = "identity_film_ids"
+
+  /** A bulk insert refused ONLY for entries already mapped (duplicate `_id`). A write-concern
+   *  failure arrives as the same exception with no write errors, and must throw, not read as
+   *  "every entry was already there". */
+  private[identity] def onlyAlreadyMapped(bulk: com.mongodb.MongoBulkWriteException): Boolean =
+    bulk.getWriteConcernError == null && bulk.getWriteErrors.asScala.forall(_.getCode == 11000)
 }
 
 /**

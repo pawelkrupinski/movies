@@ -20,7 +20,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     film.year shouldBe defined
     film.runtime shouldBe defined
     film.directors.get should not be empty
-    film.countries.get.foreach(_ should fullyMatch regex "[A-Z]{2}")
+    film.countries.get.toSet shouldBe Set("FR", "US")   // production_countries, with origin_country folded in
   }
 
   it should "be Unknown when the recording holds no answer for it" in {

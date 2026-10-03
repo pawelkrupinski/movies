@@ -26,4 +26,7 @@ open class JsonBodies {
       parsed
     }
   }
+
+  /** Whether this thread still holds a parse no reader has taken. */
+  def retained: Boolean = last.get != null
 }

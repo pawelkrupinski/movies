@@ -13,7 +13,9 @@ import scala.concurrent.duration._
  * TMDB's answers stopped being kept raw.
  *
  * A marker beside the answers (`tmdb_queries`, `unanswered|…`), never on one: a real answer that
- * arrives later is read as it is, and the gap is gone.
+ * arrives later is read as it is, and the gap is gone. A marker past the store sweep's grace is
+ * deleted by it: long past [[RetryAfter]], it holds nothing back, and a question the corpus stopped
+ * asking would otherwise keep its marker for good.
  */
 final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, retryAfter: FiniteDuration = TmdbGapMemory.RetryAfter) {
   import TmdbGapMemory._
@@ -22,15 +24,16 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
   def due(gaps: AnswersChanged): AnswersChanged = {
     val ids   = gaps.queries.map(q => q -> queryMarker(q)).toMap
     val films = gaps.films.map(id => id -> filmMarker(id)).toMap
-    val held  = (ids.values ++ films.values).toSeq.grouped(500).flatMap(batch => docs.get(TmdbKind.Query, batch)).toMap
+    val held  = docs.get(TmdbKind.Query, (ids.values ++ films.values).toSeq)
     val since = clock.millis() - retryAfter.toMillis
-    def recent(marker: String) = held.get(marker).exists(_.getInt64("askedAt").getValue > since)
+    def recent(marker: String) = held.get(marker).flatMap(TmdbStore.fetchedAt).exists(_ > since)
     gaps.copy(queries = gaps.queries.filterNot(q => recent(ids(q))), films = gaps.films.filterNot(id => recent(films(id))))
   }
 
   /** The questions and records asked just now that are still unanswered. */
   def unanswered(queries: Iterable[CandidateQuery], films: Iterable[Int]): Unit = {
-    val now = new BsonDocument("askedAt", BsonInt64(clock.millis()))
+    // Stamped as a fetch, so the store sweep ages markers out like answers (`TmdbStoreSweep`).
+    val now = new BsonDocument(TmdbStore.FetchedAt, BsonInt64(clock.millis()))
     val markers = queries.map(queryMarker).toSeq ++ films.map(filmMarker).toSeq
     if (markers.nonEmpty) docs.put(TmdbKind.Query, markers.map(_ -> now))
   }

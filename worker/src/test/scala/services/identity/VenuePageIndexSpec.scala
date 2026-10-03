@@ -41,6 +41,83 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The first settle reads the whole store; a page read and announced while that scan runs, past the
+  // point the scan reached, must still be taken in by the next settle — not wiped with the scan's
+  // own announcements, which left it a gap for good.
+  "A page read while the first settle scans the store" should "be taken in by the next settle" in {
+    val pages = new InMemoryVenuePageStore
+    pages.put(VenuePage(VenuePageKey(Group, "http://a"), VenuePage.Read(Full), clock.instant()))
+    val reported = scala.collection.mutable.ArrayBuffer.empty[String]
+    var index: VenuePageIndex = null
+    val scanning = new services.venuepages.VenuePageStore {
+      def get(key: VenuePageKey) = pages.get(key)
+      def put(page: VenuePage)   = pages.put(page)
+      def foreach(onPage: VenuePage => Unit): Boolean = {
+        pages.foreach(onPage)
+        // The scan has passed every page it will see; a reader writes and announces a new one now.
+        pages.put(VenuePage(VenuePageKey(Group, Page), VenuePage.Read(Full), clock.instant()))
+        index.pageRead(Group, Page)
+        true
+      }
+    }
+    index = new VenuePageIndex(scanning, reported += _)
+    val enricher = new FakeDetailEnricher(KinoApollo, Group)
+    index.settle()
+    index.answer(enricher, Page) shouldBe None
+    index.settle()
+    index.answer(enricher, Page) shouldBe Some(Some(Full))
+    reported shouldBe Seq(VenuePageIndex.keyOf(Group, Page))
+  }
+
+  // A settle whose page read throws (a Mongo timeout) fails the drain; the pages it had not read yet
+  // must still be noted for the next settle — dropped, their answers stayed stale until announced again.
+  "A settle whose page read fails" should "leave every page it did not take in for the next settle" in {
+    val pages    = new InMemoryVenuePageStore
+    val reported = scala.collection.mutable.ArrayBuffer.empty[String]
+    var failing  = true
+    val flaky = new services.venuepages.VenuePageStore {
+      def get(key: VenuePageKey) = if (failing) throw new IllegalStateException("timed out") else pages.get(key)
+      def put(page: VenuePage)   = pages.put(page)
+      def foreach(onPage: VenuePage => Unit): Boolean = pages.foreach(onPage)
+    }
+    val index    = new VenuePageIndex(flaky, reported += _)
+    val enricher = new FakeDetailEnricher(KinoApollo, Group)
+    index.settle()                                                   // the baseline: an empty store
+    Seq("http://a", "http://b").foreach { page =>
+      pages.put(VenuePage(VenuePageKey(Group, page), VenuePage.Read(Full), clock.instant())); index.pageRead(Group, page)
+    }
+    an[IllegalStateException] should be thrownBy index.settle()
+    failing = false
+    index.settle()
+    index.answer(enricher, "http://a") shouldBe Some(Some(Full))
+    index.answer(enricher, "http://b") shouldBe Some(Some(Full))
+    reported.toSet shouldBe Set(VenuePageIndex.keyOf(Group, "http://a"), VenuePageIndex.keyOf(Group, "http://b"))
+  }
+
+  // A failed read is not data: a first scan a Mongo error stopped short read as the whole store left
+  // every page past the failure a gap until that page happened to be read again.
+  "A first scan stopped short by a failed read" should "be scanned again at the next settle, reporting the pages it missed" in {
+    val pages = new InMemoryVenuePageStore
+    pages.put(VenuePage(VenuePageKey(Group, "http://a"), VenuePage.Read(Full), clock.instant()))
+    pages.put(VenuePage(VenuePageKey(Group, "http://b"), VenuePage.Read(Full), clock.instant()))
+    var failNextScan = true
+    val failing = new services.venuepages.VenuePageStore {
+      def get(key: VenuePageKey) = pages.get(key)
+      def put(page: VenuePage)   = pages.put(page)
+      def foreach(onPage: VenuePage => Unit): Boolean =
+        if (failNextScan) { failNextScan = false; pages.get(VenuePageKey(Group, "http://a")).foreach(onPage); false }
+        else pages.foreach(onPage)
+    }
+    val reported = scala.collection.mutable.ArrayBuffer.empty[String]
+    val index    = new VenuePageIndex(failing, reported += _)
+    val enricher = new FakeDetailEnricher(KinoApollo, Group)
+    index.settle()
+    index.answer(enricher, "http://b") shouldBe None
+    index.settle()
+    index.answer(enricher, "http://b") shouldBe Some(Some(Full))
+    reported.toSeq shouldBe Seq(VenuePageIndex.keyOf(Group, "http://b"))
+  }
+
   "A venue page" should "be a gap until it is read into venue_pages" in {
     new World().index.answer(new FakeDetailEnricher(KinoApollo, Group), Page) shouldBe None
   }

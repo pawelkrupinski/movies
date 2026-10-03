@@ -18,7 +18,7 @@ final class TmdbRefreshes(store: TmdbStore, language: String, clock: Clock) {
     val settledOf = questions.flatMap { case (qs, settled) => qs.map(_ -> settled) }
       .groupMapReduce(_._1)(_._2)(_ && _)                     // a question of any unsettled family is unsettled
     val ids  = settledOf.keys.map(q => q -> TmdbStore.questionId(language, q)).toMap
-    val held = ids.values.toSeq.grouped(500).flatMap(batch => store.get(TmdbKind.Query, batch)).toMap
+    val held = store.get(TmdbKind.Query, ids.values.toSeq)
     val now  = clock.millis()
     settledOf.toSeq.flatMap { case (query, settled) =>
       held.get(ids(query)).flatMap(TmdbStore.fetchedAt).orElse(held.get(ids(query)).map(_ => 0L))

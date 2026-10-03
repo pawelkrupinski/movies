@@ -78,8 +78,9 @@ trait IdentityTraceReads {
   /** What keeps listings unresolved: each blocker with its listings, its distinct titles and a few of them — most
    *  listings first, so the top row is the next win to investigate. */
   def blockers(): Seq[BlockerCount]
-  /** Up to `limit` listings left with no film that no proposal judged no film — what a model is asked about. */
-  def unresolved(limit: Int): Seq[ListingTrace]
+  /** Up to `limit` `wanted` listings left with no film that no proposal judged no film — what a model is asked
+   *  about. Read past every unwanted one, so listings already answered can never fill the limit ahead of new ones. */
+  def unresolved(limit: Int, wanted: ListingTrace => Boolean): Seq[ListingTrace]
 }
 
 /** One blocker's share of the unresolved listings ([[IdentityTraceReads.blockers]]). */
@@ -104,7 +105,7 @@ object IdentityTraceReads {
     def byTitle(text: String, limit: Int) = Nil
     def ruleCounts()                      = Nil
     def blockers()                        = Nil
-    def unresolved(limit: Int)            = Nil
+    def unresolved(limit: Int, wanted: ListingTrace => Boolean) = Nil
     def byBlocker(blocker: String, limit: Int) = Nil
   }
 }
@@ -120,7 +121,8 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityT
   def byFilm(film: Int, limit: Int)     = all.filter(_.film.contains(film)).take(limit)
   def byTitle(text: String, limit: Int) = all.filter(_.listing.rawTitle.toLowerCase.contains(text.toLowerCase)).take(limit)
   def blockers()                        = BlockerCount.of(all)
-  def unresolved(limit: Int)            = all.filter(_.blocker.exists(!_.startsWith(IdentityTraceReads.NotAFilm))).take(limit)
+  def unresolved(limit: Int, wanted: ListingTrace => Boolean) =
+    all.filter(trace => trace.blocker.exists(!_.startsWith(IdentityTraceReads.NotAFilm)) && wanted(trace)).take(limit)
   def byBlocker(blocker: String, limit: Int) = all.filter(_.blocker.contains(blocker)).take(limit)
   def ruleCounts()                      = all.flatMap(_.rules).groupBy(identity).map { case (rule, hits) => rule -> hits.size }.toSeq.sortBy(c => (-c._2, c._1))
 }
@@ -256,9 +258,25 @@ final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceRead
   def byRule(rule: String, limit: Int)  = find(Filters.equal("rules", rule), limit)
   def byFilm(film: Int, limit: Int)     = find(Filters.equal("film", film), limit)
   def byBlocker(blocker: String, limit: Int) = find(Filters.equal("blocker", blocker), limit)
-  /** Through the sparse `blocker` index: only unresolved listings carry one. */
-  def unresolved(limit: Int) =
-    find(Filters.and(Filters.exists("blocker"), Filters.not(Filters.regex("blocker", s"^${IdentityTraceReads.NotAFilm}"))), limit)
+  /** Through the sparse `blocker` index (only unresolved listings carry one), a page at a time in `_id` order until
+   *  `limit` wanted listings are found or the unresolved run out. */
+  def unresolved(limit: Int, wanted: ListingTrace => Boolean) = {
+    val unresolvedFilter = Filters.and(Filters.exists("blocker"), Filters.not(Filters.regex("blocker", s"^${IdentityTraceReads.NotAFilm}")))
+    val kept = Seq.newBuilder[ListingTrace]
+    var keptCount = 0
+    var after: Option[String] = None
+    var more = true
+    while (more && keptCount < limit) {
+      val filter = after.fold(unresolvedFilter)(id => Filters.and(unresolvedFilter, Filters.gt("_id", id)))
+      val page = Await.result(collection.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id"))
+        .limit(UnresolvedPage).batchSize(tools.MongoReplies.Default).toFuture(), Timeout).map(_.toBsonDocument)
+      page.iterator.map(decode).filter(wanted).take(limit - keptCount).foreach { trace => kept += trace; keptCount += 1 }
+      after = page.lastOption.map(_.getString("_id").getValue)
+      more = page.size == UnresolvedPage
+    }
+    kept.result()
+  }
+  private val UnresolvedPage = 1000
   def byTitle(text: String, limit: Int) =
     find(Filters.regex("listing.rawTitle", java.util.regex.Pattern.quote(text), "i"), limit)
   def ruleCounts(): Seq[(String, Int)] =

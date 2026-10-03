@@ -27,7 +27,7 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 
   def filed(method: String, url: String, outcome: Try[String]): Unit =
     try normalize(method, url, outcome)
-    catch { case NonFatal(e) => logger.warn(s"identity store: $method $url not normalized: $e") }
+    catch { case NonFatal(e) => logger.warn(s"identity store: $method ${tools.RedactedUrl(url)} not normalized: $e") }
 
   private def normalize(method: String, url: String, outcome: Try[String]): Unit = if (method == "GET") {
     val uri    = new URI(url)

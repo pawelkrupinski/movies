@@ -83,4 +83,26 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     docs.put(TmdbKind.Film, Seq("1" -> doc(1), "1" -> doc(2)))
     docs.get(TmdbKind.Film, Seq("1")) shouldBe Map("1" -> doc(2))
   }
+  // A batch's runner interrupted mid-round-trip (a worker's shutdown stops the prefetch pool) took the
+  // other callers' requests with it: they waited, forever, for a batch that would never answer them.
+  "a batch whose round-trip is interrupted" should "answer every caller it took, not only its runner" in {
+    val first   = new CountDownLatch(1)
+    val running = new CountDownLatch(1)
+    val coalescer = new CoalescedTmdbDocuments.Coalescer[String, String](maxBatch = 8, inFlight = 1)({ batch =>
+      if (batch == Seq("first")) { running.countDown(); first.await(); batch.map(scala.util.Success(_)) }
+      else throw new InterruptedException("shutting down")
+    })
+    val pool = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory())
+    try {
+      pool.submit((() => coalescer("first")): Callable[String])
+      running.await()
+      // Both queue behind the one slot the first batch holds, so the next batch takes them together.
+      // (Caught whole: `Try` lets an InterruptedException through.)
+      val others = Seq("b", "c").map(r => pool.submit((() =>
+        try Right(coalescer(r)) catch { case e: Throwable => Left(e) }): Callable[Either[Throwable, String]]))
+      Thread.sleep(200)
+      first.countDown()
+      others.map(_.get(5, java.util.concurrent.TimeUnit.SECONDS).isLeft) shouldBe Seq(true, true)
+    } finally { first.countDown(); pool.shutdownNow(); () }
+  }
 }

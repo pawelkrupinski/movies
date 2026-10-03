@@ -76,4 +76,21 @@ class IdentityListingIntakeListingsSpec extends AnyFlatSpec with Matchers {
     intake(new PagedScrapeArchive(acceptedRows, 1), new PagedScrapeArchive(archiveRows, 1, completes = false)).listings(live) shouldBe
       wholeArchiveListings(acceptedRows, Nil)
   }
+
+  // A projection holds every venue's listing at once while it resolves and writes; a film a feed lists at
+  // a hundred venues came back as a hundred copies of its title, cast, synopsis and every instant: the
+  // US listing set held ~490 MB live, ~300 MB sharing them.
+  it should "hold the values its venues repeat once, and be equal to the listings it read" in {
+    def shown(cinema: Cinema) = CinemaMovie(Movie("Diuna", Some(155)), cinema, Some("https://p/diuna.jpg"), None, Some("Pustynia."),
+      List("Timothée Chalamet", "Zendaya"), List("Denis Villeneuve"),
+      Seq(Showtime(LocalDateTime.of(2026, 9, 27, 18, 0), None, Some("Sala 1"), List("2D", "NAP"))), Map("flicks" -> "1"), None, Some("12"))
+    val venues   = Seq(Multikino, Helios)
+    val rows     = venues.map(c => ArchivedScrape(c, Cinema.cityOf(c), Some(SuccessfulScrape(clock.instant(), listingComplete = true, Seq(shown(c)))), None))
+    val read     = intake(new PagedScrapeArchive(rows.take(1), 1), new PagedScrapeArchive(rows.drop(1), 1)).listings(venues)
+    read shouldBe venues.sortBy(_.displayName).map(c => c -> Seq(shown(c)))
+    val Seq(a, b) = read.map(_._2.head)
+    def same(of: CinemaMovie => AnyRef) = withClue(of(a))(of(a) should be theSameInstanceAs of(b))
+    same(_.movie); same(_.posterUrl); same(_.synopsis); same(_.cast); same(_.director); same(_.externalIds); same(_.ageRating)
+    same(_.showtimes.head.dateTime); same(_.showtimes.head.room); same(_.showtimes.head.format)
+  }
 }

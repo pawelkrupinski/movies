@@ -94,11 +94,11 @@ trait Proposer {
 /** Each round, asks the [[Proposer]] about the title keys of listings left with no film ([[IdentityTraceReads.unresolved]])
  *  that hold no proposal yet — at most `budget` titles, `batch` per request — and files each answer in the index. */
 final class ProposalFill(traces: IdentityTraceReads, index: ProposalIndex, proposer: Proposer, clock: Clock,
-                         budget: Int = ProposalFill.Budget, batch: Int = ProposalFill.Batch) {
+                         budget: Int = ProposalFill.Budget, batch: Int = ProposalFill.Batch, scan: Int = ProposalFill.Scan) {
   private val logger = play.api.Logger(getClass)
 
   def round(): Int = {
-    val asks = traces.unresolved(ProposalFill.Scan).map { trace =>
+    val asks = traces.unresolved(scan, trace => !index.has(ProposalIndex.keyOf(trace.listing.rawTitle))).map { trace =>
         val (year, directors) = trace.listing match {
           case ListingKey.Published(_, _, year, directors) => (year, directors)
           case _: ListingKey.Native                        => (None, Nil)
@@ -120,7 +120,7 @@ object ProposalFill {
   /** Titles asked per round, and per request: a day's new unresolved titles are tens, the first round hundreds. */
   val Budget = 200
   val Batch  = 20
-  /** Unresolved traces read per round. */
+  /** Unresolved traces with no proposal yet taken per round. */
   val Scan   = 5000
 }
 

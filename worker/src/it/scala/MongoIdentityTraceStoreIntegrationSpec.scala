@@ -58,6 +58,10 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       reads.blockers() shouldBe Seq(BlockerCount("search:found-nothing", 2, 2, Seq("Film 4", "Film 5")), BlockerCount("veto:x", 1, 1, Seq("Film 6")))
       reads.byBlocker("veto:x", 10).map(_.candidates) shouldBe Seq(Seq("9 2.4% rank 1 DENIED (x) 'Nine'"))
       reads.byBlocker("search:found-nothing", 10).flatMap(_.searched) shouldBe Seq("title \"Film 4\": 0 film(s)")
+      // what a model is asked about: the unresolved listings it wants, read past the ones it does not
+      reads.unresolved(10, _ => true).map(_.listing).toSet shouldBe Set(key(4), key(5), key(6))
+      reads.unresolved(1, _.listing != key(4)).size shouldBe 1
+      reads.unresolved(10, _.listing == key(6)).map(_.listing) shouldBe Seq(key(6))
       withClue("blocker: ")(Await.result(c.find(Filters.equal("blocker", "veto:x")).explain[Document]().toFuture(), 30.seconds).toJson() should include ("IXSCAN"))
       // a resolved listing carries no blocker field at all, so the sparse index holds only the unresolved
       Await.result(c.countDocuments(Filters.exists("blocker")).toFuture(), 30.seconds) shouldBe 3L

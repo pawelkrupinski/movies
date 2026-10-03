@@ -48,8 +48,9 @@ class TmdbClient(
   // How a transient failure waits before its retry. Real time in production; a harness
   // that replays an outage passes a no-op, or every refused request costs it ~1s asleep.
   retrySleep: Long => Unit = Thread.sleep,
-  // How a film record's responses are parsed: shared with the identity store's normalizer, which
-  // parsed the same bodies a moment before on this thread (`tools.JsonBodies`).
+  // How a film's two responses (`details`, `fullDetails`, `identityRecord`) are parsed: shared with
+  // the identity store's normalizer, which parsed the same bodies a moment before on this thread
+  // (`tools.JsonBodies`) — every reader of them takes that parse, so none stays on the thread.
   bodies: _root_.tools.JsonBodies = new _root_.tools.JsonBodies,
 ) {
 
@@ -229,7 +230,7 @@ class TmdbClient(
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
     Try(httpGet(detailsUrl(tmdbId), auth))
       .toOption.map { body =>
-        val js = Json.parse(body)
+        val js = bodies.parse(body)
         // Prefer the "untyped" US alt-title (an actual release title) over
         // ones tagged as "alternative spelling" / "working title" / "informal".
         val usAltTitles = (js \ "alternative_titles" \ "titles").asOpt[JsArray]
@@ -308,7 +309,7 @@ class TmdbClient(
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
     Try(httpGet(fullDetailsUrl(tmdbId), auth))
       .toOption.map { body =>
-        val js   = Json.parse(body)
+        val js   = bodies.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         val cast = (js \ "credits" \ "cast").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         val directors = TmdbJson.crewWith(crew, TmdbJson.Director)

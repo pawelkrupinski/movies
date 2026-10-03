@@ -53,6 +53,25 @@ class ProposalsSpec extends AnyFlatSpec with Matchers {
     asked shouldBe empty
   }
 
+  // The scan used to take the first `scan` unresolved traces and only then drop the titles already proposed: once
+  // that many answered ("unclear", "stage") titles stayed unresolved, no new title was ever reached.
+  it should "reach a new title past more answered unresolved titles than one round scans" in {
+    def trace(title: String) =
+      ListingTrace(ListingKey.Published("Kino Muza", title, None, Nil), "f", None, "BelowThreshold", Nil, None, blocker = Some("search:found-nothing"))
+    val answered = Seq("Alfa", "Beta", "Gamma")
+    val traces   = new InMemoryIdentityTraceStore
+    traces.replace(Set.empty, FamilyTraces.of((answered :+ "Dyrygent").map(trace)))
+    val index = new ProposalIndex(new InMemoryProposalStore)
+    answered.foreach(t => index.put(StoredProposal(ProposalIndex.keyOf(t), t, Proposal("unclear"), "m", clock.instant())))
+    val asked = mutable.ArrayBuffer.empty[String]
+    val proposer = new Proposer {
+      val model = "test"
+      def propose(asks: Seq[ProposalAsk]) = { asked ++= asks.map(_.title); asks.map(a => a.key -> Proposal("unclear")).toMap }
+    }
+    new ProposalFill(traces, index, proposer, clock, scan = 2).round() shouldBe 1
+    asked.toSeq shouldBe Seq("Dyrygent")
+  }
+
   "an Anthropic answer" should "propose a film only when the model is sure of it" in {
     // The Messages API's response shape; not yet a recorded response — record one (and replace this) once
     // ANTHROPIC_API_KEY is configured.

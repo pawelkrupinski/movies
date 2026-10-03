@@ -46,6 +46,20 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
       def insert(entries: Seq[FilmIdCounter]) = fail("must not write after a failed read")
     }).append(Seq(film("a", 1))).isLeft shouldBe true
   }
+
+  "MongoFilmIdCounterStore.onlyAlreadyMapped" should "read duplicate-key refusals as already mapped, but not a write-concern failure" in {
+    import com.mongodb.{MongoBulkWriteException, ServerAddress}
+    import com.mongodb.bulk.{BulkWriteError, BulkWriteResult, WriteConcernError}
+    import org.bson.BsonDocument
+    import java.util.Collections
+    def bulk(errors: java.util.List[BulkWriteError], concern: WriteConcernError) =
+      new MongoBulkWriteException(BulkWriteResult.unacknowledged(), errors, concern, new ServerAddress(), Collections.emptySet[String]())
+    val duplicate = new BulkWriteError(11000, "E11000 duplicate key", new BsonDocument(), 0)
+    MongoFilmIdCounterStore.onlyAlreadyMapped(bulk(java.util.List.of(duplicate), null)) shouldBe true
+    MongoFilmIdCounterStore.onlyAlreadyMapped(bulk(java.util.List.of(new BulkWriteError(121, "validation", new BsonDocument(), 0)), null)) shouldBe false
+    MongoFilmIdCounterStore.onlyAlreadyMapped(
+      bulk(Collections.emptyList(), new WriteConcernError(64, "WriteConcernFailed", "waiting for replication timed out", new BsonDocument()))) shouldBe false
+  }
 }
 
 /** A projection asks `nextCounter` of every film it drafts (~2,250 US) over a map as large as the
@@ -58,4 +72,5 @@ class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
     // A walk per ask is 4e9 steps — tens of seconds; once, it is microseconds per ask.
     (System.nanoTime() - started) / 1e9 should be < 5.0
   }
+
 }

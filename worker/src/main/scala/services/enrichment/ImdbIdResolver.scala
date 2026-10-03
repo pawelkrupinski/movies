@@ -228,8 +228,11 @@ class ImdbIdResolver(
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` between the lookup and
-          // the write-back can't resurrect the row.
-          if (!record.imdbId.contains(id)) cache.putIfPresent(key, _.copy(imdbId = Some(id)))
+          // the write-back can't resurrect the row; and only over the id the search
+          // started from, so an id another writer (TMDB's resolution) landed while the
+          // search was out stays.
+          if (!record.imdbId.contains(id))
+            cache.putIfPresent(key, current => if (current.imdbId == record.imdbId) current.copy(imdbId = Some(id)) else current)
         case None =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match [search='$searchTitle']")
       }

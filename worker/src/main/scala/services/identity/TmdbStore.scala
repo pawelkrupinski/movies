@@ -26,6 +26,7 @@ enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
 /** Where the normalized documents live: the storage seam, and nothing else. Every rule — what a
  *  response becomes, when a document changed, what a question reads — is [[TmdbStore]]'s. */
 trait TmdbDocuments {
+  /** These documents, by id — any number of ids: a store batches its own reads. */
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument]
   /** These documents as an ANSWER reads them: only `kind`'s [[TmdbKind.answerFields]]. A store that
    *  can leave the rest on the server does. */

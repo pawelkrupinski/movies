@@ -3,7 +3,8 @@ package services.identity
 import org.bson.BsonDocument
 
 import java.util.concurrent.{CompletableFuture, ConcurrentLinkedQueue, ExecutionException, Semaphore, TimeUnit, TimeoutException}
-import scala.util.{Success, Try}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /**
  * `inner`, its concurrent whole-document reads ([[get]]) and writes ([[put]]) each made as ONE
@@ -72,12 +73,20 @@ object CoalescedTmdbDocuments {
       try result.get() catch { case e: ExecutionException => throw e.getCause }
     }
 
+    // Every request the batch took is answered whatever `run` throws: an interrupt (a shutdown) or a
+    // fatal error fails them all, then goes on up the runner's own stack.
     private def runBatch(): Unit = {
       val batch = Iterator.continually(queued.poll()).takeWhile(_ != null).take(maxBatch).toSeq
-      if (batch.nonEmpty) Try(run(batch.map(_._1))).fold(
-        failed   => batch.foreach(_._2.completeExceptionally(failed)),
-        outcomes => batch.zip(outcomes).foreach { case ((_, result), outcome) =>
-          outcome.fold(failed => result.completeExceptionally(failed), value => result.complete(value)) })
+      if (batch.nonEmpty) {
+        val outcomes =
+          try run(batch.map(_._1))
+          catch {
+            case NonFatal(failed) => batch.map(_ => Failure(failed))
+            case fatal: Throwable => batch.foreach(_._2.completeExceptionally(fatal)); throw fatal
+          }
+        batch.zip(outcomes).foreach { case ((_, result), outcome) =>
+          outcome.fold(failed => result.completeExceptionally(failed), value => result.complete(value)) }
+      }
     }
   }
 }

@@ -82,6 +82,29 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     run(tmdbId = Some(1024)) shouldBe Some("tt1477111")
   }
 
+  // The search runs off the row's lock: a TMDB resolution that lands its id (and TMDB's IMDb id) while the
+  // search is out must not have its id replaced by the search's answer when the search writes back.
+  it should "leave the id a TMDB resolution set while the search was out" in {
+    val bus   = new InProcessEventBus()
+    val row   = MovieRecord(imdbId = Some("tt1477111"),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
+      normalizer = titleNormalizer)
+    val key   = cache.keyOf("Mortal Kombat 2", Some(2026))
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = {
+        cache.putIfPresent(key, _.copy(tmdbId = Some(1024), imdbId = Some("tt0000001")))
+        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      }
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("ImdbIdResolver should not POST")
+    }))
+    bus.subscribe(resolver.onImdbIdMissing)
+    bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
+    resolver.drain()
+    cache.get(key).flatMap(_.imdbId) shouldBe Some("tt0000001")
+  }
+
   /**
    * A cinema's programme banner is part of the row's title, and IMDb has never heard
    * of it. TMDB was always asked both ways — `resolveTmdbId` runs its candidates

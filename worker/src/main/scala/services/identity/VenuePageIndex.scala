@@ -14,15 +14,15 @@ import scala.jdk.CollectionConverters._
  *
  * Answers between settles stay the ones the model was last told of: an announcement only notes the page,
  * and [[settle]] — which the model calls before each drain — re-reads the noted pages and reports every
- * one whose answer changed. The whole store is read once, at the first settle (the baseline, which
- * reports nothing).
+ * one whose answer changed. The whole store is read at the first settle (the baseline, which reports
+ * nothing), and again at each settle until a scan reaches every page.
  */
 final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ => ()) {
   import VenuePageIndex._
 
   /** What `page` of `enricher`'s group said: `None` while unread; `Some(None)` when gone; `Some(Some(detail))` otherwise. */
   def answer(enricher: DetailEnricher, page: String): Option[Option[FilmDetail]] = {
-    if (!loaded) settle()
+    if (!scanned) settle()
     answers.get((enricher.detailGroup, page))
   }
 
@@ -31,17 +31,30 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
 
   /** Take in what was announced since the last settle, telling the model of every page whose answer moved. */
   def settle(): Unit = synchronized {
-    if (!loaded) {
-      val all = Map.newBuilder[(String, String), Option[FilmDetail]]
-      pages.foreach(p => all += ((p.key.detailGroup, p.key.page) -> answerOf(p)))
+    if (!complete) {
+      // Announcements made before the scan are covered by it; one made while it runs may be of a page
+      // it already passed, so it stays noted for the next settle to read again.
       pending.clear()
-      answers = all.result()
-      loaded  = true
+      val all = Map.newBuilder[(String, String), Option[FilmDetail]]
+      val reachedEnd = pages.foreach(p => all += ((p.key.detailGroup, p.key.page) -> answerOf(p)))
+      val read = all.result()
+      // The first scan is the baseline and reports nothing. A scan a failed read stopped short is not
+      // the whole store: the pages past it stay gaps only until the next settle scans again, which
+      // reports every answer it moved — a page the model found a gap is re-asked then.
+      if (scanned) (read.keySet ++ answers.keySet).foreach { key =>
+        if (read.get(key) != answers.get(key)) changed(keyOf(key._1, key._2))
+      }
+      answers  = read
+      scanned  = true
+      complete = reachedEnd
     } else if (!pending.isEmpty) {
-      val noted = pending.asScala.toSeq
-      noted.foreach(pending.remove)
-      noted.foreach { case key @ (group, page) =>
-        val now = pages.get(VenuePageKey(group, page)).map(answerOf)
+      // Each page is un-noted only as it is read: a read that throws (a Mongo timeout) leaves it and
+      // every page after it noted for the next settle, instead of dropping their announcements. One
+      // announced again while it is read stays noted, to be read once more.
+      pending.asScala.toSeq.foreach { case key @ (group, page) =>
+        pending.remove(key)
+        val now = try pages.get(VenuePageKey(group, page)).map(answerOf)
+                  catch { case scala.util.control.NonFatal(e) => pending.add(key); throw e }
         if (now != answers.get(key)) {
           answers = now.fold(answers - key)(a => answers + (key -> a))
           changed(keyOf(group, page))
@@ -51,7 +64,9 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
   }
 
   @volatile private var answers: Map[(String, String), Option[FilmDetail]] = Map.empty
-  @volatile private var loaded = false
+  /** Whether a scan of the whole store has run at all, and whether one reached every page. */
+  @volatile private var scanned  = false
+  @volatile private var complete = false
   private val pending = ConcurrentHashMap.newKeySet[(String, String)]()
 }
 
