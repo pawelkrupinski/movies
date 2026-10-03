@@ -212,12 +212,13 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
 
-    projector.reconcile()                                  // clean scan → Foo is projected
+    projector.reconcile() shouldBe true                    // clean scan → Foo is projected
     rm.findAllMovies().map(_._id) should contain(fid)
     val deletesBefore = rm.movieDeletes.size
 
     repository.failScan = true                             // next scan dies mid-way (incomplete)
-    projector.reconcile()
+    // …and says so: a harness seeding a read model it then asserts on must know to reconcile again.
+    projector.reconcile() shouldBe false
 
     withClue("a live film was pruned from the read model on an INCOMPLETE source scan — the served-films flap: ") {
       rm.movieDeletes.size          shouldBe deletesBefore // no prune happened

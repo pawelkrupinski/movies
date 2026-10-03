@@ -2096,6 +2096,49 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
+  // The same refusal in the CORPUS scan. `scanStitched` noticed a page's failed screenings
+  // read and reported the scan incomplete — but handed the page's rows on anyway, stitched
+  // with no showtimes. Incomplete only stops the prune: `reconcile` PROJECTS every row it is
+  // handed, and the catch-up re-projects what `foreachRecordUpdatedSince` reads, so a 60 s
+  // read timeout under load took every showtime of that page's films off the read model
+  // (HardClusterConvergenceIntegrationSpec, red in a loaded `itAll` on 2026-10-03: "archived
+  // listing(s) whose showtimes are NOT served under the film that holds them").
+  it should "not hand a corpus scan a film whose screenings read failed" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
+      UnreadableScreeningsRepository}
+    val db     = specDb
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-scan-screenings-readfail__"
+    val year   = Some(1912)
+    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
+    val when   = java.time.LocalDateTime.of(2026, 9, 28, 22, 30)
+    try {
+      val repo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer)
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000083"),
+        data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some("live cinema"), showtimes = Seq(Showtime(when, None))))))
+      val showtimesOf = (r: StoredMovieRecord) => r.record.data.values.flatMap(_.showtimes).size
+      // Positive control: the healthy scan delivers the film WITH its showtime.
+      val healthy = scala.collection.mutable.ListBuffer.empty[StoredMovieRecord]
+      repo.foreachRecord(r => if (r.id.value == id) healthy += r) shouldBe true
+      healthy.map(showtimesOf) shouldBe Seq(1)
+
+      val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(new UnreadableScreeningsRepository(scr)),
+        slots = Some(slots), normalizer = titleNormalizer)
+      val scans: Seq[(String, (StoredMovieRecord => Unit) => Boolean)] = Seq(
+        "foreachRecord"             -> blindRepo.foreachRecord,
+        "foreachRecordUpdatedSince" -> blindRepo.foreachRecordUpdatedSince(java.time.Instant.EPOCH))
+      scans.foreach { case (scan, run) =>
+        val seen     = scala.collection.mutable.ListBuffer.empty[StoredMovieRecord]
+        val complete = run(r => if (r.id.value == id) seen += r)
+        withClue(s"$scan reported a scan whose screenings read failed as complete: ")(complete shouldBe false)
+        // Not delivered at all — NOT delivered with its cinema and no showtimes, which a
+        // projection reads as "this film is no longer screening there".
+        withClue(s"$scan delivered the film stripped of its showtimes: ")(seen.map(showtimesOf) shouldBe empty)
+      }
+    } finally { repository.delete(title, year); slots.deleteFilm(id); scr.deleteFilm(id) }
+  }
+
   // END TO END, against real Mongo: the whole 2026-07-27 failure in one test.
   //
   // The unit specs pin each link — a failed read reports itself, a scrape defers on one —

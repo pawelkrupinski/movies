@@ -739,14 +739,14 @@ class MongoMovieRepository(
   /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
    *  `screenings` — shared by [[findAll]] and [[foreachRecord]] so the two can never
    *  disagree on a film's showtimes (the divergence that dropped 129 films: a reader
-   *  that forgot to stitch made the reconcile prune live `web_screenings`). Loads the
-   *  (small) screenings map once, then hands each batch, stitched, to `onBatch`.
+   *  that forgot to stitch made the reconcile prune live `web_screenings`). Reads each
+   *  page's side rows, then hands the page, stitched, to `onBatch`.
    *
-   *  Prune-safety: a screenings repo wired but returning an EMPTY map means the bulk
-   *  load failed — projecting the stripped (empty-showtime) rows would let a pruning
-   *  caller wipe the read model — so bail as "incomplete" (`false`), exactly like a
-   *  failed movies batch. The movies pages stay keyset-bounded; only the screenings
-   *  map (separate small docs) is held. */
+   *  Projection-safety: a page whose side read FAILED is never handed on — its rows,
+   *  stitched from the empty answer, would read as films with no cinemas or no showtimes,
+   *  and a projecting caller writes exactly that. The page is skipped and the scan reports
+   *  "incomplete" (`false`), exactly like a failed movies batch, so a pruning caller skips
+   *  its destructive step too. */
   private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true,
                            filter: Bson = Filters.empty()): Boolean = {
     // Side rows are fetched PER PAGE, for exactly the films that page holds, rather than
@@ -781,15 +781,22 @@ class MongoMovieRepository(
         else screeningReads(screenings.map(_.findForFilmsChecked(ids))
           .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true)))
       val (pageSlots, slotsOk) = Await.result(slotsRead, Duration.Inf)
+      // A page whose side read failed is NOT handed on, stitched from the empty answer: its
+      // films would arrive with no cinemas or no showtimes, and "incomplete" only stops a
+      // prune — `ReadModelProjector.reconcile` and the sweep's catch-up PROJECT every row they
+      // are given, so each film on the page lost every served showtime (the per-row
+      // `decodeStitched` declines for the same reason). The page is skipped and the scan
+      // reported incomplete; the rows it could stitch are still delivered.
       if (!scrOk || !slotsOk) {
         sideReadsComplete = false
         logger.warn(s"MovieRepository.scanStitched: a side-collection read failed for a page of " +
-          s"${ids.size} film(s) (screenings ok=$scrOk, slots ok=$slotsOk) — treating the scan as " +
-          "incomplete so a reconcile cannot prune films whose cinemas it could not see.")
+          s"${ids.size} film(s) (screenings ok=$scrOk, slots ok=$slotsOk) — skipping the page and treating the " +
+          "scan as incomplete, so no caller acts on films whose cinemas or showtimes it could not see.")
+      } else {
+        films += batch.size
+        onBatch(stitching(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
+          pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty)))))
       }
-      films += batch.size
-      onBatch(stitching(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
-        pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty)))))
     }
     // A whole-corpus scan (the hydrate, the 5-min corpus census) at info; a catch-up's
     // updated-since slice, which runs on every read-model sweep, only at debug.

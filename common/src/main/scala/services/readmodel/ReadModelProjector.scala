@@ -615,7 +615,7 @@ class ReadModelProjector(
    *
    *  A row that fails to project must not abort the prune (the prune is what removes the
    *  duplicates), so each projection is guarded individually. */
-  private def sweep(reproject: Boolean): Seq[String] = lock.synchronized {
+  private def sweep(reproject: Boolean): (Seq[String], Boolean) = lock.synchronized {
     // Log-only label. The reconcile-sweep metric now tracks ONLY the prune (the live,
     // scheduled backstop); the reproject path survives as a test/backfill seed and is
     // no longer metered — the reproject retirement gate it fed has been removed.
@@ -806,7 +806,7 @@ class ReadModelProjector(
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
-    healed.toSeq
+    (healed.toSeq, scanComplete)
   }
 
   /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
@@ -839,15 +839,19 @@ class ReadModelProjector(
    *  periodic reproject redundant. Kept as an explicit one-shot seed/backfill primitive:
    *  fixture/e2e read-model seeding calls it to project a settled corpus synchronously
    *  (it stitches split films via `foreachRecord`, which a per-row `onMovieUpsert` seed
-   *  would not). Mirrors `scripts.BackfillReadModel`. */
-  def reconcile(): Unit = { sweep(reproject = true); () }
+   *  would not). Mirrors `scripts.BackfillReadModel`.
+   *
+   *  Returns whether the source scan was COMPLETE. An incomplete one (a page whose read failed)
+   *  projected only the rows it could read whole, so a caller seeding a read model it then
+   *  asserts on owes another reconcile once reads recover. */
+  def reconcile(): Boolean = sweep(reproject = true)._2
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
    *  for the rows a silent change stream failed to deliver (see `sweep`). */
   def pruneOrphans(): Unit = {
     lock.synchronized { appliedSinceSweep = Some(scala.collection.mutable.Set.empty) }
     val healed =
-      try sweep(reproject = false)
+      try sweep(reproject = false)._1
       catch { case exception: Throwable => lock.synchronized { appliedSinceSweep = None }; throw exception }
     verdictOnHeals(healed)
   }
