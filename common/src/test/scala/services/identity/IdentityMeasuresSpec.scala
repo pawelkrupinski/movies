@@ -34,6 +34,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
   }
 
+  "a season production named in another language" should "be the record's, by the stage work both name" in {
+    // PL venues bill the RBO's 2026/27 season in Polish: "Dziadek do orzechów" is the record's "The Nutcracker"
+    // (Wikidata Q193705, StageWorks), as "Jezioro łabędzie" is Swan Lake — not The Nutcracker
+    val nutcracker = Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026))
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
+    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
+    // a venue's spelling Wikidata lacks, from the hand-kept extra: "Zaczarowany flet" is The Magic Flute
+    IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
+      Film("The Metropolitan Opera 2026/27: The Magic Flute", year = Some(2026))) shouldBe true
+  }
+
   "a film record of a broadcast's season production" should "be a segment of the listing's title, and only for a film" in {
     val met = Listing("Met Opera 2026-27: Samson et Dalila")
     val record = Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026))

@@ -123,8 +123,12 @@ object IdentityMeasures {
   def seasonWorks(f: Film): Set[(String, Int)] =
     filmSeason(f).fold(Set.empty[(String, Int)])(season => seasonlessWorks(f.titles.flatMap(SearchTitles.candidates(_, None))).map(_ -> season))
 
-  private def seasonlessWorks(titles: Seq[String]): Set[String] =
-    titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
+  /** Each segment's key — and each stage work it names, in whatever language ([[StageWorks]]): PL's "Royal Ballet and
+   *  Opera Sezon Kinowy 2026-27: Dziadek do orzechów" is the season's "Royal Ballet & Opera 2026/27: The Nutcracker". */
+  private def seasonlessWorks(titles: Seq[String]): Set[String] = {
+    val keys = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
+    keys ++ keys.flatMap(StageWorks.resolver.named).map(work => s"work:$work")
+  }
 
   /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
    *  piece (a title shape of each), and what each title adds to it along one edge — its banner,
@@ -1074,7 +1078,10 @@ object IdentityMeasures {
   private def seasonProductionQueries(l: Listing): Seq[String] =
     l.seasonYear.toSeq.flatMap { season =>
       val seasonTitles = (Seq(l.title) ++ l.rawTitle).filter(t => seasonYear(Seq(t)).isDefined)
-      shapes(seasonTitles).filter(t => seasonYear(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct.map(work => s"$work $season")
+      val works = shapes(seasonTitles).filter(t => seasonYear(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
+      // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
+      val translated = works.flatMap(work => StageWorks.resolver.named(key(work)).toSeq.sorted.flatMap(StageWorks.resolver.searchName))
+      (works ++ translated).distinct.map(work => s"$work $season")
     }
 
   /** The title relations under which another film RIVALS a listing's film: the listing's title

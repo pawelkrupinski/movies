@@ -380,6 +380,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "take its season's record when the venue names the work in its own language" in {
+    // PL "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów": TMDB holds the season's record only as
+    // "Royal Ballet & Opera 2026/27: The Nutcracker", which no search of the Polish title returns
+    val films = Seq(F(1702790, "Royal Ballet & Opera 2026/27: The Nutcracker", 2026, "", 0, 3),
+      F(495198, "Dziadek do orzechów", 1967, "Someone Else", 80, 8))
+    val pl = Seq(Helios, KinoApollo).map(listing(_, "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"))
+    val r = resolve(pl, films)
+    pl.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702790)))
+  }
+
   it should "stay apart from another season's broadcast of the same work, and not take its record" in {
     // The Royal Ballet's 2024/25 "The Nutcracker" has a record; its 2026/27 one does not yet. A
     // bare "The Nutcracker" is a segment of both seasons' titles.
