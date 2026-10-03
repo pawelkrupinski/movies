@@ -28,11 +28,15 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  is. The node then goes to the group vote with its siblings, where every member's denial holds. */
   private def withoutSiblingDenials(members: Seq[EvidenceNode], scope: FamilyScope,
                                     alone: Map[String, Accepted]): Map[String, Accepted] =
-    alone.filter { case (id, (best, _)) =>
-      val node = nodeById(id)
-      !members.exists(sibling => sibling.id != id && !alone.contains(sibling.id) && links.titleLinked(node, sibling) &&
-        scope.of(sibling).exists(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied))
-    }
+    alone.filter { case (id, (best, _)) => deniedBySibling(nodeById(id), members, scope, best.candidate.tmdbId, alone.contains).isEmpty }
+
+  /** The title-linked sibling, itself taken by no rule alone, whose own evidence denies `film` — and its denial: why a
+   *  node's own match of `film` is withdrawn ([[withoutSiblingDenials]]), which the node's trace says. */
+  def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, film: Int,
+                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] =
+    members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
+      .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == film && other.denied).map(other => sibling -> other.denial.getOrElse("denied")))
+      .nextOption()
 
   /** How many listings every scope of every round scored ([[Resolution.scorings]]) — counted, not
    *  read off the scopes, so a round's replaced scopes and their scores are not kept alive. */

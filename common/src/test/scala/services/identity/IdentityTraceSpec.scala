@@ -91,6 +91,24 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     taken.trace.nodes(wajdas.key).candidates.map(_.takeWhile(_ != ' ')) shouldBe Seq("2")
   }
 
+  "a listing whose own match a sibling's evidence withdrew" should "say so, naming the sibling and its denial" in {
+    // PL Kino Głębocka 66's "WAJDA: re-wizje | Bez znieczulenia (1978)" took the film at 88.1% by its own rules, and
+    // its trace said only "below the rating cut": a title-linked sibling, Kino Światowid's, was denying the film
+    val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85))
+    val bare    = listing(Rialto, "Tatarak")
+    val denying = listing(KinoApollo, "Tatarak", Some(1961), Some("Lee Tamahori"), Some(62))
+    val r = IdentityResolver.resolve(Seq(bare, denying), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver)
+    val node = r.decisionOf(bare.key).trace.nodes(bare.key)
+    withClue(r.decisionOf(bare.key).render + "\n" + node.refusals.mkString("\n")) {
+      if (r.decisionOf(bare.key).film.isEmpty) {
+        node.blocker shouldBe Some("withdrawn:sibling-denies-film")
+        val withdrawn = node.refusals.find(_.rule == "withdrawn").get
+        withdrawn.film shouldBe Some(1)
+        withdrawn.detail should include ("Tatarak")
+      } else fail("expected the bare listing's own match to be withdrawn")
+    }
+  }
+
   "the unresolved listings" should "rank by blocker, the one stopping most listings first" in {
     def trace(n: Int, blocker: Option[String]) =
       ListingTrace(ListingKey.Published(s"Venue $n", s"Film ${n % 3}", None, Nil), "f", None, "BelowThreshold", Nil, None, blocker = blocker)
