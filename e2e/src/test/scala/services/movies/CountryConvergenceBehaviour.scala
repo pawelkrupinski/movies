@@ -519,7 +519,7 @@ abstract class CountryConvergenceBehaviour(
              s"GENERATED corpus, whose synthetic titles cannot enrich — a fixpoint over a " +
              s"repertoire that does not exist. Record one:\n" +
              s"  KINOWO_COUNTRY=${country.code} KINOWO_CONVERGENCE_SCRAPES_URI=<prod mongo> \\\n" +
-             s"    sbt 'worker/Test/runMain scripts.RecordCorpusFixture'\n") {
+             s"    sbt 'worker/Fixtures/runMain scripts.RecordCorpusFixture'\n") {
       CorpusFixture.exists(corpusKey) shouldBe true
     }
 

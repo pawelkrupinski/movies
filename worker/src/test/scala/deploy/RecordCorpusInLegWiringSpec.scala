@@ -52,6 +52,14 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     order.map(at) shouldBe order.map(at).sorted
   }
 
+  // e2e depends on worker's fixtures, never its specs, so no leg's build cache holds worker's
+  // test-classes current: recording from `worker/Test` recompiled up to all 744 of them first.
+  it should "record from the Fixtures configuration, which every leg's build cache holds compiled" in {
+    RepoFile.step(convergence, Record) should include("""run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"""")
+    RepoFile.exists("worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala") shouldBe true
+    RepoFile.exists("worker/src/test/scala/scripts/RecordCorpusFixture.scala") shouldBe false
+  }
+
   it should "run the corpus steps in a recording's convergence row only, and close the tunnel whatever happened" in {
     Seq(Tunnel, Record, Pack).foreach { name =>
       withClue(s"$name: ")(RepoFile.step(convergence, name) should include(s"if: $InRecordingRow\n"))

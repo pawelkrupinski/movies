@@ -340,11 +340,18 @@ jobs:
                   MONGO_CI_SSH_KEY:      ${{ secrets.MONGO_CI_SSH_KEY }}
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
 
+            #
+            # From `worker/Fixtures`, not `worker/Test`: nothing else in a leg compiles worker's
+            # specs (e2e depends on worker's fixtures only), so the build cache every hermetic leg
+            # saves carries worker/test-classes as stale as whatever it was first restored from,
+            # and this step paid for recompiling them — 13 to 80 sources most nights, all 744
+            # (~2 minutes) on two of the seven recordings to 2026-10-03. The fixtures are
+            # compiled, and cached, by every leg. (RecordCorpusInLegWiringSpec)
             - name: Record ${{ inputs.country }}'s corpus
               if: inputs.mode == 'record' && matrix.phase == 'convergence'
               timeout-minutes: 10
               shell: bash
-              run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"
+              run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"
               env:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}

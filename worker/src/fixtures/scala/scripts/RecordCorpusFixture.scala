@@ -22,7 +22,7 @@ import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, Pr
  *
  * Run with:
  *   KINOWO_COUNTRY=pl KINOWO_CONVERGENCE_SCRAPES_URI=... \
- *     sbt "worker/Test/runMain scripts.RecordCorpusFixture"
+ *     sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture"
  */
 object RecordCorpusFixture {
 
