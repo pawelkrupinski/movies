@@ -220,7 +220,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val titled = tracedFamilies.flatMap(_.listings).flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
     val traced = () => {
       val titleRules = mutable.HashMap.empty[(String, String), Seq[String]]
-      tracedFamilies.flatMap(family => ListingTrace.of(StoredFamily.idOf(family.listings), family, key =>
+      tracedFamilies.iterator.flatMap(family => ListingTrace.of(StoredFamily.idOf(family.listings), family, key =>
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
           titleRules.getOrElseUpdate((cinema.displayName, raw), normalizer.firedRules(cinema, raw)) }, Some(calibration)))
     }

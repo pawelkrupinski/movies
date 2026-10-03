@@ -46,10 +46,11 @@ object ListingTrace {
 }
 
 /** Where the traces go: replaced a family at a time, as the families themselves are. `added` is BUILT by the
- *  store, when it keeps them — off the resolver's thread for one that writes them ([[MongoIdentityTraceStore]]). */
+ *  store, when it keeps them — off the resolver's thread for one that writes them ([[MongoIdentityTraceStore]]) — and
+ *  lazily, a family at a time, so a store writing in batches holds one batch, not a restore's whole corpus. */
 trait IdentityTraceStore {
   /** Drop the traces of the families `removed` names, then keep what `added` builds. */
-  def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit
+  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit
 }
 
 /** The trace READ both ways, for `/admin/identity/traces`: a rule's listings, a film's, a title's, and every rule's count. */
@@ -94,8 +95,8 @@ object IdentityTraceReads {
 /** Traces held in memory, written and read as `identity_traces` is — for tests and Mongo-less runs. */
 final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityTraceReads {
   private val held = scala.collection.mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
-  def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit = synchronized {
-    held.filterInPlace((_, trace) => !removed(trace.family)); added().foreach(trace => held(trace.listing) = trace)
+  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = synchronized {
+    held.filterInPlace((_, trace) => !removed(trace.family)); added().iterator.foreach(trace => held(trace.listing) = trace)
   }
   private def all = synchronized(held.values.toSeq)
   def byRule(rule: String, limit: Int)  = all.filter(_.rules.contains(rule)).take(limit)
@@ -108,7 +109,7 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityT
 
 object IdentityTraceStore {
   /** Keeps nothing, and builds nothing: a model whose decisions no one reads the rules of. */
-  val Discard: IdentityTraceStore = (_: Set[String], _: () => Seq[ListingTrace]) => ()
+  val Discard: IdentityTraceStore = (_: Set[String], _: () => IterableOnce[ListingTrace]) => ()
 }
 
 /** The traces in `identity_traces`: one document per listing, `_id` its serialised key, indexed on its rule ids
@@ -121,7 +122,7 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   // hands its families over. A trace is diagnostics: a failed write is logged and never fails a projection.
   private val writer = java.util.concurrent.Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("identity-traces").factory())
 
-  def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit = {
+  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = {
     writer.execute(() =>
       try write(removed, added())
       catch { case scala.util.control.NonFatal(e) => logger.warn(s"identity traces: ${removed.size} family drop(s) and their re-resolved traces not written: $e") })
@@ -137,12 +138,13 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
     c
   }
 
-  private def write(removed: Set[String], added: Seq[ListingTrace]): Unit = {
+  // A batch at a time: a restore hands over every listing's trace (~100k on worker-us), and one bulk write of them all
+  // held every document at once and ran into its own timeout.
+  private def write(removed: Set[String], added: IterableOnce[ListingTrace]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("family", removed.toSeq*)).toFuture(), Timeout)
-    if (added.nonEmpty)
-      Await.result(collection.bulkWrite(added.map(trace =>
-        ReplaceOneModel(Filters.equal("_id", ListingKey.serialised(trace.listing)), Document(encode(trace)), ReplaceOptions().upsert(true)))).toFuture(), Timeout)
-    ()
+    added.iterator.grouped(WriteBatch).foreach(batch =>
+      Await.result(collection.bulkWrite(batch.map(trace =>
+        ReplaceOneModel(Filters.equal("_id", ListingKey.serialised(trace.listing)), Document(encode(trace)), ReplaceOptions().upsert(true)))).toFuture(), Timeout))
   }
 }
 
@@ -180,6 +182,8 @@ final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceRead
 
 object MongoIdentityTraceStore {
   val Collection = "identity_traces"
+  /** How many traces one bulk write carries. */
+  val WriteBatch = 1000
 
   private[identity] def decode(d: BsonDocument): ListingTrace = {
     def strings(name: String) = Option(d.get(name)).filter(_.isArray).fold(Seq.empty[String])(_.asArray.getValues.asScala.toSeq.map(_.asString.getValue))

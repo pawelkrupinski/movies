@@ -32,13 +32,13 @@ class IdentityTraceRetentionSpec extends AnyFlatSpec with Matchers {
   }
 
   "a resolve's trace hand-over" should "keep no scored candidate alive until it is written" in {
-    var pending: Option[() => Seq[ListingTrace]] = None
-    val held = new IdentityTraceStore { def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit = pending = Some(added) }
+    var pending: Option[() => IterableOnce[ListingTrace]] = None
+    val held = new IdentityTraceStore { def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = pending = Some(added) }
     val listings = (0 until Listings).map(n => Listing.of(Helios, CinemaMovie(Movie(s"Film $n", releaseYear = Some(2099)), Helios, None,
       Some(s"https://helios.pl/film/$n"), None, Nil, Nil, Seq(show)), normalizer))
     new IncrementalResolver(Namesakes, normalizer, IdentityCalibration.resolver, traces = held).seed(listings)
     val handOver = pending.getOrElse(fail("no trace hand-over"))
-    handOver().flatMap(_.rules).count(_.startsWith("refused:")) should be > 0
+    handOver().iterator.flatMap(_.rules).count(_.startsWith("refused:")) should be > 0
     val kept = Reachable.count(handOver, outside = Seq(Namesakes, normalizer, IdentityCalibration.resolver))
     withClue("scored candidates the pending hand-over keeps: ")(kept.getOrElse("services.identity.Scored", 0L) shouldBe 0L)
   }

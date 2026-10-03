@@ -110,10 +110,10 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     val filed   = mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
     val dropped = mutable.ArrayBuffer.empty[String]
     val sink = new IdentityTraceStore {
-      def replace(removed: Set[String], added: () => Seq[ListingTrace]): Unit = {
+      def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = {
         dropped ++= removed
         filed.filterInPlace((_, trace) => !removed(trace.family))
-        added().foreach(trace => filed(trace.listing) = trace)
+        added().iterator.foreach(trace => filed(trace.listing) = trace)
       }
     }
     val model = new IncrementalResolver(new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver, traces = sink)

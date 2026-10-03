@@ -69,4 +69,23 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       ids(Filters.equal("rules", "accept:imdb-suggested")) shouldBe Set(ListingKey.serialised(key(3)))
     } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
   }
+
+  it should "write a restore's traces a batch at a time, never holding them all" in {
+    val client = MongoClient(mongoTarget.uri.value)
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "traces-batches"))
+    try {
+      val store = new MongoIdentityTraceStore(db)
+      val c     = db.getCollection[Document](MongoIdentityTraceStore.Collection)
+      // how many traces were already stored when the 1001st was built — built lazily, as a restore's hand-over is
+      @volatile var storedWhenBuilt = -1L
+      val traces = LazyList.range(0, 2500).map { n =>
+        if (n == MongoIdentityTraceStore.WriteBatch) storedWhenBuilt = Await.result(c.countDocuments().toFuture(), 30.seconds)
+        trace(n, s"f$n", Seq("accept:sole-result"))
+      }
+      store.replace(Set.empty, () => traces)
+      store.flush()
+      Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2500L
+      storedWhenBuilt shouldBe MongoIdentityTraceStore.WriteBatch.toLong
+    } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+  }
 }
