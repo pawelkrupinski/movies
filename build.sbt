@@ -137,19 +137,26 @@ lazy val itReportSettings = Seq(
 lazy val common = (project in file("common"))
   .settings(
     name := "common",
-    // The identity model's rules version (`services.identity.IdentityRules`): a digest of everything the
-    // resolver is built from — common's sources and resources, paths and contents. A deploy that changes
-    // none of them keeps the model; one that changes any rebuilds it (a superset, never a miss).
+    // The identity model's rules version (`services.identity.IdentityRules`): a digest of what the resolver is built
+    // from — the sources the compiler records the resolver and its store as reaching, and the resources none but other
+    // code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's families; one that
+    // changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
     Compile / resourceGenerators += Def.task {
-      val base   = baseDirectory.value / "src" / "main"
-      val digest = java.security.MessageDigest.getInstance("SHA-256")
-      (base ** "*").get.filter(_.isFile).sortBy(_.getPath).foreach { file =>
-        digest.update(IO.relativize(base, file).getOrElse(file.getPath).getBytes("UTF-8"))
-        digest.update(IO.readBytes(file))
+      val main     = baseDirectory.value / "src" / "main"
+      val analysis = (Compile / compile).value
+      val sources  = IdentityRulesSources.of(analysis, IdentityRulesSources.Roots)
+      val resources = IdentityRulesSources.resources(main, sources)
+      val paths    = sources ++ resources
+      val digest   = java.security.MessageDigest.getInstance("SHA-256")
+      paths.foreach { path =>
+        digest.update(path.getBytes("UTF-8"))
+        digest.update(IO.readBytes(main / path))
       }
-      val out = (Compile / resourceManaged).value / "identity-rules-version.txt"
-      IO.write(out, digest.digest.map("%02x".format(_)).mkString)
-      Seq(out)
+      val version = (Compile / resourceManaged).value / "identity-rules-version.txt"
+      val listed  = (Compile / resourceManaged).value / "identity-rules-sources.txt"
+      IO.write(version, digest.digest.map("%02x".format(_)).mkString)
+      IO.write(listed, paths.mkString("\n"))
+      Seq(version, listed)
     }.taskValue,
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(
@@ -537,3 +544,4 @@ addCommandAlias("convergenceUsOrder", "e2e/Test/testOnly services.movies.UnitedS
 addCommandAlias("convergenceGermanyWithoutOrder", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -l services.movies.OrderIndependence")
 addCommandAlias("convergenceGermanyOrder",        "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -n services.movies.OrderIndependence")
 addCommandAlias("convergenceSpain",    "e2e/Test/testOnly services.movies.SpainConvergenceSpec")
+
