@@ -14,6 +14,8 @@ import services.identity.{IdentityModelMetrics, ModelBatch}
  *  - `kinowo_worker_identity_model_drain_seconds` — how long the last drain that did work took;
  *  - `kinowo_worker_identity_model_rebuilds_total` — drains that failed and rebuilt the model from
  *    its store (0 is healthy);
+ *  - `kinowo_worker_identity_model_takeup_failures_total` — take-ups that failed, each leaving the
+ *    model down until a retry succeeds (0 is healthy);
  *  - `kinowo_worker_identity_model_largest_family_listings` / `_largest_family_nodes` — the largest
  *    family's listings and the most evidence nodes any family holds;
  *  - `kinowo_worker_identity_model_large_families` — families larger than one region: each
@@ -53,6 +55,12 @@ final class IdentityModelGauges(registry: PrometheusRegistry) {
     .labelNames("country")
     .register(registry)
 
+  private val takeUpFailures: Counter = Counter.builder()
+    .name("kinowo_worker_identity_model_takeup_failures_total")
+    .help("Take-ups of the incremental identity model that failed, leaving it down until a retry succeeds (0 is healthy).")
+    .labelNames("country")
+    .register(registry)
+
   private val largestListings: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_model_largest_family_listings")
     .help("Listings in the incremental identity model's largest family.")
@@ -83,5 +91,6 @@ final class IdentityModelGauges(registry: PrometheusRegistry) {
       large.labelValues(country).set(batch.sizes.large.toDouble)
     }
     def rebuilt(): Unit = rebuilds.labelValues(country).inc()
+    def takeUpFailed(): Unit = takeUpFailures.labelValues(country).inc()
   }
 }

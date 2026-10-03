@@ -128,7 +128,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val service  = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
       world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
-      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = () })
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () })
     service.takeUp()
     reported.map(_.families) shouldBe Seq(2)
   }
@@ -140,7 +140,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val service  = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
       world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
-      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = () })
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = reported += batch; def rebuilt(): Unit = (); def takeUpFailed(): Unit = () })
     service.takeUp()
     val sizes = reported.loneElement.sizes
     sizes.largest.map(_.listings) shouldBe Seq(2, 1)
@@ -170,6 +170,100 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       service.start()
       scheduler.submit((() => ()): Runnable).get(10, java.util.concurrent.TimeUnit.SECONDS)   // behind the take-up
       service.takeUpSettled shouldBe true
+    } finally scheduler.shutdownNow()
+  }
+
+  // A shadow country's readers only peek, which never takes up: a failed take-up (a Mongo blip at boot)
+  // left its model down until the next restart. The tick retries it, backing off 1, 2, 4 … 30 minutes.
+  it should "retry a failed take-up on its tick, backing off to a cap, until one succeeds" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val clock     = new tools.MutableClock(java.time.Instant.parse("2026-10-03T00:00:00Z"))
+    var failing   = true
+    val attempts  = scala.collection.mutable.ArrayBuffer.empty[Long]
+    val started   = clock.instant()
+    var failures  = 0
+    val service   = new IdentityModelService(
+      () => {
+        attempts += java.time.Duration.between(started, clock.instant()).toMinutes
+        if (failing) throw new IllegalStateException("store unreachable")
+        new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store)
+      },
+      world.reads, () => Nil, normalizer, 1.hour, scheduler, clock = clock,
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = (); def takeUpFailed(): Unit = failures += 1 })
+    try {
+      service.current(10.seconds) shouldBe None                   // the take-up, failed: tried once
+      attempts.toSeq shouldBe Seq(0L)
+      (1 to 125).foreach { _ => clock.advanceSeconds(60); service.tick() }
+      attempts.toSeq.drop(1) shouldBe Seq(1L, 3L, 7L, 15L, 31L, 61L, 91L, 121L)
+      service.peek(10.seconds) shouldBe None
+      failures shouldBe attempts.size   // a model that is down shows on a dashboard, not only in its log
+
+      failing = false
+      (1 to 30).foreach { _ => clock.advanceSeconds(60); service.tick() }
+      service.peek(10.seconds) shouldBe defined
+      attempts.last shouldBe 151L
+    } finally scheduler.shutdownNow()
+  }
+
+  // A reader that gave up (a projection's timeout behind a long take-up) must not leave its catch-up
+  // queued on the model's thread: every refused projection would add another take-up and snapshot
+  // there, run for nobody, each delaying the next reader further.
+  it should "drop a reader's request that timed out before the model's thread reached it" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val built     = new java.util.concurrent.atomic.AtomicInteger()
+    val service   = new IdentityModelService(
+      () => { built.incrementAndGet(); new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration,
+        store = world.store) },
+      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    try {
+      scheduler.execute(() => release.await())                  // the model's thread, busy (a take-up)
+      service.current(50.millis) shouldBe None
+      release.countDown()
+      scheduler.submit((() => ()): Runnable).get(10, java.util.concurrent.TimeUnit.SECONDS)
+      built.get shouldBe 0
+    } finally scheduler.shutdownNow()
+  }
+
+  // A failed take-up is retried by the tick alone, on its backoff: a reader's take-up that failed used
+  // to be taken up again at once as a "rebuild", and every later reader tried once more — each refused
+  // projection held the model's thread for full take-ups (117–259 s each on US) with nothing to drain.
+  it should "try a reader's take-up once when it fails, and leave its retry to the tick's backoff" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val built     = new java.util.concurrent.atomic.AtomicInteger()
+    val service   = new IdentityModelService(
+      () => { built.incrementAndGet(); throw new IllegalStateException("store unreachable") },
+      world.reads, () => Nil, normalizer, 1.hour, scheduler)
+    try {
+      service.current(10.seconds) shouldBe None
+      built.get shouldBe 1
+      service.current(10.seconds) shouldBe None
+      built.get shouldBe 1
+    } finally scheduler.shutdownNow()
+  }
+
+  // A settle of announced venue pages that fails (one page's read timing out) touches no engine state, and
+  // leaves its pages noted for the next settle: rebuilding the whole model over it (minutes on US) was waste.
+  it should "go on draining past a failed page settle, without rebuilding the model" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val built     = new java.util.concurrent.atomic.AtomicInteger()
+    var settles   = 0
+    val service   = new IdentityModelService(
+      () => { built.incrementAndGet(); new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration,
+        store = world.store) },
+      world.reads, () => listingsOf(world.scrapes), normalizer, 1.hour, scheduler,
+      beforeDrain = () => { settles += 1; if (settles == 1) throw new IllegalStateException("venue_pages read timed out") })
+    try {
+      service.takeUp()
+      world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+      service.tick()
+      built.get shouldBe 1
+      settles shouldBe 1
+      decided(service.peek(10.seconds).get.resolution.decisions) shouldBe world.expected
     } finally scheduler.shutdownNow()
   }
 

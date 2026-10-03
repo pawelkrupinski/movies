@@ -156,7 +156,7 @@ final class ShadowLookupFill(
     // search names is the model's gap after its next drain, and the next round's question.
     // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
     // before the model's gaps and refreshes are chosen.
-    try beforeRound() catch { case NonFatal(e) => logger.warn(s"identity shadow fill: TMDB changes not swept, this round: $e") }
+    try beforeRound() catch { case NonFatal(e) => logger.warn("identity shadow fill: TMDB changes not swept, this round", e) }
     val asked = gapMemory.fold(questions())(_.due(questions()))
     // Asked and still unanswered — not deferred for want of budget — is remembered, and asked again
     // a day later rather than every round (`TmdbGapMemory`).
@@ -187,7 +187,7 @@ final class ShadowLookupFill(
       executor.execute { () =>
         try round() catch {
           case _: InterruptedException => Thread.currentThread().interrupt()
-          case NonFatal(e)             => logger.warn(s"identity shadow fill: round failed: $e")
+          case NonFatal(e)             => logger.warn("identity shadow fill: round failed", e)
         }
         finally running.set(false)
       }

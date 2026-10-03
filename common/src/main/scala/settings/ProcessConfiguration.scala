@@ -96,7 +96,6 @@ final class ProcessConfiguration(val env: Env) {
   def facebookPageAppId: Option[FacebookPageAppId]           = text("FB_APP_ID").map(FacebookPageAppId(_))
   def googleAnalyticsId: Option[GoogleAnalyticsMeasurementId] = text("GA_MEASUREMENT_ID").map(GoogleAnalyticsMeasurementId(_))
   def sentryLoaderUrl: Option[SentryLoaderUrl]               = text("SENTRY_LOADER_URL").map(SentryLoaderUrl(_))
-  def sentryDsn: Option[SentryDsn]                           = text("SENTRY_DSN").map(SentryDsn(_))
   def googleClientId: Option[GoogleClientId]                 = text("GOOGLE_CLIENT_ID").map(GoogleClientId(_))
   def googleClientSecret: Option[GoogleClientSecret]         = text("GOOGLE_CLIENT_SECRET").map(GoogleClientSecret(_))
 

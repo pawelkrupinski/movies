@@ -51,7 +51,11 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
   private lazy val collection: MongoCollection[Document] = db.getCollection[Document](FamiliesCollection)
   private lazy val meta: MongoCollection[Document]       = db.getCollection[Document](MetaCollection)
 
-  def families(): Seq[StoredFamily] = Await.result(collection.find().batchSize(tools.MongoReplies.Families).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
+  /** Each family decoded as its reply arrives, so the read holds the decoded families and one reply's
+   *  documents — not every raw document beside them: a raw family's BSON tree is ~2x its decoded form
+   *  (2,200 synthetic 17 KB families: a peak of 211 MB read whole, then decoded; 82 MB decoded as read). */
+  def families(): Seq[StoredFamily] =
+    Await.result(collection.find().batchSize(tools.MongoReplies.Families).map(d => decode(d.toBsonDocument)).toFuture(), Timeout)
 
   private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
   /** How many family documents this store has written — those whose content moved. */

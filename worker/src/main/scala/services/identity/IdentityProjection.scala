@@ -58,6 +58,8 @@ trait IdentityProjectionMetrics {
 object IdentityProjectionMetrics {
   enum Refusal {
     case Crossing, UnreadableMap, Shrink, NotReady
+    /** The projection threw: nothing was written, the stored films keep serving. */
+    case Failed
     def label: String = toString.toLowerCase
   }
   val noop: IdentityProjectionMetrics = new IdentityProjectionMetrics {
@@ -156,7 +158,10 @@ final class IdentityProjection(
   /** [[tick]], for a scheduler that must keep running whatever one projection throws. */
   def tickQuietly(): Unit =
     try { tick(); () }
-    catch { case NonFatal(e) => logger.warn(s"identity projection failed; the stored films keep serving: $e") }
+    catch { case NonFatal(e) =>
+      metrics.refused(IdentityProjectionMetrics.Refusal.Failed)
+      logger.warn("identity projection failed; the stored films keep serving", e)
+    }
 
   private def write(resolution: Resolution, draft: ProjectionDraft, stored: Seq[StoredMovieRecord], listings: Int, started: tools.Stopwatch.Started,
                     phases: ProjectionPhases): ProjectionTick = {
@@ -171,7 +176,7 @@ final class IdentityProjection(
     }.pipe(films => detailed.complete(films, id => before.get(id).map(_.record))))
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer)))
     changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
-      Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} failed: $e"))
+      Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
     }
     val seconds = started.seconds
     metrics.projected(plan.films.size, listings, plan.regroupings, plan.canary, seconds)

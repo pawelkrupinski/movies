@@ -27,20 +27,20 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     (if (session) admin else FakeRequest()).withBody(body).withHeaders("Content-Type" -> "application/json")
 
   "the trace page" should "show a rule's listings with their evidence, a film's, a title's — and every rule's count when asked nothing" in {
-    import services.identity.{InMemoryIdentityTraceStore, ListingTrace}
+    import services.identity.{FamilyTraces, InMemoryIdentityTraceStore, ListingTrace}
     val store = new InMemoryIdentityTraceStore
     val brides = ListingKey.Published("Metrograph", "Brides of Dracula", None, Seq("Terence Fisher"))
     val camino = ListingKey.Published("Helios Bełchatów", "Camino dla opornych - KNT", None, Nil)
     val quill  = ListingKey.Published("Goli Theater Goch", "Ein Hund namens Quill", Some(2004), Seq("Yōichi Sai"))
     val quillRefused = services.identity.DecisionTrace.Refusal("favoured-calibrated", "below the rating cut", Some(49258), "26.6% < 40.0%")
-    store.replace(Set.empty, () => Seq(
+    store.replace(Set.empty, FamilyTraces.of(Seq(
       ListingTrace(brides, "f1", Some(23220), "OwnMatch", Seq("accept:favoured-calibrated", "join:same-film"), None,
         Seq("director=same_person +4.22", "title=exact +1.50"), Some(23220)),
       ListingTrace(camino, "f2", None, "Vetoed", Seq("veto:learned-listing-film-probability-below-the-cannot-link-cut"), Some("'Camino dla opornych - KNT'"),
         Seq("originalTitle=fragment -4.53"), Some(1404604)),
       ListingTrace(quill, "f3", None, "BelowThreshold", Seq(quillRefused.ruleId), None, Nil, Some(49258), Seq(quillRefused),
         Seq("title \"Ein Hund namens Quill\": 0 film(s)"), Seq("49258 26.6% rank - 'Quill - Ein Freund für´s Leben' (2004)"),
-        Some("rule:below-the-rating-cut"))))
+        Some("rule:below-the-rating-cut")))))
     val c = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository,
       new Pins(new InMemoryPinStore, Now), store)
     val byRule = contentAsString(c.traces(Some("accept:favoured-calibrated"), None, None).apply(admin))

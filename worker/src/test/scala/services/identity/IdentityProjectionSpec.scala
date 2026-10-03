@@ -21,13 +21,6 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   private val clock      = Clock.fixed(Instant.parse("2026-09-26T10:00:00Z"), ZoneOffset.UTC)
   private val start      = LocalDateTime.of(2026, 9, 27, 18, 0)
 
-  private object NoFilms extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                          = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]         = Answer.Known(None)
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]           = Answer.Known(Nil)
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]      = Answer.Known(None)
-  }
-
   private def film(cinema: Cinema, title: String, year: Option[Int], hours: Int*): CinemaMovie =
     CinemaMovie(Movie(title, releaseYear = year), cinema, None, None, None, Nil, Nil, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
 
@@ -39,7 +32,9 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     KinoMuza   -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8)))
 
   private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
-                            venues: Seq[Cinema] = programme.keys.toSeq) {
+                            venues: Seq[Cinema] = programme.keys.toSeq,
+                            listingsRead: () => Unit = () => (), announceFails: Boolean = false) {
+    val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer)
     val archive    = new InMemoryScrapeArchiveRepository
     val accepted   = new InMemoryScrapeArchiveRepository
@@ -50,11 +45,14 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     /** Every venue whose rows the projection read back, showtimes and all, to build its slots. */
     val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
     val projection = new IdentityProjection(
-      listings = () => intake.projected(venues), rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
-      resolve = IdentityProjection.resolving(() => NoFilms, new InMemoryPinStore, normalizer, IdentityCalibration.resolver), cache = cache,
-      filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { announced += k; () }, normalizer = normalizer,
+      listings = () => { listingsRead(); intake.projected(venues) }, rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
+      resolve = IdentityProjection.resolving(() => NoFilmLookups, new InMemoryPinStore, normalizer, IdentityCalibration.resolver), cache = cache,
+      filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () }, normalizer = normalizer,
       slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
-      tokens = ScreeningTokens.of(Country.Poland), metrics = IdentityProjectionMetrics.noop, clock = clock)
+      tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
+        def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()
+        def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
+      }, clock = clock)
 
     def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
       archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))
@@ -80,6 +78,24 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.cache.snapshot().map(_.id).toSet shouldBe w.repository.findAll().map(_.id).toSet
     w.announced.map(_.cleanTitle).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
     w.filmIds.allChecked()._1.map(_.filmId).toSet shouldBe w.repository.findAll().map(_.id.value).toSet
+  }
+
+  "A projection's failures" should "be logged WITH their stacks, the announce naming its film, and a failed projection counted" in {
+    val name   = classOf[IdentityProjection].getName
+    val warned = (body: World => Unit) => {
+      val w = new World(announceFails = true)
+      w.scrape(programme)
+      tools.LogCapture.thisThread(name)(body(w)).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
+    }
+    val announces = warned(_.projection.tick()).filter(_.getFormattedMessage.contains("announcing"))
+    announces should have size 3
+    announces.map(e => Option(e.getThrowableProxy).map(_.getMessage)).flatten.sorted shouldBe
+      Seq("bus down for Diuna", "bus down for Lalka", "bus down for Obcy")
+
+    val down   = new World(listingsRead = () => throw new IllegalStateException("archive down"))
+    val failed = tools.LogCapture.thisThread(name)(down.projection.tickQuietly()).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
+    failed.map(e => Option(e.getThrowableProxy).map(_.getMessage)) shouldBe Seq(Some("archive down"))
+    down.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Failed) // and counted: the stored films keep serving
   }
 
   // One at a time, a US boot's first projection waited on ~2,250 films' round-trips in a row.

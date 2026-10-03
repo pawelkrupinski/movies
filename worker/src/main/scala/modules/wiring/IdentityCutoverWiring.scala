@@ -1,8 +1,8 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.identity.{CutoverTaskHandlers, FilmIdCounterStore, IdentityCalibration, IdentityListingIntake,
-  IdentityProjection, InMemoryFilmIdCounterStore, MongoFilmIdCounterStore, MongoPinStore}
+import services.identity.{CutoverTaskHandlers, FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
+  InMemoryFilmIdCounterStore, MongoFilmIdCounterStore}
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.TaskHandler
@@ -38,14 +38,14 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, taskMetrics,
       published = (cinema, films) => identityModel.foreach(_.venueScraped(cinema, films)))
 
+  // A country always has its model (`identityModel` is never empty): the projection reads its resolution.
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
       listings    = () => identityListingIntake.projected(cinemaScrapers.map(_.cinema)),
       rows        = identityListingIntake.rowsOf,
-      resolve     = identityModel.fold(IdentityProjection.resolving(
-        () => cutoverLookups(),
-        new MongoPinStore(mongoConnection.database), titleNormalizer, IdentityCalibration.resolver))(
-        IdentityProjection.modelled(_, IdentityCutoverWiring.ModelTimeout)),
+      resolve     = IdentityProjection.modelled(
+        identityModel.getOrElse(throw new IllegalStateException("the identity projection has no identity model")),
+        IdentityCutoverWiring.ModelTimeout),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
       details     = movieService.withFilmDetails,

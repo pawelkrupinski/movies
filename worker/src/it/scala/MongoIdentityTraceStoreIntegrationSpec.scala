@@ -25,12 +25,12 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
     val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "traces"))
     try {
       val store = new MongoIdentityTraceStore(db)
-      store.replace(Set.empty, () => Seq(trace(1, "f1", Seq("accept:imdb-suggested", "title:xtra-pokaz-filmu")),
+      store.replace(Set.empty, FamilyTraces.of(Seq(trace(1, "f1", Seq("accept:imdb-suggested", "title:xtra-pokaz-filmu")),
         trace(2, "f1", Seq("join:same-film")), trace(3, "f3", Seq("accept:imdb-suggested")),
         trace(4, "f4", Seq(Refused.ruleId)).copy(film = None, refusals = Seq(Refused), blocker = Some("search:found-nothing"),
           searched = Seq("title \"Film 4\": 0 film(s)")),
         trace(5, "f4", Nil).copy(film = None, blocker = Some("search:found-nothing")),
-        trace(6, "f4", Nil).copy(film = None, blocker = Some("veto:x"), candidates = Seq("9 2.4% rank 1 DENIED (x) 'Nine'"))))
+        trace(6, "f4", Nil).copy(film = None, blocker = Some("veto:x"), candidates = Seq("9 2.4% rank 1 DENIED (x) 'Nine'")))))
       store.flush()
       val c = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), 30.seconds).map(_.toBsonDocument.getString("_id").getValue).toSet
@@ -63,7 +63,7 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       Await.result(c.countDocuments(Filters.exists("blocker")).toFuture(), 30.seconds) shouldBe 3L
       reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1, Refused.ruleId -> 1)
       // re-resolving family f1 replaces its traces: listing 2 left it
-      store.replace(Set("f1"), () => Seq(trace(1, "f1", Seq("accept:sole-result"))))
+      store.replace(Set("f1"), FamilyTraces.of(Seq(trace(1, "f1", Seq("accept:sole-result")))))
       store.flush()
       ids(Filters.equal("family", "f1")) shouldBe Set(ListingKey.serialised(key(1)))
       ids(Filters.equal("rules", "accept:imdb-suggested")) shouldBe Set(ListingKey.serialised(key(3)))
@@ -78,11 +78,11 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       val c     = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       // how many traces were already stored when the 1001st was built — built lazily, as a restore's hand-over is
       @volatile var storedWhenBuilt = -1L
-      val traces = LazyList.range(0, 2500).map { n =>
+      val traces = (0 until 2500).map(n => FamilyTraces(s"f$n", () => {
         if (n == MongoIdentityTraceStore.WriteBatch) storedWhenBuilt = Await.result(c.countDocuments().toFuture(), 30.seconds)
-        trace(n, s"f$n", Seq("accept:sole-result"))
-      }
-      store.replace(Set.empty, () => traces)
+        Seq(trace(n, s"f$n", Seq("accept:sole-result")))
+      }))
+      store.replace(Set.empty, traces)
       store.flush()
       Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2500L
       storedWhenBuilt shouldBe MongoIdentityTraceStore.WriteBatch.toLong
@@ -98,17 +98,17 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       val store = new MongoIdentityTraceStore(db)
       val c     = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       val first = (0 until 2500).map(n => trace(n, s"f${n / 10}", Seq("accept:sole-result")))
-      store.replace(Set.empty, () => first)
+      store.replace(Set.empty, FamilyTraces.of(first))
       store.flush()
       store.written shouldBe 2500L
       // The same families re-resolved to the same decisions: nothing to write.
       val families = first.map(_.family).toSet
-      store.replace(families, () => first)
+      store.replace(families, FamilyTraces.of(first))
       store.flush()
       store.written shouldBe 2500L
       // One trace's rules moved and one listing left its family: one replace, one delete.
       val moved = first.updated(7, trace(7, "f0", Seq("accept:exact-top-hit"))).filterNot(_.listing == key(8))
-      store.replace(families, () => moved)
+      store.replace(families, FamilyTraces.of(moved))
       store.flush()
       store.written shouldBe 2502L
       Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2499L

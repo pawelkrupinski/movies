@@ -21,7 +21,8 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *    of a cutover that is the old path's films, so it is the old-vs-new canary; afterwards anything
  *    but `identical` is a regrouping the projection is about to write;
  *  - `kinowo_worker_identity_projection_refusals_total{reason}` — projections refused: a family
- *    crossing, an unreadable FilmId map, or a shrink past `ProjectionGuard`'s shares;
+ *    crossing, an unreadable FilmId map, a shrink past `ProjectionGuard`'s shares, a model not ready,
+ *    or a projection that threw (`failed`);
  *  - `kinowo_worker_identity_projection_seconds` — how long the last projection took.
  *
  * Nothing is seeded: a country not cut over exports no series.
@@ -54,7 +55,7 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
 
   private val refusals: Counter = Counter.builder()
     .name("kinowo_worker_identity_projection_refusals_total")
-    .help("Identity projections refused (crossing / unreadablemap / shrink); the stored films kept serving.")
+    .help("Identity projections refused (crossing / unreadablemap / shrink / notready / failed); the stored films kept serving.")
     .labelNames("country", "reason")
     .register(registry)
 

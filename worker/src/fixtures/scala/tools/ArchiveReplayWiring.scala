@@ -167,7 +167,7 @@ class ArchiveReplayWiring(
    *  same Mongo the projection writes its films to: 10% of a US order-independence replay's CPU, and
    *  writes that timed out at 60 s (run 37064062391). `MongoIdentityTraceStoreIntegrationSpec` covers
    *  the writer itself. */
-  override protected def identityTraces: services.identity.IdentityTraceStore = services.identity.IdentityTraceStore.Discard
+  override protected lazy val identityTraces: services.identity.IdentityTraceStore = services.identity.IdentityTraceStore.Discard
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything

@@ -510,6 +510,44 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       .shadowLookupFill.map(_.effectiveRate) shouldBe Some(settings.IdentityShadowLookupRate(12))
   }
 
+  // The model's thread and its prefetch pool outlived `stop()`: a drain still writing families to a
+  // Mongo connection the same stop had closed, and every stopped test wiring's threads left behind.
+  "stopping a wiring" should "shut down the identity model's thread and its prefetch pool" in {
+    final class Threads extends Probe(Country.Spain, new SharedExecutionBudget(4)) {
+      def modelThreads: Seq[java.util.concurrent.ExecutorService] = Seq(identityModelScheduler, identityPrefetchPool)
+    }
+    val wiring = new Threads
+    wiring.identityModel shouldBe defined
+    wiring.stop()
+    wiring.modelThreads.map(_.isShutdown) shouldBe Seq(true, true)
+  }
+
+  // Each rebuild built its own trace store, whose writer thread no one ever stopped: one idle thread per
+  // rebuild for the life of the process, and the replaced model's queued writes racing the new one's.
+  it should "write every rebuilt identity model's traces through one store, and close it" in {
+    val client = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1") // never connected: a store only binds to it
+    try {
+      final class Traces extends Probe(Country.Spain, new SharedExecutionBudget(4)) {
+        // The traces' database alone: a whole wiring over an unreachable one would hydrate its stores for minutes.
+        override protected def identityTracesDatabase = Some(client.getDatabase("wiring-traces-spec"))
+        def traces: services.identity.IdentityTraceStore = identityTraces
+      }
+      val wiring = new Traces
+      wiring.traces should be theSameInstanceAs wiring.traces
+    } finally client.close()
+
+    var closed = false
+    val stopped = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
+      override protected lazy val identityTraces: services.identity.IdentityTraceStore = new services.identity.IdentityTraceStore {
+        def replace(removed: Set[String], added: Seq[services.identity.FamilyTraces]): Unit = ()
+        override def close(): Unit = closed = true
+      }
+    }
+    stopped.identityModel shouldBe defined
+    stopped.stop()
+    closed shouldBe true
+  }
+
   "the rating gate, switched on," should "withhold a title-only match no venue's facts back — scored from the row alone" in {
     import models._
     val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer

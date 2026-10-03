@@ -75,9 +75,6 @@ final case class FacebookPageAppId(value: String) extends AnyVal
 final case class GoogleAnalyticsMeasurementId(value: String) extends AnyVal
 /** `SENTRY_LOADER_URL` — the Sentry loader script a page embeds. */
 final case class SentryLoaderUrl(value: String) extends AnyVal
-/** `SENTRY_DSN` — read by logback's Sentry appender itself; resolved here only to report
- *  whether the integration is on. */
-final case class SentryDsn(value: String) extends AnyVal
 /** `GOOGLE_CLIENT_ID`. */
 final case class GoogleClientId(value: String) extends AnyVal
 /** `GOOGLE_CLIENT_SECRET`. */

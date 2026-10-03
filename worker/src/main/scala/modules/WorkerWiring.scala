@@ -189,11 +189,14 @@ class WorkerWiring(
     new services.identity.VenuePageIndex(venuePageStore, changed = key => identityModel.foreach(_.observed(key)))
 
   /** Where the model files which rules decided each listing (`identity_traces`, read by the admin
-   *  page only): beside its families in the country's database, or nowhere without one. A def, so each
-   *  model a rebuild makes gets its own writer, as it always has. */
-  protected def identityTraces: services.identity.IdentityTraceStore =
-    mongoConnection.database.fold[services.identity.IdentityTraceStore](services.identity.IdentityTraceStore.Discard)(
+   *  page only): beside its families in the country's database, or nowhere without one. ONE for every model a
+   *  rebuild makes: a store apiece left each replaced model's writer thread idle for the life of the process,
+   *  and its queued writes racing the new model's. */
+  protected lazy val identityTraces: services.identity.IdentityTraceStore =
+    identityTracesDatabase.fold[services.identity.IdentityTraceStore](services.identity.IdentityTraceStore.Discard)(
       new services.identity.MongoIdentityTraceStore(_))
+  /** The database [[identityTraces]] writes into: the wiring's own. */
+  protected def identityTracesDatabase: Option[org.mongodb.scala.MongoDatabase] = mongoConnection.database
 
   /** The threads the model's lookups prefetch on: each question waits on store round-trips, so a
    *  take-up is bound by how many are in flight, not by CPU. Virtual, and many: the store coalesces
@@ -508,6 +511,8 @@ class WorkerWiring(
     identityLookupRefreshSchedule.foreach(_.stop())
     closureSchedule.stop()
     identityProposalSchedule.foreach(_.stop())
+    // Its readers stopped above; its own threads next, before the Mongo connection they write through closes.
+    identityModel.foreach { _ => identityModelScheduler.shutdownNow(); identityPrefetchPool.shutdownNow(); identityTraces.close() }
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
     stopFacebookRescrapes()
@@ -530,9 +535,7 @@ class WorkerWiring(
 
 object WorkerWiring {
 
-  /** The background concurrency budget every country's wiring shares, sized by
-   *  `KINOWO_BG_CONCURRENCY` (default 4 — see `backgroundBudget`). */
-  /** `KINOWO_BG_CONCURRENCY`'s compiled-in default. */
+  /** `KINOWO_BG_CONCURRENCY`'s compiled-in default (see `backgroundBudget`). */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
 
   /** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE`'s compiled-in default: 60 asks a minute, about 2% of

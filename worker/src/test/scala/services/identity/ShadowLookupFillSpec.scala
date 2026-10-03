@@ -49,17 +49,9 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       service, new TmdbNormalizer(store), IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes)
 
-  /** These listings carry no venue page: their only questions are TMDB's. */
-  private object NoDetails extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                     = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]    = Answer.Known(None)
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
-
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
-    val model = new IncrementalResolver(new StoredTmdbLookups(s, "pl-PL", NoDetails, new ObservationReads), normalizer,
+    val model = new IncrementalResolver(new StoredTmdbLookups(s, "pl-PL", UnansweredTmdbLookups, new ObservationReads), normalizer,
       IdentityCalibration.resolver)
     model.seed(listings)
     model.gaps
@@ -155,6 +147,13 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     interrupt = false
     shadow.start() // the next start runs: the interrupted round let go of `running`
     rounds should have size 1
+  }
+
+  it should "log a failed sweep or round WITH its stack: the catch-all's cause is unknown, and its message alone rarely names it" in {
+    val warned = (shadow: ShadowLookupFill) => tools.LogCapture.thisThread(classOf[ShadowLookupFill].getName)(shadow.start())
+      .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(e => Option(e.getThrowableProxy).map(_.getMessage))
+    warned(fill(store(), new Service, beforeRound = () => throw new IllegalStateException("sweep down"))) shouldBe Seq(Some("sweep down"))
+    warned(fill(store(), new Service, gaps = _ => throw new IllegalStateException("store down"))) shouldBe Seq(Some("store down"))
   }
 
   "the pipeline's own requests" should "wait on a shared paced host no longer than one interval per shadow ask, the shadow capped by its rate" in {

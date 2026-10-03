@@ -16,20 +16,13 @@ class IncrementalResolverFootprintSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val Listings   = 2000
   private val show       = Showtime(LocalDateTime.of(2099, 3, 1, 18, 0), None)
-  private object NoLookups extends IdentityLookups {
-    def hasDetail(l: Listing) = false
-    def detail(l: Listing)    = Answer.Known(None)
-    def candidates(q: CandidateQuery) = Answer.Known(Nil)
-    def film(id: Int)                 = Answer.Known(None)
-  }
-
   "the model" should "keep one entry per listing for what it holds and which family it is in" in {
     val listings = (0 until Listings).map(n => Listing.of(Helios, CinemaMovie(Movie(s"Film $n"), Helios, None,
       Some(s"https://helios.pl/film/$n"), None, Nil, Nil, Seq(show)), normalizer))
-    val model = new IncrementalResolver(NoLookups, normalizer, IdentityCalibration.resolver)
+    val model = new IncrementalResolver(NoFilmLookups, normalizer, IdentityCalibration.resolver)
     model.seed(listings)
     model.familyOf.size shouldBe Listings
-    val kept  = Reachable.count(model, outside = Seq(NoLookups, normalizer))
+    val kept  = Reachable.count(model, outside = Seq(NoFilmLookups, normalizer))
     val nodes = kept.getOrElse("scala.collection.mutable.HashMap$Node", 0L)
     val boxed = kept.getOrElse("java.lang.Integer", 0L)
     info(s"per listing: ${nodes.toDouble / Listings} hash nodes, ${boxed.toDouble / Listings} boxed Integers")

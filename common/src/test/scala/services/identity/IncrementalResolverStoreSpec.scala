@@ -129,7 +129,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
       def rulesVersion: Option[String] = keptFamilies.rulesVersion
       def recordRulesVersion(version: String): Unit = keptFamilies.recordRulesVersion(version)
     }
-    val traces: IdentityTraceStore = (removed: Set[String], added: () => IterableOnce[ListingTrace]) => {
+    val traces: IdentityTraceStore = (removed: Set[String], added: Seq[FamilyTraces]) => {
       tracesDropped += removed; keptTraces.replace(removed, added)
     }
     def clear(): Unit = { familiesDropped.clear(); tracesDropped.clear() }

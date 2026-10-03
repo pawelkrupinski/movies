@@ -126,7 +126,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     finally {
       val gone = dropped -- families.valuesIterator.map(_.storeId)
       store.replace(gone, Nil)
-      traces.replace(gone, () => Nil)
+      traces.replace(gone, Nil)
     }
     ruled()
   }
@@ -233,15 +233,17 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
-    // The rules behind each settled family's decisions go to the trace store — built there, off this thread, from
-    // the families as resolved and each listing's venue and title — and the model keeps the decisions without them.
-    val tracedFamilies = settled.values.toSeq
-    val titled = tracedFamilies.flatMap(_.listings).flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
-    val traced = () => {
-      val byClean = mutable.HashMap.empty[String, Seq[String]]
-      tracedFamilies.iterator.flatMap(family => ListingTrace.of(StoredFamily.idOf(family.listings), family, key =>
-        titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) => normalizer.firedRules(cinema, raw, byClean) },
-        Some(calibration)))
+    // The rules behind each settled family's decisions go to the trace store — built there, off this thread, family
+    // by family, from the family as resolved and each of its listings' venue and title — and the model keeps the
+    // decisions without them. One family's hand-over holds only its own: a store may drop it unbuilt, once a later
+    // update re-resolves the family. The canonical and search tiers are read once per cleaned title across the batch.
+    val byClean = mutable.HashMap.empty[String, Seq[String]]
+    val traced = settled.values.toSeq.map { family =>
+      val id     = StoredFamily.idOf(family.listings)
+      val titled = family.listings.iterator.flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
+      FamilyTraces(id, () => ListingTrace.of(id, family, key =>
+        titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
+          byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration)))
     }
     clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(_.copy()(DecisionTrace.Empty))),
       context.slice(family.reads).digest)))

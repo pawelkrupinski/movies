@@ -24,14 +24,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val changed = mutable.ArrayBuffer.empty[String]
     store.onChanged(key => changed += key)
     val normalizer = new TmdbNormalizer(store)
-    def lookups = new StoredTmdbLookups(store, language, NoDetails, new ObservationReads)
-  }
-
-  private object NoDetails extends IdentityLookups {
-    def hasDetail(l: Listing) = false
-    def detail(l: Listing)    = Answer.Known(None)
-    def candidates(q: CandidateQuery) = Answer.Unknown
-    def film(id: Int)                 = Answer.Unknown
+    def lookups = new StoredTmdbLookups(store, language, UnansweredTmdbLookups, new ObservationReads)
   }
 
   private def local(popularity: Double = 8.8983) =
@@ -120,7 +113,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       Some("Multikino/Lalka"), None, Nil, Nil, Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 1, 18, 0), None))))), titles))
     var model  = Option.empty[IncrementalResolver]
     val service = new IdentityModelService(
-      () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(w.store, language, NoDetails, reads), reads,
+      () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads), reads,
         Some(java.util.concurrent.Executors.newFixedThreadPool(2))), titles, IdentityCalibration.resolver); model = Some(m); m },
       reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor())
     w.store.onChanged(service.observed)
@@ -171,7 +164,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     }
     val reads   = new ObservationReads
     val store   = new TmdbStore(docs, w.clock)
-    val lookups = new TrackedLookups(new StoredTmdbLookups(store, language, NoDetails, reads), reads,
+    val lookups = new TrackedLookups(new StoredTmdbLookups(store, language, UnansweredTmdbLookups, reads), reads,
       Some(java.util.concurrent.Executors.newFixedThreadPool(4)))
     val queries = titles.map(CandidateQuery.Title(_))
 
@@ -192,7 +185,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
         Success(s"""{"results":[{"id":${100 + i},"title":"$text","original_title":"$text","release_date":"2020-01-01","popularity":5.0}]}"""))
     }
     val reads   = new ObservationReads
-    val stored  = new StoredTmdbLookups(w.store, language, NoDetails, reads)
+    val stored  = new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads)
     val lookups = new TrackedLookups(stored, reads, Some(java.util.concurrent.Executors.newFixedThreadPool(2)))
     val queries = titles.map(CandidateQuery.Title(_))
 
@@ -201,13 +194,16 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
   }
 
+  /** A film document carries the two partial responses its record was parsed from beside the
+   *  record: ~650 of ~1,000 bytes that no answer reads. A take-up fetched and decoded them for every
+   *  film it named — UK's store batches took 12.4 s of a 21 s context. Answers read only what they use. */
   "the model's lookups" should "read a film's answer fields, never its partial responses" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
     val wholeFilmReads = new java.util.concurrent.atomic.AtomicInteger()
     val docs = readingThrough(w.docs)(kind => if (kind == TmdbKind.Film) { wholeFilmReads.incrementAndGet(); () })
-    val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, NoDetails, new ObservationReads)
+    val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
     lookups.prefetch(Nil, Seq(film), Nil)
     lookups.film(film) shouldBe w.lookups.film(film)
     lookups.film(film).toOption.flatten shouldBe defined

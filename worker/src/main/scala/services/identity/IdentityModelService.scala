@@ -21,9 +21,13 @@ final case class ModelBatch(venues: Int, observations: Int, familiesResolved: In
 trait IdentityModelMetrics {
   def batch(batch: ModelBatch): Unit
   def rebuilt(): Unit
+  /** A take-up (at boot, a retry, or a rebuild) failed: the model is down until one succeeds. */
+  def takeUpFailed(): Unit
 }
 object IdentityModelMetrics {
-  val Silent: IdentityModelMetrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = () }
+  val Silent: IdentityModelMetrics = new IdentityModelMetrics {
+    def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = (); def takeUpFailed(): Unit = ()
+  }
 }
 
 /**
@@ -54,7 +58,8 @@ final class IdentityModelService(
   // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
   reading:    () => String = () => "",
   /** Run on the model's thread before each drain: what turns queued announcements into observed keys
-   *  (`VenuePageIndex.settle`), so the drain that follows takes them in. */
+   *  (`VenuePageIndex.settle`), so the drain that follows takes them in. One that throws is logged, and
+   *  the drain goes on: it must leave what it could not read for its next run. */
   beforeDrain: () => Unit = () => (),
   /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,
@@ -81,7 +86,11 @@ final class IdentityModelService(
    *  own thread: what a projection reads. `None` when it cannot be had within `timeout` (a rebuild
    *  still running) or the model could not be taken up. */
   def current(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
-    safely("catch up") { if (model.isEmpty) takeUp(); drain(); () }
+    // A take-up is tried here only if none was yet; one that failed is retried by [[tick]] alone, on its
+    // backoff — never again at once, which held the model's thread for a second full take-up
+    // (117–259 s on US) per refused projection, with nothing to drain meanwhile.
+    if (model.isEmpty && retryAt.isEmpty) tryTakeUp()
+    model.foreach(_ => safely("catch up") { drain(); () })
     model.map(snapshotOf)
   }
 
@@ -96,23 +105,56 @@ final class IdentityModelService(
   private def snapshotOf(engine: IncrementalResolver) =
     ModelSnapshot(engine.resolution, engine.gaps, engine.listings, TmdbRefreshes.of(engine.familyQuestions))
 
+  // A request its reader gave up on is cancelled: one the model's thread has not reached yet never runs
+  // (a take-up and a snapshot for nobody, delaying the next reader), one it is running finishes.
   private def onModel[A](timeout: FiniteDuration)(body: => Option[A]): Option[A] =
-    scala.util.Try(scheduler.submit[Option[A]](() => body).get(timeout.toMillis, TimeUnit.MILLISECONDS)).toOption.flatten
+    scala.util.Try(scheduler.submit[Option[A]](() => body)).toOption.flatMap { request =>
+      try request.get(timeout.toMillis, TimeUnit.MILLISECONDS)
+      catch { case NonFatal(_) => request.cancel(false); scala.None }
+    }
 
   @volatile private var tookUp = false
-  /** Whether the take-up [[start]] scheduled has finished — taken up, or failed and left to the
-   *  drains to rebuild: the boot work a worker's readiness waits on. */
+  /** Whether the take-up [[start]] scheduled has finished — taken up, or failed and left to [[tick]]
+   *  to retry: the boot work a worker's readiness waits on. */
   def takeUpSettled: Boolean = tookUp
 
   def start(): Unit = {
-    scheduler.execute(() => try safely("restore")(takeUp()) finally tookUp = true)
-    scheduler.scheduleWithFixedDelay(() => safely("drain")(drain()), settle.toMillis, settle.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.execute(() => try tryTakeUp() finally tookUp = true)
+    scheduler.scheduleWithFixedDelay(() => tick(), settle.toMillis, settle.toMillis, TimeUnit.MILLISECONDS)
     ()
+  }
+
+  // When a model that could not be taken up is next tried, and how long the wait after that one grows to.
+  // Touched only on the model's thread.
+  private var retryAt: Option[java.time.Instant] = scala.None
+  private var retryDelay: FiniteDuration          = IdentityModelService.FirstRetry
+
+  /** What the scheduler runs every `settle`: a take-up retried once its backoff has passed, when the
+   *  last one failed — a shadow country's readers only [[peek]], so nothing else would ever take it
+   *  up again — then a drain. */
+  private[identity] def tick(): Unit = {
+    if (model.isEmpty && retryAt.exists(at => !clock.instant().isBefore(at))) tryTakeUp()
+    safely("drain")(drain())
+  }
+
+  private def tryTakeUp(): Unit =
+    try takeUp() catch { case NonFatal(e) => logger.error(s"identity model: take-up failed: $e", e); takeUpFailed() }
+
+  private def takeUpFailed(): Unit = {
+    metrics.takeUpFailed()
+    model   = scala.None
+    retryAt = Some(clock.instant().plusMillis(retryDelay.toMillis))
+    logger.warn(s"identity model: down — take-up retried in ${retryDelay.toSeconds}s")
+    retryDelay = (retryDelay * 2).min(IdentityModelService.MaxRetry)
   }
 
   /** Drain what has queued, on the calling thread — the scheduler's, or a test's. */
   def drain(): Option[ModelBatch] = model.flatMap { engine =>
-    beforeDrain()
+    // A settle that fails (a venue page's read timing out) has touched no engine state and leaves its pages
+    // noted for the next one (`VenuePageIndex.settle`): this drain goes on without them. Thrown on, it reached
+    // `safely`, which rebuilt the whole model from its store — minutes on US — over one read.
+    try beforeDrain()
+    catch { case NonFatal(e) => logger.warn(s"identity model: settling announced pages failed — retried at the next drain: $e", e) }
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val keys    = observations.asScala.toSeq.filter(observations.remove)
     val (admitted, released) = admit(engine, scraped)
@@ -158,6 +200,7 @@ final class IdentityModelService(
     val engine  = newModel()
     engine.restore(archive())
     model = Some(engine)
+    retryAt = scala.None; retryDelay = IdentityModelService.FirstRetry
     // The gauges from the moment the model is up, not from its first event.
     val sizes   = engine.sizes
     metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, started.seconds, sizes))
@@ -170,6 +213,12 @@ final class IdentityModelService(
     catch { case NonFatal(e) =>
       logger.error(s"identity model: $what failed — rebuilding from its store: $e", e)
       metrics.rebuilt()
-      try takeUp() catch { case NonFatal(again) => logger.error(s"identity model: rebuild failed: $again", again); model = scala.None }
+      try takeUp() catch { case NonFatal(again) => logger.error(s"identity model: rebuild failed: $again", again); takeUpFailed() }
     }
+}
+
+object IdentityModelService {
+  /** The wait before a failed take-up is first retried; it doubles with each failure after, up to [[MaxRetry]]. */
+  val FirstRetry: FiniteDuration = FiniteDuration(1, TimeUnit.MINUTES)
+  val MaxRetry: FiniteDuration   = FiniteDuration(30, TimeUnit.MINUTES)
 }

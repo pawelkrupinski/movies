@@ -138,10 +138,10 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     val filed   = mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
     val dropped = mutable.ArrayBuffer.empty[String]
     val sink = new IdentityTraceStore {
-      def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = {
+      def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit = {
         dropped ++= removed
         filed.filterInPlace((_, trace) => !removed(trace.family))
-        added().iterator.foreach(trace => filed(trace.listing) = trace)
+        added.iterator.flatMap(_.build()).foreach(trace => filed(trace.listing) = trace)
       }
     }
     val model = new IncrementalResolver(new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver, traces = sink)
@@ -157,5 +157,18 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     model.listingsGone(Seq(bare.key))
     dropped should not be empty
     filed.keySet shouldBe Set(credited.key)
+  }
+
+  // A drain racing the wiring's stop could hand the closed store one more family: it must keep nothing, and
+  // not throw the rejection into the model (whose failure handler would rebuild it mid-shutdown).
+  "a closed Mongo trace store" should "build nothing it is handed, and not throw" in {
+    val client = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1") // never connected: nothing is written
+    try {
+      val store = new MongoIdentityTraceStore(client.getDatabase("trace-store-close-spec"))
+      store.close()
+      var built = false
+      noException should be thrownBy store.replace(Set.empty, Seq(FamilyTraces("f", () => { built = true; Nil })))
+      built shouldBe false
+    } finally client.close()
   }
 }

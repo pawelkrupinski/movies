@@ -29,13 +29,13 @@ class ProposalsSpec extends AnyFlatSpec with Matchers {
     def trace(venue: String, title: String, blocker: Option[String]) =
       ListingTrace(ListingKey.Published(venue, title, Some(2025), Seq("Jonas Selberg Augustsén")), "f", None, "BelowThreshold", Nil, None, blocker = blocker)
     val traces = new InMemoryIdentityTraceStore
-    traces.replace(Set.empty, () => Seq(
+    traces.replace(Set.empty, FamilyTraces.of(Seq(
       trace("Kino Muza", "Wyznania szwedzkiego mężczyzny", Some("search:found-nothing")),
       trace("Kino Kosmos", "WYZNANIA SZWEDZKIEGO MĘŻCZYZNY", Some("search:found-nothing")),  // one title: asked once
       trace("Kino Muza", "Dyrygent", Some("rule:below-the-rating-cut")),
       trace("Kino Muza", "Warsztaty ceramiczne", Some("not-a-film:event")),                  // judged already
       trace("Kino Muza", "Lalka", None),                                                     // resolved
-      trace("Kino Muza", "Pianista - Kino Konesera", Some("search:found-nothing"))))
+      trace("Kino Muza", "Pianista - Kino Konesera", Some("search:found-nothing")))))
     val index = new ProposalIndex(new InMemoryProposalStore)
     index.put(StoredProposal(ProposalIndex.keyOf("Pianista - Kino Konesera"), "Pianista - Kino Konesera", Proposal("film", Some("The Pianist"), Some(2002)), "m", clock.instant()))
     val asked = mutable.ArrayBuffer.empty[ProposalAsk]

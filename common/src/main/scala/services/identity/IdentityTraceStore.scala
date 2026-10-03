@@ -45,12 +45,24 @@ object ListingTrace {
     }
 }
 
-/** Where the traces go: replaced a family at a time, as the families themselves are. `added` is BUILT by the
- *  store, when it keeps them — off the resolver's thread for one that writes them ([[MongoIdentityTraceStore]]) — and
- *  lazily, a family at a time, so a store writing in batches holds one batch, not a restore's whole corpus. */
+/** One family's traces as a resolve hands them over: its id, and how to BUILD them — lazily, by the store, off the
+ *  resolver's thread for one that writes them ([[MongoIdentityTraceStore]]), so a store writing in batches holds one
+ *  batch, not a restore's whole corpus. */
+final case class FamilyTraces(family: String, build: () => IterableOnce[ListingTrace])
+
+object FamilyTraces {
+  /** Traces already built, filed by their family. */
+  def of(traces: Seq[ListingTrace]): Seq[FamilyTraces] =
+    traces.groupBy(_.family).toSeq.sortBy(_._1).map { case (family, own) => FamilyTraces(family, () => own) }
+}
+
+/** Where the traces go: replaced a family at a time, as the families themselves are. */
 trait IdentityTraceStore {
-  /** Drop the traces of the families `removed` names, then keep what `added` builds. */
-  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit
+  /** Drop the traces of the families `removed` names, then keep what `added` builds. A family handed over again is
+   *  removed in the same call or an earlier one (the model re-resolved it), so its earlier traces never stand beside. */
+  def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit
+  /** Stop writing: what is still queued is dropped, and a later [[replace]] keeps nothing. */
+  def close(): Unit = ()
 }
 
 /** The trace READ both ways, for `/admin/identity/traces`: a rule's listings, a film's, a title's, and every rule's count. */
@@ -100,8 +112,8 @@ object IdentityTraceReads {
 /** Traces held in memory, written and read as `identity_traces` is — for tests and Mongo-less runs. */
 final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityTraceReads {
   private val held = scala.collection.mutable.LinkedHashMap.empty[ListingKey, ListingTrace]
-  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = synchronized {
-    held.filterInPlace((_, trace) => !removed(trace.family)); added().iterator.foreach(trace => held(trace.listing) = trace)
+  def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit = synchronized {
+    held.filterInPlace((_, trace) => !removed(trace.family)); added.iterator.flatMap(_.build()).foreach(trace => held(trace.listing) = trace)
   }
   private def all = synchronized(held.values.toSeq)
   def byRule(rule: String, limit: Int)  = all.filter(_.rules.contains(rule)).take(limit)
@@ -115,7 +127,7 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityT
 
 object IdentityTraceStore {
   /** Keeps nothing, and builds nothing: a model whose decisions no one reads the rules of. */
-  val Discard: IdentityTraceStore = (_: Set[String], _: () => IterableOnce[ListingTrace]) => ()
+  val Discard: IdentityTraceStore = (_: Set[String], _: Seq[FamilyTraces]) => ()
 }
 
 /** The traces in `identity_traces`: one document per listing, `_id` its serialised key, indexed on its rule ids
@@ -124,18 +136,18 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   import MongoIdentityTraceStore._
   private val Timeout = 60.seconds
   private val logger  = play.api.Logger(getClass)
-  // One thread, so each family's drop and write land in the order the model replaced it; a resolve only
+  // One writer thread, each family's drop and write landing in the order the model replaced it; a resolve only
   // hands its families over. A trace is diagnostics: a failed write is logged and never fails a projection.
-  private val writer = java.util.concurrent.Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("identity-traces").factory())
+  private val writes = new CoalescedTraceWrites(write, (removed, e) =>
+    logger.warn(s"identity traces: ${removed.size} family drop(s) and their re-resolved traces not written: $e"))
 
-  def replace(removed: Set[String], added: () => IterableOnce[ListingTrace]): Unit = {
-    writer.execute(() =>
-      try write(removed, added())
-      catch { case scala.util.control.NonFatal(e) => logger.warn(s"identity traces: ${removed.size} family drop(s) and their re-resolved traces not written: $e") })
-  }
+  def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit = writes.replace(removed, added)
+
+  /** Its thread stopped, before the Mongo connection it writes through closes: what waits is dropped unbuilt. */
+  override def close(): Unit = writes.close()
 
   /** Waits for every handed-over write: for a test, or a shutdown that wants them in. */
-  def flush(): Unit = { writer.submit(new Runnable { def run(): Unit = () }).get(); () }
+  def flush(): Unit = writes.flush()
 
   private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
   /** How many trace documents this store has replaced or deleted — those whose content moved. */
@@ -179,6 +191,59 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
       documentsWritten.addAndGet(gone.size.toLong)
     }
   }
+}
+
+/**
+ * The hand-overs a trace store writes on ONE thread, coalesced while that thread is busy: a family removed after it
+ * was handed over is never built (its traces would be dropped by the removal anyway), and a family handed over
+ * again replaces its earlier hand-over. What waits is at most one hand-over per family and the ids removed — never
+ * one queued task per model update: each held its families' decisions with their full traces, and a slow store
+ * under a take-up's or a fill's event stream queued them without bound.
+ *
+ * Writing the coalesced removals first, then every pending family's traces, ends in what writing each hand-over in
+ * turn would: a family's traces handed over after a removal are written after it, and one removed after its
+ * hand-over is dropped from what waits.
+ */
+private[identity] final class CoalescedTraceWrites(write: (Set[String], Iterator[ListingTrace]) => Unit,
+                                                   failed: (Set[String], Throwable) => Unit) {
+  private val removed = scala.collection.mutable.HashSet.empty[String]
+  private val pending = scala.collection.mutable.LinkedHashMap.empty[String, () => IterableOnce[ListingTrace]]
+  private var writing = false
+
+  def replace(gone: Set[String], added: Seq[FamilyTraces]): Unit = synchronized {
+    // Closed: a drain racing the stop keeps nothing, and builds nothing.
+    if (!closed) {
+      gone.foreach { family => removed += family; pending.remove(family) }
+      added.foreach(family => pending(family.family) = family.build)
+      notifyAll()
+    }
+  }
+
+  /** How many families' traces wait to be built and written. */
+  def waiting: Int = synchronized(pending.size)
+
+  /** Waits until everything handed over is written (or dropped by [[close]]). */
+  def flush(): Unit = synchronized { while (writing || removed.nonEmpty || pending.nonEmpty) wait() }
+
+  /** Drops what waits, keeps nothing handed over later, and stops the writer thread — interrupting a write under way. */
+  def close(): Unit = {
+    synchronized { closed = true; removed.clear(); pending.clear(); notifyAll() }
+    writer.interrupt()
+  }
+  private var closed = false
+
+  private val writer = Thread.ofPlatform().daemon().name("identity-traces").start(() =>
+    try while (true) {
+      val (gone, builds) = synchronized {
+        while (!closed && removed.isEmpty && pending.isEmpty) wait()
+        if (closed) throw new InterruptedException("closed")
+        val taken = (removed.toSet, pending.values.toList)
+        removed.clear(); pending.clear(); writing = true
+        taken
+      }
+      try write(gone, builds.iterator.flatMap(_())) catch { case scala.util.control.NonFatal(e) => failed(gone, e) }
+      finally synchronized { writing = false; notifyAll() }
+    } catch { case _: InterruptedException => () })
 }
 
 /** `identity_traces` read for the admin page — through its indexes for a rule and a film; a title is a scan, asked by hand. */
