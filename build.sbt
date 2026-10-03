@@ -497,7 +497,7 @@ addCommandAlias("e2eCorpus",   "e2e/Test/testOnly services.movies.FilmScheduleEn
 addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")
 
 // Per-country convergence legs, one per country, run by `.github/workflows/
-// country-convergence.yml` — NOT by ci.yml, which is already at its 20-runner
+// identity-model-convergence.yml` — NOT by ci.yml, which is already at its 20-runner
 // cap. They carry @CountryScoped, which `e2eShared` and `e2eRest` both exclude,
 // so they never share a JVM with the Polish corpus specs or with each other; the
 // dedicated workflow is what guarantees they run at all. Each

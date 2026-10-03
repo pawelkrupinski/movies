@@ -75,11 +75,11 @@ jobs:
     # is not shipping. An unpublished SHA-tagged image costs registry space and builder time on runners
     # ci's e2e rows have already given back, nothing else.
     # `free-runners` — the job that used to sit here, cancelling any in-flight
-    # `Country convergence` run to take its runners back for the Fly deploy — was
+    # convergence run to take its runners back for the Fly deploy — was
     # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
     # false`. Cancelling a run that lane no longer intends to throw away would
     # destroy real progress rather than merely accelerate a supersede that was
-    # coming anyway. See `country-convergence.yml`'s `concurrency:` block.
+    # coming anyway. See `identity-model-convergence.yml`'s `concurrency:` block.
     #
     # This job used to occupy a concurrent slot at t=0. That slot now goes to
     # `gates` below, for the few seconds it takes to answer the tier gates
@@ -190,7 +190,7 @@ jobs:
     #    dispatch supersedes it. Starting with the legs is the earliest this commit's
     #    answer can exist. (KickConvergenceWiringSpec)
     #
-    # Both suites' lanes are `cancel-in-progress: false` (country-convergence.yml's
+    # Both suites' lanes are `cancel-in-progress: false` (identity-model-convergence.yml's
     # `concurrency:` block), so a run in flight always finishes and a dispatch queues
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
@@ -217,7 +217,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
-              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"
+              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Identity model convergence"
 
     # The flaky-test ledger. Every test job in ci.yml that FAILED reran its failed tests three
     # times and uploaded the ones that passed any rerun as `flaky-*` (scripts/ci/flake_verdict.py);

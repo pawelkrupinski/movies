@@ -19,15 +19,19 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
   private lazy val setup    = RepoFile.read(".github/actions/convergence-setup/action.yml")
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
-  private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/country-convergence.yml"))
+  private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
 
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
 
-  "a verdict leg" should "be hermetic unless its caller says otherwise, and no verdict caller does" in {
+  // The one exception, until `Record scrape fixtures` pins a pair the identity model recorded: the
+  // suite replays the OLD pipeline's pair, so it fills the model's gaps live as an overlay. Hermetic
+  // again — and so bisected again — once that pair is pinned.
+  "a verdict leg" should "be hermetic unless its caller says otherwise, and no verdict caller asks for more than an overlay" in {
     """mode:[\s\S]*?default:\s*hermetic""".r.findFirstIn(leg) shouldBe defined
     // The `mode:` KEY, not any key ending in it (a checkout's `sparse-checkout-cone-mode:`).
-    verdictCallers.foreach(caller => directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).toSeq shouldBe empty)
+    verdictCallers.foreach(caller =>
+      directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).map(_.split("\\s+").last).toSet should be(Set("overlay")))
   }
 
   it should "hand the mode to BOTH suite steps under the name the wiring reads" in {
@@ -191,7 +195,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
-      "              if: failure() && inputs.mode == 'hermetic' && !inputs.identity-model && github.ref == 'refs/heads/main'")
+      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'")
     convergence should include("sample-failed:  ${{ steps.sample.outcome == 'failure' }}")
   }
 

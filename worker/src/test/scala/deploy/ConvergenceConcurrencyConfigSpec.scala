@@ -35,7 +35,7 @@ import org.scalatest.matchers.should.Matchers
 class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
   private def concurrencyOf(path: String) = RepoFile.block(RepoFile.read(path), "concurrency")
 
-  private val Files = Seq(".github/workflows/country-convergence.yml")
+  private val Files = Seq(".github/workflows/identity-model-convergence.yml")
 
   "the convergence workflow" should "queue behind the run in flight rather than cancel it" in {
     Files.foreach { path =>
@@ -70,7 +70,7 @@ class ConvergenceBisectConcurrencySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be started only for a red leg on main, so only a newer red run can supersede it" in {
-    Seq(".github/workflows/country-convergence.yml").foreach { path =>
+    Seq(".github/workflows/identity-model-convergence.yml").foreach { path =>
       withClue(s"$path: ")(RepoFile.jobs(RepoFile.read(path))("request-bisect") should include(
         "if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}"))
     }

@@ -33,7 +33,7 @@ import org.scalatest.matchers.should.Matchers
  *     [[ConvergenceConcurrencyConfigSpec]].)
  */
 class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
-  private lazy val caller   = RepoFile.read(".github/workflows/country-convergence.yml")
+  private lazy val caller   = RepoFile.read(".github/workflows/identity-model-convergence.yml")
   /** Every verdict caller of the leg. The United States ran from a build of its own
    *  (`us-convergence.yml`) until its legs went hermetic; since 2026-09-30 it is a row of
    *  the shared caller, so every rule below reads that one file. */
@@ -183,7 +183,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "gate each country's full leg on that same country's sample" in {
     countries.foreach { case (country, (command, sample)) =>
-      withClue(s"$country: ") { sample shouldBe s"${command}Sample" }
+      // A full row whose order-independence replay runs in a row of its own is the same country's suite.
+      withClue(s"$country: ") { sample shouldBe s"${command.stripSuffix("WithoutOrder")}Sample" }
     }
   }
 

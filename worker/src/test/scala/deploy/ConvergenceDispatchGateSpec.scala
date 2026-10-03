@@ -152,7 +152,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
           else if (Files.isRegularFile(action)) Set(action.toString)
           else Set.empty
         }
-    val roots = Set(".github/workflows/country-convergence.yml", ".github/workflows/country-convergence-leg.yml")
+    val roots = Set(".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml")
     val run = Iterator.iterate((roots, roots)) { case (seen, frontier) =>
       val next = (frontier -- afterTheVerdict).flatMap(referencedBy) -- seen
       (seen ++ next, next)

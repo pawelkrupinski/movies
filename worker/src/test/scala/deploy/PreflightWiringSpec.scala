@@ -29,7 +29,6 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
   /** workflow file → whether its preflight must also check the Android SDK licence. */
   private val Guarded = Map(
     ".github/workflows/android.yml" -> true,
-    ".github/workflows/country-convergence.yml"    -> false,
     ".github/workflows/convergence-bisect.yml"     -> false,
     ".github/workflows/record-scrape-fixtures.yml" -> false
   )

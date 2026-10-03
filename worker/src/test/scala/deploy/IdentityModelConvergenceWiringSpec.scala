@@ -4,44 +4,33 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * `identity-model-convergence.yml`: the pipeline suite's legs asked of the identity model — a
- * measurement of a model no country serves yet, which Main dispatches beside the pipeline suite on
- * the same gate and the same superseding rules, yet must never be mistaken for, or get in the way of,
- * that suite.
+ * `identity-model-convergence.yml`: the country convergence suite — every country's legs, whose films
+ * the identity model decides, as production's are — dispatched by Main on the pipeline-path gate.
  */
 class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/identity-model-convergence.yml")
-  private lazy val suite    = RepoFile.read(".github/workflows/country-convergence.yml")
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
   private lazy val main     = RepoFile.read(".github/workflows/main.yml")
   private lazy val overlay  = RepoFile.read(".github/actions/convergence-overlay-publish/action.yml")
 
-  "the identity model convergence build" should "be dispatched by Main's convergence kick, on the pipeline suite's gate" in {
+  "the convergence suite" should "be dispatched by Main's convergence kick, on the pipeline-path gate" in {
     val triggers = RepoFile.block(workflow, "on")
     triggers should include("workflow_dispatch:")
     Seq("schedule:", "push:", "pull_request:", "workflow_run:", "workflow_call:").foreach(triggers should not include _)
     RepoFile.jobs(main)("kick-convergence") should include(
-      """kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"""")
+      """kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Identity model convergence"""")
     // An edit to this workflow can change its verdict, so it is one of the paths the gate dispatches for.
     RepoFile.read(".github/convergence-paths.txt").linesIterator.map(_.trim).toSeq should contain(
       ".github/workflows/identity-model-convergence.yml")
   }
 
-  /** The fields that say how a country's full spec is split across rows — the only thing the
-   *  two lanes may disagree on. */
-  private val SplitFields = Set("cmd", "order", "orderJob", "orderSuite")
   private val OrderTag    = "services.movies.OrderIndependence"
-  private def specOf(alias: String): String = RepoFile.commandAlias(alias).split(" -- ").head
   private def byCountry(yaml: String): Map[String, Map[String, String]] =
     RepoFile.matrixRows(yaml).map(row => row("country") -> row).toMap
+  private def specOf(alias: String): String = RepoFile.commandAlias(alias).split(" -- ").head
 
-  it should "measure every country the pipeline suite does, on the same budgets and heap" in {
-    RepoFile.matrixRows(workflow).map(_ -- SplitFields) shouldBe RepoFile.matrixRows(suite).map(_ -- SplitFields)
-    // ...and replay the same spec for each: a split changes which row runs a test, never which tests run.
-    val pipeline = byCountry(suite)
-    byCountry(workflow).foreach { case (country, row) =>
-      withClue(s"$country: ")(specOf(row("cmd")) shouldBe specOf(pipeline(country)("cmd")))
-    }
+  it should "run every country" in {
+    byCountry(workflow).keySet shouldBe Set("poland", "germany", "united-kingdom", "spain", "united-states")
   }
 
   /** Germany's three lockstep replays were ~5 of the 11.3 minutes of the lane's slowest row (run
@@ -73,13 +62,9 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "decide its legs' films by the identity model" in {
-    RepoFile.jobs(workflow)("leg") should include regex """identity-model:\s+true"""
-  }
-
-  /** The pipeline's pair was recorded by the PIPELINE; the model's enrichment gaps are filled live and
-   *  published as an overlay beside it — so the next dispatch replays more and fetches less. */
-  it should "fill and publish the model's gaps as an overlay, never into the pipeline's pair" in {
+  /** While the pinned pair is one the OLD pipeline recorded, the model's enrichment gaps are filled live
+   *  and published as an overlay beside it — so the next dispatch replays more and fetches less. */
+  it should "fill and publish the model's gaps as an overlay, never into the recorded pair" in {
     RepoFile.jobs(workflow)("leg") should include regex """mode:\s+overlay"""
     overlay should include("identity-overlay-")
     val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
@@ -95,35 +80,31 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
   }
 
-  it should "never mark the pipeline's corpus green from a new-model leg" in {
+  it should "never mark a corpus green from an overlay leg" in {
     val conditions = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-publish") => cond }.toSeq
     conditions should not be empty
     conditions.foreach(cond => cond should (include("inputs.mode == 'record'") or include("inputs.mode != 'overlay'")))
   }
 
-  /** Its own lane — neither suite queues behind, or evicts the pending run of, the other — under the
-   *  pipeline suite's superseding rules: finish the run in flight, keep one newer run pending, and let
-   *  each newer dispatch replace that pending one. */
-  it should "hold a lane of its own, superseded the way the pipeline suite's is" in {
+  /** One lane: finish the run in flight, keep one newer run pending, and let each newer dispatch replace
+   *  that pending one. */
+  it should "hold one lane, superseding only the run that waits" in {
     val concurrency = RepoFile.block(workflow, "concurrency")
     concurrency should include("group: identity-model-convergence")
     concurrency should include("cancel-in-progress: false")
-    RepoFile.block(suite, "concurrency") should include("cancel-in-progress: false")
-    RepoFile.block(suite, "concurrency") should not include "identity-model-convergence"
   }
 
-  it should "request no bisect and file no issue: a red leg is a finding about the model" in {
-    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg")
+  /** A red hermetic leg on main asks the bisect which commit did it; an overlay leg replays live fills,
+   *  so it leaves no request — the bisect needs a replay that does not move. */
+  it should "request a bisect for a red hermetic leg, and file an issue for a failed scheduled run" in {
+    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "report")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq
     requests should not be empty
-    requests.foreach(_ should include("!inputs.identity-model"))
+    requests.foreach(_ should include("inputs.mode == 'hermetic'"))
   }
 
-  "the convergence leg" should "cut over its own country only when asked, and on every sbt step" in {
-    val cutovers = leg.linesIterator.filter(_.contains("KINOWO_IDENTITY_CUTOVER:")).map(_.trim).toSeq
-    cutovers should not be empty
-    cutovers.distinct shouldBe Seq("KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}")
-    cutovers.size shouldBe leg.linesIterator.count(_.contains("KINOWO_IDENTITY_LOOKUPS:"))
-    RepoFile.block(leg, "identity-model") should include("default: false")
+  "the convergence leg" should "set no identity switch: its films are the identity model's, as production's are" in {
+    leg should not include "KINOWO_IDENTITY_CUTOVER"
+    leg should not include "identity-model:"
   }
 }

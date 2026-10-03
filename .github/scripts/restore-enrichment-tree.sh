@@ -42,20 +42,6 @@ if gh release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber 2>/
 elif [ "$mode" != "record" ]; then
     echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest five) — a hermetic leg replays nothing else"
     exit 3
-else
-    # One-off bootstrap: before the release existed, legs published artifacts. Read the newest
-    # of those so the switch doesn't throw away captures already paid for. Conclusion
-    # deliberately NOT filtered — a leg that failed or was cancelled still recorded everything
-    # it enriched before it stopped.
-    echo "no asset in release $TAG — falling back to the newest artifact"
-    for run in $(gh run list --workflow "Country convergence" --limit 10 \
-                 --json databaseId --jq '.[].databaseId' 2>/dev/null); do
-        [ "$run" = "${GITHUB_RUN_ID:-}" ] && continue
-        if gh run download "$run" --name "enrichment-fixtures-$code" --dir "$archives" 2>/dev/null; then
-            echo "enrichment fixtures from run $run"
-            break
-        fi
-    done
 fi
 
 tree=$(compgen -G "$archives/*" | head -1 || true)

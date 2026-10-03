@@ -22,7 +22,7 @@ class KickConvergenceWiringSpec extends AnyFlatSpec with Matchers {
    * fail the job on a workflow that is not there.
    */
   "kick-convergence" should "dispatch the convergence builds that run every country, and not the retired US one" in {
-    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "Identity model convergence"""")
+    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Identity model convergence"""")
     job("kick-convergence") should not include "US convergence"
   }
 

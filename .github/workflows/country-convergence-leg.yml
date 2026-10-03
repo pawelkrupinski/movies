@@ -156,7 +156,7 @@ on:
             # record, publish — plus the transient failures a hermetic replay needs, and the
             # PINNED pair the hermetic legs replay once the full leg's boot is complete.
             #
-            # `overlay` (only `Identity model convergence`): the pinned pair, replayed as hermetic
+            # `overlay` (`Identity model convergence` until a pair recorded by the identity model is pinned): the pinned pair, replayed as hermetic
             # replays it, plus the identity model's own overlay — and what both lack is fetched live,
             # recorded and published as that overlay (convergence-overlay-publish), never into the pair.
             mode:
@@ -169,17 +169,6 @@ on:
                     Run the identity resolver's per-listing lookup sweep after the boot
                     (`KINOWO_IDENTITY_LOOKUPS`): a `record` leg records its answers into the tree,
                     a `hermetic` one fails on each the tree lacks.
-                required: false
-                type: boolean
-                default: false
-            # THE NEW MODEL. `true` runs the leg with `KINOWO_IDENTITY_CUTOVER` naming its country:
-            # scrapes land in the identity model's listing intake and films are decided by its
-            # projection instead of the staging/settle/reaper pipeline (CountryConvergenceBehaviour's
-            # `rescrapeCutover`), so every claim the leg makes is asked of the new model. Only the
-            # dispatch-only `Identity model convergence` build sets it, and its red leg is a finding
-            # about the model, never a pipeline regression to bisect.
-            identity-model:
-                description: Decide the leg's films by the identity model (KINOWO_IDENTITY_CUTOVER) rather than the pipeline.
                 required: false
                 type: boolean
                 default: false
@@ -496,7 +485,6 @@ jobs:
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
                   KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
-                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
 
             # The sample's own verdict, the moment it ends — as the sample job posted it when
             # IT ended, minutes before the full leg behind it reports (scripts/ci/leg-verdict.sh,
@@ -600,7 +588,6 @@ jobs:
                   # is published: the convergence row is the one writer.
                   KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
-                  KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
                   # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the
@@ -719,7 +706,7 @@ jobs:
             # step for both, where the two jobs each carried one: `sample-failed` is the only
             # thing that told them apart, and the sample step's outcome says it directly.
             - uses: ./.github/actions/convergence-bisect-request
-              if: failure() && inputs.mode == 'hermetic' && !inputs.identity-model && github.ref == 'refs/heads/main'
+              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'
               with:
                   country:        ${{ inputs.country }}
                   code:           ${{ inputs.code }}

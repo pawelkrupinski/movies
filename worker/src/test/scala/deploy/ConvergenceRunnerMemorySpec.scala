@@ -26,7 +26,7 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
 
   private lazy val setup    = RepoFile.read(".github/actions/convergence-setup/action.yml")
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
-  private lazy val callers  = Seq(".github/workflows/country-convergence.yml").map(RepoFile.read)
+  private lazy val callers  = Seq(".github/workflows/identity-model-convergence.yml").map(RepoFile.read)
 
   /** `ubuntu-latest`, which every convergence job runs on. */
   private val RunnerGb = 16

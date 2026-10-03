@@ -233,7 +233,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
          |""".stripMargin)
     val path = s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}"
     val out = Process(Seq("bash", Script.toString, "last-green"), history.repo.root.toFile,
-      "PATH" -> path, "COUNTRY" -> "poland", "WORKFLOW" -> "Country convergence", "RUN_ID" -> "30").!!.trim
+      "PATH" -> path, "COUNTRY" -> "poland", "WORKFLOW" -> "Identity model convergence", "RUN_ID" -> "30").!!.trim
 
     out shouldBe history.good
   }

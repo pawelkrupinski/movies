@@ -27,7 +27,7 @@ on:
 # ACROSS THE ACCOUNT. On a push to main, `main.yml` adds one more at t=0 (its
 # `preflight`; everything else there `needs: ci` and takes slots these have given
 # back), and the other FOUR are headroom, deliberately: Main is never alone on the
-# account. Country convergence (which Main itself kicks off), dispatched identity
+# account. The convergence suite (which Main itself kicks off), dispatched identity
 # runs, and the mobile workflows hold runners for 20-40 min, and with ci filling 19
 # slots every one of their jobs pushed one of these rows into a queue — measured
 # over 12 Main runs to 2026-10-01, ci rows started a median 1.2-2.0 min late, and

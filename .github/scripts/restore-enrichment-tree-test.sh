@@ -14,8 +14,7 @@ printf 'recorded\n' > "$work/src/test/resources/fixtures/enrichment-uk/api.themo
 ( cd "$work/src" && tar -cf - test | zstd -q -c > "$work/enrichment-uk.tar.zst" )
 printf 'not an archive' > "$work/enrichment-uk-broken.tar.zst"
 
-# `release download` hands over $STUB_ASSET when set, as a release holding it would; every run
-# lookup comes back empty, as it does once the artifact bootstrap has aged out.
+# `release download` hands over $STUB_ASSET when set, as a release holding it would.
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 if [ "$1 $2" = "release download" ]; then
@@ -24,7 +23,6 @@ if [ "$1 $2" = "release download" ]; then
   cp "$STUB_ASSET" "$dir/"
   exit 0
 fi
-[ "$1 $2" = "run list" ] && exit 0
 exit 1
 STUB
 chmod +x "$work/bin/gh"

@@ -23,19 +23,18 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
 
   /** The workflows that run a HERMETIC pipeline convergence leg — the only kind that requests a
    *  bisect — found by what they call, not listed. A recording leg (`mode: record`) has nothing to
-   *  bisect, and a new-model leg (`identity-model: true`) measures a model, not a regression. */
+   *  bisect. */
   private val convergenceWorkflows =
     RepoFile.workflows().map(_.getPath).filter { p =>
       val yml = RepoFile.read(p)
-      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty &&
-        """identity-model:\s+true""".r.findFirstIn(yml).isEmpty
+      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty
     }
 
   private def nameOf(yml: String) =
     yml.linesIterator.collectFirst { case s"name: $n" => n.trim }.getOrElse(fail("no name"))
 
   "the convergence workflows" should "be found" in {
-    convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Country convergence")
+    convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Identity model convergence")
   }
 
   they should "each dispatch the bisect when a leg on main failed" in {
@@ -73,7 +72,7 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
       ("""gh workflow run ([\w.-]+\.ya?ml)""".r.findAllMatchIn(all).map(m => nameOf(byFile(m.group(1)))) ++
         """kick-convergence\.sh "\$GITHUB_SHA" "\$GITHUB_REF_NAME" (.*)""".r.findAllMatchIn(all)
           .flatMap(m => "\"([^\"]+)\"".r.findAllMatchIn(m.group(1)).map(_.group(1)))).toSet
-    dispatched should contain ("Country convergence")
+    dispatched should contain ("Identity model convergence")
     byFile.foreach { case (file, yml) =>
       if (yml.contains("workflow_run:"))
         withClue(s"$file: ")(dispatched.filter(yml.contains) shouldBe empty)

@@ -22,7 +22,7 @@
 #
 # Environment:
 #   COUNTRY            the leg's country as its job is named (`poland`, `united-states`)
-#   WORKFLOW           the calling workflow's name (`Country convergence`)
+#   WORKFLOW           the calling workflow's name (`Identity model convergence`)
 #   RUN_ID             this run, excluded from the green search
 #   STEP_COMMAND       run once per candidate with the working tree at that commit; exits
 #                      0 good, 1 bad, 125 untestable (git bisect's own convention)

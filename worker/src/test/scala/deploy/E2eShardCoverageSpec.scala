@@ -59,7 +59,7 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
    * The other direction: a spec that gave up its shard must ALSO have given up
    * its tag, or `e2eRest`'s tag-exclusion drops it and nothing runs it at all.
    *
-   * @CountryScoped specs are neither — they belong to country-convergence.yml,
+   * @CountryScoped specs are neither — they belong to identity-model-convergence.yml,
    * which names each one in its own alias, and `e2eRest` excludes that tag too.
    */
   it should "not name any spec that rides the rest shard" in {

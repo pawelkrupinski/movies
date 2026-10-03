@@ -21,7 +21,7 @@
 # with a personal token, and a red run from a normal push was never bisected. A dispatch is the
 # one event the GITHUB_TOKEN may raise. (ConvergenceBisectTriggerSpec)
 #
-# By hand: `gh workflow run convergence-bisect.yml -f suite="Country convergence" -f run-id=<red run>`.
+# By hand: `gh workflow run convergence-bisect.yml -f suite="Identity model convergence" -f run-id=<red run>`.
 #
 # CONFIRMED first: the last green commit is replayed once under the red leg's recording, since
 # the pair is re-pinned nightly and a red the new pair brings is no commit's doing.
@@ -44,7 +44,7 @@ on:
                 required: true
                 type: choice
                 options:
-                    - Country convergence
+                    - Identity model convergence
             run-id:
                 description: The red run's id — the one that left the `bisect-request-*` artifacts.
                 required: true

@@ -22,7 +22,7 @@ import org.scalatest.TagAnnotation;
  * {@code e2eRest} shard in CI — and run only one-per-JVM by name, via the
  * {@code convergencePoland} / {@code convergenceGermany} / {@code convergenceUk}
  * aliases. Those are dispatched as three parallel JOBS by
- * .github/workflows/country-convergence.yml, one country each.
+ * .github/workflows/identity-model-convergence.yml, one country each.
  *
  * If you add a country-scoped spec, tag it and give it its own alias + matrix
  * leg. Do NOT fold it into an existing shard.
