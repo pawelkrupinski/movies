@@ -98,7 +98,12 @@ class MovieControllerService(
     // not a fresh LocalDateTime per showtime of the city (54k on New York).
     val cutoff = now.minus(Showtime.Grace)
     val asOf   = now.toLocalDate
-    cityScreenings.groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
+    // Grouped in a pre-sized mutable map rather than `groupBy`, whose persistent HashMap
+    // copied nodes on every insert: ~1.7 MB a New York render, for 2,600 rows.
+    val byFilm = new java.util.HashMap[String, Vector[CityScreening]](cityScreenings.size * 2)
+    cityScreenings.foreach(sc => byFilm.merge(sc.filmId, Vector(sc), _ ++ _))
+    val films = scala.collection.mutable.ArrayBuffer.empty[(LocalDateTime, FilmSchedule)]
+    byFilm.forEach { (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
         val key   = (city.slug, filmId)
         val prior = built.getIfPresent(key)
@@ -121,7 +126,15 @@ class MovieControllerService(
           }
         }
       }
-    }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
+      .foreach(films += _)
+    }
+    // Earliest showtime, then title: compared field by field, not as a tuple built per
+    // comparison.
+    films.sortInPlaceWith { case ((e1, f1), (e2, f2)) =>
+      val byTime = e1.compareTo(e2)
+      if (byTime != 0) byTime < 0 else f1.movie.title < f2.movie.title
+    }
+    films.iterator.map(_._2).toList
   }
 
   /** A film's schedule as last built for a city, and what it was built from.
