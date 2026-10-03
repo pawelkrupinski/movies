@@ -38,10 +38,18 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
       s"""{ "dateTime": $at }""",
       s"""{ "dateTime": $at, "bookingUrl": null, "room": null, "extra": 1 }""")}, ${film()}] }""",
     s"""{ "_id": "Helios", "lastBarren": { "at": $at, "outcome": "error" } }""",
-    s"""{ "_id": "Helios", "films": [${film(s"""{ "bookingUrl": "https://x/1" }""")}] }""")
+    s"""{ "_id": "Helios", "films": [${film(s"""{ "bookingUrl": "https://x/1" }""")}] }""",
+    // Every field of a film set, nulls where a stored optional may hold one, and an unknown field.
+    s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka", "runtimeMinutes": 120 }, "posterUrl": "https://p/1", "filmUrl": null,
+       |  "synopsis": "S", "cast": ["A", "B"], "director": ["D"], "showtimes": [{ "dateTime": $at }], "externalIds": { "tmdb": "1", "imdb": "tt1" },
+       |  "trailerUrl": "https://t/1", "ageRating": "12", "retired": 1 }] }""".stripMargin,
+    // A film missing a required field: the macro fails the whole row, and so must the streamed read.
+    s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka" }, "cast": [], "showtimes": [], "externalIds": {} }] }""",
+    s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka" }, "cast": [], "director": [], "externalIds": {} }] }""")
 
-  "the archive's registry" should "read and write showtimes with the hand-written codec" in {
+  "the archive's registry" should "read and write showtimes and films with the hand-written codecs" in {
     ScrapeArchiveCodecs.registry.get(classOf[Showtime]) shouldBe ShowtimeCodec
+    ScrapeArchiveCodecs.registry.get(classOf[ArchivedFilmDto]).getClass.getName should include("StreamingArchivedFilmCodec")
   }
 
   "an archived listing" should "read every stored shape exactly as the macro codecs read it" in {
@@ -56,10 +64,23 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be written exactly as the macro codecs write it" in {
-    val row = both(rows.head)._1.get
-    def written(codec: Codec[StoredScrapeDto]) = {
-      val out = new BsonDocument(); codec.encode(new BsonDocumentWriter(out), row, EncoderContext.builder().build()); out
+    rows.flatMap(both(_)._1.toOption).foreach { row =>
+      def written(codec: Codec[StoredScrapeDto]) = {
+        val out = new BsonDocument(); codec.encode(new BsonDocumentWriter(out), row, EncoderContext.builder().build()); out
+      }
+      written(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])) shouldBe written(macroRegistry.get(classOf[StoredScrapeDto]))
     }
-    written(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])) shouldBe written(macroRegistry.get(classOf[StoredScrapeDto]))
+  }
+
+  it should "read a film's booking URLs split at the film's prefix, before or after its showtimes" in {
+    services.movies.SplitBookingUrlShapes.rows.foreach { case (fields, showtimes) =>
+      val json = s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka" }, "cast": [], "director": [], $fields, "externalIds": {} }] }"""
+      withClue(json) {
+        val films = both(json)._2.get.films.get
+        films.head.showtimes shouldBe showtimes
+        films.head.showtimes.map(_.bookingUrl) shouldBe showtimes.map(_.bookingUrl)
+        films.head.showtimes.exists(_.awaitsRowPrefix) shouldBe false
+      }
+    }
   }
 }

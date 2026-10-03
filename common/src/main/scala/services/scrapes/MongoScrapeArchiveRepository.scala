@@ -137,14 +137,18 @@ object ScrapeArchiveCodecs extends PersistedCodecs {
   type WritingNone  = EmptyTuple
 
   /** Every showtime through the movies' hand-written [[ShowtimeCodec]] (`Showtime` has no macro
-   *  codec): a venue's listing carries every showtime it scraped, the identity intake reads a venue's
-   *  back as each scrape lands, and the projection the whole archive — on the US corpus the macro's
-   *  per-showtime machinery was most of the archive's decode, ~10% of a convergence leg's CPU (JFR).
-   *  `ScrapeArchiveCodecsSpec` pins it to the macro's reading. */
-  val registry: CodecRegistry = fromRegistries(
-    fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
-    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
-    DEFAULT_CODEC_REGISTRY)
+   *  codec), and every film through [[StreamingArchivedFilmCodec]], which can store its booking URLs
+   *  split at their shared prefix: a venue's listing carries every showtime it scraped, the identity
+   *  intake reads a venue's back as each scrape lands, and the projection the whole archive — on the
+   *  US corpus the macro's per-showtime machinery was most of the archive's decode, ~10% of a
+   *  convergence leg's CPU (JFR). `ScrapeArchiveCodecsSpec` pins both to the macro's reading. */
+  val registry: CodecRegistry = {
+    val macros = fromRegistries(
+      fromCodecs(JavaTimeCodecs.localDateTime, ShowtimeCodec),
+      fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
+      DEFAULT_CODEC_REGISTRY)
+    fromRegistries(fromCodecs(new StreamingArchivedFilmCodec(macros.get(classOf[Movie]))), macros)
+  }
 }
 
 /**

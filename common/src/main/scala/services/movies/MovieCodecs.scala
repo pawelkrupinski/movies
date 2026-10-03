@@ -403,7 +403,7 @@ private[movies] final class StreamingSlotCodec(macroCodec: Codec[StoredSlotDto],
 }
 
 /** The BSON reads the hand-written decoders share. Stateless. */
-private[movies] object BsonReads {
+private[services] object BsonReads {
   def optionalString(r: BsonReader): Option[String] =
     if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readString())
 
