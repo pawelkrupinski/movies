@@ -26,7 +26,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private val Record  = "Record ${{ inputs.country }}'s corpus"
   private val Close   = "Close the tunnel to prod Mongo"
   private val Pack    = "Pack ${{ inputs.country }}'s corpus"
-  private val Sample  = "Run the ${{ inputs.country }} sample over the tree this leg records"
+  private val Sample  = "Run the ${{ inputs.country }} sample ahead of the suite"
   private val InRecordingRow = "inputs.mode == 'record' && matrix.phase == 'convergence'"
 
   private def at(marker: String): Int = {

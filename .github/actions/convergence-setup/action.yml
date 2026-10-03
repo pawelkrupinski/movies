@@ -1,12 +1,13 @@
 # Everything a convergence leg needs BEFORE it can run a spec: a real database, the
 # recorded corpus and its production baseline, the enrichment tree, and a warm sbt.
 #
-# Extracted because there are now two jobs that need all of it — the fast sample gate
-# and the full leg behind it — and the setup is not incidental: it is ~180 lines of
-# hard-won detail about which storage survives (artifacts and a rolling release, never
-# the actions cache, which evicts silently at this repo's 9.46 GB), and duplicating it
-# would guarantee the two drift. A drifted copy is worse than no gate: the sample would
-# pass on inputs the full leg never sees.
+# Extracted because more than one job needs all of it — every row of a country's leg
+# (whose sample and full suite share this one setup) and the bisect replaying a red leg's
+# sample — and the setup is not incidental: it is ~180 lines of hard-won detail about
+# which storage survives (artifacts and a rolling release, never the actions cache, which
+# evicts silently at this repo's 9.46 GB), and duplicating it would guarantee the copies
+# drift. A drifted copy is worse than no gate: the bisect's sample would pass on inputs
+# the leg never saw.
 name: Convergence leg setup
 description: MongoDB, recorded fixtures and a warm sbt for a country's convergence leg.
 
@@ -27,14 +28,14 @@ inputs:
     default: ''
   hermetic-pair:
     description: >-
-      `<corpus run> <recorded at> <tree asset>` — a pair an earlier job of this run already
-      resolved, so every job of one leg replays the same one. Empty resolves it afresh.
+      `<corpus run> <recorded at> <tree asset>` — a pair a red leg already resolved, so the
+      bisect replays the same one it did. Empty resolves the pinned pair afresh.
     required: false
     default: ''
 
 outputs:
   hermetic-pair:
-    description: The recorded pair this job restored (hermetic mode), for the jobs after it.
+    description: The recorded pair this job restored (hermetic mode), for the steps after it.
     value: ${{ steps.pair.outputs.pair }}
 
 runs:

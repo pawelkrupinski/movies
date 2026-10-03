@@ -42,7 +42,15 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     overlay should include("identity-overlay-")
     val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
     Seq("enrichment-${{ inputs.code }}.tar.gz", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)
-    leg should include regex """uses: ./.github/actions/convergence-overlay-publish\s+if: always\(\) && inputs.mode == 'overlay'"""
+    // ONE overlay publisher per leg, under `always()` and after the sample: the sample runs in the
+    // full row's job, so a red sample — which ends that job before the suite — still publishes what
+    // it fetched, as the separate sample job's own publish did.
+    val publishes = leg.linesIterator.sliding(2).collect {
+      case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-overlay-publish") => cond.trim }.toSeq
+    publishes shouldBe Seq("if: always() && matrix.phase == 'convergence' && inputs.mode == 'overlay'")
+    val convergence = RepoFile.block(leg, "convergence")
+    convergence.indexOf("- name: Run the ${{ inputs.country }} sample ahead of the suite") should be <
+      convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
   }
 
   it should "never mark the pipeline's corpus green from a new-model leg" in {

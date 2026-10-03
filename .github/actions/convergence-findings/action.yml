@@ -7,8 +7,8 @@
 # only by downloading a 5 MB job log and grepping it. Rendered here they are the first
 # thing on the page, for a passing run as much as a failing one.
 #
-# A composite action rather than a copy per job: the leg runs the suite from two jobs
-# now (the full leg and, for a country whose corpus has outgrown one, the
+# A composite action rather than a copy per job: the leg runs the suite from two matrix
+# rows now (the full leg and, for a country whose corpus has outgrown one, the
 # order-independence replay), and both want the same report. The `grep` below is the
 # part that must not drift — it is a list of what counts as narration versus
 # application logging, and a copy that fell behind would silently stop rendering the

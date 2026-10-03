@@ -107,11 +107,11 @@ jobs:
     # needs the boot, which is where every request is made; the replays re-ask nothing.
     #
     # Each country's corpus capture and sample run as the FIRST STEPS of its full leg's job
-    # here (the leg skips its separate sample job in `record` mode), so `job` is that one job's
+    # here (as they are in every leg; there is no separate sample job), so `job` is that one job's
     # ceiling over all of them: the corpus steps' own fifteen (tunnel and read), the sample's
     # `sampleSuite`, the full leg's `suite`, plus ten minutes for setup and the publish
     # (HermeticConvergenceWiringSpec). The United States' sample gets the same 20 as everyone
-    # else rather than a verdict leg's 60 so the sum stays under GitHub's 360: whatever a cold
+    # else (as it does in the verdict legs) so the sum stays under GitHub's 360: whatever a cold
     # sample leaves unfetched, the full leg behind it fetches over the same tree anyway.
     enrichment:
         name: enrichment (${{ matrix.country }})

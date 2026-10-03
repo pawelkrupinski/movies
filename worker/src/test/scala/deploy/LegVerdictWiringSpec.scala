@@ -22,11 +22,10 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
 
   private lazy val leg = RepoFile.jobs(RepoFile.read(LegFile))
 
-  /** The jobs that run steps and must each report themselves: the leg workflow's sample and
-   *  full jobs (a recording's corpus capture is a step of the full job, reported with it —
-   *  RecordCorpusInLegWiringSpec). */
-  private lazy val legJobs: Seq[(String, String)] =
-    Seq("sample" -> leg("sample"), "convergence" -> leg("convergence"))
+  /** The jobs that run steps and must each report themselves: the leg workflow's one job (a
+   *  recording's corpus capture and every leg's sample are steps of it — RecordCorpusInLegWiringSpec,
+   *  ConvergenceLegWiringSpec). */
+  private lazy val legJobs: Seq[(String, String)] = Seq("convergence" -> leg("convergence"))
 
   "every recorder leg" should "post its verdict as its LAST step, whatever happened before it" in {
     val problems = legJobs.flatMap { case (name, body) =>
@@ -40,6 +39,22 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
     problems shouldBe empty
+  }
+
+  /** The sample's verdict, the moment the SAMPLE ends — as the sample job posted it when that job
+   *  ended, minutes before the full leg behind it reports. Folded into the full leg's job it would
+   *  otherwise surface only with the row's verdict, hours later on a green sample. One row posts it,
+   *  so the order row cannot race the convergence row for the one status context. */
+  "every hermetic or overlay leg" should "post its sample's verdict straight after the sample step" in {
+    val body   = leg("convergence")
+    val steps  = body.split("\n\\s+- (?=uses:|name:)").toSeq.drop(1)
+    val sample = steps.indexWhere(_.startsWith("name: Run the ${{ inputs.country }} sample ahead of the suite"))
+    sample should be >= 0
+    val verdict = steps(sample + 1)
+    verdict should startWith(Action)
+    verdict should include("if: always() && inputs.mode != 'record' && matrix.phase == 'convergence' && steps.sample.outcome != 'skipped'")
+    verdict should include("leg:    sample (${{ inputs.country }})")
+    verdict should include("status: ${{ steps.sample.outcome }}")
   }
 
   it should "hold the statuses: write the verdict needs" in {

@@ -7,11 +7,11 @@
 # replayed back out, so the archive's round-trip is on the path too.
 #
 # One leg per country, in parallel and independent of each other. The sample gate
-# and the full run for a country both live in `country-convergence-leg.yml`, called
-# once per country from the matrix below, the United States included — that file explains why
-# the pair has to be its own workflow rather than two matrix jobs here (`needs:` joins JOBS, not matrix
-# legs, so one shared `needs: sample` made every country wait for every other
-# country's sample).
+# and the full run for a country both live in `country-convergence-leg.yml` — the sample
+# as the first suite step of the full run's job — called once per country from the matrix
+# below, the United States included, so a country whose sample fails stops only itself.
+# (When the sample was a job of its own, one shared `needs: sample` here made every country
+# wait for every other country's sample — `needs:` joins JOBS, not matrix legs.)
 #
 # Deliberately NOT part of ci.yml: that workflow runs against a hard 20-runner
 # budget (1 test + 1 integration + 4 e2e + 1 mobile + 13 page-tests), and three
@@ -118,9 +118,10 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    # `job`/`suite` and `sampleJob`/`sampleSuite` are this country's
-                    # timeout budgets, in minutes. The first four carry the numbers the leg
-                    # has always defaulted to. Spain joins them on the same budget: 595 venues
+                    # `job`/`suite`/`sampleSuite` are this country's timeout budgets, in
+                    # minutes: the sample and the suite are steps of ONE job, so `job` clears
+                    # both step ceilings together plus ~15 minutes of setup and publish. The
+                    # first four carry the numbers the leg defaults to. Spain joins them on the same budget: 595 venues
                     # is between the UK's paced set and Germany's roster, both of which fit it.
                     #
                     # `heap` is the sbt JVM's `-Xmx`, and 4g is what these four have
@@ -140,12 +141,14 @@ jobs:
                     # records), ~20 minutes like the others, so it takes this lane (2026-09-30).
                     # It keeps what it still needs: 10g, since a leg holds the whole corpus
                     # resident (the 2026-09-01/-05 runs died at 8g on a 114-116k-document read
-                    # model), the split-out replay row, and its larger budgets as ceilings.
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
+                    # model), the split-out replay row, and its larger budgets as ceilings. Its
+                    # sample has the others' 20, not the 60 a cold US tree once needed: hermetic,
+                    # it replays in ~2 minutes, and 60 would push its job past GitHub's 360.
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -159,11 +162,10 @@ jobs:
             command:        ${{ matrix.cmd }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
             order-command:                 ${{ matrix.order }}
             # A row without an order replay has no budget for one: the leg's own defaults.
-            order-job-timeout-minutes:     ${{ matrix.orderJob || 135 }}
+            order-job-timeout-minutes:     ${{ matrix.orderJob || 155 }}
             order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
             heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.

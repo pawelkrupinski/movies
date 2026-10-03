@@ -14,13 +14,16 @@ import org.scalatest.matchers.should.Matchers
  * one country's flap cost the day's answer for the other two.
  *
  * The fix is one reusable workflow holding a country's sample and the run behind it,
- * called once per country. That run is ONE job with a matrix the gate plans: a single
- * row for a country that folds order-independence into its standard run, and a second
- * row for the one whose corpus outgrew a single job. That is only correct while three
- * things hold, and none of them is visible at a glance in the YAML:
+ * called once per country. That run is ONE job with a matrix: a single row for a country
+ * that folds order-independence into its standard run, and a second row for the one whose
+ * corpus outgrew a single job. Every row runs the sample as its first suite step, so a red
+ * sample fails the step and the suite behind it never starts — the gate a separate
+ * `sample` job used to be, without its second checkout and setup. That is only correct
+ * while three things hold, and none of them is visible at a glance in the YAML:
  *
- *   - the pair is genuinely chained (`convergence` needs `sample`) inside the
- *     called file, where "the sample" can only mean this country's;
+ *   - the pair is genuinely chained (the sample step ahead of the suite step, in the
+ *     same job, without `continue-on-error` outside a recording) inside the called
+ *     file, where "the sample" can only mean this country's;
  *   - the caller's matrix pairs each country's full alias with the SAME
  *     country's sample alias — a mis-paired row would gate Germany's leg on
  *     Poland's sample and still be green;
@@ -53,28 +56,30 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val countries: Map[String, (String, String)] =
     rows.map(fields => fields("country") -> (fields("cmd"), fields("sample"))).toMap
 
-  /** Every (job ceiling, suite step) budget pair the legs actually run on, labelled.
+  /** Every (job ceiling, step ceilings inside it) budget the legs actually run on, labelled.
    *
    *  The numbers used to be literals inside the leg's two job blocks. They are per-COUNTRY
    *  now — the United States carries larger ceilings than the others — which means the
    *  pairs live in the caller's matrix, with the leg's `default:`s standing in for a
    *  caller that says nothing. Both sources are checked, because a gap that closes in
-   *  either place cancels a leg just as dead. */
+   *  either place cancels a leg just as dead.
+   *
+   *  The steps are the sample's AND the suite's: the sample runs first in every row's job
+   *  (there is no sample job of its own), so each row's ceiling has to clear the two
+   *  together — GitHub expressions have no arithmetic, so the leg cannot add them itself. */
   private def budgetPairs: Seq[(String, Int, Int)] = {
+    val sampleDefault = defaultOf("sample-suite-timeout-minutes")
     val defaults = Seq(
-      ("leg default (full)",   "job-timeout-minutes",        "suite-timeout-minutes"),
-      ("leg default (sample)", "sample-job-timeout-minutes", "sample-suite-timeout-minutes"))
-      .map { case (label, jobKey, suiteKey) => (label, defaultOf(jobKey), defaultOf(suiteKey)) }
-    val orderDefault = Seq(("leg default (order)",
-      defaultOf("order-job-timeout-minutes"), defaultOf("order-suite-timeout-minutes")))
+      ("leg default (full)",  defaultOf("job-timeout-minutes"),       defaultOf("suite-timeout-minutes") + sampleDefault),
+      ("leg default (order)", defaultOf("order-job-timeout-minutes"), defaultOf("order-suite-timeout-minutes") + sampleDefault))
     val perCountry = rows.flatMap { fields =>
       val country = fields("country")
-      Seq((s"$country full",   fields("job").toInt,       fields("suite").toInt),
-          (s"$country sample", fields("sampleJob").toInt, fields("sampleSuite").toInt)) ++
+      val sample  = fields("sampleSuite").toInt
+      Seq((s"$country full", fields("job").toInt, fields("suite").toInt + sample)) ++
         // Only the country that splits its order-independence replay out declares these.
-        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt))
+        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt + sample))
     }
-    defaults ++ orderDefault ++ perCountry
+    defaults ++ perCountry
   }
 
   /** The `default:` under one of the leg's `workflow_call` inputs. */
@@ -194,15 +199,41 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "the single-country leg workflow" should "run its full leg behind its own sample" in {
-    RepoFile.block(leg, "convergence") should include("needs: sample")
+  /** The sample step, first in every row. */
+  private val SampleStep = "Run the ${{ inputs.country }} sample ahead of the suite"
+  private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
+
+  /** The gate is the step ORDER inside one job: a failed step skips every later step that
+   *  is not `always()`/`failure()`, so a red sample stops the suite exactly as a red sample
+   *  JOB stopped the job behind it — provided the sample neither continues on error (only a
+   *  recording does, to record the whole corpus past it) nor is skipped in a row. */
+  "the single-country leg workflow" should "run its full suite behind its own sample, in the same job" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    val sample = RepoFile.step(convergence, SampleStep)
+    convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(s"- name: $SuiteStep")
+    sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
+    withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated: ") {
+      sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe empty
+    }
+    withClue("the suite must not run past a failed sample: ") {
+      RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe empty
+    }
+  }
+
+  /** The separate `sample` job cost every hermetic and overlay leg a second checkout and
+   *  convergence-setup (~1 minute) ahead of the full leg, and one more runner per country
+   *  per push. */
+  it should "hold no sample job, and no `needs:` edge for a row to wait on" in {
+    legJobs shouldBe Seq("convergence")
+    legDirectives should not include "needs:"
+    legDirectives should not include "needs.sample"
   }
 
   it should "leave the concurrency lane to the caller, so its three calls don't cancel each other" in {
     leg.linesIterator.map(_.trim).toList should not contain "concurrency:"
   }
 
-  it should "keep EVERY job's ceiling clear of the suite step it wraps" in {
+  it should "keep EVERY job's ceiling clear of the sample and suite steps it wraps" in {
     // A job that hits `timeout-minutes` is CANCELLED, and a cancelled job runs its
     // `always()` publish steps only inside a short grace window — so a leg that
     // overruns discards the very capture that would have made the next run fast
@@ -211,11 +242,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     //
     // The rule was written for the full leg and applied only there, and the sample —
     // which had no step ceiling at all, so it could only ever be cancelled — is the
-    // job that then spent ten consecutive runs discarding its own progress.
-    budgetPairs.foreach { case (label, ceiling, suiteStep) =>
-      withClue(s"$label: job $ceiling, suite step $suiteStep: ") {
-        ceiling should be > suiteStep
-        ceiling - suiteStep should be >= 10
+    // job that then spent ten consecutive runs discarding its own progress. The sample
+    // now runs inside every row's job, so its ceiling counts against every row's.
+    budgetPairs.foreach { case (label, ceiling, steps) =>
+      withClue(s"$label: job $ceiling, sample + suite steps $steps: ") {
+        ceiling should be > steps
+        ceiling - steps should be >= 10
       }
     }
   }
@@ -304,13 +336,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // 2026-08-09: an asset that could only be refreshed by a job that could only run once
     // the asset was fresh.
     //
-    // Recording is the recorder's alone now, and a recording runs its sample as the first
-    // step of the full leg's job — so that job's publish, under `always()`, is what carries
-    // the sample's recordings, red sample or green, and the sample JOB never records.
-    RepoFile.block(leg, "sample") should include("if: inputs.mode != 'record'")
+    // Recording is the recorder's alone now, and every leg runs its sample as the first
+    // suite step of the full leg's job — so that job's publish, under `always()`, is what
+    // carries the sample's recordings, red sample or green.
     val convergence = RepoFile.block(leg, "convergence")
-    convergence should include("- name: Run the ${{ inputs.country }} sample over the tree this leg records")
+    convergence should include(s"- name: $SampleStep")
     convergence should include(s"$PublishAction\n              if: always()")
+    convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(PublishAction)
   }
 
   it should "keep the capture when tar reports the tree changing under it" in {
@@ -337,9 +369,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "let the sample write the release it now publishes to" in {
     // `contents: read` was right while the sample only consumed the tree. It publishes
-    // now, and a permission short of `write` fails that step and nothing else — the
-    // suite still passes, and the loop above quietly stays open.
-    RepoFile.block(RepoFile.block(leg, "sample"), "permissions") should include("contents: write")
+    // now (a recording's tree, an overlay leg's overlay), and a permission short of
+    // `write` fails that step and nothing else — the suite still passes, and the loop
+    // above quietly stays open.
+    RepoFile.block(RepoFile.block(leg, "convergence"), "permissions") should include("contents: write")
   }
 
   /**
@@ -394,13 +427,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * times every push was four `order-independence` entries that meant nothing, on the
    * page where the ones that do mean something are read.
    *
-   * So the second run is a matrix ROW the sample plans, not a job. A country that folds
+   * So the second run is a matrix ROW, not a job. A country that folds
    * order-independence into its standard run expands to one row and renders nothing
    * extra; the United States expands to two.
    */
   "the order-independence split" should "render nothing for a country that folds it into the standard run" in {
     withClue("a third job would be rendered, skipped, for every country that doesn't split: ") {
-      legJobs shouldBe Seq("sample", "convergence")
+      legJobs shouldBe Seq("convergence")
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include("phase: ${{ fromJson(inputs.order-command")
@@ -419,9 +452,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "carry only the phase in its matrix, and pick the rest off the leg's inputs" in {
     val block = RepoFile.block(leg, "convergence")
     block should include("name: ${{ matrix.phase }}")
-    // The MATRIX may not be planned off the sample. The job does read one sample output —
-    // the recorded pair it replayed, so both jobs replay the same one (HermeticConvergenceWiringSpec).
-    RepoFile.block(block, "strategy") should not include "needs.sample.outputs"
+    // The MATRIX is planned off the inputs alone — never off another job's outputs.
+    RepoFile.block(block, "strategy") should not include "needs."
   }
 
   /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a
@@ -437,13 +469,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** Side by side off the sample, not behind the full leg: chaining a 4-hour row to a
-   *  3-hour one is the 6-hour cancellation the split exists to escape — and one row's
-   *  failure must not cancel the other's answer. */
-  it should "run its rows off the sample, independently of each other" in {
+  /** Side by side, not behind the full leg: chaining a 4-hour row to a 3-hour one is the
+   *  6-hour cancellation the split exists to escape — and one row's failure must not cancel
+   *  the other's answer.
+   *
+   *  BOTH rows run the sample. No row can wait on a step of another row (`needs:` joins
+   *  jobs), so the order row either runs its own sample or runs ungated; its own costs no
+   *  wall time beside a row of hours, and gates the very pair that row's suite replays. */
+  it should "gate every row on its own sample, independently of the other row" in {
     val block = RepoFile.block(leg, "convergence")
-    block should include("needs: sample")
     block should include("fail-fast: false")
+    RepoFile.step(block, SampleStep) should not include "matrix.phase"
   }
 
   /** ONE writer to the rolling release per leg.
