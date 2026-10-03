@@ -205,7 +205,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   "the single-country leg workflow" should "run its full suite behind its own sample, in the same job" in {
     val convergence = RepoFile.block(leg, "convergence")
     val sample = RepoFile.step(convergence, SampleStep)
-    convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(s"- name: $SuiteStep")
+    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, s"- name: $SuiteStep")
     sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
     withClue("a convergence row whose sample is skipped runs its suite ungated — only a leg that asks for a " +
              "`sample` row of its own (`sample-row`) may move the sample out of it: ") {
@@ -316,7 +316,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  `target/` behind without `require_tests` turns the lie into a shrug, and
    *  `require_tests` over a restored directory still reports somebody else's passes. */
   it should "report only the tests THIS leg ran, and admit it when there are none" in {
-    val cachePaths = RepoFile.read(".github/actions/convergence-setup/action.yml").linesIterator
+    RepoFile.read(".github/actions/convergence-setup/action.yml") should include("uses: ./.github/actions/sbt-target-cache")
+    val cachePaths = RepoFile.read(".github/actions/sbt-target-cache/action.yml").linesIterator
       .dropWhile(_.trim != "path: |").drop(1).map(_.trim).takeWhile(_.nonEmpty).takeWhile(!_.contains(":")).toSeq
     withClue("the cache must carry the module classes and NOT the root target, which holds another job's test reports: ") {
       cachePaths should (contain("*/target/scala-*") and not contain "target")
@@ -341,7 +342,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include(s"- name: $SampleStep")
     convergence should include(s"$PublishAction\n              if: always()")
-    convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(PublishAction)
+    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, PublishAction)
   }
 
   it should "keep the capture when tar reports the tree changing under it" in {
@@ -462,8 +463,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  leg before its heap was raised. */
   it should "run the replay row on its own alias and its own budgets" in {
     val block = RepoFile.block(leg, "convergence")
-    Seq("inputs.order-command", "inputs.order-job-timeout-minutes",
-        "inputs.order-suite-timeout-minutes").foreach { input =>
+    // Each as the fallback of the row's own expression: `inputs.order-command` alone also
+    // matches the phase matrix's `inputs.order-command != ''`, which stays when the alias goes.
+    Seq("inputs.command || inputs.order-command }}", "inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}",
+        "inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}").foreach { input =>
       withClue(s"$input: the replay row would fall back to the full leg's: ") {
         block should include(input)
       }
@@ -583,7 +586,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "fetch the enrichment tree in the background, outside the workspace, before the JDK and caches" in {
     val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
     val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
-    def at(fragment: String) = steps.indexWhere(_.contains(fragment))
+    def at(fragment: String) = RepoFile.positionOf(steps, fragment)
     RepoFile.step(setup, "Fetch the enrichment tree in the background") should include(
       "scripts/ci/in-background.sh start tree-restore \"$GITHUB_WORKSPACE\"/.github/scripts/restore-enrichment-tree.sh " +
         "\"${{ inputs.code }}\" \"${{ inputs.mode }}\" \"$RUNNER_TEMP/tree-stage\"")
@@ -606,7 +609,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     socat should include("scripts/ci/in-background.sh start socat-install \"$GITHUB_WORKSPACE\"/scripts/ci/install-apt-package.sh socat")
     val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
     withClue("started before the JDK and caches it is meant to overlap: ") {
-      steps.indexWhere(_.contains("Install socat")) should be < steps.indexWhere(_.contains("./.github/actions/setup-jdk"))
+      RepoFile.positionOf(steps, "Install socat") should be < RepoFile.positionOf(steps, "./.github/actions/setup-jdk")
     }
     val tunnel = RepoFile.read("scripts/ci/wait-for-mongo-tunnel.sh")
     val waits  = tunnel.indexOf("in-background.sh\" wait socat-install")

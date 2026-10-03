@@ -76,8 +76,8 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-overlay-publish") => cond.trim }.toSeq
     publishes shouldBe Seq("if: always() && matrix.phase == 'convergence' && inputs.mode == 'overlay'")
     val convergence = RepoFile.block(leg, "convergence")
-    convergence.indexOf("- name: Run the ${{ inputs.country }} sample ahead of the suite") should be <
-      convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
+    RepoFile.positionOf(convergence, "- name: Run the ${{ inputs.country }} sample ahead of the suite") should be <
+      RepoFile.positionOf(convergence, "uses: ./.github/actions/convergence-overlay-publish")
   }
 
   /** The US sample was 79 s in front of the lane's critical path, its convergence row (run

@@ -54,8 +54,13 @@ gh run watch "$run" --exit-status --interval 60 > /dev/null || status=$?
 
 rm -rf "$out"; mkdir -p "$out"
 dl=$(mktemp -d)
-gh run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl"
-for d in "$dl"/*/; do cp -R "$d". "$out/"; done
+# A run that failed or was cancelled before uploading has nothing to download: say so and still
+# exit with the RUN's status below, rather than dying here under `set -e` with the download's.
+if gh run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl"; then
+  for d in "$dl"/*/; do if [ -d "$d" ]; then cp -R "$d". "$out/"; fi; done
+else
+  echo "run $run left no reports to download" >&2
+fi
 rm -rf "$dl"
 echo "reports in $out:"; find "$out" -maxdepth 1 -name "full-*-decisions.txt"
 exit "$status"

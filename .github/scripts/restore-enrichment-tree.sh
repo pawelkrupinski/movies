@@ -18,7 +18,8 @@
 #
 # Exit status: 0 with the tree staged, or with nothing to stage on a RECORDING (which fetches
 # live and publishes what it learns); 3 when a replay leg's pinned tree is missing (a hermetic
-# leg replays nothing else, so its setup fails); anything else is an unpack that failed.
+# leg replays nothing else, so its setup fails); 4 when the release could not be read at all;
+# anything else is an unpack that failed.
 set -uo pipefail
 
 code="${1:?usage: restore-enrichment-tree.sh <code> <mode> <stage dir>}"
@@ -34,11 +35,18 @@ ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-$code.tar.*}"
 archives="$stage.archive"
 mkdir -p "$archives" "$stage"
 
-if gh release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber 2>/dev/null; then
+# Only gh's own "no assets match" means the release lacks the tree. Any other failure — a network
+# blip, a 5xx, an expired token — is a read that did not happen, not an empty release: a recording
+# that took it for one would fetch every lookup live and publish that over the tree it never read.
+download_errors="$archives.stderr"
+if gh release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber 2>"$download_errors"; then
     # Both spellings of the working tree only in the moment between a first zstd publish and its
     # deleting the gzip it replaced: the zstd one is the newer.
     if compgen -G "$archives/*.tar.zst" >/dev/null; then rm -f "$archives"/*.tar.gz; fi
     echo "enrichment tree $ASSET from release $TAG"
+elif ! grep -q 'no assets match' "$download_errors"; then
+    echo "::error::could not read release $TAG for $ASSET: $(tr '\n' ' ' < "$download_errors")"
+    exit 4
 elif [ "$mode" != "record" ]; then
     echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest five) — a hermetic leg replays nothing else"
     exit 3

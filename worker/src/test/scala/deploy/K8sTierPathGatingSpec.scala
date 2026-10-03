@@ -356,6 +356,12 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     job("build-worker") should include("needs: [ci, gates, image-worker]")
   }
 
+  /** The worker image is built only for a push that changes the worker: `build-worker` would
+   *  publish nothing else, and the build held a runner for minutes beside ci on every push. */
+  "the worker image build" should "run only when the worker's paths changed" in {
+    job("image-worker") should include("if: needs.gates.outputs.worker-changed == 'true'")
+  }
+
   /** The fold is only done once the workflows it replaced are gone. */
   "the workflows this replaced" should "no longer exist" in {
     Files.exists(Paths.get(".github/workflows/build-web-image.yaml")) shouldBe false

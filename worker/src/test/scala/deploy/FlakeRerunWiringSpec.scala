@@ -30,7 +30,7 @@ class FlakeRerunWiringSpec extends AnyFlatSpec with Matchers {
   it should "rerun every sbt test job's failed tests, only once the suite has failed" in {
     sbtTestJobs.foreach { case (name, body) =>
       withClue(s"$name: ") {
-        body should include("scripts/ci/rerun-failed-sbt.sh")
+        RepoFile.withoutComments(body) should include("run: scripts/ci/rerun-failed-sbt.sh")
         val rerun = body.linesIterator.dropWhile(!_.contains("Rerun the failed")).take(3).mkString("\n")
         rerun should include("if: failure() && steps.")
         rerun should include(".outcome == 'failure'")

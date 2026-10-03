@@ -25,4 +25,11 @@ object RepoFile {
     try src.mkString
     finally src.close()
   }
+
+  /** The version project/Dependencies.scala pins as `private val <name> = "..."`. */
+  def declaredVersion(name: String): String =
+    s"""$name\\s*=\\s*"([^"]+)"""".r
+      .findFirstMatchIn(read(locate("project/Dependencies.scala")))
+      .map(_.group(1))
+      .getOrElse(throw new AssertionError(s"no $name in project/Dependencies.scala"))
 }

@@ -28,4 +28,16 @@ class IdentityDecorationsWorkflowSpec extends AnyFlatSpec with Matchers {
     workflow should not include "git push"
     workflow should not include "contents: write"
   }
+
+  it should "fail on a corpus that will not unpack, rather than learn from fewer countries in silence" in {
+    learn should include(".github/scripts/unpack-fixture-archive.sh \"scrape-$cc/scrapes-$cc.tar.gz\"")
+    learn should not include "|| true"
+  }
+
+  it should "hand the dispatched recording to its scripts through the environment, never spliced into them" in {
+    Seq("Restore the recording's corpora and enrichment trees", "Learn the decorations").foreach { step =>
+      RepoFile.stepScript(workflow, step) should not include "${{"
+    }
+    RepoFile.stepScript(workflow, "Learn the decorations") should include("VERSION=\"decorations-$RECORDING\"")
+  }
 }

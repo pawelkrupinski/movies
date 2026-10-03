@@ -23,15 +23,9 @@ class FixtureServerBootOverlapSpec extends AnyFlatSpec with Matchers {
   private lazy val action = RepoFile.read(".github/actions/run-page-test/action.yml")
   private lazy val mobile = RepoFile.block(RepoFile.read(".github/workflows/ci.yml"), "mobile-local-server")
 
-  private def indexOf(text: String, marker: String): Int = {
-    val i = text.indexOf(marker)
-    withClue(s"`$marker` is missing entirely: ")(i should be >= 0)
-    i
-  }
-
   private def assertOrder(text: String, first: String, second: String): Unit =
     withClue(s"`$first` must come before `$second`: ") {
-      indexOf(text, first) should be < indexOf(text, second)
+      RepoFile.positionOf(text, first) should be < RepoFile.positionOf(text, second)
     }
 
   "a page-test row" should "launch the fixture server before installing the browser, and only wait for it after" in {

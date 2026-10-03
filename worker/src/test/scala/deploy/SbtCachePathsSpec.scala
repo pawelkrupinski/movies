@@ -27,6 +27,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
 
+  private val SharedCache = ".github/actions/sbt-target-cache/action.yml"
   private lazy val workflows: Seq[String] = RepoFile.ciFiles()
 
   /** The `path:` block of every cache step that is caching sbt output. */
@@ -43,11 +44,15 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
     }
 
   "the sbt caches" should "have been found at all (guards this spec's own reader)" in {
-    sbtCachePaths.map(_._1).distinct should contain allOf (
-      ".github/workflows/ci.yml",
-      ".github/actions/run-page-test/action.yml",
-      ".github/actions/convergence-setup/action.yml",
-    )
+    sbtCachePaths.map(_._1).distinct should contain(SharedCache)
+  }
+
+  /** Ten cache blocks once repeated this path list, and copies of a list drift apart. Every job
+   *  caches its build through the one composite action. */
+  it should "name their paths in one place, the shared action every Scala job uses" in {
+    sbtCachePaths.map(_._1).distinct shouldBe Seq(SharedCache)
+    Seq(".github/workflows/ci.yml", ".github/actions/run-page-test/action.yml", ".github/actions/convergence-setup/action.yml")
+      .foreach(file => RepoFile.read(file) should include("uses: ./.github/actions/sbt-target-cache"))
   }
 
   it should "carry the module classes and zinc state, which is the only part worth caching" in {

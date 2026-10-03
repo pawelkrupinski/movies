@@ -1,0 +1,47 @@
+# The sbt build cache every Scala job restores: the build definition's compile and each module's
+# classes plus zinc state — ONE copy of the path list, which ten cache blocks used to repeat.
+#
+# What it carries, and why only that:
+#   - NOT the root `target/`: that is test reports (rewritten every run — a cached one once handed a
+#     convergence leg a report of specs it never ran) and sbt scratch. (SbtCachePathsSpec)
+#   - NOT the packaged jars: ~0.5 GB of a ~0.9 GB entry, re-packaged in seconds, and what kept the
+#     repository over GitHub's 10 GB cache cap. (SbtTargetCacheJarsSpec)
+#
+# The KEY stays with each caller: it scopes the hash to the sources that job compiles, and names
+# the family (`sbt-target-`, `-e2e-`, `-page-`, ...) whose entries that job owns.
+name: sbt target cache
+description: Restore (and, unless restore-only, save) sbt's compiled classes and zinc state.
+inputs:
+  key:
+    description: The exact cache key, scoped to the sources this job compiles.
+    required: true
+  restore-keys:
+    description: Prefixes to fall back to on a miss, newest-matching first, one per line.
+    required: true
+  restore-only:
+    description: "'true' to restore without saving (a job whose compile must not become the family's entry)."
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - if: inputs.restore-only != 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          project/target
+          project/project/target
+          */target/scala-*
+          !*/target/scala-*/*.jar
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}
+    - if: inputs.restore-only == 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: |
+          project/target
+          project/project/target
+          */target/scala-*
+          !*/target/scala-*/*.jar
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}

@@ -48,7 +48,7 @@ jobs:
                   set -euo pipefail
                   for cc in pl uk de us es; do
                       gh run download "$RECORDING" --name "scrape-fixtures-$cc" --dir "scrape-$cc"
-                      tar -xzf "scrape-$cc/scrapes-$cc.tar.gz" || true
+                      .github/scripts/unpack-fixture-archive.sh "scrape-$cc/scrapes-$cc.tar.gz"
                       # `.tar.*`: the pinned tree is zstd, or gzip when pinned before that.
                       gh release download "$FIXTURE_RELEASE_TAG" --pattern "enrichment-$cc-$RECORDING.tar.*" --dir tree --clobber
                       .github/scripts/unpack-fixture-archive.sh tree/enrichment-"$cc-$RECORDING".tar.*
@@ -66,9 +66,11 @@ jobs:
             - name: Learn the decorations
               shell: bash
               timeout-minutes: 75
+              env:
+                  RECORDING: ${{ inputs.recording }}
               run: |
                   set -o pipefail
-                  CORPORA=test/resources/fixtures/corpus FIXTURES=test/resources/fixtures VERSION="decorations-${{ inputs.recording }}" \
+                  CORPORA=test/resources/fixtures/corpus FIXTURES=test/resources/fixtures VERSION="decorations-$RECORDING" \
                       scripts/identity-calibrate.sh --decorations-only 2>&1 | tee decorations.log
 
             - uses: actions/upload-artifact@v6

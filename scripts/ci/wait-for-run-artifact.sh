@@ -19,15 +19,18 @@ run="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
 deadline=$((SECONDS + timeout))
 while :; do
-    if gh api "$run/artifacts?per_page=100" --jq '.artifacts[].name' | grep -qx "$name"; then
+    if gh api "$run/artifacts?per_page=100" --paginate --jq '.artifacts[].name' | grep -qx "$name"; then
         echo "artifact $name is ready after ${SECONDS}s"
         exit 0
     fi
+    # A failed listing (a GitHub API 5xx) says nothing about the producer: poll again rather than
+    # let `set -e` fail a job that is only waiting.
     ended=$(gh api "$run/jobs?per_page=100" --paginate \
-        --jq ".jobs[] | select(.name | contains(\"$producer\")) | select(.status == \"completed\") | .conclusion")
+        --jq ".jobs[] | select(.name | contains(\"$producer\")) | select(.status == \"completed\") | .conclusion") ||
+        { echo "::warning::could not list this run's jobs; polling again"; ended=""; }
     # A finished producer may have uploaded in the moment since the listing above: look once more.
     if [ -n "$ended" ]; then
-        if gh api "$run/artifacts?per_page=100" --jq '.artifacts[].name' | grep -qx "$name"; then
+        if gh api "$run/artifacts?per_page=100" --paginate --jq '.artifacts[].name' | grep -qx "$name"; then
             echo "artifact $name is ready after ${SECONDS}s"
             exit 0
         fi

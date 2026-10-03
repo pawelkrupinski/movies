@@ -21,12 +21,15 @@ case "$2" in
     n=$(cat "$dir/calls" 2>/dev/null || echo 0); echo $((n + 1)) > "$dir/calls"
     f="$dir/artifacts-$n"; [ -f "$f" ] || f=$(ls "$dir"/artifacts-* | sort -t- -k2 -n | tail -1)
     cat "$f" ;;
-  *jobs*) cat "$dir/jobs" ;;
+  *jobs*)
+    # A jobs-fail file makes the next jobs listing fail once, as a GitHub API 5xx does.
+    if [ -f "$dir/jobs-fail" ]; then rm -f "$dir/jobs-fail"; echo "HTTP 502" >&2; exit 1; fi
+    cat "$dir/jobs" ;;
 esac
 STUB
 chmod +x "$work/gh"
 
-scenario() { rm -f "$work"/artifacts-* "$work/calls"; : > "$work/jobs"; }
+scenario() { rm -f "$work"/artifacts-* "$work/calls" "$work/jobs-fail"; : > "$work/jobs"; }
 run() { bash "$REPO_ROOT/scripts/ci/wait-for-run-artifact.sh" stage-worker "e2e (corpus)" "$1" >/dev/null 2>&1; echo $?; }
 
 scenario; printf 'stage-worker\n' > "$work/artifacts-0"
@@ -44,5 +47,8 @@ check "takes an upload that landed as the producer finished" 0 "$(run 60)"
 
 scenario; : > "$work/artifacts-0"
 check "times out while the producer is still running" 1 "$(run 0)"
+
+scenario; : > "$work/artifacts-0"; printf 'stage-worker\n' > "$work/artifacts-1"; : > "$work/jobs-fail"
+check "rides out a failed jobs listing and keeps polling" 0 "$(run 60)"
 
 spec_summary

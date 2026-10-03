@@ -208,13 +208,8 @@ runs:
     # ScalaTest reported a result on 2026-09-01, and its check-run went green naming
     # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
     # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
-    - uses: actions/cache@v5
+    - uses: ./.github/actions/sbt-target-cache
       with:
-          path: |
-              project/target
-              project/project/target
-              */target/scala-*
-              !*/target/scala-*/*.jar
           key: ${{ steps.sbt-key.outputs.key }}
           restore-keys: |
               sbt-target-convergence-${{ runner.os }}-
@@ -385,30 +380,9 @@ runs:
       env:
           GH_TOKEN: ${{ inputs.token }}
       run: |
-          set -uo pipefail
+          set -euo pipefail
           overlay="identity-overlay-${{ inputs.code }}-${KINOWO_CONVERGENCE_PIN_CORPUS_RUN}.tar.gz"
-          mkdir -p overlay-archive
-          : > "$RUNNER_TEMP/overlay-files.txt"
-          if gh release download "$FIXTURE_RELEASE_TAG" --pattern "$overlay" --dir overlay-archive --clobber 2>/dev/null; then
-              tar -xzf "overlay-archive/$overlay"
-              tar -tzf "overlay-archive/$overlay" | grep -v '/$' > "$RUNNER_TEMP/overlay-files.txt" || true
-              echo "restored $overlay ($(wc -l < "$RUNNER_TEMP/overlay-files.txt") files)"
-          else
-              # A new recording starts with no overlay of its own; without one, every question only the
-              # model asks went live again after each recording (Wikidata rate-limiting a Poland leg for
-              # over 1,000 s). Carry the newest earlier overlay forward: its answers fill only what the
-              # new tree lacks (an existing file is never replaced), and its remembered verdicts stay
-              # behind, so a past 429 or timeout is asked again rather than replayed (carry-overlay.sh).
-              previous=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets \
-                  --jq '.assets[].name' 2>/dev/null \
-                  | grep -E "^identity-overlay-${{ inputs.code }}-[0-9]+\.tar\.gz$" | sort -t- -k4 -n | tail -1 || true)
-              if [ -n "$previous" ] && gh release download "$FIXTURE_RELEASE_TAG" --pattern "$previous" --dir overlay-archive --clobber 2>/dev/null; then
-                  echo "no $overlay yet"
-                  .github/scripts/carry-overlay.sh "overlay-archive/$previous" "$RUNNER_TEMP/overlay-files.txt"
-              else
-                  echo "no $overlay yet — this leg fills the model's gaps live and publishes the first"
-              fi
-          fi
+          .github/scripts/restore-identity-overlay.sh "${{ inputs.code }}" "$overlay" "$RUNNER_TEMP/overlay-files.txt"
           echo "KINOWO_CONVERGENCE_OVERLAY_ASSET=$overlay" >> "$GITHUB_ENV"
           sleep 1; touch "$RUNNER_TEMP/overlay-stamp"
 

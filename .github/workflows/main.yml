@@ -422,8 +422,12 @@ jobs:
     # also wait for every other ci row. SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
     # a SHA tag; `build-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
     # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
+    # Only when the worker's paths changed: `build-worker` publishes nothing otherwise, and an image
+    # built for nobody held a runner for its wait and ~5 min build on every web-only push. Skipped
+    # here, `build-worker` and `record-worker` skip with it — nothing ships, as before.
     image-worker:
         needs: gates
+        if: needs.gates.outputs.worker-changed == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 30
         permissions:

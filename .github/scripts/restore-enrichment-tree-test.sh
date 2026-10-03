@@ -14,15 +14,20 @@ printf 'recorded\n' > "$work/src/test/resources/fixtures/enrichment-uk/api.themo
 ( cd "$work/src" && tar -cf - test | zstd -q -c > "$work/enrichment-uk.tar.zst" )
 printf 'not an archive' > "$work/enrichment-uk-broken.tar.zst"
 
-# `release download` hands over $STUB_ASSET when set, as a release holding it would.
+# `release download` hands over $STUB_ASSET when set, as a release holding it would, and fails
+# as an unreachable release does when $STUB_UNREACHABLE is set; any other
+# call is logged to $work/other-calls, since the release is the tree's only source.
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 if [ "$1 $2" = "release download" ]; then
-  [ -n "${STUB_ASSET:-}" ] || exit 1
+  [ -z "${STUB_UNREACHABLE:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+  [ -n "${STUB_ASSET:-}" ] || { echo "no assets match the file pattern" >&2; exit 1; }
   while [ "$#" -gt 0 ]; do [ "$1" = "--dir" ] && dir="$2"; shift; done
   cp "$STUB_ASSET" "$dir/"
   exit 0
 fi
+echo "$*" >> "$(dirname "$0")/../other-calls"
+[ "$1 $2" = "run list" ] && { echo 12345; exit 0; }
 exit 1
 STUB
 chmod +x "$work/bin/gh"
@@ -41,6 +46,10 @@ check "a replay leg whose pinned tree is gone fails, distinctly" "3" "$(restore 
 check "...and says why" "true" "$(grep -q 'a hermetic leg replays nothing else' "$work/out-unpinned" && echo true || echo false)"
 check "a recording with no tree anywhere goes on to fetch live" "0" "$(restore cold record)"
 check "...having staged nothing" "0" "$(find "$work/stage-cold" -type f | wc -l | tr -d ' ')"
+check "...and asked nothing but the release (no run artifacts publish a tree any more)" "" "$(cat "$work/other-calls" 2>/dev/null)"
+status="$(STUB_UNREACHABLE=1 restore unreachable record)"
+check "a recording whose release cannot be read fails, rather than fetching everything live" "4" "$status"
+check "...and says why" "true" "$(grep -q 'HTTP 502' "$work/out-unreachable" && echo true || echo false)"
 status="$(restore broken record "$work/enrichment-uk-broken.tar.zst")"
 check "an archive that will not unpack fails, and not as a missing pin" "true" \
   "$([ "$status" -ne 0 ] && [ "$status" -ne 3 ] && echo true || echo false)"

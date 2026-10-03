@@ -58,19 +58,10 @@ on:
 # together instead of ranging 109-207s; and a slice too small to justify its own
 # boot shares a runner with another. See .github/actions/run-page-test.
 #
-# All gating legs run independently. The sbt-driven ones share the
-# `actions/cache` keyed on hashed sources so later jobs find zinc state warm
-# (the mobile job keeps a separate JDK-21 cache key).
-#
-# WHAT THOSE CACHES HOLD, and why the paths look like they do: sbt leaves each
-# module's compiled classes and its zinc incremental state in
-# `<module>/target/scala-<v>/`, and the BUILD DEFINITION's own compile in
-# `project/target`. The root `target/` holds neither — only `test-reports`
-# (rewritten every run) and `bg-jobs` scratch, measured at 235 MB of a 239 MB
-# directory. Every cache block here used to carry that root and none of the
-# modules, so a "warm" job restored a quarter-gig of nothing and then compiled
-# every module from cold. That cold compile is most of what the FixtureServerMain
-# boot below costs. Cache the modules; don't cache the root.
+# All gating legs run independently. The sbt-driven ones share the sbt build
+# cache (.github/actions/sbt-target-cache, which says what it carries and why)
+# keyed on hashed sources so later jobs find zinc state warm (the mobile job
+# keeps a separate JDK-21 cache key).
 #
 # `page-tests` is the only job that needs a browser: PageJsBehaviourSpec
 # drives a real headless Chrome over CDP to exercise the JS on the
@@ -148,6 +139,20 @@ jobs:
                   python3 -m pip install --quiet timezonefinder
                   scripts/ci/generated-artefacts-drift.sh
 
+            # The roster generators' own specs (~8s together): the drift check above proves the
+            # artefacts match their generators, these that the generators decide what they should.
+            - name: Roster generator specs
+              if: steps.roster.outputs.changed == 'true'
+              run: |
+                  python3 data/germany/scripts/test_harvest_kinoprogramm.py
+                  python3 data/pl/scripts/test_build_pages.py
+                  python3 data/pl/scripts/test_build_venue_towns.py
+                  python3 data/spain/scripts/test_build_provinces.py
+                  python3 data/spain/scripts/test_build_town_names.py
+                  python3 data/spain/scripts/test_generate_roster.py
+                  python3 data/us/scripts/test_cluster_metros.py
+                  python3 data/us/scripts/test_generate_roster.py
+
             # A fixture-corpus edit that skipped the read-model snapshot's regeneration, in
             # half a second instead of the e2e shard's ~110s corpus replay. See
             # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
@@ -158,23 +163,33 @@ jobs:
             # selects for which paths, what the workflows' preflight jobs accept and refuse, and
             # how a failed test is judged DETERMINISTIC or FLAKY and ledgered, and how the test
             # jobs' throwaway MongoDB is started.
-            - name: Pre-push hook, preflight, flake-detection and CI-helper specs
+            # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores (~22 s) they share
+            # nothing with: run first in the foreground they held the unit run back by their own
+            # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
+            - name: Pre-push hook, preflight, flake-detection and CI-helper specs, in the background
               run: |
-                  bash scripts/hooks/pre-push-test.sh
-                  bash scripts/ci/preflight-test.sh
-                  bash scripts/ci/flake-ledger-test.sh
-                  bash scripts/ci/leg-verdict-test.sh
-                  bash scripts/ci/rerun-failed-sbt-test.sh
-                  bash scripts/ci/start-mongo-replset-test.sh
-                  bash scripts/ci/install-apt-package-test.sh
-                  bash scripts/ci/in-background-test.sh
-                  bash .github/scripts/restore-enrichment-tree-test.sh
-                  bash .github/scripts/sample-recordings-test.sh
-                  bash scripts/ci/close-mongo-tunnel-test.sh
-                  bash scripts/ci/install-playwright-test.sh
-                  bash scripts/ci/prune-actions-caches-test.sh
-                  bash scripts/ci/wait-for-run-artifact-test.sh
-                  python3 scripts/ci/flake_verdict_test.py
+                  scripts/ci/in-background.sh start ci-helper-specs bash -e -c '
+                      bash scripts/hooks/pre-push-test.sh
+                      bash scripts/ci/preflight-test.sh
+                      bash scripts/ci/flake-ledger-test.sh
+                      bash scripts/ci/leg-verdict-test.sh
+                      bash scripts/ci/rerun-failed-sbt-test.sh
+                      bash scripts/ci/start-mongo-replset-test.sh
+                      bash scripts/ci/install-apt-package-test.sh
+                      bash scripts/ci/in-background-test.sh
+                      bash .github/scripts/restore-enrichment-tree-test.sh
+                      bash .github/scripts/restore-identity-overlay-test.sh
+                      bash .github/scripts/sample-recordings-test.sh
+                      bash scripts/ci/close-mongo-tunnel-test.sh
+                      bash scripts/ci/install-playwright-test.sh
+                      bash scripts/ci/prune-actions-caches-test.sh
+                      bash scripts/ci/wait-for-run-artifact-test.sh
+                      bash scripts/identity-measure-ci-test.sh
+                      python3 scripts/ci/flake_verdict_test.py
+                      python3 scripts/test_aot_class_list.py
+                      python3 scripts/test_convergence_findings.py
+                      bash .github/actions/drop-bot-branch/drop-test.sh
+                  '
 
             - uses: ./.github/actions/setup-jdk
               with:
@@ -187,13 +202,8 @@ jobs:
             # Warm zinc state across pushes so an unchanged push is near-
             # instant. Same key as `integration-test` so both jobs share the
             # cache.
-            - uses: actions/cache@v5
+            - uses: ./.github/actions/sbt-target-cache
               with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                      !*/target/scala-*/*.jar
                   # Scope the exact key to the sources this job compiles
                   # (unit = every module's main + test). restore-keys still
                   # falls back to any recent sbt-target cache so zinc stays
@@ -201,6 +211,9 @@ jobs:
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
+
+            - name: The pre-push hook, preflight, flake-detection and CI-helper specs passed
+              run: scripts/ci/in-background.sh wait ci-helper-specs 600
 
             # Every module's unit tests except `e2e` in one sbt run; `all` keeps
             # going so a failure in one module still runs the rest. The `e2e`
@@ -284,13 +297,8 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v5
+            - uses: ./.github/actions/sbt-target-cache
               with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                      !*/target/scala-*/*.jar
                   # JDK-21 zinc cache, kept on its own key so cross-JDK class
                   # artifacts don't mix with the JDK-25 jobs' cache. Boots
                   # web/PageTest FixtureServerMain → page scope (every module's
@@ -467,13 +475,8 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v5
+            - uses: ./.github/actions/sbt-target-cache
               with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                      !*/target/scala-*/*.jar
                   # it scope (every module's main + test + it). restore-keys keeps zinc warm.
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
@@ -554,13 +557,8 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v5
+            - uses: ./.github/actions/sbt-target-cache
               with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                      !*/target/scala-*/*.jar
                   # Dedicated key so these shards PERSIST the e2e/Test compile
                   # (the shared `sbt-target-` key is owned by `test`, which never
                   # compiles e2e — so on that key e2e recompiled cold every run,

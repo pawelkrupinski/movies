@@ -30,11 +30,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private val Restore = "Restore the corpus the convergence row records"
   private val InRecordingRow = "inputs.mode == 'record' && matrix.phase == 'convergence'"
 
-  private def at(marker: String): Int = {
-    val index = convergence.indexOf(marker)
-    withClue(s"`$marker` in the convergence job: ")(index should be >= 0)
-    index
-  }
+  private def at(marker: String): Int = RepoFile.positionOf(convergence, marker)
 
   "the recorder" should "have no scrape jobs ahead of its legs, which every leg would wait for" in {
     RepoFile.jobs(recorder).keySet shouldBe Set("preflight", "enrichment", "report")

@@ -29,8 +29,14 @@ def loaded_classes(path):
     with opener(path, 'rb') as f:
         header = b''
         while not header.endswith(b'\0'):
-            header += f.read(1)
-        id_size = struct.unpack('>I', f.read(4))[0]
+            byte = f.read(1)
+            if not byte:                                      # EOF inside the header: read(1) is b'' for ever
+                sys.exit(f"{path}: truncated heap dump (ends inside its header)")
+            header += byte
+        id_bytes = f.read(4)
+        if len(id_bytes) < 4:
+            sys.exit(f"{path}: truncated heap dump (ends inside its header)")
+        id_size = struct.unpack('>I', id_bytes)[0]
         f.read(8)
         read_id = (lambda b: struct.unpack('>I', b)[0]) if id_size == 4 else (lambda b: struct.unpack('>Q', b)[0])
         strings, name_ids = {}, []

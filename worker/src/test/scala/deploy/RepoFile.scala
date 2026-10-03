@@ -119,6 +119,27 @@ object RepoFile {
       .toMap
   }
 
+  /** `text` without its whole-line `#` comments — for an assertion that some file or job RUNS
+   *  something, which a comment naming the same thing would otherwise satisfy after the real
+   *  line is gone. */
+  def withoutComments(text: String): String =
+    text.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+
+  /** Where in `items` the first one containing `fragment` sits — failing, never `-1`, when
+   *  none does, so an ordering assertion cannot pass on a renamed step. */
+  def positionOf(items: Seq[String], fragment: String): Int = {
+    val at = items.indexWhere(_.contains(fragment))
+    if (at < 0) throw new AssertionError(s"nothing contains `$fragment`, so its order cannot be checked")
+    at
+  }
+
+  /** Where in `text` `fragment` first occurs — failing, never `-1`, when it does not. */
+  def positionOf(text: String, fragment: String): Int = {
+    val at = text.indexOf(fragment)
+    if (at < 0) throw new AssertionError(s"no `$fragment` in the text, so its order cannot be checked")
+    at
+  }
+
   /**
    * The workflow step named `stepName` — its `- name:` line and everything up
    * to the next `- ` item at the same indentation — so a spec asserting on one
@@ -129,10 +150,48 @@ object RepoFile {
     val start = lines.indexWhere(_.trim == s"- name: $stepName")
     require(start >= 0, s"no `- name: $stepName` step in the workflow")
     val indent = lines(start).takeWhile(_ == ' ').length
+    // Trailing blank and comment lines are dropped, as `block` drops them: a comment just above
+    // the next `- name:` introduces THAT step, and a needle it holds must not pass for this one.
     val body = lines
       .drop(start + 1)
       .takeWhile(l => l.trim.isEmpty || l.trim.startsWith("#") || l.takeWhile(_ == ' ').length > indent)
+      .reverse
+      .dropWhile(l => l.trim.isEmpty || l.trim.startsWith("#"))
+      .reverse
     (lines(start) +: body).mkString("\n")
+  }
+
+  /** One `run:` of a workflow or composite action: the shell it runs (comment lines dropped) and
+   *  its step's `working-directory`, if it names one. */
+  final case class RunStep(script: String, workingDirectory: Option[String])
+
+  /** Every `run:` in `yml` — what a workflow actually EXECUTES, unlike its comments, its `paths:`
+   *  triggers or a step's name, which all mention scripts they never run. */
+  def runSteps(yml: String): Seq[RunStep] = {
+    val lines = yml.linesIterator.toVector
+    def indentOf(line: String) = line.takeWhile(_ == ' ').length
+    def code(line: String) = line.trim.nonEmpty && !line.trim.startsWith("#")
+    lines.indices.flatMap { at =>
+      val line = lines(at)
+      val key  = line.indexOf("run:")
+      val isRun = key >= 0 && { val before = line.take(key).trim; before.isEmpty || before == "-" }
+      Option.when(isRun) {
+        val inline = line.drop(key + "run:".length).trim
+        val script =
+          if (inline.startsWith("|") || inline.startsWith(">"))
+            lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || indentOf(l) > key).filter(code).map(_.trim).mkString("\n")
+          else inline
+        // The step is the `- ` item holding this key: from its dash to the next line at or
+        // left of the dash.
+        val dashAt = (at to 0 by -1).find { i => val t = lines(i).trim; t.startsWith("- ") && indentOf(lines(i)) < key }
+          .getOrElse(at)
+        val dash = indentOf(lines(dashAt))
+        val step = lines.drop(dashAt + 1).takeWhile(l => !code(l) || indentOf(l) > dash)
+        val workingDirectory = (lines(dashAt) +: step).map(_.trim.stripPrefix("- "))
+          .collectFirst { case s"working-directory: $dir" => dir.trim }
+        RunStep(script, workingDirectory)
+      }
+    }
   }
 
   /**

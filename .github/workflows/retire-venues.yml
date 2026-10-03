@@ -48,7 +48,10 @@ jobs:
                   ROSTER: ${{ inputs.roster }}
                   VENUES: ${{ inputs.venues }}
               run: |
-                  retired=$(python3 data/scripts/retire_venues.py --roster "$ROSTER" --venues "$VENUES" --body "$RUNNER_TEMP/pr-body.md" | tail -1)
+                  # The count is read from a file, not piped: without pipefail a crash half-way through the rewrite left an
+                  # empty count, which is not '0', and the half-applied roster went on to a PR.
+                  python3 data/scripts/retire_venues.py --roster "$ROSTER" --venues "$VENUES" --body "$RUNNER_TEMP/pr-body.md" > "$RUNNER_TEMP/retired.out"
+                  retired=$(tail -1 "$RUNNER_TEMP/retired.out")
                   echo "retired=$retired" >> "$GITHUB_OUTPUT"
                   cat "$RUNNER_TEMP/pr-body.md" >> "$GITHUB_STEP_SUMMARY"
 

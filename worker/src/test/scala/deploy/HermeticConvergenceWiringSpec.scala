@@ -122,7 +122,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     sample should include(s"${tools.ArchiveReplayWiring.HermeticVar}: $${{ inputs.mode == 'hermetic' }}")
     sample should include("KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}")
     sample should include("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}")
-    convergence.indexOf(SampleStep) should be < convergence.indexOf(s"- name: $SuiteStep")
+    RepoFile.positionOf(convergence, SampleStep) should be < RepoFile.positionOf(convergence, s"- name: $SuiteStep")
   }
 
   // A recording runs its full leg whatever the sample said — but a red sample must still turn the
@@ -132,7 +132,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(convergence, SampleStep) should include("continue-on-error: ${{ inputs.mode == 'record' }}")
     val verdict = RepoFile.step(convergence, "Fail the leg on the sample's verdict")
     verdict should include("if: always() && inputs.mode == 'record' && steps.sample.outcome == 'failure'")
-    convergence.indexOf("uses: ./.github/actions/convergence-publish") should be < convergence.indexOf("- name: Fail the leg on the sample's verdict")
+    RepoFile.positionOf(convergence, "uses: ./.github/actions/convergence-publish") should be <
+      RepoFile.positionOf(convergence, "- name: Fail the leg on the sample's verdict")
     convergence should include("log:   convergence-sample.log")
     withClue("the full suite's report must name only the full suite's tests: ") {
       RepoFile.step(convergence, SuiteStep) should include("rm -rf target/test-reports/unit")
@@ -220,7 +221,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val budget = """BUDGET_MINUTES:\s*(\d+)""".r.findFirstMatchIn(bisect).map(_.group(1).toInt)
       .getOrElse(fail("no budget"))
     ceiling should be > budget
-    bisect should include(".github/scripts/convergence-bisect.sh")
+    RepoFile.withoutComments(bisect) should include("cp .github/scripts/convergence-bisect.sh")
     bisect should include("MAX_STEPS:       3")
     withClue("the leg must not carry a bisect job of its own: ") {
       leg.linesIterator.map(_.trim).toList should not contain "bisect:"

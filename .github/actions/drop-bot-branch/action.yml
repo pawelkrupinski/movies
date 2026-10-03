@@ -25,10 +25,4 @@ runs:
             GH_TOKEN: ${{ inputs.token }}
             GH_REPO: ${{ github.repository }}
             BRANCH: ${{ inputs.branch }}
-        run: |
-            if gh api "repos/$GH_REPO/git/ref/heads/$BRANCH" --silent 2>/dev/null; then
-                gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"
-                echo "Dropped $BRANCH; the PR step recreates it off main."
-            else
-                echo "No $BRANCH yet; nothing to drop."
-            fi
+        run: '"$GITHUB_ACTION_PATH"/drop.sh'
