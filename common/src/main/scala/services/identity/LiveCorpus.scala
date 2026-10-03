@@ -96,7 +96,10 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
    *  families they seed before any match grows one — what a full build resolves one at a time. */
   def titleComponents(keys: Iterable[ListingKey]): Seq[Seq[ListingKey]] = {
     val wanted = keys.toSet
-    val byNode = nodes.values.filter(_.node.listings.exists(listing => wanted(listing.key))).map(live =>
+    // The nodes holding them, found through each listing's node key — not a scan of every node held,
+    // which each event's update paid even when it brought no loose listing.
+    val held   = wanted.iterator.flatMap(listings.get).toSet.iterator.flatMap(nodes.get)
+    val byNode = held.map(live =>
       live.id -> (live.node.listings.map(_.key).filter(wanted), TitleLinks.titleKeys(live.node, normalizer, pins, wholeTitle, bannerSegment))).toMap
     FamilyClosure.families(byNode.map { case (id, (_, blockKeys)) => id -> blockKeys }).groupMap(_._2)(_._1).toSeq.sortBy(_._1)
       .map { case (_, ids) => ids.toSeq.sorted.flatMap(id => byNode(id)._1) }

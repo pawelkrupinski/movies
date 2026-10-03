@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
-private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring,
+private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
                                           counted: () => Unit, related: () => Unit = () => ()) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf, soleResults}
@@ -78,6 +78,14 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
       id => denialByNode(node, id), imdbOnly(node.id), directed(node.id)).map(placedByImdb(Seq(node)))
       .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored))
+
+  /** What `node` is taken by ALONE, with the rule ([[Acceptance.aloneNamed]]) — once per node for this scope's life:
+   *  every round of `Families.grow` keeping the scope asks again, and so do the decisions, each node's trace for
+   *  every title-linked sibling among them. */
+  def takenAlone(node: EvidenceNode): Option[(Scored.Accepted, String)] = takenAloneMemo.getOrElseUpdate(node.id, acceptance.aloneNamed(of(node)))
+  private val takenAloneMemo = mutable.HashMap.empty[String, Option[(Scored.Accepted, String)]]
+  /** The rule `node` took `film` by alone, if it took that film. */
+  def acceptedBy(node: EvidenceNode, film: Int): Option[String] = Acceptance.ruleTaking(takenAlone(node), film)
 
   /** Each film's place in IMDb's suggestions for the nodes' own titles — its best place, among the most suggested. */
   private def placedByImdb(nodes: Seq[EvidenceNode])(scored: Scored): Scored = {

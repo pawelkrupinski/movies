@@ -33,6 +33,12 @@ class ListingOrderSpec extends AnyFlatSpec with Matchers {
       Integer.signum(Listing.ordering.compare(a, b)) shouldBe Integer.signum(a.sortKey.compareTo(b.sortKey)))
   }
 
+  it should "keep the same listing of a key published twice, countries apart, whichever arrives first" in {
+    val plain   = listing(KinoApollo, "Belle")
+    val country = plain.copy(countries = Seq("FR"))
+    Listing.distinct(Seq(plain, country)) shouldBe Listing.distinct(Seq(country, plain))
+  }
+
   it should "not be carried by every listing as a string" in {
     val held = classOf[Listing].getDeclaredFields.map(_.getName).filter(_.toLowerCase.contains("sortkey"))
     withClue("a field holding the joined sort key: ")(held shouldBe empty)

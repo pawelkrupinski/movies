@@ -255,12 +255,14 @@ object IdentityResolver {
     val stages     = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations, Some(corpus))
     val resolution = run(stages, Mutation.None)
     import stages.{families, generation}
+    // Each decision is one family's: filed by its first member's, not filtered out of every decision per family.
+    val decisionsOf = resolution.decisions.groupBy(decision => resolution.familyOf(decision.members.head))
     generation.nodes.groupBy(node => families.familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members) =>
       val keys  = members.flatMap(_.listings.map(_.key)).toSet
       val pool  = families.scopes(family).pool
       val queries = members.flatMap(node => generation.queriesOf(node.id)).toSet
       val films = members.flatMap(node => generation.queriesOf(node.id).flatMap(query => generation.answers(query).toOption.getOrElse(Nil)).map(_.tmdbId)).toSet
-      val decisions = resolution.decisions.filter(_.members.exists(keys))
+      val decisions = decisionsOf.getOrElse(family, Nil)
       RegionFamily(keys, decisions, members.flatMap(node => families.blockKeysOf(node.id)).toSet, queries, films,
         CorpusContext.Reads.of(members, pool.map(_.film), films ++ pool.map(_.tmdbId) ++ decisions.flatMap(_.film), queries, normalizer.sanitize),
         members.flatMap(node => node.listings.map(listing =>

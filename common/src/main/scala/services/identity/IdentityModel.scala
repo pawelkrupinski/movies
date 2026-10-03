@@ -94,11 +94,14 @@ object Listing {
     _.directors.mkString(","), _.runtime.fold("")(_.toString), _.originalTitle.getOrElse(""), _.catalogueIds.map(_.key).mkString(","))
 
   /** [[Listing.sortKey]]'s order, field by field — the same order, since the joining NUL sorts below
-   *  every character — without building the key: a field is formatted only when those before it tie. */
+   *  every character — without building the key: a field is formatted only when those before it tie.
+   *  Two listings the key ties — one key published twice, its countries apart — are ordered by their
+   *  countries last, so the one a set keeps per key ([[distinct]]) never depends on arrival order. The
+   *  countries stay out of the key itself: it names a node ([[EvidenceNode.id]]). */
   implicit val ordering: Ordering[Listing] = (a, b) => {
     var i = 0; var c = 0
     while (c == 0 && i < SortFields.size) { c = SortFields(i)(a).compareTo(SortFields(i)(b)); i += 1 }
-    c
+    if (c == 0) a.countries.mkString(",").compareTo(b.countries.mkString(",")) else c
   }
 
   /** Every raw listing of `byCinema`, one per key (the smallest by the total order) —

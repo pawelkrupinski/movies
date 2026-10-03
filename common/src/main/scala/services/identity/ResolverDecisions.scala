@@ -35,7 +35,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val ids   = cluster.map(_.id).toSet
     val own   = cluster.flatMap(node => bestOf.get(node.id).map { case (scored, confidence) =>
       s"${node.label}: own match ${scored.candidate.tmdbId} at ${ResolverDecision.percent(confidence)}${acceptance.liftedBy(scope.of(node), scored, confidence)}" +
-        acceptance.acceptedBy(scope.of(node), scored.candidate.tmdbId).fold("")(rule => s" by $rule") + " " +
+        scope.acceptedBy(node, scored.candidate.tmdbId).fold("")(rule => s" by $rule") + " " +
         s"(${calibration.explain(ListingFilm, scored.measures)})" })
     val joins = edges.filter(edge => edge.must && ids(edge.a) && ids(edge.b)).groupBy(_.reason).toSeq.sortBy(_._1)
       .map { case (reason, reasonEdges) => s"joined by ${reason} ×${reasonEdges.size}" }
@@ -59,7 +59,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
   private def traceOf(cluster: Seq[EvidenceNode], scope: FamilyScope, scored: Seq[Scored], film: Option[Int],
                       basis: ResolverDecision.Basis, edges: Seq[ResolverEdge], ids: Set[String]): DecisionTrace = {
     val nodes = cluster.flatMap { node =>
-      val accepted = bestOf.get(node.id).flatMap { case (best, _) => acceptance.acceptedBy(scope.of(node), best.candidate.tmdbId) }
+      val accepted = bestOf.get(node.id).flatMap { case (best, _) => scope.acceptedBy(node, best.candidate.tmdbId) }
       val joins    = edges.filter(edge => edge.must && (edge.a == node.id || edge.b == node.id) && ids(edge.a) && ids(edge.b)).map(_.reason).distinct.sorted
       val apart    = edges.filter(edge => !edge.must && (edge.a == node.id || edge.b == node.id) && (ids(edge.a) ^ ids(edge.b))).map(_.reason).distinct.sorted
       val own      = scope.of(node)
@@ -67,8 +67,8 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       // Computed here, not when the trace is written: a thunk would keep `own` — every scored candidate of the
       // node — alive until the trace writer got to it, and a restore hands the whole corpus over at once.
       // a match the node's own rules took, withdrawn because a title-linked sibling's evidence denies that film
-      val withdrawn = if (accepted.isDefined) None else acceptance.alone(own).flatMap { case (best, _) =>
-        families.deniedBySibling(node, scope.members, scope, best.candidate.tmdbId, id => acceptance.alone(scope.of(nodeById(id))).isDefined)
+      val withdrawn = if (accepted.isDefined) None else scope.takenAlone(node).flatMap { case ((best, _), _) =>
+        families.deniedBySibling(node, scope.members, scope, best.candidate.tmdbId, id => scope.takenAlone(nodeById(id)).isDefined)
           .map { case (sibling, denial) => DecisionTrace.Refusal("withdrawn", "a title-linked sibling's own evidence denies its film",
             Some(best.candidate.tmdbId), s"${sibling.label}: $denial") }
       }

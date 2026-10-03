@@ -72,8 +72,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy),
     Rule("model-proposed", modelProposedWhy))
 
-  /** What [[alone]] takes, with the rule that took it. */
-  private def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
+  /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
+  def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsBothItsWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
@@ -102,11 +102,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** The rule [[alone]] took `film` by, for the decision's explanation — every own match names the
    *  rule that took it, however far under the calibrated cut its probability stands. */
-  def acceptedBy(ranked: Seq[Scored], film: Int): Option[String] =
-    aloneNamed(ranked).collect { case ((scored, _), rule) if scored.candidate.tmdbId == film => rule }
+  def acceptedBy(ranked: Seq[Scored], film: Int): Option[String] = Acceptance.ruleTaking(aloneNamed(ranked), film)
 
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
-   *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibrated]]).
+   *  best eligible candidate the calibration accepts that no namesake out-fits ([[unrivalledCalibratedWhy]]).
    *  Each the edition of it the listing names, if any ([[editionNamed]]). */
   def pooled(ranked: Seq[Scored]): Option[Accepted] = pooledNamed(ranked).map(_._1)
 
@@ -120,10 +119,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
    *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
    *  evidence class's when the film is the listing's accepted exact top hit, or the one the priors
-   *  lent when the listing's facts accepted it ([[calibrated]]). */
+   *  lent when the listing's facts accepted it ([[calibratedWhy]]). */
   def confidenceOf(ranked: Seq[Scored], film: Int): Double =
     topHit(ranked).filter(_._1.candidate.tmdbId == film).map(_._2)
-      .orElse(calibrated(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
+      .orElse(calibratedWhy(ranked).toOption.filter(_._1.candidate.tmdbId == film).map(_._2))
       .orElse(pooled(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
       .getOrElse(eligibleOf(ranked).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
 
@@ -290,7 +289,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** The best eligible candidate, when its probability — the priors lending, never withdrawing
    *  ([[EvidenceWeights.priorsLent]]) — clears the calibration's cut. */
-  def calibrated(ranked: Seq[Scored]): Option[Accepted] = calibratedWhy(ranked).toOption
   private def calibratedWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     eligible.headOption.toRight(Refused("no eligible candidate", None, ranked.headOption.flatMap(_.denial).fold("")(denial => s"best denied: $denial")))
@@ -299,8 +297,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         Either.cond(calibration.showsRatings(probability), accepted, Refused("below the rating cut", Some(best.candidate.tmdbId), cut(probability))) }
   }
 
-  /** [[calibrated]], when the listing's own facts also favour it over the runner-up. */
-  def favouredCalibrated(ranked: Seq[Scored]): Option[Accepted] = favouredCalibratedWhy(ranked).toOption
+  /** [[calibratedWhy]], when the listing's own facts also favour it over the runner-up. */
   private def favouredCalibratedWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
@@ -310,10 +307,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield taken
   }
 
-  /** Is there an eligible record the listing's title sits inside ([[titledCloser]]) whose answered
-   *  facts `best`'s do not beat? Then `best`, which the title only overlaps, is not the listing's
+  /** The eligible record the listing's title sits inside ([[titledCloser]]) whose answered facts
+   *  `best`'s do not beat, if any: then `best`, which the title only overlaps, is not the listing's
    *  film on that evidence — on its own or pooled. */
-  private def outnamed(best: Scored, eligible: Seq[Scored]): Boolean = closerThan(best, eligible).isDefined
   private def closerThan(best: Scored, eligible: Seq[Scored]): Option[Scored] =
     eligible.find(closer => (closer ne best) && titledCloser(closer, best) && factsAnswered(best, closer) <= factsAnswered(closer, closer))
 
@@ -332,7 +328,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     containing(closer) && !containing(other) && !other.titleNamesIt && !(words(closer) subsetOf words(other))
   }
 
-  /** [[calibrated]] — unless the title names another candidate by the very same pieces and the
+  /** [[calibratedWhy]] — unless the title names another candidate by the very same pieces and the
    *  pooled FACTS ([[EvidenceWeights.facts]]) fit that one better: four "Camino dla opornych" whose
    *  original title "Santiago" names two films, and whose 113 minutes fit the fourth the search
    *  returned, do not take the 93-minute first. A candidate the title names less specifically
@@ -341,7 +337,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  the family's venue count are measured evidence there (a bare "Resident Evil" at 148 venues).
    *  Two films the title names by disjoint pieces ([[IdentityMeasures.namedApart]]) are not
    *  namesakes: only the facts may pick one of "Lalka (Dolly)"'s two. */
-  def unrivalledCalibrated(ranked: Seq[Scored]): Option[Accepted] = unrivalledCalibratedWhy(ranked).toOption
   private def unrivalledCalibratedWhy(ranked: Seq[Scored]): Verdict =
     for {
       taken <- calibratedWhy(ranked)
@@ -387,7 +382,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  the record's (DE ×140 and ES ×82 "…In Buenos Aires: Live"), when no other candidate bills the
    *  work: a banner leading the title is no work ("The Metropolitan Opera: La Fanciulla del West
    *  Encore" is not its 2018 staging). */
-  def soleWork(ranked: Seq[Scored]): Option[Accepted] = soleWorkWhy(ranked).toOption
   private def soleWorkWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     def isWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
@@ -448,7 +442,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  it — a credited director included: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2"
    *  and a 2022 "Troll" above it ([[namedButForItsYear]]: decorated, as "… Encore (2027)", too). Two
    *  such records are no answer. */
-  def datedTitle(ranked: Seq[Scored]): Option[Accepted] = datedTitleWhy(ranked).toOption
   private def datedTitleWhy(ranked: Seq[Scored]): Verdict =
     one(eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
       candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= YearWindow.PublishedAdjacency) && !contradicted(candidate) &&
@@ -458,7 +451,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** Is the listing's title, years aside, the candidate's own title or original title — or that
    *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
-   *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitle]]). */
+   *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitleWhy]]). */
   private def namedButForItsYear(candidate: Scored): Boolean = {
     val titles = (Seq(candidate.candidate.film.title) ++ candidate.candidate.film.originalTitle).map(IdentityMeasures.yearlessTokens)
     // One word is many films' title — but not as a whole piece beside the year the listing dates it by, which the
@@ -544,7 +537,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  listing every rule from its own evidence refused: PL "Dokumentalna Kreska: Wyznania szwedzkiego mężczyzny" is
    *  "Confessions of a Swedish Man" (2025), which no search of the Polish title finds. The proposal adds no weight to
    *  any measure: the venue's own facts still decide against it. */
-  def modelProposed(ranked: Seq[Scored]): Option[Accepted] = modelProposedWhy(ranked).toOption
   private def modelProposedWhy(ranked: Seq[Scored]): Verdict =
     for {
       any      <- ranked.headOption.toRight(Refused("no candidate"))
@@ -590,6 +582,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 }
 
 private[identity] object Acceptance {
+  /** The rule a node's alone acceptance (`aloneNamed`'s answer) took `film` by, if it took that film. */
+  def ruleTaking(taken: Option[(Accepted, String)], film: Int): Option[String] =
+    taken.collect { case ((scored, _), rule) if scored.candidate.tmdbId == film => rule }
   /** The condition that stopped a rule (`why`, a fixed phrase: the trace's rule id), the candidate it was weighing
    *  when it did, and what that candidate's evidence said there — the facts against it, its probability against the
    *  cut, the rival it lost to. */

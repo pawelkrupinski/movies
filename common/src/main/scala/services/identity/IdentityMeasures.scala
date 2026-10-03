@@ -55,6 +55,10 @@ object IdentityMeasures {
     private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
+    /** The shapes only the learned decorations leave, once per listing (usually none): a relation's scoring reads them
+     *  per candidate, and each read derived the undecorated copy's shapes again. */
+    private[identity] lazy val decoratedOnlyShapes: Seq[String] =
+      if (decorations == TitleDecorations.None) Nil else (shapes.toSet -- copy(decorations = TitleDecorations.None).shapes).toSeq.sorted
     /** The title with a learned programme decoration stripped ("Horror Season 2026 …"), as words:
      *  what the venue's banner leaves of it. Empty when no learned decoration applies. */
     private[identity] lazy val undecoratedWords: Seq[Seq[String]] =
@@ -287,7 +291,7 @@ object IdentityMeasures {
      *  "Dracula" — nor a TRAILING one after a learned venue decoration, for the same reason: "KINO SENIORA |
      *  Primetime" is Primetime however many records bill "Primetime" after a work. Beside a work the piece stays a cut or an edition
      *  ("Dark City: Director's Cut"), whatever record carries it alone. */
-    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l, {
+    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l.titleInputs, {
       val named = l.originalTitle.map(yearlessTokens(_).mkString)
       // A trailing piece only when what leads it is a learned venue decoration ("KINO SENIORA"): a rest
       // merely missing from these records may still be a work ("Dark City" of "Dark City: Director's Cut").
@@ -300,7 +304,8 @@ object IdentityMeasures {
           piece.mkString
       }.toSet
     })
-    private val memo = scala.collection.concurrent.TrieMap.empty[Listing, Set[String]]
+    // By the titles it reads, hashed once per listing: a listing's own hash walks its decorations' whole learned set.
+    private val memo = scala.collection.concurrent.TrieMap.empty[FamilyScope.TitleInputs, Set[String]]
   }
   object Qualifiers {
     val Unknown: Qualifiers = Qualifiers(Map.empty)
@@ -367,7 +372,6 @@ object IdentityMeasures {
      *  per record (`titleRelation`). */
     private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =
       titles.map(IdentityMeasures.TitleForm(_))
-    /** The film's titles as series and numbers (`numeralRelation`). */
     /** The season its titles name, once per record: every node scoring it asks (`evidenceDenies`). */
     private[identity] lazy val season: Option[Int] = IdentityMeasures.seasonYear(titles)
     /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
@@ -376,6 +380,7 @@ object IdentityMeasures {
      *  every node's `originalTitleRelation` to this film. */
     private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
       titles.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.TitleForm(_))
+    /** The film's titles as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedTitles: Seq[IdentityMeasures.Numbered] =
       titles.map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
   }
@@ -450,7 +455,9 @@ object IdentityMeasures {
   /** A possessive "'s" dropped: venues write "Andre Rieu 2026 Christmas Concert" for TMDB's "Andre
    *  Rieu's …" (UK Odeon ×76 read it as a different title and vetoed the concert). Only after an
    *  apostrophe, straight or curly: "Schindlers" stays another spelling. */
-  private[identity] def withoutPossessives(s: String): String = Possessive.matcher(s).replaceAll("")
+  private[identity] def withoutPossessives(s: String): String =
+    // Most titles carry no apostrophe, and the pattern needs one: they skip the regex (every key and word split asks).
+    if (s.indexOf('\'') < 0 && s.indexOf('\u2019') < 0) s else Possessive.matcher(s).replaceAll("")
   private val Possessive = java.util.regex.Pattern.compile("(?<=\\p{L})['\u2019][sS]\\b")
 
   /** [[key]] of the title spelt in Latin letters: Cyrillic transliterated letter by letter, as
@@ -560,8 +567,6 @@ object IdentityMeasures {
       measures + ("director" -> Category("same_person"))
     else measures
 
-  /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
-   *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
    *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and
@@ -573,6 +578,8 @@ object IdentityMeasures {
       !f.directorCredits.exists(credits => creditRelation(new Credits(Seq(name)), credits) == Category("same_person"))
   }
 
+  /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
+   *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
   private def creditRelation(ca: Credits, cb: Credits): Measure = {
     if (ca.isEmpty) MissingListing
     else if (cb.isEmpty) MissingFilm
@@ -597,12 +604,19 @@ object IdentityMeasures {
    *  → "Shrek" by a learned `decorations` run) and cut before a bracketed year ("Człowiek z żelaza
    *  (1981) 4K" → "Człowiek z żelaza"), to a fixpoint: every shape still a whole delimited or
    *  decorated piece of one of the titles. */
-  private def shapes(titles: Seq[String], decorations: TitleDecorations = TitleDecorations.None): Seq[String] =
-    Iterator.iterate(titles.map(_.trim).filter(_.nonEmpty).distinct)(s =>
-        (s ++ s.flatMap(SearchTitles.candidates(_, None)) ++ s.flatMap(decorations.strip) ++ s.flatMap(beforeItsYear) ++
-          s.flatMap(delimitedPieces))
-          .map(_.trim).filter(_.nonEmpty).distinct)
-      .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
+  private[identity] def shapes(titles: Seq[String], decorations: TitleDecorations = TitleDecorations.None): Seq[String] = {
+    // A worklist, each shape split once: what one round adds is what its NEW shapes split into — the older shapes'
+    // pieces are all held already — in the order a round over every shape would add them (by splitter, then shape).
+    val held     = scala.collection.mutable.LinkedHashSet.empty[String]
+    var frontier = titles.map(_.trim).filter(_.nonEmpty).distinct
+    held ++= frontier
+    while (frontier.nonEmpty) {
+      frontier = (frontier.flatMap(SearchTitles.candidates(_, None)) ++ frontier.flatMap(decorations.strip) ++ frontier.flatMap(beforeItsYear) ++
+        frontier.flatMap(delimitedPieces)).map(_.trim).filter(shape => shape.nonEmpty && !held(shape)).distinct
+      held ++= frontier
+    }
+    held.toSeq
+  }
 
   /** The pieces more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
    *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne"), a dash with a
@@ -872,9 +886,6 @@ object IdentityMeasures {
   def withVenueTitles(f: Film, titles: Seq[String]): Film =
     if (titles.isEmpty) f else f.copy(alternativeTitles = f.alternativeTitles ++ titles)
 
-  /** The listing's own ORIGINAL title against every title of the other side: the same title, a
-   *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
-   *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
   /** Does a year the original title writes ("… (2024)") agree with the film's — within one — when the
    *  yearless comparison drops it? A title that writes no year drops nothing; one that does, against a
    *  film whose year is unknown, is not read as agreeing: nothing else measures that year. */
@@ -884,6 +895,9 @@ object IdentityMeasures {
     written.isEmpty || filmYear.exists(y => written.exists(w => math.abs(w - y) <= YearWindow.PublishedAdjacency))
   }
 
+  /** The listing's own ORIGINAL title against every title of the other side: the same title, a
+   *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
+   *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
   def originalTitleRelation(original: Option[String], otherTitles: Seq[String], filmYear: Option[Int] = None): Measure =
     originalFormRelation(original.map(_.trim).filter(_.nonEmpty).map(OriginalForm(_)),
       otherTitles.map(_.trim).filter(_.nonEmpty).map(TitleForm(_)), filmYear)
@@ -1184,7 +1198,7 @@ object IdentityMeasures {
    *  title a learned venue decoration wraps (`TitleDecorations`) — the other venues list "Mistyczka
    *  2D PL" as "Mistyczka". */
   def titleGroups(l: Listing): Seq[String] =
-    (key(l.title) +: undecorated(l).map(key)).filter(_.nonEmpty).distinct
+    (key(l.title) +: l.decoratedOnlyShapes.map(key)).filter(_.nonEmpty).distinct
 
   /** The title groups (by [[key]]) of the titles `l`'s search asks for — banners and screening notes off
    *  (`searchTitles`) — that are `f`'s own title, original or alternative: "Kino Konesera: Róża" is the
@@ -1196,11 +1210,6 @@ object IdentityMeasures {
   }
   /** Every group [[searchGroups]] can name for `l`, whatever the film — what a family's resolve may read. */
   def searchGroupsAny(l: Listing): Seq[String] = l.searchTitles.map(key).filter(_.nonEmpty).distinct
-
-  /** The title shapes only `l`'s learned decorations leave. */
-  private def undecorated(l: Listing): Seq[String] =
-    if (l.decorations == TitleDecorations.None) Nil
-    else (l.shapes.toSet -- l.copy(decorations = TitleDecorations.None).shapes).toSeq.sorted
 
   /** Measures that only ever AGREE with a film, never deny it: a year in a title is as often a
    *  re-release's screening year ("Gone With The Wind (2026)") as the film's, so the label rule

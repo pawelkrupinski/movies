@@ -56,11 +56,11 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
                             scored: Map[Seq[String], FamilyScope] = Map.empty): Round = {
     val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) =>
       val sorted = members.sortBy(_.id)
-      family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, () => listingsScored += 1, () => relationsRead += 1))
+      family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, acceptance, () => listingsScored += 1, () => relationsRead += 1))
     }
     val bestOf = nodes.groupBy(node => familyOf(node.id)).toSeq.flatMap { case (family, members) =>
       val scope = scopes(family)
-      withoutSiblingDenials(members, scope, members.flatMap(node => acceptance.alone(scope.of(node)).map(node.id -> _)).toMap)
+      withoutSiblingDenials(members, scope, members.flatMap(node => scope.takenAlone(node).map(taken => node.id -> taken._1)).toMap)
     }.toMap
     val grown = nodes.map(node => node.id -> (matchedIds.getOrElse(node.id, Set.empty[Int]) ++ bestOf.get(node.id).map(_._1.candidate.tmdbId) ++
       pinnedFilm.get(node.id))).toMap

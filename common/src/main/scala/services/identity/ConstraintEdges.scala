@@ -12,7 +12,9 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   import scoring.generation.{nodeById, nodes}
   import links.{sanitized, searchForm, segmentOf, titlesBeside}
 
-  private def pairsSharingAKey(members: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
+  private def pairsSharingAKey(group: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
+    // By position, so indexed: a resolve's first round pairs every node of the region.
+    val members = group.toIndexedSeq
     val index = members.zipWithIndex.flatMap { case (node, position) => families.blockKeysOf(node.id).map(_ -> position) }.groupMap(_._1)(_._2)
     index.values.iterator.flatMap { positions =>
       val sorted = positions.distinct.sorted
@@ -22,7 +24,13 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
 
   // The two listings' own evidence apart: the seasons their titles name, or the learned
   // "listing-listing" scope when they compare a fact both published.
-  private def listingsApart(first: EvidenceNode, second: EvidenceNode): Option[String] = {
+  // A pair's own evidence apart reads neither film nor round: asked by the first round over every pair and again by
+  // each family's, it is weighed once per resolve.
+  private val apart = scala.collection.mutable.HashMap.empty[(String, String), Option[String]]
+  private def listingsApart(first: EvidenceNode, second: EvidenceNode): Option[String] =
+    apart.getOrElseUpdate((first.id, second.id), weighApart(first, second))
+
+  private def weighApart(first: EvidenceNode, second: EvidenceNode): Option[String] = {
     // Two spellings the same-search-form must-link joins ("Kino Konesera: Róża", "FILMOWY KLUB SENIORA I
     // SENIORKI: RÓŻA") name their film by that form; their programmes are not what the learned scope
     // weighs — compared as decorated titles they only overlapped, and the cut kept them apart on that

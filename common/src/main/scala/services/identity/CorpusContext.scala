@@ -93,12 +93,6 @@ private[identity] final class WholeCorpusContext(
 private[identity] object CorpusContext {
   def titleOf(node: EvidenceNode): String = IdentityMeasures.key(node.evidence.title)
 
-  /** `IdentityMeasures.titlesByFacts` of ONE title key's nodes (their measured listings, by node id), over
-   *  the records their own title SEARCHES found — never a director's filmography alone: a director makes
-   *  more than one work a year ("SEVENTEEN World Tour 'New_'" {Taehwan Yum} is not his TXT tour film,
-   *  "It (1990)" {Tommy Lee Wallace} not his 1991 "And the Sea Will Tell"), while a title search finds a
-   *  record by any of its translations. The same inputs whether a whole resolve asks or the live corpus
-   *  re-titles the key. */
   /** The records a listing's own title searches found — TMDB's, and IMDb's FIRST suggestion for its title: IMDb
    *  matches a title's other-language spellings TMDB's search lacks ("Camino dla opornych" is Compostelle, which TMDB
    *  holds under no Polish title), and its first suggestion is the title's best match, not a filmography's film. */
@@ -106,6 +100,12 @@ private[identity] object CorpusContext {
     IdentityMeasures.searchQueries(listing).flatMap(query => answers(CandidateQuery.Title(query)).getOrElse(Nil)) ++
       Seq(listing.title.trim).filter(_.nonEmpty).flatMap(title => answers(CandidateQuery.Imdb(title)).getOrElse(Nil).take(1))
 
+  /** `IdentityMeasures.titlesByFacts` of ONE title key's nodes (their measured listings, by node id), over
+   *  the records their own title SEARCHES found — never a director's filmography alone: a director makes
+   *  more than one work a year ("SEVENTEEN World Tour 'New_'" {Taehwan Yum} is not his TXT tour film,
+   *  "It (1990)" {Tommy Lee Wallace} not his 1991 "And the Sea Will Tell"), while a title search finds a
+   *  record by any of its translations. The same inputs whether a whole resolve asks or the live corpus
+   *  re-titles the key. */
   def titlesByFacts(listings: Seq[IdentityMeasures.Listing], found: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
     IdentityMeasures.titlesByFacts(listings, found.toSeq.distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
 

@@ -71,7 +71,7 @@ private[identity] object TitleLinks {
    *  listing of their own, so "Młode Horyzonty: …" has no whole-title piece beside the banner). */
   def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
                 bannerSegment: String => Boolean): Set[String] =
-    keyed(node, normalizer, pins, wholeTitle, bannerSegment).keys
+    new Cut(node, normalizer, pins, wholeTitle, bannerSegment).keys
 
   /** A node's family keys, each with WHY it has it, and the title pieces it does NOT block under,
    *  each with why not — what [[titleKeys]] decides, told (`IdentityResolver.explain`). */
@@ -81,37 +81,47 @@ private[identity] object TitleLinks {
 
   def keyed(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
             bannerSegment: String => Boolean): Keyed = {
+    val cut = new Cut(node, normalizer, pins, wholeTitle, bannerSegment)
+    import cut.{blocked, catalogued, droppedPieces, isWhole, pinned, reasonToDrop, whole}
+    val searchForm = normalizer.searchQuery(node.evidence.cleanTitle)
+    def why(key: String): String =
+      if (key == "t:" + whole) "its title"
+      else if (key == "q:" + searchForm) "its title's search form"
+      else if (node.evidence.originalTitle.exists(original => key == "t:" + normalizer.sanitize(original) || key == "q:" + normalizer.searchQuery(original)))
+        "its original title"
+      else if (isWhole(key.drop(2))) "a piece of its title that a listing carries whole"
+      else "a piece of its title beside no work (kept as the work)"
+    Keyed(blocked.toSeq.sorted.map(key => key -> why(key)) ++ pinned.map(_ -> "a curation pin") ++ catalogued.map(_ -> "its chain's catalogue id"),
+      droppedPieces.flatMap { case (segment, key) => reasonToDrop(key).map(reason => s"'$segment'" -> reason) }.distinctBy(_._1))
+  }
+
+  /** What [[titleKeys]] and [[keyed]] both decide — the pieces kept and dropped, and the keys — with
+   *  no reason told: a resolve and every event's title components key every node, and read no reason. */
+  private final class Cut(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+                          bannerSegment: String => Boolean) {
     val whole   = normalizer.sanitize(node.evidence.cleanTitle)
     val pieces  = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
     // The listing's own cleaned title is a work too, when another piece of what the venue published
     // lies OUTSIDE it: "Spider-Man. Całkiem nowy dzień" beside "2D DUB", "KNT"; "Lalka" beside
     // "PREMIERA", though the normaliser drops "premiera" from the whole. Pieces inside it ("Così fan
     // tutte" in "RBO Cinema Season 2026-27: Così fan tutte") say nothing of what is beside it.
-    val besideIt = pieces.exists { case (_, key) => key.nonEmpty && key != whole && !whole.contains(key) }
+    private val besideIt = pieces.exists { case (_, key) => key.nonEmpty && key != whole && !whole.contains(key) }
     val isWhole = pieces.collect { case (_, key) if (key != whole && wholeTitle(key)) || (key == whole && besideIt) => key }.toSet
     // The search form is a work too, for the pieces that lie outside it: in "Gorzkie święta / napisy
     // - Nasze Kino" the label sticks to the film's piece, so no piece is anyone's whole title, but the
     // normaliser's form "Gorzkie święta" still says the venue's name beside it is no work.
-    val form = normalizer.sanitize(normalizer.searchQuery(node.evidence.cleanTitle))
-    def besideTheForm(key: String): Boolean = form.nonEmpty && form != whole && !key.contains(form) && !form.contains(key)
+    private val form = normalizer.sanitize(normalizer.searchQuery(node.evidence.cleanTitle))
+    private def besideTheForm(key: String): Boolean = form.nonEmpty && form != whole && !key.contains(form) && !form.contains(key)
     def reasonToDrop(key: String): Option[String] =
       if (isWhole(key) || key == whole) None
       else isWhole.find(_ != key).map(work => s"banner beside the work '$work', which a listing carries whole")
         .orElse(Option.when(besideTheForm(key))(s"banner beside the work '$form', its title's search form"))
         .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
     val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
-    val blocked = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
+    val blocked: Set[String] = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
       segments = keptPieces.map(_._1) :+ node.evidence.cleanTitle)
-    def why(key: String): String =
-      if (key == "t:" + whole) "its title"
-      else if (key == "q:" + normalizer.searchQuery(node.evidence.cleanTitle)) "its title's search form"
-      else if (node.evidence.originalTitle.exists(original => key == "t:" + normalizer.sanitize(original) || key == "q:" + normalizer.searchQuery(original)))
-        "its original title"
-      else if (isWhole(key.drop(2))) "a piece of its title that a listing carries whole"
-      else "a piece of its title beside no work (kept as the work)"
-    val pinned = pins.blockKeys(node.listings.head.key).toSeq.sorted.map(_ -> "a curation pin")
-    val catalogued = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key -> "its chain's catalogue id")
-    Keyed(blocked.toSeq.sorted.map(key => key -> why(key)) ++ pinned ++ catalogued,
-      droppedPieces.flatMap { case (segment, key) => reasonToDrop(key).map(reason => s"'$segment'" -> reason) }.distinctBy(_._1))
+    val pinned: Seq[String] = pins.blockKeys(node.listings.head.key).toSeq.sorted
+    val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key)
+    def keys: Set[String] = blocked ++ pinned ++ catalogued
   }
 }
