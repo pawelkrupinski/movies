@@ -47,7 +47,11 @@ class CinemaScrapeRunner(
 
   private val sink: ScrapeSink = landing.getOrElse(movieCache)
 
-  def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = {
+  def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = scrape(scraper)._2
+
+  /** [[run]], with the listing as fetched beside what the sink placed: a venue's remaining runway is
+   *  read off the listing (`VenueScrapeCadence`) — the identity intake places nothing itself. */
+  def scrape(scraper: CinemaScraper): (Seq[CinemaMovie], Seq[(CinemaMovie, CacheKey, Boolean)]) = {
     val cinema: Cinema = scraper.cinema
     val t0      = tools.Stopwatch.start()
     // A throw is archived as a barren attempt and then rethrown untouched, so
@@ -77,7 +81,7 @@ class CinemaScrapeRunner(
     val awaiting = touched.count(_._3) - events.size
     logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms (${events.size} ready, $awaiting awaiting detail)")
     events.foreach(bus.publish)
-    touched
+    (movies, touched)
   }
 
   /** File one scrape attempt in the archive — the runner's own step, public so a harness that

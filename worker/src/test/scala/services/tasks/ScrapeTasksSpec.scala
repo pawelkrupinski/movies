@@ -109,6 +109,34 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The cut-over sink, the identity intake, places nothing itself: a venue's runway has to be read
+  // off the listing the runner fetched. Read off what the sink placed, every venue's runway was zero,
+  // so every venue came due again at the 30-minute floor — the whole roster at up to 28x its cadence.
+  it should "keep a well-stocked venue on the country's cadence when the scrape goes to the identity intake" in {
+    val zone       = models.City.forCinema(Multikino).get.zoneId
+    val fixedClock = Clock.fixed(Instant.parse("2026-09-08T10:00:00Z"), ZoneOffset.UTC)
+    val nowLocal   = LocalDateTime.now(fixedClock.withZone(zone))
+    val stocked = Seq(CinemaMovie(Movie("Coyote vs. Acme"), Multikino, posterUrl = None, filmUrl = None,
+      synopsis = None, cast = Nil, director = Nil, showtimes = Seq(Showtime(nowLocal.plusDays(2), None))))
+    val intake = new services.identity.IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository,
+      new services.movies.InMemoryScrapeGuardLedger, titleNormalizer, 3, fixedClock, services.movies.ScrapeLandingMetrics.noop)
+    val runner = new CinemaScrapeRunner(
+      new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = fixedClock),
+      new InProcessEventBus(), deferredCinemas = Set.empty, landing = Some(intake))
+    val freshness    = new InMemoryFreshnessStore
+    val venueCadence = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
+    val dueWindow    = new DueWindow(venueCadence.periodFor, 14.hours)
+    val venueKey     = ScrapeCinemaHandler.dedupKey(Multikino)
+    val policy = new ScrapeFreshnessPolicy(freshness, clock = fixedClock, venueCadence = Some(venueCadence))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> new StubCinemaScraper(Multikino, stocked)),
+      runner, freshness, dueWindow, fixedClock, scrapeFreshness = Some(policy))
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    withClue("two days of runway keeps the 14h country cadence, not the 30-minute floor: ") {
+      dueWindow.isDue(venueKey, freshness.lastFetchedAt(venueKey), fixedClock.instant().plusSeconds(90 * 60)) shouldBe false
+    }
+  }
+
   // ── A venue whose page is gone ────────────────────────────────────────────
   // Both aggregators keep advertising venues whose pages 404 forever — 2 in the
   // US roster, 21 in the German one — and because the roster is harvested FROM

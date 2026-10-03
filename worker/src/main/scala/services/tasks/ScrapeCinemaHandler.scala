@@ -99,8 +99,8 @@ class ScrapeCinemaHandler(
         }
         val t0     = tools.Stopwatch.start()
         try {
-          val touched = runner.run(scraper)
-          val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, touched.map(_._1), clock)
+          val (listed, _) = runner.scrape(scraper)
+          val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, listed, clock)
           outcome.succeeded(key, Some(horizon))
           costs.record(key, ScrapeCost(1))
           Done
