@@ -123,7 +123,7 @@ object FixpointPass {
     // a first projection, then the heal's first look at what it changed — which is catching
     // up with the harness, not a tick. Found on the UK sample leg: 99 rows written before
     // attaching, projected by the first tick's sweep, then looked at again by the second's.
-    w.readModelProjector.reconcile()
+    WholeReconcile(w.readModelProjector)
   }
 
   /** One production tick over whatever the wiring's scrapers report: the runner's landing in the

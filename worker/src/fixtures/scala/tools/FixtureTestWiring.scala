@@ -90,7 +90,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   def bootStartup(): Unit = {
     bootCutover()
     Iterator.continually(projectIdentity()).take(FixtureTestWiring.SettleProjections).find(_.wroteNothing)
-    readModelProjector.reconcile()
+    WholeReconcile(readModelProjector)
     webReadModel.reload()
   }
 

@@ -396,6 +396,11 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
    *  so a wide record paid that rebuild hundreds of times. It now walks
    *  `slotCinemas`, a lazy `keysIterator` that short-circuits on the first hit.
    *
+   *  Driven through `synopsesForCities`, the batch the projection actually calls: it
+   *  asks `synopsisAppliesToCity` for every city just as a per-city loop would, but
+   *  builds the candidate pool once rather than re-sorting thousands of slots per
+   *  city — the per-city loop made this the slowest unit test (~30 s on a loaded run).
+   *
    *  ASSERTED BY COUNTING, not by the clock. This was a timed ratio (chain vs no
    *  chain, expected under 3x) and it failed CI at 3.4 on a contended runner while
    *  the code was perfectly correct — a wall-clock threshold measures the runner
@@ -434,8 +439,8 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
 
     withChainData.entryTraversals = 0
     noChainData.entryTraversals = 0
-    withChain.cities.foreach(withChain.synopsisForCity)
-    noChain.cities.foreach(noChain.synopsisForCity)
+    withChain.synopsesForCities(withChain.cities)
+    noChain.synopsesForCities(noChain.cities)
 
     withClue(
       s"the chain slot cost ${withChainData.entryTraversals - noChainData.entryTraversals} extra " +

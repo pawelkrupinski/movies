@@ -71,6 +71,9 @@ object CoalescedTmdbDocuments {
       try result.get() catch { case e: ExecutionException => throw e.getCause }
     }
 
+    /** Requests queued for a batch that has not taken them yet. */
+    private[identity] def waiting: Int = queued.size
+
     // Every request the batch took is answered whatever `run` throws: an interrupt (a shutdown) or a
     // fatal error fails them all, then goes on up the runner's own stack.
     private def runBatch(): Unit = {

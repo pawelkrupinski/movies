@@ -637,7 +637,7 @@ abstract class CountryConvergenceBehaviour(
         .indexWhere(_.wroteNothing))
       info(s"${country.displayName}: identity projection at rest after " +
         (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
-      step("project")(w.readModelProjector.reconcile())
+      step("project")(tools.WholeReconcile(w.readModelProjector))
       step("reloadReadModel")(w.webReadModel.reload())
     }
 
@@ -667,7 +667,6 @@ abstract class CountryConvergenceBehaviour(
       Iterator.continually(w.projectIdentity()).take(services.identity.ProjectionGuard.Grace + 1).find(_.refused.isEmpty)
       ()
     }
-
 
   /**
    * Announce a phase to STDOUT as it starts and finishes, with its duration.
@@ -1065,7 +1064,7 @@ abstract class CountryConvergenceBehaviour(
       PhaseTimer.timed(scope, "replayCutover")(rescrapeCutover(w, rnd, failures))
       if (failures.nonEmpty) fail(s"$scope: ${failures.size} venue(s) failed to land: ${failures.take(5).mkString("; ")}")
     }
-    PhaseTimer.timed(scope, "replayProject")(w.readModelProjector.reconcile())
+    PhaseTimer.timed(scope, "replayProject")(tools.WholeReconcile(w.readModelProjector))
     // Reload AND materialise inside the comparison's lock: this is the step that
     // allocates the corpus, so it is the step that has to be one-at-a-time.
     comparison.submit((seed - OrderSeed).toInt) { () =>
@@ -1516,7 +1515,10 @@ abstract class CountryConvergenceBehaviour(
           .fold(fail("the identity model could not be read for the next day's families"))(_.resolution.familyOf)
       def familiesOf(r: StoredMovieRecord): Set[Int] =
         r.record.data.toSeq.flatMap { case (source, slot) => services.movies.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
-      val movedFamilies = before.filterNot(ownUnchanged.contains).flatMap(familiesOf).toSet
+      // By id, not `ownUnchanged.contains`: that compared every record against every other —
+      // quadratic in the corpus, on a US-sized one.
+      val ownUnchangedIds = ownUnchanged.iterator.map(_.id).toSet
+      val movedFamilies = before.filterNot(r => ownUnchangedIds(r.id)).flatMap(familiesOf).toSet
       val unchanged     = ownUnchanged.filter(r => (familiesOf(r) & movedFamilies).isEmpty)
       val leaving = before.filter(r => r.record.data.keysIterator.forall {
         case models.CinemaShowing(c, key) => !failing.contains(c) && !reported.getOrElse(c, Nil).exists(cm => keyOf(c, cm) == key)
@@ -1593,7 +1595,7 @@ abstract class CountryConvergenceBehaviour(
         // retires its card. Without it the withdrawn films stay served as empty cards. Before
         // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
-        step("  read model")(w.readModelProjector.reconcile())
+        step("  read model")(tools.WholeReconcile(w.readModelProjector))
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
       }

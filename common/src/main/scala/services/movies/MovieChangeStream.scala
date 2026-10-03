@@ -80,7 +80,10 @@ final class MovieChangeStream(
   readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
   // How often a venue apply a listener was not ready for asks again, and how long it waits at most.
   venueRetryMillis:    Long = MovieChangeStream.VenueRetryMillis,
-  venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis
+  venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis,
+  // Waits out each film's debounce (built only when `debounce` is set) — injected so a spec can
+  // step a debounce boundary on a hand-moved `clock` instead of sleeping across it.
+  debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = () => tools.DaemonExecutors.scheduler("movie-change-debounce")
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -198,7 +201,7 @@ final class MovieChangeStream(
   def releaseHeld(): Unit = pending.forEach((filmId, entry) => queue(filmId, entry))
 
   // Waits out a film's debounce; the re-read itself runs on `changeApply`, like every apply.
-  private lazy val debouncer = tools.DaemonExecutors.scheduler("movie-change-debounce")
+  private lazy val debouncer = debounceScheduler()
 
   /** Queue `entry`'s re-read once its film is due: at once without a debounce, else when its due
    *  time — moved by every event that rides it — has passed. */

@@ -70,6 +70,19 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   private final case class Pass(w: ArchiveReplayWiring, tick: ProjectionTick)
 
+  /** The venues the corpus lists films at. */
+  private def venuesOf(w: ArchiveReplayWiring): Set[Cinema] = w.archivedListings.collect { case (c, fs) if fs.nonEmpty => c }.toSet
+
+  /** PREMISE of every claim below: `publish` carries on past a venue whose scrape throws, as
+   *  production's scheduler does — so a pass where venues never landed would hold every relative
+   *  claim (same films, nothing lost) over less corpus, or none. Every listed venue published, and
+   *  the projection made films. */
+  private def landedWhole(p: Pass): Unit =
+    withClue("premise — every venue the corpus lists published, and the projection made films: ") {
+      published(p.w).map(_._1).toSet shouldBe venuesOf(p.w)
+      p.tick.plan.get.films should not be empty
+    }
+
   private def cutPass(country: Country, label: String, seed: Long, halfFirst: Boolean): Pass = {
     val w = wiring(country, storage(country, label))
     val scrapers = arrivals(w, new Random(seed))
@@ -94,7 +107,9 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   /** EVERY boot this spec asserts on — each country's three passes, each in its own database and
    *  wiring, sharing nothing but the read-only corpus and the (concurrent) recorded answers — run up
    *  front on a small pool rather than one after another inside the tests; the tests below only assert. */
-  private lazy val passes: Map[Country, Seq[Pass]] = {
+  // Held as a Try: a lazy val whose initialiser throws is re-run on the next access, so one failed
+  // boot re-ran every boot for every test after it instead of failing each at once.
+  private lazy val bootAttempt: Try[Map[Country, Seq[Pass]]] = Try {
     val pool = java.util.concurrent.Executors.newFixedThreadPool(BootParallelism)
     try {
       def run[A](body: => A): java.util.concurrent.Future[A] = pool.submit(() => body)
@@ -105,6 +120,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       passes.map { case (c, fs) => c -> fs.map(_.get()) }.toMap
     } finally pool.shutdownNow(): Unit
   }
+  private def passes: Map[Country, Seq[Pass]] = bootAttempt.get
 
   /** A CI runner's four vCPUs; `itAll` runs other suites beside this one, so no more. */
   private val BootParallelism = 4
@@ -117,6 +133,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       info(s"[$cc] ${p0.tick.listings} listings → ${p0.tick.plan.get.films.size} films " +
         s"(${p0.tick.plan.get.films.count(_.record.tmdbId.isDefined)} matched)")
       p0.tick.refused shouldBe None
+      passes(country).foreach(landedWhole)
       same(CutoverProperties.films(p0.tick, withIds = true), CutoverProperties.films(p1.tick, withIds = true), "two orders")
       same(CutoverProperties.films(p0.tick, withIds = false), CutoverProperties.films(half.tick, withIds = false), "half first")
     }

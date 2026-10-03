@@ -231,21 +231,61 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // (HardClusterConvergenceIntegrationSpec under itAll, 2026-10-03: `upsertMovie … timed out
     // after [10 seconds]`). The card document stands, its screenings were never written — a
     // served film with nothing under it — while the scan itself was complete.
-    val rm = new InMemoryReadModelRepository {
-      @volatile var timeOutOnce = true
-      override def upsertMovie(m: ResolvedMovie): Unit = {
-        super.upsertMovie(m)
-        if (timeOutOnce) { timeOutOnce = false; throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]") }
-      }
-    }
-    val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
-    val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val (projector, rm) = timingOutProjector(timeouts = 1)
 
     projector.reconcile() shouldBe false
     rm.findAllScreenings().map(_.filmId) should not contain fid   // the premise: the card is served bare
 
     projector.reconcile() shouldBe true
     rm.findAllScreenings().map(_.filmId) should contain(fid)
+  }
+
+  /** A read model whose first `timeouts` card writes land and then time out client-side, as a
+   *  loaded Mongo's do — and a projector over Foo writing to it. */
+  private def timingOutProjector(timeouts: Int): (ReadModelProjector, InMemoryReadModelRepository) = {
+    val rm = new InMemoryReadModelRepository {
+      private val left = new java.util.concurrent.atomic.AtomicInteger(timeouts)
+      override def upsertMovie(m: ResolvedMovie): Unit = {
+        super.upsertMovie(m)
+        if (left.getAndDecrement() > 0) throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]")
+      }
+    }
+    val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
+    (new ReadModelProjector(repository, rm, rm, clock = specClock), rm)
+  }
+
+  it should "report a prune that failed, so a caller asserting on the read model reconciles again" in {
+    // The same timed-out write on a DELETE: the orphan card stays served — a film the corpus no
+    // longer has — on a complete scan whose every row projected.
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val refuseDeletes = new java.util.concurrent.atomic.AtomicInteger(0)
+    val rm = new InMemoryReadModelRepository {
+      override def deleteMovie(id: String): Unit =
+        if (refuseDeletes.getAndDecrement() > 0) throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]")
+        else super.deleteMovie(id)
+    }
+    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile() shouldBe true
+    repository.delete("Foo", Some(2024))
+    refuseDeletes.set(1)
+
+    projector.reconcile() shouldBe false
+    rm.findAllMovies().map(_._id) should contain(fid)   // the premise: the orphan is still served
+
+    projector.reconcile() shouldBe true
+    rm.findAllMovies() shouldBe empty
+  }
+
+  "a harness's whole reconcile" should "sweep again until a row that failed to project is written whole" in {
+    val (projector, rm) = timingOutProjector(timeouts = 2)
+    tools.WholeReconcile(projector)
+    rm.findAllScreenings().map(_.filmId) should contain(fid)
+  }
+
+  it should "fail loudly once its attempts are spent, rather than leave a card bare" in {
+    val (projector, _) = timingOutProjector(timeouts = 3)
+    an[IllegalStateException] should be thrownBy tools.WholeReconcile(projector, attempts = 3)
   }
 
   "a showtime-only change" should "move only the one screening document" in {

@@ -114,32 +114,19 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     }
 
   /** Production's arrival: each cinema's scrape lands in the identity model's intake through the
-   *  production runner. */
-  private def arrive(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Unit =
-    scrapers.foreach(scraper => Try(w.cinemaScrapeRunner.run(scraper)))
+   *  production runner. How many landed without throwing. */
+  private def arrive(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Int =
+    scrapers.count(scraper => Try(w.cinemaScrapeRunner.run(scraper)).isSuccess)
 
   /** Projections until one writes nothing — the rest production's projection interval reaches, as the
    *  venue pages and ids a projection's enrichment fetched are taken in by the next — then the read model. */
   private def settle(w: ArchiveReplayWiring): Unit = {
     Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.wroteNothing)
-    project(w)
+    // The read model every claim reads, from a whole sweep: passes boot side by side against one
+    // local Mongo, where a side read or a read-model write can time out.
+    WholeReconcile(w.readModelProjector)
   }
   private val SettleProjections = 5
-
-  /** The read model every claim reads, from a COMPLETE scan. Passes boot side by side against
-   *  one local Mongo, and under a loaded `itAll` a page's side read can time out: the scan then
-   *  skips that page, so its films are simply not projected yet — which production's next sweep
-   *  repairs and nothing here would. A read-model write can time out too, leaving a card's
-   *  document without its screenings. Reconciling again until a scan completes with every row
-   *  projected is that next sweep; one that never does fails as what it is, not as a missing
-   *  showtime. */
-  private def project(w: ArchiveReplayWiring): Unit = {
-    val attempts = Iterator.continually(w.readModelProjector.reconcile()).take(ReconcileAttempts)
-    if (!attempts.contains(true))
-      throw new IllegalStateException(s"read-model reconcile: no complete, wholly projected sweep in $ReconcileAttempts attempts — " +
-        "Mongo reads or read-model writes kept failing, so the projected read model is not the corpus's")
-  }
-  private val ReconcileAttempts = 3
 
   private def films(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Film] = {
     val records   = w.movieRepository.findAll()
@@ -168,7 +155,9 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   }
 
   /** Every pass of every country, concurrently — each in its own database and wiring. */
-  private lazy val booted: Map[Country, Seq[(Pass, Seq[Film])]] = {
+  // Held as a Try: a lazy val whose initialiser throws is re-run on the next access, so one failed
+  // boot re-ran every pass of every country for each test after it.
+  private lazy val bootAttempt: Try[Map[Country, Seq[(Pass, Seq[Film])]]] = Try {
     val pool = Executors.newFixedThreadPool(8)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
     try {
@@ -180,6 +169,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       done.groupMap(_._1)(_._2)
     } finally pool.shutdown()
   }
+  private def booted: Map[Country, Seq[(Pass, Seq[Film])]] = bootAttempt.get
 
   /** RECORD MODE: also ask the identity resolver's query set (`IdentityLookupSweep`) of each
    *  country's clusters, so the responses file answers the phase-1 gate
@@ -229,16 +219,17 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
    * open, and the lookup fill asks it again — so once TMDB answers and a fill round has run, the
    * corpus must come out as the undisturbed reference did.
    *
-   * Returns the films matched in the reference that the outage left unmatched (reported), and the
-   * films after the recovery.
+   * Returns the films matched in the reference that the outage left unmatched (reported), the films
+   * after the recovery, and how many TMDB requests the outage refused.
    */
-  private def outage(country: Country): (Seq[String], Seq[Film]) = {
+  private def outage(country: Country): Outage = {
     val down  = new java.util.concurrent.atomic.AtomicBoolean(true)
+    val refused = new java.util.concurrent.atomic.AtomicLong()
     val clock = new MutableClock(TestWiring.FixedInstant)
     def flaky(inner: HttpFetch): HttpFetch = new HttpFetch {
       private def check(url: String): Unit =
         if (down.get && url.contains("themoviedb.org") && (url.## & 1) == 0)
-          throw new HttpStatusException(503, "GET", url, retryAfter = None)
+          { refused.incrementAndGet(); throw new HttpStatusException(503, "GET", url, retryAfter = None) }
       override def get(url: String): String = { check(url); inner.get(url) }
       override def get(url: String, headers: Map[String, String]): String = { check(url); inner.get(url, headers) }
       override def getBytes(url: String): Array[Byte] = { check(url); inner.getBytes(url) }
@@ -256,10 +247,14 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     clock.advance(java.time.Duration.ofHours(1))
     w.shadowLookupFill.round()
     settle(w)
-    (unmatched, films(w, normalizer))
+    Outage(unmatched, films(w, normalizer), refused.get)
   }
 
-  private lazy val outages: Map[Country, (Seq[String], Seq[Film])] = countries.map(c => c -> outage(c)).toMap
+  /** The films concluded unmatched during the outage, the films after it recovered, and how many
+   *  TMDB requests the outage refused — zero would make "nothing concluded unmatched" vacuous. */
+  private final case class Outage(unmatched: Seq[String], recovered: Seq[Film], refused: Long)
+
+  private lazy val outages: Map[Country, Outage] = countries.map(c => c -> outage(c)).toMap
 
   /** What moved between two passes, by film key — named so a failure says WHICH cluster. */
   private def diff(a: Seq[Film], b: Seq[Film], la: String, lb: String): Seq[(String, String)] = {
@@ -368,7 +363,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     }
 
     it should "come out as the undisturbed boot's films once TMDB is back after an outage" in {
-      val (unmatched, recovered) = outages(country)
+      val Outage(unmatched, recovered, refused) = outages(country)
+      withClue(s"$name: premise — the outage refused no TMDB request, so it tested nothing: ")(refused should be > 0L)
       val (reference, refFilms)  = booted(country).head
       if (unmatched.nonEmpty)
         info(s"$name: ${unmatched.size} film(s) unmatched while TMDB failed (held open, not concluded):\n  " +
@@ -411,8 +407,11 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
         problems += s"a projection over the settled corpus changed records:\n${changed(settledRecords, afterProjection, normalizer)}"
 
       (1 to 2).foreach { tick =>
-        val before = records
-        arrive(w, new Random(OrderSeed + 100 + tick).shuffle(pass.scrapers))
+        val before    = records
+        val rescraped = arrive(w, new Random(OrderSeed + 100 + tick).shuffle(pass.scrapers))
+        // A rescrape that landed nothing would change nothing, and pass every check below.
+        if (rescraped != pass.scrapers.size)
+          problems += s"rescrape $tick landed only $rescraped of ${pass.scrapers.size} venues — the churn checks cover only those"
         val projected = w.projectIdentity()
         if (!projected.wroteNothing) problems += s"rescrape $tick's projection wrote ${projected.written}, retired ${projected.retired}"
         val after = records

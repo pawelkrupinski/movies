@@ -21,8 +21,11 @@ class HotSpotPerfDataSpec extends AnyFlatSpec with Matchers {
   it should "read live values, not the ones at the time it opened the file" in {
     val perf   = HotSpotPerfData.own().getOrElse(fail("no hsperfdata for this JVM"))
     val before = perf.long("java.cls.loadedClasses").get
-    Class.forName("javax.swing.text.html.parser.DTD")   // classes nothing else in this suite loads
+    // A class of this test's own, loaded only as this line runs: a JDK class "nothing else loads" was
+    // already loaded by whichever spec in the same JVM had reached it first, and the count stood still.
+    val fresh  = new Serializable {}
     perf.long("java.cls.loadedClasses").get should be > before
+    fresh.getClass.getClassLoader should not be null
   }
 
   "the JVM metrics" should "export how many loaded classes came from the archive" in {

@@ -107,7 +107,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     fence:               FilmWriteFence              = new FilmWriteFence(),
     debounce:            Option[MovieChangeStream.Debounce] = None,
     readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
-    venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis
+    venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis,
+    debounceScheduler:   Option[java.util.concurrent.ScheduledExecutorService] = None
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -125,7 +126,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     debounce            = debounce,
     readVenues          = readVenues,
     venueRetryMillis    = 20L,
-    venueWaitMillis     = venueWaitMillis)
+    venueWaitMillis     = venueWaitMillis,
+    debounceScheduler   = debounceScheduler.fold(() => tools.DaemonExecutors.scheduler("movie-change-debounce"))(timer => () => timer))
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -326,18 +328,29 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   private def millis(n: Int) = scala.concurrent.duration.Duration(n.toLong, "millis")
 
   /** Re-reads of one film over `rows` slot writes `spacing` apart, under `debounce`. */
+  /** How many times one film is re-read for `rows` slot writes `spacing` ms apart, on a hand-moved
+   *  clock: each write is applied before the clock moves, and the debounce's timer fires only as the
+   *  clock passes it — so the count is exact, never a race between sleeps and the timer thread. */
   private def spacedBurst(debounce: Option[MovieChangeStream.Debounce], rows: Int, spacing: Int): Int = {
+    val clock  = new tools.MutableClock(Instant.parse("2026-01-01T00:00:00Z"))
+    val timer  = new tools.ManualScheduler(clock)
     val slots  = new InMemorySlotsRepository
     val reread = new AtomicInteger(0)
-    val under  = stream(new HandFedSource, slots = Some(slots), debounce = debounce,
+    val under  = stream(new HandFedSource, slots = Some(slots), debounce = debounce, clock = clock, debounceScheduler = Some(timer),
       reread = id => { if (id == "film|2024") reread.incrementAndGet(); Some(recordOf(id)) })
     val handle = under.watch(_ => (), _ => ())
     try {
-      (0 until rows).foreach { i => slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i"))); Thread.sleep(spacing.toLong) }
-      Thread.sleep(debounce.fold(0L)(_.cap.toMillis) + 500)
+      (0 until rows).foreach { i =>
+        slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i")))
+        timer.advance(java.time.Duration.ofMillis(spacing.toLong))
+        under.awaitQueuedApplies() shouldBe true
+      }
+      timer.advance(java.time.Duration.ofMillis(debounce.fold(0L)(_.cap.toMillis) + 1))
+      under.awaitQueuedApplies() shouldBe true
       reread.get()
     } finally { handle.close(); under.close() }
   }
+
 
   it should "re-read a film once for a burst whose rows keep landing within its quiet time, however long it runs" in {
     // 8 rows 150 ms apart: 1.05 s of burst, far past the 300 ms quiet time — each row pushes it on
@@ -345,12 +358,13 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   }
 
   it should "re-read a film per row of a spaced burst when nothing debounces" in {
-    spacedBurst(None, rows = 6, spacing = 30) should be > 1
+    spacedBurst(None, rows = 6, spacing = 30) shouldBe 6
   }
 
   it should "re-read a film whose burst never goes quiet once its cap is reached, not when the burst ends" in {
-    // 20 rows 100 ms apart (2 s) under a 600 ms cap: the re-read must not wait the whole burst out
-    spacedBurst(Some(MovieChangeStream.Debounce(millis(300), millis(600))), rows = 20, spacing = 100) should be >= 2
+    // 20 rows 100 ms apart (2 s) under a 600 ms cap: one re-read per 600 ms the burst runs (at 600,
+    // 1200 and 1800), then the tail's — never one at the end of the whole burst
+    spacedBurst(Some(MovieChangeStream.Debounce(millis(300), millis(600))), rows = 20, spacing = 100) shouldBe 4
   }
 
   it should "apply a film still held by its debounce when it closes, not drop it" in {
@@ -361,8 +375,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       reread = id => { reread.incrementAndGet(); Some(recordOf(id)) })
     val handle = under.watch(_ => (), _ => ())
     slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
-    Thread.sleep(200)
-    reread.get()    shouldBe 0            // held
+    under.awaitQueuedApplies() shouldBe true // whatever was handed to the apply thread has run…
+    reread.get()    shouldBe 0            // …and nothing was: held
     under.held      shouldBe 1
     handle.close(); under.close()
     reread.get()    shouldBe 1            // released and drained at close
@@ -559,7 +573,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       source.emit(event("update", "busy|2024", StoredMovieDto.fromDomain("busy|2024", MovieRecord(), Instant.EPOCH))) // rides it
       source.emit(event("update", "quiet|2024", StoredMovieDto.fromDomain("quiet|2024", MovieRecord(), Instant.EPOCH))) // due at once
       eventually(quiet.synchronized(quiet.toSeq) should contain("quiet|2024"))
-      Thread.sleep(100)
+      under.awaitQueuedApplies() shouldBe true                      // quiet's apply has moved what it moves
       token.current shouldBe None                                   // NOT past busy's waiting event
       under.releaseHeld()
       eventually(token.current.map(_.getString("_data").getValue) shouldBe Some("token-quiet|2024"))
@@ -839,8 +853,11 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     }
     val acks      = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
+    // Its first apply and two retries (20 ms, then 40 ms later) have each failed every read they made.
+    val brokenReads = new CountDownLatch(3 * MovieChangeStream.RereadAttempts)
     val under = stream(source, slots = Some(slots),
-      rereadChecked = Some(id => if (id == "broken|2024") (None, false) else (Some(recordOf(id)), true)))
+      rereadChecked = Some(id =>
+        if (id == "broken|2024") { brokenReads.countDown(); (None, false) } else (Some(recordOf(id)), true)))
 
     val handle = under.watch(r => delivered.put(r.id.value), _ => ())
     try {
@@ -849,7 +866,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024"
       import scala.jdk.CollectionConverters._
       eventually(acks.asScala.toSeq shouldBe Seq("later"))
-      Thread.sleep(100)
+      brokenReads.await(10, TimeUnit.SECONDS) shouldBe true
+      under.awaitQueuedApplies() shouldBe true // the second retry's apply has finished
       acks.asScala.toSeq should not contain "broken"
     } finally { handle.close(); under.close() }
   }

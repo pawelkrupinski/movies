@@ -406,12 +406,13 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       def signature(r: Resolution) = r.decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9))).toSet
       val reference = signature(resolution)
       val n = if (!robustness) 0 else if (c.isHardCluster) 21 else permutations
-      val variants = (1 to n).count { s =>
+      // Side by side on a hard-cluster corpus only: each presentation resolves the WHOLE corpus.
+      val variants = sideBySide(1 to n, threads = if (c.isHardCluster) Runtime.getRuntime.availableProcessors else 1) { s =>
         val rnd = new Random(s.toLong)
         val shuffled = rnd.shuffle(listings)
         if (s % 3 == 2) IdentityResolver.resolve(shuffled.take(shuffled.size / 2), lookups, c.normalizer, calibration)
         signature(IdentityResolver.resolve(shuffled, lookups, c.normalizer, calibration)) != reference
-      }
+      }.count(identity)
       report.line(s"[${c.label}] determinism: $variants of $n presentations (permutations and split arrivals) differ from the sorted one")
 
       // ── robustness: a 30% TMDB outage ─────────────────────────────────────────────────
@@ -432,19 +433,20 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       val transforms: Seq[String => String] = Seq(t => s"Pokaz specjalny: $t", t => s"$t (2026)",
         _.toUpperCase(java.util.Locale.ROOT), t => tools.TextNormalization.deburr(t))
       val familyListings = listings.groupBy(l => resolution.familyOf(l.key))
-      var (tried, recovered) = (0, 0)
-      sample.foreach { d =>
+      val perturbed = sample.flatMap { d =>
         val original = listings.find(_.key == d.members.head).get
         val family   = familyListings(resolution.familyOf(original.key))
-        if (family.size <= 400) transforms.foreach { t =>
+        if (family.size > 400) Nil else transforms.map { t =>
           val title = t(original.rawTitle)
           val moved = original.copy(key = ListingKey.Published(original.venue + " (perturbed)", title, original.year, original.directors),
             rawTitle = title, title = t(original.title), cleanTitle = t(original.cleanTitle), page = None)
-          val r = IdentityResolver.resolve(family :+ moved, lookups, c.normalizer, calibration)
-          tried += 1
-          if (r.decisionOf(moved.key).film == d.film) recovered += 1
+          (family, moved, d.film)
         }
       }
+      val tried     = perturbed.size
+      val recovered = sideBySide(perturbed) { case (family, moved, film) =>
+        IdentityResolver.resolve(family :+ moved, lookups, c.normalizer, calibration).decisionOf(moved.key).film == film
+      }.count(identity)
       report.line(s"[${c.label}] perturbation: $recovered of $tried decorated/re-dated/re-cased copies of a matched listing recovered its film")
 
       // ── cross-country keys ────────────────────────────────────────────────────────────

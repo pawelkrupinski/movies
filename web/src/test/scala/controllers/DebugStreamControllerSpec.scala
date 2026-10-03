@@ -45,6 +45,21 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private def record(title: String) =
     MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title))))
 
+  private val Sentinel   = "Feed Sentinel"
+  private val SentinelId = StoredMovieRecord.keyFor(Sentinel, None, titleNormalizer)
+
+  /** Every frame the feed pushes for `act`, and nothing else: the watches are attached when
+   *  `eventSource` returns (its queue is pre-materialized), so no write can be missed; and the
+   *  feed is read up to a sentinel film written after `act`, so the frames are exactly those
+   *  that came before it — no wall-clock window that a slow machine could close early or a
+   *  stray frame could fall outside of. */
+  private def framesOf(feed: org.apache.pekko.stream.scaladsl.Source[String, ?], movies: InMemoryMovieRepository)(act: => Unit): Seq[String] = {
+    val collecting = feed.takeWhile(frame => !frame.contains(s"\"$SentinelId\"")).runWith(Sink.seq)
+    act
+    movies.upsert(Sentinel, None, record(Sentinel))
+    Await.result(collecting, 10.seconds)
+  }
+
   "GET /debug/stream" should "404 in production (the collection is never watched from the web there)" in {
     val result = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), Mode.Prod).stream.apply(FakeRequest())
     status(result) shouldBe NOT_FOUND
@@ -58,12 +73,8 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   "the live feed" should "push an upsert frame carrying the rendered row when a film appears" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
-
-    Thread.sleep(100) // let the stream materialize + subscribe before we write
-    repository.upsert("Belle", Some(2021), record("Belle"))
-
-    val frames = Await.result(collecting, 3.seconds)
+    val frames = framesOf(controller(repository).eventSource(FakeRequest()), repository)(
+      repository.upsert("Belle", Some(2021), record("Belle")))
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "upsert"
@@ -75,12 +86,8 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   it should "push a delete frame with just the id when a row is removed (a merge)" in {
     val repository = new InMemoryMovieRepository(Seq(("Belle", Some(2021), record("Belle"))), normalizer = titleNormalizer)
-    val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
-
-    Thread.sleep(100)
-    repository.delete("Belle", Some(2021))
-
-    val frames = Await.result(collecting, 3.seconds)
+    val frames = framesOf(controller(repository).eventSource(FakeRequest()), repository)(
+      repository.delete("Belle", Some(2021)))
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "delete"
@@ -89,8 +96,6 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   it should "emit nothing while the collection is idle" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val frames = Await.result(
-      controller(repository).eventSource(FakeRequest()).takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
-    frames shouldBe empty
+    framesOf(controller(repository).eventSource(FakeRequest()), repository)(()) shouldBe empty
   }
 }

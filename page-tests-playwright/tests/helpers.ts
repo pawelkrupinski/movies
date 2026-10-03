@@ -44,14 +44,20 @@ export async function pinDateFilterAnytime(page: Page): Promise<void> {
  * `pinDateFilterAnytime` is just this with `value = 'anytime'`.
  */
 export async function setDateFilter(page: Page, value: string): Promise<void> {
-  await page.evaluate((v) => {
+  // Fails loudly rather than doing nothing: a page without the select (or the handler) would
+  // otherwise leave every caller asserting over whatever day the runner's clock picked.
+  const problem = await page.evaluate((v) => {
     const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
-    if (sel) {
-      sel.value = v;
-      const g = globalThis as unknown as { onDateChange?: () => void; applyFilters?: () => void };
-      (g.onDateChange ?? g.applyFilters)?.();
-    }
+    if (!sel) return 'no #date-filter on the page';
+    if (![...sel.options].some((o) => o.value === v)) return `#date-filter has no "${v}" option`;
+    const g = globalThis as unknown as { onDateChange?: () => void; applyFilters?: () => void };
+    const apply = g.onDateChange ?? g.applyFilters;
+    if (!apply) return 'neither onDateChange nor applyFilters is defined';
+    sel.value = v;
+    apply();
+    return null;
   }, value);
+  if (problem) throw new Error(`setDateFilter('${value}'): ${problem}`);
 }
 
 /**

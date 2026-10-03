@@ -3,9 +3,9 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.schedule.InMemoryScheduledRunStore
-import tools.LogCapture
+import tools.{LogCapture, MutableClock}
 
-import java.time.Clock
+import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.*
 
@@ -14,13 +14,14 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
   // Every scheduler wrapped its tick in a bare `Try`, so a task failing on every run kept being
   // scheduled and said nothing — indistinguishable in the logs from one with nothing to do.
   "A periodic task whose run throws" should "log the failure and keep its schedule" in {
-    val runs = new AtomicInteger
+    val runs  = new AtomicInteger
+    val clock = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
     val task = new ClaimedPeriodicTask("failing-job", () => { runs.incrementAndGet(); throw new IllegalStateException("store unreadable") },
-      20.millis, 0.millis, new InMemoryScheduledRunStore, Clock.systemUTC())
+      20.millis, 0.millis, new InMemoryScheduledRunStore, clock)
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       val deadline = System.nanoTime() + 5.seconds.toNanos
-      while (runs.get() < 2 && System.nanoTime() < deadline) Thread.sleep(10)
+      while (runs.get() < 2 && System.nanoTime() < deadline) { clock.advance(Duration.ofMillis(20)); Thread.sleep(10) }
       task.stop()
     }
     runs.get() should be >= 2

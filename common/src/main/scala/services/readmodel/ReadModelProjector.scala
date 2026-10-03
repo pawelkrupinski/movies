@@ -628,6 +628,9 @@ class ReadModelProjector(
     // a scan that was itself complete. `reconcile` reports it, so a caller asserting on the read
     // model reconciles again rather than reading a served film with nothing under it.
     var projectionFailed = false
+    // A prune that THREW leaves an orphan card or venue served — a film the corpus no longer has —
+    // on a scan that was complete. Reported the same way.
+    var pruneFailed = false
     // The cards as they are BEFORE this sweep. A ready row ANY of whose ids has no card
     // is healed here, in the same pass, before anything is pruned: on 2026-09-07 the
     // card id scheme changed under a live read model, the prune removed 509 Polish
@@ -723,7 +726,7 @@ class ReadModelProjector(
         continuing(s"read-model $kind: pruning card $id failed") {
           deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
           prunedFilms += 1
-        }
+        }.getOrElse { pruneFailed = true }
       }
       // Drop metadata cached for source rows that no longer exist. Only reachable on a
       // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
@@ -737,7 +740,7 @@ class ReadModelProjector(
           metrics.recordWrite(Target.Screening, Op.Delete, 1)
           lastScreenings.forget(ref.filmId, ref._id)
           prunedScreenings += 1
-        }
+        }.getOrElse { pruneFailed = true }
       screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
       // A stream misses a removal now and then; one sweep finding a great many is far likelier a
       // comparison gone wrong — the slots-only view disagreeing with the projection about some shape
@@ -814,7 +817,7 @@ class ReadModelProjector(
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
-    (healed.toSeq, scanComplete && !projectionFailed)
+    (healed.toSeq, scanComplete && !projectionFailed && !pruneFailed)
   }
 
   /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
@@ -849,10 +852,11 @@ class ReadModelProjector(
    *  (it stitches split films via `foreachRecord`, which a per-row `onMovieUpsert` seed
    *  would not). Mirrors `scripts.BackfillReadModel`.
    *
-   *  Returns whether the source scan was COMPLETE and every row it read projected. An incomplete
-   *  one (a page whose read failed) projected only the rows it could read whole, and a row whose
-   *  projection threw may stand half-written, so a caller seeding a read model it then asserts on
-   *  owes another reconcile once Mongo recovers. */
+   *  Returns whether the source scan was COMPLETE, every row it read projected and every orphan it
+   *  found was pruned. An incomplete one (a page whose read failed) projected only the rows it could
+   *  read whole, a row whose projection threw may stand half-written, and a prune that threw leaves
+   *  an orphan served, so a caller seeding a read model it then asserts on owes another reconcile
+   *  once Mongo recovers. */
   def reconcile(): Boolean = sweep(reproject = true)._2
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and

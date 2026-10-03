@@ -107,7 +107,7 @@ object IdentityShadow {
    *  scraped into the intake, one projection and the enrichment it announces, then the read model. */
   def bootPipeline(w: ArchiveReplayWiring): Seq[PipelineFilm] = {
     w.bootCutover()
-    w.readModelProjector.reconcile()
+    tools.WholeReconcile(w.readModelProjector)
     w.movieRepository.findAll().map { f =>
       val tmdb = f.record.data.get(Tmdb)
       PipelineFilm(f.id.value, f.record.tmdbId,
@@ -191,6 +191,25 @@ object IdentityShadow {
     override def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (withheld(q.sortKey)) Answer.Unknown else inner.candidates(q)
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (withheld(s"film $id")) Answer.Unknown else inner.film(id)
+  }
+
+  /** `f` over `items` on every core, answers in `items`' order — for the robustness measures'
+   *  many independent resolves of one corpus (21 presentations, up to 160 perturbed copies), which
+   *  ran one after another and made this suite the integration job's critical path (~3 min of
+   *  its ~4 on a CI runner). Safe because a resolve is a pure function of its listings and its
+   *  lookups, and the lookups beneath it are a [[Memo]] (concurrent maps) over
+   *  `TmdbIdentityLookups.CountedGaps`, which answers a fresh question under its own lock so a
+   *  recording miss is still attributed to the question that met it.
+   *
+   *  `threads` bounds how many run at once: a WHOLE-corpus resolve holds a country resident, and
+   *  one per core of a full US corpus would not fit the heap a hard-cluster resolve fits many times. */
+  def sideBySide[A, B](items: Seq[A], threads: Int = Runtime.getRuntime.availableProcessors)(f: A => B): Seq[B] = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, threads))
+    try {
+      given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+      scala.concurrent.Await.result(scala.concurrent.Future.traverse(items)(item => scala.concurrent.Future(f(item))),
+        scala.concurrent.duration.Duration.Inf)
+    } finally pool.shutdownNow()
   }
 
   // ── evidence: labels and contradiction ────────────────────────────────────────────────

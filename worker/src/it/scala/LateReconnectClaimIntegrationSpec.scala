@@ -69,16 +69,20 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       val shared   = org.mongodb.scala.MongoClient(mongoTarget.uri.value)
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
       val probed   = new java.util.concurrent.CountDownLatch(1)
+      // The reconnect loop's own end: it returns once it has seen the close, after its publish step.
+      val finished = new java.util.concurrent.CountDownLatch(1)
       @volatile var connection: MongoConnection = null
       try {
         connection = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required, probeTimeout = settings.MongoProbeTimeout(2.seconds),
           sharedClient = Some(shared),
+          startReconnect = (name, body) => MongoConnection.startDaemon(name, () => try body.run() finally finished.countDown()),
           onConnected = _ =>
             if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot")
             else { connection.close(); probed.countDown() })   // the owner closes it mid-probe
         connection.database shouldBe None
         probed.await(30, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
-        Thread.sleep(500)                                     // let the reconnect finish its step
+        // Waited for, never guessed at: before the step ends the shared client is open whatever the step does.
+        withClue("the reconnect never finished its step: ")(finished.await(30, java.util.concurrent.TimeUnit.SECONDS) shouldBe true)
         connection.database shouldBe None
         noException should be thrownBy
           scala.concurrent.Await.result(shared.getDatabase(db.name).getCollection("movies").countDocuments().toFuture(), 5.seconds)

@@ -24,7 +24,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     // it is the tick every claim below reads.
     val first = w.bootCutover()
     val tick  = Iterator.continually(w.projectIdentity()).take(4).find(_.wroteNothing).getOrElse(first)
-    w.readModelProjector.reconcile()
+    tools.WholeReconcile(w.readModelProjector)
     w.webReadModel.reload()
     (w, tick)
   }

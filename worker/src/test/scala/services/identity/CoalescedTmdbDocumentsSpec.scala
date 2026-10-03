@@ -86,7 +86,9 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
   "a batch whose round-trip is interrupted" should "answer every caller it took, not only its runner" in {
     val first   = new CountDownLatch(1)
     val running = new CountDownLatch(1)
+    val batches = new java.util.concurrent.ConcurrentLinkedQueue[Set[String]]()
     val coalescer = new CoalescedTmdbDocuments.Coalescer[String, String](maxBatch = 8, inFlight = 1)({ batch =>
+      batches.add(batch.toSet)
       if (batch == Seq("first")) { running.countDown(); first.await(); batch.map(scala.util.Success(_)) }
       else throw new InterruptedException("shutting down")
     })
@@ -98,9 +100,14 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
       // (Caught whole: `Try` lets an InterruptedException through.)
       val others = Seq("b", "c").map(r => pool.submit((() =>
         try Right(coalescer(r)) catch { case e: Throwable => Left(e) }): Callable[Either[Throwable, String]]))
-      Thread.sleep(200)
+      // Waited for, not slept on: were "b" and "c" to run as two batches, each runner would answer
+      // only itself and the test would pass whether or not the interrupted batch answers the others.
+      val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10)
+      while (coalescer.waiting < 2 && System.nanoTime() < deadline) Thread.sleep(5)
+      coalescer.waiting shouldBe 2
       first.countDown()
       others.map(_.get(5, java.util.concurrent.TimeUnit.SECONDS).isLeft) shouldBe Seq(true, true)
+      batches.toArray.toSeq shouldBe Seq(Set("first"), Set("b", "c"))
     } finally { first.countDown(); pool.shutdownNow(); () }
   }
 }

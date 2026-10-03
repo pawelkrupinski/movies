@@ -1703,8 +1703,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       expectedScrIds should not be empty
 
       // Its clock times only share-card holds, and this projector has no share cards: pinned.
-      new ReadModelProjector(repo, rm, rm, clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
-        .reconcile() // full re-project from foreachRecord (stitched)
+      // A full re-project from foreachRecord (stitched).
+      tools.WholeReconcile(new ReadModelProjector(repo, rm, rm, clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))
 
       // The reconcile RETAINED the film's screenings (pre-fix, foreachRecord returned
       // empty showtimes → projectAll produced 0 → the screenings were pruned/never written).
