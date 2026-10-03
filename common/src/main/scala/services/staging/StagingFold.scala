@@ -160,15 +160,21 @@ object StagingFold {
       // (`clustersNamingAnotherEntry`) has to give it up before the one taking it is written.
       val (releasing, holding) = moviesUpserts.partition(_._3.tmdbId.isEmpty)
       (releasing ++ holding).foreach { case (id, key, record) => writes.writeMovie(id, key, record) }
-      stagingDeletes.foreach(writes.deleteStaging)
+      if (stagingDeletes.nonEmpty) writes.deleteStaging(stagingDeletes)
     }
   }
 
-  /** Where a [[Plan]] lands: a Mongo transaction, or the in-memory repositories. */
+  /** Where a [[Plan]] lands: a Mongo transaction, or the in-memory repositories.
+   *
+   *  The staging rows a plan consumes are handed over TOGETHER: they are one group's rows,
+   *  deleted after every survivor is written, and a store that can remove them in one round
+   *  trip should. The Mongo fold deleted them one `deleteOne` at a time, and that file of
+   *  round trips inside the fold's transaction was ~27% of a convergence replay's staging
+   *  drain (wall-clock samples of the UK order-independence passes, 2026-10-03). */
   trait PlanWrites {
     def deleteMovie(id: FilmId): Unit
     def writeMovie(id: FilmId, key: CacheKey, record: MovieRecord): Unit
-    def deleteStaging(row: StagingRecord): Unit
+    def deleteStaging(rows: Seq[StagingRecord]): Unit
   }
 
   /** The TMDB ids carried by a group's rows. A folder loads existing `movies` rows

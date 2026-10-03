@@ -245,21 +245,20 @@ class StagingSteps(
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
       case None if failingSince.exists(since => !clock.instant().isBefore(since.plusMillis(TransientResolveCeiling.toMillis))) =>
         val unanswered = services.resolution.TmdbAttempt.unanswered(clock.instant())
-        group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbAttempt = Some(unanswered)))))
+        stagingRepository.upsertRows(group.map(r => r.copy(record = r.record.copy(tmdbAttempt = Some(unanswered)))))
         logger.warn(s"Staging: TMDB resolve for '${group.head.title}' (${resolveYear.getOrElse("?")}) has failed since " +
           s"${failingSince.get} — folding it as an unanswered no-match rather than keep it off the site; its next resolve searches again.")
         Resolved
       case None => TransientFailure
       case Some(resolved) =>
         val tmdbSlot = resolved.data.get(Tmdb)
-        group.foreach { r =>
-          val stamped = r.record.copy(
+        stagingRepository.upsertRows(group.map { r =>
+          r.copy(record = r.record.copy(
             tmdbId      = resolved.tmdbId,
             imdbId      = resolved.imdbId,
             tmdbAttempt = resolved.tmdbAttempt,
-            data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
-          stagingRepository.upsertRow(r.copy(record = stamped))
-        }
+            data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s))))
+        })
         logger.info(s"Staging: '${group.head.title}' (${resolveYear.getOrElse("?")}) → resolved (tmdbId=${resolved.tmdbId.getOrElse("—")}, noMatch=${resolved.tmdbNoMatch})")
         Resolved
     }
@@ -312,7 +311,7 @@ class StagingSteps(
         val years  = group.flatMap(_.year).distinct.sorted
         val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
         tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
-          group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(imdbId = Some(id)))))
+          stagingRepository.upsertRows(group.map(r => r.copy(record = r.record.copy(imdbId = Some(id)))))
           logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
         }
       }
@@ -354,7 +353,7 @@ class StagingSteps(
       val years  = unidentified.flatMap(_.year).distinct.sorted
       val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
       tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
-        unidentified.foreach(r => stagingRepository.upsertRow(
+        stagingRepository.upsertRows(unidentified.map(r =>
           r.copy(record = r.record.copy(imdbId = Some(id), tmdbAttempt = None))))
         logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id for a film TMDB could not name")
       }

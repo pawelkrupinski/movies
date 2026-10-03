@@ -506,8 +506,9 @@ class MongoStagingFolder(
             StoredMovieDto.fromDomain(film.value, StoredMovieRecord.keyFor(k), forStorage, writtenAt),
             new ReplaceOptions().upsert(true)).toFuture()); ()
         }
-        def deleteStaging(r: StagingRecord): Unit = {
-          await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()); ()
+        // One `deleteMany` for the group's rows, in the same transaction — see `PlanWrites`.
+        def deleteStaging(rows: Seq[StagingRecord]): Unit = {
+          await(staging.deleteMany(session, Filters.in("_id", rows.map(_.id)*)).toFuture()); ()
         }
       })
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),

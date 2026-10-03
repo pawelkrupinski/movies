@@ -354,7 +354,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.applyTo(new StagingFold.PlanWrites {
       def deleteMovie(id: FilmId): Unit = ()
       def writeMovie(id: FilmId, key: services.movies.CacheKey, record: MovieRecord): Unit = order += record.tmdbId
-      def deleteStaging(row: StagingRecord): Unit = ()
+      def deleteStaging(rows: Seq[StagingRecord]): Unit = ()
     })
     order.toSeq shouldBe Seq(None, Some(1300968))
   }

@@ -95,7 +95,7 @@ class InMemoryStagingFolder(
       plan.applyTo(new StagingFold.PlanWrites {
         def deleteMovie(id: FilmId): Unit = { movieRepository.delete(id); () }
         def writeMovie(id: FilmId, key: CacheKey, record: MovieRecord): Unit = { movieRepository.upsert(id, key, record); () }
-        def deleteStaging(row: StagingRecord): Unit = { stagingRepository.deleteRow(row); () }
+        def deleteStaging(rows: Seq[StagingRecord]): Unit = rows.foreach(stagingRepository.deleteRow)
       })
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions

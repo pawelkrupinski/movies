@@ -211,6 +211,14 @@ trait StagingRepository {
    *  drift (`id == idFor(cinema, title, year)`). Never throws — see [[upsert]]. */
   def upsertRow(row: StagingRecord): WriteOutcome = upsert(row.cinema, row.title, row.year, row.record)
 
+  /** [[upsertRow]] for each of `rows`, in order — a later row under the same `id` lands last.
+   *  The staging steps re-stamp a whole resolved group at once (its TMDB answer, a recovered
+   *  imdbId, an unanswered attempt), and a store that can write them in one round trip should:
+   *  the Mongo one did a `replaceOne` per row, ~32% of a convergence replay's staging drain
+   *  (wall-clock samples of the UK order-independence passes, 2026-10-03). Reports the first
+   *  row's failure, after every row has had its go. Never throws. */
+  def upsertRows(rows: Seq[StagingRecord]): WriteOutcome = WriteOutcome.all(rows.map(upsertRow))
+
   /** Remove one cinema's row by `idFor(cinema, title, year)`. Never throws. */
   def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome
 
@@ -587,6 +595,27 @@ class MongoStagingRepository(
   }
 
   override def upsertRow(row: StagingRecord): WriteOutcome = upsertId(row.id, row.record)
+
+  /** The rows in ONE ordered bulk write of the same replaces [[upsertRow]] issues one at a
+   *  time. A bulk write is all-or-nothing per request, so on any failure every row is re-run
+   *  ONE AT A TIME, exactly as [[upsertAll]] does: a poison row costs itself and nothing else,
+   *  and the replaces are idempotent, so the rows the failed batch did land are only rewritten. */
+  override def upsertRows(rows: Seq[StagingRecord]): WriteOutcome =
+    if (rows.size < 2) WriteOutcome.all(rows.map(upsertRow))
+    else coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+      val writtenAt = Instant.now()
+      val writes = rows.map(row =>
+        ReplaceOneModel(Filters.eq("_id", row.id), StoredMovieDto.fromDomain(row.id, row.record, writtenAt), new ReplaceOptions().upsert(true)))
+      Try(Await.result(c.bulkWrite(writes, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)) match {
+        case Success(_) =>
+          rows.foreach(row => indexStaged(row.id, row.record))
+          WriteOutcome.Written
+        case Failure(exception) =>
+          logger.warn(s"StagingRepository.upsertRows bulk write of ${rows.size} row(s) failed: " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — retrying them one at a time")
+          WriteOutcome.all(rows.map(upsertRow))
+      }
+    }
 
   /** The `MovieRecord` currently stored under `id`, if any. Used to preserve
    *  enrichment across a re-scrape. Best-effort — None on any read failure. */
