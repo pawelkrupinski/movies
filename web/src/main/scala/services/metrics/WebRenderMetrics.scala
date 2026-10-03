@@ -20,7 +20,8 @@ class WebRenderMetrics(registry: PrometheusRegistry, country: String) {
   private val allocated: Histogram = Histogram.builder()
     .name("kinowo_web_page_render_allocated_bytes")
     .help("Heap one page render allocated on the thread producing its response bytes — schedules, " +
-      "template and encoding — by country and page (`listing` is a city's repertoire). Cache hits " +
+      "template and encoding — by country and page (`listing` is a city's repertoire, " +
+      "`listing_schedules` the share of it spent building its schedules). Cache hits " +
       "that render nothing are not recorded.")
     .labelNames("country", "page")
     .classicOnly()

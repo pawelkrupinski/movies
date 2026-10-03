@@ -420,14 +420,17 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   // A render is what `kinowo_web_page_render_allocated_bytes` measures: a listing
-  // rendered is one `listing` observation, and one served from the blob is none.
+  // rendered is one `listing` observation (and one `listing_schedules` for its
+  // schedules' share), and one served from the blob is none.
   "a listing render" should "report its allocation once, and a cached listing none" in {
     var recorded = Vector.empty[(String, Long)]
     val (ctrl, _) = TestMovieController.build(Seq(cacheTestFilm), recordRender = (page, bytes) => recorded :+= (page -> bytes))
     status(ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe OK
-    recorded.map(_._1) shouldBe Vector("listing")
-    recorded.head._2 should be > 0L
+    // The schedules' share inside the render, then the whole render around it.
+    recorded.map(_._1) shouldBe Vector("listing_schedules", "listing")
+    all (recorded.map(_._2)) should be > 0L
+    recorded(0)._2 should be < recorded(1)._2
     status(ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe OK
-    recorded should have size 1
+    recorded should have size 2
   }
 }

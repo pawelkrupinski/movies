@@ -343,7 +343,9 @@ class MovieController( cc: ControllerComponents,
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
     val now         = movieControllerService.nowIn(city)
-    val schedules   = movieControllerService.toSchedules(city, now)
+    // Measured on its own as well as within the whole render, so the histogram says how
+    // much of a listing's cost is building its schedules (`listing_schedules`).
+    val schedules   = tools.ThreadAllocation.measure(recordRender("listing_schedules", _))(movieControllerService.toSchedules(city, now))
     val meta        = FilterDescription.forIndex(city, request.queryString, schedules)
     val isLargeCity = MovieControllerService.totalShowtimes(schedules) > MovieControllerService.LargeCityShowtimeThreshold
     views.html.repertoire(
