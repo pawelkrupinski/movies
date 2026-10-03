@@ -580,4 +580,14 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("e2e/src/test/scala/services/movies/CountryConvergenceBehaviour.scala") should include(
       """step("identityLookupSweep")(IdentityLookupSweep.over(""")
   }
+
+  /** Under `pipefail`, a `| head -N` that closes the pipe early fails the writer before it with
+   *  SIGPIPE: Spain's green recording leg failed its findings step (exit 4) once its report passed
+   *  150 lines (run 37096642753). The report must keep its first lines by READING to the end. */
+  "the convergence findings report" should "never cut its summary with an early-closing head" in {
+    val commands = RepoFile.read(".github/actions/convergence-findings/action.yml").linesIterator
+      .filterNot(_.trim.startsWith("#")).mkString("\n")
+    commands should not include regex ("""\|\s*head\s+-[0-9]+""")
+    commands should include("sed -n 's/^\\[info\\] //; 1,150p'")
+  }
 }

@@ -63,9 +63,13 @@ runs:
                   # order-independence replays run `Passes` of them concurrently and each
                   # names itself `[usp0]`, `[usp1]`, … so the interleaved heartbeats say
                   # which pass wrote them. A `[a-z]{2}`-only filter dropped every one.
+                  #
+                  # `sed -n …; 1,150p` keeps the first 150 lines but READS TO THE END. A
+                  # `| head -150` closed the pipe early, sed died writing into it ("couldn't
+                  # flush stdout: Broken pipe", exit 4), and under `pipefail` that failed a
+                  # green leg the moment its report passed 150 lines (Spain, run 37096642753).
                   printf '%s\n' "$clean" \
                     | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}[0-9]*\] )' || true; } \
-                    | sed 's/^\[info\] //' \
-                    | head -150
+                    | sed -n 's/^\[info\] //; 1,150p'
                   echo '```'
               } >> "$GITHUB_STEP_SUMMARY"
