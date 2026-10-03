@@ -12,7 +12,8 @@ import org.bson.{BsonReader, BsonType, BsonWriter}
  * is skipped — without
  * first decoding each row into a `BsonDocument` and then decoding that: every row's showtimes went
  * through both, and a whole-collection read is ~108k rows and ~1.7M showtimes on the US (JFR).
- * Written by the macro codec. `ReadModelCodecsSpec` pins every stored shape to the old reading.
+ * Written by its own `encode` in the macro codec's shape, booking URLs split at their row's shared
+ * prefix. `ReadModelCodecsSpec` pins every stored shape to the old reading.
  */
 private[readmodel] object StreamingCityScreeningCodec extends Codec[CityScreening] {
   override def getEncoderClass: Class[CityScreening] = classOf[CityScreening]

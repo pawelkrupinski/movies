@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -97,6 +99,6 @@ object KinoMDKMyszkowClient {
   private def synopsisOf(block: Element): Option[String] =
     block.select("p").asScala.toSeq
       .map(_.text.trim)
-      .filter(t => t.length > 60 && !BoilerplateStarts.exists(t.toLowerCase.startsWith))
+      .filter(t => t.length > 60 && !BoilerplateStarts.exists(t.toLowerCase(Locale.ROOT).startsWith))
       .sortBy(-_.length).headOption
 }

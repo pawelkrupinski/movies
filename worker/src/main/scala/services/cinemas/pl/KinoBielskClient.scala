@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -83,7 +85,7 @@ object KinoBielskClient {
   private def parseScreening(block: Element): Option[RawSlot] = {
     val infoBold = block.select("b").asScala.toSeq.lift(1).map(_.text.trim)
     for {
-      info     <- infoBold if info.nonEmpty && !info.toLowerCase.contains("zamknięty")
+      info     <- infoBold if info.nonEmpty && !info.toLowerCase(Locale.ROOT).contains("zamknięty")
       calendar <- Option(block.selectFirst("a[href*=calendar.google.com/calendar/render]"))
       dateTime <- CalendarDate.findFirstMatchIn(calendar.attr("href")).flatMap { m =>
         Try(LocalDateTime.parse(m.group(1), UtcStamp).atZone(ZoneOffset.UTC).withZoneSameInstant(Warsaw).toLocalDateTime).toOption

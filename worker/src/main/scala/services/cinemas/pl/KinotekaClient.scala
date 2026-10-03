@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -179,8 +181,8 @@ object KinotekaClient {
       // an agenda heading is present, keep only the prose paragraphs before it.
       synopsis      = Option(document.selectFirst("div.mce-content-body")).map { body =>
                         val ps = body.select("p").asScala.toSeq
-                        if (ps.exists(_.text.trim.toLowerCase.startsWith("harmonogram")))
-                          ps.map(_.text.trim).takeWhile(!_.toLowerCase.startsWith("harmonogram")).filter(_.nonEmpty).mkString("\n\n")
+                        if (ps.exists(_.text.trim.toLowerCase(Locale.ROOT).startsWith("harmonogram")))
+                          ps.map(_.text.trim).takeWhile(!_.toLowerCase(Locale.ROOT).startsWith("harmonogram")).filter(_.nonEmpty).mkString("\n\n")
                         else ScraperParse.blockText(body).trim
                       }.map(_.trim).filter(_.length > 20)
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),

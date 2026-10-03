@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import models._
@@ -197,7 +199,7 @@ object KinoPortClient {
    *  screenings that have already happened. */
   private def dropArchive(body: Element): Unit =
     body.select("details").asScala
-      .filter(d => Option(d.selectFirst("summary")).exists(_.text.toUpperCase.contains("ARCHIWALNE")))
+      .filter(d => Option(d.selectFirst("summary")).exists(_.text.toUpperCase(Locale.ROOT).contains("ARCHIWALNE")))
       .foreach(_.remove())
 
   /** One `<p>` → one screening, or None when the paragraph isn't one (a stray

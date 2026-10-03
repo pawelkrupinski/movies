@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -151,7 +153,7 @@ object KinoStylowyClient {
     val runtime = meta.flatMap(m => Option(m.selectFirst("em.badge"))).flatMap(e => ScraperParse.hoursMinutesRuntime(e.text))
 
     val fields = doc.select("#pageFilm label").asScala.iterator.flatMap { label =>
-      Option(label.nextElementSibling).map(v => label.text.trim.stripSuffix(":").toLowerCase -> v)
+      Option(label.nextElementSibling).map(v => label.text.trim.stripSuffix(":").toLowerCase(Locale.ROOT) -> v)
     }.toMap
     def people(label: String): Seq[String] =
       fields.get(label).toSeq

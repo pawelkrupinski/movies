@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -167,10 +169,10 @@ object DcfClient {
         val lines    = desc.html.split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).text.trim).filter(_.nonEmpty)
         val infoLine = lines.headOption.getOrElse("")
         val parts    = infoLine.split("\\|").map(_.trim).filter(_.nonEmpty)
-        val director = parts.find(_.toLowerCase.startsWith("reż")).map(_.replaceFirst("(?i)^reż\\.?\\s*", "").trim)
+        val director = parts.find(_.toLowerCase(Locale.ROOT).startsWith("reż")).map(_.replaceFirst("(?i)^reż\\.?\\s*", "").trim)
                           .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
-        val country  = parts.find(p => !p.toLowerCase.startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
+        val country  = parts.find(p => !p.toLowerCase(Locale.ROOT).startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
                           .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         // The block sometimes ends with an organiser footer ("Więcej:
         // www.<film>.pl"); drop URL-only / "Więcej: <url>" lines and strip any

@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -96,7 +98,7 @@ class FacebookDataDeletionController(
    *  fallback, exactly as [[LegalController.privacy]] does — the reviewer reading
    *  it is rarely in the country whose deployment answers. */
   def instructions(lang: Option[String]): Action[AnyContent] = Action {
-    val language = lang.map(_.trim.toLowerCase)
+    val language = lang.map(_.trim.toLowerCase(Locale.ROOT))
       .filter(_.nonEmpty)
       .getOrElse(country.language.getLanguage)
     Ok(if (language == "pl") views.html.facebookDataDeletionInstructions(country)

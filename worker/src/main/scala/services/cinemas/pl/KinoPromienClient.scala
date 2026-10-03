@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import models._
@@ -140,7 +142,7 @@ object KinoPromienClient {
     ScreeningLine.findFirstMatchIn(line).toSeq.flatMap { m =>
       val startDay = m.group(1).toInt
       val endDay   = Option(m.group(2)).map(_.toInt).getOrElse(startDay)
-      val month    = ScraperParse.PolishMonths.get(m.group(3).toLowerCase)
+      val month    = ScraperParse.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
       val times    = m.group(4).split(",").iterator.flatMap(ScraperParse.parseHHmm).toSeq
       for {
         mth  <- month.toSeq

@@ -71,7 +71,8 @@ class FlicksClient(
   // queue and the shared Flicks pace gate instead of bursting from a single task
   // that parks a worker thread for that many back-to-back AJAX calls. The
   // in-process `fetch()` the trait composes (planChunks → fetchChunk →
-  // reduceChunks) is used only by the deterministic fixture harness + unit tests.
+  // reduceChunks) serves the fixture harness, the unit tests and — sequentially,
+  // in the caller's task — a chain venue's Flicks fallback (SourceFallbackScraper).
 
   /** The days to scrape, read off the venue programme page's
    *  `<div class="timetable__day" data-date="YYYY-MM-DD">` day tabs — the exact

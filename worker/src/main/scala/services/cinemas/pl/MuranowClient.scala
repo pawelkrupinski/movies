@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -132,7 +134,7 @@ object MuranowClient {
   def dayDate(day: Element, headerYear: Int): Option[java.time.LocalDate] =
     for {
       dStr  <- Option(day.selectFirst("span.cell-date-header__day-num")).map(_.text.trim)
-      mName <- Option(day.selectFirst("span.cell-date-header__day-month")).map(_.text.trim.toLowerCase)
+      mName <- Option(day.selectFirst("span.cell-date-header__day-month")).map(_.text.trim.toLowerCase(Locale.ROOT))
       d     <- Try(dStr.toInt).toOption
       m     <- ScraperParse.polishMonth(mName)
     } yield java.time.LocalDate.of(headerYear, m, d)

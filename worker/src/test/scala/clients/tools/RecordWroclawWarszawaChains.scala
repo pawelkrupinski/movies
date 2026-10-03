@@ -32,7 +32,7 @@ object RecordWroclawWarszawaChains {
       println(s"  ${Try(cc.fetch(id, cinema).size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
 
-    // Record Multikino directly through `record` (NOT MultikinoClient.fetchFor,
+    // Record Multikino directly through `record` (NOT Multikino's production chain,
     // whose Zyte layer fetches outside RecordingHttpFetch and so records
     // nothing). The client's own homepage-warmup retry handles the cold-session
     // 401 against the direct endpoint.

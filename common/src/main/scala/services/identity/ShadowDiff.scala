@@ -1,15 +1,17 @@
 package services.identity
 
+import java.util.Locale
+
 import models.{CinemaShowing, SourceData}
 import services.movies.{EmbeddedYear, ListingConstraints, ListingKey, ScrapeListing, StoredMovieRecord, TitleNormalizer}
 import services.resolution.YearWindow
 
 /*
  * THE SHADOW DIFF (docs/design/identity-resolver.md §8, "Phase 1: shadow mode"): how the
- * resolver's clusters relate to the films today's pipeline made of the same listings. Pure; the
- * shadow run (`ShadowIdentityReaper`) computes it after each resolve and persists it beside the
- * decisions, and the offline harness (`IdentityShadowIntegrationSpec`) maps listings to pipeline
- * films through the same [[PipelineFilms]].
+ * resolver's clusters relate to the films stored for the same listings. Pure; the projection's
+ * canary ([[IdentityProjectionPlan]]) counts it against the films stored before each projection, and
+ * the offline harness (`IdentityShadowIntegrationSpec`) maps listings to stored films through the
+ * same [[PipelineFilms]].
  */
 
 /** A film today's pipeline made, as the shadow diff names it: its film id and TMDB id. */
@@ -26,11 +28,7 @@ enum ShadowRelation {
   case Identical, Split, Merged, Moved
 
   /** The metric label and the stored form. */
-  def label: String = toString.toLowerCase
-}
-
-object ShadowRelation {
-  def fromLabel(label: String): Option[ShadowRelation] = values.find(_.label == label)
+  def label: String = toString.toLowerCase(Locale.ROOT)
 }
 
 /** One resolver cluster of a shadow run: the decision, its family, its relation to the pipeline

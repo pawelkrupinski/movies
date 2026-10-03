@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import models.MovieRecord
 import services.movies.{CacheKey, EmbeddedYear, TitleNormalizer}
 import services.resolution.SearchTitles
@@ -53,7 +55,7 @@ object TmdbLessRatingLinks {
   def titlesOf(key: CacheKey, row: MovieRecord, normalizer: TitleNormalizer): Seq[String] = {
     val stripped = normalizer.searchQuery(key.cleanTitle)
     (row.evidence.originalTitles ++ Seq(stripped) ++ SearchTitles.candidates(stripped, None).map(normalizer.searchQuery))
-      .map(_.trim).filter(_.nonEmpty).distinctBy(_.toLowerCase)
+      .map(_.trim).filter(_.nonEmpty).distinctBy(_.toLowerCase(Locale.ROOT))
   }
 
   /** The year a site is searched with: none when the cinemas credit a director, whose agreement

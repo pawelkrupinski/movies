@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 /**
  * Renders a URL safe to LOG by masking the value of any query parameter that
  * carries a credential.
@@ -52,6 +54,6 @@ object RedactedUrl {
     case -1 => parameter
     case at =>
       val name = parameter.substring(0, at)
-      if (SecretParameters.contains(name.toLowerCase)) s"$name=$Mask" else parameter
+      if (SecretParameters.contains(name.toLowerCase(Locale.ROOT))) s"$name=$Mask" else parameter
   }
 }

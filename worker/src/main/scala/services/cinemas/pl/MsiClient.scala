@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -172,12 +174,12 @@ object MsiClient {
 
   /** The display token a word of [[DistributorTail]] names — the screen format as
    *  typed, the version by its stem (so "dubbind" still reads as a dub). */
-  private def versionToken(word: String): Option[String] = word.toLowerCase match {
+  private def versionToken(word: String): Option[String] = word.toLowerCase(Locale.ROOT) match {
     case w if w.startsWith("dubb")  => Some("DUB")
     case w if w.startsWith("napis") => Some("NAP")
     case "lektor"                   => Some("LEK")
     case "pl"                       => None
-    case w                          => Some(w.toUpperCase)
+    case w                          => Some(w.toUpperCase(Locale.ROOT))
   }
 
   /** Title cleaner for a portal that stamps a label on its FILM rows only — Kino

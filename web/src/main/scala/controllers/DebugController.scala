@@ -47,7 +47,7 @@ class DebugController(cc: ControllerComponents,
                       cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
                       // The ONE country this deployment serves — which city slugs
                       // the tuning pages resolve. Injected
-                      // rather than read from `Country.fromEnv` at each use so a
+                      // rather than read from the process configuration at each use so a
                       // spec can exercise another country's host without mutating
                       // the process-global env that parallel suites share.
                       servingCountry: models.Country,

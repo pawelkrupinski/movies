@@ -588,8 +588,9 @@ final class MovieChangeStream(
             // A document the codec refuses (counted and logged by the decoder). Nothing to apply,
             // and it must not END the cursor: decoded inside the driver, it did — and a cursor
             // resuming from a persisted token met it again on every reopen, dead for good. Its
-            // demand is released; its position is NOT acknowledged, since nothing was applied —
-            // the next applied event moves past it, and a restart replays it into the same skip.
+            // demand is released, and it is acknowledged as applied — there is nothing to apply,
+            // and left unacknowledged it would hold the cursor's position before it for good
+            // ([[AppliedPrefix]] moves only past a contiguous run of acknowledged events).
             case ChangeEventDecoder.PostImage.Undecodable =>
               ack(); moviesDemand.applied()
           }

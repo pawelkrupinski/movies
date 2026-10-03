@@ -123,7 +123,7 @@ object KinoParadoxClient {
    *  left as the (comma-separated) production countries. */
   private[cinemas] def parseMeta(itemDirector: String): Meta = {
     val parts = itemDirector.split("/").iterator.map(_.trim).filter(_.nonEmpty).toSeq
-    val directors = parts.find(_.toLowerCase.startsWith("reż"))
+    val directors = parts.find(_.toLowerCase(Locale.ROOT).startsWith("reż"))
       .map(_.replaceFirst("(?i)^reż\\.?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
       .getOrElse(Seq.empty)
     val year    = parts.iterator.flatMap(p => YearPat.findFirstIn(p)).map(_.toInt).nextOption()
@@ -132,7 +132,7 @@ object KinoParadoxClient {
     // year, not the runtime prime. Comma-split, verbatim — canonicalised later
     // in recordCinemaScrape.
     val countries = parts.iterator
-      .filterNot(_.toLowerCase.startsWith("reż"))
+      .filterNot(_.toLowerCase(Locale.ROOT).startsWith("reż"))
       .filterNot(p => YearOnlyPat.matches(p))
       .filterNot(p => RuntimePat.matches(p))
       .flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq

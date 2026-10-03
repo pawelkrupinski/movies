@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 import play.api.Logging
 
 import java.net.URI
@@ -44,7 +46,7 @@ class RateLimitedHttpFetch(
   private val nextSlot = new ConcurrentHashMap[String, Instant]()
 
   private def hostOf(url: String): Option[String] =
-    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase)
+    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
 
   /** Claim this host's next slot and park until it comes round. */
   private def paced[T](url: String)(block: => T): T = {

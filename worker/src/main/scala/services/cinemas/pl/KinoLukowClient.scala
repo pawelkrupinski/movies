@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -89,7 +91,7 @@ object KinoLukowClient {
       Showtime(
         dateTime   = at,
         bookingUrl = Option(slot.selectFirst("a.kino-slot-link")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        format     = ScraperParse.formatTokensIn(slot.select("span.kino-format, span.kino-version").asScala.map(_.text).mkString(" ").toLowerCase)
+        format     = ScraperParse.formatTokensIn(slot.select("span.kino-format, span.kino-version").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
       )
     }
 }

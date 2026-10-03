@@ -36,20 +36,12 @@ trait TmdbDocuments {
     }.toMap
   }
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
-  /** Every document of `kind` as its id and when it was last fetched, a page at a time; whether the
-   *  scan read them all. */
-  def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean
-  /** Drop these documents of `kind`. */
-  def delete(kind: TmdbKind, ids: Seq[String]): Unit
 }
 
 object TmdbDocuments {
   /** How many of one read's batches are in flight at once — each holds one of the worker's pooled
    *  connections, so a take-up's reads overlap without taking the pool from everything else. */
   val InFlight = 4
-
-  /** Documents per page of a [[TmdbDocuments.scan]] — ids and a stamp, so a page stays small. */
-  val ScanPage = 1000
 
   /** `fetch` each batch, at most [[InFlight]] at a time, and every result together: a read of many
    *  batches waits on its round-trips side by side, not one after another. */
@@ -66,11 +58,6 @@ final class InMemoryTmdbDocuments extends TmdbDocuments {
     ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> _.clone())).toMap
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => byKind(kind).put(id, d.clone()) }
   def size(kind: TmdbKind): Int = byKind(kind).size
-  def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean = {
-    byKind(kind).asScala.toSeq.sortBy(_._1).map { case (id, d) => id -> TmdbStore.fetchedAt(d) }.grouped(TmdbDocuments.ScanPage).foreach(page)
-    true
-  }
-  def delete(kind: TmdbKind, ids: Seq[String]): Unit = ids.foreach(byKind(kind).remove)
 }
 
 /** `tmdb_films` / `tmdb_people` / `tmdb_queries`: one document per entity, `_id` its key. */
@@ -93,23 +80,6 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments {
         id -> d
       })(using scala.concurrent.ExecutionContext.parasitic)
     }.toMap
-
-  def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean =
-    services.movies.KeysetScan.scan[BsonDocument](
-      label          = s"${kind.collection}.scan",
-      batchSize      = TmdbDocuments.ScanPage,
-      maxAttempts    = 3,
-      initialBackoff = 1.second,
-      keyOf          = _.getString("_id").getValue,
-      fetchPage      = (after, limit) => Await.result(coll(kind)
-        .find(after.fold[org.bson.conversions.Bson](new BsonDocument())(id => Filters.gt("_id", id)))
-        .projection(org.mongodb.scala.model.Projections.include("_id", TmdbStore.FetchedAt))
-        .sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).batchSize(limit).toFuture(), Timeout)
-    )(docs => page(docs.map(d => d.getString("_id").getValue -> TmdbStore.fetchedAt(d))))
-
-  def delete(kind: TmdbKind, ids: Seq[String]): Unit = ids.grouped(Batch).foreach { batch =>
-    Await.result(coll(kind).deleteMany(Filters.in("_id", batch*)).toFuture(), Timeout); ()
-  }
 
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.grouped(Batch).foreach { batch =>
     Await.result(coll(kind).bulkWrite(batch.map { case (id, d) =>

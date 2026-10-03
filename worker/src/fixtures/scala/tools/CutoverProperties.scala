@@ -1,18 +1,16 @@
 package tools
 
 import models.{Cinema, CinemaMovie, CinemaShowing}
-import services.identity.{IdSeeding, Listing, PipelineFilms, ProjectionTick}
-import services.movies.{ListingKey, StoredMovieRecord, TitleNormalizer}
+import services.identity.{Listing, ProjectionTick}
+import services.movies.{ListingKey, StoredMovieRecord}
 
 /**
  * The identity projection's guaranteed properties (docs/design/identity-resolver.md §7), checked
- * over what a cut-over country's worker actually STORED — the specs that boot a corpus with the
- * switch on share them:
+ * over what a country's worker actually STORED — the specs that boot a corpus share them:
  *
  *  - P3 [[cannotLinked]]: no stored film holds two listings the resolution cannot-linked;
  *  - P4 [[lostShowtimes]]: every showtime of every published listing is on the stored film that
- *    holds the listing, at the listing's venue;
- *  - [[misassigned]]: every film keeps the id `IdAssigner` says it keeps over the films before.
+ *    holds the listing, at the listing's venue.
  *
  * P1 (order independence) and P2 (fixpoint) compare two boots or two projections; the specs do that
  * with [[films]].
@@ -53,32 +51,6 @@ object CutoverProperties {
         }.flatten).toSet
         cm.showtimes.map(_.dateTime).filterNot(held).map(t => s"${cinema.displayName} '${cm.movie.title}' $t (film ${filmOf.get(key)})")
       }
-    }
-  }
-
-  /** Every showtime of `published` that NO stored film carries at its venue — P4 read without the
-   *  projection's own listing-to-film map, for a store another path wrote (a rollback). */
-  def unservedShowtimes(published: Seq[(Cinema, Seq[CinemaMovie])], stored: Seq[StoredMovieRecord]): Seq[String] = {
-    val held = stored.flatMap(_.record.data.collect { case (CinemaShowing(c, _), sd) => sd.showtimes.map(c -> _.dateTime) }.flatten).toSet
-    published.flatMap { case (cinema, films) =>
-      films.flatMap(cm => cm.showtimes.map(_.dateTime).filterNot(t => held((cinema, t))).map(t => s"${cinema.displayName} '${cm.movie.title}' $t"))
-    }
-  }
-
-  /** The films `IdAssigner` keeps over `before` (the films stored before the projection, as listing
-   *  sets) whose stored film does not hold exactly the cluster the review gives it. */
-  def misassigned(before: Seq[StoredMovieRecord], listings: Seq[Listing], tick: ProjectionTick, after: Seq[StoredMovieRecord],
-                  counters: services.identity.FilmIdCounters, normalizer: TitleNormalizer): Seq[String] = {
-    val previous = PipelineFilms.of(listings, before, normalizer).toSeq.groupMap(_._2.id)(_._1).toSeq
-      .map { case (id, ls) => IdSeeding.Film(id, ls.toSet) }
-    val clusters = tick.plan.toSeq.flatMap(_.films).map(_.members.toSet)
-    val review   = IdSeeding.review(previous, clusters, counters)
-    val members  = tick.plan.toSeq.flatMap(_.films).map(f => f.id.value -> f.members.toSet).toMap
-    val storedIds = after.map(_.id.value).toSet
-    review.keeps.toSeq.flatMap { case (id, cluster) =>
-      if (!storedIds(id)) Some(s"$id should hold ${cluster.size} listing(s) and is not stored")
-      else if (!members.get(id).contains(cluster)) Some(s"$id holds ${members.get(id).fold(0)(_.size)} listing(s), IdAssigner gives it ${cluster.size}")
-      else None
     }
   }
 }

@@ -22,7 +22,7 @@ import java.nio.file.Files
  *  the imdbId, so one file per id is what we want.
  *
  *  The delegate is any `HttpFetch`, not just `RealHttpFetch`: a
- *  Zyte-routed chain (`MultikinoClient.fetchFor` / `ZyteFallback.fetchFor`)
+ *  Zyte-routed chain (`ZyteFallback.fetchFor`)
  *  is an `HttpFetch` whose Zyte leg fetches through its own client, bypassing
  *  the recorder when recording sits *inside* the chain as the direct fallback.
  *  Wrapping the whole chain instead records the response keyed by the request

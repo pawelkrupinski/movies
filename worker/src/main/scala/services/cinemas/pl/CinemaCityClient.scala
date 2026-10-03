@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import play.api.libs.json._
@@ -243,7 +245,7 @@ object CinemaCityClient {
     val genres = js.flatMap(j => (j \ "categoriesAttributes").asOpt[JsArray])
       .map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(_.asOpt[String]).filter(_.nonEmpty)
-      .flatMap(token => CategoryToPolish.get(token.toLowerCase))
+      .flatMap(token => CategoryToPolish.get(token.toLowerCase(Locale.ROOT)))
       .distinct
     // Trailer: `filmDetails.videoLink` is a single YouTube watch URL when the
     // film has a trailer. `mediaList[].url` for `type=="Video"` is the same

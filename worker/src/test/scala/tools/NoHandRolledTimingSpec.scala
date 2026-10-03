@@ -3,7 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -17,19 +17,14 @@ import scala.jdk.CollectionConverters.*
  */
 class NoHandRolledTimingSpec extends AnyFlatSpec with Matchers {
 
-  private val MainRoots = Seq("common/src/main", "worker/src/main", "web/src/main")
-  private val ElapsedByHand = """(System\.nanoTime|System\.currentTimeMillis)\(\)\s*-\s*\w""".r
+  import ScalaSourceScan.{MainRoots, scalaFiles}
 
-  private def scalaFiles(root: String): Seq[Path] = {
-    val dir = Paths.get(root)
-    if (!Files.isDirectory(dir)) Nil
-    else Files.walk(dir).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq
-  }
+  private val ElapsedByHand = """(System\.nanoTime|System\.currentTimeMillis)\(\)\s*-\s*\w""".r
 
   "production code" should "time code with Stopwatch, not by subtracting clock reads" in {
     MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
     val offenders = for {
-      file          <- MainRoots.flatMap(scalaFiles)
+      file          <- scalaFiles(MainRoots)
       if !file.endsWith("tools/Stopwatch.scala")
       (line, index) <- Files.readAllLines(file).asScala.zipWithIndex
       if ElapsedByHand.findFirstIn(line).isDefined

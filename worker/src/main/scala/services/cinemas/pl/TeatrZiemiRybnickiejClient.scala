@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
 import org.jsoup.Jsoup
@@ -67,7 +69,7 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
       .toSeq
 
   private def isSeniorScreening(programme: String): Boolean =
-    programme.toLowerCase.contains("kino nie tylko")
+    programme.toLowerCase(Locale.ROOT).contains("kino nie tylko")
 
   /** A single film's detail page → a `CinemaMovie`, or `None` when it carries
    *  no title or no parseable showtime (so we never emit an empty row).

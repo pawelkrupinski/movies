@@ -1,5 +1,7 @@
 package services.movies
 
+import java.util.Locale
+
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
@@ -718,7 +720,7 @@ class CaffeineMovieCache(
     positive.asMap().asScala.iterator
       .map { case (k, e) => StoredMovieRecord(k.cleanTitle, k.year, e, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k)), Some(StoredMovieRecord.keyFor(k))) }
       .toSeq
-      .sortBy(_.title.toLowerCase)
+      .sortBy(_.title.toLowerCase(Locale.ROOT))
   }
 
   /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. Copy so a

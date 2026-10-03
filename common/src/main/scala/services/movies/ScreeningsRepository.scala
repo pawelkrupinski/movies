@@ -297,11 +297,6 @@ class MongoScreeningsRepository(
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
-  // No collection wired at all reports COMPLETE, not failed — there is simply nothing to
-  // read, which is not the same as having failed to read it. Matches
-  // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
-  // answered opposite things for the same state, and a caller that treats "unreadable" as
-  // "defer" would have deferred forever against a Mongo-less stack.
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
   override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): (Map[String, Seq[Showtime]], Boolean) =
     coll.fold((Map.empty[String, Seq[Showtime]], true)) { c =>
@@ -313,6 +308,11 @@ class MongoScreeningsRepository(
       }
     }
 
+  // No collection wired at all reports COMPLETE, not failed — there is simply nothing to
+  // read, which is not the same as having failed to read it. Matches
+  // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
+  // answered opposite things for the same state, and a caller that treats "unreadable" as
+  // "defer" would have deferred forever against a Mongo-less stack.
   def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
     coll.fold((Map.empty[String, ListedShowtimes], true)) { c =>
       Try(Await.result(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)) match {
@@ -321,6 +321,14 @@ class MongoScreeningsRepository(
           logger.warn(s"ScreeningsRepository.findForFilm($filmId) failed: ${exception.getMessage}")
           (Map.empty, false)
       }
+    }
+
+  /** ONE `filmId $in [...]` query, served by the `filmId` index. */
+  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
+    coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
+      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
+        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
+      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, complete)
     }
 
   /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
@@ -332,14 +340,6 @@ class MongoScreeningsRepository(
    *  Paging caps how many rows any one cursor delivers synchronously. On an INCOMPLETE
    *  scan (a page still failing after retries) returns an empty map — `scanStitched`
    *  treats that as "incomplete" and won't let a reconcile prune on stripped rows. */
-  /** ONE `filmId $in [...]` query, served by the `filmId` index. */
-  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
-    coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
-      val (rows, complete) = SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
-        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
-      (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, complete)
-    }
-
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredScreeningsDto]

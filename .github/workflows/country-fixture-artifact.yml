@@ -73,7 +73,7 @@ jobs:
             - uses: actions/checkout@v5
 
             # Same Scala toolchain as every other sbt job in this repo
-            # (ci.yml / filmweb-diff.yml): Temurin JDK 25
+            # (ci.yml / filmweb-diff.yml): Temurin JDK 27
             # with sbt dependency caching.
             - uses: ./.github/actions/setup-jdk
               with:

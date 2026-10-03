@@ -6,8 +6,9 @@ import scala.collection.mutable
 
 /**
  * Which store observations each of a model's questions read — a candidate query, a film's record,
- * a listing's detail page — so that when the store files new content under a key (the fill, the
- * pipeline's own lookups: `ObservationStore.onNewLookup`), the model re-reads exactly the
+ * a listing's detail page — so that when new content is filed under a key (a TMDB document whose
+ * value changed: `TmdbStore.onChanged`; a venue page read anew: [[VenuePageIndex]]; a new
+ * proposal: [[ProposalIndex]]), the model re-reads exactly the
  * questions that read it ([[changedBy]]).
  *
  * Filled while the model asks ([[TrackedLookups]] names the question, the store's readers name the

@@ -1,5 +1,7 @@
 package services.resolution
 
+import java.util.Locale
+
 import tools.{EditDistance, TextNormalization}
 
 /**
@@ -43,14 +45,14 @@ object TitleMatch {
   /** Lower-case + trim + every dash variant to '-', for title equality. Keeps
    *  diacritics — Metacritic, Rotten Tomatoes and Filmweb titles carry them and
    *  so do the titles they are compared against. */
-  def fold(s: String): String = foldDashes(s.toLowerCase.trim)
+  def fold(s: String): String = foldDashes(s.toLowerCase(Locale.ROOT).trim)
 
   /** [[fold]] after stripping diacritics — IMDb stores titles in ASCII (ł→l,
    *  ą→a, ś→s) while query titles keep theirs, so both sides are deburred
    *  before they meet. `TextNormalization.deburr` is NFD stripping PLUS the
    *  explicit ł→l that NFD alone misses. */
   def deburredFold(s: String): String =
-    foldDashes(TextNormalization.deburr(s).toLowerCase.trim)
+    foldDashes(TextNormalization.deburr(s).toLowerCase(Locale.ROOT).trim)
 
   // ── Comparisons ────────────────────────────────────────────────────────────
 
@@ -69,7 +71,7 @@ object TitleMatch {
    */
   def isModifierSuffix(title: String, query: String): Boolean = {
     val normalizedQuery = foldDashes(query)
-    val normalizedTitle = foldDashes(title.toLowerCase.trim)
+    val normalizedTitle = foldDashes(title.toLowerCase(Locale.ROOT).trim)
     normalizedTitle.startsWith(normalizedQuery) && normalizedTitle != normalizedQuery && {
       val rest = normalizedTitle.drop(normalizedQuery.length).dropWhile(_.isWhitespace)
       rest.headOption.exists(c => !c.isLetterOrDigit)
@@ -165,7 +167,7 @@ object TitleMatch {
   /** Rewrite any Cyrillic in `s` as Latin, leaving everything else untouched. */
   def latinise(s: String): String =
     if (!s.exists(c => Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CYRILLIC)) s
-    else CyrillicToLatin.foldLeft(s.toLowerCase) { case (acc, (from, to)) => acc.replace(from, to) }
+    else CyrillicToLatin.foldLeft(s.toLowerCase(Locale.ROOT)) { case (acc, (from, to)) => acc.replace(from, to) }
 
   /** The words in `s` long enough to identify a film, transliterated and folded. */
   def distinctiveTokens(s: String, sanitize: String => String): Set[String] =

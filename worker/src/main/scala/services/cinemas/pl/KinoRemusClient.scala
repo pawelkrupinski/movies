@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -120,7 +122,7 @@ object KinoRemusClient {
   private def unquoted(title: String): String =
     Quotes.replaceAllIn(title, "").replaceAll("\\s+", " ").trim
 
-  private def titleKey(title: String): String = unquoted(title).toLowerCase
+  private def titleKey(title: String): String = unquoted(title).toLowerCase(Locale.ROOT)
 
   private[pl] def parseDetail(html: String): FilmDetail = {
     val doc     = Jsoup.parse(html, FilmListUrl)

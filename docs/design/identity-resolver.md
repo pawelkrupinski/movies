@@ -551,7 +551,8 @@ for the resolver's query set (§9).
   review list.
 - `movie_slots` / `screenings` gain a `listingKey` field, backfilled. Nothing reads it yet.
 - Landed (as programme phase 4): the dual write, the backfill tool and the measured ID-seeding
-  review. The evidence store is phase 1's observation store. See §16.
+  review. The evidence store was phase 1's observation store (§9a, removed 2026-09-30); a venue's
+  listings now come from `cinema_scrapes` (shadow) or `identity_listings` (cut over). See §16.
 
 ### Phase 3: cutover, per country
 
@@ -602,6 +603,14 @@ five countries.
 
 ## 9a. Phase 1 (programme): observations
 
+> **Removed 2026-09-30.** The raw observation store (`obs_lookups`, `obs_listings`), its capture
+> (`KINOWO_OBSERVATION_CAPTURE`), the observed lookups, the backfill from it and its purge tool are
+> gone. The identity model's TMDB and IMDb answers live only in its normalized TMDB store (`TmdbStore`,
+> filled through `identityLookupFetch`); venue detail pages are read from `venue_pages`, where
+> every page read is written (`VenuePageReader`, `VenuePageIndex`), re-asked when a read is announced (`VenueDetailRead`); a
+> cut-over model answers from the store first and asks TMDB live only for what it lacks
+> (`StoredFirstLookups`). What follows is the record of what phase 1 was.
+
 The programme's phase 1 (the brief's numbering; §8's "Phase 1: shadow mode" is the resolver's
 own shadow run, which reads what this phase stores) turns the evidence into data.
 
@@ -632,14 +641,6 @@ own shadow run, which reads what this phase stores) turns the evidence into data
   is not data. It is kept when nothing better is known, so the question is on record.
 
 ### Capture
-
-> **Removed 2026-09-30.** The raw observation store (`obs_lookups`, `obs_listings`), its capture
-> (`KINOWO_OBSERVATION_CAPTURE`), the observed lookups, the backfill from it and its purge tool are
-> gone. The identity model's TMDB and IMDb answers live only in its normalized TMDB store (`TmdbStore`,
-> filled through `identityLookupFetch`); venue detail pages are read from the pipeline's own enriched
-> slots (`VenuePageIndex`), re-asked when the enrichment announces a page (`VenueDetailRead`); a
-> cut-over model answers from the store first and asks TMDB live only for what it lacks
-> (`StoredFirstLookups`). What follows is the record of what phase 1 was.
 
 One decorator per seam, generic over everything that passes it — no per-source or per-venue
 code: `ObservingHttpFetch` on `identityLookupFetch` (the enrich-phase chain under the TMDB client, the
@@ -1616,7 +1617,7 @@ Production code that serves nothing (no wiring reads it):
 
 - `common/.../services/identity/`:
   - `IdentityModel`: `Listing` (a `ListingKey` plus the raw row), `Evidence`, `Hit`, `FilmFacts`, `Candidate`, `Answer` (`Known` / `Unknown`), `CandidateQuery`, and the `IdentityLookups` trait. The trait is minimal and exists for reconciliation with phase 1's observation types.
-  - `CandidateQueries`: the query set. For every title shape (the title, the original title, and each delimited segment from `SearchTitles`) it issues a search with the stated year and one without, plus every credited director's filmography, and the films IMDb lists under the listing's whole title found in TMDB by their IMDb ids (`CandidateQuery.Imdb`, IMDb's suggestion endpoint then TMDB's `/find`): a path to a record TMDB's search misses — "Caligula: The Ultimate Cut" (1774981), which only its IMDb id reaches. A path, never a search rank; asked through the identity lookups (the observation store, the fill), never the pipeline's IMDb client.
+  - `CandidateQueries`: the query set. For every title shape (the title, the original title, and each delimited segment from `SearchTitles`) it issues a search with the stated year and one without, plus every credited director's filmography, and the films IMDb lists under the listing's whole title found in TMDB by their IMDb ids (`CandidateQuery.Imdb`, IMDb's suggestion endpoint then TMDB's `/find`): a path to a record TMDB's search misses — "Caligula: The Ultimate Cut" (1774981), which only its IMDb id reaches. A path, never a search rank; asked through the identity lookups (the model's TMDB store, the fill), never the pipeline's IMDb client.
   - Scoring (since round 2, §15.7): the calibration's own `IdentityMeasures` and `IdentityCalibration` over `identity-weights.json`. One loader and one format, no interim weights.
   - `IdentityResolver`:
     - families: the block closure, plus segment keys and matched ids;
@@ -1836,8 +1837,8 @@ here is additive. Nothing reads the new field, and no FilmId changes.
 ### 16.1 What landed
 
 - **The stored form.** `ListingKey.serialised` / `ListingKey.parse` are NUL-joined, total and
-  injective. It is the same string the observation store keys listings by (it replaces
-  `ListingObservation.keyString`), so a slot and its listing observations join on it.
+  injective. It was the same string the observation store (§9a, since removed) keyed listings by
+  (it replaced `ListingObservation.keyString`), so a slot and its listing observations joined on it.
 - **One derivation.** `ListingKey.ofSlotRow(slotKey, slot)` computes the key from the stored row.
   `None` means the row is not a venue listing:
   - an enrichment slot;
@@ -2029,18 +2030,19 @@ self-heal near-no-op to it. Each tick:
 
 - **Listings**: every listing of the scrape archive's latest scrape per live venue (`Listing.corpus`,
   the same function the offline harness and the recording sweep use).
-- **Lookups**: `ObservedIdentityLookups` — the very `TmdbIdentityLookups`, over a TMDB client built by
-  the deployment's own factory (`tmdbClientOver`) on an `ObservedHttpFetch`, and the venues' details
-  from `DETAIL <page> <venue>` observations. There is no network beneath it. A question with no live
-  definitive observation (never asked, or answered only by a failed read) is a gap: `Unknown`, counted.
-  Reads renew what they read (§9a).
+- **Lookups**: `StoredTmdbLookups` (`WorkerWiring.storedLookups`) — TMDB and IMDb answers from the
+  model's normalized TMDB store (`TmdbStore`), venue details from `venue_pages` (`VenuePageIndex`).
+  There is no network beneath it. A question the store cannot answer is a gap: `Unknown`, counted.
+  (Until 2026-09-30 it read the observation store, §9a.) Since the incremental model, a tick no longer
+  resolves at all: it diffs the model's current resolution (`ShadowIdentityReaper.modelled`).
 - **Pins**: `identity_pins`, through `ListingConstraints.pinned`.
 - **Diff** (`ShadowDiff`): each cluster against the pipeline's films of the same listings (`PipelineFilms`,
   by slot — the rule the offline harness uses): `identical`, `split`, `merged`, `moved`; a family whose
   clusters are not all identical is itemised.
 - **Writes**: `identity_shadow_decisions` (a document per cluster) and `identity_shadow_diff` (per
   differing family), one run replacing the previous whole, each document stamped `expireAt` = run +
-  `ObservationRetention.Window` (8 days), deleted by a TTL index the worker reconciles. `ShadowRunStore`
+  `WorkerWiring.ShadowRetentionWindow` (twice the longest re-ask period: 8 days), deleted by a TTL
+  index the worker reconciles. `ShadowRunStore`
   owns every rule over a Mongo and an in-memory backend (`ShadowRunStoreBehaviour` runs both).
 - **Reads**: `/admin/identity` reads the latest run through `ShadowDecisions`. Its verdicts (the
   low-confidence cut's input, §13.3) are the clusters the pipeline settles: identical = right; the same
@@ -2061,8 +2063,9 @@ reads what the pipeline's own lookups filed there (`identityLookupFetch`).
   resolve over the recorded answers, every answer filed by the production capture, then one reaper tick
   over that store alone. The persisted decisions equal the offline resolver's; the corpus fetch sees zero
   requests during the tick; no crossing.
-- `ObservationCaptureEndToEndSpec`: the recorded Poznań corpus booted with capture and the shadow run on,
-  a tick after the boot: `expected-schedules.txt` and the read-model snapshot unchanged, zero requests.
+- `ObservationCaptureEndToEndSpec` (removed with the observation store, 2026-09-30): the recorded Poznań
+  corpus booted with capture and the shadow run on, a tick after the boot: `expected-schedules.txt` and the
+  read-model snapshot unchanged, zero requests.
 - Found on the way: the offline harness counted each replay gap once per distinct request, so a gap met
   a second time read as the replay's empty answer (`Known(Nil)`); it now counts every gap met.
 
@@ -2138,8 +2141,10 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
   6. only changed films are written, through `MovieCache.writeProjected` / `retireProjected` (no
      identity gate; the unique indexes decide write order), and a film whose TMDB answer changed
      is announced to IMDb-id recovery and ratings (`announceResolvedNewMovie`).
-- **Lookups.** `CutoverIdentityLookups`: `TmdbIdentityLookups` over the observation store first
-  and the pipeline's own observed fetch / detail enrichers for a gap.
+- **Lookups.** `StoredFirstLookups` (`WorkerWiring.cutoverLookups`): the shadow's `StoredTmdbLookups`
+  first, and a TMDB or IMDb question the store cannot answer asked live by `TmdbIdentityLookups` through
+  `identityLookupFetch`, which files the answer into the store. (Built as `CutoverIdentityLookups` over the
+  observation store; replaced 2026-09-30.)
 - **Metrics** (`IdentityCutoverMetrics`, charted on worker-diagnostics):
   `kinowo_worker_identity_cutover_films|listings{country,path}`,
   `kinowo_worker_identity_regroupings_total{country,kind}`,
@@ -2174,7 +2179,7 @@ thresholds, its grace the scrape guards' own constant.
 
 ## 19. The shadow run's paced live lookup fill
 
-§17's shadow run answers only from observations, and most of the resolver's questions (yearless
+§17's shadow run answers only from the model's TMDB store, and most of the resolver's questions (yearless
 searches, director walks, candidate records) are ones the pipeline never asks: over the Poznań
 capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
 
@@ -2195,7 +2200,7 @@ on its own daemon thread, one round at a time:
 - the first overload (429, 5xx, open breaker, network failure) ends the round, and the next runs
   at half the rate, doubling back after each clean round;
 - venue detail pages are NOT asked: the pipeline's detail refresh fetches every listing's page on
-  its own cadence and the model reads the enriched slots (`VenuePageIndex`), while a shadow fetch
+  its own cadence and the model reads them from `venue_pages` (`VenuePageIndex`), while a shadow fetch
   would write the pipeline's `detailCache-*`.
 
 Gauge: `kinowo_worker_identity_shadow_lookups{country,outcome=asked|answered|failed|deferred|rate}`,
@@ -2204,8 +2209,8 @@ last round. Switch: `KINOWO_IDENTITY_SHADOW_LOOKUPS` (with `KINOWO_IDENTITY_SHAD
 **The pipeline is never delayed beyond the cap.** TMDB is unpaced here, so the fill competes only
 through the shared 429 gate, which it stops feeding at its first overload. On a paced host, each
 shadow ask costs the pipeline at most one interval (`ShadowLookupFillSpec` simulates a shared pacer
-at full pipeline load). `ObservationCaptureEndToEndSpec` runs a tick, a round and a tick with every
-switch on: `expected-schedules.txt` and the read-model snapshot are unchanged.
+at full pipeline load). `ObservationCaptureEndToEndSpec` (removed with the observation store) ran a tick,
+a round and a tick with every switch on: `expected-schedules.txt` and the read-model snapshot unchanged.
 
 ### 19.1 Measured (2026-09-26, recorder run 36153174348's trees, the replay as the live service)
 

@@ -102,6 +102,20 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
       HostPace(java.time.Duration.ofMillis(900))
   }
 
+  // Numeric knobs list on /admin/config as numbers with their defaults, so an admin sees what a
+  // value falls back to. These two once read through the untyped `get`, which lists a bare
+  // string with no default.
+  it should "list the Mongo probe timeout and boot-hydrate attempts as numeric knobs with their defaults" in {
+    val resolved = resolvedFrom("MONGODB_PROBE_TIMEOUT_SECONDS" -> "45", "KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS" -> "4")
+    resolved.mongoProbeTimeout(MongoProbeTimeout(30.seconds)) shouldBe MongoProbeTimeout(45.seconds)
+    resolved.bootHydrateMaxAttempts shouldBe BootHydrateMaxAttempts(4)
+    resolved.env.knobs.map(knob => knob.key -> (knob.kind, knob.default)).toMap shouldBe Map(
+      "MONGODB_PROBE_TIMEOUT_SECONDS"    -> (Env.Kind.Long, Some("30")),
+      "KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS" -> (Env.Kind.Int, Some("0")))
+    resolvedFrom("MONGODB_PROBE_TIMEOUT_SECONDS" -> "0").mongoProbeTimeout(MongoProbeTimeout(30.seconds)) shouldBe MongoProbeTimeout(30.seconds)
+    resolvedFrom("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS" -> "-2").bootHydrateMaxAttempts shouldBe BootHydrateMaxAttempts(0)
+  }
+
   // The commit, the port and PATH are facts about the process, not knobs an admin flips —
   // they must not appear on /admin/config as if they were.
   it should "not register process facts as admin-page knobs" in {

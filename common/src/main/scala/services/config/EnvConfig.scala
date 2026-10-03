@@ -1,5 +1,7 @@
 package services.config
 
+import java.util.Locale
+
 import tools.Env
 
 /** A config knob as discovered + published by one process: its key, type,
@@ -44,7 +46,7 @@ object EnvKnobClassifier {
   )
 
   def isSecret(key: String): Boolean = {
-    val upper = key.toUpperCase
+    val upper = key.toUpperCase(Locale.ROOT)
     SecretMarkers.exists(upper.contains)
   }
 }

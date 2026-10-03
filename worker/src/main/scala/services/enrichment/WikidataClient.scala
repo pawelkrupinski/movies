@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import play.api.libs.json._
 import services.resolution.YearWindow
 import tools.HttpFetch
@@ -182,7 +184,7 @@ object WikidataClient {
    *  corroboration uses so label/title comparison is diacritic/case-insensitive. */
   private def norm(s: String): String =
     java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}+", "").toLowerCase.replaceAll("[^a-z0-9]+", "")
+      .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "")
 
   val UserAgentHeader: Map[String, String] =
     Map("User-Agent" -> "kinowo/1.0 (pawel.krupinski@gmail.com)")

@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 /**
  * Text-closeness scorer for film synopses, used as a TIE-BREAK when a resolver
  * (TMDB, Filmweb) has several candidates that all survive its title/year/
@@ -80,7 +82,7 @@ object SynopsisSimilarity {
    *  pipeline (same `ł→l`, same URL stripping the synopses are stored with). */
   private def normalize(s: String): String =
     TextNormalization.deburr(TextNormalization.stripUrls(s))
-      .toLowerCase
+      .toLowerCase(Locale.ROOT)
       .replaceAll("\\s+", " ")
       .trim
 

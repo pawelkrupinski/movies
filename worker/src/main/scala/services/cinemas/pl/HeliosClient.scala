@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
 import models._
 import play.api.libs.json._
@@ -400,7 +402,7 @@ class HeliosClient(
 
   private def removeLessSpecificOverlaps(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
     val timesByTitle = movies.map(m => m.movie.title -> m.showtimes.map(_.dateTime).toSet).toMap
-    val norm         = (s: String) => s.toLowerCase.replaceAll("\\s+", " ").trim
+    val norm         = (s: String) => s.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim
     movies.filterNot { m =>
       val times = timesByTitle(m.movie.title)
       movies.exists(other =>

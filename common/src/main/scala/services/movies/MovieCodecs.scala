@@ -11,6 +11,9 @@ import services.PersistedCodecs
 
 import java.time.Instant
 
+/** Wire form of [[services.resolution.TmdbAttempt]]. */
+case class StoredTmdbAttempt(evidence: String, at: Instant)
+
 /**
  * Storage-side mirror of a `movies` document — what mongo-scala-driver's
  * macros derive a codec against. Public domain types are `MovieRecord` (and
@@ -20,9 +23,6 @@ import java.time.Instant
  * keys the wire map by `Source.displayName` to match the prior manual encoder
  * exactly; unknown keys on read are dropped silently (legacy cinema slots).
  */
-/** Wire form of [[services.resolution.TmdbAttempt]]. */
-case class StoredTmdbAttempt(evidence: String, at: Instant)
-
 case class StoredMovieDto(
   _id:               String,
   // The lookup key `sanitize(title)|year` — a FIELD, because `_id` is the permanent

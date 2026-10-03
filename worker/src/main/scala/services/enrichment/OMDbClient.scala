@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
@@ -133,5 +135,5 @@ object OMDbClient {
     a.exists(x => b.exists(SamePerson(x, _)))
 
   private def norm(s: String): String =
-    TextNormalization.deburr(s).toLowerCase.filter(_.isLetterOrDigit)
+    TextNormalization.deburr(s).toLowerCase(Locale.ROOT).filter(_.isLetterOrDigit)
 }

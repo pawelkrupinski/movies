@@ -80,8 +80,8 @@ object ListingKey {
   private def isVenue(cinema: Cinema): Boolean = Cinema.byDisplayName.get(cinema.displayName).contains(cinema)
 
   /** The stored form: total and injective, NUL-separated (no venue, page, title or name carries
-   *  a NUL). The observation store keys listings by the same string, so a stored slot and the
-   *  listing observations it came from join on it. */
+   *  a NUL). The identity model's traces and families key listings by the same string, so a stored
+   *  slot and the model's decision on its listing join on it. */
   def serialised(key: ListingKey): String = key match {
     case Native(venue, page, raw)          => Seq("N", venue, page, raw).mkString(Separator)
     case Published(venue, raw, year, dirs) => (Seq("P", venue, raw, year.fold("")(_.toString)) ++ dirs).mkString(Separator)

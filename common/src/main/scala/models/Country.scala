@@ -395,7 +395,7 @@ object Country {
    *  Showtimes country now serves off it too. [[Country.servesApex]] is the
    *  question callers want. */
   def isApexHost(host: String): Boolean =
-    host.toLowerCase.takeWhile(_ != ':').stripPrefix("www.") == apexHost
+    host.toLowerCase(Locale.ROOT).takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))

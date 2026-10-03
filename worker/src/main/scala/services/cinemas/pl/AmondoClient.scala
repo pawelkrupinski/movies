@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -124,7 +126,7 @@ object AmondoClient {
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None) }
 
   private def infoLi(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    document.select("ul.movie-info li").asScala.find(_.text.toLowerCase.contains(label))
+    document.select("ul.movie-info li").asScala.find(_.text.toLowerCase(Locale.ROOT).contains(label))
       // `(?iu)`, not `(?i)`: Java folds ASCII only without UNICODE_CASE, so an
       // UPPERCASE label carrying a diacritic never matched its lowercase form and
       // rode into the value — prod stored a director of "REŻYSERIA Lee Chang-dong".
@@ -138,7 +140,7 @@ object AmondoClient {
       .filter(_.nonEmpty).mkString(" ")).getOrElse("")
 
   private def longWords(text: String): Set[String] =
-    """[\p{L}]{5,}""".r.findAllIn(text.toLowerCase).toSet
+    """[\p{L}]{5,}""".r.findAllIn(text.toLowerCase(Locale.ROOT)).toSet
 
   /** Does the "Szczegóły" block describe ANOTHER film than the page's header? Amondo's CMS
    *  sometimes pastes one film's details block into another's page — "Miłość, śmierć i

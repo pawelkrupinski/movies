@@ -102,7 +102,7 @@ object TheOldCourtClient {
 
   private val MonthsByAbbreviation: Map[String, Int] =
     (1 to 12).map { m =>
-      java.time.Month.of(m).getDisplayName(TextStyle.SHORT, Locale.UK).toLowerCase.take(3) -> m
+      java.time.Month.of(m).getDisplayName(TextStyle.SHORT, Locale.UK).toLowerCase(Locale.ROOT).take(3) -> m
     }.toMap
 
   private case class RawSlot(
@@ -145,7 +145,7 @@ object TheOldCourtClient {
   private def parseWhen(text: String, today: LocalDate): Option[LocalDateTime] =
     WhenPat.findFirstMatchIn(text).flatMap { m =>
       for {
-        month <- MonthsByAbbreviation.get(m.group(2).toLowerCase.take(3))
+        month <- MonthsByAbbreviation.get(m.group(2).toLowerCase(Locale.ROOT).take(3))
         time  <- Try(LocalTime.of(m.group(3).toInt, m.group(4).toInt)).toOption
         date  <- Try(LocalDate.of(today.getYear, month, m.group(1).toInt)).toOption
       } yield {

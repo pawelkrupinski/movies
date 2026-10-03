@@ -26,7 +26,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 25
+            # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 27
             # with sbt dependency caching.
             - uses: ./.github/actions/setup-jdk
               with:

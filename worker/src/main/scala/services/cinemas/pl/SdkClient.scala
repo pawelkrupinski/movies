@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
@@ -106,7 +108,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
       .flatMap(d => Option(d.selectFirst("span.text-muted"))).map(_.text.trim).filter(_.nonEmpty)
 
   private def metaLi(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    document.select("li").asScala.find(_.text.toLowerCase.startsWith(label))
+    document.select("li").asScala.find(_.text.toLowerCase(Locale.ROOT).startsWith(label))
       .map(_.text.replaceFirst(s"(?i)^$label[:\\s]*", "").trim).filter(_.nonEmpty)
 
   private def intIn(s: String): Option[Int]  = """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)

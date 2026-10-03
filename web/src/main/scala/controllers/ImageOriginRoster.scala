@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 import java.util.concurrent.ConcurrentHashMap
 
 /** The closed set of host labels the anonymous poster-telemetry beacon
@@ -70,7 +72,7 @@ object ImageOriginRoster {
   private val Hostname = """[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+""".r
 
   def normalise(rawHost: String): String = {
-    val host = rawHost.trim.toLowerCase
+    val host = rawHost.trim.toLowerCase(Locale.ROOT)
     if (host.length > MaxHostLength) "" else Hostname.findFirstIn(host).filter(_ == host).getOrElse("")
   }
 }

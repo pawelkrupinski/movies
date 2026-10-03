@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 import play.api.Logging
 
 import java.net.URI
@@ -70,7 +72,7 @@ class HostCircuitBreakerHttpFetch(
   private val breakers = new ConcurrentHashMap[String, Breaker]()
 
   private def hostOf(url: String): Option[String] =
-    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase)
+    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
 
   /** Millis until this host's open breaker goes half-open, or 0 if it isn't open. */
   private[tools] def openRemainingMillis(host: String): Long =

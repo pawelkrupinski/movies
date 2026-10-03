@@ -112,9 +112,6 @@ case class MovieRecord(
 
   // ── Slices and views ──────────────────────────────────────────────────────
 
-  /** Cinema-only view of `data` — used by the per-cinema controller paths
-   *  (filmUrl per cinema, showtimes per cinema) where TMDB/IMDb slots are
-   *  irrelevant. */
   /** Every cinema slot paired with its source KEY — a bare [[Cinema]] or a
    *  per-title [[CinemaShowing]]. Multi-valued per venue: a cinema that lists the
    *  film under several titles (original + dub) has one entry per title. The

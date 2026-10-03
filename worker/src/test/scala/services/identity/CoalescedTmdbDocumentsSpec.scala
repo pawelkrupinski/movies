@@ -28,8 +28,6 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
       docs.find(d => refused(d._1)).foreach(d => throw new IllegalStateException(s"refused ${d._1}"))
       held.put(kind, docs)
     }
-    def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean = held.scan(kind)(page)
-    def delete(kind: TmdbKind, ids: Seq[String]): Unit = held.delete(kind, ids)
   }
 
   private def doc(n: Int) = new BsonDocument("n", BsonInt32(n))

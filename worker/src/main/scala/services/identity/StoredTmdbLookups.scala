@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
  * credits, an IMDb title through its suggestions and each suggestion's find, a film by its record —
  * exactly as `TmdbIdentityLookups` answers them from the responses those documents were parsed from.
  * A document the store does not hold yet is `Unknown` (the fill's question), never "no film".
- * Venue detail pages are `details`', the observation store's.
+ * Venue detail pages are `details`' (the venue page index's).
  *
  * Every document a question reads is filed with `reads` under its [[TmdbStore.keyOf]] key, so a
  * document that changes re-asks exactly the questions that read it. A [[prefetch]] loads a slice's

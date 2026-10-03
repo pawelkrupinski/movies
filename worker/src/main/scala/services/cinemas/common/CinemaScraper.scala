@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie}
 
 import java.net.URI
@@ -117,7 +119,7 @@ object CinemaScraper {
    *  host. The canonical way a scraper derives `scrapeHosts` from the base
    *  URL(s) it already fetches with — no second copy of the host string. */
   def hostsOf(urls: String*): Set[String] =
-    urls.flatMap(u => Option(URI.create(u).getHost)).map(_.toLowerCase).toSet
+    urls.flatMap(u => Option(URI.create(u).getHost)).map(_.toLowerCase(Locale.ROOT)).toSet
 
   private val SchemeAndWww = "^[a-zA-Z][a-zA-Z0-9+.-]*://(www\\.)?".r
 
@@ -127,6 +129,6 @@ object CinemaScraper {
   def urlKey(url: String): String = {
     val bare = SchemeAndWww.replaceFirstIn(url.trim, "").stripSuffix("/")
     val (host, path) = bare.span(_ != '/')
-    host.toLowerCase + path
+    host.toLowerCase(Locale.ROOT) + path
   }
 }

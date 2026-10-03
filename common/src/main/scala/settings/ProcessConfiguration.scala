@@ -1,5 +1,7 @@
 package settings
 
+import java.util.Locale
+
 import models.Country
 import services.MongoAddress
 import tools.Env
@@ -61,7 +63,7 @@ final class ProcessConfiguration(val env: Env) {
 
   /** `APP_MODE`, when set to one of `dev|development`, `test`, `prod|production`. An
    *  unrecognised value is refused rather than guessed. */
-  def applicationMode: Option[ApplicationMode] = fact("APP_MODE").map(_.toLowerCase).map {
+  def applicationMode: Option[ApplicationMode] = fact("APP_MODE").map(_.toLowerCase(Locale.ROOT)).map {
     case "prod" | "production"  => ApplicationMode.Production
     case "test"                 => ApplicationMode.Test
     case "dev" | "development"  => ApplicationMode.Development
@@ -133,7 +135,7 @@ final class ProcessConfiguration(val env: Env) {
 
   /** `KINOWO_SCRAPE_CITIES` — lowercased slugs; None when unset or naming nothing. */
   def scrapeCitySlugs: Option[ScrapeCitySlugs] =
-    text("KINOWO_SCRAPE_CITIES").map(_.split(",").iterator.map(_.trim.toLowerCase).filter(_.nonEmpty).toSet)
+    text("KINOWO_SCRAPE_CITIES").map(_.split(",").iterator.map(_.trim.toLowerCase(Locale.ROOT)).filter(_.nonEmpty).toSet)
       .filter(_.nonEmpty).map(ScrapeCitySlugs(_))
 
   // ── Tuning knobs ────────────────────────────────────────────────────────────
@@ -146,7 +148,7 @@ final class ProcessConfiguration(val env: Env) {
   private def millis(key: String, default: FiniteDuration): FiniteDuration = env.positiveLong(key, default.toMillis).millis
 
   def mongoProbeTimeout(default: MongoProbeTimeout): MongoProbeTimeout =
-    MongoProbeTimeout(text("MONGODB_PROBE_TIMEOUT_SECONDS").flatMap(_.toIntOption).filter(_ > 0).map(_.seconds).getOrElse(default.value))
+    MongoProbeTimeout(seconds("MONGODB_PROBE_TIMEOUT_SECONDS", default.value))
   def mongoMaxPoolSize(default: MongoMaxPoolSize): MongoMaxPoolSize = MongoMaxPoolSize(count("KINOWO_MONGO_MAX_POOL_SIZE", default.value))
   def mongoOptional: MongoOptional = MongoOptional(env.flag("MONGODB_OPTIONAL"))
 
@@ -193,10 +195,10 @@ final class ProcessConfiguration(val env: Env) {
 
   def cacheRehydrateInterval(default: CacheRehydrateInterval): CacheRehydrateInterval =
     CacheRehydrateInterval(seconds("KINOWO_CACHE_REHYDRATE_SECONDS", default.value))
-  /** `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` — any non-negative count; 0 (the default) retries until
-   *  the hydrate succeeds. */
+  /** `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` — how many times the boot hydrate retries an empty read;
+   *  0 (the default, and what a non-positive value means) hydrates once and does not retry. */
   def bootHydrateMaxAttempts: BootHydrateMaxAttempts =
-    BootHydrateMaxAttempts(text("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0))
+    BootHydrateMaxAttempts(count("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS", 0))
   def bootHydrateRetryInterval(default: BootHydrateRetryInterval): BootHydrateRetryInterval =
     BootHydrateRetryInterval(millis("KINOWO_BOOT_HYDRATE_RETRY_MS", default.value))
   def readModelPruneInterval(default: ReadModelPruneInterval): ReadModelPruneInterval =
@@ -300,7 +302,7 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_FULL` — comma-separated codes of the full recorded corpora the identity gate
    *  measures besides the hard clusters; codes naming no country are dropped. */
   def identityFullCorpora: IdentityFullCorpora =
-    IdentityFullCorpora(text("KINOWO_IDENTITY_FULL").toSeq.flatMap(_.split(",")).map(_.trim.toLowerCase).flatMap(Country.byCode).toSet)
+    IdentityFullCorpora(text("KINOWO_IDENTITY_FULL").toSeq.flatMap(_.split(",")).map(_.trim.toLowerCase(Locale.ROOT)).flatMap(Country.byCode).toSet)
   /** `KINOWO_IDENTITY_OUT` — where the identity shadow run writes its reports and calibration
    *  dataset, else `target/identity-shadow`. */
   def identityShadowOutput: IdentityShadowOutput =
@@ -336,7 +338,7 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
    *  against a scratch fixture root. */
   def identityRecordCheck: Option[IdentityRecordCheck] =
-    text("KINOWO_IDENTITY_RECORD_CHECK").map(_.trim.toLowerCase).flatMap(Country.byCode).map(IdentityRecordCheck(_))
+    text("KINOWO_IDENTITY_RECORD_CHECK").map(_.trim.toLowerCase(Locale.ROOT)).flatMap(Country.byCode).map(IdentityRecordCheck(_))
 
   /** `CDP_BROWSER_BIN` — the Chrome/Edge binary the page tests drive, over the usual install paths. */
   def cdpBrowserBinary: Option[CdpBrowserBinary] = fact("CDP_BROWSER_BIN").map(bin => CdpBrowserBinary(Path.of(bin)))

@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import tools.TextNormalization
 
 /**
@@ -24,7 +26,7 @@ import tools.TextNormalization
  */
 object RatingSiteSlug {
   def apply(title: String, separator: Char, preserve: String = ""): String = {
-    val stripped = TextNormalization.deburr(title).toLowerCase.replaceAll("[']", "")
+    val stripped = TextNormalization.deburr(title).toLowerCase(Locale.ROOT).replaceAll("[']", "")
     val sep      = separator.toString
     stripped.replaceAll(s"[^a-z0-9$preserve]+", sep).replaceAll(s"^\\Q$sep\\E+|\\Q$sep\\E+$$", "")
   }

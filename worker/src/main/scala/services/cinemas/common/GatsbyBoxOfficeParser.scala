@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 import services.movies.TrailerEmbed
@@ -105,7 +107,7 @@ object GatsbyBoxOfficeParser {
       runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
       cast           = names("casting"),
       synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
-      certificate    = (n \ "certificate").asOpt[String].map(_.trim.toUpperCase).filter(_.nonEmpty))
+      certificate    = (n \ "certificate").asOpt[String].map(_.trim.toUpperCase(Locale.ROOT)).filter(_.nonEmpty))
   }
 
   /** `data.allMovie.nodes[]` keyed by the same numeric id the schedule uses.
@@ -153,9 +155,9 @@ object GatsbyBoxOfficeParser {
    *  and the genre chips read as shouting placeholders. */
   private def parseGenres(raw: Option[String]): Seq[String] =
     raw.getOrElse("").split(",").toSeq
-      .map(_.trim.replace('_', ' ').toLowerCase)
+      .map(_.trim.replace('_', ' ').toLowerCase(Locale.ROOT))
       .filter(_.nonEmpty)
-      .map(g => g.substring(0, 1).toUpperCase + g.substring(1))
+      .map(g => g.substring(0, 1).toUpperCase(Locale.ROOT) + g.substring(1))
       .distinct
 
   /** One film's `{date: [session, …]}` block flattened into screenings.
@@ -203,7 +205,7 @@ object GatsbyBoxOfficeParser {
    *
    *  Public so a spec can pin a tag combination the live snapshot doesn't hold. */
   def formatTokens(tags: Seq[String]): List[String] = {
-    val lower = tags.map(_.toLowerCase)
+    val lower = tags.map(_.toLowerCase(Locale.ROOT))
     def has(needle: String) = lower.exists(_.contains(needle))
 
     // Both brands tag stereoscopic screenings twice — the projection format
@@ -229,8 +231,8 @@ object GatsbyBoxOfficeParser {
     // a Tamil showing reads apart from the English default. This is WHAT the
     // dialogue is in, distinct from the SUB/DUB above (HOW it reaches you).
     val sourceLanguage = tags.collect {
-      case tag if tag.toLowerCase.startsWith("localization.language.") =>
-        tag.substring(tag.lastIndexOf('.') + 1).toUpperCase
+      case tag if tag.toLowerCase(Locale.ROOT).startsWith("localization.language.") =>
+        tag.substring(tag.lastIndexOf('.') + 1).toUpperCase(Locale.ROOT)
     }
 
     (dimension ++ WebediaBoxOffice.premiumTokens(tags) ++ language ++ sourceLanguage).distinct
@@ -329,7 +331,7 @@ object WebediaBoxOffice {
    *  in the same shared `Auditorium.Experience.*`/`Format.Projection.*`
    *  namespace and cost both siblings nothing to recognise too. */
   def premiumTokens(tags: Seq[String]): List[String] = {
-    val lower = tags.map(_.toLowerCase)
+    val lower = tags.map(_.toLowerCase(Locale.ROOT))
     List(
       "format.projection.imax"               -> "IMAX",
       "auditorium.experience.4dx"            -> "4DX",

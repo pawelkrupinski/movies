@@ -1,5 +1,6 @@
 package services.identity
 
+import java.util.Locale
 import scala.util.chaining.scalaUtilChainingOps
 
 import models.{Cinema, CinemaMovie, MovieRecord}
@@ -60,7 +61,7 @@ object IdentityProjectionMetrics {
     case Crossing, UnreadableMap, Shrink, NotReady
     /** The projection threw: nothing was written, the stored films keep serving. */
     case Failed
-    def label: String = toString.toLowerCase
+    def label: String = toString.toLowerCase(Locale.ROOT)
   }
   val noop: IdentityProjectionMetrics = new IdentityProjectionMetrics {
     def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()

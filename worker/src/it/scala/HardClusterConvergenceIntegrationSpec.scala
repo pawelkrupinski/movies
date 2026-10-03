@@ -181,16 +181,6 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     } finally pool.shutdown()
   }
 
-  /**
-   * RECORD MODE ONLY: boot every distinct spelling in the fixture ON ITS OWN, so the file
-   * also holds the answers a spelling needs when nothing folds it onto its siblings.
-   *
-   * The passes above record only what the CURRENT code asks, and a regression is exactly
-   * a change in what gets asked: revert the fix that folds "Mockingjay - Part 1 (2026)"
-   * onto "Part 1" and the decorated row resolves on its own, through searches the fixed
-   * code never made — which a replay would answer 404, leaving the row unresolved and the
-   * bug invisible. Resolving each spelling alone records those searches too.
-   */
   /** RECORD MODE: also ask the identity resolver's query set (`IdentityLookupSweep`) of each
    *  country's clusters, so the responses file answers the phase-1 gate
    *  (`IdentityQueryCoverageIntegrationSpec`) as well as this spec — whatever the tree holds. */
@@ -202,6 +192,16 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     println(s"[${country.code}] identity resolver lookups: ${IdentityLookupSweep.over(w)}")
   }
 
+  /**
+   * RECORD MODE ONLY: boot every distinct spelling in the fixture ON ITS OWN, so the file
+   * also holds the answers a spelling needs when nothing folds it onto its siblings.
+   *
+   * The passes above record only what the CURRENT code asks, and a regression is exactly
+   * a change in what gets asked: revert the fix that folds "Mockingjay - Part 1 (2026)"
+   * onto "Part 1" and the decorated row resolves on its own, through searches the fixed
+   * code never made — which a replay would answer 404, leaving the row unresolved and the
+   * bug invisible. Resolving each spelling alone records those searches too.
+   */
   private def recordEachSpellingAlone(): Unit = {
     val pool = Executors.newFixedThreadPool(8)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
@@ -254,7 +254,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     // refresh schedule does, and the projection takes the answers in.
     down.set(false)
     clock.advance(java.time.Duration.ofHours(1))
-    w.shadowLookupFill.foreach(_.round())
+    w.shadowLookupFill.round()
     settle(w)
     (unmatched, films(w, normalizer))
   }

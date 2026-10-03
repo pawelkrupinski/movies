@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models.{Cinema, City, Country}
 import play.api.libs.json.{Json, Reads}
 import tools.{BoundedParallel, HttpFetch}
@@ -179,7 +181,7 @@ object FilmwebCinemaIdResolver {
     s.map(c => Diacritics.getOrElse(c, c))
 
   private def tokens(name: String): Set[String] =
-    stripDiacritics(name.toLowerCase)
+    stripDiacritics(name.toLowerCase(Locale.ROOT))
       .split("[^a-z0-9]+").iterator
       .map(_.trim).filter(_.nonEmpty)
       .filterNot(StopWords)

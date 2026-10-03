@@ -20,9 +20,9 @@ import java.time.Instant
  *  latest change while its re-render runs, in which case every validator names
  *  that copy's version, not the current one. Naming the `Content-Encoding`
  *  ourselves is also what keeps Play's `GzipFilter` off the response: it skips
- *  anything that already declares one. A `cacheBody = false` caller, or a
- *  client that refuses gzip, gets the body uncompressed and the filter handles
- *  it instead.
+ *  anything that already declares one. A `cacheBody = false` caller gets its
+ *  body gzipped straight from the walk that writes it; only a client that
+ *  refuses gzip gets it uncompressed.
  *
  *  `modelStamp` is when the read model a payload draws on last moved — per
  *  city, or model-wide for a payload that really is (see [[serve]] for why the
@@ -67,8 +67,8 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
 
   /** The conditional response for `request`: a 304 when the client already holds
    *  the current version, otherwise `body` — gzipped from the cache when
-   *  `cacheBody` and the client takes gzip, uncompressed for the `GzipFilter`
-   *  otherwise.
+   *  `cacheBody` and the client takes gzip, gzipped as it is written when only
+   *  the client does, uncompressed otherwise.
    *
    *  `cacheKey` carries every input beyond host + path that changes the body (a
    *  normalised `?days=` window, or a filter variant's whole query string).
@@ -229,8 +229,7 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     else if (cacheBody && acceptsGzip(request)) {
       // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
       // keeps Play's GzipFilter off it: the filter skips any response that already
-      // names an encoding. The uncached branch below deliberately names none, and
-      // the filter gzips it on the way out.
+      // names an encoding — as the uncached branch below does too.
       //
       // Served stale across a content change until the re-render lands, but never
       // across the city's midnight: a copy rendered before it names the old

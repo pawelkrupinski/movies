@@ -19,26 +19,6 @@ import java.security.MessageDigest
  */
 object Catalog {
 
-  /**
-   * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
-   * is fixed ([[Country.switchable]] order; each country's cities in PICKER
-   * order — [[Country.cityGroups]]'s nested traversal for a grouped country,
-   * alphabetical for a flat one — never the roster's raw declared order), so
-   * [[etag]] and the checked-in bundled seed stay stable across builds, AND
-   * every client that walks this array in encounter order (region/subregion
-   * grouping on the apps and the web's dynamic picker) reproduces the exact
-   * same order the picker tree already computed, rather than re-deriving its
-   * own. Hand-built (no play-json in `common`); the field values carry no
-   * characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
-   * shape the web `ALL_CITIES` clients already parse, plus the owning country
-   * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
-   * where the country's picker groups its cities, the group's label as `region`
-   * and, where that group nests a sub-group worth a tap of its own (more than
-   * one city under it), that sub-group's label as `subregion`, and, where the
-   * web redirects older slugs onto it, those as `formerSlugs`. Each country
-   * carries its `timezone` and, where it has one, the `versionTokens` pair its
-   * "version" filter matches on.
-   */
   /** The one zone a country is published under: its BIGGEST city's, ties by slug.
    *
    *  Four of the five keep one zone throughout, so for them any city answers. The
@@ -63,6 +43,26 @@ object Catalog {
   private lazy val formerSlugsOf: Map[String, Seq[String]] =
     City.renamedSlugs.toSeq.groupMap(_._2)(_._1).view.mapValues(_.sorted).toMap
 
+  /**
+   * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
+   * is fixed ([[Country.switchable]] order; each country's cities in PICKER
+   * order — [[Country.cityGroups]]'s nested traversal for a grouped country,
+   * alphabetical for a flat one — never the roster's raw declared order), so
+   * [[etag]] and the checked-in bundled seed stay stable across builds, AND
+   * every client that walks this array in encounter order (region/subregion
+   * grouping on the apps and the web's dynamic picker) reproduces the exact
+   * same order the picker tree already computed, rather than re-deriving its
+   * own. Hand-built (no play-json in `common`); the field values carry no
+   * characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
+   * shape the web `ALL_CITIES` clients already parse, plus the owning country
+   * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
+   * where the country's picker groups its cities, the group's label as `region`
+   * and, where that group nests a sub-group worth a tap of its own (more than
+   * one city under it), that sub-group's label as `subregion`, and, where the
+   * web redirects older slugs onto it, those as `formerSlugs`. Each country
+   * carries its `timezone` and, where it has one, the `versionTokens` pair its
+   * "version" filter matches on.
+   */
   val json: String = {
     val countries = Country.switchable
       .map { c =>

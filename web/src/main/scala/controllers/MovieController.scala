@@ -159,7 +159,7 @@ class MovieController( cc: ControllerComponents,
                        responseCache: EncodedResponseCache,
                        // The ONE country this deployment serves — which cities are
                        // ours (`withCity`) and which the sitemap advertises. Injected
-                       // rather than read from `Country.fromEnv` at each use so a spec
+                       // rather than read from the process configuration at each use so a spec
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country,

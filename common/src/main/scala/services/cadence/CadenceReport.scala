@@ -1,5 +1,7 @@
 package services.cadence
 
+import java.util.Locale
+
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 
@@ -72,6 +74,6 @@ object CadenceReport {
     }
     entries.groupBy(_.interval).toSeq
       .sortBy(-_._1.toMillis)
-      .map { case (interval, es) => Group(interval, es.sortBy(e => (e.title.toLowerCase, e.site))) }
+      .map { case (interval, es) => Group(interval, es.sortBy(e => (e.title.toLowerCase(Locale.ROOT), e.site))) }
   }
 }

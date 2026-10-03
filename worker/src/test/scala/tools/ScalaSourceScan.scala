@@ -3,9 +3,11 @@ package tools
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
+import scala.util.Using
 
 /** Text-level helpers for the source lints (`NoWallClockInTestsSpec`,
- *  `NoPolandDefaultCountrySpec`, `NoDefaultTitleNormalizerSpec`, `NoSwallowedFailureSpec`): they read the repository's own `.scala` files from the
+ *  `NoPolandDefaultCountrySpec`, `NoDefaultTitleNormalizerSpec`, `NoSwallowedFailureSpec`, `NoHandRolledTimingSpec`,
+ *  `NoUnboundedMongoReadSpec`, `NoDefaultLocaleCaseMappingSpec`, `DocCommentPlacementSpec`): they read the repository's own `.scala` files from the
  *  build root (these specs run unforked, so the working directory is the repo root). */
 object ScalaSourceScan {
 
@@ -39,9 +41,15 @@ object ScalaSourceScan {
     }.toSeq
   }
 
-  def scalaFiles(roots: Seq[String]): Seq[Path] =
+  def scalaFiles(roots: Seq[String]): Seq[Path] = filesEndingWith(roots, ".scala")
+
+  /** The Twirl templates under `roots` — Scala expressions spliced into HTML and JS. */
+  def twirlFiles(roots: Seq[String]): Seq[Path] = filesEndingWith(roots, ".scala.html")
+
+  private def filesEndingWith(roots: Seq[String], suffix: String): Seq[Path] =
     roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
-      Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq
+      // `Files.walk` holds a directory handle open per level until the stream is closed.
+      Using.resource(Files.walk(root))(_.iterator.asScala.filter(_.toString.endsWith(suffix)).toList)
     }.sortBy(_.toString)
 
   def read(p: Path): String = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)

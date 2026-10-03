@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 import models._
 import tools.HttpFetch
@@ -148,7 +150,7 @@ object KinoMetalowiecNowaDebaClient {
     } yield {
       // `<p><strong>LABEL:</strong> value</p>`; the label may be `<b>` and end in a `<br>`.
       val fields = details.select("p").asScala.toSeq.flatMap { p =>
-        Option(p.selectFirst("strong, b")).map(_.text.trim.stripSuffix(":").trim.toUpperCase -> p.ownText.trim)
+        Option(p.selectFirst("strong, b")).map(_.text.trim.stripSuffix(":").trim.toUpperCase(Locale.ROOT) -> p.ownText.trim)
       }.toMap
       FilmBlock(
         title     = title,
@@ -169,5 +171,5 @@ object KinoMetalowiecNowaDebaClient {
 
   /** The join key: lower-cased letters and digits only, diacritics kept. */
   private def keyOf(title: String): String =
-    Normalizer.normalize(title, Normalizer.Form.NFC).toLowerCase.filter(_.isLetterOrDigit)
+    Normalizer.normalize(title, Normalizer.Form.NFC).toLowerCase(Locale.ROOT).filter(_.isLetterOrDigit)
 }

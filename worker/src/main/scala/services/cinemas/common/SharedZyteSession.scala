@@ -9,7 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
  * Reuses ONE warmed Zyte session across every fetch through it — the shared
  * `HttpFetch` Multikino's ~30 cinema clients all hold (one `mkFetch`, see
- * [[ZyteFallback]] / `MultikinoClient.fetchFor`).
+ * [[ZyteFallback]] / `EgressWiring.multikinoFetch`).
  *
  * Multikino's films API sits behind a session-cookie wall, so each fetch needs
  * a session warmed from the homepage — and warming is a *second* paid Zyte

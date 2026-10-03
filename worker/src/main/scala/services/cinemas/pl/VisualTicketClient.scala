@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -75,7 +77,7 @@ object VisualTicketClient {
       if (locationId != AnyLocation && loc != locationId) None
       else {
         val category = Option(item.selectFirst("div.event-group-label"))
-          .map(_.text.trim.toLowerCase)
+          .map(_.text.trim.toLowerCase(Locale.ROOT))
           .getOrElse("")
         if (!category.contains("film")) None
         else for {

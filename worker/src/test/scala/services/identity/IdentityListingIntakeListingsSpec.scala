@@ -8,8 +8,8 @@ import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository, SuccessfulScra
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
-/** The cutover's listing set (`KINOWO_IDENTITY_CUTOVER`) reads both archives a page at a time — never
- *  either whole, which on the US corpus is the heap the shadow's reader already stopped paying — and
+/** The identity intake's listing set reads both archives a page at a time — never
+ *  either whole, which on the US corpus is hundreds of megabytes held at once — and
  *  gives exactly the listings the whole-archive read gave: the accepted listing first, else the
  *  archive's, live venues only, venues publishing nothing left out, a failed read not taken as data. */
 class IdentityListingIntakeListingsSpec extends AnyFlatSpec with Matchers {

@@ -186,7 +186,7 @@ trait ScrapeArchiveRepository {
 
   /** Every archived scrape, handed to `consume` a page at a time, in no promised order; `true`
    *  when the whole archive was read. A page is the caller's to keep or drop: a caller that
-   *  reduces each page (the identity shadow, turning rows into listings) never holds the whole
+   *  reduces each page (the identity intake, turning rows into listings) never holds the whole
    *  archive's parsed films at once — tens of kilobytes a venue, hundreds of megabytes a country.
    *
    *  On `false` the pages already handed over are a PARTIAL archive, and the caller must not

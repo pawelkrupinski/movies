@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
  *  film. Small municipal & arthouse venues sell tickets to their own concerts,
@@ -175,7 +177,7 @@ object NonMovieEventClassifier {
    *  flag it as a live event — see [[BiletynaClient]], which filters on the
    *  schema.org `@type` and reuses this as its veto. */
   def isScreenedBroadcast(title: String): Boolean =
-    BroadcastMarkers.exists(title.toLowerCase.contains)
+    BroadcastMarkers.exists(title.toLowerCase(Locale.ROOT).contains)
 
   /** True when `title` names a live stage/music event rather than a film.
    *
@@ -186,7 +188,7 @@ object NonMovieEventClassifier {
    *  and matching is still done on the lowercased title. See
    *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
   def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
-    val t = title.toLowerCase
+    val t = title.toLowerCase(Locale.ROOT)
     if (isScreenedBroadcast(t)) false
     else
       EventMarkers.exists(_.findFirstIn(t).isDefined) ||

@@ -1,5 +1,7 @@
 package services.identity
 
+import java.util.Locale
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
@@ -119,7 +121,7 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore with IdentityT
   private def all = synchronized(held.values.toSeq)
   def byRule(rule: String, limit: Int)  = all.filter(_.rules.contains(rule)).take(limit)
   def byFilm(film: Int, limit: Int)     = all.filter(_.film.contains(film)).take(limit)
-  def byTitle(text: String, limit: Int) = all.filter(_.listing.rawTitle.toLowerCase.contains(text.toLowerCase)).take(limit)
+  def byTitle(text: String, limit: Int) = all.filter(_.listing.rawTitle.toLowerCase(Locale.ROOT).contains(text.toLowerCase(Locale.ROOT))).take(limit)
   def blockers()                        = BlockerCount.of(all)
   def unresolved(limit: Int, wanted: ListingTrace => Boolean) =
     all.filter(trace => trace.blocker.exists(!_.startsWith(IdentityTraceReads.NotAFilm)) && wanted(trace)).take(limit)

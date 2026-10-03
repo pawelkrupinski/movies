@@ -76,11 +76,10 @@ class ShareCardService(
   /** Ask for the card of `next` — nothing when it is current, a render otherwise. What a projection
    *  and the backfill both call; `askedAt` is when `next` was read (the backfill's sweep, which may
    *  be a day old), so an older read never supersedes a newer one ([[renderIfLatest]]). */
-  def request(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill,
-              askedAt: Instant = clock.instant()): Option[EnqueueResult] =
+  def request(next: ShareCardInputs, askedAt: Instant = clock.instant()): Option[EnqueueResult] =
     existing(next) match {
       case Some(_) => ask(next, askedAt); fingerprints.put(next.filmId, next.fingerprint); None
-      case None    => Some(enqueueRender(next, reasonsFor(next, fallback), askedAt = askedAt))
+      case None    => Some(enqueueRender(next, reasonsFor(next), askedAt = askedAt))
     }
 
   // THE LATEST ASK PER FILM. A film's card is one file at one URL naming its version, overwritten by
@@ -145,8 +144,8 @@ class ShareCardService(
    *  candidate, plus the drawn parts that moved since this process last saw the card. A card this
    *  process has not seen (every card, after a restart) is read from its version on disk instead:
    *  `ratings` when its badges moved, `template` when the rest differs only by the template
-   *  version, `fallback` when the rest moved otherwise. `new_film` when the film has no card. */
-  def reasonsFor(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill): Seq[String] =
+   *  version, `backfill` when the rest moved otherwise. `new_film` when the film has no card. */
+  def reasonsFor(next: ShareCardInputs): Seq[String] =
     onDisk(next.filmId).flatMap(ShareCardVersion.parse) match {
       case None => Seq(ShareCardReason.NewFilm)
       case Some(had) =>
@@ -158,10 +157,10 @@ class ShareCardService(
             val layout =
               if (had.layoutHash == next.layoutHash) Nil
               else if (had.layoutHash == next.copy(template = next.template - 1).layoutHash) Seq(ShareCardReason.Template)
-              else Seq(fallback)
+              else Seq(ShareCardReason.Backfill)
             layout ++ Option.when(had.ratingsHash != next.ratingsHash)(ShareCardReason.Ratings)
         }
-        Some(poster ++ drawn).filter(_.nonEmpty).getOrElse(Seq(fallback))
+        Some(poster ++ drawn).filter(_.nonEmpty).getOrElse(Seq(ShareCardReason.Backfill))
     }
 
   private def candidatePosterHashes(next: ShareCardInputs): Seq[String] =

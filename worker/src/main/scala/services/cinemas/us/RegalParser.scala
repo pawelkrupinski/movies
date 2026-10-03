@@ -1,5 +1,7 @@
 package services.cinemas.us
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 import services.cinemas.common.{AgeRating, FilmDetail}
@@ -171,7 +173,7 @@ object RegalParser {
   private def formats(entry: JsValue): List[String] =
     (entry \ "PerformanceAttributes").asOpt[Seq[String]].getOrElse(Nil)
       .map(_.trim).filter(_.nonEmpty)
-      .filter(attribute => FormatAttributes.contains(attribute.toUpperCase))
+      .filter(attribute => FormatAttributes.contains(attribute.toUpperCase(Locale.ROOT)))
       .distinct.toList
 
   /** One film's `/api/Movies?hoCode=<code>` response → its detail fields.

@@ -153,8 +153,6 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val docs  = new TmdbDocuments {
       def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); w.docs.get(kind, ids) }
       def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
-      def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit) = w.docs.scan(kind)(page)
-      def delete(kind: TmdbKind, ids: Seq[String]) = w.docs.delete(kind, ids)
     }
     val titles = (1 to 30).map(i => s"Film $i")
     titles.zipWithIndex.foreach { case (text, i) =>
@@ -215,8 +213,6 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   private def readingThrough(docs: TmdbDocuments)(onGet: TmdbKind => Unit): TmdbDocuments = new TmdbDocuments {
     def get(kind: TmdbKind, ids: Seq[String]) = { onGet(kind); docs.get(kind, ids) }
     def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = docs.put(kind, d)
-    def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit) = docs.scan(kind)(page)
-    def delete(kind: TmdbKind, ids: Seq[String]) = docs.delete(kind, ids)
     override def answers(kind: TmdbKind, ids: Seq[String]) = docs.answers(kind, ids)
   }
 

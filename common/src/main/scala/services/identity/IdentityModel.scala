@@ -206,7 +206,7 @@ object Candidate {
 }
 
 /** A lookup's answer: what the source KNOWS, or that it does not know. `Unknown` is not "no film":
- *  a query the observation store never recorded is a gap, and the resolver treats its would-be
+ *  a query the store holds no answer to is a gap, and the resolver treats its would-be
  *  hits as missing evidence rather than as a definitive no-match (docs/design/identity-resolver.md
  *  §9, the gaps the recorded trees left). */
 enum Answer[+A] {

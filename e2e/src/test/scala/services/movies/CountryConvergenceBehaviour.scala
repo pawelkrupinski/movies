@@ -101,36 +101,12 @@ abstract class CountryConvergenceBehaviour(
   @volatile private var corpusProvenance: Option[Alongside.Started[CorpusProvenance]] = None
 
   override def withFixture(test: NoArgTest): Outcome =
-    // A hermetic gap found by an EARLIER test fails this one before it boots anything: the
-    // shared boot is a lazy val, and a lazy val whose initialiser threw runs again on the
-    // next access — so without this a gap found in the boot would cost a second boot to be
-    // reported a second time.
-    hermeticGaps.fold(super.withFixture(test) match {
+    super.withFixture(test) match {
       case Failed(e: TestFailedException) =>
         corpusProvenance.flatMap(p => Try(p.join()).toOption)
           .fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
-      // A test whose body passed over a request the tree could not answer proved nothing
-      // about the recording — its green came from a refused fetch.
-      case other => hermeticGaps.fold(other)(Failed(_))
-    })(Failed(_))
-
-  /** Every request this hermetic run could not replay, as the failure that names them —
-   *  or `None` when there were none, when the run is a RECORDING one (which fills the
-   *  gaps live instead), or when it measures the new model (see [[measuresNewModel]]). */
-  private def hermeticGaps: Option[IllegalStateException] =
-    missingFixtures.filterNot(_.isEmpty).filterNot(_ => measuresNewModel).map(m => new IllegalStateException(m.report(fixtureDirectory)))
-
-  /** A leg run with `KINOWO_IDENTITY_CUTOVER` naming this country (`Identity model convergence`)
-   *  replays a tree the PIPELINE recorded. The model's own identity lookups are in it, but a film
-   *  the model matches and the pipeline did not is enriched (external ids, ratings, images) through
-   *  requests the tree never held. Those gaps cost ratings, not identity, and no recorder records the
-   *  model's enrichment yet — so on this leg they are REPORTED at the end of the run, never fatal:
-   *  failing every claim on them would leave the build measuring nothing about the model. */
-  private lazy val measuresNewModel: Boolean = true
-
-  /** Fail the leg NOW if the phase just run met a gap in the recording, rather than letting
-   *  it spend the rest of its budget replaying over refused fetches. */
-  private def requireHermetic(): Unit = hermeticGaps.foreach(gap => throw gap)
+      case other => other
+    }
 
   /**
    * Set when the leg is HERMETIC (`KINOWO_CONVERGENCE_HERMETIC=true`), and shared by the
@@ -162,8 +138,13 @@ abstract class CountryConvergenceBehaviour(
       }
     }
 
+  /** A hermetic leg replays a tree the PIPELINE recorded. The model's own identity lookups are in it, but
+   *  a film the model matches and the pipeline did not is enriched (external ids, ratings, images) through
+   *  requests the tree never held. Those gaps cost ratings, not identity, and no recorder records the
+   *  model's enrichment yet — so they are REPORTED here, at the end of the run, never fatal: failing every
+   *  claim on them would leave the build measuring nothing about the model. */
   override def afterAll(): Unit = {
-    missingFixtures.filter(m => measuresNewModel && !m.isEmpty).foreach { m =>
+    missingFixtures.filterNot(_.isEmpty).foreach { m =>
       val report = s"${country.displayName} (identity model): enrichment the pipeline's tree does not hold, " +
         s"so these films went unrated here —\n${m.report(fixtureDirectory)}"
       println(report)
@@ -449,9 +430,7 @@ abstract class CountryConvergenceBehaviour(
     }
     bootSettled(w)
     // Every replayed venue must LAND: the claims below are all "nothing changed", which a
-    // venue that threw satisfies by never arriving. Checked before the hermetic gap, which
-    // names its own cause.
-    requireHermetic()
+    // venue that threw satisfies by never arriving.
     withClue(s"${w.scrapeFailures.size} venue(s) threw while ${country.displayName} booted, so nothing below " +
              s"says anything about them:\n  ${w.scrapeFailures.asScala.take(8).mkString("\n  ")}\n") {
       w.scrapeFailures.asScala shouldBe empty
@@ -464,7 +443,6 @@ abstract class CountryConvergenceBehaviour(
     }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
-    requireHermetic()
     // Read by `convergence-publish`: a RECORDING leg pins its tree as the hermetic pair only
     // once every request of the boot was answered or remembered. `println`, not `info`, so
     // it is in the log even when the suite is killed later.
@@ -663,8 +641,7 @@ abstract class CountryConvergenceBehaviour(
       step("reloadReadModel")(w.webReadModel.reload())
     }
 
-  /** A CUT-OVER leg (the leg run with `KINOWO_IDENTITY_CUTOVER` naming this country — the
-   *  `Identity model convergence` build) lands every scrape through the production runner into the
+  /** A leg lands every scrape through the production runner into the
    *  identity model's listing intake and decides its films by projection, so every claim below is
    *  asked of the new model: there is no staging, settle or reaper pass to run. Each venue is
    *  re-scraped — submitted in `rnd`'s order, landed side by side as production lands them
@@ -967,11 +944,11 @@ abstract class CountryConvergenceBehaviour(
         tickWrites.foreach(_.close())
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"
         if (vanished.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${vanished.take(8).mkString(", ")}"
-        // A tick is a full re-scrape THEN a settle, which is exactly the sequence a
-        // consolidation loop needs to close: the settle moves a film's cinemas off its
-        // row, the re-scrape puts the listing back, and the next settle moves it again.
-        // The merge/diversion counters above see the movement, but a film left with an
-        // empty board is invisible to them — it keeps its key, its cinemas and its
+        // A tick is a full re-scrape THEN a projection, which is exactly the sequence a
+        // consolidation loop needs to close: the projection moves a film's cinemas off its
+        // row, the re-scrape puts the listing back, and the next projection moves it again.
+        // The merge counter above sees the movement, but a film left with an
+        // empty board is invisible to it — it keeps its key, its cinemas and its
         // record — so count the boards themselves.
         val emptied = emptiedFilms(showtimesBeforeTick, showtimesByFilm(recordsAfterTick))
         if (emptied.nonEmpty)
@@ -1535,7 +1512,7 @@ abstract class CountryConvergenceBehaviour(
       // that leaves can settle what it had kept open. Run 36777365475: 'DKF Zamek: Lawa' (Wajda,
       // 1989) ending let a bare 'Lawa' join 'Konwicki. Lawa' (2023), its own listing unchanged.
       val familyOf: Map[services.movies.ListingKey, Int] =
-        w.identityModel.flatMap(_.current(scala.concurrent.duration.Duration(5, "minutes")))
+        w.identityModel.current(scala.concurrent.duration.Duration(5, "minutes"))
           .fold(fail("the identity model could not be read for the next day's families"))(_.resolution.familyOf)
       def familiesOf(r: StoredMovieRecord): Set[Int] =
         r.record.data.toSeq.flatMap { case (source, slot) => services.movies.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
@@ -1620,7 +1597,6 @@ abstract class CountryConvergenceBehaviour(
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
       }
-      requireHermetic()
 
       val after    = w.movieRepository.findAll()
       val afterBy  = after.map(r => r.id -> r).toMap

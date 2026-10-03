@@ -3,8 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
-import scala.jdk.CollectionConverters.*
+import java.nio.file.{Files, Paths}
 
 /**
  * Every Mongo find or aggregate read to completion asks for a bounded batch ([[MongoReplies]]).
@@ -17,15 +16,10 @@ import scala.jdk.CollectionConverters.*
  */
 class NoUnboundedMongoReadSpec extends AnyFlatSpec with Matchers {
 
-  private val MainRoots = Seq("common/src/main", "worker/src/main", "web/src/main")
+  import ScalaSourceScan.{MainRoots, scalaFiles}
+
   private val Start     = """\.(find|aggregate)\b\s*(\[[^\]\n]*\])?\s*\(""".r
   private val SingleDocument = Set("first", "headOption", "head")
-
-  private def scalaFiles(root: String): Seq[Path] = {
-    val dir = Paths.get(root)
-    if (!Files.isDirectory(dir)) Nil
-    else Files.walk(dir).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq
-  }
 
   /** The index just past the bracket closing the one opened at `open`. */
   private def closing(s: String, open: Int, left: Char, right: Char): Int = {
@@ -61,7 +55,7 @@ class NoUnboundedMongoReadSpec extends AnyFlatSpec with Matchers {
   "a Mongo find or aggregate read to completion" should "ask for a bounded batch" in {
     MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
     val offenders = for {
-      file  <- MainRoots.flatMap(scalaFiles)
+      file  <- scalaFiles(MainRoots)
       text   = new String(Files.readAllBytes(file), "UTF-8")
       start <- Start.findAllMatchIn(text).toSeq
       links  = chain(text, closing(text, start.end - 1, '(', ')'))

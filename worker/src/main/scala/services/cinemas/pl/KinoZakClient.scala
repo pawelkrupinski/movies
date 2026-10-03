@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
@@ -151,7 +153,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
     SeansLine.findFirstMatchIn(line).flatMap { m =>
       val from  = m.group(1).toInt
       val to    = Option(m.group(2)).map(_.toInt).getOrElse(from)
-      val month = ScraperParse.PolishMonths.get(m.group(3).toLowerCase)
+      val month = ScraperParse.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
       val time  = ScraperParse.parseHHmm(m.group(4))
       for { mo <- month; t <- time if to >= from }
         yield Segment((from to to).toSeq, mo, t)

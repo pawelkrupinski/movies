@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -231,7 +233,7 @@ object KinoStudioClient {
 
           case "p" =>
             val text  = el.text
-            val lower = text.toLowerCase
+            val lower = text.toLowerCase(Locale.ROOT)
             // "godziny seansów:" line — extract all HH:MM tokens from the <strong>
             if (lower.contains("godziny") || lower.contains("seansów") || lower.contains("seansow")) {
               val strong = Option(el.selectFirst("strong")).map(_.text).getOrElse(text)
@@ -255,7 +257,7 @@ object KinoStudioClient {
               def boldList(frag: String): Seq[String] =
                 bold(frag).split(",").map(_.trim).filter(_.nonEmpty).toSeq
               fragments.foreach { frag =>
-                val fragLower = frag.toLowerCase
+                val fragLower = frag.toLowerCase(Locale.ROOT)
                 if (fragLower.contains("gatunek") && currentGenres.isEmpty)
                   currentGenres = boldList(frag)
                 else if ((fragLower.contains("reżyseria") || fragLower.contains("rezyseria")) && currentDirector.isEmpty)

@@ -18,7 +18,7 @@ trait PageWait {
 }
 
 object PageWait {
-  /** Nothing waits: the shadow run, and any country whose listings are not the model's to serve. */
+  /** Nothing waits: a model run without venue pages to read (specs, offline harnesses). */
   val Never: PageWait = new PageWait {
     def awaiting(listing: Listing): Boolean = false
     def request(listing: Listing): Unit     = ()

@@ -1,5 +1,7 @@
 package services.movies
 
+import java.util.Locale
+
 import tools.{EditDistance, TextNormalization}
 
 /**
@@ -53,7 +55,7 @@ object SamePerson {
    *  Empty for a name that folds away entirely, which is how a CJK credit behaves:
    *  "王家衛" and "Wong Kar Wai" are the same person and nothing here can know it. */
   def tokens(name: String): Seq[String] =
-    foldUndecomposed(TextNormalization.deburr(name)).toLowerCase.split("[^a-z0-9]+").filter(_.nonEmpty).toSeq
+    foldUndecomposed(TextNormalization.deburr(name)).toLowerCase(Locale.ROOT).split("[^a-z0-9]+").filter(_.nonEmpty).toSeq
 
   /** Whether two already-tokenised credits name the same person. */
   def sameTokens(a: Seq[String], b: Seq[String]): Boolean =
@@ -88,7 +90,7 @@ object SamePerson {
       .filterNot(_ => core.tail.dropRight(1).exists(w => Particles.contains(foldWord(w))))
   }
 
-  private def foldWord(word: String): String = word.toLowerCase.stripSuffix(".")
+  private def foldWord(word: String): String = word.toLowerCase(Locale.ROOT).stripSuffix(".")
 
   /** Letters NFD leaves alone because they are distinct letters rather than an
    *  accented base, so `deburr` passes them through and the ASCII split would

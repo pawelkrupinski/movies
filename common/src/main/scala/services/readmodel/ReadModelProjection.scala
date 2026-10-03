@@ -129,6 +129,10 @@ object ReadModelProjection {
   private def screeningsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[CityScreening] =
     venuesFor(showings, fid).map(_.screening)
 
+  /** A venue row's id: its card's, the city's slug and the venue's display name. */
+  private[readmodel] def screeningId(card: String, city: City, cinema: Cinema): String =
+    s"$card|${city.slug}|${cinema.displayName}"
+
   /** The venues [[screeningsFor]] builds a row for, each with its inputs gathered but the
    *  row not yet built — what lets the projector skip building a venue whose inputs it has
    *  already written.
@@ -146,10 +150,6 @@ object ReadModelProjection {
    *  the heal (its id exists). Unioning is the only answer that cannot lose a showtime and
    *  does not depend on which slot came first; a venue with one slot, the overwhelming
    *  case, is untouched by it. */
-  /** A venue row's id: its card's, the city's slug and the venue's display name. */
-  private[readmodel] def screeningId(card: String, city: City, cinema: Cinema): String =
-    s"$card|${city.slug}|${cinema.displayName}"
-
   private def venuesFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[VenueScreening] =
     showings.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None

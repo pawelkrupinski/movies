@@ -53,7 +53,8 @@ class RealHttpFetch(
       // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
       // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
       // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
-      // TlsTrust — building the context also enables AIA intermediate fetching.
+      // TlsTrust. (AIA intermediate fetching is a JVM-wide switch each main sets once, through
+      // IssuerCertificateFetching.applyToJvm.)
       .sslContext(tls)
       .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     // Route through an authenticated residential proxy when configured (the

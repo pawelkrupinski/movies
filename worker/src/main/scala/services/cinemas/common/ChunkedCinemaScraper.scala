@@ -2,18 +2,6 @@ package services.cinemas.common
 
 import models.{CinemaMovie, Showtime}
 
-/**
- * A cinema whose scrape fans out over many independent chunks (per-day pages,
- * per-event pages). Production runs each chunk as its own queued `ScrapeChunk`
- * task and aggregates them with a final `ScrapeChunkReduce` task (see
- * `ChunkScrapeStore` / `ScrapeChunkHandler` / `ScrapeChunkReduceHandler`); the
- * synchronous `fetch()` below composes the SAME three functions in-process, so
- * any non-task caller (the deterministic fixture harness, a client unit test)
- * gets identical output.
- *
- * A conversion is therefore behaviour-preserving iff
- * `reduceChunks ∘ fetchChunk ∘ planChunks` equals the old monolithic `fetch()`.
- */
 /** One chunked scrape's plan: the chunk keys, and — only when there are none — whether the
  *  source said so itself. Built through [[ChunkPlan.of]] or [[ChunkPlan.NoScheduleListed]], so
  *  a plan with keys can never claim the venue has nothing on. */
@@ -27,6 +15,18 @@ object ChunkPlan {
   val NoScheduleListed: ChunkPlan = ChunkPlan(Seq.empty, noScheduleListed = true)
 }
 
+/**
+ * A cinema whose scrape fans out over many independent chunks (per-day pages,
+ * per-event pages). Production runs each chunk as its own queued `ScrapeChunk`
+ * task and aggregates them with a final `ScrapeChunkReduce` task (see
+ * `ChunkScrapeStore` / `ScrapeChunkHandler` / `ScrapeChunkReduceHandler`); the
+ * synchronous `fetch()` below composes the SAME three functions in-process, so
+ * any non-task caller (the deterministic fixture harness, a client unit test)
+ * gets identical output.
+ *
+ * A conversion is therefore behaviour-preserving iff
+ * `reduceChunks ∘ fetchChunk ∘ planChunks` equals the old monolithic `fetch()`.
+ */
 trait ChunkedCinemaScraper extends CinemaScraper {
 
   /** Enumerate the chunk keys for one scrape, known upfront. May fetch a nav /

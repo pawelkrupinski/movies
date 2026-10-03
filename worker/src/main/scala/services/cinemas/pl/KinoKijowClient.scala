@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import services.movies.TitleNormalizer
@@ -144,7 +146,7 @@ object KinoKijowClient {
   private def parseDateTimePat(s: String, month: YearMonth): Option[LocalDateTime] =
     DateTimePat.findFirstMatchIn(s).flatMap { m =>
       val day   = m.group(1).toInt
-      val abbr  = m.group(2).toLowerCase
+      val abbr  = m.group(2).toLowerCase(Locale.ROOT)
       val hhmm  = m.group(3)
       for {
         mo <- PolishMonthAbbr.get(abbr)

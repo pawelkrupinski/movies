@@ -57,6 +57,44 @@ class AppLoader extends ApplicationLoader {
 
 object AppLoader {
 
+  /** The two endpoints that must answer at the HOST ROOT no matter where the
+   *  application is mounted, layered IN FRONT of the mounted router.
+   *
+   *  Everything else about this deployment moved one segment down, and that is
+   *  the point — but these two are not fetched by a browser following a link.
+   *  `/health` is hit by the kubelet on the POD's own address (startup,
+   *  readiness and liveness probes in `movies-gitops/web/base/all.yaml`), and
+   *  `/metrics` by a Prometheus that runs outside the cluster and scrapes
+   *  `10.20.0.12:<nodePort>/metrics` directly. Neither goes through Caddy, so
+   *  neither ever sees the country prefix, and mounting them under it would
+   *  crashloop every non-Polish pod and blank its metrics — the two failures
+   *  that look like an outage rather than a routing change.
+   *
+   *  Layered unconditionally rather than only for a prefixed country, so there
+   *  is ONE routing shape to reason about: at the root the mounted router serves
+   *  the same two paths through the same actions, and the overlay is a no-op. */
+  private[modules] def rootOperationalRoutes(health: => Handler, metrics: => Handler): Router =
+    Router.from {
+      case GET(p"/health")  => health
+      case GET(p"/metrics") => metrics
+    }
+
+  /** The live filter chain, outermost first (see `AppComponents.httpFilters`
+   *  for why each sits where it does). A function of its filters rather than
+   *  inlined there so `RouteProtectionMatrixSpec` can drive every route through
+   *  THIS chain — the one production runs — without booting the database
+   *  behind the rest of the application. The guards are typed so a spec can
+   *  only hand in the real ones. */
+  private[modules] def filterChain(
+      metrics:        EssentialFilter,
+      playDefaults:   Seq[EssentialFilter],
+      crossSiteWrite: CrossSiteWriteFilter,
+      renamedCity:    EssentialFilter,
+      cors:           play.filters.cors.CORSFilter,
+      csp:            EssentialFilter,
+      gzip:           EssentialFilter): Seq[EssentialFilter] =
+    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ cors :+ csp :+ gzip
+
   /** Mount the whole application at its country's [[models.Country.mountPath]].
    *
    *  WHY THIS EXISTS. Every deployment but Poland's now shares one domain and
@@ -96,44 +134,6 @@ object AppLoader {
    *  attached to a single redirect within one deployment; there is no such thing
    *  as a flash that means anything one country over, so letting `/uk`'s pop on
    *  `/de` would be a bug with nothing on the other side of the trade. */
-  /** The two endpoints that must answer at the HOST ROOT no matter where the
-   *  application is mounted, layered IN FRONT of the mounted router.
-   *
-   *  Everything else about this deployment moved one segment down, and that is
-   *  the point — but these two are not fetched by a browser following a link.
-   *  `/health` is hit by the kubelet on the POD's own address (startup,
-   *  readiness and liveness probes in `movies-gitops/web/base/all.yaml`), and
-   *  `/metrics` by a Prometheus that runs outside the cluster and scrapes
-   *  `10.20.0.12:<nodePort>/metrics` directly. Neither goes through Caddy, so
-   *  neither ever sees the country prefix, and mounting them under it would
-   *  crashloop every non-Polish pod and blank its metrics — the two failures
-   *  that look like an outage rather than a routing change.
-   *
-   *  Layered unconditionally rather than only for a prefixed country, so there
-   *  is ONE routing shape to reason about: at the root the mounted router serves
-   *  the same two paths through the same actions, and the overlay is a no-op. */
-  private[modules] def rootOperationalRoutes(health: => Handler, metrics: => Handler): Router =
-    Router.from {
-      case GET(p"/health")  => health
-      case GET(p"/metrics") => metrics
-    }
-
-  /** The live filter chain, outermost first (see `AppComponents.httpFilters`
-   *  for why each sits where it does). A function of its filters rather than
-   *  inlined there so `RouteProtectionMatrixSpec` can drive every route through
-   *  THIS chain — the one production runs — without booting the database
-   *  behind the rest of the application. The guards are typed so a spec can
-   *  only hand in the real ones. */
-  private[modules] def filterChain(
-      metrics:        EssentialFilter,
-      playDefaults:   Seq[EssentialFilter],
-      crossSiteWrite: CrossSiteWriteFilter,
-      renamedCity:    EssentialFilter,
-      cors:           play.filters.cors.CORSFilter,
-      csp:            EssentialFilter,
-      gzip:           EssentialFilter): Seq[EssentialFilter] =
-    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ cors :+ csp :+ gzip
-
   private[modules] def mountedAt(context: Context, country: Country): Context = {
     val mountPath = country.mountPath
     context.copy(initialConfiguration = Configuration(

@@ -23,7 +23,7 @@
 <tr class="data"
     data-id="@id"
     data-row-id="@id"
-    data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
+    data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase(java.util.Locale.ROOT)}"
     data-title="@title"
     data-orig="@orig"
     data-year="@e.releaseYear.map(_.toString).getOrElse("")"

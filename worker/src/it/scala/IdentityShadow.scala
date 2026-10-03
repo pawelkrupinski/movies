@@ -88,9 +88,9 @@ object IdentityShadow {
 
   // ── today's pipeline ──────────────────────────────────────────────────────────────────
 
-  /** One film the pipeline made: its key, its TMDB id and record, and its cinema slots. */
-  /** `basis`: how the pipeline concluded `tmdbId` (`TmdbBasis`: TitleOnly, YearScoped, DirectorWalk,
-   *  ExternalId) — which of its steps an old match rests on. */
+  /** One film the pipeline made: its key, its TMDB id and record, and its cinema slots. `basis`: how
+   *  the pipeline concluded `tmdbId` (`TmdbBasis`: TitleOnly, YearScoped, DirectorWalk, ExternalId) —
+   *  which of its steps an old match rests on. */
   final case class PipelineFilm(key: String, tmdbId: Option[Int], film: Option[IdentityMeasures.Film],
                                 slots: Seq[(String, String, SourceData)], basis: Option[String] = None)
 

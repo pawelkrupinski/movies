@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
@@ -488,5 +490,5 @@ object FilmwebClient {
   /** Lower-case + strip diacritics for fuzzy director comparison. Cinemas
    *  sometimes drop diacritics ("Malgorzata Szumowska"); Filmweb keeps them
    *  ("Małgorzata Szumowska"). Normalising both sides catches that case. */
-  private def deburr(s: String): String = TextNormalization.deburr(s).toLowerCase.trim
+  private def deburr(s: String): String = TextNormalization.deburr(s).toLowerCase(Locale.ROOT).trim
 }

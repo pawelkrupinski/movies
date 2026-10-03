@@ -50,11 +50,24 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The options each tier's launcher bakes into conf/application.ini, in its order — build.sbt's
-   *  `launcherOptions(...)` calls, which this mirrors. */
-  private val LauncherFiles = Map(
-    "worker" -> Seq("jdk25-parity.options", "worker.options"),
-    "web"    -> Seq("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"))
+  /** The option files each tier's launcher bakes into conf/application.ini, in their order — read
+   *  off build.sbt's `launcherOptions(...)` call in that tier's project, so the spec checks what the
+   *  build bakes rather than a copy of it. */
+  private val LauncherFiles: Map[String, Seq[String]] = {
+    val Project = """(?m)^lazy val (\w+) = \(project""".r
+    val Call    = """launcherOptions\(([^)]*)\)""".r
+    val build   = RepoFile.read("build.sbt")
+    val starts  = Project.findAllMatchIn(build).map(m => m.start -> m.group(1)).toSeq
+    Call.findAllMatchIn(build).filterNot(_.group(1).contains("String*")).map { call =>
+      val project = starts.filter(_._1 < call.start).last._2
+      project -> "\"([^\"]+)\"".r.findAllMatchIn(call.group(1)).map(_.group(1)).toSeq
+    }.toMap
+  }
+
+  "build.sbt" should "bake launcher options into both deployed tiers" in {
+    LauncherFiles.keySet shouldBe Set("worker", "web")
+  }
+
   private def launcher(tier: String): Seq[String] = LauncherFiles(tier)
     .flatMap(file => RepoFile.read(s"infra/jvm/$file").linesIterator.map(_.trim).filterNot(l => l.isEmpty || l.startsWith("#")))
 

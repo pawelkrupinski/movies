@@ -1,16 +1,16 @@
 package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{HttpFetch, HttpOutcomeRecorder}
-import services.cinemas.common.{CinemaScraper, ZyteFallback}
+import tools.HttpFetch
+import services.cinemas.common.CinemaScraper
 import services.movies.TitleNormalizer
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
  * JSON to [[MultikinoParser]]. The HTTP path is wired at the composition
- * root by `MultikinoClient.fetchFor(direct)` as a fallback chain:
+ * root (`EgressWiring.multikinoFetch`) as a fallback chain:
  *
- *   Zyte (if `ZYTE_API_KEY` set) → `direct`
+ *   residential proxy → Zyte (if `ZYTE_API_KEY` set) → `direct`
  *
  * Each link tries the next on any exception, so Zyte going down rolls over to
  * `direct` without code changes. In production Zyte is REQUIRED, not an
@@ -24,7 +24,7 @@ import services.movies.TitleNormalizer
  * warm-up on failure, retry. That recovers the 401-without-session-cookie the
  * API returns on a cold connection — which is the second wall, *behind* the IP
  * block. With Zyte in front the first call already succeeds (it does its own
- * cookie carryover, shared across cinemas — see [[ZyteFallback]]) so the retry
+ * cookie carryover, shared across cinemas — see [[services.cinemas.common.ZyteFallback]]) so the retry
  * rarely fires.
  */
 class MultikinoClient(
@@ -70,15 +70,4 @@ object MultikinoClient {
    *  spec drives `fetch()` against it directly. */
   val ApiUrl  = apiUrl(PoznanStaryBrowarId)
   val HomeUrl = s"$BaseUrl/"
-
-  /** Build the `HttpFetch` to pass into `MultikinoClient` at the
-   *  composition root. A Zyte-primary → direct fallback chain (see
-   *  [[ZyteFallback]]); Multikino's API sits behind a session-cookie wall, so
-   *  the Zyte leg warms a session from `HomeUrl` — once, then reused across all
-   *  the cinema clients sharing this fetch (see [[SharedZyteSession]]). Tests
-   *  override `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
-   */
-  def fetchFor(direct: HttpFetch, zyteHttp: => java.net.http.HttpClient, configuration: settings.ProcessConfiguration,
-               zyteMeter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop): HttpFetch =
-    ZyteFallback.fetchFor(direct, zyteHttp, configuration, cookieSource = Some(HomeUrl), meter = zyteMeter)
 }

@@ -69,7 +69,7 @@ object IdentityQueryCoverage {
     private def note[A](method: String, url: String, body: Option[String])(call: => A): A = {
       val query   = LookupQuery.of(method, url, body)
       val outcome = scala.util.Try(call)
-      val failed  = outcome.failed.toOption.exists(e => !services.lookups.LookupAnswer.failureOf(e, method).definitive)
+      val failed  = outcome.failed.toOption.exists(e => !CachedResponse.failureOf(e, method).definitive)
       synchronized {
         pending += Request(query.key, clients.tools.RecordingHttpFetch.fixtureKey(url, body, foldYear = false), query.host, failed)
       }

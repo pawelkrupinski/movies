@@ -87,7 +87,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
             fetched
           } catch {
             case NonFatal(failure) =>
-              cache.remember(key, CachingEnrichmentFetch.failureOf(failure, method))
+              cache.remember(key, CachedResponse.failureOf(failure, method))
               throw failure
           }
         }
@@ -110,8 +110,8 @@ object CachingEnrichmentFetch {
   private val asBody: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
 
   /** `METHOD <credential-masked url>`, plus a body fingerprint where the body is
-   *  what distinguishes two calls — the one canonical request key, shared with the lookup
-   *  observations (`services.lookups.LookupQuery`). */
+   *  what distinguishes two calls — the one canonical request key, shared with the identity
+   *  model's lookup gaps (`services.lookups.LookupQuery`). */
   def keyOf(method: String, url: String, body: Option[String] = None): String =
     services.lookups.LookupQuery.of(method, url, body).key
 
@@ -123,11 +123,6 @@ object CachingEnrichmentFetch {
     case Some(code) => new RememberedHttpStatusException(code, failed.method, url)
     case None       => new CachedEnrichmentFailure(failed.message)
   }
-
-  /** What to remember about a failure — the observation store's rule, so a remembered verdict
-   *  and an observed one encode a failure identically. */
-  def failureOf(failure: Throwable, method: String): CachedResponse.Failed =
-    services.lookups.LookupAnswer.failureOf(failure, method)
 }
 
 /** A replayed non-HTTP failure — a timeout or connection error the cache saw on an

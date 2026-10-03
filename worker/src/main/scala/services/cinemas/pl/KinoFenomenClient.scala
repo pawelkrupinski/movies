@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -215,7 +217,7 @@ object KinoFenomenClient {
       .filter(_.nonEmpty)
       .flatMap(splitHead)
     def after(marker: String): Seq[String] =
-      lines.find(_.toLowerCase.startsWith(marker)).toSeq
+      lines.find(_.toLowerCase(Locale.ROOT).startsWith(marker)).toSeq
         .flatMap(_.replaceFirst("(?i)^" + marker + ":?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty))
     val metaParts = lines.find(_.startsWith("/")).toSeq
       .flatMap(_.stripPrefix("/").split("/").map(_.trim).filter(_.nonEmpty))
@@ -226,7 +228,7 @@ object KinoFenomenClient {
       .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || RuntimeMinPat.findFirstMatchIn(p).isDefined)
     // Synopsis = the prose lines: long, and not one of the marker/meta/title lines.
     val synopsis  = lines.filter(l => l.length > 60 && !l.startsWith("/") &&
-                      !l.toLowerCase.startsWith("reżyseria") && !l.toLowerCase.startsWith("występują"))
+                      !l.toLowerCase(Locale.ROOT).startsWith("reżyseria") && !l.toLowerCase(Locale.ROOT).startsWith("występują"))
       .mkString("\n").trim
     val poster    = Option(doc.selectFirst("a.artist-poster img[src]")).map(_.attr("src").trim)
       .filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else BaseUrl + u)

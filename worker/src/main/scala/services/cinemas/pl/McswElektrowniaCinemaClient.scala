@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import models._
@@ -137,8 +139,8 @@ object McswElektrowniaCinemaClient {
     if (t.isEmpty) Some(Nil)
     else if (services.identity.IdentityMeasures.countryCode(country).isDefined) Some(Seq(Piece.Country(country)))
     else Age.findFirstMatchIn(t).map(m => Seq(Piece.AgeOf(m.group(1))))
-      .orElse(VersionWords.get(t.toLowerCase).map(v => Seq(Piece.Version(v))))
-      .orElse(Option.when(t.toLowerCase.split("\\s+").forall(Genres))(t.toLowerCase.split("\\s+").toSeq.map(Piece.Genre(_))))
+      .orElse(VersionWords.get(t.toLowerCase(Locale.ROOT)).map(v => Seq(Piece.Version(v))))
+      .orElse(Option.when(t.toLowerCase(Locale.ROOT).split("\\s+").forall(Genres))(t.toLowerCase(Locale.ROOT).split("\\s+").toSeq.map(Piece.Genre(_))))
   }
 
   /** Read a composite title (see the class doc). A dash tail is the title's only when one of its
@@ -178,7 +180,7 @@ object McswElektrowniaCinemaClient {
       else {
         val parts        = parseTitle(rawTitle)
         val displayTitle = parts.title
-        val normTitle    = displayTitle.trim.toLowerCase
+        val normTitle    = displayTitle.trim.toLowerCase(Locale.ROOT)
 
         val posterUrl = Option(block.selectFirst("img[src]"))
           .map(_.attr("src").trim)

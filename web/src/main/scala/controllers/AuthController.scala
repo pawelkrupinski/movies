@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 import models.User
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
@@ -426,7 +428,7 @@ class AuthController(
     val now   = clock.instant()
     val email = profile.email.getOrElse(
       throw new RuntimeException(s"OAuth $provider profile has no email — cannot identify user")
-    ).toLowerCase
+    ).toLowerCase(Locale.ROOT)
     val user = userRepository.findById(email) match {
       case Some(existing) =>
         existing.copy(

@@ -2038,6 +2038,13 @@ object UsRoster {
             }.toMap)
     }
 
+  /** The towns a group of venues sits in — computed per GROUP rather than read
+   *  off a metro record because the same roster serves a whole state as one
+   *  place too, and that place's counts are its own. [[TownRanking]] gives it
+   *  the order every country's list shares. */
+  private def townsOf(venues: Seq[Venue]): Seq[String] =
+    TownRanking.ranked(venues.map(_.town))
+
   /** Every addressable US place, state by state and — within a state big enough
    *  to be split — biggest metro first.
    *
@@ -2051,13 +2058,6 @@ object UsRoster {
    *  A state whose venues all land in one metro contributes ONE place: itself.
    *  So does a state under [[MinCinemasToSplit]] venues — unless its metros are
    *  more than [[MaxSpanToStayWholeKm]] apart, which is Alaska and Hawaii. */
-  /** The towns a group of venues sits in — computed per GROUP rather than read
-   *  off a metro record because the same roster serves a whole state as one
-   *  place too, and that place's counts are its own. [[TownRanking]] gives it
-   *  the order every country's list shares. */
-  private def townsOf(venues: Seq[Venue]): Seq[String] =
-    TownRanking.ranked(venues.map(_.town))
-
   val places: Seq[UsPlace] = built.flatMap { state =>
     val byMetro = CinemaAreaGroup.byLabel(state.venues.map(v => (v.cinema, v.metro)))
     if (byMetro.sizeIs < 2 || (state.venues.sizeIs < MinCinemasToSplit && !sprawls(state)))
@@ -2429,9 +2429,6 @@ object Cinema {
   // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
   // not per-city vals — the full 158-region roster is data-driven.
 
-  /** Every city's venues in page order, paired with the city's display label.
-   *  Single source of truth for `all` and for the uptime page's per-city
-   *  grouping — add a city here and both pick it up. */
   /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
    *  `GermanRoster` can see which display names are already claimed before it materialises
    *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
@@ -2561,7 +2558,11 @@ object Cinema {
     "Yorkshire" -> yorkshire,
   )
 
-  /** LAZY, along with everything derived from it, and that is load-bearing rather than a
+  /** Every city's venues in page order, paired with the city's display label.
+   *  Single source of truth for `all` and for the uptime page's per-city
+   *  grouping — add a city here and both pick it up.
+   *
+   *  LAZY, along with everything derived from it, and that is load-bearing rather than a
    *  micro-optimisation. `GermanRoster` reads `Cinema.polishAndUk` while building itself,
    *  and `UsRoster` reads `polishAndUk` AND `GermanRoster.byCity`, so `Cinema` and both
    *  rosters initialise each other. Forcing the German roster from

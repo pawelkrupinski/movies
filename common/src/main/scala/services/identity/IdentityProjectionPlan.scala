@@ -329,9 +329,6 @@ object IdentityProjectionPlan {
     ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.canary)
   }
 
-  /** A film's venue slots from its listings: per venue, the rows of one slot unioned as the
-   *  landing's fold unions them (every showtime kept), each built over the slot the representative
-   *  listing's previous film held there. Also the title most of its listings carry. */
   /** How many venues' rows a projection reads at once to build their slots: a batch's rows are let go before the next. */
   private[identity] val RowBatch = 200
 

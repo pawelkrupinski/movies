@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -111,11 +113,11 @@ object KinoTomiClient {
     val items = about.toSeq.flatMap(_.select("ul > li").asScala.toSeq.map(_.text.trim))
     val facts = items.flatMap { item =>
       item.split(":", 2) match {
-        case Array(label, value) => Some(label.trim.toLowerCase -> value.trim)
+        case Array(label, value) => Some(label.trim.toLowerCase(Locale.ROOT) -> value.trim)
         case _                   => None
       }
     }.toMap
-    val castLine = items.indexWhere(_.toLowerCase.startsWith("obsada")) match {
+    val castLine = items.indexWhere(_.toLowerCase(Locale.ROOT).startsWith("obsada")) match {
       case -1 => None
       case i  => facts.get("obsada").filter(_.nonEmpty).orElse(items.lift(i + 1))
     }

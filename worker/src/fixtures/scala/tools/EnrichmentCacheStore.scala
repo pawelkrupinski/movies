@@ -12,10 +12,33 @@ package tools
  * pass, which is both the slow half of the sweep and the half most likely to
  * answer differently the second time.
  */
-type CachedResponse = services.lookups.LookupAnswer
-/** The same shape a lookup OBSERVATION keeps (`services.lookups.LookupAnswer`): a remembered
- *  answer and an observed one are one type, so neither can drift from the other. */
-val CachedResponse: services.lookups.LookupAnswer.type = services.lookups.LookupAnswer
+sealed trait CachedResponse {
+  /** Whether this answer says something about the REQUEST rather than about the moment: a body,
+   *  or a failure whose status describes the URL (404, 410). A timeout, a 5xx or a 429 is a
+   *  failed read, and a failed read is not data — it never replaces a definitive answer. */
+  def definitive: Boolean
+}
+object CachedResponse {
+  final case class Body(text: String) extends CachedResponse { def definitive = true }
+
+  final case class Bytes(base64: String) extends CachedResponse {
+    def definitive = true
+    def bytes: Array[Byte] = java.util.Base64.getDecoder.decode(base64)
+  }
+
+  final case class Failed(status: Option[Int], method: String, message: String) extends CachedResponse {
+    def definitive: Boolean = status.exists(HttpStatusException.isDurable)
+  }
+
+  def ofBytes(bytes: Array[Byte]): Bytes = Bytes(java.util.Base64.getEncoder.encodeToString(bytes))
+
+  /** What to keep of a failure. Status-bearing failures keep their code; anything else (a
+   *  timeout, a reset socket) keeps its class name so a puzzling miss can be diagnosed later. */
+  def failureOf(failure: Throwable, method: String): Failed = failure match {
+    case status: HttpStatusException => Failed(Some(status.code), status.method, status.getMessage)
+    case other                       => Failed(None, method, s"${other.getClass.getName}: ${other.getMessage}")
+  }
+}
 
 /**
  * Where an [[EnrichmentCache]]'s remembered responses live between runs.

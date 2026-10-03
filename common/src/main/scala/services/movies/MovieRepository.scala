@@ -53,6 +53,10 @@ object StoredMovieRecord {
   def keyFor(k: CacheKey): String =
     s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
 
+  /** A document with no `key` field — written before ids existed, its `_id` is its key. */
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord =
+    fromStorage(id, None, record, normalizer)
+
   /** Rebuild a stored row from its persisted `_id`, its `key` field (absent on a
    *  document written before keys were stored — then the `_id` IS the key) and its
    *  `MovieRecord`, deriving the display `title` and `year` rather than reading pinned
@@ -69,10 +73,6 @@ object StoredMovieRecord {
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  /** A document with no `key` field — written before ids existed, its `_id` is its key. */
-  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord =
-    fromStorage(id, None, record, normalizer)
-
   def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord = {
     val k        = key.getOrElse(id)
     val sep      = k.lastIndexOf('|')

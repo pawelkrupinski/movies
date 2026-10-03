@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 /**
  * Wrap a cinema-side poster URL through the free `images.weserv.nl`
  * image proxy. Solves three concrete problems we measured on the
@@ -140,7 +142,7 @@ object PosterProxy {
     if (url == null || url.isEmpty) return None
     val from = if (url.startsWith("https://")) 8 else if (url.startsWith("http://")) 7 else 0
     val slash = url.indexOf('/', from)
-    val host  = url.substring(from, if (slash < 0) url.length else slash).toLowerCase
+    val host  = url.substring(from, if (slash < 0) url.length else slash).toLowerCase(Locale.ROOT)
     if (SkipHosts.contains(host) || skipsDomain(host)) return None
     val out = new java.lang.StringBuilder(Query.length + (url.length - from) * 2 + Hints.length)
     FormEncoding.append(url, from, out.append(Query))

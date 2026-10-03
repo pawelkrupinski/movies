@@ -4,7 +4,7 @@ import models.Cinema
 
 /** A scrape archive that files every attempt in `underlying` and answers every read from it — the
  *  base of the archives that WATCH the scrapes going by (the identity model's feed, the gone-venue
- *  pager, the observation capture, the copied-feed detector) without storing anything themselves.
+ *  pager, the copied-feed detector) without storing anything themselves.
  *  A watcher overrides the hook it needs and calls `super` to file the attempt. */
 abstract class ForwardingScrapeArchive(underlying: ScrapeArchiveRepository) extends ScrapeArchiveRepository {
   override def enabled: Boolean = underlying.enabled

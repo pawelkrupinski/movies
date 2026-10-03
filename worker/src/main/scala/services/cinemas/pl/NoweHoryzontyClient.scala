@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import play.api.libs.json.Json
 import models._
@@ -198,7 +200,7 @@ object NoweHoryzontyClient {
   }
 
   private def crrow(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    document.select("div.crrow").asScala.find(_.text.toLowerCase.contains(label))
+    document.select("div.crrow").asScala.find(_.text.toLowerCase(Locale.ROOT).contains(label))
       .map(_.text.replaceFirst(s"(?i)^[^:]*:\\s*", "").trim).filter(_.nonEmpty)
 
   /** Parse the op.s film page for metadata. Selectors mirror the page's

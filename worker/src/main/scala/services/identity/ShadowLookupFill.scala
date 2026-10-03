@@ -108,7 +108,7 @@ object ShadowLookupMetrics {
  * (yearless searches, director walks, candidate records) are ones the pipeline never asks. After
  * each shadow tick, a round takes the identity model's GAPS (`IncrementalResolver.gaps`: the
  * questions its nodes asked that the store cannot answer, and the records it lacks) — so the
- * questions are exactly the resolver's own (`CandidateQueries`), with no second list — and asks each unobserved TMDB or IMDb
+ * questions are exactly the resolver's own (`CandidateQueries`), with no second list — and asks each unanswered TMDB or IMDb
  * suggestion question live, at most `rate` per minute over the round's `window` (the shadow run's interval, so a
  * round's allowance is what fits before the next tick), through `liveFetch` (the pipeline's
  * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick

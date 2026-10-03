@@ -1,5 +1,7 @@
 package services.sharecards
 
+import java.util.Locale
+
 import play.api.Logging
 import tools.{OgCardRenderer, PosterDecode, PosterDecodeGate, TlsTrust}
 
@@ -124,7 +126,7 @@ object PosterDownload {
   /** `byHost`'s download for a URL on one of its hosts, `direct` for any other. */
   def routed(direct: PosterDownload, byHost: Map[String, PosterDownload]): PosterDownload = new PosterDownload {
     def fetch(url: String): Either[String, Path] =
-      Try(URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase).flatMap(byHost.get).getOrElse(direct).fetch(url)
+      Try(URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(Locale.ROOT)).flatMap(byHost.get).getOrElse(direct).fetch(url)
   }
 }
 
@@ -338,7 +340,7 @@ object VipsPosterShrinker {
   /** Why a vips child for a known image format failed: the cap (the shell could not set it — exit
    *  97 — or libjpeg / glib ran out of memory, which aborts on a signal or says so), else the file. */
   private[sharecards] def failure(exit: Int, output: String): String =
-    if (exit == 97 || exit > 128 || output.toLowerCase.contains("memory")) PosterFailure.VipsCap else PosterFailure.DecodeError
+    if (exit == 97 || exit > 128 || output.toLowerCase(Locale.ROOT).contains("memory")) PosterFailure.VipsCap else PosterFailure.DecodeError
 
   /** One shrink at a time — see the class doc for why the process shares ONE of these. */
   def newGate(): PosterDecodeGate = new PosterDecodeGate(permits = 1)

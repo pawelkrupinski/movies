@@ -88,13 +88,7 @@ object ScrapeHorizon {
     walk(Iterator.iterate(from)(_.plusMonths(1)).takeWhile(!_.isAfter(lastMonth)), maxEmptyMonths)(hasProgramme)
   }
 
-  /** The walk both horizons share: keep the steps that yield something, stop after
-   *  `maxEmpty` consecutive blanks — a step whose probe threw counting as one — and
-   *  throw the first failure when EVERY probe threw ([[ListingPages.requireAnyReached]]).
-   *  That last rule is what keeps a dead upstream from reading as a dormant venue: with
-   *  every probe blank-by-failure the walk would otherwise end with no live step, and the
-   *  scrape report a successful empty listing. */
-  /** How many blank WEEKS in a row end a weekly walk: a month of nothing, the
+  /** How many blank WEEKS in a row end a weekly walk: three weeks of nothing, the
    *  weekly reading of [[MaxEmptyMonths]]'s rule that a venue publishing a week or
    *  two ahead must not be cut off by one quiet week between programmes. */
   val MaxEmptyWeeks: Int = 3
@@ -106,6 +100,12 @@ object ScrapeHorizon {
     walk(Iterator.iterate(from)(_.plusWeeks(1)).takeWhile(!_.isAfter(lastDay)), maxEmptyWeeks)(hasProgramme)
   }
 
+  /** The walk every horizon shares: keep the steps that yield something, stop after
+   *  `maxEmpty` consecutive blanks — a step whose probe threw counting as one — and
+   *  throw the first failure when EVERY probe threw ([[ListingPages.requireAnyReached]]).
+   *  That last rule is what keeps a dead upstream from reading as a dormant venue: with
+   *  every probe blank-by-failure the walk would otherwise end with no live step, and the
+   *  scrape report a successful empty listing. */
   private def walk[A](steps: Iterator[A], maxEmpty: Int)(hasProgramme: A => Boolean): Seq[A] = {
     val probes   = Seq.newBuilder[scala.util.Try[Boolean]]
     val live     = Seq.newBuilder[A]

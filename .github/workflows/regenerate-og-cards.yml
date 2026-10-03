@@ -78,7 +78,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
+            # Same Scala toolchain as the other sbt jobs (Temurin JDK 27 + sbt
             # dependency caching).
             - uses: ./.github/actions/setup-jdk
               with:

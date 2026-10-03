@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 import settings.{HostPace, PaceKnob, ProcessConfiguration}
 
 import java.net.URI
@@ -69,12 +71,12 @@ object HostPolicies {
    *  legitimately needs longer than the connect phase, so this stays generous. */
   val DefaultRequestTimeout: Duration = Duration.ofSeconds(30)
 
-  /** The per-host policy table — the single place a host earns a non-default
-   *  timeout, pace, or header. First matching row wins. */
   /** The browser string kinoprogramm.com accepts — see its row below. */
   val KinoprogrammUserAgent: String =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
+  /** The per-host policy table — the single place a host earns a non-default
+   *  timeout, pace, or header. First matching row wins. */
   val all: Seq[HostPolicy] = Seq(
     // Helios's REST API (restapi.helios.pl) — both the screening/event LIST that
     // HeliosClient fetches per cinema AND the per-screen/detail enrichment. On
@@ -386,7 +388,7 @@ object HostPolicies {
    *  buildRequest's own URI.create throws it the same way. */
   private def hostMatches(url: String, suffixes: Set[String]): Boolean =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.exists { host =>
-      val lowerHost = host.toLowerCase
+      val lowerHost = host.toLowerCase(Locale.ROOT)
       suffixes.exists(suffix => lowerHost == suffix || lowerHost.endsWith("." + suffix))
     }
 

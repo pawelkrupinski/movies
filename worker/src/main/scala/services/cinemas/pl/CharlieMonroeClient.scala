@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
 import play.api.libs.json._
@@ -94,7 +96,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
               val time = Option(btn.selectFirst("span.time")).map(_.text().trim)
               val date = Option(btn.selectFirst("span.price")).flatMap(element => normalizeDateKey(element.text()))
               for (t <- time; d <- date)
-                roomMap((title.toLowerCase, d, t)) = hallName
+                roomMap((title.toLowerCase(Locale.ROOT), d, t)) = hallName
             }
           }
         }
@@ -123,7 +125,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           showtimes = sorted.map { event =>
             val dKey    = dateKey(event.dateTime.getYear, event.dateTime.getMonthValue, event.dateTime.getDayOfMonth)
             val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)
-            val room    = roomMap.get((title.toLowerCase, dKey, timeKey))
+            val room    = roomMap.get((title.toLowerCase(Locale.ROOT), dKey, timeKey))
             Showtime(event.dateTime, event.bookingUrl, room)
           }
         )

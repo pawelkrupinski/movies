@@ -1,5 +1,7 @@
 package services.cinemas.us
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 
@@ -119,7 +121,7 @@ object AlamoDrafthouseParser {
    *  not ratings, and storing one would put "Focus" on a film's age-rating chip,
    *  so only the real MPAA vocabulary is admitted. */
   private def certificate(raw: Option[String]): Option[String] =
-    raw.map(_.trim.toUpperCase).filter(MpaaRatings.contains)
+    raw.map(_.trim.toUpperCase(Locale.ROOT)).filter(MpaaRatings.contains)
 
   private val MpaaRatings = Set("G", "PG", "PG-13", "R", "NC-17", "NR")
 
@@ -203,7 +205,7 @@ object AlamoDrafthouseParser {
    *  hold. `formats` is the response's own slug→title map, used only to tell a
    *  format slug we don't know from an attribute we don't know. */
   def formatTokens(slugs: Seq[String], formats: Map[String, String]): List[String] = {
-    val lower = slugs.map(_.trim.toLowerCase).filter(_.nonEmpty).toSet
+    val lower = slugs.map(_.trim.toLowerCase(Locale.ROOT)).filter(_.nonEmpty).toSet
 
     val dimension =
       if (lower.contains("3d-digital")) List("3D")
@@ -224,8 +226,8 @@ object AlamoDrafthouseParser {
     // distinguishing mark. Attributes are NOT treated this way — most of them
     // are audience policy, not format.
     val unmapped = slugs.map(_.trim).filter(s => formats.contains(s))
-      .filterNot(s => KnownFormatSlugs.contains(s.toLowerCase))
-      .flatMap(formats.get).map(_.toUpperCase)
+      .filterNot(s => KnownFormatSlugs.contains(s.toLowerCase(Locale.ROOT)))
+      .flatMap(formats.get).map(_.toUpperCase(Locale.ROOT))
 
     (dimension ++ premium ++ language ++ unmapped).distinct
   }

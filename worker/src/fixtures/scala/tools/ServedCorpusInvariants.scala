@@ -161,12 +161,21 @@ object ServedCorpusInvariants {
       wrongMerges(records, normalizer).filterNot { case (key, _) => knownWrongMerges.contains(key) }.map(_._2))
 
     report("tmdbId(s) held by several stored films",
-      records.filter(_.record.tmdbId.isDefined).groupBy(_.record.tmdbId.get).toSeq.collect {
+      records.flatMap(r => r.record.tmdbId.map(_ -> r)).groupMap(_._1)(_._2).toSeq.collect {
         case (tmdb, rs) if rs.sizeIs > 1 => s"tmdb $tmdb: ${rs.map(r => film(r.id.value)).sorted.mkString(", ")}"
       })
 
     problems.result()
   }
+
+  /** Every key two or more `movies` documents answer to, as `key <- ids`, sorted — the key each row is
+   *  STORED under, which is the one the cache keys it by (`StoredMovieRecord.cacheKey`, grouped by the
+   *  rehydrate). Two films one title and year name are stored apart on purpose
+   *  (`IdentityProjectionPlan.finish`: `it|2017` and `it~7|2017`), and are two cache entries. */
+  def duplicatedKeys(rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[String] =
+    rows.groupBy(_.key(normalizer))
+      .collect { case (key, rs) if rs.sizeIs > 1 => s"$key <- ${rs.map(_.id.value).sorted.mkString(", ")}" }
+      .toList.sorted
 
   /**
    * A WRONG MERGE, without a reference: a resolved film holding a venue whose OWN published
@@ -180,15 +189,6 @@ object ServedCorpusInvariants {
    * The rule is production's own (`MixedFilmDetector.deniesFilm`), the one the staging fold
    * keeps such a venue apart by. Returns `(film key, report line)`.
    */
-  /** Every key two or more `movies` documents answer to, as `key <- ids`, sorted — the key each row is
-   *  STORED under, which is the one the cache keys it by (`StoredMovieRecord.cacheKey`, grouped by the
-   *  rehydrate). Two films one title and year name are stored apart on purpose
-   *  (`IdentityProjectionPlan.finish`: `it|2017` and `it~7|2017`), and are two cache entries. */
-  def duplicatedKeys(rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[String] =
-    rows.groupBy(_.key(normalizer))
-      .collect { case (key, rs) if rs.sizeIs > 1 => s"$key <- ${rs.map(_.id.value).sorted.mkString(", ")}" }
-      .toList.sorted
-
   def wrongMerges(records: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[(String, String)] =
     records.filter(_.record.tmdbId.isDefined).flatMap { r =>
       r.record.data.get(models.Tmdb).toSeq.flatMap { film =>

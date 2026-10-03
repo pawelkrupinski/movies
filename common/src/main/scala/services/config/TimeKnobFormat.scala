@@ -1,5 +1,7 @@
 package services.config
 
+import java.util.Locale
+
 /**
  * Human-readable secondary value for a time-unit knob, shown alongside the raw
  * number on the `/admin/config` page. The unit is inferred from the key suffix:
@@ -15,7 +17,7 @@ package services.config
 object TimeKnobFormat {
 
   def humanize(key: String, value: String): Option[String] = {
-    val k = key.toUpperCase
+    val k = key.toUpperCase(Locale.ROOT)
     value.trim.toLongOption.flatMap { n =>
       if (isMillis(k) && n >= 1000) Some(fmt(n / 1000.0, "s"))
       else if (isSeconds(k) && n >= 60) Some(fmt(n / 60.0, "min"))

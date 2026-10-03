@@ -1,5 +1,7 @@
 package services.movies
 
+import java.util.Locale
+
 import java.net.URI
 import scala.util.Try
 
@@ -37,7 +39,7 @@ object TrailerEmbed {
   def youTubeId(url: String): Option[String] = Try {
     val cleaned = url.trim
     val parsed  = URI.create(cleaned)
-    val host    = Option(parsed.getHost).getOrElse("").toLowerCase.stripPrefix("www.").stripPrefix("m.")
+    val host    = Option(parsed.getHost).getOrElse("").toLowerCase(Locale.ROOT).stripPrefix("www.").stripPrefix("m.")
     val path    = Option(parsed.getPath).getOrElse("")
     host match {
       case "youtu.be" =>
@@ -57,7 +59,7 @@ object TrailerEmbed {
    *  suffix that Vimeo's private-link share UI appends. */
   def vimeoId(url: String): Option[String] = Try {
     val parsed = URI.create(url.trim)
-    val host   = Option(parsed.getHost).getOrElse("").toLowerCase.stripPrefix("www.")
+    val host   = Option(parsed.getHost).getOrElse("").toLowerCase(Locale.ROOT).stripPrefix("www.")
     val parts  = Option(parsed.getPath).getOrElse("").split("/").filter(_.nonEmpty).toList
     val candidate = (host, parts) match {
       case ("vimeo.com",        id :: _)               => Some(id)

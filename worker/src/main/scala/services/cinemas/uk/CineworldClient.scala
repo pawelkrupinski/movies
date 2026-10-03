@@ -1,5 +1,7 @@
 package services.cinemas.uk
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient}
 import tools.HttpFetch
@@ -64,7 +66,7 @@ class CineworldClient(
    *  roster 2026-09-18: `relatedEntity.id` matched this derivation on every
    *  one, so there is no case this can silently get wrong for a venue the
    *  roster already agrees with. */
-  private val theaterId: String = slug.takeWhile(_ != '-').toUpperCase
+  private val theaterId: String = slug.takeWhile(_ != '-').toUpperCase(Locale.ROOT)
 
   /** The listing scrape, unchanged from how Showcase/Everyman already do it —
    *  see class doc. Composed rather than duplicated: this class adds only what

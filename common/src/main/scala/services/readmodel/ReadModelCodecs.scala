@@ -22,7 +22,8 @@ object ReadModelCodecs extends PersistedCodecs {
   type OmittingNone = (ResolvedRatings, ResolvedMovie, CityScreening)
   type WritingNone  = EmptyTuple
 
-  /** The macro-derived registry — the shape everything is written with. */
+  /** The macro-derived registry — the shape `web_movies` is written with (a `web_screenings` row is
+   *  written by [[StreamingCityScreeningCodec]], in the same shape). */
   private val macroRegistry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime, services.movies.ShowtimeCodec),
     fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),

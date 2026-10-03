@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 import org.jsoup.nodes.{Document, Element}
 import services.movies.FormatTags
 
@@ -70,13 +72,13 @@ private[cinemas] object ScraperParse {
   /** The month number for a Polish three-letter abbreviation, case-insensitively
     * ("Cze"/"cze" → 6); `None` for anything not a known abbreviation. */
   def polishMonthAbbrev(token: String): Option[Int] =
-    PolishMonthAbbrevs.get(token.trim.toLowerCase)
+    PolishMonthAbbrevs.get(token.trim.toLowerCase(Locale.ROOT))
 
   /** The month number for a Polish month token in any spelling the cinema
     * pages use — genitive ("września"), nominative ("wrzesień") or the
     * three-letter abbreviation ("wrz") — case-insensitively. */
   def polishMonth(token: String): Option[Int] = {
-    val key = token.trim.toLowerCase
+    val key = token.trim.toLowerCase(Locale.ROOT)
     PolishMonthsAnyCase.get(key).orElse(PolishMonthAbbrevs.get(key))
   }
 
@@ -201,7 +203,7 @@ private[cinemas] object ScraperParse {
     * definition lists. */
   def ddField(document: Document, label: String, dtSelector: String = "dt"): Option[String] =
     document.select(dtSelector).asScala
-      .find(_.text.toLowerCase.contains(label))
+      .find(_.text.toLowerCase(Locale.ROOT).contains(label))
       .flatMap(dt => Option(dt.nextElementSibling))
       .filter(_.tagName == "dd")
       .map(_.text.trim)

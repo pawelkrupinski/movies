@@ -111,13 +111,13 @@ class AlternatywyClient(
 
   private def screeningFrom(quad: Seq[String], img: Element): Option[Screening] = {
     val Seq(dayStr, monthStr, timeStr, roomStr) = quad
-    if (!roomStr.toLowerCase.startsWith("sala:")) return None
+    if (!roomStr.toLowerCase(Locale.ROOT).startsWith("sala:")) return None
     val rawTitle = img.attr("alt")
     val title    = cleanTitle(rawTitle, titles)
     if (title.isEmpty) return None
     for {
       day        <- Try(dayStr.toInt).toOption
-      month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase)
+      month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase(Locale.ROOT))
       (hh, mm)   <- parseTime(timeStr)
       dateTime   <- Try(inferYear(day, month).atTime(hh, mm)).toOption
     } yield {

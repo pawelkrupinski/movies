@@ -36,16 +36,14 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   lazy val identityListingIntake: IdentityListingIntake =
     new IdentityListingIntake(acceptedListings, scrapeArchive, scrapeGuardLedger, titleNormalizer,
       ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, taskMetrics,
-      published = (cinema, films) => identityModel.foreach(_.venueScraped(cinema, films)))
+      published = (cinema, films) => identityModel.venueScraped(cinema, films))
 
-  // A country always has its model (`identityModel` is never empty): the projection reads its resolution.
+  // The projection reads the model's resolution.
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
       listings    = () => identityListingIntake.projected(cinemaScrapers.map(_.cinema)),
       rows        = identityListingIntake.rowsOf,
-      resolve     = IdentityProjection.modelled(
-        identityModel.getOrElse(throw new IllegalStateException("the identity projection has no identity model")),
-        IdentityCutoverWiring.ModelTimeout),
+      resolve     = IdentityProjection.modelled(identityModel, IdentityCutoverWiring.ModelTimeout),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
       details     = movieService.withFilmDetails,

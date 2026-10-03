@@ -423,6 +423,16 @@ object MongoConnection extends Logging {
       .filter(_.nonEmpty)
       .getOrElse(fallback)
 
+  /** Connections per `MongoClient`. Deliberately far below the driver's default of
+   *  100: every app holds its own pool against ONE small shared mongod, so the default
+   *  lets a handful of clients reserve the whole box. 25 still leaves ample headroom —
+   *  the worker's background concurrency and the web's request threads are both well
+   *  under it — while capping the fleet's worst case to something the VM can hold.
+   *  Tunable without a code change (same pattern as the credit thresholds) because
+   *  it is a capacity knob we may need to move under pressure (`KINOWO_MONGO_MAX_POOL_SIZE`,
+   *  [[MongoTuning]]). */
+  val DefaultMaxPoolSize: Int = 25
+
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
    *  links are the local ssh tunnel to the prod Mongo host and a loopback read-mirror, where
@@ -434,16 +444,6 @@ object MongoConnection extends Logging {
    *  would only burn CPU on the driver's I/O event-loop threads — the worker's
    *  measured CPU sink — for bandwidth we don't need. So a non-loopback link stays
    *  uncompressed. A URI that names its own `compressors=` always wins either way. */
-  /** Connections per `MongoClient`. Deliberately far below the driver's default of
-   *  100: every app holds its own pool against ONE small shared mongod, so the default
-   *  lets a handful of clients reserve the whole box. 25 still leaves ample headroom —
-   *  the worker's background concurrency and the web's request threads are both well
-   *  under it — while capping the fleet's worst case to something the VM can hold.
-   *  Tunable without a code change (same pattern as the credit thresholds) because
-   *  it is a capacity knob we may need to move under pressure (`KINOWO_MONGO_MAX_POOL_SIZE`,
-   *  [[MongoTuning]]). */
-  val DefaultMaxPoolSize: Int = 25
-
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[MongoConnection.ServerSelectionTimeout] = None,

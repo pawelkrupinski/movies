@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -109,7 +111,7 @@ object KinoNarewClient {
         } yield (from, to)
       }
 
-    val godzParagraph = paragraphs.find(p => p.text.trim.toLowerCase.startsWith("godz"))
+    val godzParagraph = paragraphs.find(p => p.text.trim.toLowerCase(Locale.ROOT).startsWith("godz"))
     val time = godzParagraph.flatMap(p => GodzTime.findFirstMatchIn(p.text))
       .flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
 
@@ -138,6 +140,6 @@ object KinoNarewClient {
   private def fieldsOf(p: Element): Map[String, String] =
     ScraperParse.linesOf(p).flatMap { line =>
       val idx = line.indexOf(':')
-      if (idx < 0) None else Some(line.take(idx).trim.toLowerCase -> line.drop(idx + 1).trim)
+      if (idx < 0) None else Some(line.take(idx).trim.toLowerCase(Locale.ROOT) -> line.drop(idx + 1).trim)
     }.toMap
 }

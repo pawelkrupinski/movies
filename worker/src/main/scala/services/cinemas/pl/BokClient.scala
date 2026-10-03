@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
@@ -149,7 +151,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
   private def splitCsv(s: String): Seq[String] = s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
 
   private def metaRow(document: Document, label: String): Option[String] =
-    document.select("div.meta-row").asScala.find(_.text.toLowerCase.contains(label))
+    document.select("div.meta-row").asScala.find(_.text.toLowerCase(Locale.ROOT).contains(label))
       .flatMap(r => Option(r.selectFirst("div.body"))).map(_.text.trim).filter(_.nonEmpty)
 
   private case class DayShowing(slug: String, title: String, rawTitle: String, dateTimes: Seq[LocalDateTime])

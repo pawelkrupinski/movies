@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 import models.{CityScreening, Country, ResolvedMovie}
 import play.api.mvc.{Cookie, RequestHeader}
 import services.MirrorFreshness
@@ -69,7 +71,7 @@ object DebugCorpusTable {
     // Flattened to ONE string: a `fill`ed `Html` is a tree of thousands of fragments that
     // every page render walks again to rebuild the same text.
     DebugCorpusTable(records.size,
-      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase).map(views.html._debugRow(_, normalizer))).body)
+      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase(Locale.ROOT)).map(views.html._debugRow(_, normalizer))).body)
 }
 
 /** One read of the corpus, in the two shapes the debug pages use it. */
@@ -117,7 +119,7 @@ object ReadModelDump {
       showtimes.updateWith(s.filmId)(n => Some(n.getOrElse(0) + s.showtimes.size))
     }
     val counts = docs.iterator.map { case (film, n) => film -> ScreeningCounts(n, cinemas(film).size, showtimes(film)) }.toMap
-    ReadModelDump(movies.sortBy(_.title.toLowerCase), counts, lastModified)
+    ReadModelDump(movies.sortBy(_.title.toLowerCase(Locale.ROOT)), counts, lastModified)
   }
 }
 

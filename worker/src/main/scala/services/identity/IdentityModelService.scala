@@ -37,7 +37,8 @@ object IdentityModelMetrics {
  *  - a venue's archived scrape ([[venueScraped]]) — its listings now, diffed against what the model
  *    holds there: a listing it no longer lists leaves the model, so a film nobody shows any more
  *    is swept by the event that stopped showing it;
- *  - new content the observation store files ([[observed]]) — mapped back through
+ *  - new content filed under a key a question reads ([[observed]]: a TMDB store document, a venue
+ *    page, a proposal) — mapped back through
  *    [[ObservationReads]] to the questions that read it.
  *
  * Events are queued from any thread and drained on ONE thread every `settle`, as one
@@ -79,7 +80,7 @@ final class IdentityModelService(
     venues.put(cinema.displayName, Listing.distinct(Listing.all(Seq(cinema -> films), normalizer))); ()
   }
 
-  /** The observation store filed new content under `key`. */
+  /** New content was filed under `key` (the TMDB store, the venue page index, the proposal index). */
   def observed(key: String): Unit = { observations.add(key); () }
 
   /** The model brought up to NOW — taken up if it is not yet, every queued event drained — on its
@@ -130,8 +131,8 @@ final class IdentityModelService(
   private var retryDelay: FiniteDuration          = IdentityModelService.FirstRetry
 
   /** What the scheduler runs every `settle`: a take-up retried once its backoff has passed, when the
-   *  last one failed — a shadow country's readers only [[peek]], so nothing else would ever take it
-   *  up again — then a drain. */
+   *  last one failed — [[current]] tries a take-up only before the first has run, and [[peek]] never
+   *  does, so nothing else takes the model up again — then a drain. */
   private[identity] def tick(): Unit = {
     if (model.isEmpty && retryAt.exists(at => !clock.instant().isBefore(at))) tryTakeUp()
     safely("drain")(drain())

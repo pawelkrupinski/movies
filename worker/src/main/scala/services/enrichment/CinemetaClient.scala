@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.util.Locale
+
 import play.api.libs.json._
 import services.resolution.{TitleMatch, YearWindow}
 import tools.HttpFetch
@@ -79,5 +81,5 @@ object CinemetaClient {
    *  corroboration uses so "Vaiana" vs "Vaiana " vs "vaiana" all match. */
   private def norm(s: String): String =
     java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}+", "").toLowerCase.replaceAll("[^a-z0-9]+", "")
+      .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "")
 }

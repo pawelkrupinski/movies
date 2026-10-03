@@ -133,8 +133,9 @@ object MixedFilmDetector {
    *  `MixedFilmSplitter` splits, and the two chase each other forever.
    *
    *  A row whose cinemas published nothing comparable cannot contradict anything,
-   *  so the answer is `false` and the caller's own evidence stands. */
-  /** CALL WITH RECORDS THAT CARRY THEIR CINEMAS. The answer comes from `cinemaSlots`, so a
+   *  so the answer is `false` and the caller's own evidence stands.
+   *
+   *  CALL WITH RECORDS THAT CARRY THEIR CINEMAS. The answer comes from `cinemaSlots`, so a
    *  record holding none cannot contradict anything and this returns `false` — the right
    *  default (no evidence is not evidence of difference, and refusing on it would block every
    *  adoption of an enrichment-only row), but one that makes the answer depend on how the

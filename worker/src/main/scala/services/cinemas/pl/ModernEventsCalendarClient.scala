@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -157,8 +159,8 @@ object ModernEventsCalendarClient {
   private def clockTime(text: String): Option[LocalTime] =
     ClockTime.findFirstMatchIn(text).flatMap { m =>
       val hour = m.group(1).toInt
-      val pm   = Option(m.group(3)).exists(_.toLowerCase.startsWith("p"))
-      val am   = Option(m.group(3)).exists(_.toLowerCase.startsWith("a"))
+      val pm   = Option(m.group(3)).exists(_.toLowerCase(Locale.ROOT).startsWith("p"))
+      val am   = Option(m.group(3)).exists(_.toLowerCase(Locale.ROOT).startsWith("a"))
       val hour24 = if (pm && hour < 12) hour + 12 else if (am && hour == 12) 0 else hour
       Try(LocalTime.of(hour24, m.group(2).toInt)).toOption
     }

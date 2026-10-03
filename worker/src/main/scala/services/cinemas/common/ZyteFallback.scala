@@ -13,7 +13,7 @@ import java.time.Duration
  *
  * `cookieSource` is threaded straight to [[ZyteFetch]]: `Some(homepage)` for
  * upstreams with a session-cookie wall (Multikino), `None` for stateless pages
- * (biletyna). Extracted from `MultikinoClient.fetchFor` once a second caller
+ * (biletyna). Extracted from Multikino's own fetch chain once a second caller
  * (Kino Kameralne) needed the same chain.
  *
  * The key (`ZYTE_API_KEY`) and the session TTL come from the configuration the caller

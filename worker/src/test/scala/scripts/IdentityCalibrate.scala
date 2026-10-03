@@ -384,13 +384,14 @@ object IdentityCalibrate {
     }
   }
 
+  /** What [[monotoneOnly]] adds to the artefact's version, so its weights are told from the fit's. */
+  val MonotoneSuffix = "-monotone"
+
   /** `model` with the listing-film scope's directed numeric signals ([[IdentityMeasures.NumericDirection]])
    *  refitted by [[monotone]] from the positives and negatives their bins and missing cells hold — what
    *  [[fitSignal]] fits them to since r5, applied to weights fitted before it without relearning
    *  (the full relearn moves the certified cut). A signal already monotone comes back as it was;
    *  every other signal and scope is untouched. */
-  /** What [[monotoneOnly]] adds to the artefact's version, so its weights are told from the fit's. */
-  val MonotoneSuffix = "-monotone"
   def monotoneOnly(model: IdentityCalibration): IdentityCalibration = {
     val scope = model.scopes.get(IdentityMeasures.ListingFilm)
     scope.fold(model) { listingFilm =>

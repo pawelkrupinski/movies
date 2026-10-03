@@ -1,5 +1,7 @@
 package services.movies
 
+import java.util.Locale
+
 import scala.concurrent.duration._
 
 /**
@@ -161,7 +163,7 @@ object ScrapeHealth {
    *  lower-cased, without a leading `www.`. */
   def siteOf(url: String): Option[String] =
     scala.util.Try(java.net.URI.create(url.trim).getHost).toOption.flatMap(Option(_))
-      .map(_.toLowerCase.stripPrefix("www.")).filter(_.nonEmpty)
+      .map(_.toLowerCase(Locale.ROOT).stripPrefix("www.")).filter(_.nonEmpty)
 
   /** The breadth guard's answer for one tick, stateful the same way [[Depth]] is. */
   enum Breadth {

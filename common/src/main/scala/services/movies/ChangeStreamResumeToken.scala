@@ -1,5 +1,7 @@
 package services.movies
 
+import java.util.Locale
+
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import org.bson.BsonDocument
@@ -125,7 +127,7 @@ object ChangeStreamResumeToken {
         m.getCode == 280 /* ChangeStreamFatalError */ ||
         m.getCode == 260 /* InvalidResumeToken */ ||
         Option(m.getMessage).exists { s =>
-          val lower = s.toLowerCase
+          val lower = s.toLowerCase(Locale.ROOT)
           s.contains("ChangeStreamHistoryLost") || s.contains("NonResumableChangeStreamError") ||
             lower.contains("resume of change stream was not possible") ||
             lower.contains("resume token was not found") ||

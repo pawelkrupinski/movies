@@ -78,18 +78,18 @@ class TmdbClient(
   private def apiKeyParameter(separator: String): String =
     apiKey.map(key => s"${separator}api_key=${key.value}").getOrElse("")
 
-  /** Every TMDB call routes through here. TMDB's API 5xxs and times out for a
-   *  few minutes now and then (it took down a CI integration run on
-   *  `/movie/{id}/external_ids`); a transient blip almost always succeeds on the
-   *  next try, so retry it a couple of times with a short backoff. A 4xx — a 404
-   *  for an id/title TMDB doesn't know — is NOT transient and fails fast (no point
-   *  burning the remaining attempts). A `None`/empty parse result isn't an
-   *  exception, so the existing graceful-degradation paths are untouched. */
   /** A 404 on a by-id read is TMDB answering "no such film/person" — no credits, not a
    *  failed read — so it reads as an empty crew. Every other failure propagates. */
   private def orEmptyWhenUnknown(read: => String): String =
     try read catch { case e: HttpStatusException if e.code == 404 => """{"crew":[]}""" }
 
+  /** Every TMDB call routes through here. TMDB's API 5xxs and times out for a
+   *  few minutes now and then (it took down a CI integration run on
+   *  `/movie/{id}/external_ids`); a transient blip almost always succeeds on the
+   *  next try, so retry it — and a 429 — a couple of times with a short backoff. Any
+   *  other 4xx — a 404 for an id/title TMDB doesn't know — is NOT transient and fails fast (no point
+   *  burning the remaining attempts). A `None`/empty parse result isn't an
+   *  exception, so the existing graceful-degradation paths are untouched. */
   private def httpGet(url: String, auth: Map[String, String]): String =
     RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
       retryOn = TmdbClient.isTransient, sleep = retrySleep)(http.get(url, auth))
@@ -385,6 +385,16 @@ class TmdbClient(
    *  candidates instead; this is for callers with nothing to check against. */
   def findPerson(name: String): Option[Int] = findPersonCandidates(name).headOption
 
+  /** The films TMDB edited between `start` and `end` (at most 14 days apart), one page. */
+  def changedMovies(start: java.time.LocalDate, end: java.time.LocalDate, page: Int): (Seq[Int], Int) = authHeader.map { auth =>
+    TmdbClient.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))
+  }.getOrElse((Nil, 1))
+
+  /** What TMDB edited about one film between `start` and `end`: each key and its items' languages. */
+  def movieChanges(tmdbId: Int, start: java.time.LocalDate, end: java.time.LocalDate): Seq[TmdbClient.MovieEdit] = authHeader.map { auth =>
+    TmdbClient.movieEdits(httpGet(s"$ApiBase/movie/$tmdbId/changes?start_date=$start&end_date=$end${apiKeyParameter("&")}", auth))
+  }.getOrElse(Nil)
+
   /** Every plausible TMDB person for a name, Directing-known first and otherwise
    *  in TMDB's own (popularity) order.
    *
@@ -401,16 +411,6 @@ class TmdbClient(
    *  than they can plausibly recover. Directing-known first keeps the common case
    *  at one round-trip — an actor sharing a director's name is still skipped, just
    *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
-  /** The films TMDB edited between `start` and `end` (at most 14 days apart), one page. */
-  def changedMovies(start: java.time.LocalDate, end: java.time.LocalDate, page: Int): (Seq[Int], Int) = authHeader.map { auth =>
-    TmdbClient.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))
-  }.getOrElse((Nil, 1))
-
-  /** What TMDB edited about one film between `start` and `end`: each key and its items' languages. */
-  def movieChanges(tmdbId: Int, start: java.time.LocalDate, end: java.time.LocalDate): Seq[TmdbClient.MovieEdit] = authHeader.map { auth =>
-    TmdbClient.movieEdits(httpGet(s"$ApiBase/movie/$tmdbId/changes?start_date=$start&end_date=$end${apiKeyParameter("&")}", auth))
-  }.getOrElse(Nil)
-
   def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
     TmdbClient.personCandidates(httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth))
       .take(TmdbClient.MaxPersonCandidates)

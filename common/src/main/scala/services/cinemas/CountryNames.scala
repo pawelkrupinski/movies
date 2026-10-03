@@ -49,7 +49,7 @@ object CountryNames {
    *  English-language entries are defensive — some Helios REST payloads
    *  occasionally come back English; better to map than to leak. */
   private val Aliases: Map[String, String] = (
-    Polish.iterator.map(c => c.toLowerCase -> c).toMap ++ Map(
+    Polish.iterator.map(c => c.toLowerCase(Locale.ROOT) -> c).toMap ++ Map(
       // United States
       "stany zjednoczone"           -> "USA",
       "stany zjednoczone ameryki"   -> "USA",
@@ -156,7 +156,7 @@ object CountryNames {
    *  is case-insensitive and whitespace-tolerant. */
   def canonical(raw: String): String = {
     val trimmed = raw.trim
-    Aliases.getOrElse(trimmed.toLowerCase, trimmed)
+    Aliases.getOrElse(trimmed.toLowerCase(Locale.ROOT), trimmed)
   }
 
   /** Canonicalise a raw country name for a deployment serving `language`.
@@ -176,7 +176,7 @@ object CountryNames {
     if (language.getLanguage == "pl") canonical(raw)
     else {
       val folded = canonical(raw) // fold spelling variants via the alias map first
-      IsoOf.get(folded.toLowerCase) match {
+      IsoOf.get(folded.toLowerCase(Locale.ROOT)) match {
         case Some(iso) =>
           val name = Locale.of("", iso).getDisplayCountry(language)
           // The JDK returns the bare code for a country it can't localise; keep

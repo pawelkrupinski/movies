@@ -122,13 +122,13 @@ object IdentityMeasures {
     shared.exists { case (work, _) => !work.startsWith("work:") } || (shared.nonEmpty && bannersMeet(l.title +: l.rawTitle.toSeq, f.titles))
   }
 
+  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
+  private val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
   /** A season production met only through a work named in two languages ([[StageWorks]]) is the record's only when
    *  the two titles' banners — the pieces naming no work — share a word: PL "Balet z Opery Paryskiej 2026-2027:
    *  Jezioro łabędzie" ×16 is the Paris Opera Ballet's Swan Lake, which TMDB has no record of, not "Royal Ballet & Opera
    *  2026/27: Swan Lake"; "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów" shares "royal", "ballet",
    *  "opera" with its record. Words of four letters or more, so "the" or "and" meets nothing. */
-  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
-  private val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
   private def bannersMeet(listingTitles: Seq[String], filmTitles: Seq[String]): Boolean = {
     def bannerWords(titles: Seq[String]) = titles.flatMap(t => PieceBreak.split(withoutYears(t)).toSeq)
       .filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)

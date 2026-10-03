@@ -20,10 +20,6 @@ object JsonLdAggregateRating {
 
   private val YearRegex = "(19\\d{2}|20\\d{2})".r
 
-  /** First numeric `aggregateRating.ratingValue` found in any JSON-LD
-   *  block, parsed as Int. The JSON-LD spec allows both numeric and string
-   *  values, so we accept either. Returns None when the page has no
-   *  JSON-LD, no `aggregateRating`, or only non-numeric values. */
   /** A page's JSON-LD blocks, parsed once: a probe checks a page's year, its director and its
    *  score, and parsing the whole page with Jsoup for each was three parses of one page. */
   final case class JsonLd(blocks: Seq[JsValue]) {

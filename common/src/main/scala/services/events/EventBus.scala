@@ -15,6 +15,13 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 sealed trait DomainEvent
 
+/** A venue detail page was read into venue_pages — its detail, or that it is gone — for the enricher
+ *  group `detailGroup` (one page serves every venue of a chain) and `page`, the ref the enrichment
+ *  fetched (`DetailEnricher.nativeDetailRef`). Published AFTER the page is stored, so the model's
+ *  index of venue_pages (`services.identity.VenuePageIndex`) reads the answer it announces: the
+ *  identity model re-asks the listings that read that page. */
+case class VenueDetailRead(detailGroup: String, page: String) extends DomainEvent
+
 /** A film's per-cinema details are as complete as they're going to get, so it's
  *  ready to enrich — resolve TMDB (and, downstream of that, the ratings). The
  *  single trigger for the enrichment pipeline. It fires EITHER:
@@ -45,13 +52,6 @@ sealed trait DomainEvent
  *
  *  Both optional fields default to None so cinemas without the field — and the
  *  unit specs that publish this directly — stay unchanged. */
-/** A venue detail page was read into venue_pages — its detail, or that it is gone — for the enricher
- *  group `detailGroup` (one page serves every venue of a chain) and `page`, the ref the enrichment
- *  fetched (`DetailEnricher.nativeDetailRef`). Published AFTER the page is stored, so the model's
- *  index of venue_pages (`services.identity.VenuePageIndex`) reads the answer it announces: the
- *  identity model re-asks the listings that read that page. */
-case class VenueDetailRead(detailGroup: String, page: String) extends DomainEvent
-
 case class MovieDetailsComplete(
   title:         String,
   year:          Option[Int],

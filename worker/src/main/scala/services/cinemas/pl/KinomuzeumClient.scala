@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -127,7 +129,7 @@ object KinomuzeumClient {
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None, None) }
 
   private def meta(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    document.select("div.meta-data").asScala.find(_.text.toLowerCase.contains(label))
+    document.select("div.meta-data").asScala.find(_.text.toLowerCase(Locale.ROOT).contains(label))
       .flatMap(d => Option(d.selectFirst(".description"))).map(_.text.trim).filter(_.nonEmpty)
 
   def parseDetail(html: String): Detail = {

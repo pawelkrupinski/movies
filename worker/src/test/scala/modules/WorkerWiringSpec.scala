@@ -501,13 +501,12 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
       }
     }
-    wiring.shadowLookupFill.map(_.effectiveRate) shouldBe Some(WorkerWiring.DefaultShadowLookupRate)
-    val schedule = wiring.identityLookupRefreshSchedule.getOrElse(fail("the refresh is not scheduled"))
-    schedule.tickIfClaimed() shouldBe true
+    wiring.shadowLookupFill.effectiveRate shouldBe WorkerWiring.DefaultShadowLookupRate
+    wiring.identityLookupRefreshSchedule.tickIfClaimed() shouldBe true
     rounds.get shouldBe 1
     wiring.stop()
     new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12"))
-      .shadowLookupFill.map(_.effectiveRate) shouldBe Some(settings.IdentityShadowLookupRate(12))
+      .shadowLookupFill.effectiveRate shouldBe settings.IdentityShadowLookupRate(12)
   }
 
   // The model's thread and its prefetch pool outlived `stop()`: a drain still writing families to a
@@ -517,7 +516,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       def modelThreads: Seq[java.util.concurrent.ExecutorService] = Seq(identityModelScheduler, identityPrefetchPool)
     }
     val wiring = new Threads
-    wiring.identityModel shouldBe defined
+    wiring.identityModel
     wiring.stop()
     wiring.modelThreads.map(_.isShutdown) shouldBe Seq(true, true)
   }
@@ -543,7 +542,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         override def close(): Unit = closed = true
       }
     }
-    stopped.identityModel shouldBe defined
+    stopped.identityModel
     stopped.stop()
     closed shouldBe true
   }

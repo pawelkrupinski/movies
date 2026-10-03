@@ -140,7 +140,7 @@
     @for(m <- movies) {
       @defining(dump.counts.getOrElse(m._id, ScreeningCounts(0, 0, 0))) { counts =>
           <tr class="data" data-row-id="@m._id"
-              data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase)">
+              data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase(java.util.Locale.ROOT))">
             <td class="title">@m.title</td>
             <td class="orig">@m.originalTitle.getOrElse("")</td>
             <td class="year">@m.releaseYear.map(_.toString).getOrElse("")</td>

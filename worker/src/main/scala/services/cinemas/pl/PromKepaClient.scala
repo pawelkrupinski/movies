@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
@@ -37,7 +39,7 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
 
     // The source formats the same film inconsistently (quoted vs ALL-CAPS), so
     // group case-insensitively and display the best-cased variant.
-    events.groupBy(_.title.toLowerCase).toSeq.map { case (_, group) =>
+    events.groupBy(_.title.toLowerCase(Locale.ROOT)).toSeq.map { case (_, group) =>
       val primary   = group.head
       val title     = group.map(_.title).find(_.exists(_.isLower)).getOrElse(primary.title)
       val showtimes = group.flatMap(_.showtime).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)

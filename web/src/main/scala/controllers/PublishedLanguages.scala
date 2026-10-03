@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 /** Picks the language of a standalone document page from its `?lang=`.
  *
  *  The store listings (App Store and Play, one registration per locale) all
@@ -16,7 +18,7 @@ package controllers
 object PublishedLanguages {
   def resolve(requested: Option[String], published: Set[String], deployment: models.Country): String =
     requested
-      .map(_.trim.toLowerCase)
+      .map(_.trim.toLowerCase(Locale.ROOT))
       .filter(published.contains)
       .getOrElse(deployment.language.getLanguage)
 }

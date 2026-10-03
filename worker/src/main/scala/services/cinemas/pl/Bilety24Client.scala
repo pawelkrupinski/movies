@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
@@ -100,7 +102,7 @@ object Bilety24Client {
     // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
     // the first real raster image, else fall back to the og:image poster.
     val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
-                     .find(s => s.nonEmpty && !s.toLowerCase.endsWith(".svg"))
+                     .find(s => s.nonEmpty && !s.toLowerCase(Locale.ROOT).endsWith(".svg"))
                      .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))
 
     for {

@@ -100,68 +100,61 @@ class WorkerWiring(
   // a person and a question each once, as native BSON holding only what the resolver reads. Filled
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
   // runs, in the country's database.
-  lazy val identityTmdbDocuments: Option[services.identity.TmdbDocuments] =
-    Some(mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
-      new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db))))
-  lazy val identityTmdbStore: Option[services.identity.TmdbStore] = identityTmdbDocuments.map(new services.identity.TmdbStore(_, clock))
-  lazy val identityTmdbNormalizer: Option[services.identity.TmdbNormalizer] = identityTmdbStore.map(new services.identity.TmdbNormalizer(_, tmdbJsonBodies))
+  lazy val identityTmdbDocuments: services.identity.TmdbDocuments =
+    mongoConnection.database.fold[services.identity.TmdbDocuments](new services.identity.InMemoryTmdbDocuments)(db =>
+      new services.identity.CoalescedTmdbDocuments(new services.identity.MongoTmdbDocuments(db)))
+  lazy val identityTmdbStore: services.identity.TmdbStore = new services.identity.TmdbStore(identityTmdbDocuments, clock)
+  lazy val identityTmdbNormalizer: services.identity.TmdbNormalizer = new services.identity.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
    *  round, whenever the last complete sweep is from before today. */
-  lazy val identityTmdbChanges: Option[services.identity.TmdbChangesSweep] =
-    for { store <- identityTmdbStore; docs <- identityTmdbDocuments; normalizer <- identityTmdbNormalizer }
-    yield new services.identity.TmdbChangesSweep(store, docs,
-      tmdbClientOver(new services.identity.NormalizingHttpFetch(enrichmentFetch, normalizer)), country.language.toLanguageTag, clock)
+  lazy val identityTmdbChanges: services.identity.TmdbChangesSweep =
+    new services.identity.TmdbChangesSweep(identityTmdbStore, identityTmdbDocuments,
+      tmdbClientOver(new services.identity.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer)), country.language.toLanguageTag, clock)
   /** The model's questions due to be asked again (`TmdbRefreshes`). */
-  lazy val identityTmdbRefreshes: Option[services.identity.TmdbRefreshes] =
-    identityTmdbStore.map(new services.identity.TmdbRefreshes(_, country.language.toLanguageTag, clock))
-  lazy val identityModel: Option[services.identity.IdentityModelService] = {
+  lazy val identityTmdbRefreshes: services.identity.TmdbRefreshes =
+    new services.identity.TmdbRefreshes(identityTmdbStore, country.language.toLanguageTag, clock)
+  // The model is the country's identity: the intake's accepted listings, answered from the model's
+  // store and asked live on a gap (`cutoverLookups`).
+  lazy val identityModel: services.identity.IdentityModelService = {
     import services.identity._
-    // The model is the country's identity: the intake's accepted listings, answered from the model's
-    // store and asked live on a gap (`cutoverLookups`).
-    val sources: Option[(() => Seq[Listing], () => IdentityLookups)] = Some((
-      () => Listing.distinct(Listing.all(identityListingIntake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer)),
-      () => cutoverLookups(identityReads)))
-    sources.map { case (listings, lookups) =>
-      val pinStore = new MongoPinStore(mongoConnection.database)
-      var tracked  = Option.empty[TrackedLookups]
-      val model = new IdentityModelService(
-        newModel   = () => {
-          val pins = services.movies.ListingConstraints.pinned(pinStore.all())
-          val lookupsNow = new TrackedLookups(lookups(), identityReads, Some(identityPrefetchPool))
-          tracked = Some(lookupsNow)
-          new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
-            store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-            rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
-            traces = identityTraces)
-        },
-        reads      = identityReads,
-        archive    = listings,
-        normalizer = titleNormalizer,
-        settle     = WorkerWiring.IdentityModelSettle,
-        scheduler  = identityModelScheduler,
-        metrics    = workerMetrics.identityModel.forCountry(country.code),
-        reading    = () => tracked.fold("")(_.render),
-        beforeDrain = () => venuePageIndex.settle(),
-        // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
-        // its first resolve has the page's facts.
-        pageWait   = new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
-                       WorkerWiring.VenuePageWaitLimit),
-        clock      = clock)
-      identityTmdbStore.foreach(_.onChanged(model.observed))
-      model
-    }
+    val pinStore = new MongoPinStore(mongoConnection.database)
+    var tracked  = Option.empty[TrackedLookups]
+    val model = new IdentityModelService(
+      newModel   = () => {
+        val pins = services.movies.ListingConstraints.pinned(pinStore.all())
+        val lookupsNow = new TrackedLookups(cutoverLookups(identityReads), identityReads, Some(identityPrefetchPool))
+        tracked = Some(lookupsNow)
+        new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
+          store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
+          rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
+          traces = identityTraces)
+      },
+      reads      = identityReads,
+      archive    = () => Listing.distinct(Listing.all(identityListingIntake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer)),
+      normalizer = titleNormalizer,
+      settle     = WorkerWiring.IdentityModelSettle,
+      scheduler  = identityModelScheduler,
+      metrics    = workerMetrics.identityModel.forCountry(country.code),
+      reading    = () => tracked.fold("")(_.render),
+      beforeDrain = () => venuePageIndex.settle(),
+      // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
+      // its first resolve has the page's facts.
+      pageWait   = new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
+                     WorkerWiring.VenuePageWaitLimit),
+      clock      = clock)
+    identityTmdbStore.onChanged(model.observed)
+    model
   }
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
-   *  ([[venuePageIndex]]) — what the shadow model reads, and what a cut-over one reads first. */
+   *  ([[venuePageIndex]]) — what the model reads first ([[cutoverLookups]]). */
   def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
-    new services.identity.StoredTmdbLookups(identityTmdbStore.getOrElse(new services.identity.TmdbStore(new services.identity.InMemoryTmdbDocuments, clock)),
-      country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads, Some(identityProposals))
+    new services.identity.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads, Some(identityProposals))
 
   /** What a language model proposed listings no rule took are (`identity_proposals`), as the model reads them: a new
    *  proposal re-resolves exactly the listings of its title. Read whether or not this worker asks the model. */
   lazy val identityProposals: services.identity.ProposalIndex =
     new services.identity.ProposalIndex(mongoConnection.database.fold[services.identity.ProposalStore](new services.identity.InMemoryProposalStore)(
-      new services.identity.MongoProposalStore(_)), changed = key => identityModel.foreach(_.observed(key)))
+      new services.identity.MongoProposalStore(_)), changed = key => identityModel.observed(key))
 
   /** Asks the model about the unresolved listings' titles each round (`ProposalFill`) — only with `ANTHROPIC_API_KEY`
    *  set (`GatedIntegration.IdentityProposals`) and traces to read them from. */
@@ -186,7 +179,7 @@ class WorkerWiring(
 
   /** The venue detail pages read into venue_pages, as the identity model reads them. */
   lazy val venuePageIndex: services.identity.VenuePageIndex =
-    new services.identity.VenuePageIndex(venuePageStore, changed = key => identityModel.foreach(_.observed(key)))
+    new services.identity.VenuePageIndex(venuePageStore, changed = key => identityModel.observed(key))
 
   /** Where the model files which rules decided each listing (`identity_traces`, read by the admin
    *  page only): beside its families in the country's database, or nowhere without one. ONE for every model a
@@ -231,30 +224,28 @@ class WorkerWiring(
   // (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`) — and any question still open.
   // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
-  lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
-    for (normalizer <- identityTmdbNormalizer) yield
-      new services.identity.ShadowLookupFill(
-        questions   = () => identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(services.identity.AnswersChanged.Empty)(_.gaps),
-        tmdb        = tmdbClientOver,
-        liveFetch   = enrichmentFetch,
-        normalizer  = normalizer,
-        beforeRound = () => identityTmdbChanges.filter(_.behind).foreach(_.sweep()),
-        gapMemory   = identityTmdbDocuments.map(new services.identity.TmdbGapMemory(_, country.language.toLanguageTag, clock)),
-        refreshes   = () => identityTmdbRefreshes.fold(Seq.empty[services.identity.CandidateQuery])(r =>
-          identityModel.flatMap(_.peek(WorkerWiring.IdentityModelPeek)).fold(Seq.empty[services.identity.CandidateQuery])(s => r.due(s.questions))),
-        rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
-        window      = identityShadowInterval,
-        metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
-        executor    = shadowLookupExecutor,
-        sleep       = shadowLookupSleep)
+  lazy val shadowLookupFill: services.identity.ShadowLookupFill =
+    new services.identity.ShadowLookupFill(
+      questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.AnswersChanged.Empty)(_.gaps),
+      tmdb        = tmdbClientOver,
+      liveFetch   = enrichmentFetch,
+      normalizer  = identityTmdbNormalizer,
+      beforeRound = () => if (identityTmdbChanges.behind) { identityTmdbChanges.sweep(); () },
+      gapMemory   = Some(new services.identity.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)),
+      refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
+        .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
+      rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
+      window      = identityShadowInterval,
+      metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
+      executor    = shadowLookupExecutor,
+      sleep       = shadowLookupSleep)
 
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
-  lazy val identityLookupRefreshSchedule: Option[services.tasks.ClaimedPeriodicTask] =
-    shadowLookupFill.map(fill =>
-      new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => fill.start(), identityShadowInterval.value,
-        configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
+  lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask =
+    new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => shadowLookupFill.start(), identityShadowInterval.value,
+      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock)
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def shadowLookupSleep: Long => Unit = Thread.sleep
@@ -386,7 +377,7 @@ class WorkerWiring(
 
   /** Whether this country's boot work has settled: started, projector prepared, model taken up. */
   def bootSettled: Boolean = {
-    val settled = bootStarted.get.isDefined && projectorPrepared && identityModel.forall(_.takeUpSettled)
+    val settled = bootStarted.get.isDefined && projectorPrepared && identityModel.takeUpSettled
     if (settled && settledLogged.compareAndSet(false, true))
       bootStarted.get.foreach(started => logger.info(f"[${country.code}] boot work settled in ${started.seconds}%.1fs"))
     settled
@@ -400,10 +391,10 @@ class WorkerWiring(
     // Install the override source first so boot-time knob reads already see flips.
     boot.step("env config")(envConfigService.start())
     // The identity model's take-up (the longest part of a boot: 117–259 s on US) reads only the
-    // scrape archive, the TMDB/observation stores, the pins and its own families — nothing the cache
+    // scrape archive, the TMDB and venue-page stores, the pins and its own families — nothing the cache
     // hydrate or the projector produce — and `start` only schedules it on the model's own thread, so
     // it begins now rather than after the TaskWorker.
-    boot.step("identity model")(identityModel.foreach(_.start()))
+    boot.step("identity model")(identityModel.start())
     // The read-model projector's boot reads (its state seed and missing-card heal: 28–57 s of a US
     // boot) read the read model and the `movies` store, never the cache, so they start NOW, beside
     // the cache hydrate, instead of after it with everything else waiting behind them. It attaches
@@ -454,7 +445,7 @@ class WorkerWiring(
     // only the TMDB re-try sweep is the old identity path's.
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())
-    boot.step("identity lookup refresh")(identityLookupRefreshSchedule.foreach(_.start()))
+    boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
@@ -494,7 +485,7 @@ class WorkerWiring(
   def cascadeDrainOrder: Seq[Drainable] = Seq(imdbIdResolver)
 
   def stop(): Unit = {
-    shadowLookupFill.foreach(_ => shadowLookupExecutor.shutdownNow())
+    shadowLookupExecutor.shutdownNow()
     envConfigService.stop()
     cinemaScrapeCensus.stop()
     cinemaContentCensus.stop()
@@ -508,11 +499,11 @@ class WorkerWiring(
     enrichmentReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
-    identityLookupRefreshSchedule.foreach(_.stop())
+    identityLookupRefreshSchedule.stop()
     closureSchedule.stop()
     identityProposalSchedule.foreach(_.stop())
     // Its readers stopped above; its own threads next, before the Mongo connection they write through closes.
-    identityModel.foreach { _ => identityModelScheduler.shutdownNow(); identityPrefetchPool.shutdownNow(); identityTraces.close() }
+    identityModelScheduler.shutdownNow(); identityPrefetchPool.shutdownNow(); identityTraces.close()
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
     stopFacebookRescrapes()

@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Locale
+
 /**
  * Whether a client's `Accept-Encoding` lets us answer gzip — the one compressed
  * form the origin puts on the wire (see `ConditionalResponse.serve`
@@ -29,7 +31,7 @@ object AcceptEncoding {
       acceptEncoding.toList
         .flatMap(_.split(','))
         .collect { case Coding(token, q) =>
-          token.toLowerCase -> Option(q).flatMap(_.toDoubleOption).getOrElse(1.0)
+          token.toLowerCase(Locale.ROOT) -> Option(q).flatMap(_.toDoubleOption).getOrElse(1.0)
         }
         .toMap
     offered.getOrElse("gzip", offered.getOrElse("*", 0.0)) > 0

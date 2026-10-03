@@ -18,9 +18,9 @@ import scala.util.Try
  *
  * A lookup that throws, or that met a request its source could not answer (`gaps`: a hermetic
  * replay's), is [[Answer.Unknown]], never an empty answer — `TmdbClient` turns a failed read into
- * an empty one, which would read as "no such film". Production builds it over the observation
- * store (`ObservedIdentityLookups`, `CutoverIdentityLookups`), where lookups run side by side on
- * the prefetch's threads; the offline harness over a recorded replay (`IdentityLookupSweep`), one
+ * an empty one, which would read as "no such film". Production builds a cut-over model's
+ * live fallback over it (`StoredFirstLookups`), where lookups run side by side on the prefetch's
+ * threads; the offline harness over a recorded replay (`IdentityLookupSweep`), one
  * lookup at a time or, in a convergence leg, on its pool of prefetch threads.
  */
 final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher],
@@ -60,8 +60,8 @@ object TmdbIdentityLookups {
     def answered[A](read: => A): Answer[A]
   }
 
-  /** A source that answers every request it is asked (a live one, or the observation store with
-   *  its own fallbacks): only a throw is `Unknown`, and lookups read side by side. */
+  /** A source that answers every request it is asked (a live one, or the TMDB store with
+   *  live fallbacks): only a throw is `Unknown`, and lookups read side by side. */
   object NoGaps extends Gaps {
     def answered[A](read: => A): Answer[A] = Try(read).fold(_ => Answer.Unknown, Answer.Known(_))
   }

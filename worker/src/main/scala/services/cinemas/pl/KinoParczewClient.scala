@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, ParallelDetailFetch}
@@ -95,7 +97,7 @@ object KinoParczewClient {
       for {
         head  <- Option(tr.selectFirst("td.table-cell-head"))
         entry <- Option(tr.selectFirst("td.table-cell-entry"))
-      } yield head.text.trim.stripSuffix(":").toLowerCase -> entry
+      } yield head.text.trim.stripSuffix(":").toLowerCase(Locale.ROOT) -> entry
     }.toMap
 
   private def liTextsOf(entry: Element): Seq[String] =

@@ -111,23 +111,6 @@ object ProdCoverageBaseline {
     Option.when(exists(code))(Json.parse(Files.readAllBytes(pathFor(code))).as[ProdCoverageBaseline])
 
   /**
-   * Which metrics sit further from production than `tolerance` allows, as report
-   * lines — empty when every one is inside the band.
-   *
-   * Compared as a SHARE, not as raw counts — of each side's own film count for
-   * identification, and of each side's own IDENTIFIED films for everything downstream. The corpus
-   * is a snapshot and prod is live, so the two never hold quite the same number of
-   * films; a raw comparison would fail on that alone and say nothing about
-   * enrichment. `films` itself is the one metric compared as a count, because there
-   * is nothing to take a share of — it IS the denominator.
-   *
-   * A ZERO baseline is compared strictly rather than proportionally: no share is
-   * within 5% of nothing. That case is not hypothetical — production holds 0
-   * `filmwebRating` for Germany and the UK because Filmweb is Poland-only, and the
-   * harness's rating sweep was driving it anyway and reporting 972 and 1293. This
-   * band is what would have caught that on the day it landed.
-   */
-  /**
    * Films' worth of difference that is never a finding, whatever the percentages say.
    *
    * A corpus and a production database are captured minutes apart at best and a day
@@ -173,6 +156,11 @@ object ProdCoverageBaseline {
     if (axis == "films") NoiseFloorFilms
     else math.min(NoiseFloorFilms, math.max(3, math.ceil(NoiseSigmas * math.sqrt(prodCount)).toInt))
 
+  /** How far the run's share `a` sits from production's `b`, relative to `b`; any gap from a zero
+   *  baseline is infinite — no share is within 5% of nothing. */
+  private def relativeGap(a: Double, b: Double): Double =
+    if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
+
   /**
    * Each axis as `(name, run share, prod share, run count, prod count)`.
    *
@@ -214,7 +202,7 @@ object ProdCoverageBaseline {
   def report(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double,
              only: Set[String] = AllAxes): Seq[String] =
     axes(actual, prod, only).map { case (name, a, b, mine, theirs) =>
-      val off   = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
+      val off   = relativeGap(a, b)
       val apart = math.abs(mine - theirs)
       val note =
         if (off > tolerance && apart > noiseFloor(name, theirs)) "OUT"
@@ -224,10 +212,27 @@ object ProdCoverageBaseline {
       f"$apart%3d film(s) apart $note"
     }
 
+  /**
+   * Which metrics sit further from production than `tolerance` allows, as report
+   * lines — empty when every one is inside the band.
+   *
+   * Compared as a SHARE, not as raw counts — of each side's own film count for
+   * identification, and of each side's own IDENTIFIED films for everything downstream. The corpus
+   * is a snapshot and prod is live, so the two never hold quite the same number of
+   * films; a raw comparison would fail on that alone and say nothing about
+   * enrichment. `films` itself is the one metric compared as a count, because there
+   * is nothing to take a share of — it IS the denominator.
+   *
+   * A ZERO baseline is compared strictly rather than proportionally: no share is
+   * within 5% of nothing. That case is not hypothetical — production holds 0
+   * `filmwebRating` for Germany and the UK because Filmweb is Poland-only, and the
+   * harness's rating sweep was driving it anyway and reporting 972 and 1293. This
+   * band is what would have caught that on the day it landed.
+   */
   def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double,
                   only: Set[String] = AllAxes): Seq[String] = {
     axes(actual, prod, only).flatMap { case (name, a, b, mine, theirs) =>
-      val off = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
+      val off = relativeGap(a, b)
       // Outside the relative band AND more than a few films apart. Either alone
       // misfires: the ratio is noise-dominated on a small corpus, and a raw count is
       // meaningless on a large one.

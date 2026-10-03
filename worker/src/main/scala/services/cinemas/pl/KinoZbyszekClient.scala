@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -101,7 +103,7 @@ object KinoZbyszekClient {
         booking  = Some(ev.attr("data-ticket").trim).filter(_.nonEmpty),
         filmUrl  = Some(ev.attr("abs:data-link")).filter(_.nonEmpty),
         poster   = Some(ev.attr("data-poster").trim).filter(_.nonEmpty),
-        formats  = ScraperParse.FormatToken.get(ev.attr("data-soundtrack").trim.toLowerCase).toList
+        formats  = ScraperParse.FormatToken.get(ev.attr("data-soundtrack").trim.toLowerCase(Locale.ROOT)).toList
       )
   }
 }

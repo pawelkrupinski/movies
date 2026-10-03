@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 import services.movies.TitleNormalizer
 
 /**
@@ -53,7 +55,7 @@ object FilmwebDiffTitleNormalizer {
   def normalize(rawTitle: String, titles: TitleNormalizer): String = {
     // 0. drop a leading programme-prefix banner, if any (see class doc).
     val unprefixed = titles.programmePrefix(rawTitle).fold(rawTitle)(rawTitle.stripPrefix)
-    val lowered = unprefixed.trim.toLowerCase
+    val lowered = unprefixed.trim.toLowerCase(Locale.ROOT)
 
     // 2. drop trailing parenthetical/bracket annotations, then cut at ellipsis.
     val noBrackets = lowered.replaceAll("[\\(\\[].*$", "")

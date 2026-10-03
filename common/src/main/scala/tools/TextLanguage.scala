@@ -1,5 +1,7 @@
 package tools
 
+import java.util.Locale
+
 /**
  * Stopword-ratio guesser over the four deployment languages (Polish, English,
  * German, Spanish) — NOT a general-purpose detector. Exists solely so
@@ -59,7 +61,7 @@ object TextLanguage {
    *  doesn't split a stopword from its ASCII spelling (`się` → `sie`,
    *  `für` → `fur`). Ties keep the first language in [[Stopwords]] order. */
   def detect(text: String): Option[String] = {
-    val tokens = Word.findAllIn(TextNormalization.deburr(text).toLowerCase).toVector
+    val tokens = Word.findAllIn(TextNormalization.deburr(text).toLowerCase(Locale.ROOT)).toVector
     if (tokens.isEmpty) None
     else {
       val (bestLang, bestScore) = Stopwords.map { case (lang, words) => lang -> tokens.count(words.contains) }.maxBy(_._2)

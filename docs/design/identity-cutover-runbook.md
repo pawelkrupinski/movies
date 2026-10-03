@@ -1,5 +1,9 @@
 # Identity cutover runbook (programme phase 5, one country at a time)
 
+> **Historical.** Every country is cut over (gitops ca5ab00), and ea3d56300 removed the switch
+> (`KINOWO_IDENTITY_CUTOVER`), the shadow run and the old identity path's way back: there is no
+> flipping either way any more. What follows is the record of how the cut-over was run.
+
 What the switch does, when a country may take it, how to flip it, how to read it, and how to
 flip it back. The design is `docs/design/identity-resolver.md` §8 ("cutover, per country"), §10,
 §11 and §18 (as landed). Nothing here is enabled anywhere yet: `KINOWO_IDENTITY_CUTOVER` is unset

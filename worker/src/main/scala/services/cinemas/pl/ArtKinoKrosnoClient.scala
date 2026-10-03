@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.nodes.{Element, Node, TextNode}
@@ -129,6 +131,6 @@ object ArtKinoKrosnoClient {
    *  whole day of screenings. The three-letter prefixes are unambiguous across
    *  all twelve Polish months. */
   private def monthOf(word: String): Option[Int] =
-    ScraperParse.PolishMonths.get(word.toLowerCase)
+    ScraperParse.PolishMonths.get(word.toLowerCase(Locale.ROOT))
       .orElse(ScraperParse.polishMonthAbbrev(word.take(3)))
 }

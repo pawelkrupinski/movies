@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 /**
  * Normalises a cinema's raw age-rating / certificate label into the verbatim
  * rating we store, or `None` when the source carries no real rating yet.
@@ -28,13 +30,13 @@ object AgeRating {
 
   def normalize(raw: String): Option[String] =
     Option(raw).map(_.trim).filter(_.nonEmpty)
-      .filterNot(r => Placeholders.contains(r.toLowerCase))
-      .map(_.toUpperCase)
+      .filterNot(r => Placeholders.contains(r.toLowerCase(Locale.ROOT)))
+      .map(_.toUpperCase(Locale.ROOT))
 
   def normalize(raw: Option[String]): Option[String] =
     raw.flatMap(normalize)
 
   /** As `normalize`, but also drops the Polish "no restriction" marker(s) first. */
   def normalizeDroppingNoRestriction(raw: Option[String]): Option[String] =
-    normalize(raw.filterNot(r => NoRestrictionMarkers.contains(r.trim.toLowerCase)))
+    normalize(raw.filterNot(r => NoRestrictionMarkers.contains(r.trim.toLowerCase(Locale.ROOT))))
 }

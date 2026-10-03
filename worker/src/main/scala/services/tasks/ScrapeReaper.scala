@@ -160,6 +160,19 @@ class ScrapeReaper(
     math.max(1, math.ceil(scrapers.size.toDouble / ticksPerWindow).toInt)
   }
 
+  /** Outstanding TASKS needed for the roster to be swept once per freshness window,
+   *  accounting for the spread: a venue occupies budget for the whole `chunkSpread`,
+   *  so holding cadence needs `venuesPerTick x spreadTicks` of them in flight at once,
+   *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
+   *  roster ages without bound, which is not "backing off", it is falling behind. */
+  //
+  // Re-read each tick: it is priced at the TYPICAL venue's measured cost, which moves as
+  // costs are re-measured.
+  private def cadenceTaskFloor: Int = {
+    val spreadTicks = math.max(1L, chunkSpread.value.toMillis / math.max(1L, interval.value.toMillis))
+    cadenceVenuesPerTick * spreadTicks.toInt * typicalVenueCost
+  }
+
   /** The outstanding-task budget actually used: at least enough for the venues that
    *  must be IN FLIGHT AT ONCE to hold cadence.
    *
@@ -174,19 +187,6 @@ class ScrapeReaper(
    *
    *  Derived from the roster, the window and the spread rather than configured, so it
    *  cannot drift from them. The configured value still wins when it is larger. */
-  /** Outstanding TASKS needed for the roster to be swept once per freshness window,
-   *  accounting for the spread: a venue occupies budget for the whole `chunkSpread`,
-   *  so holding cadence needs `venuesPerTick x spreadTicks` of them in flight at once,
-   *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
-   *  roster ages without bound, which is not "backing off", it is falling behind. */
-  //
-  // Re-read each tick: it is priced at the TYPICAL venue's measured cost, which moves as
-  // costs are re-measured.
-  private def cadenceTaskFloor: Int = {
-    val spreadTicks = math.max(1L, chunkSpread.value.toMillis / math.max(1L, interval.value.toMillis))
-    cadenceVenuesPerTick * spreadTicks.toInt * typicalVenueCost
-  }
-
   private def spreadAwareOutstandingBudget: Int =
     if (maxOutstandingScrapeTasks.value == Int.MaxValue) Int.MaxValue
     else math.max(maxOutstandingScrapeTasks.value, cadenceTaskFloor)

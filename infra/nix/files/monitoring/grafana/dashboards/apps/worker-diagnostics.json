@@ -2582,7 +2582,7 @@
     {
       "id": 48,
       "title": "Identity cutover — films and listings per path; canary",
-      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of a CUT-OVER country (KINOWO_IDENTITY_CUTOVER, docs/design/identity-cutover-runbook.md) stored and resolved; path=projection. A country on the old landing/staging/settle path exports none — its films are `kinowo_worker_corpus_movies`. `kinowo_worker_identity_cutover_canary`: the projection's films by relation to the films stored BEFORE it (the shadow diff's relations). On a cutover's first projection that is the old path's films — the old-vs-new canary; afterwards anything but identical is a regrouping about to be written. Panel only; the runbook's acceptance reads it.",
+      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of each country stored and resolved; path=projection. `kinowo_worker_identity_cutover_canary`: the projection's films by relation to the films stored BEFORE it (the shadow diff's relations): anything but identical is a regrouping about to be written. Panel only.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2720,7 +2720,7 @@
     {
       "id": 50,
       "title": "Identity shadow run — live lookup fill, last round",
-      "description": "`kinowo_worker_identity_shadow_lookups`: the shadow run's PACED LIVE LOOKUP FILL (ShadowLookupFill, docs/design/identity-resolver.md §19), after each shadow tick: the resolver's unobserved TMDB questions asked live through the pipeline's own lookup chain, filed only in the observation store. outcome=asked (live requests), answered, failed, deferred (gaps it had no budget left for this round), rate (asks per minute it ran at — below KINOWO_IDENTITY_SHADOW_LOOKUP_RATE while backed off after a 429/5xx). Deferred falling to zero is the fill caught up. Series exist only where KINOWO_IDENTITY_SHADOW_LOOKUPS is on. Panel only; no alert.",
+      "description": "`kinowo_worker_identity_shadow_lookups`: the identity model's PACED LIVE LOOKUP FILL (ShadowLookupFill, docs/design/identity-resolver.md §19), after each round: the TMDB questions the model's store cannot answer, asked live through the pipeline's own lookup chain and filed only in that store. outcome=asked (live requests), answered, failed, deferred (gaps it had no budget left for this round), rate (asks per minute it ran at — below KINOWO_IDENTITY_SHADOW_LOOKUP_RATE while backed off after a 429/5xx). Deferred falling to zero is the fill caught up. Panel only; no alert.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

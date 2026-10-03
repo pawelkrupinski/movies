@@ -71,8 +71,8 @@ lazy val heapDumpScript = Seq(
     ((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh",
 )
 
-// JVM options baked into each dist's conf/application.ini, which the start script reads ahead of
-// the overlay's JAVA_OPTS: JDK 27 held to JDK 25's behaviour (jdk25-parity*.options, which
+// JVM options baked into each dist's conf/application.ini. The start script puts them AFTER the
+// overlay's JAVA_OPTS on the java command line, so for a flag both name these win: JDK 27 held to JDK 25's behaviour (jdk25-parity*.options, which
 // JdkParityOptionsSpec holds to 25's values) and each tier's collector and JIT shape
 // (worker.options, web.options), which the image's AOT cache is trained under.
 def launcherOptions(files: String*) = Seq(
@@ -211,7 +211,7 @@ lazy val testkit = (project in file("testkit"))
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
 //
-// Plain Scala app (no Play): its only inbound HTTP is a Fly health check, so it
+// Plain Scala app (no Play): its only inbound HTTP is a small ops server (/health, /ready, /metrics, /heapdump, /profile), so it
 // skips Play's server/router/Twirl stack — leaner, and a `def main` boot avoids
 // the `extends App` init-order hazards with Mongo/Sentry. It writes through
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo

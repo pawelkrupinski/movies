@@ -42,8 +42,6 @@ final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = Coalesc
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
 
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
-  def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean      = inner.scan(kind)(page)
-  def delete(kind: TmdbKind, ids: Seq[String]): Unit                                 = inner.delete(kind, ids)
 }
 
 object CoalescedTmdbDocuments {

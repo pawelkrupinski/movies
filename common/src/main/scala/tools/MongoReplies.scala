@@ -7,7 +7,7 @@ package tools
  * Int.MaxValue — the reactive driver turns unbounded demand into the batch size — so every reply
  * fills to Mongo's 16 MB message cap, and the driver keeps a read buffer that size pooled for reuse.
  * worker-uk held 32 MB of idle pooled buffers (8/4/2/1 MB) in its live heap on 2026-09-29, from
- * per-film slot reads, observation scans and the identity families returning 9-16 MB replies.
+ * per-film slot reads, the (since removed) observation scans and the identity families returning 9-16 MB replies.
  * Each bulk read asks for a batch sized so a reply stays near a megabyte or two; results are the
  * same, read in more round-trips. `NoUnboundedMongoReadSpec` holds every read to it.
  */

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
@@ -121,7 +123,7 @@ object KinoSokolSokolkaClient {
    *  tokens. Unknown labels (the age tag) yield nothing. */
   private def formatTokens(anchor: Element): List[String] =
     anchor.select("span.mec-label-normal").asScala.toList
-      .flatMap(l => ScraperParse.FormatToken.get(l.text.trim.toLowerCase))
+      .flatMap(l => ScraperParse.FormatToken.get(l.text.trim.toLowerCase(Locale.ROOT)))
       .distinct
 
   /** The screening start time off a MEC detail page. The "Godzina" row renders

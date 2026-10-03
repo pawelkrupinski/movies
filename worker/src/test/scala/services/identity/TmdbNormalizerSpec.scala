@@ -14,8 +14,6 @@ class TmdbNormalizerSpec extends AnyFlatSpec with Matchers with LoneElement {
   private object Unreachable extends TmdbDocuments {
     def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = throw new IllegalStateException("store unreachable")
     def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit      = throw new IllegalStateException("store unreachable")
-    def scan(kind: TmdbKind)(page: Seq[(String, Option[Long])] => Unit): Boolean = false
-    def delete(kind: TmdbKind, ids: Seq[String]): Unit = ()
   }
 
   // TMDB's v3 key rides the query string; the worker's log is kept for 14 days.

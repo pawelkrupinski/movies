@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 import services.movies.TrailerEmbed
@@ -107,10 +109,10 @@ object VueCinemasPlatformParser {
     val attributes   = (session \ "attributes").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
     val presentation = attributes
       .filter(a => (a \ "attributeType").asOpt[String].exists(_.startsWith(SessionAttributePrefix)))
-      .flatMap(a => (a \ "value").asOpt[String]).map(_.toLowerCase).toSet
+      .flatMap(a => (a \ "value").asOpt[String]).map(_.toLowerCase(Locale.ROOT)).toSet
     val subtitled = presentation.contains(SubtitledValue) || attributes.exists(a =>
       (a \ "attributeType").asOpt[String].contains(LanguageAttributeType) &&
-        (a \ "name").asOpt[String].exists(_.toLowerCase.contains(SubtitleWord)))
+        (a \ "name").asOpt[String].exists(_.toLowerCase(Locale.ROOT).contains(SubtitleWord)))
     val tokens = FormatTokens.collect { case (value, token) if presentation.contains(value) => token }
     (if (subtitled) tokens :+ SubtitledToken else tokens).distinct
   }

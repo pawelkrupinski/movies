@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import java.util.Locale
+
 import models._
 import tools.{HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
@@ -44,7 +46,7 @@ class RialtoClient(http: HttpFetch
   private val NonFilmTitlePatterns = Seq("bilet podarunkowy", "karta podarunkowa", "voucher")
 
   private def isNonFilmEntry(title: String): Boolean =
-    NonFilmTitlePatterns.exists(title.toLowerCase.contains)
+    NonFilmTitlePatterns.exists(title.toLowerCase(Locale.ROOT).contains)
 
   private case class FilmEntry(
     title:          String,
@@ -71,7 +73,7 @@ class RialtoClient(http: HttpFetch
       }
 
     filmEntries
-      .groupBy(_.title.toUpperCase)
+      .groupBy(_.title.toUpperCase(Locale.ROOT))
       .values
       .flatMap { group =>
         val primary      = group.head
@@ -125,7 +127,7 @@ class RialtoClient(http: HttpFetch
       val countries: Seq[String] = Option(document.selectFirst("span.text")).toSeq.flatMap { span =>
         val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
         val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
-        lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
+        lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase(Locale.ROOT).startsWith("reż"))
           .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
           .map(_.stripSuffix(",").trim)
           .filter(_.nonEmpty)
@@ -176,7 +178,7 @@ class RialtoClient(http: HttpFetch
             // countries). Strip the optional trailing comma left from the
             // "..Niemcy, 2026" form.
             val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
-            val cs = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
+            val cs = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase(Locale.ROOT).startsWith("reż"))
               .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
               .map(_.stripSuffix(",").trim)
               .filter(_.nonEmpty)
@@ -234,7 +236,7 @@ object RialtoClient {
     if (colonIndex > 0 && colonIndex < 30) {
       val prefix = title.substring(0, colonIndex)
       if (prefix.equalsIgnoreCase("Filmowy Klub Seniora")) title
-      else if (prefix != prefix.toUpperCase) title.substring(colonIndex + 2) else title
+      else if (prefix != prefix.toUpperCase(Locale.ROOT)) title.substring(colonIndex + 2) else title
     } else title
   }
 

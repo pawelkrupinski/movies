@@ -1,5 +1,7 @@
 package services.cinemas.uk
 
+import java.util.Locale
+
 import models._
 import play.api.libs.json._
 import services.cinemas.common.AgeRating
@@ -197,7 +199,7 @@ object OdeonParser {
    *  showtime pill. Substring-matched so a decorated variant ("IMAX with Laser",
    *  "Dolby Atmos") still resolves. */
   def formatToken(rawName: String): Option[String] = {
-    val n = rawName.toLowerCase.trim
+    val n = rawName.toLowerCase(Locale.ROOT).trim
     if (n.isEmpty) None
     else if (n.contains("imax")) Some("IMAX")
     else if (n.contains("screenx")) Some("ScreenX")
@@ -222,7 +224,7 @@ object OdeonParser {
   /** Lower-case, `&`→`and`, non-alphanumerics collapsed to single hyphens —
    *  the `slugify(title, {strict:true})` shape Odeon's own film-page URLs use. */
   private def slugify(title: String): String =
-    title.toLowerCase
+    title.toLowerCase(Locale.ROOT)
       .replace("&", " and ")
       .replaceAll("[^a-z0-9]+", "-")
       .replaceAll("^-+|-+$", "")
