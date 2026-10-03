@@ -39,10 +39,13 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
 
   /** Does anything the listing PUBLISHED weigh against the film — an own-fact measure the listing
    *  did not leave missing, with a negative weight? */
-  def speaksAgainst(scored: Scored): Boolean =
-    calibration.contributions(ListingFilm, scored.measures).exists { case (name, weight) =>
-      !Priors(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing])
-    }
+  def speaksAgainst(scored: Scored): Boolean = against(scored).nonEmpty
+  /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
+  def against(scored: Scored): Seq[String] = {
+    val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
+      if !Priors(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
+    if (names.isEmpty) Nil else calibration.evidence(ListingFilm, scored.measures).filter(line => names(line.takeWhile(_ != '=')))
+  }
 
   /** Do the listing's own facts favour `best` over `other`? Its own evidence — without the title
    *  when the title names the two by disjoint pieces ([[IdentityMeasures.namedApart]]: "Lalka

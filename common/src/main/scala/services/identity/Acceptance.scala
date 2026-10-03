@@ -13,7 +13,7 @@ import services.resolution.YearWindow
 private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   val weights = new EvidenceWeights(calibration)
-  import weights.{factsAnswered, favours, facts, fitsBetter, own, priorsLent, speaksAgainst}
+  import weights.{against, factsAnswered, favours, facts, fitsBetter, own, priorsLent, speaksAgainst}
 
   private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filterNot(scored => scored.denied || scored.suggestedOnly)
 
@@ -21,28 +21,43 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private final case class Rule(name: String, accepts: Seq[Scored] => Verdict)
 
   /** A rule's verdict: the film it accepts, or the first of its conditions that refused — the identity trace's
-   *  `refused:<rule>:<why>`, so a listing no rule took says which condition stopped each. */
-  private type Verdict = Either[String, Accepted]
-  private def need(holds: Boolean, refusal: => String): Either[String, Unit] = if (holds) Right(()) else Left(refusal)
-  private def one[A](found: Seq[A], none: => String, many: => String): Either[String, A] = found match {
+   *  `refused:<rule>:<why>`, so a listing no rule took says which condition stopped each — with the candidate the
+   *  rule was weighing when it did and what that candidate's evidence said ([[Acceptance.Refused]]). */
+  private type Verdict = Either[Acceptance.Refused, Accepted]
+  import Acceptance.Refused
+  private def need(holds: Boolean, refusal: => String): Either[Refused, Unit] = if (holds) Right(()) else Left(Refused(refusal))
+  /** [[need]], naming the candidate it refused and why its evidence did not hold. */
+  private def needOf(holds: Boolean, refusal: => String, about: Scored, detail: => String = ""): Either[Refused, Unit] =
+    if (holds) Right(()) else Left(Refused(refusal, Some(about.candidate.tmdbId), detail))
+  /** No candidate of `found` may stand: the first that does refuses `about`, named in the detail. */
+  private def noneOf(found: Option[Scored], refusal: => String, about: Scored): Either[Refused, Unit] =
+    found.fold[Either[Refused, Unit]](Right(()))(other => Left(Refused(refusal, Some(about.candidate.tmdbId), Acceptance.named(other))))
+  private def one(found: Seq[Scored], none: => String, many: => String, noneDetail: => String = ""): Either[Refused, Scored] = found match {
     case Seq(only) => Right(only)
-    case Seq()     => Left(none)
-    case _         => Left(many)
+    case Seq()     => Left(Refused(none, None, noneDetail))
+    case _         => Left(Refused(many, None, found.map(Acceptance.named).mkString("; ")))
   }
+  /** What a listing's facts leave a director's rule to go on: its credit, or that it credits nobody. */
+  private def credited(ranked: Seq[Scored]): String =
+    ranked.headOption.map(_.listing.directors).filter(_.nonEmpty).fold("the listing credits no director")(names => s"credits ${names.mkString(", ")}")
+  private def firstHit(ranked: Seq[Scored]): String = ranked.find(_.rank.contains(1)).fold("its search returned nothing")(hit => s"first hit ${Acceptance.named(hit)}")
+  private def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
   /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing. */
   private def classAccepted(scored: Scored, measures: Map[String, IdentityMeasures.Measure]): Verdict =
-    calibration.classProbability(ListingFilm, measures).toRight("no evidence class measured for it")
+    calibration.classProbability(ListingFilm, measures).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
       .map(classProbability => scored -> math.max(scored.probability, classProbability))
-      .filterOrElse(accepted => calibration.showsRatings(accepted._2), "below the rating cut")
+      .filterOrElse(accepted => calibration.showsRatings(accepted._2), Refused("below the rating cut", Some(scored.candidate.tmdbId),
+        cut(math.max(scored.probability, calibration.classProbability(ListingFilm, measures).getOrElse(0.0)))))
 
   /** The first of `rules` to accept, with its name. */
   private def firstOf(ranked: Seq[Scored], rules: Seq[Rule]): Option[(Accepted, String)] =
     rules.iterator.map(rule => rule.accepts(ranked).map(_ -> rule.name)).collectFirst { case Right(taken) => taken }
 
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
-  def refusals(ranked: Seq[Scored]): Seq[(String, String)] =
-    if (billsBothItsWorks(ranked)) Seq("alone" -> "bills two works its facts both fit")
-    else aloneRules.flatMap(rule => rule.accepts(ranked).left.toOption.map(rule.name -> _))
+  def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
+    if (billsBothItsWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works its facts both fit"))
+    else aloneRules.flatMap(rule => rule.accepts(ranked).left.toOption.map(refused =>
+      DecisionTrace.Refusal(rule.name, refused.why, refused.film, refused.detail)))
 
   private val aloneRules = Seq(Rule("sole-work", soleWorkWhy), Rule("favoured-calibrated", favouredCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("segment-top-hit", segmentTopHitWhy), Rule("sole-result", soleResultWhy), Rule("imdb-suggested", imdbSuggestedWhy),
@@ -125,12 +140,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def topHitWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
-      any  <- ranked.headOption.toRight("no candidate")
-      id   <- one(IdentityMeasures.exactTopHits(any.listing, ranked.map(scored => (scored.candidate.tmdbId, scored.candidate.film, scored.rank))),
-                "no film its whole title names is its search's first hit", "two exact top hits")
-      best <- eligible.find(_.candidate.tmdbId == id).toRight("its exact top hit is denied")
-      _    <- need(!speaksAgainst(best), "a published fact weighs against it")
-      _    <- need(eligible.forall(rival => (rival eq best) || !fitsBetter(rival, best)), "a rival fits its facts better")
+      any  <- ranked.headOption.toRight(Refused("no candidate"))
+      id   <- IdentityMeasures.exactTopHits(any.listing, ranked.map(scored => (scored.candidate.tmdbId, scored.candidate.film, scored.rank))) match {
+                case Seq(only) => Right(only)
+                case Seq()     => Left(Refused("no film its whole title names is its search's first hit"))
+                case ids       => Left(Refused("two exact top hits", None, ids.mkString("; ")))
+              }
+      best <- eligible.find(_.candidate.tmdbId == id).toRight(Refused("its exact top hit is denied", Some(id),
+                ranked.find(_.candidate.tmdbId == id).flatMap(_.denial).getOrElse("")))
+      _    <- needOf(!speaksAgainst(best), "a published fact weighs against it", best, against(best).mkString(" "))
+      _    <- noneOf(eligible.find(rival => (rival ne best) && fitsBetter(rival, best)), "a rival fits its facts better", best)
       taken <- classAccepted(best, best.measures)
     } yield taken
   }
@@ -145,21 +164,23 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def segmentTopHitWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
-      any    <- ranked.headOption.toRight("no candidate")
+      any    <- ranked.headOption.toRight(Refused("no candidate"))
       // a one-word piece names no film here, rival or taken: "Inna Mamusia - maraton" is no "Maraton"
       scored <- one(ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
                   IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film))), "the title names no film", "the title names two films")
-      _      <- need(!scored.denied, "the film it names is denied")
-      _      <- need(scored.rank.contains(1), "not its search's first hit")
-      _      <- need(scored.category("title").contains("segment"), "not named by a piece of the title")
+      _      <- needOf(!scored.denied, "the film it names is denied", scored, scored.denial.getOrElse(""))
+      _      <- needOf(scored.rank.contains(1), "not its search's first hit", scored, scored.rank.fold("not ranked")(rank => s"ranked $rank"))
+      _      <- needOf(scored.category("title").contains("segment"), "not named by a piece of the title", scored,
+                  s"title=${scored.category("title").getOrElse("absent")}")
       _      <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
-      _      <- need(IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film), "its piece cannot stand for the whole title")
+      _      <- needOf(IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film), "its piece cannot stand for the whole title", scored)
       // a year the title states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
-      _      <- need(scored.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency), "the title dates another year")
+      _      <- needOf(scored.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency), "the title dates another year",
+                  scored, scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f"))
       // Read as the bare title its piece is: the banner beside it is no evidence against the film.
       bare    = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
-      _      <- need(!speaksAgainst(bare), "a published fact weighs against it")
-      _      <- need(eligible.forall(rival => (rival eq scored) || !fitsBetter(rival, bare)), "a rival fits its facts better")
+      _      <- needOf(!speaksAgainst(bare), "a published fact weighs against it", scored, against(bare).mkString(" "))
+      _      <- noneOf(eligible.find(rival => (rival ne scored) && fitsBetter(rival, bare)), "a rival fits its facts better", scored)
       taken  <- classAccepted(scored, bare.measures)
     } yield taken
   }
@@ -173,7 +194,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  so). Read as a title the film answers to, nothing the listing publishes may speak against it, no rival may
    *  fit better, and a double bill is neither film. */
   def imdbSuggested(ranked: Seq[Scored]): Option[Accepted] = imdbSuggestedWhy(ranked).toOption
-  private def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = ranked.headOption.toRight("no candidate").flatMap { any =>
+  private def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = ranked.headOption.toRight(Refused("no candidate")).flatMap { any =>
     val eligible  = ranked.filterNot(_.denied)
     val suggested = eligible.filter(_.imdb.isDefined)
     def sameDirector(scored: Scored) = scored.category("director").contains("same_person")
@@ -199,12 +220,13 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- need(suggested.nonEmpty, "IMDb suggests none of its candidates")
       _      <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
-      _      <- need(!searchNamesAnother(scored), "TMDB ranks another film the title names above it")
-      _      <- need(!otherInstalment(scored), "the title numbers another instalment")
+      _      <- noneOf(eligible.find(rival => (rival ne scored) && rival.titleNamesIt && rival.rank.exists(r => scored.rank.forall(r < _))),
+                  "TMDB ranks another film the title names above it", scored)
+      _      <- needOf(!otherInstalment(scored), "the title numbers another instalment", scored, s"numeral=${scored.category("numeral").getOrElse("")}")
       titled  = scored.copy(measures = scored.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
                   "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
-      _      <- need(!speaksAgainst(titled), "a published fact weighs against it")
-      _      <- need(eligible.forall(rival => (rival eq scored) || !fitsBetter(rival, titled)), "a rival fits its facts better")
+      _      <- needOf(!speaksAgainst(titled), "a published fact weighs against it", scored, against(titled).mkString(" "))
+      _      <- noneOf(eligible.find(rival => (rival ne scored) && fitsBetter(rival, titled)), "a rival fits its facts better", scored)
       taken  <- classAccepted(scored, titled.measures)
     } yield taken
   }
@@ -229,16 +251,19 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
-      any   <- ranked.headOption.toRight("no candidate")
-      sole  <- one(eligible.filter(_.soleResult), "no search of its returned a single film", "its searches returned different single films")
-      _     <- need(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film")
-      _     <- need(!contradicted(sole), "a published fact contradicts it")
+      any   <- ranked.headOption.toRight(Refused("no candidate"))
+      sole  <- one(eligible.filter(_.soleResult), "no search of its returned a single film", "its searches returned different single films",
+                 s"${ranked.count(_.rank.isDefined)} film(s) found by its searches")
+      _     <- needOf(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film", sole,
+                 s"title=${sole.category("title").getOrElse("absent")}")
+      _     <- needOf(!contradicted(sole), "a published fact contradicts it", sole, contradiction(sole))
       _     <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
-      _     <- need(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
+      _     <- needOf(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
                    IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),
-                 "its piece cannot stand for the whole title")
-      _     <- need(!eligible.exists(other => (other ne sole) && other.titleNamesIt), "the title names another film")
-      _     <- need(!sole.category("numeral").exists(IdentityMeasures.OtherInstalment), "the title numbers another instalment")
+                 "its piece cannot stand for the whole title", sole)
+      _     <- noneOf(eligible.find(other => (other ne sole) && other.titleNamesIt), "the title names another film", sole)
+      _     <- needOf(!sole.category("numeral").exists(IdentityMeasures.OtherInstalment), "the title numbers another instalment", sole,
+                 s"numeral=${sole.category("numeral").getOrElse("")}")
       titled = sole.copy(measures = sole.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
                  "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
       taken <- classAccepted(sole, titled.measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" })
@@ -250,8 +275,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def calibrated(ranked: Seq[Scored]): Option[Accepted] = calibratedWhy(ranked).toOption
   private def calibratedWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
-    eligible.headOption.toRight("no eligible candidate").map(best => best -> priorsLent(best, eligible))
-      .filterOrElse(accepted => calibration.showsRatings(accepted._2), "below the rating cut")
+    eligible.headOption.toRight(Refused("no eligible candidate", None, ranked.headOption.flatMap(_.denial).fold("")(denial => s"best denied: $denial")))
+      .map(best => best -> priorsLent(best, eligible))
+      .flatMap { case accepted @ (best, probability) =>
+        Either.cond(calibration.showsRatings(probability), accepted, Refused("below the rating cut", Some(best.candidate.tmdbId), cut(probability))) }
   }
 
   /** [[calibrated]], when the listing's own facts also favour it over the runner-up. */
@@ -260,16 +287,17 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     val eligible = eligibleOf(ranked)
     for {
       taken <- calibratedWhy(ranked)
-      _     <- need(eligible.lift(1).forall(favours(taken._1, _)), "its own facts do not favour it over the runner-up")
-      _     <- need(!outnamed(taken._1, eligible), "its title sits inside a closer record")
+      _     <- noneOf(eligible.lift(1).filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
+      _     <- noneOf(closerThan(taken._1, eligible), "its title sits inside a closer record", taken._1)
     } yield taken
   }
 
   /** Is there an eligible record the listing's title sits inside ([[titledCloser]]) whose answered
    *  facts `best`'s do not beat? Then `best`, which the title only overlaps, is not the listing's
    *  film on that evidence — on its own or pooled. */
-  private def outnamed(best: Scored, eligible: Seq[Scored]): Boolean =
-    eligible.exists(closer => (closer ne best) && titledCloser(closer, best) && factsAnswered(best, closer) <= factsAnswered(closer, closer))
+  private def outnamed(best: Scored, eligible: Seq[Scored]): Boolean = closerThan(best, eligible).isDefined
+  private def closerThan(best: Scored, eligible: Seq[Scored]): Option[Scored] =
+    eligible.find(closer => (closer ne best) && titledCloser(closer, best) && factsAnswered(best, closer) <= factsAnswered(closer, closer))
 
   /** Does `closer`'s record hold the listing's title, or name a whole piece of it
    *  ([[IdentityMeasures.ContainingRelations]]), while `other`'s only overlaps it, names it by no
@@ -300,13 +328,13 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     for {
       taken <- calibratedWhy(ranked)
       best   = taken._1
-      _     <- need(!outnamed(best, eligibleOf(ranked)), "its title sits inside a closer record")
-      _     <- need(eligibleOf(ranked).forall(rival => (rival eq best) || {
+      _     <- noneOf(closerThan(best, eligibleOf(ranked)), "its title sits inside a closer record", best)
+      _     <- noneOf(eligibleOf(ranked).find(rival => (rival ne best) && {
                  val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
                  val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
                  val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
-                 !(alike && facts(rival) > facts(best)) && !(apart && facts(rival) >= facts(best))
-               }), "a film the title names alike fits its facts better")
+                 (alike && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
+               }), "a film the title names alike fits its facts better", best)
     } yield taken
 
   /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
@@ -323,6 +351,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       case Seq(one)    => Some(Some(one -> one.probability))
       case first +: second +: _ => Some(Option.when(own(first) > own(second))(first -> first.probability))
     }
+
+  /** What [[contradicted]] read: the year distance and the runtime delta the listing published. */
+  private def contradiction(scored: Scored): String =
+    (scored.number("year.distance").map(d => f"year.distance=$d%.0f") ++ scored.number("runtime.delta").map(d => f"runtime.delta=$d%.0f")).mkString(" ")
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
@@ -345,9 +377,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     def billsWork(scored: Scored) = scored.category("title").contains("fragment") && sharesItsWork(scored)
     for {
       work <- one(eligible.filter(scored => scored.rank.contains(1) && (isWork(scored) || billsWork(scored)) && !contradicted(scored)),
-                "no first hit is the title's work", "two first hits are the title's work")
-      _    <- need(!eligible.exists(other => (other ne work) && (other.titleNamesIt || (!isWork(work) && sharesItsWork(other)))),
-                "the title names another film")
+                "no first hit is the title's work", "two first hits are the title's work", firstHit(ranked))
+      _    <- noneOf(eligible.find(other => (other ne work) && (other.titleNamesIt || (!isWork(work) && sharesItsWork(other)))),
+                "the title names another film", work)
     } yield work -> work.probability
   }
 
@@ -367,7 +399,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
     eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored)) && !contradicted(scored)) match {
-      case found => one(found, "no film of its credited director shares its work", "two films of its director share its work").map(f => f -> f.probability)
+      case found => one(found, "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
     }
   }
 
@@ -380,7 +412,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def directorsTitleWhy(ranked: Seq[Scored]): Verdict =
     one(eligibleOf(ranked).filter(candidate => candidate.category("title").contains("exact") &&
       IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate)),
-      "no film of its exact title by its credited director", "two films of its title by its director").map(f => f -> f.probability)
+      "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(f => f -> f.probability)
 
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
    *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts
@@ -392,7 +424,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     one(eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
       candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= YearWindow.PublishedAdjacency) && !contradicted(candidate) &&
       !candidate.category("director").contains("different")),
-      "no film of its title from the year its title dates", "two films of its title from that year").map(f => f -> f.probability)
+      "no film of its title from the year its title dates", "two films of its title from that year",
+      if (ranked.exists(_.number("titleYear.delta").isDefined)) "" else "the title dates no year").map(f => f -> f.probability)
 
   /** Is the listing's title, years aside, the candidate's own title or original title — or that
    *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
@@ -426,9 +459,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     for {
       house <- one(eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate)),
                  "no record bills its work under its house", "two records bill its work under its house")
-      _     <- need(!eligible.exists(other => (other ne house) &&
+      _     <- noneOf(eligible.find(other => (other ne house) &&
                  (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
-                   (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well")
+                   (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
     } yield house -> house.probability
   }
 
@@ -463,6 +496,14 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 }
 
 private[identity] object Acceptance {
+  /** The condition that stopped a rule (`why`, a fixed phrase: the trace's rule id), the candidate it was weighing
+   *  when it did, and what that candidate's evidence said there — the facts against it, its probability against the
+   *  cut, the rival it lost to. */
+  final case class Refused(why: String, film: Option[Int] = None, detail: String = "")
+  /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
+  def named(scored: Scored): String =
+    s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"
+
   /** How much as ITS OWN a title relation names a record: by the record's own title or original
    *  title ([[NamedAsItsOwn]]), by one of the alternative titles the database files beside them,
    *  or not whole (0). */

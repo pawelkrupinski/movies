@@ -60,8 +60,9 @@ final case class IdentityCalibration(version: String,
       .map { case (s, w) => f"$s=${render(measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
 
   /** Is this probability high enough to show the film's ratings? */
-  def showsRatings(probability: Double): Boolean =
-    probability >= model(IdentityMeasures.ListingFilm).thresholds("showRatings").probability
+  def showsRatings(probability: Double): Boolean = probability >= ratingCut
+  /** The probability a listing's film must reach to show its ratings — the cut an own match is accepted at. */
+  def ratingCut: Double = model(IdentityMeasures.ListingFilm).thresholds("showRatings").probability
 
   /** Is this probability low enough that the pair must never be one film? */
   def forbidsLink(scope: String, probability: Double): Boolean =

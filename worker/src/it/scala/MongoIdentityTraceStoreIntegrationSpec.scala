@@ -18,13 +18,16 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
   private def trace(n: Int, family: String, rules: Seq[String]) =
     ListingTrace(key(n), family, Some(100 + n % 2), "OwnMatch", rules, None, Seq("director=same_person +4.22", "title=exact +1.50"), Some(100 + n % 2))
 
+  private val Refused = DecisionTrace.Refusal("favoured-calibrated", "below the rating cut", Some(49258), "26.6% < 40.0%")
+
   "the trace store" should "answer a rule's listings and a film's listings' rules through its indexes, and replace a family's traces" in {
     val client = MongoClient(mongoTarget.uri.value)
     val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "traces"))
     try {
       val store = new MongoIdentityTraceStore(db)
       store.replace(Set.empty, () => Seq(trace(1, "f1", Seq("accept:imdb-suggested", "title:xtra-pokaz-filmu")),
-        trace(2, "f1", Seq("join:same-film")), trace(3, "f3", Seq("accept:imdb-suggested"))))
+        trace(2, "f1", Seq("join:same-film")), trace(3, "f3", Seq("accept:imdb-suggested")),
+        trace(4, "f4", Seq(Refused.ruleId)).copy(film = None, refusals = Seq(Refused))))
       store.flush()
       val c = db.getCollection[Document](MongoIdentityTraceStore.Collection)
       def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), 30.seconds).map(_.toBsonDocument.getString("_id").getValue).toSet
@@ -46,7 +49,9 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       reads.byFilm(101, 10).map(_.listing).toSet shouldBe Set(key(1), key(3))
       reads.byTitle("FILM 2", 10).map(_.listing) shouldBe Seq(key(2))
       reads.byRule("accept:imdb-suggested", 10).find(_.listing == key(1)).map(_.evidence) shouldBe Some(Seq("director=same_person +4.22", "title=exact +1.50"))
-      reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1)
+      // why a listing no rule took was refused, by each rule: the condition, the candidate weighed, what it said
+      reads.byRule(Refused.ruleId, 10).map(_.refusals) shouldBe Seq(Seq(Refused))
+      reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1, Refused.ruleId -> 1)
       // re-resolving family f1 replaces its traces: listing 2 left it
       store.replace(Set("f1"), () => Seq(trace(1, "f1", Seq("accept:sole-result"))))
       store.flush()

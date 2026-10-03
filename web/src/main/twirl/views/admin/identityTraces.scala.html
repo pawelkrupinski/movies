@@ -23,6 +23,7 @@
     a.rule { display: inline-block; margin: 0 6px 2px 0; }
     .muted, .empty { color: #666; }
     .veto { color: #f0ad4e; }
+    .refusal { margin-top: 2px; }
     .form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
     input { font: inherit; background: #000; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; }
     button { font: inherit; cursor: pointer; background: #1c1c1c; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 9px; }
@@ -33,7 +34,8 @@
   <div class="sub">
     Which rules decided each listing, and by how much: the rule that accepted its film, the links that joined it,
     the cannot-links that kept others apart, a veto and the member that cast it, the title rules its title took —
-    and every measure against the film it was weighed on, with its weight. <a href="/admin/identity">Back to identity</a>.
+    and every measure against the film it was weighed on, with its weight. A listing no rule took shows each rule's
+    refusal: the condition that stopped it, the candidate it weighed and what that candidate's evidence said. <a href="/admin/identity">Back to identity</a>.
   </div>
   <form class="form" method="get">
     <input name="title" placeholder="listing title contains…" value="@page.title.getOrElse("")" size="40">
@@ -52,7 +54,8 @@
           <td>@t.listing.venue — @t.listing.rawTitle</td>
           <td>@t.film.fold(Html("<span class=\"muted\">none</span>"))(id => Html(s"""<a href="?film=$id">tmdb $id</a>"""))</td>
           <td>@t.basis @t.vetoedBy.map { by => <div class="veto">vetoed by @by</div> }</td>
-          <td>@for(rule <- t.rules) { @ruleLink(rule) }</td>
+          <td>@for(rule <- t.rules if t.refusals.isEmpty || !rule.startsWith("refused:")) { @ruleLink(rule) }
+            @for(r <- t.refusals) { <div class="refusal">@ruleLink(r.ruleId)@r.film.map { id => <a href="?film=@id">tmdb @id</a> }@if(r.detail.nonEmpty) { <span class="muted">— @r.detail</span> }</div> }</td>
           <td>@t.weighedFilm.map { id => <div class="muted">against tmdb @id</div> }@for(e <- t.evidence) { <div>@e</div> }</td>
         </tr>
       }

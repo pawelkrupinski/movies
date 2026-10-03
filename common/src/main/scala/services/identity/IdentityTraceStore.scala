@@ -14,9 +14,12 @@ import scala.jdk.CollectionConverters._
  *  family: the record `identity_traces` keeps per listing, so a listing's rules and a rule's listings are each
  *  one indexed read. Never read by the resolver, its take-up or the web: written beside the families only.
  *  @param rules   rule ids by kind — `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, `title:`, `format:`
- *  @param vetoedBy the member listing whose own evidence denied the cluster's best film, when one did */
+ *  @param vetoedBy the member listing whose own evidence denied the cluster's best film, when one did
+ *  @param refusals for a listing no rule took alone, each rule's refusal: its condition, the candidate it weighed
+ *                  and what that candidate's evidence said — the detail behind each `refused:` rule id */
 final case class ListingTrace(listing: ListingKey, family: String, film: Option[Int], basis: String, rules: Seq[String],
-                              vetoedBy: Option[String], evidence: Seq[String] = Nil, weighedFilm: Option[Int] = None)
+                              vetoedBy: Option[String], evidence: Seq[String] = Nil, weighedFilm: Option[Int] = None,
+                              refusals: Seq[DecisionTrace.Refusal] = Nil)
 
 object ListingTrace {
   /** The traces of `family`'s listings: each decision's rules for its members ([[DecisionTrace.rulesOf]]), and
@@ -29,7 +32,7 @@ object ListingTrace {
         ListingTrace(key, familyId, decision.film, decision.basis.toString, decision.trace.rulesOf(key) ++ titleRules(key),
           decision.trace.vetoed.flatMap(_.by),
           calibration.zip(node).fold(Seq.empty[String]) { case (c, n) => c.evidence(IdentityMeasures.ListingFilm, n.measures) },
-          node.flatMap(_.candidate))
+          node.flatMap(_.candidate), node.fold(Seq.empty[DecisionTrace.Refusal])(_.refusals))
       }
     }
 }
@@ -140,7 +143,12 @@ object MongoIdentityTraceStore {
     def int(name: String)     = Option(d.get(name)).filter(_.isInt32).map(_.asInt32.getValue)
     ListingTrace(ListingKeyBson.decode(d.getDocument("listing")), d.getString("family").getValue, int("film"),
       d.getString("basis").getValue, strings("rules"), Option(d.get("vetoedBy")).filter(_.isString).map(_.asString.getValue),
-      strings("evidence"), int("weighedFilm"))
+      strings("evidence"), int("weighedFilm"),
+      Option(d.get("refusals")).filter(_.isArray).fold(Seq.empty[DecisionTrace.Refusal])(_.asArray.getValues.asScala.toSeq.map { value =>
+        val r = value.asDocument
+        DecisionTrace.Refusal(r.getString("rule").getValue, r.getString("why").getValue,
+          Option(r.get("film")).filter(_.isInt32).map(_.asInt32.getValue), Option(r.get("detail")).filter(_.isString).fold("")(_.asString.getValue))
+      }))
   }
 
   private[identity] def encode(trace: ListingTrace): BsonDocument = new BsonDocument()
@@ -154,4 +162,8 @@ object MongoIdentityTraceStore {
     // why: each measure of the listing against `weighedFilm` (its decision's film, else its best candidate), with its weight
     .append("weighedFilm", trace.weighedFilm.fold[BsonValue](BsonNull())(BsonInt32(_)))
     .append("evidence", BsonArray.fromIterable(trace.evidence.map(BsonString(_))))
+    // why not: each rule's refusal of a listing no rule took — its condition, the candidate it weighed, what that said
+    .append("refusals", BsonArray.fromIterable(trace.refusals.map(r => new BsonDocument()
+      .append("rule", BsonString(r.rule)).append("why", BsonString(r.why))
+      .append("film", r.film.fold[BsonValue](BsonNull())(BsonInt32(_))).append("detail", BsonString(r.detail)))))
 }

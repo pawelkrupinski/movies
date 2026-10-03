@@ -66,8 +66,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       val weighed  = film.flatMap(id => own.find(_.candidate.tmdbId == id)).orElse(own.headOption)
       // Computed here, not when the trace is written: a thunk would keep `own` — every scored candidate of the
       // node — alive until the trace writer got to it, and a restore hands the whole corpus over at once.
-      val refusals = if (accepted.isDefined) Nil
-                     else acceptance.refusals(own).map { case (rule, why) => s"refused:$rule:${DecisionTrace.id(why)}" }
+      val refusals = if (accepted.isDefined) Nil else acceptance.refusals(own)
       val traced   = DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, IdentityMeasures.Measure])(_.measures),
         weighed.map(_.candidate.tmdbId), refusals)
       node.listings.map(_.key -> traced)

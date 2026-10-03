@@ -34,11 +34,14 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     val store = new InMemoryIdentityTraceStore
     val brides = ListingKey.Published("Metrograph", "Brides of Dracula", None, Seq("Terence Fisher"))
     val camino = ListingKey.Published("Helios Bełchatów", "Camino dla opornych - KNT", None, Nil)
+    val quill  = ListingKey.Published("Goli Theater Goch", "Ein Hund namens Quill", Some(2004), Seq("Yōichi Sai"))
+    val quillRefused = services.identity.DecisionTrace.Refusal("favoured-calibrated", "below the rating cut", Some(49258), "26.6% < 40.0%")
     store.replace(Set.empty, () => Seq(
       ListingTrace(brides, "f1", Some(23220), "OwnMatch", Seq("accept:favoured-calibrated", "join:same-film"), None,
         Seq("director=same_person +4.22", "title=exact +1.50"), Some(23220)),
       ListingTrace(camino, "f2", None, "Vetoed", Seq("veto:learned-listing-film-probability-below-the-cannot-link-cut"), Some("'Camino dla opornych - KNT'"),
-        Seq("originalTitle=fragment -4.53"), Some(1404604))))
+        Seq("originalTitle=fragment -4.53"), Some(1404604)),
+      ListingTrace(quill, "f3", None, "BelowThreshold", Seq(quillRefused.ruleId), None, Nil, Some(49258), Seq(quillRefused))))
     val c = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository,
       new Pins(new InMemoryPinStore, Now), Shadow, store)
     val byRule = contentAsString(c.traces(Some("accept:favoured-calibrated"), None, None).apply(admin))
@@ -49,6 +52,11 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
     val byTitle = contentAsString(c.traces(None, None, Some("camino")).apply(admin))
     byTitle should include ("vetoed by")
     byTitle should include ("originalTitle=fragment -4.53")
+    // a listing no rule took: each rule's refusal with the candidate it weighed and what that said
+    val refused = contentAsString(c.traces(None, None, Some("quill")).apply(admin))
+    refused should include ("refused:favoured-calibrated:below-the-rating-cut")
+    refused should include ("tmdb 49258")
+    refused should include ("26.6% &lt; 40.0%")
     val counts = contentAsString(c.traces(None, None, None).apply(admin))
     counts should include ("accept:favoured-calibrated")
     counts should include ("join:same-film")

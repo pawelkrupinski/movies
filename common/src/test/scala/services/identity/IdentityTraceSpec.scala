@@ -51,6 +51,16 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       rules should contain ("refused:exact-top-hit:no-evidence-class-measured-for-it")
       rules.count(_.startsWith("refused:")) shouldBe 10
     }
+    // and what stopped it, about which candidate: the rival it lost to, the two films its title names, the facts it lacks
+    val refusals = r.decisionOf(bare.key).trace.nodes(bare.key).refusals.map(refusal => refusal.rule -> refusal).toMap
+    withClue(refusals.values.mkString("\n")) {
+      refusals("favoured-calibrated").film shouldBe Some(1)
+      refusals("favoured-calibrated").detail shouldBe "2 Tatarak (1965)"
+      refusals("segment-top-hit").detail shouldBe "1 Tatarak (2009); 2 Tatarak (1965)"
+      refusals("directors-work").detail shouldBe "the listing credits no director"
+      refusals("dated-title").detail shouldBe "the title dates no year"
+      refusals("sole-work").detail should startWith ("first hit ")
+    }
     // a listing a rule took names no refusal
     val credited2 = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
     val taken = IdentityResolver.resolve(Seq(credited2), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)

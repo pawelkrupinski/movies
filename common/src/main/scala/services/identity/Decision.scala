@@ -111,7 +111,7 @@ final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTr
     val node = nodes.get(key)
     (node.flatMap(_.accepted).map("accept:" + _) ++ pooled.map("pooled:" + _) ++ vetoed.map(v => "veto:" + DecisionTrace.id(v.reason)) ++
       node.toSeq.flatMap(_.joins.map("join:" + _)) ++ node.toSeq.flatMap(_.apart.map(reason => "apart:" + DecisionTrace.id(reason))) ++
-      node.toSeq.flatMap(_.refusals)).toSeq.distinct
+      node.toSeq.flatMap(_.refusals.map(_.ruleId))).toSeq.distinct
   }
 }
 
@@ -120,7 +120,13 @@ object DecisionTrace {
    *  none) — the same map its scoring holds, rendered into weights only when a trace is written. */
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
                         measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
-                        refusals: Seq[String] = Nil)
+                        refusals: Seq[Refusal] = Nil)
+  /** Why `rule` refused a node no rule took alone: the condition that stopped it (`why`, a fixed phrase), the
+   *  candidate it was weighing then, and what that candidate's evidence said ("p 26.6% < 40.0%", the facts against
+   *  it, the rival it lost to). `ruleId` is the indexed `refused:<rule>:<why>`. */
+  final case class Refusal(rule: String, why: String, film: Option[Int] = None, detail: String = "") {
+    def ruleId: String = s"refused:$rule:${DecisionTrace.id(why)}"
+  }
   final case class Veto(reason: String, by: Option[String])
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
   /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */
