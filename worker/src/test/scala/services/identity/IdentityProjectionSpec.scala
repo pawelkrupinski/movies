@@ -151,6 +151,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val tick = w.projection.tick()
     tick.slotsBuilt shouldBe 1
     tick.slotsReused shouldBe first.slotsBuilt - 1
+    tick.slotMisses shouldBe ((1, 0, 0))   // the one venue's rows moved; no prior slot, no new listing
     tick.written shouldBe 1
     w.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
   }

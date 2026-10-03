@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
  *  refused, if it was. */
 final case class ProjectionTick(resolution: Option[Resolution], plan: Option[ProjectionPlan], listings: Int, written: Int,
                                 retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil,
-                                slotsReused: Int = 0, slotsBuilt: Int = 0) {
+                                slotsReused: Int = 0, slotsBuilt: Int = 0, slotMisses: (Int, Int, Int) = (0, 0, 0)) {
   def wroteNothing: Boolean = written == 0 && retired == 0
 }
 
@@ -134,7 +134,9 @@ final class IdentityProjection(
             val draft = phases("draft")(IdentityProjectionPlan.draft(corpus.filter(row => held(row.listing.key)), resolution, stored,
               counters, normalizer, slots, tokens, at, slotMemo))
             val slotCounts = slotMemo.endTick()
-            phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2}")
+            val misses = slotMemo.lastMisses()
+            phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
+              s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
             phases("guard")(ProjectionGuard.refusal(draft, stored, LocalDateTime.ofInstant(at, ZoneOffset.UTC))) match {
               case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
                 consecutiveShrinks += 1
@@ -143,7 +145,7 @@ final class IdentityProjection(
               case shrink =>
                 if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
                 consecutiveShrinks = 0
-                write(resolution, draft, stored, corpus.size, started, phases).copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2)
+                write(resolution, draft, stored, corpus.size, started, phases).copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses)
             }
         }
     }

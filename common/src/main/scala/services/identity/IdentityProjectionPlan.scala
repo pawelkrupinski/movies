@@ -62,13 +62,24 @@ class VenueSlotMemo {
   private val current  = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
   private var hits     = 0
   private var builds   = 0
+  // Why a build was needed, for the projection's log: the same venue's same listings with other rows, with other
+  // prior slots, or listings the last projection did not have at the venue at all.
+  private var seenBefore = Map.empty[(String, Int), VenueSlotMemo.Key]
+  private val seenNow    = scala.collection.mutable.HashMap.empty[(String, Int), VenueSlotMemo.Key]
+  private var missRows, missPriors, missNew = 0
 
   /** The slots of `key`, and whether they are lean: the memo's, else `build`'s in full. */
   private[identity] def apply(key: VenueSlotMemo.Key)(build: => Seq[(Source, SourceData)]): (Seq[(Source, SourceData)], Boolean) =
     synchronized {
+      seenNow((key.venue, key.keys)) = key
       previous.get(key) match {
         case Some(lean) => current(key) = lean; hits += 1; (lean, true)
         case None =>
+          seenBefore.get((key.venue, key.keys)) match {
+            case Some(before) if before.rows != key.rows => missRows += 1
+            case Some(_)                                 => missPriors += 1
+            case None                                    => missNew += 1
+          }
           val full = build
           current(key) = full.map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
           builds += 1
@@ -80,9 +91,18 @@ class VenueSlotMemo {
   def endTick(): (Int, Int) = synchronized {
     previous = current.toMap
     current.clear()
+    seenBefore = seenNow.toMap
+    seenNow.clear()
     val counts = (hits, builds)
     hits = 0; builds = 0
     counts
+  }
+
+  /** Why the last projection's builds were needed: (rows moved, prior slots moved, listings new to the venue). */
+  def lastMisses(): (Int, Int, Int) = synchronized {
+    val misses = (missRows, missPriors, missNew)
+    missRows = 0; missPriors = 0; missNew = 0
+    misses
   }
 }
 
