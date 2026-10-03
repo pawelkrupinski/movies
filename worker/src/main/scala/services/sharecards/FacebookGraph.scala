@@ -22,6 +22,10 @@ object FacebookScrape {
   case object Accepted extends FacebookScrape
   /** The app's rate limit: every request from the fleet shares it, so the whole fleet waits. */
   final case class RateLimited(why: String) extends FacebookScrape
+  /** Facebook could not be reached, or answered a server error: no verdict on this page, so it
+   *  spends none of its attempts — an outage longer than the attempts' back-off dropped every
+   *  page queued behind it. */
+  final case class Unavailable(why: String) extends FacebookScrape
   /** Anything else — this page's request failed. */
   final case class Refused(why: String) extends FacebookScrape
 
@@ -30,7 +34,8 @@ object FacebookScrape {
   val RateLimitCodes: Set[Int] = Set(4, 17, 32, 613)
 
   /** Read a response: 2xx is accepted; a 429, or an error body naming a rate-limit code, is the
-   *  rate limit; anything else is refused, with the Graph API's own code and message kept. */
+   *  rate limit; another 5xx is Facebook unavailable; anything else is refused — each with the
+   *  Graph API's own code and message kept. */
   def of(status: Int, body: String): FacebookScrape =
     if (status / 100 == 2) Accepted
     else {
@@ -38,7 +43,9 @@ object FacebookScrape {
       val code    = error.flatMap(e => (e \ "code").asOpt[Int])
       val message = error.flatMap(e => (e \ "message").asOpt[String])
       val why     = (Seq(s"HTTP $status") ++ code.map(c => s"code $c") ++ message).mkString(" ")
-      if (status == 429 || code.exists(RateLimitCodes)) RateLimited(why) else Refused(why)
+      if (status == 429 || code.exists(RateLimitCodes)) RateLimited(why)
+      else if (status >= 500) Unavailable(why)
+      else Refused(why)
     }
 }
 
@@ -55,7 +62,10 @@ class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.Faceb
         .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)).build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofString())
       FacebookScrape.of(response.statusCode(), response.body())
-    } catch { case e: Exception => FacebookScrape.Refused(e.getClass.getSimpleName) }
+    } catch {
+      case e: java.io.IOException => FacebookScrape.Unavailable(e.getClass.getSimpleName)   // refused, reset, timed out
+      case e: Exception           => FacebookScrape.Refused(e.getClass.getSimpleName)
+    }
   }
 }
 

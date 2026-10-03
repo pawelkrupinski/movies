@@ -37,12 +37,23 @@ object HttpStatusException {
    *  reaper backs off to the refresh window instead of retrying every tick. */
   def isDurable(code: Int): Boolean = code == 404 || code == 410
 
-  /** Parse a `Retry-After` header value. Honors the delta-seconds form ("120")
-   *  that TMDB and most APIs send; the rarer HTTP-date form falls back to `None`
-   *  (callers apply their own default pause). Pure — takes no clock. */
-  def parseRetryAfter(raw: Option[String]): Option[FiniteDuration] =
-    raw.map(_.trim).filter(_.nonEmpty)
-      .flatMap(s => scala.util.Try(s.toLong).toOption)
-      .filter(_ >= 0)
-      .map(_.seconds)
+  /** Parse a `Retry-After` header value: the delta-seconds form ("120") that TMDB and most
+   *  APIs send, or the HTTP-date form measured against the SAME response's `Date` header —
+   *  the server's clock on both sides, so no local clock is read and no skew between the two
+   *  creeps in. A date already past is a wait of zero; a date with no `Date` to measure from,
+   *  or anything unreadable, is `None` (callers apply their own pause). Pure. */
+  def parseRetryAfter(raw: Option[String], responseDate: Option[String] = None): Option[FiniteDuration] =
+    raw.map(_.trim).filter(_.nonEmpty).flatMap { value =>
+      value.toLongOption match {
+        case Some(seconds) => Option.when(seconds >= 0)(seconds.seconds)
+        case None =>
+          for {
+            at  <- httpDate(value)
+            now <- responseDate.flatMap(httpDate)
+          } yield java.time.Duration.between(now, at).toMillis.max(0L).millis
+      }
+    }
+
+  private def httpDate(value: String): Option[java.time.Instant] =
+    scala.util.Try(java.time.ZonedDateTime.parse(value.trim, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant).toOption
 }

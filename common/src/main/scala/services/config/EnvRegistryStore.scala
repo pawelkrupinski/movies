@@ -21,7 +21,7 @@ import scala.util.Try
 trait EnvRegistryStore {
   /** Replace this `app`'s published knob set (so a removed key disappears). */
   def publish(app: String, knobs: Seq[RegisteredKnob]): Unit
-  /** Every knob every app has published. */
+  /** Every knob every app has published. Throws when the store cannot be read. */
   def all(): Seq[RegisteredKnob]
 }
 
@@ -85,9 +85,11 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
 
   private def idOf(k: RegisteredKnob): String = s"${k.app}|${k.key}"
 
+  // A failed read THROWS: answered as no knobs, the admin page listed none and refused every
+  // override as an unknown key.
   def all(): Seq[RegisteredKnob] =
-    coll.flatMap(c => Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption)
-      .getOrElse(Seq.empty).flatMap(fromDoc)
+    coll.fold(Seq.empty[RegisteredKnob])(c =>
+      Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(fromDoc))
 
   // Build the doc with only the fields that are present. A `null` value can't go
   // through the Scala Mongo `Document` builder (it throws), and an unset knob has

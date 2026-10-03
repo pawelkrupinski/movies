@@ -7,7 +7,6 @@ import tools.{HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.Try
 
 /**
  * Feature-gated OMDb (omdbapi.com) client that recovers an IDENTIFIER, not a
@@ -37,7 +36,10 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
    *  original/English title first — OMDb is an English DB). None when the key is
-   *  unset (no HTTP), nothing is corroborated, or every call fails. */
+   *  unset (no HTTP) or OMDb answered and nothing is corroborated. A call that
+   *  fails — refused, an exhausted daily quota (OMDb answers that with a 401), a
+   *  body that is not JSON — THROWS: it is no answer, so it must not read as
+   *  "OMDb has no such film" and back the film off for days. */
   def findImdbId(titles: Seq[String], year: Option[Int], directors: Set[String]): Option[String] =
     apiKey.map(_.value).flatMap { key =>
       titles.map(_.trim).filter(_.nonEmpty).distinct.iterator
@@ -55,12 +57,11 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** OMDb's single best `type=movie` match (`?t=`), with its director credits. */
   private def byTitle(title: String, year: Option[Int], key: String): Option[Candidate] = {
-    val js = Try(Json.parse(http.get(titleUrl(title, year, key)))).getOrElse(JsNull)
-    candidateFrom(js)
+    candidateFrom(Json.parse(http.get(titleUrl(title, year, key))))
   }
 
   private def directorWalk(title: String, year: Option[Int], directors: Set[String], key: String): Option[String] = {
-    val js   = Try(Json.parse(http.get(searchUrl(title, year, key)))).getOrElse(JsNull)
+    val js   = Json.parse(http.get(searchUrl(title, year, key)))
     val hits = (js \ "Search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(h => (h \ "imdbID").asOpt[String].filter(_.startsWith("tt"))).distinct.take(MaxCandidates)
     val matches = hits
@@ -74,7 +75,7 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** Full record for an imdb id (director credits + title + year). */
   private def detail(imdbId: String, key: String): Option[Candidate] =
-    candidateFrom(Try(Json.parse(http.get(idUrl(imdbId, key)))).getOrElse(JsNull))
+    candidateFrom(Json.parse(http.get(idUrl(imdbId, key))))
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a
    *  year off by >1 with no exact title) AND a positive signal corroborates it:

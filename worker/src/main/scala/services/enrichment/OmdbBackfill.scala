@@ -7,6 +7,7 @@ import tools.BoundedParallel
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * OMDb IMDb-id backfill: recovers a missing `imdbId` by title+year search. It
@@ -23,6 +24,10 @@ import scala.concurrent.duration._
  *     that filled the id in between keeps its value — OMDb never overrides.
  *   - The imdb-id search is title-match guarded (see [[OMDbClient]]) so a fuzzy
  *     OMDb hit can't bind an unrelated film.
+ *   - Only an ANSWER that names no film backs the film off. A lookup that could
+ *     not be read (OMDb down, the free key's daily quota spent) throws out of
+ *     `refreshOne` and records nothing, so the film is asked again next sweep —
+ *     a spent quota once backed off every film still waiting behind it.
  *
  * Feature gate lives one level down in [[OMDbClient]]: with `OMDB_API_KEY`
  * unset, every method returns `None` without any HTTP call, so each
@@ -98,14 +103,20 @@ class OmdbBackfill(
     // credit to the floor (see OmdbAttemptStore.all).
     sweepBackoff = Some(attempts.all())
     val changed = new AtomicInteger(0)
+    val failed  = new AtomicInteger(0)
     try {
       logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
       BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
-        refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
+        try refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
+        catch {
+          case NonFatal(t) =>
+            logger.warn(s"OMDb backfill: '${key.cleanTitle}' (${key.year.getOrElse("?")}) not looked up — ${t.getClass.getSimpleName}: ${t.getMessage}")
+            failed.incrementAndGet()
+        }
       }
     } finally sweepBackoff = None
-    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = 0, failed = 0,
-      message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered.")
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = 0, failed = failed.get,
+      message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered, ${failed.get} lookup(s) failed.")
   }
 }
 

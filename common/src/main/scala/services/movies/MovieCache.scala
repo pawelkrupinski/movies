@@ -362,7 +362,7 @@ class CaffeineMovieCache(
     var attempt = 0
     while (rehydrate() == 0 && attempt < bootHydrateMaxAttempts.value) {
       attempt += 1
-      Try(Thread.sleep(bootHydrateRetry.value.toMillis))
+      Thread.sleep(bootHydrateRetry.value.toMillis) // an interrupt (shutdown mid-boot) ends the construction
     }
   }
 

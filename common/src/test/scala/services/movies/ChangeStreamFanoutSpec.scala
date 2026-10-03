@@ -66,4 +66,24 @@ class ChangeStreamFanoutSpec extends AnyFlatSpec with Matchers {
     deletedA.toList shouldBe List("foo|2024")
     deletedB.toList shouldBe List("foo|2024")
   }
+
+  // Every dispatch caught Throwable, so an interrupt (a stopping worker) or a VirtualMachineError
+  // thrown by a listener was logged as one failed apply and the loop carried on.
+  it should "let a fatal throw from a listener through, while a non-fatal one still spares the others" in {
+    val fanout = new ChangeStreamFanout[String, String]("test")
+    val served = ListBuffer.empty[String]
+    val failing = fanout.register(_ => throw new IllegalStateException("bad row"), _ => throw new IllegalStateException("bad id"),
+      _ => throw new IllegalStateException("bad part"))
+    fanout.register(served += _, served += _)
+    fanout.dispatchUpsert("row")
+    fanout.dispatchDelete("gone")
+    fanout.dispatchPart("part") shouldBe Seq(VenueVerdict.Declined(ChangeStreamFanout.PartFailed), VenueVerdict.Declined(ChangeStreamFanout.NoPartHandler))
+    served.toList shouldBe List("row", "gone")
+    failing.close()
+
+    fanout.register(_ => throw new InterruptedException, _ => throw new StackOverflowError, _ => throw new InterruptedException)
+    an[InterruptedException] should be thrownBy fanout.dispatchUpsert("row")
+    a[StackOverflowError] should be thrownBy fanout.dispatchDelete("gone")
+    an[InterruptedException] should be thrownBy fanout.dispatchPart("part")
+  }
 }

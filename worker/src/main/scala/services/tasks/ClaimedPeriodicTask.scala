@@ -3,12 +3,11 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * A job run once per `interval` window, first after `initialDelay`, on its own daemon thread —
@@ -29,7 +28,7 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
 
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(interval) }
+      def run(): Unit = { ScheduledTick.logged(name, logger)(tickIfClaimed()); scheduleNext(interval) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

@@ -183,9 +183,11 @@ class RealHttpFetch(
     }
   }
 
-  /** The server's `Retry-After` hint, if any (delta-seconds form). */
-  private def retryAfterOf(response: HttpResponse[Array[Byte]]): Option[FiniteDuration] =
-    HttpStatusException.parseRetryAfter(Option(response.headers().firstValue("Retry-After").orElse(null)))
+  /** The server's `Retry-After` hint, if any (delta-seconds, or an HTTP-date read against its `Date`). */
+  private def retryAfterOf(response: HttpResponse[Array[Byte]]): Option[FiniteDuration] = {
+    def header(name: String) = Option(response.headers().firstValue(name).orElse(null))
+    HttpStatusException.parseRetryAfter(header("Retry-After"), header("Date"))
+  }
 
   /** Decode the raw response bytes to a UTF-8 string. `Gunzip.decode`
    *  loops while the bytes still start with the gzip magic prefix

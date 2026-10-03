@@ -3,12 +3,11 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * A recurring, cluster-claimed ENQUEUER: every `interval` (first after `initialDelay`) it puts
@@ -44,7 +43,7 @@ class ClaimedEnqueueReaper(
   /** Self-rescheduling tick: enqueue, then schedule the next reading `interval` afresh. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(nextDelay()) }
+      def run(): Unit = { ScheduledTick.logged(s"$occurrence reaper", logger)(tickIfClaimed()); scheduleNext(nextDelay()) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

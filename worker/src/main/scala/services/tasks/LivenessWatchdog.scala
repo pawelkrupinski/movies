@@ -4,12 +4,11 @@ import settings.LivenessStaleAfter
 
 import play.api.Logging
 import services.Stoppable
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Last-resort backstop against a WEDGED-but-alive JVM. The worker's
@@ -71,7 +70,7 @@ class LivenessWatchdog(
     }
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(() => Try(check()), checkEvery.value.toMillis, checkEvery.value.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("LivenessWatchdog", logger)(check()), checkEvery.value.toMillis, checkEvery.value.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"LivenessWatchdog armed: restart if the heartbeat is stale > ${stalenessThreshold.value.toSeconds}s (checked every ${checkEvery.value.toSeconds}s).")
   }
 

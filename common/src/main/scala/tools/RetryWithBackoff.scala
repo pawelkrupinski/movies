@@ -11,10 +11,14 @@ import scala.util.control.NonFatal
  * upstream blips (cinema HTML 5xx, proxy 409, Mongo connection
  * hiccup) where one more try after a short wait usually works.
  *
- * Defaults: 3 attempts, 1s initial backoff (1s, 2s sleeps before attempts
- * 2 and 3 — total worst-case wall clock is `n attempts × per-attempt time
- * + 1s + 2s + 4s + …` of sleeping). Tune via the parameters when the
- * caller knows its time budget.
+ * Defaults: 3 attempts, 1s initial backoff. The wait before attempt n+1 is
+ * FULL JITTER over the exponential cap — uniform in [0, initial × 2^(n-1)] —
+ * so callers that failed together (a pool of threads meeting one upstream
+ * blip) don't come back in lockstep and fail together again. Worst case
+ * sleeping is still `1s + 2s + 4s + …`. A 429 or 503 carrying `Retry-After`
+ * waits what the server asked instead, capped at `maxRetryAfter` so a hint of
+ * an hour can't park the calling thread for one. Tune via the parameters
+ * when the caller knows its time budget.
  *
  * Logs every failed attempt at WARN with the label and the exception class
  * + message; the final failure throws the last exception (not a wrapper),
@@ -54,7 +58,11 @@ object RetryWithBackoff extends Logging {
     // (the original behaviour). A caller that knows some failures are permanent
     // — a 404 / 4xx that won't change on a retry — passes a predicate so those
     // fail fast instead of burning the remaining attempts (and their backoff).
-    retryOn:        Throwable => Boolean = _ => true
+    retryOn:        Throwable => Boolean = _ => true,
+    // The jitter draw, uniform in [0, 1). Injected so a spec pins the waits.
+    random:         () => Double = () => java.util.concurrent.ThreadLocalRandom.current().nextDouble(),
+    // The longest a server's Retry-After is honoured for.
+    maxRetryAfter:  FiniteDuration = RetryWithBackoff.DefaultMaxRetryAfter
   )(block: => T): T = {
     require(maxAttempts >= 1, s"maxAttempts must be ≥ 1 (got $maxAttempts)")
     var attempt                = 1
@@ -72,7 +80,7 @@ object RetryWithBackoff extends Logging {
           val isFinal = attempt >= maxAttempts || !retryOn(t)
           onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
           if (isFinal) throw t   // attempts exhausted, or a non-retryable failure
-          val wait = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
+          val wait = waitBefore(attempt, t, initialBackoff, maxRetryAfter, random)
           logger.warn(
             s"$label attempt $attempt/$maxAttempts failed: " +
             s"${t.getClass.getSimpleName}: ${t.getMessage}; " +
@@ -84,4 +92,18 @@ object RetryWithBackoff extends Logging {
     }
     throw lastFailure
   }
+
+  val DefaultMaxRetryAfter: FiniteDuration = 30.seconds
+
+  /** The wait after failed attempt `attempt`: the server's Retry-After on a 429/503 (capped), else
+   *  full jitter over `initial × 2^(attempt-1)`. */
+  private def waitBefore(attempt: Int, failure: Throwable, initialBackoff: FiniteDuration,
+                         maxRetryAfter: FiniteDuration, random: () => Double): FiniteDuration =
+    failure match {
+      case e: HttpStatusException if (e.code == 429 || e.code == 503) && e.retryAfter.isDefined =>
+        e.retryAfter.get.min(maxRetryAfter)
+      case _ =>
+        val cap = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
+        math.round(cap.toMillis * random()).millis
+    }
 }

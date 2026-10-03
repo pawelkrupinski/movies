@@ -210,8 +210,9 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * Each tick expands the country's due films into their pages (no quota: that is a read-model
  * read), then — when the country has a page due and the fleet's next slot has come round — sends
  * ONE page. Sent: gone. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and the page
- * goes back without spending an attempt. Refused: that page alone retries, backing off, and is
- * dropped after [[MaxAttempts]].
+ * goes back without spending an attempt. Unavailable (unreachable, a 5xx): the same for
+ * [[UnavailableHold]]. Refused: that page alone retries, backing off, and is dropped after
+ * [[MaxAttempts]].
  */
 class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String],
                             country: String, metrics: ShareCardMetrics, clock: Clock) extends Logging {
@@ -253,6 +254,12 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
             metrics.rescrape(ShareCardMetrics.RescrapeOutcome.RateLimited)
             val until = clock.instant().plusMillis(RateLimitHold.toMillis)
             logger.warn(s"share card: Facebook rate-limited the re-scrape of $url ($why) — every country waits until $until")
+            store.holdSlots(until)
+            store.retry(page, until, countAttempt = false)
+          case FacebookScrape.Unavailable(why) =>
+            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
+            val until = clock.instant().plusMillis(UnavailableHold.toMillis)
+            logger.info(s"share card: Facebook unavailable for the re-scrape of $url ($why) — every country waits until $until")
             store.holdSlots(until)
             store.retry(page, until, countAttempt = false)
           case FacebookScrape.Refused(why) if page.attempts >= MaxAttempts =>
@@ -300,6 +307,8 @@ object FacebookRescrapeDrain {
   /** How long the whole fleet waits after Facebook names its rate limit. The limit is a rolling
    *  hour; on 2026-09-25 requests were refused for about that long. */
   val RateLimitHold: FiniteDuration = 1.hour
+  /** How long the whole fleet waits after Facebook could not be reached or answered a 5xx. */
+  val UnavailableHold: FiniteDuration = 5.minutes
   /** Refusals (or unreadable pages) before an entry is given up. */
   val MaxAttempts: Int = 5
   /** Films expanded per tick, so a backlog of films cannot hold one tick for long. */

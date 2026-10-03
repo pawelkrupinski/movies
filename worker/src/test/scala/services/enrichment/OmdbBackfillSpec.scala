@@ -120,13 +120,16 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     e.rottenTomatoesUrl shouldBe None
   }
 
-  it should "swallow an OMDb failure without throwing and leave the row untouched" in {
-    val cache = cacheWith(MovieRecord())
-    val failing = new OMDbClient(
-      http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("HTTP 503") },
+  it should "record no miss when OMDb cannot be read, so the next sweep asks again" in {
+    val cache    = cacheWith(MovieRecord())
+    val attempts = new InMemoryOmdbAttemptStore
+    val failing  = new OMDbClient(
+      http = new GetOnlyHttpFetch { def get(url: String): String = throw new tools.HttpStatusException(401, "GET", url, None) },
       apiKey = Some(settings.OmdbApiKey("test-key"))
     )
-    noException should be thrownBy new OmdbBackfill(cache, failing).refreshOneSync(keyOf(cache))
+    val result = new OmdbBackfill(cache, failing, attempts).refreshAll()
+    result.failed shouldBe Some(1)
+    attempts.all() shouldBe empty
     cache.get(keyOf(cache)).get.imdbId shouldBe None
   }
 

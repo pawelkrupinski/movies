@@ -103,8 +103,13 @@ final class SideCollectionWatch[Dto: ClassTag](
               .collect { case v if v.isString && SlotKeyed.filmIdOf(v.asString.getValue) == fid => v.asString.getValue }
               .getOrElse(fid))
             rowId match {
+              // Caught whatever it is, fatal included: this is the driver's `onNext`, which must not
+              // throw — a throw out of it ends the cursor with this event's demand never released.
+              // An interrupt keeps its flag for whoever owns the thread.
               case Some(id) => try onChange(id, applied)
-                catch { case e: Throwable => logger.warn(s"$name watch onChange($id) failed: ${e.getMessage}") }
+                catch { case e: Throwable =>
+                  if (e.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
+                  logger.warn(s"$name watch onChange($id) failed: $e", e) }
               // Nothing to hand the caller, so nothing will release this event's demand but us —
               // left unreleased, every skipped event narrowed the window until the cursor stalled.
               // Acknowledged at once: there is nothing to apply, and an event never acknowledged

@@ -207,6 +207,21 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
   }
 
+  it should "still reach Cinemeta when OMDb cannot be read (down, or its daily quota spent)" in {
+    val noTmdb = MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noTmdb)), normalizer = titleNormalizer), normalizer = titleNormalizer)
+    val omdb   = new OMDbClient(new tools.GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(401, "GET", url, None)
+    }, apiKey = Some(settings.OmdbApiKey("stub")))
+    val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
+      """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      omdb = Some(omdb), cinemeta = Some(cinemeta))
+
+    resolver.resolveSync("Cactus Pears", Some(2026), "Cactus Pears")
+    cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
+  }
+
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
 
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =

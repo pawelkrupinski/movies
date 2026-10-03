@@ -192,9 +192,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/sharecards/ShareCardStore.scala", "deletePath",
       "catch { case _: NoSuchFileException => false; case _: IOException => false }") ->
       "a file that could not be deleted is reported as not deleted, which is what happened",
-    ("worker/src/main/scala/services/tasks/ScrapeReaper.scala", "tick",
-      "val n = Try(enqueueUpTo(group, group.size, TaskRoom.Unbounded)).getOrElse(0)") ->
-      "the count only feeds an INFO line; a failed enqueue is reported by the queue itself (EnqueueResult.Failed, logged and metered)",
     // ── found once the lint saw chained calls, braces, `Failure(_)`, bare binders and `;` bodies ──
     ("common/src/main/scala/services/MirrorFreshness.scala", "newestIn",
       ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->

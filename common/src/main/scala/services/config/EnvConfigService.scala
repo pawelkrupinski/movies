@@ -4,11 +4,10 @@ import settings.ConfigRefreshInterval
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, Env}
+import tools.{DaemonExecutors, Env, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Keeps a process's config knobs in sync with the admin overrides and publishes
@@ -44,7 +43,7 @@ class EnvConfigService(
   def start(): Unit = {
     env.installOverrides(overrides.lookup)
     scheduler.scheduleWithFixedDelay(
-      () => Try(publishTick()), 0L, tickInterval.value.toSeconds, TimeUnit.SECONDS)
+      () => ScheduledTick.logged("EnvConfigService publish", logger)(publishTick()), 0L, tickInterval.value.toSeconds, TimeUnit.SECONDS)
     logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.value.toSeconds}s.")
   }
 

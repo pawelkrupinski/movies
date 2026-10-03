@@ -187,8 +187,10 @@ class ImdbIdResolver(
         // long tail (Indian/Malayalam/festival titles). title+year+director
         // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
         // This is the id the once-daily OmdbBackfill sweep would have supplied
-        // hours later; running it inline lands it now.
-        omdb.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, record.director.toSet))
+        // hours later; running it inline lands it now. A lookup OMDb could not
+        // answer (down, quota spent) falls through to the next rung; nothing is
+        // recorded for it, so the daily sweep asks again.
+        omdb.flatMap(client => Try(client.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, record.director.toSet)).toOption.flatten)
       }
       .orElse {
         // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a

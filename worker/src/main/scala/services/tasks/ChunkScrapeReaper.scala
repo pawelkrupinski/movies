@@ -3,12 +3,11 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Periodic backstop for chunked scrapes, mirroring `StagingReaper`'s tick. The
@@ -35,7 +34,7 @@ class ChunkScrapeReaper(
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("chunk-scrape-reaper")
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()),
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("ChunkScrapeReaper", logger)(tickIfClaimed()),
       initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"ChunkScrapeReaper started — sweeping chunked-scrape runs every ${interval.value.toSeconds}s (first in ${initialDelay.value.toSeconds}s).")
   }

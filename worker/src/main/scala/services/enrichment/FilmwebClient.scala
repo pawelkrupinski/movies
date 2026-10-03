@@ -150,14 +150,16 @@ class FilmwebClient(http: HttpFetch) {
     EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}"))
       .map(parseSearch).getOrElse(Seq.empty)
 
+  // A body that is not JSON (a block or error page served as 200) throws like any failed read: as None
+  // it read as "Filmweb has no rating for this film".
   def info(id: Int): Option[FilmInfo] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/info")).flatMap(b => Try(parseInfo(b)).toOption.flatten)
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/info")).flatMap(parseInfo)
 
   def preview(id: Int): Option[FilmPreview] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/preview")).flatMap(b => Try(parsePreview(b)).toOption)
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/preview")).map(parsePreview)
 
   def rating(id: Int): Option[Double] =
-    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/rating")).flatMap(b => Try(parseRating(b)).toOption.flatten)
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/rating")).flatMap(parseRating)
 
   /** Refresh just the rating for a stored canonical Filmweb URL. The URL ends
    *  in `-{id}` (or `-{id}/`); we parse the trailing id and hit only the

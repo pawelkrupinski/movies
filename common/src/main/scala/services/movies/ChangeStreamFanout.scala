@@ -3,6 +3,7 @@ package services.movies
 import play.api.Logging
 
 import java.util.concurrent.CopyOnWriteArrayList
+import scala.util.control.NonFatal
 
 /**
  * Fans a SINGLE change source out to many consumers, so the source is read and
@@ -22,7 +23,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  * once the last listener leaves (see [[isEmpty]]). Listeners live in a
  * copy-on-write list so dispatch (on the driver thread) never blocks
  * registration (on app threads), and each listener runs under its own try/catch
- * so one throwing consumer can't starve the others.
+ * so one throwing consumer can't starve the others. Only a NON-fatal throw is caught: an
+ * interrupt or a VirtualMachineError reaches the apply loop, whose `finally` still releases
+ * the event's demand.
  */
 final class ChangeStreamFanout[A, V](name: String) extends Logging {
   private final case class Listener(onUpsert: A => Unit, onDelete: String => Unit, onPart: V => VenueVerdict)
@@ -44,7 +47,7 @@ final class ChangeStreamFanout[A, V](name: String) extends Logging {
 
   def dispatchUpsert(record: A): Unit = listeners.forEach { l =>
     try l.onUpsert(record)
-    catch { case exception: Throwable => logger.warn(s"$name change-stream apply failed: ${exception.getMessage}") }
+    catch { case NonFatal(exception) => logger.warn(s"$name change-stream apply failed: $exception", exception) }
   }
 
   /** Offer every listener a part of the record; the verdicts of those that did not apply it — empty
@@ -59,16 +62,16 @@ final class ChangeStreamFanout[A, V](name: String) extends Logging {
         case VenueVerdict.Applied => ()
         case other                => unapplied += other
       }
-      catch { case exception: Throwable =>
+      catch { case NonFatal(exception) =>
         unapplied += VenueVerdict.Declined(ChangeStreamFanout.PartFailed)
-        logger.warn(s"$name change-stream part apply failed: ${exception.getMessage}") }
+        logger.warn(s"$name change-stream part apply failed: $exception", exception) }
     }
     unapplied.result()
   }
 
   def dispatchDelete(id: String): Unit = listeners.forEach { l =>
     try l.onDelete(id)
-    catch { case exception: Throwable => logger.warn(s"$name change-stream delete apply failed: ${exception.getMessage}") }
+    catch { case NonFatal(exception) => logger.warn(s"$name change-stream delete apply failed: $exception", exception) }
   }
 }
 

@@ -349,11 +349,19 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.scoreFor("https://www.rottentomatoes.com/m/the_dark_knight") shouldBe Some(94)
   }
 
-  it should "return None when the fetch fails (transient or 404)" in {
+  it should "return None for a page that is gone (404)" in {
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("HTTP 503")
+      def get(url: String): String = throw new RuntimeException("HTTP 404")
     })
     c.scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
+  }
+
+  it should "throw, not answer None, when the read fails — a blocked RT is no verdict on the score" in {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
+    })
+    a [tools.HttpStatusException] should be thrownBy c.scoreFor("https://www.rottentomatoes.com/m/whatever")
+    a [tools.HttpStatusException] should be thrownBy c.pageFor("https://www.rottentomatoes.com/m/whatever")
   }
 
   it should "refuse to fetch a non-canonical URL (search URLs must never round-trip through scoreFor)" in {

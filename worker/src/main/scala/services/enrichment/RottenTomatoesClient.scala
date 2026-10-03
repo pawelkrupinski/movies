@@ -252,8 +252,10 @@ class RottenTomatoesClient(http: HttpFetch) {
     }
   }
 
-  /** Tomatometer percentage for a canonical /m/ page, or None on miss /
-   *  fetch failure / non-canonical URL. Refuses search URLs explicitly —
+  /** Tomatometer percentage for a canonical /m/ page, or None for a page with
+   *  none, a page that is gone (404/410) or a non-canonical URL. A read that
+   *  FAILED throws ([[tools.EnrichmentRead]]): a blocked or throttled RT must
+   *  not be booked as a checked, unchanged refresh. Refuses search URLs explicitly —
    *  scoring a search-result page makes no sense and would silently return
    *  nonsense if RT ever started embedding aggregate ratings there. */
   def scoreFor(url: String): Option[Int] = pageFor(url).flatMap(_.score)
@@ -265,7 +267,7 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  See `RottenTomatoesRatings`. */
   def pageFor(url: String): Option[Page] = {
     if (!url.contains("/m/")) None
-    else Try(http.get(url)).toOption.map(body =>
+    else EnrichmentRead.absentOnNotFound(http.get(url)).map(body =>
       Page(parseScore(body), RottenTomatoesClient.parseReleaseYear(body), JsonLdAggregateRating.directorNames(body)))
   }
 

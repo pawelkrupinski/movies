@@ -59,6 +59,7 @@ object MongoIndex extends Logging {
   private val CannotConvertIndexToUnique = 359
   private val Raced                      = Set(125 /* CommandFailed */, 72 /* InvalidOptions */)
   private val ConversionAttempts         = 5
+  private[services] val RaceBackoffMillis = 200L
   private val Timeout                    = 30.seconds
 
   /** Ensure `collection` in `database` carries an index on `keys` with `options`.
@@ -108,6 +109,37 @@ object MongoIndex extends Logging {
     }
   }
 
+  /** Run `convert`, retrying a race with another pod. Two pods booting together race their
+   *  `collMod`s on one index: mongod answers the loser with CommandFailed (125, "modified by another
+   *  thread"), or with InvalidOptions (72) when the other pod's failed conversion cleared
+   *  `prepareUnique` between this one's two steps. Both are retried after a growing `pause` (in
+   *  millis) — back to back, all the attempts landed while the other pod was still mid-conversion;
+   *  one the other pod already won (`alreadyWon`) is a success. */
+  private[services] def retryRaced(attempts: Int, pause: Long => Unit)(convert: () => Unit, alreadyWon: () => Boolean): Try[Unit] = {
+    @scala.annotation.tailrec
+    def attempt(number: Int): Try[Unit] =
+      Try(convert()) match {
+        case Failure(raced: MongoCommandException) if Raced(raced.getErrorCode) =>
+          if (alreadyWon()) Success(())
+          else if (number < attempts) { pause(RaceBackoffMillis * number); attempt(number + 1) }
+          else Failure(raced)
+        case other => other
+      }
+    attempt(1)
+  }
+
+  /** Back to exactly the index that was there after a conversion the duplicates refused:
+   *  `prepareUnique` alone would start refusing writes that a plain index accepts, which is a
+   *  decision for whoever dedupes the rows. A rollback that fails leaves the index doing exactly
+   *  that, so it is named in the `reason` the ERROR line and the outcome carry, never dropped. */
+  private[services] def afterRollback(reason: String, rollback: () => Unit): String =
+    Try(rollback()) match {
+      case Success(_)         => reason
+      case Failure(exception) =>
+        s"$reason, and clearing prepareUnique failed (${exception.getMessage}) — the index now REFUSES new duplicate writes " +
+          "until `collMod` sets prepareUnique back to false"
+    }
+
   private def convertToUnique(database: MongoDatabase, collection: String, ns: String, index: String, label: String): Outcome = {
     def collMod(flag: String, value: Boolean) =
       Await.result(database.runCommand(ImmutableDocument(
@@ -116,30 +148,16 @@ object MongoIndex extends Logging {
       Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout)).toOption.exists(_.exists { spec =>
         spec.get("name").exists(_.asString.getValue == index) && spec.get("unique").exists(_.asBoolean.getValue)
       })
-    // Two pods booting together race their `collMod`s on one index: mongod answers the loser
-    // with CommandFailed (125, "modified by another thread"), or with InvalidOptions (72) when
-    // the other pod's failed conversion cleared `prepareUnique` between this one's two steps.
-    // Both are retried; one the other pod already won is a success.
-    @scala.annotation.tailrec
-    def attempt(remaining: Int): Try[Unit] =
-      Try { collMod("prepareUnique", value = true); collMod("unique", value = true); () } match {
-        case Failure(raced: MongoCommandException) if Raced(raced.getErrorCode) =>
-          if (uniqueNow) Success(())
-          else if (remaining > 1) attempt(remaining - 1)
-          else Failure(raced)
-        case other => other
-      }
-    attempt(ConversionAttempts) match {
+    retryRaced(ConversionAttempts, Thread.sleep)(
+      () => { collMod("prepareUnique", value = true); collMod("unique", value = true) }, () => uniqueNow) match {
       case Success(_) =>
         logger.info(s"$label: converted the plain index `$index` on $ns to unique in place.")
         Outcome.ConvertedToUnique
       case Failure(duplicates: MongoCommandException) if duplicates.getErrorCode == CannotConvertIndexToUnique =>
         val groups = Option(duplicates.getResponse.get("violations")).collect { case array: BsonArray => array.getValues.asScala.toSeq }.getOrElse(Nil)
         val documents = groups.map(_.asDocument.getArray("ids", new BsonArray()).size).sum
-        // Back to exactly the index that was there: `prepareUnique` alone would start refusing
-        // writes that a plain index accepts, which is a decision for whoever dedupes the rows.
-        Try(collMod("prepareUnique", value = false))
-        val reason = s"${groups.size} key value(s) are held by $documents documents"
+        val reason = afterRollback(s"${groups.size} key value(s) are held by $documents documents",
+          () => { collMod("prepareUnique", value = false); () })
         logger.error(s"$label: cannot make `$index` on $ns unique — $reason. The non-unique index is kept; " +
           "remove the duplicates and the next boot converts it.")
         Outcome.NotInPlace(reason)

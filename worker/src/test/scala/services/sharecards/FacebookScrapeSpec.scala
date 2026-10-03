@@ -31,6 +31,12 @@ class FacebookScrapeSpec extends AnyFlatSpec with Matchers {
     FacebookScrape.of(429, "") shouldBe FacebookScrape.RateLimited("HTTP 429")
   }
 
+  "A server error" should "be Facebook unavailable — no verdict on the page — with its code kept" in {
+    FacebookScrape.of(503, "") shouldBe FacebookScrape.Unavailable("HTTP 503")
+    FacebookScrape.of(500, fixture("scrape-without-token-400.json").replace("\"code\":100", "\"code\":2")) shouldBe
+      FacebookScrape.Unavailable("HTTP 500 code 2 (#100) Must have a valid access token or a valid url_hmac")
+  }
+
   "A body that is not the Graph API's error" should "be refused with the status alone" in {
     FacebookScrape.of(403, "<html>Forbidden</html>") shouldBe FacebookScrape.Refused("HTTP 403")
   }

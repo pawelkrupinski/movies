@@ -31,7 +31,7 @@ class ImdbClient(http: HttpFetch) {
    *  [[tools.EnrichmentRead]] and the 2026-07-30 IMDb outage it documents. */
   def lookup(imdbId: String): Option[Double] =
     EnrichmentRead.absentOnNotFound(http.post(Endpoint, queryBody(imdbId), "application/json"))
-      .flatMap(body => Try(parseRating(body)).toOption.flatten)
+      .flatMap(parseRating)   // a body that is not JSON (a CDN challenge page served as 200) throws, too
 
   def parseRating(body: String): Option[Double] = {
     val js = Json.parse(body)
@@ -66,7 +66,7 @@ class ImdbClient(http: HttpFetch) {
    *  inappropriate English blurbs for Polish films. */
   def details(imdbId: String): Option[ImdbClient.Details] =
     EnrichmentRead.absentOnNotFound(http.post(Endpoint, detailsQueryBody(imdbId), "application/json"))
-      .flatMap(body => Try(parseDetails(body)).toOption)
+      .map(parseDetails)
 
   def parseDetails(body: String): ImdbClient.Details = {
     val title = Json.parse(body) \ "data" \ "title"
@@ -175,11 +175,12 @@ class ImdbClient(http: HttpFetch) {
    *  other-language titles too, and shows its original ("Superfutrzak i złośliwa wiewiórka" suggests only
    *  tt35166699, displayed as the Finnish "Supermarsu ja suuri huijaus"). No choice between them: the identity
    *  resolver's candidate path (`TmdbIdentityLookups`), which weighs each on the listing's facts. Empty for a
-   *  blank title or a query IMDb does not know; a failed read throws, as `http` threw it. */
+   *  blank title or a query IMDb does not know; a failed read throws, as `http` threw it, and so does a body
+   *  that is not JSON — it is no answer, and an empty list here is stored as one. */
   def suggestedIds(title: String): Seq[String] =
     if (title.trim.isEmpty) Nil
     else EnrichmentRead.absentOnNotFound(http.get(suggestionUrl(title))).toSeq.flatMap { body =>
-      Try(Json.parse(body)).toOption.toSeq.flatMap(js => ImdbClient.suggested(movieSuggestions(js)))
+      ImdbClient.suggested(movieSuggestions(Json.parse(body)))
     }
 
   /** Director-based fallback: when `parseSuggestions` finds no title match (the

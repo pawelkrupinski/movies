@@ -7,12 +7,11 @@ import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Periodically enqueues rating-refresh tasks for stale rows — the queue-based
@@ -100,7 +99,7 @@ class EnrichmentReaper(
    *  would freeze the boot-time value). */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.logged("EnrichmentReaper", logger)(tickIfClaimed()); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

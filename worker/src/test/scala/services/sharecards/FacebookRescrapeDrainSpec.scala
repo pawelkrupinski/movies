@@ -101,7 +101,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   "A page Facebook refuses" should "be retried alone, after a back-off, and the others not re-sent" in {
     val refusedOnce = collection.mutable.Set.empty[String]
     val fleet = new Fleet(cities = 3, answer = url =>
-      if (url.endsWith("city2") && refusedOnce.add(url)) FacebookScrape.Refused("HTTP 500") else FacebookScrape.Accepted)
+      if (url.endsWith("city2") && refusedOnce.add(url)) FacebookScrape.Refused("HTTP 400 code 100 (#100) The url is blocked") else FacebookScrape.Accepted)
     fleet.request("us", "film")
     fleet.run(10.minutes)
     fleet.graph.sent.map(_._2).toSeq shouldBe (pagesOf("film", 3) :+ pagesOf("film", 3)(1))
@@ -143,6 +143,19 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.run(RateLimitHold * (MaxAttempts + 3).toLong)
     fleet.graph.sent.size shouldBe MaxAttempts + 3
     fleet.store.waiting shouldBe empty
+  }
+
+  "Facebook unreachable for longer than a page's attempts" should "still deliver the page, and pause the fleet while it lasts" in {
+    var down = true
+    val fleet = new Fleet(cities = 1, answer = _ => if (down) FacebookScrape.Unavailable("HttpConnectTimeoutException") else FacebookScrape.Accepted)
+    fleet.request("us", "film")
+    fleet.run(UnavailableHold * (MaxAttempts + 2).toLong)
+    fleet.graph.sent.size should be <= (MaxAttempts + 3)       // one request per hold, not one per tick
+    fleet.store.waiting.map(_.key).size shouldBe 1            // not dropped, however long it lasts
+    down = false
+    fleet.run(UnavailableHold + 1.minute)
+    fleet.store.waiting shouldBe empty
+    fleet.graph.sent.last._2 shouldBe pagesOf("film", 1).head
   }
 
   "A worker that dies mid-request" should "leave its page to be claimed again once the lease runs out" in {

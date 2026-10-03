@@ -38,6 +38,15 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     fetch.urls.head should include ("type=movie")
   }
 
+  it should "throw, not answer None, when OMDb cannot be read — a spent quota is no verdict on the film" in {
+    // OMDb answers an exhausted free-key quota with HTTP 401; a None here backed every film
+    // still waiting behind it off for days as if OMDb had no such film.
+    val quotaSpent = client(url => throw new tools.HttpStatusException(401, "GET", url, None))
+    a [tools.HttpStatusException] should be thrownBy quotaSpent.findImdbId(Seq("Sirât"), Some(2025), Set.empty)
+    val notJson = client(_ => "<html>Service Unavailable</html>")
+    an [Exception] should be thrownBy notJson.findImdbId(Seq("Sirât"), Some(2025), Set.empty)
+  }
+
   // ── corroboration by director / year ─────────────────────────────────────────
 
   it should "accept a non-exact title when the director overlaps and the year agrees" in {

@@ -4,7 +4,7 @@ import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
@@ -15,7 +15,6 @@ import services.cinemas.common.DetailEnricher
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Periodically enqueues `EnrichDetails` tasks for every deferred cinema's
@@ -108,7 +107,7 @@ class DetailReaper(
    *  afresh, so an interval flip applies on the next cycle. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.logged("DetailReaper", logger)(tickIfClaimed()); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

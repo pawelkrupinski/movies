@@ -7,10 +7,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.attempts.MongoEnrichmentAttemptReader
 import services.cadence.MongoRatingCadenceReader
+import services.config.MongoEnvRegistryStore
 import services.scrapes.MongoScrapeGuardLedger
 
 /**
- * Four stores that used to answer a failed Mongo read with the value an empty-but-healthy
+ * Stores that used to answer a failed Mongo read with the value an empty-but-healthy
  * store gives — the sites `NoSwallowedFailureSpec` carried as KNOWN. Each now says it could
  * not look. Port 1 refuses instantly and 200ms of server selection stands in for any driver
  * error, as `MongoTaskQueueUnreachableSpec` does.
@@ -33,6 +34,11 @@ class UnreadableStoresReportFailureSpec extends AnyFlatSpec with Matchers with B
 
   "MongoRatingCadenceReader.forKeys" should "throw, not report a film as having no cadence history" in {
     an[Exception] should be thrownBy new MongoRatingCadenceReader(Some(db)).forKeys(Seq("imdb|tmdb:1"))
+  }
+
+  // Taken as "no knobs", the admin page listed none and refused every override as an unknown key.
+  "MongoEnvRegistryStore.all" should "throw, not report that no knob is registered" in {
+    an[Exception] should be thrownBy new MongoEnvRegistryStore(Some(db)).all()
   }
 
   // Taken as "no index", the reconcile went on to a create and RECORDED a mismatch — an alert

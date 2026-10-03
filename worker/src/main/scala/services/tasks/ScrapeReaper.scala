@@ -6,7 +6,7 @@ import services.Stoppable
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick}
 import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
@@ -217,7 +217,7 @@ class ScrapeReaper(
     if (scrapers.isEmpty) { logger.info("ScrapeReaper: no cinemas; not starting."); return }
     // Defer onto the scheduler thread so we can block it on the freshness hydrate
     // without holding up boot wiring; it then schedules the periodic ticks.
-    scheduler.execute(() => Try(awaitReadyThenStart()))
+    scheduler.execute(() => ScheduledTick.logged("ScrapeReaper start", logger)(awaitReadyThenStart()))
     logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.value.toSeconds}s, every ${interval.value.toSeconds}s.")
   }
 
@@ -232,7 +232,7 @@ class ScrapeReaper(
   private def awaitReadyThenStart(): Unit = {
     while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout.value)).isSuccess)
       logger.info("ScrapeReaper: freshness mirror still hydrating; holding scrape ticks (no cold re-scrape).")
-    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("ScrapeReaper", logger)(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
   }
 
   /** Tick only if this machine wins the current minute's occurrence claim —
@@ -307,8 +307,10 @@ class ScrapeReaper(
       val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size, TaskRoom.Unbounded) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {
-          val n = Try(enqueueUpTo(group, group.size, TaskRoom.Unbounded)).getOrElse(0)
-          if (n > 0) logger.info(s"ScrapeReaper enqueued $n stale cinema(s) (spread slice at +${offset.toSeconds}s).")
+          ScheduledTick.logged(s"ScrapeReaper slice at +${offset.toSeconds}s", logger) {
+            val n = enqueueUpTo(group, group.size, TaskRoom.Unbounded)
+            if (n > 0) logger.info(s"ScrapeReaper enqueued $n stale cinema(s) (spread slice at +${offset.toSeconds}s).")
+          }
         })
       }
       val deferred = plan.drop(1).map(_._2.size).sum

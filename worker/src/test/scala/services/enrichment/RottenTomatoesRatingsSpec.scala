@@ -125,7 +125,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
   }
 
-  it should "swallow RT client failures (network blip, 503, Cloudflare challenge) without throwing" in {
+  it should "report an RT read failure (network blip, 503, Cloudflare challenge) as a failure, keeping the score" in {
     val url = "https://www.rottentomatoes.com/m/foo"
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
@@ -134,7 +134,8 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     })
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), failing)
 
-    noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    // Thrown, so RatingHandler books a failed attempt rather than a checked, unchanged refresh.
+    a[RuntimeException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
     // Cached score is preserved on failure — better stale than wrong.
     cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.rottenTomatoes) shouldBe Some(50)
   }

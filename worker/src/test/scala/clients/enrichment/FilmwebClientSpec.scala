@@ -174,6 +174,14 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     kind:          String = "film"
   ): Candidate = Candidate(id, kind, title, originalTitle, year, directors)
 
+  "a /film read that answered no JSON" should "throw, not read as no rating / no info / no preview" in {
+    // A block or error page served with HTTP 200 is no answer: as None it booked Filmweb as "no rating".
+    val blocked = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = "<html>Access denied</html>" })
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.rating(30940)
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.info(30940)
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.preview(30940)
+  }
+
   "pickBest" should "accept an exact title match (case-insensitive)" in {
     val hits = Seq(candidate(id = 1, title = "Wartość sentymentalna", year = Some(2025)))
     client.pickBest(hits, "wartość sentymentalna", Some(2025), Set.empty).map(_.id) shouldBe Some(1)

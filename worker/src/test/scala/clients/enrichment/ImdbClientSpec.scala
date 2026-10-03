@@ -224,6 +224,18 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     c.suggestedIds("  ") shouldBe Nil
   }
 
+  "a read that answered no JSON" should "throw, not read as no rating / no suggestions / no details" in {
+    // A CDN challenge or proxy error page served with HTTP 200 is no answer from IMDb: as None / Nil it
+    // booked a blocked IMDb as "rating none", and the identity store kept the empty suggestion list.
+    val blocked = new ImdbClient(new tools.HttpFetch {
+      def get(url: String): String = "<html><body>Request blocked</body></html>"
+      def post(url: String, body: String, contentType: String): String = get(url)
+    })
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.lookup("tt0468569")
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.details("tt0468569")
+    a [com.fasterxml.jackson.core.JsonParseException] should be thrownBy blocked.suggestedIds("The Dark Knight")
+  }
+
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
     val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> fixture)))

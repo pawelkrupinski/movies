@@ -19,10 +19,17 @@ class HttpStatusExceptionSpec extends AnyFlatSpec with Matchers {
     HttpStatusException.parseRetryAfter(Some("0")) shouldBe Some(0.seconds)
   }
 
-  it should "return None for absent, empty, negative, or HTTP-date values" in {
+  it should "return None for absent, empty or negative values" in {
     HttpStatusException.parseRetryAfter(None) shouldBe None
     HttpStatusException.parseRetryAfter(Some("")) shouldBe None
     HttpStatusException.parseRetryAfter(Some("-5")) shouldBe None
-    HttpStatusException.parseRetryAfter(Some("Wed, 21 Oct 2025 07:28:00 GMT")) shouldBe None
+  }
+
+  it should "read the HTTP-date form against the response's own Date header" in {
+    // Measured from the server's clock, not ours: no local clock read, and no skew between the two.
+    HttpStatusException.parseRetryAfter(Some("Tue, 21 Oct 2025 07:28:00 GMT"), Some("Tue, 21 Oct 2025 07:27:15 GMT")) shouldBe Some(45.seconds)
+    HttpStatusException.parseRetryAfter(Some("Tue, 21 Oct 2025 07:28:00 GMT"), Some("Tue, 21 Oct 2025 07:29:00 GMT")) shouldBe Some(0.seconds)
+    HttpStatusException.parseRetryAfter(Some("Tue, 21 Oct 2025 07:28:00 GMT"), None) shouldBe None
+    HttpStatusException.parseRetryAfter(Some("not a date"), Some("Tue, 21 Oct 2025 07:27:15 GMT")) shouldBe None
   }
 }

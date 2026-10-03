@@ -42,7 +42,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
   it should "follow an exponential backoff between attempts (1×, 2×, 4×, …)" in {
     val (sleeps, sleep) = withSleepLog()
     intercept[RuntimeException] {
-      RetryWithBackoff("t", maxAttempts = 4, initialBackoff = 100.millis, sleep = sleep) {
+      RetryWithBackoff("t", maxAttempts = 4, initialBackoff = 100.millis, sleep = sleep, random = () => 1.0) {
         throw new RuntimeException("always")
       }
     }
@@ -68,7 +68,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
   it should "not sleep after the final attempt — no wasted wait when there's nothing left to retry" in {
     val (sleeps, sleep) = withSleepLog()
     intercept[RuntimeException] {
-      RetryWithBackoff("t", maxAttempts = 2, initialBackoff = 500.millis, sleep = sleep) {
+      RetryWithBackoff("t", maxAttempts = 2, initialBackoff = 500.millis, sleep = sleep, random = () => 1.0) {
         throw new RuntimeException("always")
       }
     }
@@ -144,5 +144,29 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
       case RetryWithBackoff.AttemptOutcome.Failure(2, _, true, _) => succeed
       case other => fail(s"expected Failure(2, _, true, _), got $other")
     }
+  }
+
+  "the wait between attempts" should "be fully jittered: uniform over [0, the exponential cap]" in {
+    val (sleeps, sleep) = withSleepLog()
+    val draws = Iterator(0.5, 0.25, 0.0)
+    an [RuntimeException] should be thrownBy
+      RetryWithBackoff("t", maxAttempts = 4, initialBackoff = 100.millis, sleep = sleep, random = () => draws.next()) {
+        throw new RuntimeException("blip")
+      }
+    // caps 100, 200, 400 — each scaled by its draw, so concurrent callers no longer retry in lockstep.
+    sleeps.toSeq shouldBe Seq(50L, 50L, 0L)
+  }
+
+  it should "honour a 429/503's Retry-After instead of the jittered backoff, capped" in {
+    val (sleeps, sleep) = withSleepLog()
+    val answers = Iterator(
+      new HttpStatusException(429, "GET", "http://x", Some(7.seconds)),
+      new HttpStatusException(503, "GET", "http://x", Some(10.minutes)),   // past the cap
+      new HttpStatusException(500, "GET", "http://x", Some(9.seconds)),    // not a hint this status carries
+      new HttpStatusException(429, "GET", "http://x", None))
+    an [HttpStatusException] should be thrownBy
+      RetryWithBackoff("t", maxAttempts = 4, initialBackoff = 100.millis, sleep = sleep, random = () => 1.0,
+        maxRetryAfter = 30.seconds) { throw answers.next() }
+    sleeps.toSeq shouldBe Seq(7000L, 30000L, 400L)
   }
 }
