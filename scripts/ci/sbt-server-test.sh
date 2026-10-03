@@ -23,7 +23,9 @@ case "$1" in
   warm*)   sleep 2 ;;
   export*)
     # SBT_STUB_SERVER_SAYS=nothing: the server answers without the value (what failed run 37110767992).
-    if [ "$mode" = client ] && [ "${SBT_STUB_SERVER_SAYS:-}" = nothing ]; then
+    if [ "$mode" = client ] && [ "${SBT_STUB_SERVER_SAYS:-}" = hang ]; then
+      sleep 30
+    elif [ "$mode" = client ] && [ "${SBT_STUB_SERVER_SAYS:-}" = nothing ]; then
       printf '[info] entering thin client - BEEP WHIRR\n[success] elapsed time: 0 s\n'
     else
       printf '[info] entering thin client - BEEP WHIRR\n/w/target/classes:/c/lib.jar\n[success] elapsed time: 0 s\n\033[0J'
@@ -55,6 +57,18 @@ check "...saying what the server answered, rather than failing in silence" "true
   "$(grep -q 'no value for worker/Fixtures/fullClasspath from the server' "$work/cp.err" && echo true || echo false)"
 check "...and the fallback is a sbt of its own, not the server" "true" \
   "$(grep -q 'start export worker/Fixtures/fullClasspath .* fresh' "$work/calls" && echo true || echo false)"
+
+began=$SECONDS
+value=$(SBT_STUB_SERVER_SAYS=hang SBT_SERVER_CLIENT_SECONDS=2 bash "$script" classpath worker/Fixtures/fullClasspath 2> /dev/null)
+check "a server that never answers is given up on, and a fresh sbt asked" "/w/target/classes:/c/lib.jar" "$value"
+check "...within its bound, not after the server's own 30 s" "true" "$([ $((SECONDS - began)) -lt 15 ] && echo true || echo false)"
+
+# A portfile the build cache restored names a server that is not running: start clears it.
+mkdir -p "$work/project/target"; echo '{"uri":"local:///gone"}' > "$work/project/target/active.json"
+SBT_PORTFILE="$work/project/target/active.json" SBT_SERVER_WARM=warm bash "$script" start 6g
+check "start clears a stale portfile before it boots the server" "gone" \
+  "$([ -e "$work/project/target/active.json" ] && echo present || echo gone)"
+bash "$script" stop
 
 # A server still running a timed-out step's command is stopped, and `stop` returns once it is gone.
 bash -c 'exec -a "java -Dkinowo.leg-sbt=server stand-in" sleep 60' 2>/dev/null &

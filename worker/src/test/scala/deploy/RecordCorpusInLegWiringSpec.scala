@@ -158,4 +158,11 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     countries should not be empty
     countries.head shouldBe "united-states"
   }
+
+  /** sbt's server portfile lives in `project/target`, which the leg's build cache saves; one saved
+   *  while a leg's server ran sent a later leg's client to a dead server, and Germany's corpus step
+   *  hung its whole 10 minutes (run 37112719910). */
+  "a leg's build cache" should "never carry sbt's server portfile into another leg" in {
+    setup should include("              project/target\n              !project/target/active.json\n")
+  }
 }

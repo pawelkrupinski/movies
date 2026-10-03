@@ -48,6 +48,11 @@ await_start() {
 case "${1:-}" in
   start)
     heap="${2:?usage: sbt-server.sh start <heap>}"
+    # sbt finds its server through this portfile, and the build cache restores `project/target`:
+    # one saved while a leg's server ran points every later client at a server that is not there,
+    # and Germany's corpus step hung its whole 10 minutes on it (run 37112719910). No server of
+    # ours is running yet, so any portfile here is stale.
+    pgrep -f -- "$marker" > /dev/null || rm -f "${SBT_PORTFILE:-project/target/active.json}"
     SBT_OPTS="$(opts "$heap")" "$here/in-background.sh" start sbt-server \
       sbt --client "${SBT_SERVER_WARM:-worker/Fixtures/compile}"
     ;;
@@ -61,8 +66,10 @@ case "${1:-}" in
     # `export` prints the value bare, between the client's own `[info]`/`[success]` lines.
     value_in() { printf '%s\n' "$1" | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | grep -v '^\[' | grep -E '^[^ ]+$' | tail -1; }
     value=""
-    if await_start; then
-      out=$(sbt --client "export $key" 2>&1) && value=$(value_in "$out")
+    # Bounded well inside the corpus step's 10 minutes, so a server that never answers falls back to
+    # a sbt of our own below instead of timing the step out.
+    if SBT_SERVER_START_SECONDS="${SBT_SERVER_CLASSPATH_WAIT_SECONDS:-240}" await_start; then
+      out=$(timeout "${SBT_SERVER_CLIENT_SECONDS:-120}" sbt --client "export $key" 2>&1) && value=$(value_in "$out")
     else
       out="[sbt-server] the background start failed"
     fi

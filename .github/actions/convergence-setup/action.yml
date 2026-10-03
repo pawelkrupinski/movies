@@ -197,6 +197,7 @@ runs:
       with:
           path: |
               project/target
+              !project/target/active.json
               project/project/target
               */target/scala-*
               !*/target/scala-*/*.jar
