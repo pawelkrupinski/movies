@@ -39,6 +39,8 @@ class ListingKeyShadowRead(
   random:     Random,
   override protected val sampleInterval: FiniteDuration = ListingKeyShadowRead.DefaultSampleInterval
 ) extends SampledCensus {
+
+  override protected def firstSampleSlot: Int = services.metrics.SampledCensus.Slots.ListingKeyShadow
   import ListingKeyShadowRead._
 
   /** One tick's comparison, or None when a read it needed failed (nothing is then published). */

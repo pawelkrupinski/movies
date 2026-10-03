@@ -35,6 +35,8 @@ class RetiredVenueCensus(
   clock:           Clock = Clock.systemUTC(),
   override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval
 ) extends SampledCensus {
+
+  override protected def firstSampleSlot: Int = SampledCensus.Slots.RetiredVenues
   import RetiredVenueCensus._
 
   private val countryCode = country.code

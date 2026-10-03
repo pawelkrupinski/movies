@@ -71,7 +71,7 @@ class WorkerCorpusScan(
   def start(): Unit = {
     scheduler.scheduleAtFixedRate(
       () => Try(sample()).recover { case e => logger.warn(s"worker-corpus-scan sample tick failed: ${e.getMessage}") },
-      SampledCensus.FirstSampleDelay.min(sampleInterval).toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
+      SampledCensus.firstDelay(SampledCensus.Slots.CorpusScan, sampleInterval).toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
     ()
   }
 

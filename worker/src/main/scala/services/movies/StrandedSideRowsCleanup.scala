@@ -38,10 +38,11 @@ class StrandedSideRowsCleanup(
   scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup")
 ) extends Stoppable with Logging {
 
-  // Off the boot window: the cache hydrate and the projector's state seed own the first
-  // couple of minutes, and rows that have sat stranded for weeks can wait two more.
-  private val StartupDelaySeconds = 120L
   private val RunEveryHours       = 24L
+  // Off the boot window, in its own slot past the other whole-collection readers: rows that have sat
+  // stranded for weeks can wait a few minutes more.
+  private val StartupDelaySeconds = services.metrics.SampledCensus.firstDelay(services.metrics.SampledCensus.Slots.StrandedSideRows,
+    scala.concurrent.duration.Duration(RunEveryHours, "hours")).toSeconds
 
   /** One sweep. Public so a script or a spec can run it on demand; the daily tick calls
    *  the same method. */

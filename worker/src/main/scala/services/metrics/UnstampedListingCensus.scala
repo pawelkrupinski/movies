@@ -30,6 +30,8 @@ class UnstampedListingCensus(
   override protected val sampleInterval: FiniteDuration = UnstampedListingCensus.DefaultSampleInterval
 ) extends SampledCensus {
 
+  override protected def firstSampleSlot: Int = SampledCensus.Slots.UnstampedListings
+
   private val stores = Seq(SlotsRepository.Collection -> slots, ScreeningsRepository.Collection -> screenings)
 
   def sample(): Unit = stores.foreach { case (collection, store) =>

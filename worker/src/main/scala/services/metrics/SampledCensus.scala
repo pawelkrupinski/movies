@@ -45,8 +45,11 @@ trait SampledCensus extends Logging {
     ()
   }
 
-  /** When the first reading runs: after the boot's own work, never later than one interval. */
-  protected def firstSampleDelay: FiniteDuration = SampledCensus.FirstSampleDelay.min(sampleInterval)
+  /** Which of [[SampledCensus.Slots]] this census takes its first reading in: 0 for a light one. */
+  protected def firstSampleSlot: Int = 0
+
+  /** When the first reading runs: after the boot's own work, in this census's slot, never later than one interval. */
+  protected def firstSampleDelay: FiniteDuration = SampledCensus.firstDelay(firstSampleSlot, sampleInterval)
 
   def start(): Unit = {
     scheduler.scheduleAtFixedRate(() => sampleQuietly("sample tick"),
@@ -60,4 +63,22 @@ trait SampledCensus extends Logging {
 object SampledCensus {
   /** Past a restart's heavy stretch (cache hydrate, the projector's seed, the identity take-up). */
   val FirstSampleDelay: FiniteDuration = scala.concurrent.duration.Duration(2, "minutes")
+
+  /** How far apart two heavy readers' first readings are. */
+  val SlotSpacing: FiniteDuration = scala.concurrent.duration.Duration(1, "minute")
+
+  /** A first reading in `slot`: [[FirstSampleDelay]] plus a [[SlotSpacing]] per slot, never later than `interval`. */
+  def firstDelay(slot: Int, interval: FiniteDuration): FiniteDuration = (FirstSampleDelay + SlotSpacing * slot.toLong).min(interval)
+
+  /** The whole-collection readers' first-reading slots, one each and named in one place. All of them used to read at
+   *  two minutes: on a us boot the corpus scan, the stranded side-row cleanup and the listing-key shadow read held
+   *  ~250 MB live at once, the old generation filled, and four back-to-back full GCs paused ~10 s (JFR, 2026-10-03). */
+  object Slots {
+    val CorpusScan        = 0
+    val RetiredVenues     = 1
+    val ListingKeyShadow  = 2
+    val UnstampedListings = 3
+    val StrandedSideRows  = 4
+    val all: Seq[Int] = Seq(CorpusScan, RetiredVenues, ListingKeyShadow, UnstampedListings, StrandedSideRows)
+  }
 }

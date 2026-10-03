@@ -40,6 +40,14 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
     } finally census.stop()
   }
 
+  // Every whole-collection reader used to read at two minutes, so a us boot held ~250 MB of their reads live at once
+  // and paused ~10 s in four back-to-back full GCs: each takes its own minute now.
+  "the whole-collection readers" should "each take their first reading in a minute of their own" in {
+    SampledCensus.Slots.all.distinct should have size SampledCensus.Slots.all.size.toLong
+    SampledCensus.Slots.all.map(SampledCensus.firstDelay(_, 1.hour)).distinct should have size SampledCensus.Slots.all.size.toLong
+    (new SampledCensusSpec.Slotted(SampledCensus.Slots.UnstampedListings)).delay shouldBe 5.minutes
+  }
+
   "the first-sample delay" should "never exceed the census's own interval" in {
     (new SampledCensusSpec.Quick).delay shouldBe 30.seconds
     SampledCensus.FirstSampleDelay shouldBe 2.minutes
@@ -47,6 +55,13 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
 }
 
 object SampledCensusSpec {
+  final class Slotted(slot: Int) extends SampledCensus {
+    protected def censusName: String = "slotted-census"
+    protected def sampleInterval: FiniteDuration = 1.hour
+    override protected def firstSampleSlot: Int = slot
+    def sample(): Unit = ()
+    def delay: FiniteDuration = firstSampleDelay
+  }
   final class Quick extends SampledCensus {
     protected def censusName: String = "quick-census"
     protected def sampleInterval: FiniteDuration = 30.seconds
