@@ -325,21 +325,9 @@ class MongoScrapeArchiveRepository(
         60.seconds),
       onIncomplete   = failed
     )(page => ids ++= page.map(_.getString("_id").getValue))
-    idsWhole && readKeys(c, ids.result(), consume, failed)
-  }
-
-  /** The rows of `keys`, several pages side by side (`KeysetScan.byKeys`). */
-  override def scanKeys(keys: Seq[String], consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
-    keys.isEmpty || readKeys(c, keys.distinct.sorted, consume, exception =>
-      logger.warn(s"ScrapeArchiveRepository.scanKeys incomplete after retries — the rows read so far are partial: " +
-        s"${exception.getClass.getSimpleName}: ${exception.getMessage}"))
-  }
-
-  private def readKeys(c: MongoCollection[StoredScrapeDto], keys: Seq[String], consume: Seq[ArchivedScrape] => Unit,
-                       failed: Throwable => Unit): Boolean =
-    services.movies.KeysetScan.byKeys[StoredScrapeDto](
+    idsWhole && services.movies.KeysetScan.byKeys[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
-      keys           = keys,
+      keys           = ids.result(),
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
       inFlight       = MongoScrapeArchiveRepository.ScanPagesInFlight,
       maxAttempts    = 5,
@@ -350,6 +338,7 @@ class MongoScrapeArchiveRepository(
         60.seconds),
       onIncomplete   = failed
     )(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
+  }
 
   /** Every archive operation is best-effort: it records something that already
    *  happened, so its failure must not propagate into the scrape. */

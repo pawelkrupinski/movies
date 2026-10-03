@@ -135,21 +135,6 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     } finally purge()
   }
 
-  // The identity intake reads only the venues whose listing changed, by key: a venue named and held
-  // comes back whole, one not held is absent (not a failure), and nothing else is read.
-  it should "read by key exactly the venues named, through real BSON" in {
-    val repository = new MongoScrapeArchiveRepository(Some(db))
-    try {
-      repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
-      repository.record(scraped(Noon, Seq(minimal)).copy(cinema = models.Helios))
-      val read = Seq.newBuilder[services.scrapes.ArchivedScrape]
-      repository.scanKeys(Seq(Multikino.displayName, "No such venue"), read ++= _) shouldBe true
-      read.result().map(_.cinema) shouldBe Seq(Multikino)
-      read.result().head.films should have size 2
-      repository.scanKeys(Nil, _ => fail("nothing was asked for")) shouldBe true
-    } finally purge()
-  }
-
   it should "keep reporting the last CONTENT timestamp after the cinema goes blank" in {
     // The whole point: a cinema that keeps scraping cleanly and returning nothing
     // must keep aging from its last real listing, not reset to the blank attempt.
