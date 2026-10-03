@@ -110,6 +110,36 @@ class ShowtimeDecodeSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  private def written[A](codec: Codec[A], value: A): String = {
+    val out = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(out), value, EncoderContext.builder().build())
+    out.toJson
+  }
+
+  it should "be written as its macro codec wrote it when its booking URLs share no prefix" in {
+    val whole = StoredScreeningsDto("a", "a", "Helios",
+      Seq(Showtime(dateTime, Some("https://x/1"), Some("1"), List("2D")), Showtime(dateTime, None)), Instant.parse("2026-09-30T10:00:00Z"), None)
+    written(MovieCodecs.registry.get(classOf[StoredScreeningsDto]), whole) shouldBe
+      written(macroRegistry.get(classOf[StoredScreeningsDto]), whole)
+    val keyed = whole.copy(listingKey = Some("k"))
+    written(MovieCodecs.registry.get(classOf[StoredScreeningsDto]), keyed) shouldBe
+      written(macroRegistry.get(classOf[StoredScreeningsDto]), keyed)
+  }
+
+  it should "be written with its booking URLs split at the prefix they share, and read back unchanged" in {
+    val codec = MovieCodecs.registry.get(classOf[StoredScreeningsDto])
+    val row = StoredScreeningsDto("a", "a", "Helios", Seq(
+      Showtime(dateTime, Some("https://kino.example/buy?show=101"), Some("1")),
+      Showtime(dateTime, Some("https://kino.example/buy?show=2")),
+      Showtime(dateTime, None)), Instant.parse("2026-09-30T10:00:00Z"), Some("k"))
+    val json = written(codec, row)
+    json shouldBe """{"_id": "a", "filmId": "a", "slotKey": "Helios", "bookingUrlPrefix": "https://kino.example/buy?show=", "showtimes": [""" +
+      """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "bookingUrlRest": "101", "room": "1", "format": []}, """ +
+      """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "bookingUrlRest": "2", "format": []}, """ +
+      """{"dateTime": {"$date": "2026-12-17T13:00:00Z"}, "format": []}], "updatedAt": {"$date": "2026-09-30T10:00:00Z"}, "listingKey": "k"}"""
+    codec.decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build()) shouldBe row
+  }
+
   private val slots = Seq(
     s"""{ "_id": "a\u001fHelios", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "showtimes": [${showtimes.head}] }, "updatedAt": $updated, "listingKey": "k" }""",
     s"""{ "_id": "a", "filmId": "a", "slotKey": "Helios", "slot": { "title": "Lalka", "cast": "A, B" }, "updatedAt": $updated }""",

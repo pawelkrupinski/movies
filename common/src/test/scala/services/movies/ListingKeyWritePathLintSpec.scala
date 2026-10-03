@@ -77,7 +77,9 @@ class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
       "common/src/main/scala/services/movies/SlotsRepository.scala",
       "common/src/main/scala/services/movies/ScreeningsRepository.scala",
       // Names the collections only to key its OWN resume-token document, which is what it writes.
-      "common/src/main/scala/services/movies/ChangeStreamResumeToken.scala")
+      "common/src/main/scala/services/movies/ChangeStreamResumeToken.scala",
+      // Rewrites a stored row as its own codec reads it, `listingKey` included, only splitting its URLs.
+      "common/src/main/scala/services/movies/BookingUrlSplitMigration.scala")
     val offenders = mainSources.filter { path =>
       val src = code(path)
       names.findFirstIn(src).isDefined && writes.findFirstIn(src).isDefined

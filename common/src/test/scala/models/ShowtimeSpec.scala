@@ -77,4 +77,10 @@ class ShowtimeSpec extends AnyFlatSpec with Matchers {
     Showtime.commonUrlPrefix(Seq(whole, Showtime(start, None))) shouldBe ""
     Showtime.commonUrlPrefix(Seq(whole, split, Showtime(start, Some("https://kino.example/buy?show=2")))) shouldBe "https://kino.example/buy?show="
   }
+
+  it should "never end between the two halves of a surrogate pair" in {
+    val urls = Seq("https://kino.example/\uD83D\uDE00a", "https://kino.example/\uD83D\uDE01b").map(u => Showtime(start, Some(u)))
+    Showtime.commonUrlPrefix(urls) shouldBe "https://kino.example/"
+    urls.map(_.withUrlPrefix(Showtime.commonUrlPrefix(urls))).flatMap(_.bookingUrl) shouldBe urls.flatMap(_.bookingUrl)
+  }
 }

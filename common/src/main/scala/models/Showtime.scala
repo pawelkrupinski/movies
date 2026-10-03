@@ -165,6 +165,9 @@ object Showtime {
       }
       count += 1
     }
+    // Never between the two halves of a surrogate pair: each half would be written on its own,
+    // and UTF-8 spells a lone half as '?'.
+    if (length > 0 && first != null && Character.isHighSurrogate(first.charAt(length - 1))) length -= 1
     if (count < 2) "" else first.substring(0, length)
   }
 }

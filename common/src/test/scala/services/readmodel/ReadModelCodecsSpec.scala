@@ -86,6 +86,7 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
       org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY)
     DefaultingCodec(macros.get(classOf[CityScreening]), CityScreening("", "", "", "", None, Seq.empty))
   }
+  private def defaultingMacro: Codec[CityScreening] = defaulting
 
   private val at = """{ "$date": "2026-12-17T13:00:00Z" }"""
   private val screeningRows = Seq(
@@ -124,5 +125,33 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
         row.showtimes.exists(_.awaitsRowPrefix) shouldBe false
       }
     }
+  }
+
+  private def written(codec: Codec[CityScreening], value: CityScreening): String = {
+    val out = new BsonDocument()
+    codec.encode(new org.bson.BsonDocumentWriter(out), value, org.bson.codecs.EncoderContext.builder().build())
+    out.toJson
+  }
+
+  it should "be written as the macro codec wrote it when its booking URLs share no prefix" in {
+    val dateTime = LocalDateTime.parse("2026-06-12T17:30")
+    Seq(
+      CityScreening("a", "a", "poznan", "Helios", Some("https://h/1"), Seq(Showtime(dateTime, Some("https://b"), Some("1"), List("2D")), Showtime(dateTime, None)), Seq("k1")),
+      CityScreening("a", "a", "poznan", "Helios", None, Seq.empty)
+    ).foreach { row =>
+      written(ReadModelCodecs.registry.get(classOf[CityScreening]), row) shouldBe written(defaultingMacro, row)
+    }
+  }
+
+  it should "be written with its booking URLs split at the prefix they share, and read back unchanged" in {
+    val codec    = ReadModelCodecs.registry.get(classOf[CityScreening])
+    val dateTime = LocalDateTime.parse("2026-06-12T17:30")
+    val row = CityScreening("a", "a", "poznan", "Helios", None, Seq(
+      Showtime(dateTime, Some("https://kino.example/buy?show=101")), Showtime(dateTime, Some("https://kino.example/buy?show=2"))))
+    val json = written(codec, row)
+    json should include(""""bookingUrlPrefix": "https://kino.example/buy?show=", "showtimes": [""")
+    json should include(""""bookingUrlRest": "101"""")
+    json should not include(""""bookingUrl":""")
+    codec.decode(new BsonDocumentReader(BsonDocument.parse(json)), DecoderContext.builder().build()) shouldBe row
   }
 }

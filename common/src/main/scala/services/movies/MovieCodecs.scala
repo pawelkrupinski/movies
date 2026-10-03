@@ -250,17 +250,39 @@ private[movies] final class BackwardCompatibleSourceDataCodec(
  *  allocation (JFR over the US mirror, 2026-09-30). Stateless. */
 private[services] object ShowtimeCodec extends Codec[Showtime] {
   override def getEncoderClass: Class[Showtime] = classOf[Showtime]
-  override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = {
+  override def encode(w: BsonWriter, v: Showtime, c: EncoderContext): Unit = write(w, v, c, null)
+
+  /** `v` as a row whose `bookingUrlPrefix` is `prefix` stores it: the URL after the prefix as
+   *  `bookingUrlRest` — or, with no prefix or a URL that does not start with it, whole. */
+  def write(w: BsonWriter, v: Showtime, c: EncoderContext, prefix: String): Unit = {
     w.writeStartDocument()
     w.writeName("dateTime")
     JavaTimeCodecs.localDateTime.encode(w, v.dateTime, c)
-    v.bookingUrl.foreach(w.writeString("bookingUrl", _))
+    v.bookingUrl.foreach { url =>
+      if (prefix != null && url.startsWith(prefix)) w.writeString("bookingUrlRest", url.substring(prefix.length))
+      else w.writeString("bookingUrl", url)
+    }
     v.room.foreach(w.writeString("room", _))
     w.writeStartArray("format")
     v.format.foreach(w.writeString)
     w.writeEndArray()
     w.writeEndDocument()
   }
+
+  /** A row's showtimes, split at the booking-URL prefix they share: that prefix once, as the
+   *  row's `bookingUrlPrefix`, then the `showtimes` array, each holding only the rest of its URL.
+   *  A row whose URLs share no prefix — fewer than two, or different sites — is written whole.
+   *  The prefix comes from the row's own URLs on every write, so a cinema that moves its booking
+   *  pages is written at its new prefix; nothing outside the row is needed to read it back. */
+  def writeShowtimes(w: BsonWriter, showtimes: Seq[Showtime], c: EncoderContext): Unit = {
+    val common = Showtime.commonUrlPrefix(showtimes)
+    val prefix = if (common.isEmpty) null else common
+    if (prefix != null) w.writeString(RowPrefixField, prefix)
+    w.writeStartArray("showtimes")
+    showtimes.foreach(write(w, _, c, prefix))
+    w.writeEndArray()
+  }
+
   override def decode(r: BsonReader, c: DecoderContext): Showtime = read(r, c, null)
 
   /** A showtime of a row whose `bookingUrlPrefix` is `prefix` — null when the row stores none, or
@@ -300,10 +322,23 @@ private[services] object ShowtimeCodec extends Codec[Showtime] {
 
 /** A `screenings` row read field by field — its showtimes through [[ShowtimeCodec]].
  *  ~108k rows a US pass. Written by the macro codec; read as it reads, as above. */
-private[movies] final class StreamingScreeningsCodec(macroCodec: Codec[StoredScreeningsDto])
-    extends Codec[StoredScreeningsDto] {
+private[movies] object StreamingScreeningsCodec extends Codec[StoredScreeningsDto] {
   override def getEncoderClass: Class[StoredScreeningsDto] = classOf[StoredScreeningsDto]
-  override def encode(w: BsonWriter, v: StoredScreeningsDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  /** As the macro codec wrote it (`WritingNone`: an absent `listingKey` is null), its showtimes
+   *  split at their row's prefix ([[ShowtimeCodec.writeShowtimes]]). */
+  override def encode(w: BsonWriter, v: StoredScreeningsDto, c: EncoderContext): Unit = {
+    w.writeStartDocument()
+    w.writeString("_id", v._id)
+    w.writeString("filmId", v.filmId)
+    w.writeString("slotKey", v.slotKey)
+    ShowtimeCodec.writeShowtimes(w, v.showtimes, c)
+    w.writeDateTime("updatedAt", v.updatedAt.toEpochMilli)
+    v.listingKey match {
+      case Some(key) => w.writeString("listingKey", key)
+      case None      => w.writeNull("listingKey")
+    }
+    w.writeEndDocument()
+  }
   override def decode(r: BsonReader, c: DecoderContext): StoredScreeningsDto = {
     var id, filmId, slotKey: String = null
     var updatedAt: Instant          = null
@@ -413,7 +448,7 @@ object MovieCodecs extends PersistedCodecs {
       fromCodecs(JavaTimeCodecs.localDateTime,
         sourceData,
         showtimes,
-        new StreamingScreeningsCodec(writers.get(classOf[StoredScreeningsDto])),
+        StreamingScreeningsCodec,
         new StreamingSlotCodec(writers.get(classOf[StoredSlotDto]), sourceData)),
       fromProviders((PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
       DEFAULT_CODEC_REGISTRY)

@@ -14,10 +14,23 @@ import org.bson.{BsonReader, BsonType, BsonWriter}
  * through both, and a whole-collection read is ~108k rows and ~1.7M showtimes on the US (JFR).
  * Written by the macro codec. `ReadModelCodecsSpec` pins every stored shape to the old reading.
  */
-private[readmodel] final class StreamingCityScreeningCodec(macroCodec: Codec[CityScreening])
-    extends Codec[CityScreening] {
+private[readmodel] object StreamingCityScreeningCodec extends Codec[CityScreening] {
   override def getEncoderClass: Class[CityScreening] = classOf[CityScreening]
-  override def encode(w: BsonWriter, v: CityScreening, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
+  /** As the macro codec wrote it (`IgnoreNone`: an absent `filmUrl` is omitted), its showtimes
+   *  split at their row's prefix ([[ShowtimeCodec.writeShowtimes]]). */
+  override def encode(w: BsonWriter, v: CityScreening, c: EncoderContext): Unit = {
+    w.writeStartDocument()
+    w.writeString("_id", v._id)
+    w.writeString("filmId", v.filmId)
+    w.writeString("city", v.city)
+    w.writeString("cinema", v.cinema)
+    v.filmUrl.foreach(w.writeString("filmUrl", _))
+    ShowtimeCodec.writeShowtimes(w, v.showtimes, c)
+    w.writeStartArray("listingKeys")
+    v.listingKeys.foreach(w.writeString)
+    w.writeEndArray()
+    w.writeEndDocument()
+  }
   override def decode(r: BsonReader, c: DecoderContext): CityScreening = {
     var id, filmId, city, cinema = ""
     var filmUrl     = Option.empty[String]
