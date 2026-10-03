@@ -174,6 +174,7 @@ class StateSyncService(
         // Unsent local edits first: until the server has them, its set is
         // older than local and must not replace it.
         if (!sendPendingOps(country)) return
+        val startedIn = session
         val localBeforeFetch = prefs.hiddenFilmsFor(country)
         // A network error leaves local state authoritative: prefs + flags untouched.
         runCatchingCancellable {
@@ -183,8 +184,13 @@ class StateSyncService(
                     is HiddenFilmsFetchResult.Changed -> {
                         if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
                         val state = result.state
-                        if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
-                        prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
+                        // Under the lock a logout clears the sync state under, so a
+                        // logout mid-write cannot land between the check and the writes.
+                        queueMutex.withLock {
+                            if (endedDuringFetch(startedIn)) return@runCatchingCancellable
+                            if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
+                            prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
+                        }
                     }
                 }
             } else {
@@ -194,24 +200,39 @@ class StateSyncService(
                 // Each local-only title is owed to the server as a hide, queued
                 // like any edit — so an unhide made meanwhile is sent after it,
                 // never beside it — and the merge is written under the same lock.
+                // Checked under the lock a logout clears the queue under: a
+                // logout while the fetch was out must find nothing re-queued.
                 val localOnly = queueMutex.withLock {
+                    if (endedDuringFetch(startedIn)) return@runCatchingCancellable
                     val local = prefs.hiddenFilmsFor(country)
                     if (!local.containsAll(remoteFilms)) prefs.setHiddenFilms(country, local + remoteFilms)
                     (local - remoteFilms).also { titles ->
                         if (titles.isNotEmpty()) {
                             prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + titles.map(HiddenFilmsOp::Hide))
+                        } else {
+                            // Nothing owed: the merged set IS the server's. Otherwise the
+                            // flush settles the validators (see [sendPendingOps]).
+                            remote?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
                         }
                     }
                 }
-                // Nothing owed: the merged set IS the server's. Otherwise the
-                // flush settles the validators (see [sendPendingOps]).
-                if (localOnly.isEmpty()) remote?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
                 // Migrated only once everything owed has landed; until then the
-                // next reconcile re-sends the queue and runs the union again.
-                if (sendPendingOps(country)) prefs.setHiddenFilmsMigrated(country, true)
+                // next reconcile re-sends the queue and runs the union again. And
+                // only while the session lasts: a logout cleared the flag for the
+                // next account, whose first sign-in owes the union (an empty queue
+                // sends nothing, so [sendPendingOps] alone cannot tell).
+                if (sendPendingOps(country)) queueMutex.withLock {
+                    if (!endedDuringFetch(startedIn)) prefs.setHiddenFilmsMigrated(country, true)
+                }
             }
         }
     }
+
+    /** Whether the session the fetch was made in ended while it was on the
+     *  wire. Its answer is the signed-out account's: merged in, it would show
+     *  that account's hides on a signed-out device, and the hides it queued
+     *  would go to whoever signs in next. */
+    private fun endedDuringFetch(startedIn: Int): Boolean = session != startedIn || !loggedIn
 
     /** Whether the user edited [country]'s set while its fetch was on the wire
      *  (the local set moved, or an edit is still queued). The response then

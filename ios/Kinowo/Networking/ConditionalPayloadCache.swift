@@ -125,20 +125,47 @@ struct ConditionalPayloadCache<Payload: Codable> {
 
     /// The `Last-Modified` to replay as `If-Modified-Since`, but only when the
     /// cached body belongs to `deployment` + `city`; nil for any other pair.
-    func lastModified(deployment: URL, city: String) -> String? {
-        guard let (header, _) = entry(), header.matches(deployment: deployment, city: city),
-              let value = header.lastModified, !value.isEmpty else { return nil }
-        return value
+    /// Asked before every fetch, so it reads only the header line, and on this
+    /// cache's queue without holding the caller (the main actor) while a
+    /// save of the previous response is still being written.
+    func lastModified(deployment: URL, city: String) async -> String? {
+        await withCheckedContinuation { (cont: CheckedContinuation<String?, Never>) in
+            queue.async {
+                guard let header = readHeader(), header.matches(deployment: deployment, city: city),
+                      let value = header.lastModified, !value.isEmpty else { return cont.resume(returning: nil) }
+                cont.resume(returning: value)
+            }
+        }
     }
 
-    /// The header and the (still encoded) payload. Only the header line is
-    /// decoded here, so reading the stamp doesn't pay for the whole listing.
+    /// The header and the (still encoded) payload: the whole file is read, but
+    /// only the header line is decoded here, the payload left to the caller.
     private func entry() -> (Header, Data)? {
         guard let data = queue.sync(execute: { try? Data(contentsOf: url) }),
               let newline = data.firstIndex(of: UInt8(ascii: "\n")),
               let header = try? JSONDecoder().decode(Header.self, from: data[..<newline]) else { return nil }
         return (header, data[data.index(after: newline)...])
     }
+
+    /// Just the header line, read a chunk at a time up to its newline — never
+    /// the listing behind it. Only ever on `queue`.
+    private func readHeader() -> Header? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var line = Data()
+        while line.count < Self.maxHeaderBytes, let chunk = try? handle.read(upToCount: 4096), !chunk.isEmpty {
+            if let newline = chunk.firstIndex(of: UInt8(ascii: "\n")) {
+                line.append(chunk[..<newline])
+                return try? JSONDecoder().decode(Header.self, from: line)
+            }
+            line.append(chunk)
+        }
+        return nil
+    }
+
+    /// A header is a deployment URL, a city slug and a date — far under this.
+    /// Past it the file is not an entry this cache wrote.
+    private static var maxHeaderBytes: Int { 64 * 1024 }
 }
 
 // The two endpoints' caches. A file per endpoint so their conditional-GET

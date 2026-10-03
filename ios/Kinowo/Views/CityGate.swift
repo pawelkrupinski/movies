@@ -57,6 +57,15 @@ struct CityGate: View {
                 // own `.task` fires its first fetch, so nothing ever hits the
                 // fallback-city path on a cold launch with a saved choice.
                 .task(id: slug) {
+                    // A saved city whose page was retired or renamed answers at
+                    // another slug now (`City.formerSlugs`): its listing still
+                    // arrived through the server's 301, but Filtry found no city
+                    // by the old slug and labelled the list with the slug itself.
+                    // Adopt the one it answers at; the task re-runs for it.
+                    if let current = catalog.currentSlugByFormer[slug] {
+                        prefs.setCity(current)
+                        return
+                    }
                     store.use(citySlug: slug, timeZone: catalog.zone(ofSlug: slug, inCountry: prefs.selectedCountry))
                     details.use(citySlug: slug)
                 }

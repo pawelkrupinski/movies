@@ -54,6 +54,13 @@ struct City: Codable, Hashable {
     /// or any city of a single-zone country — still decodes.
     var timezone: String? = nil
 
+    /// Slugs this city used to answer at, which the web now 301s onto it — a
+    /// retired page's (`miedzyrzec-podlaski` → `biala-podlaska`), a renamed
+    /// metro's. Universal Links hand those URLs to the app without ever reaching
+    /// that redirect, so `DeepLink.parse` resolves them through here instead.
+    /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`.
+    var formerSlugs: [String]? = nil
+
     /// The wall-clock this city's showtimes are listed on: its own zone when the
     /// catalog gave it one, else the country's. Past-showtime pruning and the
     /// Dziś/Jutro buckets reason in this, so it has to be the CITY's — a country
@@ -555,6 +562,12 @@ extension Array where Element == City {
     /// `showtimes-uk` / `showtimes-de` link) switch the app to the right
     /// deployment before the repertoire loads.
     func country(ofSlug slug: String) -> String? { first { $0.slug == slug }?.country }
+
+    /// Each former slug (`City.formerSlugs`) → the city that answers at it now.
+    var currentSlugByFormer: [String: String] {
+        Dictionary(flatMap { city in (city.formerSlugs ?? []).map { ($0, city.slug) } },
+                   uniquingKeysWith: { first, _ in first })
+    }
 
     /// The zone to reason about `slug`'s showtimes in — that city's own where the
     /// catalog gave it one, else `fallback` (its country's). Also the answer for a

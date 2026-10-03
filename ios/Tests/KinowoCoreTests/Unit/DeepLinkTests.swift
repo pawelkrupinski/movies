@@ -95,6 +95,23 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(parse("https://kinowo.net/nieznane-miasto/"))
     }
 
+    func testARetiredCitysLinkOpensTheCityThatHoldsItNow() {
+        // The web 301s `/miedzyrzec-podlaski/…` onto Biała Podlaska, but a
+        // Universal Link never reaches that redirect: the catalog names the
+        // former slug on its successor, and the link opens there.
+        let cities = try! JSONDecoder().decode([City].self, from: Data(#"[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]"#.utf8))
+        let dl = DeepLink.parse(URL(string: "https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow")!,
+                                knownCitySlugs: Set(cities.map(\.slug)),
+                                currentSlugByFormer: cities.currentSlugByFormer)
+        XCTAssertEqual(dl?.citySlug, "biala-podlaska")
+        XCTAssertEqual(dl?.filmSlug, "oppenheimer")
+        XCTAssertEqual(dl?.filters.date, .tomorrow)
+        // A slug nobody ever answered at is still no city.
+        XCTAssertNil(DeepLink.parse(URL(string: "https://kinowo.net/nowhere/")!,
+                                    knownCitySlugs: Set(cities.map(\.slug)),
+                                    currentSlugByFormer: cities.currentSlugByFormer))
+    }
+
     func testRejectsForeignHostAndScheme() {
         XCTAssertNil(parse("https://evil.example.com/poznan/"))
         XCTAssertNil(parse("mailto:hi@kinowo.net"))

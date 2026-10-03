@@ -3,7 +3,9 @@ package pl.kinowo
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -11,6 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -561,6 +564,57 @@ class StateSyncServiceTest {
 
         assertEquals(listOf("pl"), client.clearCalls)
         assertEquals(emptySet<String>(), client.remote["pl"])
+    }
+
+    /** A foreground reconcile's first-sync fetch still on the wire at a
+     *  logout (it is not the login job, so the logout does not cancel it):
+     *  when it lands it must neither re-queue this device's hides — the next
+     *  sign-in would send them to whichever account that is — nor merge the
+     *  signed-out account's set into the device's. Mirrors iOS. */
+    @Test
+    fun aFirstSyncFetchLandingAfterALogoutQueuesNothingForTheNextAccount() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        prefs.setHiddenFilms("pl", setOf("Mine"))
+        client.remote["pl"] = setOf("Theirs")
+        val gate = CompletableDeferred<Unit>()
+        client.beforeFetchResponse = { gate.await() }
+        val service = startService()
+        login()
+        runCurrent() // the login job's fetch is parked
+        launch { service.reconcileCurrentCountry() } // a foreground resume's, parked too
+        runCurrent()
+        userFlow.value = null
+        runCurrent()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
+        assertEquals(setOf("Mine"), prefs.hiddenState)
+    }
+
+    /** A logout landing while a first sync is still writing its result (a
+     *  slow DataStore edit, after the fetch was checked) must not leave the
+     *  country marked synced: the logout cleared that flag for the next
+     *  account, whose first sign-in owes the union of this device's hides —
+     *  marked synced, its server set would replace them instead. */
+    @Test
+    fun aLogoutDuringAFirstSyncsWritesLeavesTheCountryUnsynced() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("Theirs")
+        // The login job's own fetch never answers; a foreground reconcile's does.
+        client.beforeFetchResponse = { if (client.fetchCalls.size == 1) awaitCancellation() }
+        val service = startService()
+        login()
+        runCurrent()
+        prefs.beforeSetValidators = {
+            prefs.beforeSetValidators = {}
+            userFlow.value = null
+            yield()
+        }
+        service.reconcileCurrentCountry()
+        advanceUntilIdle()
+
+        assertFalse(prefs.isHiddenFilmsMigrated("pl"))
     }
 
     /** A second non-null user emission (session re-check returning a changed

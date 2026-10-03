@@ -138,6 +138,7 @@ final class CatalogStore: ObservableObject {
     }
     var isSwitchable: Bool { countries.isSwitchable }
     var allSlugs: Set<String> { Set(cities.map(\.slug)) }
+    var currentSlugByFormer: [String: String] { cities.currentSlugByFormer }
 }
 
 // MARK: - Wire / seed decoding

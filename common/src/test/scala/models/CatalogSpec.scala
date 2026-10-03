@@ -79,6 +79,22 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("los-angeles") should not include "timezone"
   }
 
+  it should "name on each city the slugs the web redirects onto it, so an app can open their links" in {
+    val j = Catalog.json
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    // A retired Polish page: its URLs 301 onto the page that holds its town now,
+    // but a link an app claims never reaches that redirect.
+    cityEntry("biala-podlaska") should include(""""formerSlugs":["miedzyrzec-podlaski"]""")
+    cityEntry("san-francisco-bay-area") should include(""""formerSlugs":["san-francisco"]""")
+    // A split's slug goes only to the city its URL redirects to, the biggest.
+    cityEntry("hampton-roads") should include(""""formerSlugs":["newport-news"]""")
+    cityEntry("willamette-valley") should not include "formerSlugs"
+    cityEntry("poznan") should not include "formerSlugs"
+    // Every former slug is a slug no current city answers at.
+    City.renamedSlugs.keySet.foreach(former => j should not include s""""slug":"$former"""")
+  }
+
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")

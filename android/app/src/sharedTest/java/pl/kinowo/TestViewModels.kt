@@ -44,7 +44,8 @@ object NoopStateSync : StateSync {
  * A real [KinowoViewModel] wired for tests: offline, flat cinema catalog,
  * fallback-only country catalog (no seed, never revalidates), no server
  * sync, no location fix. Pass [repository] to seed the listing a test needs,
- * [sync] / [location] to observe or steer those collaborators.
+ * [sync] / [location] to observe or steer those collaborators, [catalogSeed]
+ * (a bundled-seed envelope) for a country catalog other than the fallback.
  */
 fun testKinowoViewModel(
     context: Context,
@@ -53,6 +54,7 @@ fun testKinowoViewModel(
     sync: StateSync = NoopStateSync,
     location: GrantedLocationSource = GrantedLocationSource { null },
     http: OkHttpClient = OkHttpClient(),
+    catalogSeed: String? = null,
 ): KinowoViewModel {
     val api = KinowoApi(baseUrl = UNREACHABLE_BASE_URL, client = http)
     return KinowoViewModel(
@@ -66,7 +68,7 @@ fun testKinowoViewModel(
         catalogRepository = CatalogRepository(
             api = CatalogApi { KinowoApi.FetchedCatalog(null, null, notModified = true) },
             cache = CatalogCache(java.io.File(context.cacheDir, "test-catalog")),
-            seedJson = null,
+            seedJson = catalogSeed,
         ),
         location = location,
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),

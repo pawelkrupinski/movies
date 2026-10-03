@@ -324,6 +324,27 @@ final class LocationCityResolverTests: XCTestCase {
         XCTAssertEqual(stale.mainThreadLocationReads, 0, "the stale fallback was read on the main thread")
     }
 
+    /// The no-fix fallback reads the held fix AFTER the fix deadline has
+    /// passed, so nothing else bounds that read. A locationd round trip that
+    /// stalls (a freshly booted device) used to hold the gate open for as long
+    /// as the stall lasted; past its own short deadline there is simply no fix.
+    func testAStalledStaleFixReadStillEndsTheGateOnTime() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let stall = DispatchSemaphore(value: 0)
+        defer { for _ in 0..<4 { stall.signal() } }
+        let resolver = LocationCityResolver(
+            requester: requester,
+            readHeldFix: { _ = stall.wait(timeout: .now() + 5); return nil },
+            authorizationTimeout: 30, fixTimeout: 0.05, staleFixReadTimeout: 0.1
+        )
+
+        let started = Date()
+        let outcome = await resolver.resolve(in: "pl", cities: cities)
+
+        XCTAssertEqual(outcome, .unavailable)
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2, "the stalled read held the gate open")
+    }
+
     func testResolveIfAuthorizedStaysSilentWhenNotAuthorized() async {
         let requester = RecordingLocationRequester(status: .notDetermined)
         let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)

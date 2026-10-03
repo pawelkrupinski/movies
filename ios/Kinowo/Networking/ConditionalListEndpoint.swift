@@ -85,7 +85,7 @@ final class ConditionalListEndpoint<Payload: Codable> {
             var request = URLRequest(url: requestURL)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = cache.lastModified(deployment: deployment, city: city) {
+            if let lm = await cache.lastModified(deployment: deployment, city: city) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)

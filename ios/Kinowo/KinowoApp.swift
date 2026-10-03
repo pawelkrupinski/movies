@@ -136,6 +136,7 @@ struct KinowoApp: App {
     /// parsed link for `ContentView` to apply its filters + film push.
     private func handleDeepLink(_ url: URL) {
         guard let link = DeepLink.parse(url, knownCitySlugs: catalog.allSlugs,
+                                        currentSlugByFormer: catalog.currentSlugByFormer,
                                         languageTokens: { catalog.versionTokens(ofSlug: $0).accepted }) else { return }
         // A link on another country's deployment (showtimes-uk / showtimes-de)
         // must switch the country too, or the city would resolve against the

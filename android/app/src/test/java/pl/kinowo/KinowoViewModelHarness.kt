@@ -52,12 +52,13 @@ class KinowoViewModelHarness : ExternalResource() {
         repository: RepertoireRepository? = null,
         sync: StateSync = NoopStateSync,
         location: GrantedLocationSource = GrantedLocationSource { null },
+        catalogSeed: String? = null,
     ): KinowoViewModel {
         val http = OkHttpClient().also { clients += it }
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                testKinowoViewModel(context, repository, prefs, sync, location, http) as T
+                testKinowoViewModel(context, repository, prefs, sync, location, http, catalogSeed) as T
         }
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(store, factory)[KinowoViewModel::class.java]

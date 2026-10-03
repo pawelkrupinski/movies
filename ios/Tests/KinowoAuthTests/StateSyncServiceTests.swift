@@ -854,6 +854,29 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// The login reconcile's first-sync fetch still on the wire at a logout:
+    /// when it lands it must neither queue this device's hides — the next
+    /// sign-in would send them to whichever account that is — nor merge the
+    /// signed-out account's set into the device's. Mirrors Android.
+    func testAFirstSyncFetchLandingAfterALogoutQueuesNothingForTheNextAccount() async throws {
+        prefs.hide("Mine")
+        client.remote[pl] = ["Theirs"]
+        let gate = AsyncGate()
+        client.beforeFetchResponse = { await gate.wait() }
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.client.fetchedCountries.contains(self.pl) } // parked on the wire
+        userSubject.send(nil)
+        await gate.open()
+        try await waitUntil { self.client.inFlight == 0 }
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(prefs.pendingHiddenFilmsChanges(country: pl), [])
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), ["Mine"])
+        XCTAssertTrue(client.hideCalls.isEmpty)
+        _ = sync
+    }
+
     /// A write's response is the server's WHOLE set. Its validators vouch for
     /// that set only — when it differs from the local bucket (another device
     /// changed it), storing them would make the next fetch a 304 that hides

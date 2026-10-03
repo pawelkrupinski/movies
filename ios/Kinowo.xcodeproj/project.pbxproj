@@ -78,6 +78,7 @@
 		DD00000000000000000201 /* CardSpacingTuningUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000201 /* CardSpacingTuningUITests.swift */; };
 		DD00000000000000000202 /* CityGateButtonSizeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000202 /* CityGateButtonSizeUITests.swift */; };
 		DD00000000000000000270 /* PickAnotherCityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000270 /* PickAnotherCityUITests.swift */; };
+		DD00000000000000000403 /* RetiredSavedCityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000403 /* RetiredSavedCityUITests.swift */; };
 		DD00000000000000000280 /* CountySubregionPickerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000280 /* CountySubregionPickerUITests.swift */; };
 		DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000203 /* DayChangeScrollResetUITests.swift */; };
 		DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000204 /* PosterFullScreenUITests.swift */; };
@@ -189,6 +190,7 @@
 		CC00000000000000000201 /* CardSpacingTuningUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSpacingTuningUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000202 /* CityGateButtonSizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGateButtonSizeUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000270 /* PickAnotherCityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickAnotherCityUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000403 /* RetiredSavedCityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetiredSavedCityUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000280 /* CountySubregionPickerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountySubregionPickerUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000203 /* DayChangeScrollResetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayChangeScrollResetUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000204 /* PosterFullScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterFullScreenUITests.swift; sourceTree = "<group>"; };
@@ -392,6 +394,7 @@
 				CC00000000000000000201 /* CardSpacingTuningUITests.swift */,
 				CC00000000000000000202 /* CityGateButtonSizeUITests.swift */,
 				CC00000000000000000270 /* PickAnotherCityUITests.swift */,
+				CC00000000000000000403 /* RetiredSavedCityUITests.swift */,
 				CC00000000000000000280 /* CountySubregionPickerUITests.swift */,
 				CC00000000000000000203 /* DayChangeScrollResetUITests.swift */,
 				CC00000000000000000204 /* PosterFullScreenUITests.swift */,
@@ -591,6 +594,7 @@
 				DD00000000000000000201 /* CardSpacingTuningUITests.swift in Sources */,
 				DD00000000000000000202 /* CityGateButtonSizeUITests.swift in Sources */,
 				DD00000000000000000270 /* PickAnotherCityUITests.swift in Sources */,
+				DD00000000000000000403 /* RetiredSavedCityUITests.swift in Sources */,
 				DD00000000000000000280 /* CountySubregionPickerUITests.swift in Sources */,
 				DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */,
 				DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */,

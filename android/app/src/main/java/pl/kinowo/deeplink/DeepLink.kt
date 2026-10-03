@@ -74,11 +74,17 @@ data class DeepLink(
          * catalog's lookup ([pl.kinowo.model.Catalog.versionTokensOf]); the
          * default is Poland's pair, the one every link was checked against before
          * the catalog carried the field.
+         *
+         * [currentSlugByFormer] maps a slug the web now redirects (a retired
+         * page, a renamed metro — [pl.kinowo.model.City.formerSlugs]) onto the
+         * city answering at it: the link opens there, as the server's 301 would
+         * have sent a browser.
          */
         fun parse(
             url: String,
             knownCitySlugs: Set<String> = Cities.all.map { it.slug }.toSet(),
             versionTokens: (citySlug: String) -> VersionTokens = { VersionTokens.POLAND },
+            currentSlugByFormer: Map<String, String> = emptyMap(),
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
             // handing the base to java.net.URI. The single-arg URI(String)
@@ -104,7 +110,7 @@ data class DeepLink(
             val scheme = uri.scheme?.lowercase() ?: return null
             val host = uri.host?.lowercase() ?: return null
 
-            val city: String
+            val linked: String
             val trailing: List<String>
             when (scheme) {
                 "https", "http" -> {
@@ -113,18 +119,21 @@ data class DeepLink(
                     val segments =
                         if (raw.firstOrNull() in COUNTRY_PATH_SEGMENTS && raw.firstOrNull() !in knownCitySlugs) raw.drop(1)
                         else raw
-                    city = segments.firstOrNull() ?: return null
+                    linked = segments.firstOrNull() ?: return null
                     trailing = segments.drop(1)
                 }
                 "kinowo" -> {
                     if (host in RESERVED_SCHEME_HOSTS) return null
-                    city = host
+                    linked = host
                     trailing = pathSegments(uri.rawPath)
                 }
                 else -> return null
             }
 
-            if (city !in knownCitySlugs) return null
+            val city = when {
+                linked in knownCitySlugs -> linked
+                else -> currentSlugByFormer[linked]?.takeIf { it in knownCitySlugs } ?: return null
+            }
 
             val query = parseQuery(rawQuery)
             // `movie` is the current spelling; `film` was its address before

@@ -42,7 +42,10 @@ internal class FakeSyncPrefs : SyncPrefs {
 
     override suspend fun hiddenFilmsEtag(country: String): String? = etags[country]
     override suspend fun hiddenFilmsLastModified(country: String): String? = lastModifieds[country]
+    /** Awaited before a validator write lands, as [beforeSetPendingOps]. */
+    var beforeSetValidators: suspend () -> Unit = {}
     override suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?) {
+        beforeSetValidators()
         etags[country] = etag
         lastModifieds[country] = lastModified
     }

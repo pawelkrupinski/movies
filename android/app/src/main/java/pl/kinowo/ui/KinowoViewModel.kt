@@ -51,6 +51,7 @@ import pl.kinowo.location.GrantedLocationSource
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.zoneFor
+import pl.kinowo.model.currentSlugByFormer
 import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
@@ -347,6 +348,16 @@ class KinowoViewModel(
         // 304 costs only headers). Non-blocking — the UI renders from the
         // seeded/persisted catalog meanwhile.
         viewModelScope.launch { catalogRepository.reload() }
+        // A saved city whose page was retired or renamed answers at another slug
+        // now ([pl.kinowo.model.City.formerSlugs]): its listing still arrives
+        // through the server's 301, but the picker found no city by the old slug
+        // and labelled the list with the country's default. Adopt the slug it
+        // answers at, as the web's redirect does for a browser.
+        viewModelScope.launch {
+            combine(prefs.selectedCity, countryCatalog) { slug, catalog -> slug?.let(catalog.cities.currentSlugByFormer()::get) }
+                .filterNotNull()
+                .collect { current -> prefs.setCity(current) }
+        }
         // The network fetch is gated on a city being chosen — until the
         // first-launch gate resolves one, `selectedCity` is null and nothing
         // hits the wire. Each distinct (non-null) slug triggers a fresh load,
@@ -463,7 +474,8 @@ class KinowoViewModel(
         // a city that ships only via `/api/catalog` — every German city — is
         // recognised, not just the compile-time `Cities.all` roster.
         val catalog = countryCatalog.value
-        val link = DeepLink.parse(rawUrl, catalog.cities.map { it.slug }.toSet(), catalog::versionTokensOf) ?: return@launch
+        val link = DeepLink.parse(rawUrl, catalog.cities.map { it.slug }.toSet(), catalog::versionTokensOf,
+                                  catalog.cities.currentSlugByFormer()) ?: return@launch
         // The STORED choices, not this ViewModel's `stateIn` mirrors, which
         // still read null until DataStore's first emission lands.
         val (storedCountry, storedCity) = prefs.countryAndCity.first()

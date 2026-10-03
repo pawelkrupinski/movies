@@ -14,20 +14,22 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
         super.tearDown()
     }
 
-    func testSaveAndLoadLastModifiedForSameDeploymentAndCity() {
+    func testSaveAndLoadLastModifiedForSameDeploymentAndCity() async {
         let value = "Sun, 25 May 2026 10:00:00 GMT"
         cache.save([], deployment: poland, city: "poznan", lastModified: value)
-        XCTAssertEqual(cache.lastModified(deployment: poland, city: "poznan"), value)
+        let stamp = await cache.lastModified(deployment: poland, city: "poznan")
+        XCTAssertEqual(stamp, value)
     }
 
     /// The server's `Last-Modified` is a single global value, so replaying
     /// poznań's timestamp while fetching warszawa would draw a 304 and strand
     /// the grid on the old city. A different city must therefore get no
     /// conditional header (nil).
-    func testLastModifiedIsNilForADifferentCity() {
+    func testLastModifiedIsNilForADifferentCity() async {
         cache.save([], deployment: poland, city: "poznan",
                              lastModified: "Sun, 25 May 2026 10:00:00 GMT")
-        XCTAssertNil(cache.lastModified(deployment: poland, city: "warszawa"))
+        let stamp = await cache.lastModified(deployment: poland, city: "warszawa")
+        XCTAssertNil(stamp)
     }
 
     /// The same slug can live on two deployments, and asking the wrong one is
@@ -36,10 +38,11 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
     /// deployment drew a 304, so a deep link into Berlin came up empty even
     /// though Germany had a full listing. A deployment switch must send no
     /// conditional header.
-    func testLastModifiedIsNilForADifferentDeploymentOfTheSameCity() {
+    func testLastModifiedIsNilForADifferentDeploymentOfTheSameCity() async {
         cache.save([], deployment: poland, city: "berlin",
                              lastModified: "Sun, 26 Jul 2026 17:29:46 GMT")
-        XCTAssertNil(cache.lastModified(deployment: germany, city: "berlin"))
+        let stamp = await cache.lastModified(deployment: germany, city: "berlin")
+        XCTAssertNil(stamp)
     }
 
     /// The body is bound the same way: an empty listing cached off the wrong
@@ -84,21 +87,23 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
             callerIsEmpty: true, deployment: germany, city: "berlin"))
     }
 
-    func testLastModifiedReturnsNilWhenNotSaved() {
+    func testLastModifiedReturnsNilWhenNotSaved() async {
         cache.remove()
-        XCTAssertNil(cache.lastModified(deployment: poland, city: "poznan"))
+        let stamp = await cache.lastModified(deployment: poland, city: "poznan")
+        XCTAssertNil(stamp)
     }
 
     /// Older builds kept a separate body file and meta file (the oldest meta
     /// with only city + timestamp). Neither is read any more, so what they
     /// hold reads as "nothing cached" and the next fetch is unconditional — a
     /// stale entry costs one full response, never a wrong one.
-    func testAnOlderBuildsMetaFileIsIgnored() {
+    func testAnOlderBuildsMetaFileIsIgnored() async {
         cache.remove()
         let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("repertoire-meta.txt")
         try? "berlin\nSun, 26 Jul 2026 17:29:46 GMT".write(to: url, atomically: true, encoding: .utf8)
-        XCTAssertNil(cache.lastModified(deployment: poland, city: "berlin"))
+        let stamp = await cache.lastModified(deployment: poland, city: "berlin")
+        XCTAssertNil(stamp)
         XCTAssertNil(cache.load(deployment: poland, city: "berlin"))
     }
 }

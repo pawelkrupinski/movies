@@ -61,7 +61,20 @@ data class City(
      * [Cities.all] rows, still decodes.
      */
     val timezone: String? = null,
+    /**
+     * Slugs this city used to answer at, which the web now 301s onto it — a
+     * retired page's (`miedzyrzec-podlaski` → `biala-podlaska`), a renamed
+     * metro's. App Links hand those URLs to the app without ever reaching that
+     * redirect, so [pl.kinowo.deeplink.DeepLink.parse] resolves them through
+     * [currentSlugByFormer] instead. Carried by `/api/catalog` (and the bundled
+     * seed), same shape as [region].
+     */
+    val formerSlugs: List<String> = emptyList(),
 )
+
+/** Each former slug ([City.formerSlugs]) → the city that answers at it now. */
+fun List<City>.currentSlugByFormer(): Map<String, String> =
+    buildMap { this@currentSlugByFormer.forEach { city -> city.formerSlugs.forEach { putIfAbsent(it, city.slug) } } }
 
 /**
  * The zone to reason about [slug]'s showtimes in — that city's own where the

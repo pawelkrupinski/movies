@@ -34,7 +34,8 @@ object Catalog {
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
    * where the country's picker groups its cities, the group's label as `region`
    * and, where that group nests a sub-group worth a tap of its own (more than
-   * one city under it), that sub-group's label as `subregion`. Each country
+   * one city under it), that sub-group's label as `subregion`, and, where the
+   * web redirects older slugs onto it, those as `formerSlugs`. Each country
    * carries its `timezone` and, where it has one, the `versionTokens` pair its
    * "version" filter matches on.
    */
@@ -53,6 +54,14 @@ object Catalog {
   private def countryTimezone(c: Country): String =
     c.cities.maxByOption(city => (city.cinemas.size, city.slug))
       .map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+
+  /** The slugs whose URLs the web now 301s onto each city (`City.renamedSlugs`) — a
+   *  retired page's, a renamed metro's — sorted, and absent for every city that never
+   *  had another. The apps claim those URLs too (App Links, Universal Links), and a
+   *  link opened in an app never reaches the server's redirect: without this an app
+   *  rejected `/miedzyrzec-podlaski/movie/…` as an unknown city and opened nothing. */
+  private lazy val formerSlugsOf: Map[String, Seq[String]] =
+    City.renamedSlugs.toSeq.groupMap(_._2)(_._1).view.mapValues(_.sorted).toMap
 
   val json: String = {
     val countries = Country.switchable
@@ -148,7 +157,8 @@ object Catalog {
           val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
           val zone   = city.zoneId.getId
           val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$tz}"""
+          val former = formerSlugsOf.get(city.slug).fold("")(slugs => slugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]"))
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$tz$former}"""
         }
       }
       .mkString("[", ",", "]")

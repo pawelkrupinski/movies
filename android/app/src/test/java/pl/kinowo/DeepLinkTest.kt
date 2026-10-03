@@ -10,6 +10,7 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.VersionTokens
+import pl.kinowo.model.currentSlugByFormer
 
 /**
  * [DeepLink.parse] is the inverse of the web's `buildShareURL()`: every
@@ -110,6 +111,23 @@ class DeepLinkTest {
     @Test fun rejectsOAuthCallback() {
         assertNull(DeepLink.parse("kinowo://auth-done?code=abc"))
         assertNull(DeepLink.parse("https://kinowo.net/auth/google/callback?code=abc"))
+    }
+
+    @Test fun aRetiredCitysLinkOpensTheCityThatHoldsItNow() {
+        // The web 301s `/miedzyrzec-podlaski/…` onto Biała Podlaska, but an App
+        // Link never reaches that redirect: the catalog names the former slug on
+        // its successor, and the link opens there.
+        val catalog = pl.kinowo.model.Catalog.parseBody(
+            """{"countries":[],"cities":[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]}""",
+        )!!
+        val slugs = catalog.cities.map { it.slug }.toSet()
+        val former = catalog.cities.currentSlugByFormer()
+        val dl = DeepLink.parse("https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow", slugs, currentSlugByFormer = former)!!
+        assertEquals("biala-podlaska", dl.citySlug)
+        assertEquals("oppenheimer", dl.filmSlug)
+        assertEquals(DateFilter.Tomorrow, dl.filters.date)
+        // A slug nobody ever answered at is still no city.
+        assertNull(DeepLink.parse("https://kinowo.net/nowhere/", slugs, currentSlugByFormer = former))
     }
 
     @Test fun rejectsUnknownCityHostAndScheme() {

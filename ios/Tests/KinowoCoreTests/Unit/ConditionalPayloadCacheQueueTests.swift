@@ -2,8 +2,7 @@ import Foundation
 import XCTest
 @testable import KinowoCore
 
-/// The cache's serial queue is what a main-thread read (`lastModified`, `load`)
-/// waits on, so it must hold only file I/O — never a whole-listing JSON encode.
+/// The cache's serial queue is what a main-thread read (`load`) waits on, so it must hold only file I/O — never a whole-listing JSON encode.
 /// The production save (`saveInBackground(body:)`, called by
 /// `ConditionalListEndpoint` with the response it just received) guarantees that
 /// by encoding nothing at all: the bytes on disk are the server's, as sent.
@@ -52,4 +51,5 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
         }
         wait(for: [answered], timeout: 2)
     }
+
 }

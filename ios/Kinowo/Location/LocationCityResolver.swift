@@ -65,6 +65,12 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// not eat it, or a user who takes a moment to tap "Allow" is dropped on the
     /// manual city list the fix was meant to skip.
     private let fixTimeout: TimeInterval
+    /// How long the no-fix fallback waits on its read of the held fix. That
+    /// read runs once the fix deadline has already passed, so nothing else
+    /// bounds it: a locationd round trip that stalls (a freshly booted device)
+    /// would otherwise hold the gate — or the silent "switch city?" check —
+    /// open for as long as the stall lasts. Past this, there is no fix.
+    private let staleFixReadTimeout: TimeInterval
     /// Country whose cities the gate resolves a fix against — set by `resolve`
     /// so a fix is matched only to cities the SELECTED country serves (a Polish
     /// fix never resolves to a UK region, or vice versa). `nil` means unscoped
@@ -97,22 +103,26 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// `requester` off the main thread would only move the stall: the main
     /// thread's next `authorizationStatus` waited on that lock instead
     /// (sampled on a fresh simulator clone, 2026-09-25).
-    convenience init(authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8) {
+    convenience init(authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8,
+                     staleFixReadTimeout: TimeInterval = 2) {
         let manager = CLLocationManager()
         self.init(requester: manager, readHeldFix: { CLLocationManager().location },
-                  authorizationTimeout: authorizationTimeout, fixTimeout: fixTimeout)
+                  authorizationTimeout: authorizationTimeout, fixTimeout: fixTimeout,
+                  staleFixReadTimeout: staleFixReadTimeout)
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
     /// `readHeldFix` defaults to reading `requester.location` (off the main thread).
     init(requester: LocationRequesting, readHeldFix: (@Sendable () -> CLLocation?)? = nil,
-         authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8) {
+         authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8,
+         staleFixReadTimeout: TimeInterval = 2) {
         self.requester = requester
         let boxed = UncheckedRequester(requester)
         self.readHeldFix = readHeldFix ?? { boxed.value.location }
         self.authorizationTimeout = authorizationTimeout
         self.fixTimeout = fixTimeout
+        self.staleFixReadTimeout = staleFixReadTimeout
         super.init()
     }
 
@@ -214,6 +224,21 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         return await Task.detached { read() }.value
     }
 
+    /// `heldFix()`, but `nil` once `seconds` pass without an answer. The read
+    /// itself can't be cancelled (it's a synchronous XPC call), so a stalled
+    /// one finishes on its own thread and its late answer is dropped.
+    private func heldFix(within seconds: TimeInterval) async -> CLLocation? {
+        let read = readHeldFix
+        return await withCheckedContinuation { (cont: CheckedContinuation<CLLocation?, Never>) in
+            let first = FirstAnswer(cont)
+            Task.detached { first.resume(read()) }
+            Task.detached {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                first.resume(nil)
+            }
+        }
+    }
+
     private func age(of location: CLLocation) -> TimeInterval {
         max(0, -location.timestamp.timeIntervalSinceNow)
     }
@@ -288,7 +313,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     func deliverNoFix() {
         fixDeadline = nil
         Task {
-            let stale = await heldFix()
+            let stale = await heldFix(within: staleFixReadTimeout)
             guard isAwaitingOutcome else { return }
             if let stale {
                 log.notice("gate: no fresh fix — falling back to a \(Int(self.age(of: stale)), privacy: .public)s-old one")
@@ -368,5 +393,21 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 private struct UncheckedRequester: @unchecked Sendable {
     let value: LocationRequesting
     init(_ value: LocationRequesting) { self.value = value }
+}
+
+/// Resumes a continuation with whichever answer arrives first — the held-fix
+/// read or its deadline — and drops the other.
+private final class FirstAnswer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<CLLocation?, Never>?
+    init(_ continuation: CheckedContinuation<CLLocation?, Never>) { self.continuation = continuation }
+
+    func resume(_ answer: CLLocation?) {
+        lock.lock()
+        let pending = continuation
+        continuation = nil
+        lock.unlock()
+        pending?.resume(returning: answer)
+    }
 }
 #endif

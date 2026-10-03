@@ -22,26 +22,29 @@ final class DetailsCacheTests: XCTestCase {
         XCTAssertEqual(cache.load(deployment: poland, city: "poznan"), details)
     }
 
-    func testSaveAndLoadLastModifiedForSameDeploymentAndCity() {
+    func testSaveAndLoadLastModifiedForSameDeploymentAndCity() async {
         let value = "Sun, 31 May 2026 10:00:00 GMT"
         cache.save([], deployment: poland, city: "poznan", lastModified: value)
-        XCTAssertEqual(cache.lastModified(deployment: poland, city: "poznan"), value)
+        let stamp = await cache.lastModified(deployment: poland, city: "poznan")
+        XCTAssertEqual(stamp, value)
     }
 
     /// See `RepertoireCacheLastModifiedTests`: the global server timestamp must
     /// not be replayed across a city switch.
-    func testLastModifiedIsNilForADifferentCity() {
+    func testLastModifiedIsNilForADifferentCity() async {
         cache.save([], deployment: poland, city: "poznan",
                           lastModified: "Sun, 31 May 2026 10:00:00 GMT")
-        XCTAssertNil(cache.lastModified(deployment: poland, city: "warszawa"))
+        let stamp = await cache.lastModified(deployment: poland, city: "warszawa")
+        XCTAssertNil(stamp)
     }
 
     /// …nor across a deployment switch, which is the same trap: this endpoint
     /// also answers `200 []` for a city the deployment doesn't serve.
-    func testLastModifiedIsNilForADifferentDeploymentOfTheSameCity() {
+    func testLastModifiedIsNilForADifferentDeploymentOfTheSameCity() async {
         cache.save([], deployment: poland, city: "berlin",
                           lastModified: "Sun, 31 May 2026 10:00:00 GMT")
-        XCTAssertNil(cache.lastModified(deployment: germany, city: "berlin"))
+        let stamp = await cache.lastModified(deployment: germany, city: "berlin")
+        XCTAssertNil(stamp)
     }
 
     func testCachedBodyIsNilForADifferentDeploymentOfTheSameCity() {
@@ -65,16 +68,17 @@ final class DetailsCacheTests: XCTestCase {
             callerIsEmpty: false, deployment: germany, city: "berlin"))
     }
 
-    func testLastModifiedReturnsNilWhenNotSaved() {
+    func testLastModifiedReturnsNilWhenNotSaved() async {
         cache.remove()
-        XCTAssertNil(cache.lastModified(deployment: poland, city: "poznan"))
+        let stamp = await cache.lastModified(deployment: poland, city: "poznan")
+        XCTAssertNil(stamp)
     }
 
     /// Background saves land in the order they were issued: a city switch's
     /// save can't be overtaken by the previous city's, which used to run in an
     /// unordered detached task and could leave the OLD city cached (or pair
     /// one city's metadata with the other's body) after the grid moved on.
-    func testBackgroundSavesLandInTheOrderTheyWereIssued() {
+    func testBackgroundSavesLandInTheOrderTheyWereIssued() async {
         for round in 0..<50 {
             let old = [FilmDetails(title: "Old \(round)", synopsis: nil, trailerURLs: [])]
             let new = [FilmDetails(title: "New \(round)", synopsis: nil, trailerURLs: [])]
@@ -82,7 +86,8 @@ final class DetailsCacheTests: XCTestCase {
             cache.saveInBackground(body: encoded(new), deployment: poland, city: "warszawa", lastModified: "lm-new")
 
             XCTAssertEqual(cache.load(deployment: poland, city: "warszawa"), new)
-            XCTAssertEqual(cache.lastModified(deployment: poland, city: "warszawa"), "lm-new")
+            let stamp = await cache.lastModified(deployment: poland, city: "warszawa")
+            XCTAssertEqual(stamp, "lm-new")
             XCTAssertNil(cache.load(deployment: poland, city: "poznan"))
         }
     }
@@ -90,13 +95,14 @@ final class DetailsCacheTests: XCTestCase {
     /// A read sees every save issued before it, background or not — the
     /// store's own next reload, and every test that asserts on the disk right
     /// after a reload, used to race the detached write.
-    func testAReadSeesABackgroundSaveIssuedBeforeIt() {
+    func testAReadSeesABackgroundSaveIssuedBeforeIt() async {
         for round in 0..<50 {
             let saved = [FilmDetails(title: "Saved \(round)", synopsis: nil, trailerURLs: [])]
             cache.saveInBackground(body: encoded(saved), deployment: poland, city: "gdansk", lastModified: "lm-\(round)")
 
             XCTAssertEqual(cache.load(deployment: poland, city: "gdansk"), saved)
-            XCTAssertEqual(cache.lastModified(deployment: poland, city: "gdansk"), "lm-\(round)")
+            let stamp = await cache.lastModified(deployment: poland, city: "gdansk")
+            XCTAssertEqual(stamp, "lm-\(round)")
         }
     }
 

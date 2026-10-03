@@ -181,18 +181,21 @@ final class StateSyncService: ObservableObject {
         // Unsent local edits first: until the server has them, its set is
         // older than local and must not replace it.
         guard await sendPendingChanges(country: country) else { return }
+        let startedIn = session
         let localBeforeFetch = prefs.hiddenFilms(country: country)
         do {
             if prefs.isHiddenFilmsMigrated(country: country) {
                 let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
                 if case .current(let remote) = try await client.fetch(country: country, etag: etag, lastModified: lastModified) {
-                    guard !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
+                    guard !endedDuringFetch(startedIn),
+                          !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
                     prefs.setHiddenFilms(remote.hiddenFilms, country: country)
                     prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
                 }
             } else {
                 // No usable validators, so this is always a fresh 200.
                 guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
+                      !endedDuringFetch(startedIn),
                       !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
                 let local     = prefs.hiddenFilms(country: country)
                 let localOnly = local.subtracting(remote.hiddenFilms)
@@ -214,6 +217,12 @@ final class StateSyncService: ObservableObject {
             // retries.
         }
     }
+
+    /// Whether the session the fetch was made in ended while it was on the
+    /// wire (a logout does not stop a reconcile in flight). Its answer is the
+    /// signed-out account's: merged in, it would show that account's hides on a
+    /// signed-out device, and the hides it queued would go to whoever signs in next.
+    private func endedDuringFetch(_ startedIn: Int) -> Bool { session != startedIn || !isLoggedIn }
 
     /// Whether the user edited `country`'s set while its fetch was on the wire
     /// (the local set moved, or an edit is still queued). The response then

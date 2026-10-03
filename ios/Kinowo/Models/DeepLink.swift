@@ -62,6 +62,10 @@ struct DeepLink: Equatable {
     /// segment (`/auth/…`, `/uptime`, a city the build doesn't know) is rejected
     /// so we never treat a non-city path as a city.
     ///
+    /// `currentSlugByFormer` maps a slug the web now redirects (a retired page,
+    /// a renamed metro — `City.formerSlugs`) onto the city answering at it: the
+    /// link opens there, as the server's 301 would have sent a browser.
+    ///
     /// `languageTokens` answers, for the linked city, the `?lang=` values its
     /// country's version filter can match — the country's own subtitled/dubbed
     /// pair, which is `OmU`/`DF` in Germany and `NAP`/`DUB` in Poland. The app
@@ -71,12 +75,13 @@ struct DeepLink: Equatable {
     /// target, so the pair arrives as bare strings.)
     static func parse(_ url: URL,
                       knownCitySlugs: Set<String> = Set(City.all.map(\.slug)),
+                      currentSlugByFormer: [String: String] = [:],
                       languageTokens: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens }) -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased() else { return nil }
 
         // Path segments that follow the city slug (e.g. ["movie"]).
-        let city: String
+        let linked: String
         let trailing: [String]
         switch scheme {
         case "https", "http":
@@ -87,17 +92,24 @@ struct DeepLink: Equatable {
                 segments = Array(segments.dropFirst())
             }
             guard let first = segments.first else { return nil }
-            city = first
+            linked = first
             trailing = Array(segments.dropFirst())
         case "kinowo":
             guard let host = components.host?.lowercased(), !reservedSchemeHosts.contains(host) else { return nil }
-            city = host
+            linked = host
             trailing = pathSegments(components.path)
         default:
             return nil
         }
 
-        guard knownCitySlugs.contains(city) else { return nil }
+        let city: String
+        if knownCitySlugs.contains(linked) {
+            city = linked
+        } else if let current = currentSlugByFormer[linked], knownCitySlugs.contains(current) {
+            city = current
+        } else {
+            return nil
+        }
 
         // `movie` is the current spelling; `film` was its address before the
         // rename and is still minted by installed app builds and every link
