@@ -385,7 +385,7 @@ hide(true);
 <div id="view-pager">
   <div id="day-track">
 
-<main id="view-root" data-view="films" data-large-city="false" data-next-day="1780956000000">
+<main id="view-root" data-view="films" data-large-city="false" data-next-day="1780956000000" data-rendered-at="1780869600000">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none" data-i18n="empty.repertoire">Brak repertuaru.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
@@ -7610,7 +7610,7 @@ const frag = document.createDocumentFragment();
 for (const v of visible) frag.appendChild(v.element);
 gridEl.appendChild(frag);
 }
-const RENDERED_AT = 1780869600000;
+const RENDERED_AT = Number(document.getElementById('view-root').dataset.renderedAt);
 const BOOT_AT = Date.now();
 function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }
 function slotExpiresAt(badge) {

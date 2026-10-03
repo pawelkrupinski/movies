@@ -13,7 +13,7 @@
    `data-large-city` gates shared.js's carousel between the animated
    clone-and-slide preview and an instant in-place re-filter — see the
    `MovieControllerService.LargeCityShowtimeThreshold` doc comment. *@
-<main id="view-root" data-view="films" data-large-city="@isLargeCity" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}">
+<main id="view-root" data-view="films" data-large-city="@isLargeCity" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}" data-rendered-at="@{renderedAt.atZone(city.zoneId).toInstant.toEpochMilli}">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none" data-i18n="empty.repertoire">@messages("empty.repertoire")</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
@@ -419,7 +419,10 @@
   // from the HTTP cache anchors on its ORIGINAL render and so under-prunes by
   // the cache age — the safe direction, and never staler than the SSR it
   // shipped with.
-  const RENDERED_AT = @{renderedAt.atZone(city.zoneId).toInstant.toEpochMilli};
+  // Read off `#view-root` rather than interpolated here: this whole block goes through
+  // the memoising minifier, which keeps one entry per distinct block text — a render
+  // instant inside it made every render a new entry, held for the life of the process.
+  const RENDERED_AT = Number(document.getElementById('view-root').dataset.renderedAt);
   const BOOT_AT     = Date.now();
 
   function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }

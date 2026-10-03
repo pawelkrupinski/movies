@@ -1,6 +1,5 @@
 package tools
 
-import java.util.concurrent.ConcurrentHashMap
 
 import play.api.Mode
 
@@ -25,22 +24,33 @@ object PassThroughMinifier extends Minifier {
   def process(html: String): String = html
 }
 
-/** [[Minify]] memoised per input, so the per-request render cost is one
- *  `ConcurrentHashMap` lookup after the first hit. The caches are unbounded
- *  but the input set is bounded — every distinct template-rendered block is
- *  one entry, ~dozens total even with interpolated values — and they live
- *  exactly as long as the instance that owns them. */
-class MemoisingMinifier extends Minifier {
-  private val blockCache = new ConcurrentHashMap[String, String]
-  private val jsCache    = new ConcurrentHashMap[String, String]
-  private val cssCache   = new ConcurrentHashMap[String, String]
+/** [[Minify]] memoised per input, so the per-request render cost is one cache lookup
+ *  after the first hit.
+ *
+ *  BOUNDED, because the input set is only bounded while no block carries a per-render
+ *  value. The listing's script once interpolated its render instant, which made every
+ *  render a new ~25 KB block and a new minified script — kept in unbounded maps for the
+ *  life of the process. That value now rides outside the block; the bound is what stops
+ *  the next one leaking, and costs nothing while the blocks are what they should be:
+ *  every distinct template-rendered block (a few per city) is one entry. */
+class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends Minifier {
+  private def cache(): com.github.benmanes.caffeine.cache.Cache[String, String] =
+    com.github.benmanes.caffeine.cache.Caffeine.newBuilder().maximumSize(maxEntries).build[String, String]()
+  private val blockCache = cache()
+  private val jsCache    = cache()
+  private val cssCache   = cache()
 
-  private val minifyJs:  String => String = src => jsCache.computeIfAbsent(src, Minify.minifyJs)
-  private val minifyCss: String => String = src => cssCache.computeIfAbsent(src, Minify.minifyCss)
+  private val minifyJs:  String => String = src => jsCache.get(src, Minify.minifyJs)
+  private val minifyCss: String => String = src => cssCache.get(src, Minify.minifyCss)
 
   def process(html: String): String =
-    blockCache.computeIfAbsent(html, Minify.process(_, minifyJs, minifyCss))
+    blockCache.get(html, Minify.process(_, minifyJs, minifyCss))
 
   /** How many distinct blocks this instance has memoised. */
-  def cachedBlocks: Int = blockCache.size
+  def cachedBlocks: Int = { blockCache.cleanUp(); blockCache.estimatedSize().toInt }
+}
+
+object MemoisingMinifier {
+  /** Every block of every city's pages several times over: a city contributes a handful. */
+  val MaxEntries: Long = 4096
 }
