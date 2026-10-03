@@ -35,8 +35,8 @@ class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock = Clo
   extends CorpusMetricsCollector {
   import WorkerCorpusMetrics._
 
-  // Materialize this country's every series at 0 so it exists from boot — no Grafana gaps.
-  Subset.all.foreach(s => corpus.labelValues(countryCode, s).set(0.0))
+  // No boot seed: a series at 0 reads as an empty corpus, so every restart drew the coverage
+  // chart to 0 and back. Each series appears with the first complete census instead.
 
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     // One "now" for the whole pass, so `unresolved_with_showtimes` cannot count a row

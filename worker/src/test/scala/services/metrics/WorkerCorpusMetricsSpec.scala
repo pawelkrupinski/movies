@@ -114,11 +114,15 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     gauge(text, Subset.FwRating)      shouldBe Some(1.0)
   }
 
-  it should "materialize every subset series at 0 before the first sample" in {
+  // A 0 here is not "no data yet", it is "the corpus is empty": every worker restart on
+  // 2026-10-03 drew each country's coverage lines to 0 and back for the ~5 minutes before
+  // the first census, and read as the corpus swinging. Absent until the first complete
+  // census is the truth — the same reason an incomplete pass publishes nothing.
+  it should "publish no series before the first complete census" in {
     val registry = new PrometheusRegistry()
     new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl") // constructed, not yet sampled
     val text = render(registry)
 
-    Subset.all.foreach(s => gauge(text, s) shouldBe Some(0.0))
+    Subset.all.foreach(s => gauge(text, s) shouldBe None)
   }
 }
