@@ -257,6 +257,10 @@ abstract class CountryConvergenceBehaviour(
    *  side and would otherwise each ask the live web, which need not answer twice alike. */
   private lazy val sharedLive: Option[tools.SharedLiveAnswers] = Option.when(configuration.gapFill.value)(new tools.SharedLiveAnswers)
 
+  /** The order passes' TMDB bodies, each parsed once between them ([[tools.SharedJsonBodies]]): they
+   *  read the same tree in lockstep, and each parsed every film record it asked for itself. */
+  private lazy val passBodies: tools.SharedJsonBodies = new tools.SharedJsonBodies
+
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
@@ -1172,7 +1176,8 @@ abstract class CountryConvergenceBehaviour(
     val passStorage = ConvergenceStorage.fromConfiguration(configuration, scope, TitleNormalizer.forCountry(country),
       MovieChangeStream.Debounce.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive,
+        tmdbBodies = passBodies) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
@@ -1250,6 +1255,7 @@ abstract class CountryConvergenceBehaviour(
       val comparison = new CorpusComparison
       val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
       val reference = comparison.reference
+      info(s"${country.displayName}: ${passBodies.describe}")
       info(s"${country.displayName}: $Passes passes over ${reference.records.size} films, " +
            s"${reference.screenings.values.map(_.size).sum} slots, ${reference.rows.size} rendered rows")
       reference.records should not be empty

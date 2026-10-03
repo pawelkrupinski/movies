@@ -10,8 +10,11 @@ import play.api.libs.json.{JsValue, Json}
  * (JFR). The last body a thread parsed is handed back to the next parse of that same instance — by
  * identity, never by content — once; the readers share it by sharing this instance, which the
  * composition root wires into both.
+ *
+ * Open for one subclass, the archive replay's `SharedJsonBodies`, which parses each body once for
+ * every pass of an order-independence replay; production wires this class as it is.
  */
-final class JsonBodies {
+open class JsonBodies {
   private val last = new ThreadLocal[(String, JsValue)]
 
   def parse(body: String): JsValue = {

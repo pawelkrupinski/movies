@@ -52,7 +52,11 @@ class ArchiveReplayWiring(
   // key comes from; an empty one for a unit spec. Handed in: the wiring never asks the process.
   environment:      Env = Env.of(),
   // A gap-fill leg's passes, given one live answer per request between them ([[SharedLiveAnswers]]).
-  sharedLive:       Option[SharedLiveAnswers] = None
+  sharedLive:       Option[SharedLiveAnswers] = None,
+  // Where the TMDB bodies the identity store's normalizer and the client read are parsed — one
+  // [[SharedJsonBodies]] for every pass of an order-independence replay, so each body is parsed once
+  // between them rather than once per pass; production's per-thread handoff otherwise.
+  tmdbBodies:       JsonBodies = new JsonBodies
 ) extends WorkerWiring(country, env = environment) with TestWiring {
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
@@ -154,6 +158,8 @@ class ArchiveReplayWiring(
    *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
   override def tmdbClientOver(http: HttpFetch): TmdbClient =
     new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
+
+  override lazy val tmdbJsonBodies: JsonBodies = tmdbBodies
 
   /** No identity traces. They are diagnostics for `/admin/identity/traces` — nothing a replay asserts
    *  reads them, nor does the resolver — yet a cut-over replay built one per listing on every resolve

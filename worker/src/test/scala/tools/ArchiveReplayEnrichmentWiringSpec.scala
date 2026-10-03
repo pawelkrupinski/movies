@@ -454,4 +454,17 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       new Exposed().traces shouldBe services.identity.IdentityTraceStore.Discard
     } finally client.close()
   }
+
+  // An order-independence replay's passes parse each TMDB body once between them: the bodies they are
+  // handed are the ones the identity store's normalizer and every TMDB client read. Without them, a
+  // replay parses for itself as production does — the per-thread handoff, never a shared memo.
+  it should "read TMDB bodies through the shared parses it is handed, and through production's own otherwise" in {
+    val shared = new SharedJsonBodies
+    val passes = (1 to 2).map(_ => new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
+      fixtureTree, settings.FixtureRoot.RepositoryRelative, tmdbBodies = shared))
+    passes.foreach(_.tmdbJsonBodies should be theSameInstanceAs shared)
+    val alone = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+      settings.FixtureRoot.RepositoryRelative)
+    alone.tmdbJsonBodies.getClass shouldBe classOf[JsonBodies]
+  }
 }
