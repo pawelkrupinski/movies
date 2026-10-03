@@ -40,7 +40,7 @@ if gh release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber 2>/
     if compgen -G "$archives/*.tar.zst" >/dev/null; then rm -f "$archives"/*.tar.gz; fi
     echo "enrichment tree $ASSET from release $TAG"
 elif [ "$mode" != "record" ]; then
-    echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest two) — a hermetic leg replays nothing else"
+    echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest five) — a hermetic leg replays nothing else"
     exit 3
 else
     # One-off bootstrap: before the release existed, legs published artifacts. Read the newest

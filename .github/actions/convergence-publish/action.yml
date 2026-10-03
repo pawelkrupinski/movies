@@ -197,9 +197,10 @@ runs:
           echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
           "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || exit 1
           echo "pinned $pinned as $code's hermetic pair"
-          # Keep this pair and the one before it; older pinned trees are dead weight. Either
-          # compressor's: the pairs pinned before the move to zstd are gzip.
+          # Keep the newest FIVE pairs: with recordings landing every ~15 min, keeping two evicted a
+          # pair before an identity measure dispatched on it could restore it (measure 37114004953).
+          # Either compressor's: the pairs pinned before the move to zstd are gzip.
           gh release view "$FIXTURE_RELEASE_TAG" --json assets \
                   --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
-              | sort -r | tail -n +3 | cut -f2 \
+              | sort -r | tail -n +6 | cut -f2 \
               | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
