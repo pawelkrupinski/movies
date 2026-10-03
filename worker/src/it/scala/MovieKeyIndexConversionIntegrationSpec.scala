@@ -40,8 +40,12 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
   }
 
   /** Boot the repository on `instance`, polling `listIndexes` from a second thread the whole
-   *  time, and return every snapshot in which `key_1` was missing plus the log lines. */
-  private def boot(instance: ConcurrentInstances.Instance, observer: MongoDatabase): (Seq[String], Seq[ch.qos.logback.classic.spi.ILoggingEvent]) = {
+   *  time, and return every snapshot in which `key_1` was missing plus the log lines about THIS
+   *  database's indexes. The capture hears `services.MongoIndex` from every suite running beside
+   *  this one (an itAll run: another suite's "index on kinowo_it_wiring_de.uptimeServiceTags …
+   *  could not be created" failed the no-warning case), and every line it logs names its
+   *  namespace. `alongside` runs inside the capture, for a spec to log as such a suite would. */
+  private def boot(instance: ConcurrentInstances.Instance, observer: MongoDatabase, alongside: () => Unit = () => ()): (Seq[String], Seq[ch.qos.logback.classic.spi.ILoggingEvent]) = {
     val gaps    = new ConcurrentLinkedQueue[String]()
     val running = new AtomicBoolean(true)
     val poller  = new Thread(() => while (running.get) {
@@ -51,10 +55,11 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
     }, "key-index-poller")
     poller.start()
     val events = try LogCapture.capture("services.MongoIndex", Some(Level.INFO)) {
+      alongside()
       val repository = new MongoMovieRepository(Some(instance.database), normalizer = titleNormalizer)
       try repository.enabled shouldBe true finally repository.close()
     } finally { running.set(false); poller.join(10000) }
-    (gaps.asScala.toSeq, events)
+    (gaps.asScala.toSeq, events.filter(_.getFormattedMessage.contains(s" on ${instance.database.name}.")))
   }
 
   private def drops(instance: ConcurrentInstances.Instance): Seq[ConcurrentInstances.SentCommand] =
@@ -102,7 +107,10 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
       Await.result(movies.insertOne(ImmutableDocument("_id" -> "film-0", "key" -> "a")).toFuture(), 10.seconds)
       Await.result(movies.createIndex(Indexes.ascending("key"), IndexOptions().unique(true)).toFuture(), 10.seconds)
 
-      val (gaps, events) = boot(pod, observer.database)
+      // A parallel suite's index warning, logged while this boot is being captured.
+      val (gaps, events) = boot(pod, observer.database, alongside = () =>
+        org.slf4j.LoggerFactory.getLogger("services.MongoIndex")
+          .warn("uptimeServiceTags: index on kinowo_it_elsewhere.uptimeServiceTags {\"service\": 1} could not be created: state should be: open"))
 
       flag(keyIndex(observer.database), "unique") shouldBe true
       gaps shouldBe empty
