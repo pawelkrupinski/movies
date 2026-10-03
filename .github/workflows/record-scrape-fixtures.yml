@@ -130,7 +130,7 @@ jobs:
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, order: convergenceUkOrder, sample: convergenceUkSample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -151,6 +151,9 @@ jobs:
             # they were ~6 of its 14 minutes, the run's longest leg (run 37105119296). Empty for
             # every other country, whose leg stays one row.
             order-command:  ${{ matrix.order || '' }}
+            # The US sample in a row of its own, beside its boot rather than ahead of it — a minute
+            # off the run's longest leg (37105119296); it records into the same publish.
+            sample-row:     ${{ matrix.sampleRow == true }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}

@@ -64,7 +64,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
   // — which gates nothing in a recording and whose recordings no row would publish — skipped.
   it should "replay a recording's order row gap-filled, without a sample of its own" in {
-    RepoFile.step(convergence, Sample) should include("if: inputs.mode != 'record' || matrix.phase == 'convergence'\n")
+    RepoFile.step(convergence, Sample) should include("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
       "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}")
   }
@@ -81,6 +81,27 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(convergence, Record) should include("""run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"""")
     RepoFile.exists("worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala") shouldBe true
     RepoFile.exists("worker/src/test/scala/scripts/RecordCorpusFixture.scala") shouldBe false
+  }
+
+  // The US recording's sample, beside its boot rather than ahead of it (a minute off the run's longest
+  // leg, 37105119296): a row of its own over the same corpus and tree, whose recordings the convergence
+  // row merges before it publishes — a hermetic sample leg replays the pair that publish pins.
+  it should "run the US recording's sample in a row of its own, and publish what it records" in {
+    val ordered = recorder.linesIterator.filter(_.contains("sampleRow: true")).toSeq
+    ordered.map(_.contains("code: us,")) shouldBe Seq(true)
+    RepoFile.block(recorder, "enrichment") should include("sample-row:     ${{ matrix.sampleRow == true }}")
+    RepoFile.step(convergence, "Mark the tree before the sample records into it") should include(
+      "if: inputs.mode == 'record' && matrix.phase == 'sample'\n")
+    RepoFile.step(convergence, "Pack the sample's recordings") should include(
+      ".github/scripts/sample-recordings.sh pack \"test/resources/fixtures/enrichment-${{ inputs.code }}\" \"$RUNNER_TEMP/sample-stamp\"")
+    val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
+    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
+    merge should include(""".github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"""")
+    withClue("merged before the tree is packed and published: ") {
+      at("- name: Merge the sample row's recordings") should be < at("uses: ./.github/actions/convergence-publish")
+    }
+    withClue("and the sample row runs no suite: ")(
+      RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("if: matrix.phase != 'sample'\n"))
   }
 
   it should "run the corpus steps in a recording's convergence row only, and close the tunnel whatever happened" in {

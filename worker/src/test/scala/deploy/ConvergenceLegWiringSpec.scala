@@ -213,12 +213,14 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(s"- name: $SuiteStep")
     sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
     withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated — only a " +
-             "RECORDING's order row may skip it, where it gates nothing and records for no one: ") {
+             "RECORDING places its sample (which gates nothing there) in one row of its choosing: ") {
       sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: inputs.mode != 'record' || matrix.phase == 'convergence'")
+        Seq("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
     }
-    withClue("the suite must not run past a failed sample: ") {
-      RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe empty
+    withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
+             "implicit success(), and this one only spares a recording's sample row: ") {
+      RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
+        Seq("if: matrix.phase != 'sample'")
     }
   }
 
@@ -438,7 +440,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       legJobs shouldBe Seq("convergence")
     }
     legDirectives should not include "if: inputs.order-command"
-    RepoFile.block(leg, "convergence") should include("phase: ${{ fromJson(inputs.order-command")
+    RepoFile.block(leg, "convergence") should include(
+      """phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', """ +
+        """(inputs.mode == 'record' && inputs.sample-row) && ',"sample"' || '')) }}""")
   }
 
   /**
@@ -483,7 +487,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     block should include("fail-fast: false")
     // The phase appears only to spare a RECORDING's order row (see above); every other row's
     // sample runs whatever the other row does.
-    RepoFile.step(block, SampleStep).replace("if: inputs.mode != 'record' || matrix.phase == 'convergence'", "") should
+    RepoFile.step(block, SampleStep).replace("if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)", "") should
       not include "matrix.phase"
   }
 

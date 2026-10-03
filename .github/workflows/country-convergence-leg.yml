@@ -7,7 +7,8 @@
 # without that job's second checkout and setup (~1 minute on every leg's critical path,
 # and one more runner per country per push). A RECORDING is the one exception to the
 # gate, and only to its stopping power: there the sample carries `continue-on-error`, so
-# the whole corpus is recorded past a red sample (see the sample step below).
+# the whole corpus is recorded past a red sample (see the sample step below) — and a recording
+# may run it as a `sample` row of its own instead (`sample-row`), beside the boot it gates nothing of.
 #
 # Order-independence is part of the standard run and belongs inside it; the one country
 # whose corpus outgrew a single job (the United States, whose boot and replays are 5.5
@@ -182,6 +183,17 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # A RECORDING's sample in a row of its own, beside the boot instead of ahead of it. In a
+            # recording the sample gates nothing — it records, and its verdict fails the leg after
+            # the publish — so the minute it held the convergence row's critical path bought
+            # nothing there; the United States' leg, the run's longest once the UK's replays moved
+            # out, sets it (run 37105119296). Its recordings reach the convergence row's publish
+            # through `.github/scripts/sample-recordings.sh`. Ignored outside `record` mode.
+            sample-row:
+                description: In a recording, run the sample as a row of its own and merge what it records into the convergence row's publish.
+                required: false
+                type: boolean
+                default: false
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -263,7 +275,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.order-command == '' && '["convergence"]' || '["convergence","order-independence"]') }}
+                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', (inputs.mode == 'record' && inputs.sample-row) && ',"sample"' || '')) }}
         runs-on: ubuntu-latest
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -423,6 +435,13 @@ jobs:
                   gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
                   .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
 
+            # A recording's SAMPLE row hands on only what its sample records: every file under the
+            # tree newer than this (an unpacked file keeps its archived mtime).
+            - name: Mark the tree before the sample records into it
+              if: inputs.mode == 'record' && matrix.phase == 'sample'
+              shell: bash
+              run: touch "$RUNNER_TEMP/sample-stamp" && sleep 1
+
             # THE GATE: this country's sample, first, ahead of the suite in every row.
             #
             # HERMETIC and OVERLAY legs: a red sample fails this step, which ends the job — the
@@ -451,12 +470,12 @@ jobs:
             # cold is a state this gate has to survive, not one to be timed out of. Every job
             # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
             # HermeticConvergenceWiringSpec).
-            # Not in a RECORDING's order row: there it gates nothing (a recording's sample never
-            # does), and what it records would be thrown away — only the convergence row publishes,
-            # and it runs this same sample over this same corpus.
+            # In a RECORDING it runs in exactly one row: the sample row when there is one, else the
+            # convergence row — never the order row, whose recordings no one publishes. A recording's
+            # sample gates nothing either way.
             - name: Run the ${{ inputs.country }} sample ahead of the suite
               id: sample
-              if: inputs.mode != 'record' || matrix.phase == 'convergence'
+              if: inputs.mode != 'record' || matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)
               continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
@@ -486,6 +505,22 @@ jobs:
                   status: ${{ steps.sample.outcome }}
                   token:  ${{ secrets.GITHUB_TOKEN }}
 
+            # A recording's SAMPLE row: what the sample recorded, for the convergence row to merge
+            # before it publishes (sample-recordings.sh). `always()`, as the publish is: a red sample
+            # still recorded what it fetched.
+            - name: Pack the sample's recordings
+              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
+              shell: bash
+              run: .github/scripts/sample-recordings.sh pack "test/resources/fixtures/enrichment-${{ inputs.code }}" "$RUNNER_TEMP/sample-stamp" "sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst"
+
+            - uses: actions/upload-artifact@v6
+              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
+              with:
+                  name: enrichment-sample-${{ inputs.code }}
+                  path: sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst
+                  retention-days: 1
+                  if-no-files-found: error
+
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
             # 62/75) when every collection went onto a real database: the UK replays alone
@@ -511,6 +546,7 @@ jobs:
             # suite.
             - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
               id: suite
+              if: matrix.phase != 'sample'
               shell: bash
               timeout-minutes: ${{ matrix.phase == 'convergence' && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
@@ -614,6 +650,26 @@ jobs:
               if: always()
               with:
                   title: ${{ matrix.phase }} (${{ inputs.country }})
+                  log:   ${{ matrix.phase == 'sample' && 'convergence-sample.log' || 'convergence.log' }}
+
+            # A recording whose sample ran in a row of its own: its recordings, merged into this tree
+            # before it is packed — a hermetic sample leg replays the pair this publish pins, so the
+            # sample's requests have to be in it. The sample row is done minutes before this row
+            # gets here; one that ended without uploading leaves the tree without them, and says so.
+            - name: Merge the sample row's recordings
+              if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'
+              timeout-minutes: 30
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -uo pipefail
+                  if ! scripts/ci/wait-for-run-artifact.sh "enrichment-sample-${{ inputs.code }}" "(${{ inputs.country }}) / sample" 1500; then
+                      echo "::warning::no recordings from the ${{ inputs.country }} sample row — the published tree lacks them"
+                      exit 0
+                  fi
+                  gh run download "$GITHUB_RUN_ID" --name "enrichment-sample-${{ inputs.code }}" --dir sample-download
+                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"
 
             # The capture this leg just spent an hour building — a recording's sample's
             # included, which ran first in this job — back to the release it was restored from.
@@ -675,17 +731,18 @@ jobs:
             # whose findings the ratchet below reads instead (in the old shape a red sample
             # meant this job never ran).
             - uses: ./.github/actions/hard-clusters-ratchet
-              if: failure() && steps.sample.outcome != 'failure'
+              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample'
               with:
                   code:  ${{ inputs.code }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             # A red sample's findings — a hermetic or overlay leg's, which ended the job there,
-            # or a recording's, which recorded past it. The `convergence` row's alone: the
-            # artifact is named after the sample, not the row.
+            # or a recording's, which recorded past it. The row that ran the sample's alone (the
+            # `convergence` row, or a recording's `sample` row): the artifact is named after the
+            # sample, not the row.
             - uses: ./.github/actions/hard-clusters-ratchet
-              if: always() && matrix.phase == 'convergence' && steps.sample.outcome == 'failure'
+              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'
               with:
                   code:  ${{ inputs.code }}
                   log:   convergence-sample.log

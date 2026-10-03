@@ -200,9 +200,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "ratchet a red sample's findings and a red suite's, never the suite's for a red sample" in {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: failure() && steps.sample.outcome != 'failure'")
+      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample'")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: always() && matrix.phase == 'convergence' && steps.sample.outcome == 'failure'\n" +
+      "              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'\n" +
       "              with:\n                  code:  ${{ inputs.code }}\n                  log:   convergence-sample.log")
   }
 
