@@ -122,8 +122,21 @@ runs:
               --notes "Recorded enrichment responses and remembered answers per country.
           Replaced in place by every convergence leg — one copy each, no history.
           Not a version of anything; do not treat as a release." || true
-          "$RELEASE" upload "$TAG" "$ARCHIVE" --clobber
-          echo "published $ARCHIVE to release $TAG"
+          # The PINNED copy rides the same upload when this leg pins (see "Pin this recording"
+          # below for when): `gh release upload` sends its files side by side (five at a time),
+          # and one stream to the release ran ~22 MB/s — the second, sequential upload of the
+          # same bytes was 18 s of the UK recording's critical path (run 37071880312).
+          code="${{ inputs.code }}"
+          pin=()
+          if [ "${{ inputs.complete }}" = "true" ] && [ -n "${KINOWO_CONVERGENCE_CORPUS_RUN:-}" ] && \
+             grep -q "^\[$code\] boot complete" "${{ inputs.log }}" 2>/dev/null; then
+              pinned="enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.zst"
+              ln -f "$ARCHIVE" "enrichment-upload/$pinned"
+              pin=("enrichment-upload/$pinned")
+              echo "KINOWO_PINNED_TREE=$pinned" >> "$GITHUB_ENV"
+          fi
+          "$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber || exit 1
+          echo "published $ARCHIVE ${pin[*]} to release $TAG"
           # The gzip working tree this zstd one replaces: left beside it, readers' glob
           # (`enrichment-<code>.tar.*`) would download both. Gone after a country's first
           # zstd publish, so a no-op from then on.
@@ -162,6 +175,10 @@ runs:
     # tree the other half of its pair was never recorded into. The pin is written LAST, so a
     # reader sees either the old pair or the new one, and the previous pair's tree is kept
     # so a leg (or a bisect) that read the old pin a moment ago can still download it.
+    #
+    # The pinned tree itself went up beside the working one in "Publish the tree", which
+    # decided — boot complete in the log, a packed archive — and named it in
+    # KINOWO_PINNED_TREE; this step writes the marker that makes it the pair, and prunes.
     - name: Pin this recording as the pair hermetic legs replay
       if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
@@ -170,16 +187,12 @@ runs:
       run: |
           set -uo pipefail
           code="${{ inputs.code }}"
-          if ! grep -q "^\[$code\] boot complete" "${{ inputs.log }}" 2>/dev/null; then
-              echo "the boot did not finish — the pinned pair stays as it was"
+          pinned="${KINOWO_PINNED_TREE:-}"
+          if [ -z "$pinned" ]; then
+              echo "the boot did not finish, or nothing was packed — the pinned pair stays as it was"
               exit 0
           fi
-          archive="enrichment-upload/enrichment-$code.tar.zst"
-          [ -f "$archive" ] || { echo "nothing packed — the pinned pair stays as it was"; exit 0; }
-          pinned="enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.zst"
-          cp "$archive" "enrichment-upload/$pinned"
           RELEASE=scripts/ci/gh-release.sh
-          "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "enrichment-upload/$pinned" --clobber || exit 1
           marker="hermetic-$code.txt"
           echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
           "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || exit 1

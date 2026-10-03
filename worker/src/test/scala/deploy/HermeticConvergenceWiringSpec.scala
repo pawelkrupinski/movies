@@ -152,10 +152,28 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // Only a leg that got through the boot has recorded every request the corpus makes; the
   // spec prints the line, the publish reads it (CountryConvergenceBehaviour.BootComplete).
   it should "pin a pair only from a full recording leg whose boot completed" in {
-    val pin = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
+    val pin  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
+    val tree = RepoFile.step(publish, "Publish the tree to the rolling release")
     pin should include("inputs.mode == 'record' && inputs.complete == 'true'")
-    pin should include("""boot complete""")
+    // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
+    tree should include("""boot complete""")
+    tree should include("""[ "${{ inputs.complete }}" = "true" ]""")
+    pin should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
+  }
+
+  // `gh release upload` sends its files side by side, and one stream to the release ran ~22 MB/s:
+  // uploading the pinned copy after the working tree was a second, sequential 18 s of the UK
+  // recording's critical path (run 37071880312). One call carries both; the marker stays last.
+  "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
+    val tree = RepoFile.step(publish, "Publish the tree to the rolling release")
+    val pin  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
+    tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber""")
+    withClue("the pin step must not upload the tree a second time: ") {
+      pin should not include ".tar.zst"
+      pin should not include "enrichment-upload/"
+    }
+    pin.indexOf("hermetic-$code.txt") should be >= 0
   }
 
   // One request step where the two jobs each carried one: it tells the bisect whether the SAMPLE
