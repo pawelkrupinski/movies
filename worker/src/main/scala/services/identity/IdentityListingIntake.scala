@@ -5,6 +5,7 @@ import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetric
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
+import scala.util.{Failure, Success, Try}
 
 /**
  * A cut-over country's scrape sink (docs/design/identity-resolver.md §8, phase 5): each venue's
@@ -26,11 +27,19 @@ final class IdentityListingIntake(
   clock:         Clock,
   metrics:       ScrapeLandingMetrics,
   published:     (Cinema, Seq[CinemaMovie]) => Unit = (_, _) => ()
-) extends ScrapeSink {
+) extends ScrapeSink with play.api.Logging {
 
   /** The listing `cinema` is taken to publish now. */
-  def listingOf(cinema: Cinema): Seq[CinemaMovie] =
-    accepted.find(cinema).flatMap(_.lastSuccess).orElse(archive.find(cinema).flatMap(_.lastSuccess)).map(_.films).getOrElse(Nil)
+  def listingOf(cinema: Cinema): Seq[CinemaMovie] = knownListing(cinema).getOrElse(Nil)
+
+  /** [[listingOf]], or the failure of a read it rests on: an accepted listing that could not be read
+   *  is not an absent one, and judged against the archive's copy in its place, a scrape the guards
+   *  held back from it would replace it. */
+  private def knownListing(cinema: Cinema): Try[Seq[CinemaMovie]] =
+    accepted.read(cinema).flatMap(_.flatMap(_.lastSuccess) match {
+      case Some(scrape) => Success(scrape.films)
+      case None         => archive.read(cinema).map(_.flatMap(_.lastSuccess).fold(Seq.empty[CinemaMovie])(_.films))
+    })
 
   /** Every venue of `live` with the listing it is taken to publish, venues publishing nothing left out.
    *
@@ -85,11 +94,19 @@ final class IdentityListingIntake(
 
   override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie], listingIsComplete: Boolean, sourceKey: Option[String],
                                   viaFallback: Boolean): Unit = venueLocks.locking(Seq(cinema.displayName)) {
+    knownListing(cinema) match {
+      case Failure(exception) =>
+        // Nothing decided, written or published: the venue's next scrape judges against what it holds.
+        logger.warn(s"Identity intake: ${cinema.displayName}'s listing could not be read (${exception.getMessage}) — " +
+          "leaving its scrape undecided")
+      case Success(known) => land(cinema, known, ListingIntake.Offer(movies, listingIsComplete, sourceKey, viaFallback))
+    }
+  }
+
+  private def land(cinema: Cinema, known: Seq[CinemaMovie], offer: ListingIntake.Offer): Unit = {
     val stored = guards.get(cinema)
     val guard  = stored.getOrElse(ScrapeGuardState.Fresh)
-    val known  = listingOf(cinema)
-    val verdict = ListingIntake.decide(cinema, known, ListingIntake.Offer(movies, listingIsComplete, sourceKey, viaFallback), guard,
-      City.localNow(cinema, clock), maxRejections, normalizer)
+    val verdict = ListingIntake.decide(cinema, known, offer, guard, City.localNow(cinema, clock), maxRejections, normalizer)
     verdict.guarded.foreach(g => metrics.recordGuardVerdict(g.guard, g.verdict))
     // An unreadable ledger is judged as fresh, and its state is never written back over it.
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)

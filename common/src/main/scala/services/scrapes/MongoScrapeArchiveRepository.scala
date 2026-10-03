@@ -156,10 +156,10 @@ object ScrapeArchiveCodecs extends PersistedCodecs {
  * per cinema, its listing replaced on every scrape that has content.
  *
  * Exactly one worker writes a given country's database, so a successful scrape
- * overwrites its row's listing outright. A barren attempt is a CONDITIONAL update instead
- * (`scrapedAt < at`), which both enforces the "only if newer" rule and keeps it
- * atomic — the alternative, read-then-write, could drop a listing that landed in
- * between.
+ * overwrites its row's listing outright. A barren attempt reads the row's `scrapedAt` and
+ * `lastBarren` first — the "only if newer" rule and the run it continues — and then writes
+ * the marker: read-then-write, so it relies on that same single writer, and on one venue's
+ * scrapes not landing side by side, to never mark a listing that landed in between.
  *
  * Relaxed write concern, and every operation `Try`-guarded: this collection is a
  * side-record of a scrape that has already happened, so a failed write must
@@ -207,13 +207,15 @@ class MongoScrapeArchiveRepository(
 
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
     coll.foreach { c =>
-      // Upsert on `_id` alone, then let the `scrapedAt` guard live in the update
-      // itself: `$max`-style conditional writes don't exist for sub-documents, so
-      // the filter carries the ordering rule and a no-match is simply a no-op.
-      // The upsert branch (first-ever sighting of a cinema that has only failed)
-      // creates a content-less row, which decodes as `lastSuccess = None`.
+      // The ordering rule is decided on the row read below, and the marker then upserted
+      // on `_id` alone (see the class doc for why that read-then-write holds). The upsert
+      // branch (first-ever sighting of a cinema that has only failed) creates a
+      // content-less row, which decodes as `lastSuccess = None`.
       guard(cinema, "recordBarren") {
-        val existing = Await.result(c.find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds)
+        // Only the two fields the guard reads: the whole row carries the venue's last listing,
+        // every film and showtime of it, decoded for nothing on every blank scrape.
+        val existing = Await.result(c.find(Filters.eq("_id", cinema.displayName))
+          .projection(Projections.include("scrapedAt", "lastBarren")).headOption(), 30.seconds)
         val stale    = existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))
         if (!stale) {
           // The read above is already here for the ordering guard, so continuing
@@ -231,9 +233,24 @@ class MongoScrapeArchiveRepository(
       }
     }
 
-  def find(cinema: Cinema): Option[ArchivedScrape] = coll.flatMap { c =>
-    guard(cinema, "find")(Await.result(c.find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds))
-      .flatten.flatMap(StoredScrapeDto.toDomain)
+  def find(cinema: Cinema): Option[ArchivedScrape] = read(cinema).toOption.flatten
+
+  /** Read raw and decoded apart: a row the codec refuses is NOT a failed read. Answered as one, the
+   *  identity intake would leave every scrape of its venue undecided for good; read as absent, the
+   *  next scrape's write replaces it. */
+  override def read(cinema: Cinema): Try[Option[ArchivedScrape]] = coll.fold[Try[Option[ArchivedScrape]]](Success(None)) { c =>
+    val row = Try(Await.result(c.withDocumentClass[BsonDocument]().find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds))
+    row.failed.foreach(e => logger.warn(s"ScrapeArchiveRepository.find(${cinema.displayName}) failed: ${e.getMessage}"))
+    row.map(_.flatMap { document =>
+      Try(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])
+        .decode(new org.bson.BsonDocumentReader(document), org.bson.codecs.DecoderContext.builder().build())) match {
+        case Success(dto) => StoredScrapeDto.toDomain(dto)
+        case Failure(exception) =>
+          logger.warn(s"ScrapeArchiveRepository.find(${cinema.displayName}): undecodable row " +
+            s"(${exception.getClass.getSimpleName}: ${exception.getMessage}) — read as absent, for the next scrape to replace")
+          None
+      }
+    })
   }
 
   /** Paged exactly like `scan` and for the same reason — the row COUNT, not

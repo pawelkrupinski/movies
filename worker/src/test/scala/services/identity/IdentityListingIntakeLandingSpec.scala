@@ -64,4 +64,34 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
     import scala.jdk.CollectionConverters._
     published.asScala.toSeq shouldBe Seq(Seq("Lalka", "Diuna"), Seq("Lalka", "Diuna"))
   }
+
+  "a scrape landing while the venue's accepted listing cannot be read" should "leave that listing alone" in {
+    val full     = listing(Multikino, (1 to 30).map(n => s"Film $n")*)
+    val shrunk   = listing(Multikino, "Film 1")
+    val failing  = new java.util.concurrent.atomic.AtomicBoolean(false)
+    // Fails as the Mongo store does: `read` says so, `find` answers as if the row were absent.
+    val accepted = new InMemoryScrapeArchiveRepository {
+      override def find(cinema: Cinema): Option[ArchivedScrape] = if (failing.get) None else super.find(cinema)
+      override def read(cinema: Cinema): scala.util.Try[Option[ArchivedScrape]] =
+        if (failing.get) scala.util.Failure(new RuntimeException("accepted listing unreadable")) else super.read(cinema)
+    }
+    // The old path's archive holds the shrunken scrape the depth guard held back from the accepted listing.
+    val archive  = new InMemoryScrapeArchiveRepository
+    archive.record(services.scrapes.ScrapeAttempt(Multikino, None, clock.instant(), listingComplete = true, shrunk))
+    val target   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
+      services.movies.ScrapeLandingMetrics.noop)
+    land(target, Multikino, full)
+    land(target, Multikino, shrunk)
+    withClue("positive control — readable, the depth guard holds the shrunken scrape back: ") {
+      target.listingOf(Multikino) should have size 30
+    }
+
+    failing.set(true)
+    land(target, Multikino, listing(Multikino, "Film 1", "Film 2"))
+    failing.set(false)
+    withClue("an unread accepted listing is not an absent one — judged against the archive's copy instead, " +
+             "the shrunken scrape replaced it: ") {
+      target.listingOf(Multikino) should have size 30
+    }
+  }
 }

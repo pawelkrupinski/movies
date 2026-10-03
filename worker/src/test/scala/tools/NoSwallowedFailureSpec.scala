@@ -211,6 +211,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
       "case Failure(e)     =>") ->
       "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
+    ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "read",
+      "case Failure(exception) =>") ->
+      "a row the codec refuses holds no listing to keep: read as absent (logged at WARN) the next scrape replaces it, where a failed read would leave the venue's every scrape undecided",
     ("common/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
       "case Failure(e)     =>") ->
       "None IS the ledger's typed \"could not read\" (distinct from Some(Fresh)); ScrapeLanding never writes back over it",

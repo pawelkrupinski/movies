@@ -3,6 +3,7 @@ package services.scrapes
 import models.{Cinema, CinemaMovie}
 
 import java.time.Instant
+import scala.util.{Success, Try}
 
 /** What a scrape attempt amounted to. Mirrors how the uptime view reads a
  *  cinema: it produced a listing, it came back blank, or it blew up. */
@@ -176,6 +177,12 @@ trait ScrapeArchiveRepository {
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit
 
   def find(cinema: Cinema): Option[ArchivedScrape]
+
+  /** [[find]], telling a read that FAILED from a row that is absent — `find` answers `None` for
+   *  both, and a caller that decides from the row (the identity intake, judging a scrape against
+   *  the venue's accepted listing) must not read the one as the other. The in-memory stores
+   *  cannot fail, so the default is `find`'s answer. */
+  def read(cinema: Cinema): Try[Option[ArchivedScrape]] = Success(find(cinema))
 
   /** Every archived scrape, handed to `consume` a page at a time, in no promised order; `true`
    *  when the whole archive was read. A page is the caller's to keep or drop: a caller that

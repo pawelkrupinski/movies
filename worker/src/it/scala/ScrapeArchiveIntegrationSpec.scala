@@ -275,6 +275,24 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     repository.findAll()       shouldBe empty
   }
 
+  // `read` tells a failed read from an absent row, and the identity intake leaves a scrape undecided on
+  // a failure. A row the codec refuses is no failed read: answered as one, it would block its venue's
+  // every scrape for good, where read as absent the next scrape's write replaces it.
+  it should "read a row the codec refuses as absent, not as a failed read" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      Await.result(db.getCollection[org.bson.BsonDocument](ScrapeArchiveRepository.Collection).insertOne(
+        org.bson.BsonDocument.parse(s"""{"_id": "${Multikino.displayName}", "scrapedAt": {"$$date": "2026-07-28T12:00:00Z"}, "films": "not a list"}""")
+      ).toFuture(), 10.seconds)
+
+      repository.read(Multikino).isSuccess shouldBe true
+      repository.read(Multikino).get shouldBe None
+
+      repository.record(scraped(Evening, Seq(minimal)))
+      repository.find(Multikino).flatMap(_.lastSuccess).map(_.films) shouldBe Some(Seq(minimal))
+    } finally purge()
+  }
+
   "MongoScrapeGuardLedger" should "round-trip a venue's guard state, and read Fresh for one it never saw" in {
     purge()
     try {
