@@ -81,9 +81,15 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
     }
 
     // 57.9 MB of worker-pl's heap was duplicate String contents ("US", "2D", titles, JSON values);
-    // deduplicating their byte arrays took 11 MB off the live old generation over a fixture run.
-    it should "deduplicate strings the collector keeps" in {
+    // deduplicating their byte arrays took 11 MB off the live old generation over a fixture run. The web
+    // bakes it in; the worker's overlays choose it per country (worker-us measured without it: 16-38 s of
+    // each boot's CPU and ~45 MB of native table, 2026-10-03), so the worker launcher must not set it — a
+    // launcher flag comes after JAVA_OPTS and an overlay could not switch it off.
+    if (tier == "web") it should "deduplicate strings the collector keeps" in {
       launcher(tier) should contain ("-XX:+UseStringDeduplication")
+    }
+    if (tier == "worker") it should "leave string deduplication to each worker overlay" in {
+      launcher(tier) should not contain "-XX:+UseStringDeduplication"
     }
 
     // The identity model boxes its family ids in five maps and sets; kept below the live family
