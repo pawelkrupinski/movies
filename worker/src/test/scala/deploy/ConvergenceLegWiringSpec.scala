@@ -212,8 +212,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val sample = RepoFile.step(convergence, SampleStep)
     convergence.indexOf(s"- name: $SampleStep") should be < convergence.indexOf(s"- name: $SuiteStep")
     sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
-    withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated: ") {
-      sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe empty
+    withClue("a hermetic or overlay row whose sample is skipped would run its suite ungated — only a " +
+             "RECORDING's order row may skip it, where it gates nothing and records for no one: ") {
+      sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
+        Seq("if: inputs.mode != 'record' || matrix.phase == 'convergence'")
     }
     withClue("the suite must not run past a failed sample: ") {
       RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe empty
@@ -479,7 +481,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "gate every row on its own sample, independently of the other row" in {
     val block = RepoFile.block(leg, "convergence")
     block should include("fail-fast: false")
-    RepoFile.step(block, SampleStep) should not include "matrix.phase"
+    // The phase appears only to spare a RECORDING's order row (see above); every other row's
+    // sample runs whatever the other row does.
+    RepoFile.step(block, SampleStep).replace("if: inputs.mode != 'record' || matrix.phase == 'convergence'", "") should
+      not include "matrix.phase"
   }
 
   /** ONE writer to the rolling release per leg.

@@ -518,6 +518,12 @@ addCommandAlias("convergenceSpainSample",   "e2e/Test/testOnly services.movies.S
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")
+// The UK RECORDING splits the same way, in two rows of its job (`Record scrape fixtures`
+// passes both): its three replays were ~6 of the recording's 14 minutes and the longest leg
+// of the run (run 37105119296), behind a boot they never touch. The hermetic UK legs keep
+// `convergenceUk`, whole — a second row there would be a runner on every push.
+addCommandAlias("convergenceUkWithoutOrder", "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec -- -l services.movies.OrderIndependence")
+addCommandAlias("convergenceUkOrder",        "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec -- -n services.movies.OrderIndependence")
 // The US full leg runs everything EXCEPT the whole-corpus order-independence replay,
 // and `convergenceUsOrder` runs only that. Split because the two do not fit in one job:
 // the boot is 167 minutes and the three concurrent replays project to ~4h15m, against a

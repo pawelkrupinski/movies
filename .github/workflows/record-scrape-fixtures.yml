@@ -105,6 +105,10 @@ jobs:
     #
     # The United States runs without its split-out order-independence row: a recording
     # needs the boot, which is where every request is made; the replays re-ask nothing.
+    # The United Kingdom runs its replays as a SECOND ROW instead (`order`), over the corpus
+    # its convergence row records and the tree it restored, gap-filled: inline they were ~6
+    # of its 14 minutes and the longest leg of the run (37105119296), and a recording is
+    # nightly, so the one extra runner is not a per-push cost.
     #
     # Each country's corpus capture and sample run as the FIRST STEPS of its full leg's job
     # here (as they are in every leg; there is no separate sample job), so `job` is that one job's
@@ -124,7 +128,7 @@ jobs:
                 include:
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, order: convergenceUkOrder, sample: convergenceUkSample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 170, suite: 120, sampleSuite: 20, heap: 4g }
                     - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g }
         uses: ./.github/workflows/country-convergence-leg.yml
@@ -143,6 +147,10 @@ jobs:
             code:           ${{ matrix.code }}
             sample-command: ${{ matrix.sample }}
             command:        ${{ matrix.cmd }}
+            # The UK's replays in a row of their own, beside its boot (`convergenceUkOrder`):
+            # they were ~6 of its 14 minutes, the run's longest leg (run 37105119296). Empty for
+            # every other country, whose leg stays one row.
+            order-command:  ${{ matrix.order || '' }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}

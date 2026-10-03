@@ -42,6 +42,7 @@ scripts/ci/gh-release.sh
 scripts/ci/preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/in-background.sh
+scripts/ci/wait-for-run-artifact.sh
 scripts/ci/install-apt-package.sh
 scripts/ci/drop-microsoft-apt-sources.sh
 # A recording leg's corpus capture: the tunnel it opens and closes around the read.

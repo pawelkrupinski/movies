@@ -27,6 +27,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private val Close   = "Close the tunnel to prod Mongo"
   private val Pack    = "Pack ${{ inputs.country }}'s corpus"
   private val Sample  = "Run the ${{ inputs.country }} sample ahead of the suite"
+  private val Restore = "Restore the corpus the convergence row records"
   private val InRecordingRow = "inputs.mode == 'record' && matrix.phase == 'convergence'"
 
   private def at(marker: String): Int = {
@@ -40,10 +41,32 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(recorder, "enrichment") should include("needs: preflight\n")
   }
 
-  // The corpus is recorded by the convergence row only; a second row would open a second tunnel
-  // and race the first for the same artifact name and cache key.
-  it should "pass its legs no order-independence row, which would have no corpus of its own" in {
-    RepoFile.block(recorder, "enrichment") should not include "order-command"
+  // The corpus is recorded by the convergence row only: a second tunnel would race the first for
+  // the same artifact name and cache key, and read a DIFFERENT corpus a moment later. A
+  // recording's order row (the UK's, whose replays were ~6 of its 14 minutes behind a boot they
+  // never touch — run 37105119296) replays the convergence row's own upload instead.
+  it should "split only the UK's replays into a row of their own" in {
+    RepoFile.block(recorder, "enrichment") should include("order-command:  ${{ matrix.order || '' }}")
+    val ordered = recorder.linesIterator.filter(_.contains("order: ")).toSeq
+    ordered.map(_.contains("code: uk,")) shouldBe Seq(true)
+    ordered.head should include("cmd: convergenceUkWithoutOrder, order: convergenceUkOrder,")
+  }
+
+  it should "hand a recording's order row the corpus its convergence row records, through the run's artifact" in {
+    val restore = RepoFile.step(convergence, Restore)
+    restore should include("if: inputs.mode == 'record' && matrix.phase != 'convergence'\n")
+    restore should include("""scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "(${{ inputs.country }}) / convergence"""")
+    restore should include("""gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive""")
+    withClue("restored before anything replays it: ")(at(s"- name: $Restore") should be < at(s"- name: $Sample"))
+  }
+
+  // Gap-filled, as an overlay leg is: no boot of its own to have fetched what its passes ask, so
+  // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
+  // — which gates nothing in a recording and whose recordings no row would publish — skipped.
+  it should "replay a recording's order row gap-filled, without a sample of its own" in {
+    RepoFile.step(convergence, Sample) should include("if: inputs.mode != 'record' || matrix.phase == 'convergence'\n")
+    RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
+      "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}")
   }
 
   "a recording leg" should "record, close the tunnel and upload its corpus before the sample replays it" in {

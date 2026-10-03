@@ -406,6 +406,23 @@ jobs:
                   overwrite: true
                   if-no-files-found: warn
 
+            # A RECORDING's order-independence row (the United Kingdom's — see the recorder) replays the
+            # corpus THIS run's convergence row records: one capture, from one connection at one
+            # instant, shared by both rows rather than a second tunnel and a second, different read.
+            # It waits for that row's upload (~1.5 minutes in, while this row's own setup runs) and
+            # restores it as convergence-setup restores a pinned one.
+            - name: Restore the corpus the convergence row records
+              if: inputs.mode == 'record' && matrix.phase != 'convergence'
+              timeout-minutes: 20
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "(${{ inputs.country }}) / convergence" 1080
+                  gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
+                  .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
+
             # THE GATE: this country's sample, first, ahead of the suite in every row.
             #
             # HERMETIC and OVERLAY legs: a red sample fails this step, which ends the job — the
@@ -434,8 +451,12 @@ jobs:
             # cold is a state this gate has to survive, not one to be timed out of. Every job
             # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
             # HermeticConvergenceWiringSpec).
+            # Not in a RECORDING's order row: there it gates nothing (a recording's sample never
+            # does), and what it records would be thrown away — only the convergence row publishes,
+            # and it runs this same sample over this same corpus.
             - name: Run the ${{ inputs.country }} sample ahead of the suite
               id: sample
+              if: inputs.mode != 'record' || matrix.phase == 'convergence'
               continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
@@ -529,7 +550,15 @@ jobs:
                   # in a RECORDING leg. A hermetic one refuses that request and names it.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
-                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
+                  # GAP-FILL in a RECORDING's order row as well as an overlay leg: it replays the
+                  # working tree it restored (the last recording's) and fetches live only what that
+                  # lacks, ONCE between its three passes (`SharedLiveAnswers`), never refreshing it.
+                  # Inside the convergence row the passes replayed what the boot had just fetched;
+                  # in a row of their own they have no boot, and three passes each asking the live
+                  # web for the same page need not hear the same answer — an arrival-order
+                  # "dependence" the pipeline does not have (run 36801876786). Nothing it records
+                  # is published: the convergence row is the one writer.
+                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   KINOWO_IDENTITY_CUTOVER: ${{ inputs.identity-model && inputs.code || '' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
