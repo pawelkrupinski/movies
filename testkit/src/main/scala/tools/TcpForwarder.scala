@@ -51,15 +51,15 @@ final class TcpForwarder private (server: ServerSocket, host: String, targetPort
 }
 
 object TcpForwarder {
-  /** Forward `port` (a free one when 0) to `host:targetPort`. */
-  def start(host: String, targetPort: Int, port: Int = 0): TcpForwarder = {
+  /** Forward a port of its own — bound by the system and HELD for the forwarder's whole life — to
+   *  `host:targetPort`. There is no "find a free port, release it, bind it later": between the
+   *  release and the bind any other process on this machine (another agent's test, a dev server)
+   *  could take it. A spec that needs the port dead first starts the forwarder and [[sever]]s it. */
+  def start(host: String, targetPort: Int): TcpForwarder = {
     val server = new ServerSocket()
-    server.bind(new InetSocketAddress("127.0.0.1", port))
+    server.bind(new InetSocketAddress("127.0.0.1", 0))
     new TcpForwarder(server, host, targetPort).start()
   }
-
-  /** A port nothing listens on now. */
-  def freePort(): Int = { val socket = new ServerSocket(0); try socket.getLocalPort finally socket.close() }
 
   private def daemon(name: String)(body: => Unit): Unit = {
     val thread = new Thread(() => body, name); thread.setDaemon(true); thread.start()

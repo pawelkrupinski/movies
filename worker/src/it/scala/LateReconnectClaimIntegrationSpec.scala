@@ -18,8 +18,8 @@ import scala.concurrent.duration._
  *  names Poland's database must stay degraded rather than start writing into it, and a
  *  worker on its own database must still recover (the positive control).
  *
- *  "Unreachable, then reachable" is a local port nothing listens on at boot, which a
- *  forwarder to the test Mongo starts answering on once the connection is degraded. */
+ *  "Unreachable, then reachable" is a forwarder to the test Mongo that is severed at boot (every
+ *  connection reset, as from a dead primary) and restored once the connection is degraded. */
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually with tools.IntegrationMongoSuite {
 
   private val target   = URI.create(mongoTarget.uri.value.replace("mongodb://", "http://"))
@@ -28,8 +28,11 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   "a reconnect after an unreachable boot" should "claim the database before publishing it, and refuse another country's" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-claim") { db =>
       new DatabaseOwner(db).claim(Country.Poland)
-      val port = tools.TcpForwarder.freePort()
-      val via  = s"mongodb://127.0.0.1:$port/?directConnection=true&connectTimeoutMS=300"
+      // Severed from the start: the port is the forwarder's own and held throughout, so nothing else on
+      // the machine can take it between "unreachable" and "reachable".
+      val forwarder = tools.TcpForwarder.start(target.getHost, target.getPort)
+      forwarder.sever()
+      val via  = s"mongodb://127.0.0.1:${forwarder.port}/?directConnection=true&connectTimeoutMS=300"
       def open(country: Country) = new MongoConnection(Some(settings.MongoUri(via)), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
         probeTimeout = settings.MongoProbeTimeout(2.seconds), serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(500.millis)),
         onConnected = MongoConnection.claimFor(country))
@@ -39,7 +42,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       polish.database shouldBe None
       polish.boundDegraded shouldBe true
       polish.restartRequired shouldBe false   // still down: alive, so an outage is no crash loop
-      val forwarder = tools.TcpForwarder.start(target.getHost, target.getPort, port)
+      forwarder.restore()
       try {
         eventually(polish.database should not be empty)(using patience, implicitly)
         german.database shouldBe None

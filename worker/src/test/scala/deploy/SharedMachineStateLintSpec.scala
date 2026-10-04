@@ -31,6 +31,16 @@ import scala.util.matching.Regex
  *     2026-09-05). Take a fresh directory per run — `mktemp -d`, `Files.createTempDirectory`,
  *     `mkdtempSync(join(tmpdir(), …))`.
  *
+ *  3. NO USER DIRECTORY. A test never reads or writes the user's caches, documents or home (the iOS
+ *     tests once kept their conditional-GET entries in the real ~/Library/Caches under the production
+ *     file names, shared with every concurrent run and the developer's own app). It hands the code
+ *     under test a directory of its own (`ConditionalPayloadCache.scratchDirectory()` on iOS).
+ *
+ *  4. NO RELEASED "FREE" PORT. Binding port 0 to learn a free port, closing it and binding that number
+ *     later leaves a window in which any other process on the machine can take it. Bind port 0 and
+ *     KEEP the socket — `TcpForwarder.start` holds its own; a spec that needs the port dead first
+ *     severs the forwarder rather than releasing the port.
+ *
  * Each allowlist names its file and why; an entry whose file no longer offends fails the build.
  */
 class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
@@ -114,6 +124,21 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     Jvm    -> """"git"\s*[,)\]]|Process\(\s*"git\s""".r,
     Script -> """\b(?:execFileSync|execFile|spawnSync|spawn|execSync|exec|execa)\s*\(\s*["'`]git\b""".r)
 
+  private val UserDirectory =
+    """\.cachesDirectory\b|\.documentDirectory\b|\.applicationSupportDirectory\b|\bdefaultDirectory\b|"user\.home"|NSHomeDirectory\(|homeDirectoryForCurrentUser|getCacheDir\(|getFilesDir\(""".r
+
+  /** file → why it may name a user directory. */
+  private val UserDirectoryAllowed: Map[String, String] = Map.empty
+
+  private val ReleasedPort =
+    """(?i)\bfree_?port\s*\(\s*\)|ServerSocket\(\s*0\s*\)[^\n]*\bclose\(|bind\(\([^)]*,\s*0\s*\)\)[^\n]*getsockname""".r
+
+  /** file → why it may release a port it found free. */
+  private val ReleasedPortAllowed: Map[String, String] = Map(
+    "scripts/ci/close-mongo-tunnel-test.sh" ->
+      "close-mongo-tunnel.sh kills listeners BY PORT and then proves the port dead: the spec's stages need the port free between them, which holding it would defeat",
+  )
+
   private val FixedTemp = """(?<![\w.$}-])/(?:var/)?tmp/[\w.-]""".r
   /** What writes a file in any of the languages: a redirect, a file-making command, a writing API.
    *  A fixed path that is only a STRING — an argument a parser is fed, a stub's recorded argument, an
@@ -131,6 +156,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
 
   private val directGit: (String, Language) => Seq[String] = offending(DirectGit)
   private val fixedTemp: (String, Language) => Seq[String] = offending(_ => FixedTempWrite)
+  private val userDirectory: (String, Language) => Seq[String] = offending(_ => UserDirectory)
+  private val releasedPort: (String, Language) => Seq[String] = offending(_ => ReleasedPort)
 
   private def offenders(rule: (String, Language) => Seq[String], allowed: Map[String, String]): Seq[String] =
     testFiles.filterNot { case (file, _) => allowed.contains(file) }.flatMap(rule.tupled)
@@ -157,11 +184,30 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  they should "not reach the user's caches, documents or home directory" in {
+    val found = offenders(userDirectory, UserDirectoryAllowed)
+    withClue(s"${found.size} user-directory reads/writes in tests, shared with every concurrent run and the developer's " +
+      "own app. Hand the code under test a directory of the test's own, or allowlist the file with a reason:\n" +
+      found.mkString("\n") + "\n") {
+      found shouldBe empty
+    }
+  }
+
+  they should "keep a port they bound, never release it to bind again later" in {
+    val found = offenders(releasedPort, ReleasedPortAllowed)
+    withClue(s"${found.size} free-port probes in tests: between the release and the later bind any process on this " +
+      "machine can take the port. Bind port 0 and keep the socket, or allowlist the file with a reason:\n" +
+      found.mkString("\n") + "\n") {
+      found shouldBe empty
+    }
+  }
+
   "the allowlists" should "name only files that are tests and still offend" in {
     def stale(allowed: Map[String, String], rule: (String, Language) => Seq[String]) =
       allowed.keys.toSeq.sorted.filterNot(file => testFiles.find(_._1 == file).exists(rule.tupled(_).nonEmpty))
     withClue("allowlisted but no longer offending (or no longer a test file) — drop the entry: ") {
-      (stale(DirectGitAllowed, directGit) ++ stale(FixedTempAllowed, fixedTemp)) shouldBe empty
+      (stale(DirectGitAllowed, directGit) ++ stale(FixedTempAllowed, fixedTemp) ++
+        stale(UserDirectoryAllowed, userDirectory) ++ stale(ReleasedPortAllowed, releasedPort)) shouldBe empty
     }
   }
 
