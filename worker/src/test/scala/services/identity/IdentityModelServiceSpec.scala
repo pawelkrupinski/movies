@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.LoneElement
@@ -168,7 +170,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     try {
       service.takeUpSettled shouldBe false
       service.start()
-      scheduler.submit((() => ()): Runnable).get(10, java.util.concurrent.TimeUnit.SECONDS)   // behind the take-up
+      scheduler.submit((() => ()): Runnable).get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)   // behind the take-up
       service.takeUpSettled shouldBe true
     } finally scheduler.shutdownNow()
   }
@@ -222,7 +224,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       scheduler.execute(() => release.await())                  // the model's thread, busy (a take-up)
       service.current(50.millis) shouldBe None
       release.countDown()
-      scheduler.submit((() => ()): Runnable).get(10, java.util.concurrent.TimeUnit.SECONDS)
+      scheduler.submit((() => ()): Runnable).get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       built.get shouldBe 0
     } finally scheduler.shutdownNow()
   }

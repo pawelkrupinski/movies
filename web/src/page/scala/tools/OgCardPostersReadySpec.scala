@@ -72,7 +72,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
     page.eval("document.getElementById('pending').style.display='none'")
     // #loaded still has to finish decoding — exactly what the generator waits
     // on. waitFor throws on timeout, so reaching the assertion means ready.
-    page.waitFor(OgCardGenerator.PostersReadyJs, timeoutMs = 3000, pollMs = 50)
+    page.waitFor(OgCardGenerator.PostersReadyJs, pollMs = 50)
     page.evalBool(s"!!(${OgCardGenerator.PostersReadyJs})") shouldBe true
   }
 

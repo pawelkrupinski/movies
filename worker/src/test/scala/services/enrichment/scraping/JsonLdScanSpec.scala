@@ -1,12 +1,13 @@
 package services.enrichment.scraping
 
+import tools.SpecTimeouts
+
 import org.jsoup.Jsoup
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
-import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
@@ -47,7 +48,7 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
             RottenTomatoesScorecard.blocks(html) != scorecardByJsoup(html))(page.toString)
         }(using pool)
       }
-      Await.result(Future.sequence(checks)(using implicitly, pool), 2.minutes).flatten
+      Await.result(Future.sequence(checks)(using implicitly, pool), SpecTimeouts.Run).flatten
     } finally pool.shutdown()
   }
 

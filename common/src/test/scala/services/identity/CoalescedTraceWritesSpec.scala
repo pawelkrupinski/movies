@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ListingKey
@@ -30,7 +32,7 @@ class CoalescedTraceWritesSpec extends AnyFlatSpec with Matchers {
     val writes = new CoalescedTraceWrites((removed, added) => { started.countDown(); release.await(); collection.write(removed, added) },
       (_, e) => throw e)
     writes.replace(Set.empty, FamilyTraces.of(Seq(trace(0, "f0", "first"))))
-    started.await(10, TimeUnit.SECONDS) shouldBe true
+    started.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     (1 to 1000).foreach { update =>
       val family = s"f${update % 10}"
       writes.replace(Set(family), FamilyTraces.of(Seq(trace(update % 10, family, s"update $update"))))

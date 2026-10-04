@@ -1,5 +1,7 @@
 package services.attempts
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cadence.{RatingCadenceReader, RatingChangeStats}
@@ -72,7 +74,7 @@ class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
     val bothEntered = new java.util.concurrent.CountDownLatch(2)
     def gate(): Unit = {
       bothEntered.countDown()
-      if (!bothEntered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+      if (!bothEntered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
         fail("the two store reads ran serially — the second never started while the first was in flight")
     }
     val attemptReader = new EnrichmentAttemptReader {

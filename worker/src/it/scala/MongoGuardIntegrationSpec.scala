@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.bson.{BsonDocument, BsonString}
 import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.mongodb.scala.model.{Filters, Projections, Updates}
@@ -20,7 +22,7 @@ class MongoGuardIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 10.seconds)
+  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, SpecTimeouts.Io)
   private def read(id: String): Option[BsonDocument] =
     await(collection.find(Filters.eq("_id", id)).projection(Projections.include("v", "sub")).headOption()).map(_.toBsonDocument)
   private def guard(id: String, asRead: Option[BsonDocument]) = MongoGuard.unchanged(new BsonString(id), asRead, Seq("v", "sub"))

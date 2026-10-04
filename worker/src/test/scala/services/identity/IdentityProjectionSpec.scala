@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -345,7 +347,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     // Each fetch waits for another to be under way: fetched one at a time, the first never returns.
     val together = new java.util.concurrent.CyclicBarrier(2)
     val fetched  = IdentityProjection.detailed(drafts, (record, film) => {
-      if (film <= 102) together.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      if (film <= 102) together.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       Some(record.copy(imdbId = Some(s"tt$film")))
     })
     fetched.map(_.record.imdbId) shouldBe Seq(Some("tt101"), Some("tt102"), Some("tt103"), Some("tt104"), None)

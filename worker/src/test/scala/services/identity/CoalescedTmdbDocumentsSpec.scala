@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -102,9 +104,9 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
         try Right(coalescer(r)) catch { case e: Throwable => Left(e) }): Callable[Either[Throwable, String]]))
       // Waited for, not slept on: were "b" and "c" to run as two batches, each runner would answer
       // only itself and the test would pass whether or not the interrupted batch answers the others.
-      tools.Eventually.eventually(coalescer.waiting shouldBe 2, timeoutMs = 10000, pollMs = 5)
+      tools.Eventually.eventually(coalescer.waiting shouldBe 2, pollMs = 5)
       first.countDown()
-      others.map(_.get(5, java.util.concurrent.TimeUnit.SECONDS).isLeft) shouldBe Seq(true, true)
+      others.map(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS).isLeft) shouldBe Seq(true, true)
       batches.toArray.toSeq shouldBe Seq(Set("first"), Set("b", "c"))
     } finally { first.countDown(); pool.shutdownNow(); () }
   }

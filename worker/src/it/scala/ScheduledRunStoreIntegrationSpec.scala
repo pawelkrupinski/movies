@@ -1,16 +1,17 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{Millis, Span}
 import services.schedule.{MongoScheduledRunStore, ScheduledRunStore}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Live test of `MongoScheduledRunStore` against real MongoDB. Requires
@@ -42,8 +43,8 @@ class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with Be
 
   it should "create a 48h TTL index on claimedAt so old claims self-expire" in {
     // The index is built fire-and-forget on a daemon thread at construction.
-    eventually(timeout(Span(10, Seconds)), interval(Span(200, Millis))) {
-      val indexes    = Await.result(coll.listIndexes().toFuture(), 5.seconds)
+    eventually(timeout(SpecTimeouts.Settle), interval(Span(200, Millis))) {
+      val indexes    = Await.result(coll.listIndexes().toFuture(), SpecTimeouts.Io)
       val ttlIndex   = indexes.find(_.get("key").exists(_.asDocument().containsKey("claimedAt")))
       val ttlSeconds = ttlIndex.flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
       ttlSeconds.shouldBe(Some(48L * 3600L))

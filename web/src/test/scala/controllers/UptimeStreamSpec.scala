@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecTimeouts
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.Sink
@@ -27,7 +29,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
   private implicit val sys: ActorSystem  = ActorSystem("uptime-stream-spec")
   private implicit val mat: Materializer = Materializer(sys)
 
-  override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
+  override def afterAll(): Unit = Await.result(sys.terminate(), SpecTimeouts.Io)
 
   private def controller(monitor: UptimeMonitor) =
     new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new InMemoryFallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
@@ -43,7 +45,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
     val n = 100
     (1 to n).foreach(i => monitor.recordSuccess(s"svc-$i"))
 
-    val frames = Await.result(collecting, 5.seconds)
+    val frames = Await.result(collecting, SpecTimeouts.Io)
 
     // The whole point: ~100 changes arrive as a couple of frames, never ~100.
     frames.size should be < 10
@@ -58,7 +60,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
   it should "emit nothing while idle — no empty-batch spam" in {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val frames = Await.result(
-      controller(monitor).eventSource().takeWithin(700.millis).runWith(Sink.seq), 3.seconds)
+      controller(monitor).eventSource().takeWithin(700.millis).runWith(Sink.seq), SpecTimeouts.Io)
     frames shouldBe empty
   }
 
@@ -67,7 +69,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
     val collecting = controller(monitor).eventSource().take(1).runWith(Sink.seq)
     monitor.recordFailure("TMDB", "boom")
 
-    val frames = Await.result(collecting, 10.seconds)
+    val frames = Await.result(collecting, SpecTimeouts.Io)
     val updates = Json.parse(frames.head.stripPrefix("data: ").trim).as[List[JsObject]]
     updates should have size 1
     (updates.head \ "service").as[String] shouldBe "TMDB"
@@ -82,7 +84,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
     val collecting = controller(monitor).eventSource().take(1).runWith(Sink.seq)
     monitor.recordEmpty("Multikino Stary Browar", 120L)
 
-    val frames = Await.result(collecting, 10.seconds)
+    val frames = Await.result(collecting, SpecTimeouts.Io)
     val updates = frames.flatMap(f => Json.parse(f.stripPrefix("data: ").trim).as[List[JsObject]])
     updates should have size 1
     (updates.head \ "status").as[String] shouldBe "zero"

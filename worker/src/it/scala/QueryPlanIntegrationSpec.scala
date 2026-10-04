@@ -1,5 +1,7 @@
 package services
 
+import tools.SpecTimeouts
+
 import models.{CinemaShowing, KinoMuranow, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -38,11 +40,11 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   /** Every stamp from the TTL-safe pinned clock: a row stamped in the past could be expired mid-spec. */
   private val Far = _root_.tools.MongoTtlSpecClock.Pinned.instant()
 
-  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
+  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, SpecTimeouts.Io)
 
   /** Indexes built off the caller's thread are awaited, or the plan would race their creation. */
   private def awaitIndexes(db: MongoDatabase, collection: String, count: Int): Unit =
-    tools.Eventually.eventually(await(db.getCollection(collection).listIndexes().toFuture()).size should be >= count, timeoutMs = 10000)
+    tools.Eventually.eventually(await(db.getCollection(collection).listIndexes().toFuture()).size should be >= count)
 
   "the read model's drift counts" should "count index keys, never read a document" in {
     var counted = Option.empty[(Long, Long)]
@@ -223,7 +225,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     assertIndexed(plansOf("by-id") { db =>
       val keys = (1 to 10).map(n => s"imdb|tmdb:$n")
       val freshness = new MongoFreshnessStore(Some(db))
-      Await.result(freshness.whenReady(FreshnessKind.ImdbRating), 30.seconds)
+      Await.result(freshness.whenReady(FreshnessKind.ImdbRating), SpecTimeouts.Io)
       keys.foreach(freshness.markFresh(_, FreshnessKind.ImdbRating, Far))
       freshness.invalidate(keys.head)
       val attempts = new MongoEnrichmentAttemptStore(Some(db))
@@ -232,17 +234,17 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       val cadence = new MongoRatingCadenceStore(Some(db))
       keys.foreach(cadence.record(_, Some("7.1"), Far))
       val cadenceReads = new MongoRatingCadenceReader(Some(db))
-      tools.Eventually.eventually(cadenceReads.all() should have size 10, timeoutMs = 10000)
+      tools.Eventually.eventually(cadenceReads.all() should have size 10)
       cadenceReads.forKeys(keys.take(3))
       Seq(freshness.retention, attempts.retention, cadence.retention).foreach { rows =>
-        tools.Eventually.eventually(rows.stampedBefore(Far.plusSeconds(1)) should not be empty, timeoutMs = 10000)
+        tools.Eventually.eventually(rows.stampedBefore(Far.plusSeconds(1)) should not be empty)
         rows.deleteIfStill(rows.stampedBefore(Far.plusSeconds(1)).take(2))
       }
       freshness.close(); attempts.close(); cadence.close()
       val resolutions = new MongoResolutionStore(Some(db), "resolve_imdb", normalizer = titleNormalizer,
         ttlMismatches = new TtlIndexMismatches, clock = _root_.tools.MongoTtlSpecClock.Pinned)
       resolutions.put("anora|2024", "tt28607951")
-      tools.Eventually.eventually(resolutions.get("anora|2024") shouldBe defined, timeoutMs = 10000)
+      tools.Eventually.eventually(resolutions.get("anora|2024") shouldBe defined)
       resolutions.removeForFilm("anora")
       val costs = new MongoScrapeCostStore(db)
       (1 to 3).foreach(n => costs.record(s"scrape|venue-$n", ScrapeCost(n)))
@@ -269,7 +271,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       monitor.flushNow()
       // Both writes are fire-and-forget: wait for them to land, or the plans would race their sending.
       Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => tools.Eventually.eventually(
-        await(db.getCollection(written).estimatedDocumentCount().toFuture()) shouldBe 5L, timeoutMs = 10000))
+        await(db.getCollection(written).estimatedDocumentCount().toFuture()) shouldBe 5L))
       monitor.close()
     }
     Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => withClue(s"$written written, among ${recorded.plans}: ")(

@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.SingleObservableFuture
@@ -11,7 +13,6 @@ import services.scrapes.{ContentStamp, MongoScrapeArchiveRepository, MongoScrape
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The macro-derived BSON codecs for `cinema_scrapes` can only fail at RUNTIME —
@@ -41,11 +42,11 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   private def purge(): Unit =
     Await.result(db.getCollection(ScrapeArchiveRepository.Collection)
-      .deleteOne(Filters.eq("_id", Multikino.displayName)).toFuture(), 10.seconds)
+      .deleteOne(Filters.eq("_id", Multikino.displayName)).toFuture(), SpecTimeouts.Io)
 
   private def rowCount(): Long =
     Await.result(db.getCollection(ScrapeArchiveRepository.Collection)
-      .countDocuments(Filters.eq("_id", Multikino.displayName)).toFuture(), 10.seconds)
+      .countDocuments(Filters.eq("_id", Multikino.displayName)).toFuture(), SpecTimeouts.Io)
 
   private val fullyPopulated = CinemaMovie(
     movie       = Movie("Diuna", Some(155), Some(2026), Seq("USA", "Kanada"), Seq("Sci-Fi", "Przygodowy"),
@@ -128,7 +129,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
       Await.result(db.getCollection(ScrapeArchiveRepository.Collection).updateOne(Filters.eq("_id", Multikino.displayName),
-        org.mongodb.scala.model.Updates.unset("films.$[].showtimesDigest")).toFuture(), 10.seconds)
+        org.mongodb.scala.model.Updates.unset("films.$[].showtimesDigest")).toFuture(), SpecTimeouts.Io)
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
       repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
       lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)
@@ -308,7 +309,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     try {
       Await.result(db.getCollection[org.bson.BsonDocument](ScrapeArchiveRepository.Collection).insertOne(
         org.bson.BsonDocument.parse(s"""{"_id": "${Multikino.displayName}", "scrapedAt": {"$$date": "2026-07-28T12:00:00Z"}, "films": "not a list"}""")
-      ).toFuture(), 10.seconds)
+      ).toFuture(), SpecTimeouts.Io)
 
       repository.read(Multikino).isSuccess shouldBe true
       repository.read(Multikino).get shouldBe None

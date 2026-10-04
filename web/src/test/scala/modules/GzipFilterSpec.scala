@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
@@ -10,7 +12,6 @@ import play.api.mvc.{EssentialAction, Results}
 import play.api.test.FakeRequest
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 
 /**
@@ -39,8 +40,8 @@ class GzipFilterSpec extends AnyFlatSpec with Matchers {
     val request =
       acceptEncoding.fold(FakeRequest())(ae => FakeRequest().withHeaders("Accept-Encoding" -> ae))
     val action = EssentialAction(_ => Accumulator.done(Results.Ok(bigHtml).as("text/html")))
-    val result = Await.result(gzip(action)(request).run(), 5.seconds)
-    val body   = Await.result(result.body.consumeData, 5.seconds)
+    val result = Await.result(gzip(action)(request).run(), SpecTimeouts.Io)
+    val body   = Await.result(result.body.consumeData, SpecTimeouts.Io)
     (result, body)
   }
 

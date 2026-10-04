@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +10,6 @@ import services.UptimeMonitor
 import tools.Eventually
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The web process learns that a worker's scrape was `thin` (screenings, but none
@@ -31,9 +32,9 @@ class UptimeThinFlagRoundTripIntegrationSpec extends AnyFlatSpec with Matchers w
   override protected def afterAll(): Unit = {
     reader.foreach(_.close())
     try Eventually.eventually({
-      Await.result(db.drop().toFuture(), 5.seconds)
-      Await.result(db.listCollectionNames().toFuture(), 5.seconds) shouldBe empty
-    }, timeoutMs = 20000, pollMs = 250)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
+      Await.result(db.listCollectionNames().toFuture(), SpecTimeouts.Io) shouldBe empty
+    }, pollMs = 250)
     catch { case _: Throwable => info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers") }
     finally isolatedDb.drop()
     super.afterAll()
@@ -49,6 +50,6 @@ class UptimeThinFlagRoundTripIntegrationSpec extends AnyFlatSpec with Matchers w
     Eventually.eventually({
       fresh.history(service).map(_.thin) shouldBe Seq(true)
       fresh.recentStatuses(service, 3) shouldBe Seq("thin")
-    }, timeoutMs = 20000, pollMs = 200)
+    }, pollMs = 200)
   }
 }

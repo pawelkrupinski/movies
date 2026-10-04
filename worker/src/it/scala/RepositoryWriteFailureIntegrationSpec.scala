@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.mongodb.scala.model.{CreateCollectionOptions, Filters, ValidationOptions}
@@ -10,7 +12,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The 2026-09-24 incident against REAL Mongo: a `movies` write that the server refuses must
@@ -32,7 +33,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   private val isolatedDb = tools.IsolatedMongoDatabase.open(mongoTarget, "repository-write-failure-spec")
 
   private val db = isolatedDb.database
-  private def await[T](f: scala.concurrent.Future[T]): T = Await.result(f, 30.seconds)
+  private def await[T](f: scala.concurrent.Future[T]): T = Await.result(f, SpecTimeouts.Io)
 
   await(db.createCollection(MovieRepository.Collection, CreateCollectionOptions().validationOptions(
     ValidationOptions().validator(Filters.exists("__no_movies_write_may_satisfy_this__")))).toFuture())

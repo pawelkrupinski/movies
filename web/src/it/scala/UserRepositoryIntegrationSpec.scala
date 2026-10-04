@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.{User, UserState}
 import org.scalatest.OptionValues._
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
@@ -13,7 +15,6 @@ import tools.Eventually.{awaitStreamLive, eventually, poll}
 
 import java.time.Instant
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with UserStateWritesContract with UserSessionVersionContract with tools.IntegrationMongoSuite {
 
@@ -107,25 +108,25 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     users.upsert(u)
     val raw = database.getCollection("users")
     val second = org.mongodb.scala.Document("id" -> u.id, "provider" -> "facebook", "providerSub" -> "fb-race")
-    val refused = scala.util.Try(Await.result(raw.insertOne(second).toFuture(), 10.seconds))
+    val refused = scala.util.Try(Await.result(raw.insertOne(second).toFuture(), SpecTimeouts.Io))
     withClue("a second document under one id: ")(refused.failed.toOption.exists { case e: com.mongodb.MongoWriteException => services.MongoErrors.isDuplicateKey(e); case _ => false } shouldBe true)
-    Await.result(raw.countDocuments(Filters.eq("id", u.id)).toFuture(), 10.seconds) shouldBe 1L
+    Await.result(raw.countDocuments(Filters.eq("id", u.id)).toFuture(), SpecTimeouts.Io) shouldBe 1L
   }
 
   it should "keep serving, its plain index kept, over a database that already holds a duplicate id" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "users-duplicate-id") { db =>
       val raw = db.getCollection("users")
-      Await.result(raw.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds)
+      Await.result(raw.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), SpecTimeouts.Io)
       val rows = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
       Seq("google", "facebook").foreach(provider =>
-        Await.result(rows.insertOne(sentinelUser("dup").copy(id = "dup@example.com", provider = provider)).toFuture(), 10.seconds))
+        Await.result(rows.insertOne(sentinelUser("dup").copy(id = "dup@example.com", provider = provider)).toFuture(), SpecTimeouts.Io))
       val logged = tools.LogCapture.thisThread("services.users") {
         val duplicated = new MongoUserRepository(Some(db))
         duplicated.enabled shouldBe true
         noException should be thrownBy duplicated.findById("dup@example.com")
       }
       logged.map(_.getFormattedMessage).exists(_.contains("users has NO unique id index")) shouldBe true
-      val index = Await.result(raw.listIndexes().toFuture(), 10.seconds).map(_.toBsonDocument).find(_.getString("name").getValue == "id_1")
+      val index = Await.result(raw.listIndexes().toFuture(), SpecTimeouts.Io).map(_.toBsonDocument).find(_.getString("name").getValue == "id_1")
       withClue(s"id_1 must survive, still plain: $index ")(index.exists(i => !i.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue) shouldBe true)
     }
   }
@@ -194,10 +195,10 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.enabled shouldBe true   // the store builds its index on first use: run alone, nothing else has
     val coll   = database.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
     val userId = "__integration-test-state-unique"
-    Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), 10.seconds)
+    Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), SpecTimeouts.Io)
     a[com.mongodb.MongoWriteException] should be thrownBy
-      Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), 10.seconds)
-    Await.result(database.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds) shouldBe 1
+      Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), SpecTimeouts.Io)
+    Await.result(database.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), SpecTimeouts.Io) shouldBe 1
   }
 
   // The real cursor, not the in-memory ring: a `userStates` row's `_id` is a driver-generated
@@ -215,13 +216,13 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       try {
         // The cursor opens at "now", asynchronously: write until it delivers before writing the row under test.
         val warm = "__integration-test-state-stream-warm"
-        awaitStreamLive("a warm-up row", poll(1000)(cache.lastChangeAt(warm).isDefined))(pass =>
+        awaitStreamLive("a warm-up row", poll(SpecTimeouts.Pace.toMillis)(cache.lastChangeAt(warm).isDefined))(pass =>
           UserStateRows.replace(db, UserState(warm, Set(s"W$pass"), Set.empty, Now)))
         UserStateRows.replace(db, UserState(userId, Set("X"), Set.empty, Now))
-        eventually(cache.lastChangeAt(userId) shouldBe Some(Now), timeoutMs = 10000)
+        eventually(cache.lastChangeAt(userId) shouldBe Some(Now))
 
         isolated.delete(userId)
-        eventually(cache.lastChangeAt(userId) shouldBe None, timeoutMs = 10000)
+        eventually(cache.lastChangeAt(userId) shouldBe None)
       } finally cache.stop()
     }
 
@@ -238,7 +239,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         n => { UserStateRows.replace(db, UserState(s"__integration-test-user$n", Set.empty, Set.empty, Now)); s"__integration-test-user$n" },
         () => Await.result(db.getCollection("userStates").insertOne(org.mongodb.scala.Document(
           "userId" -> "__integration-test-malformed", "hiddenFilms" -> "not an array", "disabledCinemas" -> Seq.empty[String],
-          "updatedAt" -> new java.util.Date(0L))).toFuture(), 10.seconds)
+          "updatedAt" -> new java.util.Date(0L))).toFuture(), SpecTimeouts.Io)
       ) shouldBe None
       counted.toArray.toSeq shouldBe Seq("userStates")
     }
@@ -252,7 +253,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     // use made of it before — no wait between the boots is needed to tell the two apart.
     def userIdIndexAccesses(): (Any, Long) = {
       val accesses = Await.result(coll.aggregate(Seq(org.mongodb.scala.bson.collection.immutable.Document(
-        "$indexStats" -> org.mongodb.scala.bson.collection.immutable.Document()))).toFuture(), 10.seconds)
+        "$indexStats" -> org.mongodb.scala.bson.collection.immutable.Document()))).toFuture(), SpecTimeouts.Io)
         .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
         .get("accesses").value.asDocument()
       (accesses.get("since"), accesses.get("ops").asNumber().longValue())
@@ -260,7 +261,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val booted = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned)
     try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
     Await.result(coll.find(Filters.eq("userId", "__integration-test-index-use"))
-      .hint(org.mongodb.scala.bson.collection.immutable.Document("userId" -> 1)).toFuture(), 10.seconds)
+      .hint(org.mongodb.scala.bson.collection.immutable.Document("userId" -> 1)).toFuture(), SpecTimeouts.Io)
     val before = userIdIndexAccesses()
     before._2 should be >= 1L
     val rebooted = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned)
@@ -288,14 +289,14 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val handle   = mongo.watchChanges(_ => { delivered.incrementAndGet(); () }, _ => (), () => { lostTrack.incrementAndGet(); () })
     try {
       // Dropping the collection ends only a cursor that is open: write until it delivers first.
-      awaitStreamLive("a warm-up row", poll(1000)(delivered.get() > 0))(pass =>
-        Await.result(raw.insertOne(UserState(s"__integration-test-warm-$pass", Set.empty, Set.empty, Now)).toFuture(), 10.seconds))
-      Await.result(raw.drop().toFuture(), 10.seconds) // the cursor's terminal end
-      eventually(Option(pendingReopen.get()) should not be empty, timeoutMs = 10000)
+      awaitStreamLive("a warm-up row", poll(SpecTimeouts.Pace.toMillis)(delivered.get() > 0))(pass =>
+        Await.result(raw.insertOne(UserState(s"__integration-test-warm-$pass", Set.empty, Set.empty, Now)).toFuture(), SpecTimeouts.Io))
+      Await.result(raw.drop().toFuture(), SpecTimeouts.Io) // the cursor's terminal end
+      eventually(Option(pendingReopen.get()) should not be empty)
       val atDeath = lostTrack.get()
 
       pendingReopen.get()() // the reopen fires
-      eventually(lostTrack.get() should be > atDeath, timeoutMs = 10000)
+      eventually(lostTrack.get() should be > atDeath)
     } finally handle.foreach(_.close())
     }
 

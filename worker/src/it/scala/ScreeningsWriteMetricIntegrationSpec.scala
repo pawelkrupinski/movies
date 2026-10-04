@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import services.movies.ListedShowtimes
 
 import models.Showtime
@@ -14,7 +16,6 @@ import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -44,7 +45,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
       CreateCollectionOptions().validationOptions(
         ValidationOptions().validator(Filters.exists("__no_screenings_write_may_satisfy_this__")))
     ).toFuture(),
-    30.seconds)
+    SpecTimeouts.Io)
 
   /** Counts what the repository reports, by outcome. */
   private final class Counting extends ScreeningsMetrics {
@@ -73,7 +74,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
 
     // The write really was refused.
     Await.result(db.getCollection(ScreeningsRepository.Collection)
-      .countDocuments(Filters.eq("filmId", filmId)).toFuture(), 30.seconds) shouldBe 0L
+      .countDocuments(Filters.eq("filmId", filmId)).toFuture(), SpecTimeouts.Io) shouldBe 0L
 
     // …so nothing may be reported as written. Before the counter moved after the bulkWrite this
     // read 2 — one per row the call intended to write.

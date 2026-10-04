@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import services.movies.ListedShowtimes
 
 import models.{CinemaShowing, KinoPionier, MovieRecord, Showtime, Source, SourceData}
@@ -13,7 +15,6 @@ import tools.ProdCoverage
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * That the production baseline counts a film whichever of the TWO homes its cinema
@@ -74,7 +75,7 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
   }
 
   override def afterAll(): Unit = {
-    Await.result(database.drop().toFuture(), 1.minute)
+    Await.result(database.drop().toFuture(), SpecTimeouts.Io)
     super.afterAll()
   }
 

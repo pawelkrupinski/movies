@@ -7,7 +7,6 @@ import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture, SingleOb
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -63,7 +62,7 @@ object QueryPlans {
       .build())
     val database = client.getDatabase(IntegrationCorpusDatabase.named(target, purpose))
     try body(database, () => sent.asScala.toSeq)
-    finally { Await.result(database.drop().toFuture(), 60.seconds); client.close() }
+    finally { Await.result(database.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
   /** What a workload sent, planned; and each index of the collections it wrote that none of its plans
@@ -82,8 +81,8 @@ object QueryPlans {
 
   private def unusedIndexes(database: MongoDatabase, plans: Seq[Plan]): Seq[String] = {
     val read = plans.flatMap(p => p.indexes.map(index => s"${p.collection}.$index")).toSet
-    Await.result(database.listCollectionNames().toFuture(), 30.seconds).sorted.flatMap { collection =>
-      Await.result(database.getCollection[BsonDocument](collection).listIndexes[BsonDocument]().toFuture(), 30.seconds)
+    Await.result(database.listCollectionNames().toFuture(), SpecTimeouts.Io).sorted.flatMap { collection =>
+      Await.result(database.getCollection[BsonDocument](collection).listIndexes[BsonDocument]().toFuture(), SpecTimeouts.Io)
         .filterNot(index => index.getString("name").getValue == "_id_" || index.containsKey("expireAfterSeconds") ||
           Option(index.get("unique")).exists(_.asBoolean.getValue))
         .map(index => s"$collection.${index.getString("name").getValue}")
@@ -97,7 +96,7 @@ object QueryPlans {
     commands.flatMap(statements).map { statement =>
       val explain   = new BsonDocument("explain", statement).append("verbosity", new BsonString("executionStats"))
       val explained = Await.result(database
-        .runCommand[BsonDocument](explain).toFuture(), 30.seconds)
+        .runCommand[BsonDocument](explain).toFuture(), SpecTimeouts.Io)
       Plan(statement.getString(statement.getFirstKey).getValue, statement, winning(explained, "stage"),
         sum(explained, "totalDocsExamined"), sum(explained, "totalKeysExamined"), winning(explained, "indexName").distinct)
     }

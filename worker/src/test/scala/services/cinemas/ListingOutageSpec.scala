@@ -1,5 +1,7 @@
 package services.cinemas
 
+import tools.SpecTimeouts
+
 import models.KinoDiana
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -28,7 +30,7 @@ class ListingOutageSpec extends AnyFlatSpec with Matchers {
     // Hangs until the test ends, so the abandoned page fetches don't outlive it.
     val release = new java.util.concurrent.CountDownLatch(1)
     val hanging = new tools.HttpFetch {
-      def get(url: String): String = { release.await(10, java.util.concurrent.TimeUnit.SECONDS); "[]" }
+      def get(url: String): String = { release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); "[]" }
       def post(url: String, body: String, contentType: String): String = get(url)
     }
     val client = new FilmwebShowtimesClient(hanging, 2352, KinoDiana, daysAhead = 1, today = today,

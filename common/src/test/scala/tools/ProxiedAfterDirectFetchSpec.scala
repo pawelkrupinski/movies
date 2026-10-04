@@ -207,7 +207,7 @@ object ProxiedAfterDirectFetchSpec {
               val back = daemon(() => Try(upstream.getInputStream.transferTo(out)))
               Try(in.transferTo(upstream.getOutputStream))
               Try(upstream.shutdownOutput())
-              back.join(10000)
+              back.join(SpecTimeouts.Io.toMillis)
             }
             open = false
           }
@@ -234,7 +234,7 @@ object ProxiedAfterDirectFetchSpec {
       val t = new Thread(() => body()); t.setDaemon(true); t.start(); t
     }
 
-    override def close(): Unit = { server.close(); acceptor.join(5000) }
+    override def close(): Unit = { server.close(); acceptor.join(SpecTimeouts.Io.toMillis) }
   }
 }
 

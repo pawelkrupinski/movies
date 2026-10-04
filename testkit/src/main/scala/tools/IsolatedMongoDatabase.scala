@@ -3,7 +3,6 @@ package tools
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * A throwaway database with a name nobody else can be using, for specs that need
@@ -36,7 +35,7 @@ final class IsolatedMongoDatabase private (val client: MongoClient, val database
   def drop(): Unit = synchronized {
     if (!dropped) {
       dropped = true
-      try Await.result(database.drop().toFuture(), 60.seconds)
+      try Await.result(database.drop().toFuture(), SpecTimeouts.Io)
       catch { case _: Throwable => () }   // a suite that failed early must still close its client
       finally client.close()
     }
@@ -73,7 +72,7 @@ object IsolatedMongoDatabase {
     try {
       val database = client.getDatabase(name)
       try body(database)
-      finally Await.result(database.drop().toFuture(), 60.seconds)
+      finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)
     } finally client.close()
   }
 

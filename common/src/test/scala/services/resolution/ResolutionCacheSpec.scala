@@ -1,5 +1,7 @@
 package services.resolution
 
+import tools.SpecTimeouts
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -69,7 +71,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     start.countDown()
     tasks.foreach(_.get())
     pool.shutdown()
-    pool.awaitTermination(5, TimeUnit.SECONDS)
+    pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
     calls.get() shouldBe 1
   }
 

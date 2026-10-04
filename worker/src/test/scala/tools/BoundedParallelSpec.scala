@@ -22,7 +22,7 @@ class BoundedParallelSpec extends AnyFlatSpec with Matchers {
     BoundedParallel.foreach("test-concurrent", 1 to n, maxConcurrent = n) { _ =>
       val cur = inFlight.incrementAndGet()
       maxSeen.updateAndGet(m => math.max(m, cur))
-      barrier.await(5, TimeUnit.SECONDS)
+      barrier.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
       inFlight.decrementAndGet()
       ()
     }

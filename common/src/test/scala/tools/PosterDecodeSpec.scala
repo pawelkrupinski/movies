@@ -11,7 +11,6 @@ import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 import javax.imageio.spi.{IIORegistry, ImageReaderSpi}
 import javax.imageio.stream.{ImageInputStream, MemoryCacheImageInputStream}
 import javax.imageio.{ImageIO, ImageReadParam, ImageReader, ImageTypeSpecifier}
-import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 class PosterDecodeSpec extends AnyFlatSpec with Matchers {
@@ -44,8 +43,8 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
       try {
         implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
         val decodes = (1 to 8).map(_ => Future(gate.withPermit(PosterDecode.fromFile(payload))))
-        Await.result(Future.sequence(decodes), 30.seconds).flatten should have size 8
-      } finally { pool.shutdown(); pool.awaitTermination(10, TimeUnit.SECONDS) }
+        Await.result(Future.sequence(decodes), SpecTimeouts.Io).flatten should have size 8
+      } finally { pool.shutdown(); pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) }
       reader
     }
     counted.reads.get() shouldBe 8

@@ -44,7 +44,7 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
    *  `getLogger` returns the real logger, so this waits for it; when it is already
    *  done (every call but the first), the first probe already holds. */
   private def logbackLogger(name: String): LogbackLogger = {
-    tools.Eventually.poll(timeoutMs = 5000, pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
+    tools.Eventually.poll(pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
     LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
   }
 
@@ -67,7 +67,7 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
       // out below, so the first test read an empty capture (2026-09-07, under
       // `common/testOnly services.movies.*`). Log a warm-up line through the SAME path
       // and wait until it lands here on this thread; only then is a missing line a fact.
-      tools.Eventually.poll(timeoutMs = 5000, pollMs = 10) {
+      tools.Eventually.poll(pollMs = 10) {
         RemovalAudit.filmRemoved("warm-up", "warm-up", "warm-up")
         events.iterator().asScala.exists(e => e.getThreadName == thread && e.getFormattedMessage.contains("warm-up"))
       }

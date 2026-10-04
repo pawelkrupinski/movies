@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.MongoDatabase
 import org.mongodb.scala.model.Filters
@@ -8,7 +10,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -77,5 +78,5 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
    *  on `<filmId>\u001f<cinema>`, so the film id is a PREFIX of their `_id` rather than the
    *  whole of it — one `^scanpaging` match covers all three. */
   private def sentinelRows(db: MongoDatabase, collection: String): Long =
-    Await.result(db.getCollection(collection).countDocuments(Filters.regex("_id", "^scanpaging")).toFuture(), 10.seconds)
+    Await.result(db.getCollection(collection).countDocuments(Filters.regex("_id", "^scanpaging")).toFuture(), SpecTimeouts.Io)
 }

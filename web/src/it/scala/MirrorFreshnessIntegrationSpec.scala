@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
@@ -10,7 +12,6 @@ import tools.IsolatedMongoDatabase
 
 import java.util.Date
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The `/debug` navbar's mirror age is only as good as the read behind it, and
@@ -31,7 +32,7 @@ class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val newer      = Date.from(java.time.Instant.parse("2099-08-31T09:04:00Z"))
 
   private def stamp(collection: String, suffix: String, at: Date): Unit =
-    Await.result(db.getCollection(collection).insertOne(Document("_id" -> suffix, "updatedAt" -> at)).toFuture(), 10.seconds)
+    Await.result(db.getCollection(collection).insertOne(Document("_id" -> suffix, "updatedAt" -> at)).toFuture(), SpecTimeouts.Io)
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 

@@ -75,7 +75,7 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
   private def reloadingAfter(page: CdpPage)(act: String): Unit = {
     page.eval("window.__stamp = 1")
     page.eval(act)
-    page.waitFor("typeof window.__stamp === 'undefined' && document.readyState === 'complete'", timeoutMs = 10000)
+    page.waitFor("typeof window.__stamp === 'undefined' && document.readyState === 'complete'")
   }
 
   private val samson = ListingKey.Published("Kino Amok", "Samson i Dalila", None, Nil)

@@ -1,5 +1,7 @@
 package services.contracts
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,7 +12,6 @@ import tools.IsolatedMongoDatabase
 import tools.contracts.Implementations
 
 import scala.concurrent.Await
-import scala.concurrent.duration.*
 
 /**
  * ONE behaviour suite for [[FilmIdCounterStore]], run against every implementation on the class
@@ -24,7 +25,7 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private def fresh(cls: Class[? <: FilmIdCounterStore]): FilmIdCounterStore = {
-    Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection).drop().toFuture(), 30.seconds)
+    Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection).drop().toFuture(), SpecTimeouts.Io)
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoDatabase" => Some(isolatedDatabase.database)
       case _                                 => None
@@ -69,7 +70,7 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
     val store = fresh(classOf[MongoFilmIdCounterStore])
     store.insert(Seq(FilmIdCounter("belle|2013", 1))) shouldBe 1
     Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection)
-      .insertOne(org.mongodb.scala.Document("_id" -> "dune|2021", "counter" -> "two")).toFuture(), 30.seconds)
+      .insertOne(org.mongodb.scala.Document("_id" -> "dune|2021", "counter" -> "two")).toFuture(), SpecTimeouts.Io)
     store.allChecked().required shouldBe Seq(FilmIdCounter("belle|2013", 1))
     val mapping = new FilmIdMapping(store)
     mapping.append(Seq(film("dune|2021", 1), film("arrival|2016", 1))) shouldBe Right(1)

@@ -55,7 +55,7 @@ class ProfileEndpointSpec extends AnyFlatSpec with Matchers {
     val recorder = new JfrFlightRecorder(dir, clock = _root_.tools.SpecClock.Pinned)
     val file     = recorder.record(1.second).toOption.get
     recorder.record(1.second) shouldBe Left("a recording is already running")
-    tools.Eventually.poll(timeoutMs = 20000, pollMs = 200)(Files.exists(java.nio.file.Path.of(file)) && Files.size(java.nio.file.Path.of(file)) > 0)
+    tools.Eventually.poll(pollMs = 200)(Files.exists(java.nio.file.Path.of(file)) && Files.size(java.nio.file.Path.of(file)) > 0)
     Files.size(java.nio.file.Path.of(file)) should be > 0L
   }
 }

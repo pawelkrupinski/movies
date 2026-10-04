@@ -1,9 +1,12 @@
 package deploy
 
+import tools.SpecTimeouts
+
+
 import org.scalatest.concurrent.Eventually.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{Millis, Span}
 
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path, Paths}
@@ -93,7 +96,7 @@ class FixtureServerBootSpec extends AnyFlatSpec with Matchers {
     pidIsAlive(dir) shouldBe true
     run("stop", dir.toString)()._1 shouldBe 0
     // A signalled process takes a moment to go; poll for it rather than sleep a fixed guess.
-    eventually(timeout(Span(5, Seconds)), interval(Span(20, Millis)))(pidIsAlive(dir) shouldBe false)
+    eventually(timeout(SpecTimeouts.Settle), interval(Span(20, Millis)))(pidIsAlive(dir) shouldBe false)
   }
 
   "a server that never manages to start" should "fail after the configured launches, with every attempt's log, and well inside the ceiling" in withState { dir =>

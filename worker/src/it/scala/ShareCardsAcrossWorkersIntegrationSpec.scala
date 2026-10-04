@@ -1,5 +1,8 @@
 package integration
 
+import tools.SpecTimeouts
+
+
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -66,7 +69,7 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
             ()
           } finally renders.countDown()
         }
-        successes(race(drainers :+ sampler, Some(round), joinTimeout = 2.minutes))
+        successes(race(drainers :+ sampler, Some(round), joinTimeout = SpecTimeouts.Run))
 
         withClue(s"$torn of $samples reads found a partial card: ") { torn.get shouldBe 0 }
         val (service, _) = services.head

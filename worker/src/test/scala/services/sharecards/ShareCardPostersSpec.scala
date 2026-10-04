@@ -1,5 +1,7 @@
 package services.sharecards
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ShareCardTestKit.*
@@ -71,15 +73,14 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
   "Two rigs' shrinkers" should "each shrink behind their own decode gate" in {
     import scala.concurrent.{Await, Future, Promise}
     import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.concurrent.duration.*
     val (busy, idle) = (new Rig(), new Rig())
     val file    = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
     val holding = Promise[Unit](); val release = Promise[Unit]()
-    val holder  = Future(busy.shrinker.gate.withPermit { holding.success(()); Await.ready(release.future, 30.seconds) })
+    val holder  = Future(busy.shrinker.gate.withPermit { holding.success(()); Await.ready(release.future, SpecTimeouts.Io) })
     try {
-      Await.ready(holding.future, 10.seconds)
-      Await.result(Future(idle.shrinker.coverSlot(file)), 10.seconds).map(_.getWidth) shouldBe Right(420)
-    } finally { release.success(()); Await.ready(holder, 30.seconds); Files.delete(file) }
+      Await.ready(holding.future, SpecTimeouts.Io)
+      Await.result(Future(idle.shrinker.coverSlot(file)), SpecTimeouts.Io).map(_.getWidth) shouldBe Right(420)
+    } finally { release.success(()); Await.ready(holder, SpecTimeouts.Io); Files.delete(file) }
   }
 
   "A poster download" should "be abandoned at the byte cap instead of written out" in {

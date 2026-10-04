@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import com.mongodb.connection.{ClusterId, ConnectionDescription, ServerId}
 import com.mongodb.{ConnectionString, MongoClientSettings, ServerAddress}
@@ -9,14 +11,13 @@ import org.mongodb.scala.model.Indexes
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{Millis, Span}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoTtlIndex, TtlIndexMismatches, UptimeMonitor}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -86,19 +87,19 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   private def sentinel(name: String): MongoCollection[Document] = {
     val collectionName = s"__integration_test_ttl_$name"
     val collection = database.getCollection[Document](collectionName)
-    Await.ready(collection.drop().toFuture(), 10.seconds)
+    Await.ready(collection.drop().toFuture(), SpecTimeouts.Io)
     // A collection has to EXIST before listIndexes or dropIndex address anything.
-    Await.result(database.createCollection(collectionName).toFuture(), 10.seconds)
+    Await.result(database.createCollection(collectionName).toFuture(), SpecTimeouts.Io)
     collection
   }
 
   private def expiryOf(collection: MongoCollection[Document], field: String): Option[Long] =
-    Await.result(collection.listIndexes().toFuture(), 10.seconds)
+    Await.result(collection.listIndexes().toFuture(), SpecTimeouts.Io)
       .find(_.get("key").exists(_.asDocument().containsKey(field)))
       .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
 
   override protected def afterAll(): Unit = try {
-    try Await.ready(database.drop().toFuture(), 60.seconds) finally client.close()
+    try Await.ready(database.drop().toFuture(), SpecTimeouts.Io) finally client.close()
   } finally super.afterAll()
 
   "MongoTtlIndex.reconcile" should "create the TTL index when the collection has none" in {
@@ -135,7 +136,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     Await.result(collection.createIndex(
       Indexes.ascending("at"),
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
-    ).toFuture(), 10.seconds)
+    ).toFuture(), SpecTimeouts.Io)
     expiryOf(collection, "at") shouldBe Some(100L)
 
     forget()
@@ -164,7 +165,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     Await.result(collection.createIndex(
       Indexes.descending("at"),
       new com.mongodb.client.model.IndexOptions().name("at_ttl_custom").expireAfter(100L, TimeUnit.SECONDS)
-    ).toFuture(), 10.seconds)
+    ).toFuture(), SpecTimeouts.Io)
 
     MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", local)
 
@@ -211,7 +212,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     Await.result(collection.createIndex(
       Indexes.ascending("at"),
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
-    ).toFuture(), 10.seconds)
+    ).toFuture(), SpecTimeouts.Io)
 
     forget()
     MongoTtlIndex.ensure(collection, "at", 86400L, "spec")
@@ -243,17 +244,17 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
    *  the way that wiring does is the assertion. */
   it should "not rebuild the bucket index from a monitor wired the way the serving app wires it" in {
     val buckets = database.getCollection[Document]("uptimeBuckets")
-    Await.ready(buckets.drop().toFuture(), 10.seconds)
-    Await.result(database.createCollection("uptimeBuckets").toFuture(), 10.seconds)
+    Await.ready(buckets.drop().toFuture(), SpecTimeouts.Io)
+    Await.result(database.createCollection("uptimeBuckets").toFuture(), SpecTimeouts.Io)
     Await.result(buckets.createIndex(
       Indexes.ascending("bucket"),
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
-    ).toFuture(), 10.seconds)
+    ).toFuture(), SpecTimeouts.Io)
     forget()
     val monitor = new UptimeMonitor(Some(database), surfaceExternalWrites = true, clock = _root_.tools.MongoTtlSpecClock.Pinned)
     try {
       // The index work runs on a daemon thread, so give it room to have done the wrong thing.
-      eventually(timeout(Span(5, Seconds)), interval(Span(150, Millis))) {
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(150, Millis))) {
         sent("listIndexes") should be > 0
       }
       withClue("the serving app rebuilt an index it does not own: ")(sent("dropIndexes") shouldBe 0)
@@ -262,11 +263,11 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       // Leave nothing running on this client: the init thread goes on past the first
       // `listIndexes` to create uptimeServiceTags' index, and a `createIndexes` landing after
       // the NEXT case's `forget()` failed "ignore a compound index" (Main run on b25f9a2ba).
-      eventually(timeout(Span(30, Seconds)), interval(Span(100, Millis))) {
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(100, Millis))) {
         Thread.getAllStackTraces.keySet.asScala.exists(t => t.getName == "uptime-monitor-init" && t.isAlive) shouldBe false
       }
       monitor.close()
-      Await.ready(buckets.drop().toFuture(), 10.seconds)
+      Await.ready(buckets.drop().toFuture(), SpecTimeouts.Io)
     }
   }
 
@@ -274,7 +275,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val collection = sentinel("compound")
     Await.result(collection.createIndex(
       Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("at"))
-    ).toFuture(), 10.seconds)
+    ).toFuture(), SpecTimeouts.Io)
 
     forget()
     MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
@@ -283,7 +284,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     // being reconciled, so the single-field TTL still has to be CREATED.
     sent("createIndexes") shouldBe 1
     sent("collMod") shouldBe 0
-    val ttlIndexes = Await.result(collection.listIndexes().toFuture(), 10.seconds)
+    val ttlIndexes = Await.result(collection.listIndexes().toFuture(), SpecTimeouts.Io)
       .filter(_.get("expireAfterSeconds").isDefined)
     ttlIndexes.flatMap(_.get("key")).map(_.asDocument().keySet().asScala.toSet) shouldBe Seq(Set("at"))
   }

@@ -1,5 +1,7 @@
 package services.cinemas
 
+import tools.SpecTimeouts
+
 import clients.tools.FailingHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -65,7 +67,7 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
           case Failure(e)               => throw e
         })
       }
-    } finally { pool.shutdownNow(); pool.awaitTermination(5, TimeUnit.SECONDS) }
+    } finally { pool.shutdownNow(); pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) }
   }
 
   FailingHttpFetch.Faults.foreach { fault =>

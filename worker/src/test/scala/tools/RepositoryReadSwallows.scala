@@ -13,7 +13,7 @@ object RepositoryReadSwallows {
       "Try(Await.result(") ->
       "a dev /debug label's freshness stamp: None reads as 'freshness unknown', which is what a failed read is; logged",
     ("common/src/main/scala/services/MongoCachingDetailFetch.scala", "cached",
-      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", new java.util.Date()))).headOption(), 10.seconds))") ->
+      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", new java.util.Date()))).headOption(), SpecTimeouts.Io))") ->
       "a CACHE read: a miss refetches from the source, the safe direction, and costs one fetch",
     ("common/src/main/scala/services/MongoIndex.scala", "uniqueNow",
       "Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout)).toOption.exists(_.exists { spec =>") ->
@@ -28,7 +28,7 @@ object RepositoryReadSwallows {
       "def hydrate(c: MongoCollection[Document]): Unit = Try {") ->
       "a boot hydrate of an in-memory map: a failed read leaves it as it was (empty = the documented cold start) and is logged",
     ("common/src/main/scala/services/config/EnvOverrideStore.scala", "refresh",
-      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption.foreach { docs =>") ->
+      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), SpecTimeouts.Io)).toOption.foreach { docs =>") ->
       "keeps the overrides it already holds when the read fails — the opposite of reading the failure as 'no overrides'",
     ("common/src/main/scala/services/config/EnvRegistryStore.scala", "publish",
       "Try {") ->
@@ -37,19 +37,19 @@ object RepositoryReadSwallows {
       "val collidesWithAnother = identityChanging && Try(Await.result(c.find(Filters.and(") ->
       "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",
     ("common/src/main/scala/services/movies/ScreeningsRepository.scala", "storedRow",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->
+      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), SpecTimeouts.Io))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
     ("common/src/main/scala/services/movies/SlotsRepository.scala", "storedSlot",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->
+      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), SpecTimeouts.Io))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
     ("common/src/main/scala/services/resolution/ResolutionStore.scala", "get",
-      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", hintKey), Filters.gte(\"at\", cutoff))).headOption(), 5.seconds))") ->
+      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", hintKey), Filters.gte(\"at\", cutoff))).headOption(), SpecTimeouts.Io))") ->
       "a CACHE read: a miss re-resolves from the source, the safe direction",
     ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "Try {") ->
       "a forget: 0 entries forgotten is what a failed read-then-delete did; logged, and the next re-resolve asks the source again",
     ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
-      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(toResult).map(r => r.taskType -> r).toMap)") ->
+      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), SpecTimeouts.Io).flatMap(toResult).map(r => r.taskType -> r).toMap)") ->
       "each bulk job's last-outcome line beside the queue view: a failed read must not take the queue view down with it; logged at WARN",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "claim",
       "Try {") ->
@@ -64,10 +64,10 @@ object RepositoryReadSwallows {
       "Try(Option(Await.result(c.findOneAndUpdate(Filters.eq(\"id\", id), Updates.inc(\"sessionVersion\", 1),") ->
       "None is answered 503 'retry' by AuthController.revokeSessions — never read as 'no such user'",
     ("worker/src/main/scala/services/enrichment/OmdbAttemptStore.scala", "get",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", filmKey)).headOption(), 5.seconds)).toOption.flatten.flatMap { d =>") ->
+      "Try(Await.result(c.find(Filters.eq(\"_id\", filmKey)).headOption(), SpecTimeouts.Io)).toOption.flatten.flatMap { d =>") ->
       "the backoff stamp on the single-film path fails OPEN like `all()`: an unread stamp makes the film eligible, costing one OMDb call, never a missed film",
     ("worker/src/main/scala/services/tasks/ChunkPageMemo.scala", "recall",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", id(cinema, key))).first().headOption(), 10.seconds)).toOption.flatten.flatMap { d =>") ->
+      "Try(Await.result(c.find(Filters.eq(\"_id\", id(cinema, key))).first().headOption(), SpecTimeouts.Io)).toOption.flatten.flatMap { d =>") ->
       "a page MEMO: a miss re-parses the page, the safe direction",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "Try {") ->

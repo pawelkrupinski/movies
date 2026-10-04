@@ -464,7 +464,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onLoggedInIndex(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li") { page =>
-        page.waitFor("!!document.getElementById('auth-menu')", timeoutMs = 5000)
+        page.waitFor("!!document.getElementById('auth-menu')")
         body(page)
       }
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
@@ -523,8 +523,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     page.waitFor("performance.getEntriesByType('resource')" +
                  ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; }) && " +
                  "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
-                 "getHidden().indexOf('Film A') !== -1",
-                 timeoutMs = 5000)
+                 "getHidden().indexOf('Film A') !== -1")
   }
 
   "server-state reconcile" should
@@ -541,8 +540,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("setHidden(['Film A','Film B']); localStorage.removeItem('hiddenFilmsEtag:pl')")
       page.reload()
       // `Film A` comes from the server, so this is the same round-trip again.
-      page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1")
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")
       hidden should not include "Film B"
@@ -571,8 +569,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // sibling waits in this file already use for post-login server state.
       page.waitFor(
         "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
-          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1",
-        timeoutMs = 5000)
+          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1")
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
@@ -593,8 +590,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
       page.eval("setHidden(['Local Z'])")
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden())") should include ("Local Z")
     }
   }
@@ -604,7 +600,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       awaitOwnReconcile(page)
       page.evalString("String(localStorage.getItem('hiddenFilmsEtag:pl'))") shouldBe "\"fixture-etag\""
       page.eval("hideFilmOnServer('Rejected')")
-      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null", timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null")
     }
   }
 
@@ -620,7 +616,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       awaitOwnReconcile(page)  // pl synced, pl validators cached
       page.eval("setHidden(['UK Film'], 'uk')")
       page.reload()
-      page.waitFor("getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+      page.waitFor("getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
     }
   }
@@ -631,8 +627,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
       page.eval("setHidden(['UK Film'], 'uk')")
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
       awaitHiddenFilmsWrites(page)
       page.evalString(
         "performance.getEntriesByType('resource')" +
@@ -669,8 +664,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
       page.reload()
       page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; })", timeoutMs = 5000)
-      page.waitFor("getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; })")
+      page.waitFor("getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden('uk'))") shouldBe """["UK Film"]"""
     }
   }
@@ -686,10 +681,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       awaitOwnReconcile(page)
       page.eval("setHidden(['UK Film'], 'uk')")
       page.navigate(server.baseUrl + cityPrefix + "/")          // signed out: the anonymous boot runs
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === null", timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === null")
       page.navigate(server.baseUrl + cityPrefix + "/li")        // signed back in, on pl
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
       awaitHiddenFilmsWrites(page)
       page.evalString(
         "performance.getEntriesByType('resource')" +
@@ -705,15 +699,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       page.eval("setHidden(getHidden().concat(['Rejected'])); hideFilmOnServer('Rejected')")
-      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null", timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null")
       page.reload()
       page.waitFor("performance.getEntriesByType('resource')" +
                    ".some(function (r) { return /\\/api\\/me\\/pl\\/hidden-films$/.test(r.name); }) && " +
-                   "getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+                   "getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden())") should include ("Rejected")
       page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Rejected') !== -1; })",
-                   timeoutMs = 5000)
+                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Rejected') !== -1; })")
     }
   }
 
@@ -728,7 +721,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         s"  return Promise.resolve(new Response('answer', { status: $status }));" +
         "};" +
         s"_writeHiddenFilms('PUT', 'pl', '$title').then(() => { window._written = true; }); 0")
-      page.waitFor("window._written === true", timeoutMs = 5000)
+      page.waitFor("window._written === true")
       page.evalString("String(localStorage.getItem('hiddenFilmsPending:pl'))")
     } finally page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
       "localStorage.removeItem('hiddenFilmsPending:pl'); 0")
@@ -788,7 +781,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def reconcileAgainstHeldServer(page: CdpPage, serverList: Seq[String])(body: => Any): Unit =
     withHiddenFilmsServer(page, serverList, holdFirstGet = true) {
       page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
-      page.waitFor("typeof window._releaseGet === 'function'", timeoutMs = 5000)
+      page.waitFor("typeof window._releaseGet === 'function'")
       body
     }
 
@@ -796,9 +789,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  out, then let the fetch answer and wait for the reconcile to finish. */
   private def hideDuringHeldFetch(page: CdpPage, title: String): Unit = {
     page.eval(s"setHidden(getHidden().concat(['$title'])); hideFilmOnServer('$title'); 0")
-    page.waitFor(s"window._server.list.indexOf('$title') !== -1", timeoutMs = 5000)
+    page.waitFor(s"window._server.list.indexOf('$title') !== -1")
     page.eval("window._releaseGet()")
-    page.waitFor("window._reconciled === true", timeoutMs = 5000)
+    page.waitFor("window._reconciled === true")
   }
 
   // A hide made while a reconcile's fetch is out: the answer predates the hide's
@@ -841,9 +834,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       withHiddenFilmsServer(page, Seq("Film A", "Other Device"), holdFirstGet = false) {
         page.eval("setHidden(getHidden().concat(['Mine'])); window._written = false;" +
                   "_writeHiddenFilms('PUT', 'pl', 'Mine').then(() => { window._written = true; }); 0")
-        page.waitFor("window._written === true", timeoutMs = 5000)
+        page.waitFor("window._written === true")
         page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
-        page.waitFor("window._reconciled === true", timeoutMs = 5000)
+        page.waitFor("window._reconciled === true")
         page.evalString("JSON.stringify(getHidden())") should include ("Other Device")
       }
     }
@@ -901,8 +894,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // more to land on the "already synced" branch, which pushes nothing of
       // its own for hiddenFilms.
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
       // `reconcileLanguage()` (shared.js) fires its OWN GET to `/api/me/state`
       // on every logged-in boot — unconditionally, and unawaited alongside
       // `bootMergeFromServer()` in the same `hydrateAuth().then(...)` block —
@@ -915,8 +907,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // test actually hit ("[1]" was not equal to "[0]"), not a real extra
       // PUT. Waiting for it explicitly turns that race into a fixed point.
       page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; })",
-                   timeoutMs = 5000)
+                   ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; })")
       val before = page.evalString(
         "performance.getEntriesByType('resource')" +
           ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length.toString()")
@@ -942,8 +933,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Second reconcile is the AUTHORITATIVE-REPLACE phase for hiddenFilms —
       // confirm disabledCinemas still isn't touched even there.
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
-                   timeoutMs = 5000)
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
       val disabled = page.evalString("JSON.stringify(getDisabledCinemas())")
       disabled should include ("Device Pick")
       disabled should not include "Server-Only Cinema"
@@ -964,8 +954,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       try {
         page.reload()
         page.waitFor(
-          "document.documentElement.lang === 'de' && localStorage.getItem('kinowo_lang') === 'de'",
-          timeoutMs = 5000)
+          "document.documentElement.lang === 'de' && localStorage.getItem('kinowo_lang') === 'de'")
       } finally {
         // Both halves: the fixture (read by whatever boots next) AND the pick
         // this test itself landed in `kinowo_lang` — `localStorage` is per
@@ -988,8 +977,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         page.eval("localStorage.setItem('kinowo_lang', 'it'); localStorage.setItem('kinowo_lang_pending', 'it')")
         page.reload()
         page.waitFor(
-          "localStorage.getItem('kinowo_lang_pending') === null && localStorage.getItem('kinowo_lang') === 'de'",
-          timeoutMs = 5000)
+          "localStorage.getItem('kinowo_lang_pending') === null && localStorage.getItem('kinowo_lang') === 'de'")
       } finally {
         userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":null}""")
         page.eval("localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
@@ -1017,7 +1005,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             s"  return Promise.resolve(new Response('answer', { status: ${row.status.get} }));" +
             "};")
           page.eval("onLanguageChange('es')")
-          page.waitFor("window._pushHandled === true", timeoutMs = 5000)
+          page.waitFor("window._pushHandled === true")
           val pending = page.eval("localStorage.getItem('kinowo_lang_pending')").asOpt[String]
           pending shouldBe (if (row.verdict == RetryClassificationTable.Verdict.Permanent) None else Some("es"))
         } finally {
@@ -1042,8 +1030,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         page.eval("onLanguageChange('es')")
         page.waitFor(
           "performance.getEntriesByType('resource')" +
-            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length > " + before,
-          timeoutMs = 5000)
+            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length > " + before)
         page.evalString("document.documentElement.lang") shouldBe "es"
       } finally {
         // Same origin-wide leak concern as the test above.
@@ -1072,12 +1059,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "  return Promise.resolve(answer());" +
           "}; 0")
         page.eval("onLanguageChange('es')")
-        page.waitFor("typeof window._releaseFirstPut === 'function'", timeoutMs = 5000)
+        page.waitFor("typeof window._releaseFirstPut === 'function'")
         page.eval("onLanguageChange('de')")
         page.eval("new Promise(resolve => setTimeout(resolve, 800))")
         page.evalInt("window._langPuts.length") shouldBe 1
         page.eval("window._releaseFirstPut()")
-        page.waitFor("window._langPuts.length === 2 && window._langInFlight === 0", timeoutMs = 5000)
+        page.waitFor("window._langPuts.length === 2 && window._langInFlight === 0")
         page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
         page.evalInt("window._langMaxInFlight") shouldBe 1
         page.evalString("String(localStorage.getItem('kinowo_lang_pending'))") shouldBe "null"
@@ -1107,11 +1094,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "  return Promise.resolve(new Response(null, { status: 204 }));" +
           "}; 0")
         page.eval("onLanguageChange('es')")
-        page.waitFor("window._langPuts.length === 1", timeoutMs = 5000)
+        page.waitFor("window._langPuts.length === 1")
         page.eval("onLanguageChange('de')")
-        page.waitFor("window._langPuts.length === 2", timeoutMs = 5000)
+        page.waitFor("window._langPuts.length === 2")
         page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
-        page.waitFor("localStorage.getItem('kinowo_lang_pending') === null", timeoutMs = 5000)
+        page.waitFor("localStorage.getItem('kinowo_lang_pending') === null")
       } finally {
         page.eval("if (window._realFetch) window.fetch = window._realFetch; " +
                   "if (window._realSetTimeout) window.setTimeout = window._realSetTimeout; " +
@@ -2670,7 +2657,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       slug should not be empty
       page.eval(s"$firstCardPosterLink.click()")
-      page.waitFor(s"location.pathname === '$cityPrefix/movie/$slug'", timeoutMs = 5000)
+      page.waitFor(s"location.pathname === '$cityPrefix/movie/$slug'")
       // The whole point of the slug: the address carries no query string at all.
       page.evalString("location.search") shouldBe ""
     }
@@ -3011,7 +2998,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |  const local = location.origin + '/assets/img/favicon.png';
           |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&w=480');
           |})()""".stripMargin)
-      page.waitFor(s"$ProbeVerdicts.length === 1", timeoutMs = 10000)
+      page.waitFor(s"$ProbeVerdicts.length === 1")
       val verdict = page.evalString(s"JSON.stringify($ProbeVerdicts[0])")
       verdict should include (""""host":"images.weserv.nl"""")
       verdict should include (""""success":false""")
@@ -3044,7 +3031,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       queued should include (""""proxied":true""")
       queued should include (""""success":false""")
       // … and the probe it started adds the proxy's own failure beside it.
-      page.waitFor(s"$ProbeVerdicts.length === 1", timeoutMs = 10000)
+      page.waitFor(s"$ProbeVerdicts.length === 1")
       page.evalString(s"$ProbeVerdicts[0].host") shouldBe "images.weserv.nl"
     }
   }
@@ -3080,8 +3067,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |})()""".stripMargin)
       // Wait for the 404 itself to land, then assert the probe drew no verdict
       // from it — there is no event to wait for, only one to rule out.
-      page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0",
-        timeoutMs = 10000)
+      page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0")
       page.evalString(
         "String(_peekImgEvents().filter(e => (e.error || '').includes('no-such-poster')).length)") shouldBe "0"
     }
@@ -3396,7 +3382,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       page.eval("localStorage.setItem('kinowo_lang', 'en')")
       page.reload()
-      page.waitFor("document.documentElement.lang === 'en'", timeoutMs = 5000)
+      page.waitFor("document.documentElement.lang === 'en'")
 
       val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
       val label   = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
@@ -3426,7 +3412,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.eval("localStorage.setItem('kinowo_lang', 'en')")
       page.reload()
-      page.waitFor("document.documentElement.lang === 'en'", timeoutMs = 5000)
+      page.waitFor("document.documentElement.lang === 'en'")
 
       val after = page.evalString("document.querySelector('.meta-label[data-i18n=\"detail.synopsis\"]').textContent")
       try {
@@ -3671,13 +3657,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(synthDrag("pointerdown", 300, 500))
       page.eval(synthDrag("pointermove", 285, 505))   // tiny dx → no commit
       page.eval(synthDrag("pointerup",   285, 505))
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalInt("Math.round(window.scrollY)") shouldBe 300
 
       // A committed day change (via the unified animateToDay) scrolls to top.
       page.eval("window.scrollTo(0, 300)")
       page.eval("window.animateToDay('tomorrow')")
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalInt("Math.round(window.scrollY)") shouldBe 0
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
     }
@@ -3701,7 +3687,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       inFlight(1).as[Int] should be >= 1
 
       // It settles on the next day with `?date=` reflecting it.
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
       page.evalBool("new URL(location.href).searchParams.get('date') === 'tomorrow'") shouldBe true
     }
@@ -3719,7 +3705,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
 
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
       page.evalBool("new URL(location.href).searchParams.get('date') === 'anytime'") shouldBe true
     }
@@ -3747,7 +3733,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |  window.stepDate(1);
           |})()""".stripMargin)
       // Well past the slide (550 ms) plus its fallback margin, frames still held.
-      page.waitFor("performance.now() - window.__stepAt > 1200", timeoutMs = 3000)
+      page.waitFor("performance.now() - window.__stepAt > 1200")
 
       page.eval(
         """(() => {
@@ -3758,11 +3744,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.waitFor(
         "document.querySelectorAll('#day-track > .day-col').length === 0 && " +
-          "document.getElementById('date-filter').value === 'tomorrow'",
-        timeoutMs = 3000
+          "document.getElementById('date-filter').value === 'tomorrow'"
       )
       // Let any straggling frame / transition run before judging the layout.
-      page.waitFor("performance.now() - window.__stepAt > 2400", timeoutMs = 3000)
+      page.waitFor("performance.now() - window.__stepAt > 2400")
 
       page.evalString("document.getElementById('day-track').style.transform") shouldBe ""
       page.evalInt("Math.round(document.getElementById('view-root').getBoundingClientRect().left)") shouldBe 0
@@ -3826,7 +3811,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
       armedSlideSide(page) shouldBe "next"
 
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
     }
   }
@@ -3845,7 +3830,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
       armedSlideSide(page) shouldBe "previous"
 
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
     }
   }
@@ -4067,7 +4052,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(synthDrag("pointerup", 100, 505))
       // The release still commits the day change — just without ever cloning
       // or animating the track.
-      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'")
       page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
     }
   }
@@ -4111,7 +4096,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.eval("window.stepDate(1)")
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
     }
   }
@@ -4128,7 +4113,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The pill highlight moves eagerly, but the URL only updates once the
       // slide commits — wait on the committed `?date=` as the settle signal.
       page.eval("pickDay('anytime')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 2000)
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'")
 
       // The matching pill is the only `.active`, and carries aria-selected.
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
@@ -4141,7 +4126,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Back to 'today' strips ?date (today is the default) and moves the highlight.
       page.eval("pickDay('today')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === null", timeoutMs = 2000)
+      page.waitFor("new URL(location.href).searchParams.get('date') === null")
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
     }
   }
@@ -4149,10 +4134,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "follow the active day when it changes via a keyboard day-step" in {
     onPath("/") { page =>
       page.eval("pickDay('today')")
-      page.waitFor("document.getElementById('date-filter').value === 'today'", timeoutMs = 2000)
+      page.waitFor("document.getElementById('date-filter').value === 'today'")
       // A keyboard step moves to the next preset; the pill highlight tracks it.
       page.eval("stepDate(1)")
-      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'")
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
     }
   }
@@ -4198,7 +4183,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalInt("document.querySelectorAll('.day-pill.active').length") shouldBe 1
 
       // And it stays on the destination once the slide commits.
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
     }
   }
@@ -4226,8 +4211,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Both slides run; the committed day is two steps on, not one.
       page.waitFor(
-        s"document.getElementById('date-filter').value === ${jsString(twoStepsOn)}",
-        timeoutMs = 3000
+        s"document.getElementById('date-filter').value === ${jsString(twoStepsOn)}"
       )
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe twoStepsOn
     }
@@ -4276,7 +4260,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
       page.eval(synthDrag("pointerup", 300 - (threshold + 40), 505))     // commit
 
-      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'")
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
     }
   }
@@ -5461,7 +5445,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "scheduleExpiryPrune()")
       page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe before
 
-      page.waitFor(s"document.querySelectorAll('.badge-time').length === ${before - 1}", timeoutMs = 4000)
+      page.waitFor(s"document.querySelectorAll('.badge-time').length === ${before - 1}")
     }
   }
 
@@ -5625,7 +5609,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("window.__preRollover === true") shouldBe true
 
       // The rollover fires at ~550ms; the marker going is the navigation landing.
-      page.waitFor("window.__preRollover === undefined && document.readyState === 'complete'", timeoutMs = 5000)
+      page.waitFor("window.__preRollover === undefined && document.readyState === 'complete'")
       // The reloaded page is a working listing again — and, since its own
       // midnight is a day out, it settles rather than reloading on a loop: a
       // bounce would come within one ~250ms grace of the load, well inside this.
@@ -5749,7 +5733,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  are torn down, leaving the real day unchanged. */
   private def releaseBelowThreshold(page: CdpPage): Unit = {
     page.eval(synthDrag("pointerup", 120, 505))
-    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
   }
 
   /** While a directed slide is armed, `animateToDay` mounts the TARGET day's
@@ -5828,13 +5812,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
     page.eval("window.animateToDay('tomorrow')")
     page.waitFor(
-      "getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'",
-      timeoutMs = 1000
+      "getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'"
     )
     val ms = page.evalInt(
       "Math.round(parseFloat(getComputedStyle(document.getElementById('day-track')).transitionDuration) * 1000)"
     )
-    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
     ms
   }
 
@@ -6140,7 +6123,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "fetch(location.href).then(r => r.text()).then(t => {" +
         "  window.__servedAvatar = t.indexOf('id=\"auth-menu\"') >= 0" +
         "                       || t.indexOf('IS_LOGGED_IN') >= 0; })")
-      page.waitFor("window.__servedAvatar !== null", timeoutMs = 5000)
+      page.waitFor("window.__servedAvatar !== null")
       page.evalBool("window.__servedAvatar") shouldBe false
     }
   }
@@ -6231,8 +6214,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val before = page.evalString("String(performance.timeOrigin)")
       page.eval("setTimeout(window.settleSignOut, 0)")
       page.waitFor(
-        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'",
-        timeoutMs = 5000)
+        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'")
 
       // Cleared BEFORE the reload, so the fixture — which always renders signed
       // in — settles after one fetch instead of looping forever.
@@ -6285,8 +6267,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Ready, not merely created: `timeOrigin` changes when the new document is
       // made, before its scripts have run.
       page.waitFor(
-        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'",
-        timeoutMs = 5000)
+        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'")
     }
   }
 

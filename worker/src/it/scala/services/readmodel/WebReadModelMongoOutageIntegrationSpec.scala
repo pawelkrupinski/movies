@@ -44,7 +44,7 @@ class WebReadModelMongoOutageIntegrationSpec extends AnyFlatSpec with Matchers w
         model.movie("before") shouldBe defined
 
         forwarder.sever()
-        withClue("the change streams never noticed the outage: ")(tools.Eventually.poll(30000, 200)(!model.streamsLive) shouldBe true)
+        withClue("the change streams never noticed the outage: ")(tools.Eventually.poll(tools.SpecTimeouts.Settle.toMillis, 200)(!model.streamsLive) shouldBe true)
         writer.upsertMovie(movie("during"))          // lands while the web cannot see Mongo
         model.reload()                               // fails: must evict nothing
         model.movie("before") shouldBe defined
@@ -53,12 +53,12 @@ class WebReadModelMongoOutageIntegrationSpec extends AnyFlatSpec with Matchers w
         model.movie("before") shouldBe defined
 
         forwarder.restore()
-        withClue("the read model never caught up after Mongo came back: ")(tools.Eventually.poll(60000, 500) {
+        withClue("the read model never caught up after Mongo came back: ")(tools.Eventually.poll(tools.SpecTimeouts.Settle.toMillis, 500) {
           model.coldRetryTick()
           model.movie("during").isDefined && model.streamsLive
         } shouldBe true)
         writer.upsertMovie(movie("after"))           // streamed: no tick, no reload
-        withClue("the reopened stream did not deliver: ")(tools.Eventually.poll(15000, 100)(model.movie("after").isDefined) shouldBe true)
+        withClue("the reopened stream did not deliver: ")(tools.Eventually.poll(tools.SpecTimeouts.Settle.toMillis, 100)(model.movie("after").isDefined) shouldBe true)
       } finally { model.stop(); client.close(); forwarder.close() }
     }
 }

@@ -1,5 +1,8 @@
 package integration
 
+import tools.SpecTimeouts
+
+
 import services.movies.ListedShowtimes
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -59,7 +62,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         repository.upsert(title, year, MovieRecord(tmdbId = Some(Tmdb), data = Map[Source, SourceData](
           KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(when, None))))))
         withClue("the film's first venue never reached the read model, so nothing below tests what it claims: ") {
-          Eventually.poll(30000)(venueRows(KinoMuranow).nonEmpty) shouldBe true
+          Eventually.poll()(venueRows(KinoMuranow).nonEmpty) shouldBe true
         }
 
         // Prod order, step one: the second venue's SCREENINGS row lands first. The screenings
@@ -69,7 +72,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         val seenBefore = dispatched.get()
         screenings.upsertSlot(id, KinoLuna.displayName, ListedShowtimes(Seq(Showtime(when.plusHours(1), None)), None))
         withClue("the screenings cursor never delivered the second venue's row: ") {
-          Eventually.poll(30000)(dispatched.get() > seenBefore) shouldBe true
+          Eventually.poll()(dispatched.get() > seenBefore) shouldBe true
         }
         venueRows(KinoLuna) shouldBe empty
 
@@ -79,7 +82,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         slots.upsertSlot(id, KinoLuna.displayName, SourceData(title = Some(title)))
         withClue(s"the slot row for ${KinoLuna.displayName} landed after the film's last projection and " +
                  "nothing re-projected the film, so the venue never reaches the site: ") {
-          Eventually.poll(30000)(venueRows(KinoLuna).nonEmpty) shouldBe true
+          Eventually.poll()(venueRows(KinoLuna).nonEmpty) shouldBe true
         }
       } finally { counting.foreach(_.close()); projecting.foreach(_.close()) }
     }
@@ -106,7 +109,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
           KinoMuranow -> SourceData(title = Some(fixpointTitle), showtimes = Seq(Showtime(FarFuture, None))),
           KinoLuna    -> SourceData(title = Some(fixpointTitle), showtimes = Nil))))
         withClue("the film never reached the read model, so there is no second pass to measure: ") {
-          Eventually.poll(30000)(readModel.findAllScreenings().exists(_.filmId == id)) shouldBe true
+          Eventually.poll()(readModel.findAllScreenings().exists(_.filmId == id)) shouldBe true
         }
         // The film's three writes reach the projector on three cursors, asynchronously. Let the
         // last of them land before counting, or a late first-pass projection reads as churn.
@@ -144,7 +147,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         repository.upsert(bootTitle, year, MovieRecord(tmdbId = Some(BootTmdb), data = Map[Source, SourceData](
           KinoMuranow -> SourceData(title = Some(bootTitle), showtimes = Seq(Showtime(when, None))))))
         withClue("a film the cache's cursor delivered after the projector's boot reads never reached the read model: ") {
-          Eventually.poll(30000)(readModel.findAllScreenings().exists(s => s.filmId == id && s.cinema == KinoMuranow.displayName)) shouldBe true
+          Eventually.poll()(readModel.findAllScreenings().exists(s => s.filmId == id && s.cinema == KinoMuranow.displayName)) shouldBe true
         }
       } finally { cache.foreach(_.close()); projector.stop() }
     }
@@ -165,7 +168,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
     // `last` starts EMPTY, so the first probe (which `poll` takes immediately) can never
     // read as quiet: two readings a full poll interval apart must agree.
     var last = Map.empty[String, Double]
-    Eventually.poll(30000, 1000) { val now = calls; val quiet = now.nonEmpty && now == last; last = now; quiet }
+    Eventually.poll(SpecTimeouts.Settle.toMillis, SpecTimeouts.Pace.toMillis) { val now = calls; val quiet = now.nonEmpty && now == last; last = now; quiet }
     ()
   }
 }

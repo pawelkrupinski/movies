@@ -111,7 +111,7 @@ object ConcurrentInstances {
    *  it every round replays the same photo-finish; with it, K rounds cover different orders. Returns
    *  each op's outcome in `ops` order; an op still running at `joinTimeout` is a `Left`. */
   def race[A](ops: Seq[() => A], round: Option[Round] = None, maxJitter: FiniteDuration = 2.millis,
-              joinTimeout: FiniteDuration = 30.seconds): Seq[Either[Throwable, A]] = {
+              joinTimeout: FiniteDuration = SpecTimeouts.Io): Seq[Either[Throwable, A]] = {
     val delays   = ops.map(_ => round.fold(0L)(r => (r.random.nextDouble() * maxJitter.toNanos).toLong))
     val barrier  = new CyclicBarrier(ops.size)
     val outcomes = Array.fill[Either[Throwable, A]](ops.size)(Left(new IllegalStateException(s"did not finish within $joinTimeout")))

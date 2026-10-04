@@ -1,5 +1,7 @@
 package services.readmodel
 
+import tools.SpecTimeouts
+
 import models.{City, CityScreening, ResolvedMovie, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -680,7 +682,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
       repository.upsertScreening(screening(s"s-waw-$n", "belle|2021", "warszawa"))
       rm.reload()
       n += 1
-    } finally { racing = false; requests.join(5000); rm.stop() }
+    } finally { racing = false; requests.join(SpecTimeouts.Io.toMillis); rm.stop() }
     backwards.get shouldBe None
   }
 

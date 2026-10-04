@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecTimeouts
+
 import models.Cinema
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
@@ -14,7 +16,6 @@ import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 
 import java.time.Instant
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The /uptime page groups a cinema's deferred-detail enrichment health
@@ -25,7 +26,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   private implicit val sys: ActorSystem  = ActorSystem("uptime-controller-spec")
   private implicit val mat: Materializer = Materializer(sys)
-  override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
+  override def afterAll(): Unit = Await.result(sys.terminate(), SpecTimeouts.Io)
 
   private val fallbackStore = new InMemoryFallbackStore
   private def controllerFor(country: models.Country) =

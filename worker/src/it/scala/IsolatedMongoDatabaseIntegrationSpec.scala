@@ -1,18 +1,19 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.IsolatedMongoDatabase
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** Each isolated database is a handle its suite owns: dropping it takes that database and
  *  nothing else — the earlier process-wide registry let one suite's tidy-up reach another's. */
 class IsolatedMongoDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
+  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, SpecTimeouts.Io)
 
   "An isolated database" should "drop only itself, and tolerate being dropped twice" in {
     val first  = IsolatedMongoDatabase.open(mongoTarget, "isolated-handle-first")

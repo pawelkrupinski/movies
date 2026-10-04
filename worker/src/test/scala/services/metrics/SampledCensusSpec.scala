@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -25,7 +27,7 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
     try {
       census.start()                       // returns though the reading blocks
       census.release.countDown()
-      census.sampled.await(5, TimeUnit.SECONDS) shouldBe true
+      census.sampled.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       census.sampledOn should not be Thread.currentThread().getName
     } finally census.stop()
   }
@@ -36,7 +38,7 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
       census.release.countDown()
       census.start()
       census.sampled.getCount shouldBe 1L
-      census.sampled.await(5, TimeUnit.SECONDS) shouldBe true
+      census.sampled.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     } finally census.stop()
   }
 

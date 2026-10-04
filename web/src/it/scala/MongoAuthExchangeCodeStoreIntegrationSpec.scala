@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture, ToSingleObservableUnit}
 import org.scalatest.BeforeAndAfterAll
@@ -59,24 +61,24 @@ class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matcher
   it should "hand back a code Mongo is slower than the redirect budget to release" in {
     val slow = PendingExchangeCode("slow-code", "alice@example.com", Now)
     store.put(slow)
-    val session = Await.result(isolated.client.startSession().toFuture(), 30.seconds)
+    val session = Await.result(isolated.client.startSession().toFuture(), SpecTimeouts.Io)
     session.startTransaction()
     Await.result(isolated.database.getCollection[Document](MongoAuthExchangeCodeStore.CollectionName)
-      .updateOne(session, Filters.eq("_id", slow.code), Updates.set("heldBy", "slow-server")).toFuture(), 30.seconds)
+      .updateOne(session, Filters.eq("_id", slow.code), Updates.set("heldBy", "slow-server")).toFuture(), SpecTimeouts.Io)
     // Let go only once the redeem is in flight on the server and has waited on the
     // held document for longer than the redirect budget — read off the server
     // rather than slept for, so a stalled machine cannot release before the redeem
     // is even issued and turn this into a plain fast-path redeem.
     val release = Future {
-      val outwaitedBudget = Eventually.poll(timeoutMs = 30000)(
+      val outwaitedBudget = Eventually.poll()(
         redeemWaitingMicros(slow.code).exists(_ > MongoAuthExchangeCodeStore.Timeout.toMicros))
-      Await.result(ToSingleObservableUnit(session.abortTransaction()).toFuture(), 30.seconds)
+      Await.result(ToSingleObservableUnit(session.abortTransaction()).toFuture(), SpecTimeouts.Io)
       outwaitedBudget
     }
     try store.remove(slow.code).value shouldBe slow
     finally session.close()
     withClue("the redeem was never seen waiting on the held document past the budget: ") {
-      Await.result(release, 60.seconds) shouldBe true
+      Await.result(release, SpecTimeouts.Io) shouldBe true
     }
   }
 
@@ -87,6 +89,6 @@ class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matcher
       Document("$match" -> Document(
         "ns" -> s"${isolated.database.name}.${MongoAuthExchangeCodeStore.CollectionName}",
         "command.findAndModify" -> MongoAuthExchangeCodeStore.CollectionName,
-        "command.query._id" -> code)))).toFuture(), 30.seconds)
+        "command.query._id" -> code)))).toFuture(), SpecTimeouts.Io)
       .flatMap(_.get("microsecs_running")).map(_.asNumber().longValue()).maxOption
 }

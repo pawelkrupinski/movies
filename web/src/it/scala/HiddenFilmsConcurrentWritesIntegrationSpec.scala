@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +13,6 @@ import tools.IsolatedMongoDatabase
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 import scala.jdk.CollectionConverters._
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /** The per-country hidden-films writes against REAL Mongo, many requests for one
@@ -56,7 +57,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
     val userId = signedIn("parallel")
     val titles = (1 to 40).map(i => s"Film $i")
 
-    val statuses = Await.result(Future.traverse(titles)(t => Future(status(hide(userId, "pl", t)))), 60.seconds)
+    val statuses = Await.result(Future.traverse(titles)(t => Future(status(hide(userId, "pl", t)))), SpecTimeouts.Io)
 
     statuses.distinct shouldBe Seq(OK)
     states.find(userId).value.hiddenFilmsByCountry("pl") shouldBe titles.toSet
@@ -74,7 +75,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
     val userId = signedIn("two-countries")
     val writes = (1 to 20).flatMap(i => Seq("pl" -> s"PL $i", "de" -> s"DE $i"))
 
-    Await.result(Future.traverse(writes) { case (c, t) => Future(status(hide(userId, c, t))) }, 60.seconds).distinct shouldBe Seq(OK)
+    Await.result(Future.traverse(writes) { case (c, t) => Future(status(hide(userId, c, t))) }, SpecTimeouts.Io).distinct shouldBe Seq(OK)
     val stored = states.find(userId).value.hiddenFilmsByCountry
     stored("pl") shouldBe (1 to 20).map(i => s"PL $i").toSet
     stored("de") shouldBe (1 to 20).map(i => s"DE $i").toSet
@@ -88,7 +89,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
       .withBody(play.api.libs.json.Json.obj("language" -> language, "disabledCinemas" -> Seq("Kino"))))
 
     val writes = titles.zip(puts).flatMap { case (t, l) => Seq(Future(status(hide(userId, "pl", t))), Future(status(put(l)))) }
-    Await.result(Future.sequence(writes), 60.seconds).distinct shouldBe Seq(OK)
+    Await.result(Future.sequence(writes), SpecTimeouts.Io).distinct shouldBe Seq(OK)
 
     val stored = states.find(userId).value
     stored.hiddenFilmsByCountry("pl") shouldBe titles.toSet

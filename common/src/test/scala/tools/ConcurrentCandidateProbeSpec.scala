@@ -31,7 +31,7 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
     val metAll = new java.util.concurrent.atomic.AtomicInteger(0)
     ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq) { _ =>
       allInFlight.countDown()
-      if (allInFlight.await(10, java.util.concurrent.TimeUnit.SECONDS)) metAll.incrementAndGet()
+      if (allInFlight.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)) metAll.incrementAndGet()
       None
     }
     metAll.get shouldBe candidates.size
@@ -47,7 +47,7 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
   it should "let priority order decide the winner, never response speed" in {
     val wrongAnswered = new java.util.concurrent.CountDownLatch(1)
     val winner = ConcurrentCandidateProbe.firstMatch("t", Seq("slow-correct", "fast-wrong")) {
-      case "slow-correct" => wrongAnswered.await(10, java.util.concurrent.TimeUnit.SECONDS); Some("correct")
+      case "slow-correct" => wrongAnswered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); Some("correct")
       case "fast-wrong"   => wrongAnswered.countDown(); Some("wrong")
       case other          => fail(s"unexpected candidate $other")
     }
@@ -88,7 +88,7 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
     val pair     = new java.util.concurrent.CyclicBarrier(2)
     ConcurrentCandidateProbe.firstMatch("t", (1 to 4).toSeq, maxConcurrent = 2) { _ =>
       peak.accumulateAndGet(inFlight.incrementAndGet(), math.max)
-      pair.await(10, java.util.concurrent.TimeUnit.SECONDS)
+      pair.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       inFlight.decrementAndGet(); ran.incrementAndGet()
       None
     }

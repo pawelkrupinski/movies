@@ -58,7 +58,7 @@ object LogCapture {
    *  `getLogger` returns the real logger, so this waits for it; when it is already
    *  done (every call but the first), the first probe already holds. */
   def logbackLogger(name: String): LogbackLogger = {
-    Eventually.poll(timeoutMs = 5000, pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
+    Eventually.poll(pollMs = 10)(LoggerFactory.getLogger(name).isInstanceOf[LogbackLogger])
     LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
   }
 

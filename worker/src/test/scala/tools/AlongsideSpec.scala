@@ -14,7 +14,7 @@ class AlongsideSpec extends AnyFlatSpec with Matchers {
     val secondStarted = new CountDownLatch(1)
     val (first, second) = Alongside {
       // Serially, the second never starts while this one waits for it.
-      if (secondStarted.await(10, TimeUnit.SECONDS)) "corpus" else "the second waited for the first"
+      if (secondStarted.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)) "corpus" else "the second waited for the first"
     } { secondStarted.countDown(); "coverage" }
     (first, second) shouldBe (("corpus", "coverage"))
   }
@@ -25,7 +25,7 @@ class AlongsideSpec extends AnyFlatSpec with Matchers {
 
   "Alongside.start" should "run its work while the caller goes on, and hand its result back at the join" in {
     val callerWent = new CountDownLatch(1)
-    val sweep      = Alongside.start("sweep")(callerWent.await(10, TimeUnit.SECONDS))
+    val sweep      = Alongside.start("sweep")(callerWent.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
     callerWent.countDown()
     sweep.join() shouldBe true
   }

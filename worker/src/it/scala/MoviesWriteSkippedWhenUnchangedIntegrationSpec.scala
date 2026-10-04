@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
@@ -11,7 +13,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * An `upsert` that changes nothing about a film must not rewrite the film's `movies`
@@ -64,15 +65,15 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
   /** `movies` writes issued while `body` runs. `replaceOne` reaches the profiler as an
    *  `update` op; the namespace filter keeps `screenings` / `movie_slots` out of it. */
   private def moviesWritesDuring(body: => Unit): Int = {
-    Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
-    Await.result(db.getCollection[Document]("system.profile").drop().toFuture(), 30.seconds)
-    Await.result(db.runCommand(Document("profile" -> 2)).toFuture(), 30.seconds)
+    Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), SpecTimeouts.Io)
+    Await.result(db.getCollection[Document]("system.profile").drop().toFuture(), SpecTimeouts.Io)
+    Await.result(db.runCommand(Document("profile" -> 2)).toFuture(), SpecTimeouts.Io)
     try body
-    finally Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
+    finally Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), SpecTimeouts.Io)
     Await.result(
       db.getCollection[Document]("system.profile")
         .find(Filters.and(Filters.eq("op", "update"), Filters.regex("ns", "movies$")))
-        .toFuture(), 30.seconds).size
+        .toFuture(), SpecTimeouts.Io).size
   }
 
   "an upsert that changes nothing" should "not rewrite the film's movies document" in {

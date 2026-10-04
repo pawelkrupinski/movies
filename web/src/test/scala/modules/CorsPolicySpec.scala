@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
@@ -11,7 +13,6 @@ import play.api.test.FakeRequest
 import play.api.{ApplicationLoader, Environment}
 import play.filters.cors.{CORSConfig, CORSFilter}
 
-import scala.concurrent.duration._
 import scala.concurrent.Await
 
 /**
@@ -42,7 +43,7 @@ class CorsPolicySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
     ApplicationLoader.Context.create(Environment.simple()).initialConfiguration))
 
   private def run(request: FakeRequest[?]): Result =
-    Await.result(filter(EssentialAction(_ => Accumulator.done(Results.Ok("ok"))))(request).run(), 5.seconds)
+    Await.result(filter(EssentialAction(_ => Accumulator.done(Results.Ok("ok"))))(request).run(), SpecTimeouts.Io)
 
   "the CORS policy" should "never allow a foreign origin to send credentials on a preflight" in {
     val preflight = run(FakeRequest("OPTIONS", "/api/me")

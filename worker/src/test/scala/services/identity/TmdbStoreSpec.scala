@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
@@ -233,7 +235,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   /** Run `writes` on threads of their own, all at once, and wait for every one — failing with the first that threw. */
   private def atOnce(writes: Seq[() => Unit]): Unit = {
     val pool = java.util.concurrent.Executors.newFixedThreadPool(writes.size)
-    try writes.map(write => pool.submit[Unit](() => write())).foreach(_.get(10, java.util.concurrent.TimeUnit.SECONDS))
+    try writes.map(write => pool.submit[Unit](() => write())).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
     finally { pool.shutdownNow(); () }
   }
 
@@ -246,7 +248,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val w        = new World
     val bothRead = new java.util.concurrent.CyclicBarrier(2)
     // Each write's read waits for the other's: under one store-wide lock the second never arrives.
-    val store = new TmdbStore(readingThrough(w.docs)(_ => { bothRead.await(5, java.util.concurrent.TimeUnit.SECONDS); () }), w.clock)
+    val store = new TmdbStore(readingThrough(w.docs)(_ => { bothRead.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); () }), w.clock)
     atOnce(Seq(film, film + 1).map(id => () => store.filmPartial(id, TmdbStore.Partial.Local, minimalOf(local()))))
     w.docs.get(TmdbKind.Film, Seq(film.toString, (film + 1).toString)).keySet shouldBe Set(film.toString, (film + 1).toString)
   }

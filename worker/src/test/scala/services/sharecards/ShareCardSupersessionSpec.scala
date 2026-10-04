@@ -1,11 +1,14 @@
 package services.sharecards
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.TaskFinished
 import services.tasks.{HandlerOutcome, TaskType}
 import ShareCardTestKit.*
 import java.nio.file.Files
+import scala.concurrent.duration.DurationInt
 
 /**
  * A film's card URL names its version, and the file under it is overwritten by every render. A
@@ -77,10 +80,10 @@ class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scala
       val written = new java.util.concurrent.CountDownLatch(1)
       val writer  = new Thread(() => { rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm), askedAt = Some(T0)); written.countDown() })
       writer.start()
-      written.await(1, java.util.concurrent.TimeUnit.SECONDS) shouldBe false     // waiting on the other process
+      written.await(SpecTimeouts.quiet(1.second).toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe false     // waiting on the other process
       holder.getOutputStream.close()
       holder.waitFor()
-      written.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      written.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
       rig.service.existing(rig.service.inputs(movie)) shouldBe defined
     } finally holder.destroy()
   }

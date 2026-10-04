@@ -199,14 +199,14 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String = {
         calls.incrementAndGet()
         val others = threads.filterNot(_ eq Thread.currentThread())
-        Eventually.poll(timeoutMs = 5000, pollMs = 1)(others.forall(other =>
+        Eventually.poll(pollMs = 1)(others.forall(other =>
           Set(Thread.State.BLOCKED, Thread.State.WAITING, Thread.State.TIMED_WAITING).contains(other.getState)))
         super.get(url)
       }
     }
 
     threads.foreach(_.start())
-    threads.foreach(_.join(10000))
+    threads.foreach(_.join(SpecTimeouts.Io.toMillis))
 
     calls.get() shouldBe 1
     cache.statistics.fills shouldBe 1

@@ -1,5 +1,7 @@
 package services.freshness
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -127,13 +129,13 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     val t = new Thread(() => MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => { synchronized { order = order :+ "scrape" }; true },
       scrapeReady = ready,
-      loadRest    = () => { restStarted.countDown(); restMayFinish.await(2, TimeUnit.SECONDS); synchronized { order = order :+ "rest" } }
+      loadRest    = () => { restStarted.countDown(); restMayFinish.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); synchronized { order = order :+ "rest" } }
     ))
     t.setDaemon(true); t.start()
-    restStarted.await(2, TimeUnit.SECONDS) shouldBe true
+    restStarted.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     ready.future.isCompleted shouldBe true // scrape-ready fired though rest is still blocked
     restMayFinish.countDown()
-    t.join(2000)
+    t.join(SpecTimeouts.Io.toMillis)
     order shouldBe List("scrape", "rest")
   }
 

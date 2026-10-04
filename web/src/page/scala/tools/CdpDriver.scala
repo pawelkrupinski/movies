@@ -168,10 +168,10 @@ object Chrome {
    *  is taken. */
   private[tools] val Loopback = "127.0.0.1"
 
-  /** How long a launch may take to open its DevTools port. Generous: on a machine
-   *  running several agents' builds a cold Chrome start took over the old 10s, and
+  /** How long a launch may take to open its DevTools port: one [[SpecTimeouts.Io]]. On a
+   *  machine running several agents' builds a cold Chrome start took over the old 10s, and
    *  the spec then cancelled as "Chrome not installed". */
-  private val LaunchTimeoutMs = 45_000
+  private val LaunchTimeoutMs = SpecTimeouts.Io.toMillis
 
   /** The DevTools port `process` bound, read from `DevToolsActivePort` in its OWN
    *  profile directory — so it is this process's port and no other's.
@@ -214,7 +214,7 @@ object Chrome {
   private[tools] def httpGet(url: String): String = {
     val client = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder(URI.create(url))
-      .timeout(Duration.ofSeconds(5))
+      .timeout(Duration.ofMillis(SpecTimeouts.Io.toMillis))
       .build()
     client.send(request, BodyHandlers.ofString()).body()
   }
@@ -222,7 +222,7 @@ object Chrome {
   private[tools] def httpPut(url: String): String = {
     val client = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder(URI.create(url))
-      .timeout(Duration.ofSeconds(5))
+      .timeout(Duration.ofMillis(SpecTimeouts.Io.toMillis))
       .PUT(HttpRequest.BodyPublishers.noBody())
       .build()
     client.send(request, BodyHandlers.ofString()).body()
@@ -319,7 +319,7 @@ class Chrome private[tools] (
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
       // is simpler and more reliable than wiring up CDP events.
-      page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
+      page.waitFor("document.readyState === 'complete'")
       body(page)
     } finally {
       try page.close() catch { case _: Throwable => () }
@@ -449,7 +449,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
         }
         null
       }
-    }).get(10, TimeUnit.SECONDS)
+    }).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
 
   // `java.net.http.WebSocket` allows only ONE outstanding send at a time per
   // socket — a second `sendText` before the first's returned CompletableFuture
@@ -483,8 +483,8 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     val message = Json.obj("id" -> id, "method" -> method, "params" -> parameters).toString
     val reply =
       try {
-        sendLock.synchronized { ws.sendText(message, true).get(5, TimeUnit.SECONDS) }
-        fut.get(30, TimeUnit.SECONDS)
+        sendLock.synchronized { ws.sendText(message, true).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) }
+        fut.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
       } catch {
         case e: java.util.concurrent.ExecutionException if lostBecause.isDefined || ws.isOutputClosed =>
           throw lost(method, lostBecause.getOrElse(String.valueOf(e.getCause)))
@@ -545,10 +545,10 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *  normal round-trip is that freeze, so it isn't charged; the sleeps between
    *  polls are, since the page runs during them. The timeout is only declared
    *  on a poll taken AFTER the budget is spent, never on a stale one. A page
-   *  busy in its own JS blocks the evaluate the same way, but the 30 s reply
+   *  busy in its own JS blocks the evaluate the same way, but the [[SpecTimeouts.Io]] reply
    *  timeout in [[send]] still bounds that. A poll that lands while the page is
    *  swapping documents is "not yet" (see [[CdpPage.pollUntil]]). */
-  def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit =
+  def waitFor(js: String, timeoutMs: Int = SpecTimeouts.Settle.toMillis.toInt, pollMs: Int = 50): Unit =
     CdpPage.pollUntil(js, timeoutMs, pollMs)(() => evalBool(s"!!($js)"))
 
   /** Reload and wait for the NEW document, not merely for A document.
@@ -573,8 +573,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   private def replaceDocument(go: => Any): Unit = {
     eval("window.__cdpReloadStamp = 1")
     go
-    waitFor("typeof window.__cdpReloadStamp === 'undefined' && document.readyState === 'complete'",
-            timeoutMs = 10000)
+    waitFor("typeof window.__cdpReloadStamp === 'undefined' && document.readyState === 'complete'")
   }
 
   /** Capture the current viewport as PNG bytes returned Base64-encoded.
@@ -634,7 +633,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     eval("new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))")
 
   override def close(): Unit =
-    try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
+    try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
     catch { case _: Throwable => () }
     finally {
       try ws.abort() catch { case _: Throwable => () }

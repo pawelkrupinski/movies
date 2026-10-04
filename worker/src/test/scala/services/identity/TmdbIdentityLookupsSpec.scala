@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
@@ -75,7 +77,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     val lookups = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ()),
       new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil)
     val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
-    try Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(20, java.util.concurrent.TimeUnit.SECONDS))
+    try Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
     finally pool.shutdownNow()
     overlap.get shouldBe 2
   }

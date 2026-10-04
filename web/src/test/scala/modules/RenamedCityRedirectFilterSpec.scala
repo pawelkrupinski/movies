@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.flatspec.AnyFlatSpec
@@ -7,7 +9,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.mvc.{RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 
 /**
@@ -29,7 +30,7 @@ class RenamedCityRedirectFilterSpec extends AnyFlatSpec with Matchers {
   private def run(path: String, mountPath: String = "/us/"): Result = {
     val next: RequestHeader => Future[Result] = rh => Future.successful(Results.Ok(rh.path))
     val filter = new RenamedCityRedirectFilter(mountPath)
-    Await.result(filter(next)(FakeRequest("GET", path)), 5.seconds)
+    Await.result(filter(next)(FakeRequest("GET", path)), SpecTimeouts.Io)
   }
 
   "A path under a renamed city" should "301 to the same path under the current slug" in {

@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
@@ -42,8 +44,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   /** The cache document under `id`, polled for until the fire-and-forget store lands. */
   private def storedDocument(id: String): org.mongodb.scala.Document = {
-    def read = Await.result(db.getCollection(collName).find(Filters.eq("_id", id)).headOption(), 5.seconds)
-    eventually(withClue(s"$id never stored: ")(read should not be empty), timeoutMs = 10.seconds.toMillis)
+    def read = Await.result(db.getCollection(collName).find(Filters.eq("_id", id)).headOption(), SpecTimeouts.Io)
+    eventually(withClue(s"$id never stored: ")(read should not be empty))
     read.get
   }
 
@@ -120,7 +122,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val url   = s"https://chain/film/stale-${System.nanoTime()}"
     val under = new CountingFetch
     Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>stale</html>",
-      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> new java.util.Date(1000L))).toFuture(), 5.seconds)
+      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> new java.util.Date(1000L))).toFuture(), SpecTimeouts.Io)
     new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe s"<html>$url</html>"
     under.gets shouldBe 1
   }
@@ -128,10 +130,10 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   /** The index is built on a daemon thread, so poll for it rather than race a sleep. */
   private def awaitExpireAtIndex(): Unit = {
     def current: Option[Long] =
-      Await.result(db.getCollection(collName).listIndexes().toFuture(), 5.seconds)
+      Await.result(db.getCollection(collName).listIndexes().toFuture(), SpecTimeouts.Io)
         .find(_.get("key").exists(_.asDocument().containsKey("expireAt")))
         .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
-    eventually(current shouldBe Some(0L), timeoutMs = 10.seconds.toMillis)
+    eventually(current shouldBe Some(0L))
     ()
   }
 

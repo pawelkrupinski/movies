@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +10,6 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -57,7 +58,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
       }
       all.foreach(row => row.films should have size 1)
     } finally {
-      Await.result(database.drop().toFuture(), 60.seconds)
+      Await.result(database.drop().toFuture(), SpecTimeouts.Io)
       client.close()
     }
   }
@@ -89,7 +90,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
       read.result().sortBy(_.displayName) shouldBe cinemas.sortBy(_.displayName)
       most.get should be > 1
     } finally {
-      Await.result(db.drop().toFuture(), 60.seconds)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       listening.close()
     }
   }
@@ -124,7 +125,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
       read.result().toSet shouldBe kept
       requested.asScala.toSet shouldBe kept.map(_.displayName)
     } finally {
-      Await.result(db.drop().toFuture(), 60.seconds)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       listening.close()
     }
   }

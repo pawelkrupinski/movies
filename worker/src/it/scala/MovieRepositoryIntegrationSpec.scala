@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import services.movies.ListedShowtimes
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -17,7 +19,6 @@ import tools.Eventually
 import tools.Eventually.awaitStreamLive
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Live test of MovieRepository against real MongoDB Atlas. Requires MONGODB_URI
@@ -44,7 +45,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
    *  its own `while`/`Thread.sleep`. Doesn't assert; the caller compares `accounted`
    *  against `target` itself, so its own `withClue` names what the shortfall means for
    *  that specific burst. */
-  private def settleUntil(target: Int, budgetMs: Long = 60000)(accounted: => Int): Unit =
+  private def settleUntil(target: Int, budgetMs: Long = SpecTimeouts.Settle.toMillis)(accounted: => Int): Unit =
     Eventually.poll(budgetMs, pollMs = 50)(accounted >= target)
 
   override protected def afterAll(): Unit = try repository.close() finally try isolatedSpecDb.drop() finally super.afterAll()
@@ -119,7 +120,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       specDb.getCollection("movies")
         .updateOne(Filters.eq("imdbId", "tt0000078"),
           org.mongodb.scala.model.Updates.unset("sourceData")).toFuture(),
-      10.seconds)
+      SpecTimeouts.Io)
 
     val found = repository.findAll().find(_.record.imdbId.contains("tt0000078"))
     found should not be empty
@@ -216,14 +217,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       // Not `Thread.sleep`: the cursor opens asynchronously, so a nap is a guess at
       // the window and a slow runner then looks exactly like the bug this catches.
-      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+      awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt900$pass%05d")))
       }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000099")))
-      gotUpsert.await(15, TimeUnit.SECONDS) shouldBe true
+      gotUpsert.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
 
       repository.delete(title, year)
-      gotDelete.await(15, TimeUnit.SECONDS) shouldBe true
+      gotDelete.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     } finally { repository.delete(warmTitle, year); handle.foreach(_.close()) }
   }
 
@@ -258,11 +259,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     )
     handle should not be empty
     try {
-      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+      awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt901$pass%05d")))
       }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
-      applied.await(15, TimeUnit.SECONDS) shouldBe true
+      applied.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       applyThread.get              should startWith ("movie-change-apply")
       applyThread.get.toLowerCase  should not include "eventloop"      // not a Netty I/O loop
       applyThread.get              should not include "InnocuousThread" // not the NIO2 async pool
@@ -298,12 +299,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val warmId    = StoredMovieRecord.keyFor(warmTitle, year, titleNormalizer)
       val warmHandle = repository.watchChanges(
         r => if (r.id.value == warmId) gotWarm.countDown(), _ => ())
-      try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+      try awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt902$pass%05d")))
       } finally { repository.delete(warmTitle, year); warmHandle.foreach(_.close()) }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
-      gotA.await(15, TimeUnit.SECONDS) shouldBe true // one write reached BOTH consumers
-      gotB.await(15, TimeUnit.SECONDS) shouldBe true
+      gotA.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true // one write reached BOTH consumers
+      gotB.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
 
       handleA.foreach(_.close())
       repository.isWatchingChangeStream shouldBe true // B still attached — cursor stays up
@@ -350,11 +351,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         val gotWarm   = new CountDownLatch(1)
         val warmHandle = repo1.watchChanges(
           r => if (r.id.value == warmId) gotWarm.countDown(), _ => ())
-        try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        try awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           repo1.upsert(warmTitle, Some(1909), MovieRecord(imdbId = Some(f"tt903$pass%05d")))
         } finally { repo1.delete(warmTitle, Some(1909)); warmHandle.foreach(_.close()) }
         repo1.upsert("__integration-test-resume-A__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
-        gotA.await(15, TimeUnit.SECONDS) shouldBe true
+        gotA.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
         handle1.foreach(_.close()) // last listener gone → stopWatchingIfIdle force-saves the token (position: after A)
 
         // "Down": B and C land while nothing is watching the stream.
@@ -373,7 +374,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         }, _ => ())
         try {
           // No fresh write: B and C are delivered purely by resuming past the token.
-          gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+          gotBC.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
           seen.asScala should contain allOf (idB, idC)
         } finally { handle2.foreach(_.close()); repo2.close() }
       } finally repo1.close()
@@ -408,7 +409,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // which `persistResumeToken = true` makes it do, and which other specs read.
     val db     = client.getDatabase(s"kinowo_it_dropresume_${System.nanoTime()}")
     def clearToken(): Unit = Await.ready(
-      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), 10.seconds)
+      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), SpecTimeouts.Io)
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
 
     val repo1     = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer)
@@ -428,16 +429,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // Established by DELIVERY. This spec's whole subject is a cursor that stops
       // delivering, so a nap that guessed the open window made a slow runner
       // indistinguishable from the bug being caught.
-      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+      awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         repo1.upsert(warmTitle, Some(1911), MovieRecord(imdbId = Some(f"tt901$pass%05d")))
       }
       repo1.upsert("__integration-test-dropped-A__", Some(1911), MovieRecord(imdbId = Some("tt0000025")))
-      gotA.await(15, TimeUnit.SECONDS) shouldBe true
+      gotA.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       handle1.foreach(_.close()) // token now persisted at "just after A"
       repo1.close()
 
       // The restore: drop the watched collection out from under the saved token.
-      Await.ready(db.getCollection(services.movies.MovieRepository.Collection).drop().toFuture(), 15.seconds)
+      Await.ready(db.getCollection(services.movies.MovieRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
 
       val repo2 = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer)
       val idD   = StoredMovieRecord.keyFor("__integration-test-dropped-D__", Some(1911), titleNormalizer)
@@ -459,13 +460,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       writer.setDaemon(true)
       try {
         writer.start()
-        gotD.await(45, TimeUnit.SECONDS) shouldBe true
+        gotD.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       } finally { handle2.foreach(_.close()); repo2.close() }
     } finally {
       Option(writer).foreach(_.interrupt())
       // The whole database goes, which is every sentinel and the resume token with
       // it — nothing in here is shared with another spec any more.
-      try Await.ready(db.drop().toFuture(), 30.seconds) finally client.close()
+      try Await.ready(db.drop().toFuture(), SpecTimeouts.Io) finally client.close()
     }
   }
 
@@ -526,12 +527,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
         // change, so each has an event owed and the loop can actually converge.
         awaitStreamLive("a warm-up event, so nothing below is testing resumption",
-                        gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+                        gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           repo1.upsertSlot(filmWarm, "Multikino␟W", ListedShowtimes(at(pass % 23 + 1), None))
         }
 
         repo1.upsertSlot(filmA, "Multikino␟A", ListedShowtimes(at(10), None))
-        gotA.await(15, TimeUnit.SECONDS) shouldBe true
+        gotA.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
         handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
 
         // "Down": B and C land while nothing is watching the screenings stream.
@@ -545,7 +546,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         val handle2 = repo2.watchApplied((fid, applied) => { if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown(); applied() })
         try {
           // No fresh write: B and C are delivered purely by resuming past the token.
-          gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+          gotBC.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
           seen.asScala should contain allOf (filmB, filmC)
         } finally { handle2.foreach(_.close()); repo2.close() }
       } finally repo1.close()
@@ -573,13 +574,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // Established by DELIVERY, not by a nap. `applyUpsert` IS what is under test here,
       // so a cursor that opened after the write would fail this exactly the way a broken
       // apply does -- and the 15s `eventually` below would spend its whole budget first.
-      awaitStreamLive("a warm-up upsert reaching the cache", Eventually.poll(1000)(warmPresent)) { pass =>
+      awaitStreamLive("a warm-up upsert reaching the cache", Eventually.poll(SpecTimeouts.Pace.toMillis)(warmPresent)) { pass =>
         repo.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt902$pass%05d")))
       }
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000013")))
-      Eventually.poll(15000)(present) shouldBe true  // applied via the stream (applyUpsert)
+      Eventually.poll()(present) shouldBe true  // applied via the stream (applyUpsert)
       repo.delete(title, year)
-      Eventually.poll(15000)(!present) shouldBe true  // dropped via applyDelete, not the backstop
+      Eventually.poll()(!present) shouldBe true  // dropped via applyDelete, not the backstop
     } finally { cache.stop(); repo.delete(title, year); repo.delete(warmTitle, year) }
   }
 
@@ -608,14 +609,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }, _ => ())
     handle should not be empty
     try {
-      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+      awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         repo.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt903$pass%05d")))
       }
       // The warm-up's own events reached the sink too. Clearing keeps the assertion
       // below about THE WRITE UNDER TEST rather than about the warm-up that preceded it.
       recorded.synchronized(recorded.clear())
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000012"))) // own sentinel — no collision with other specs' imdbId queries
-      seen.await(15, TimeUnit.SECONDS) shouldBe true
+      seen.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       recorded.synchronized(recorded.toList) should not be empty // an event was counted for the write
     } finally { handle.foreach(_.close()); repo.delete(warmTitle, year); repo.close() }
   }
@@ -642,7 +643,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // establish-by-delivery rule the resume spec uses (`awaitStreamLive`), and each
       // attempt carries a DIFFERENT hour so every one of them is a genuine change with
       // an event to count.
-      awaitStreamLive("an event to count", seen.await(1, TimeUnit.SECONDS)) { hour =>
+      awaitStreamLive("an event to count", seen.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { hour =>
         repo.upsertSlot(film, "Multikino␟M", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)), None))
       }
       sink.events should be > 0
@@ -706,7 +707,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repo.upsert(title, year, MovieRecord(imdbId = Some(Imdb)))
       awaitStreamLive("a warm-up event, so a low projection count below would mean nothing " +
                       "was arriving rather than that it was being coalesced",
-                      warmed.await(1, TimeUnit.SECONDS)) { pass =>
+                      warmed.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         scr.upsertSlot(id, "Warm␟c", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
       }
       dispatched.set(0); sink.reset()
@@ -805,7 +806,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repo.upsert(title, year, before)
       awaitStreamLive("a warm-up event, so a low dispatch count below would mean nothing was arriving " +
                       "rather than that it was being coalesced",
-                      warmed.await(1, TimeUnit.SECONDS)) { pass =>
+                      warmed.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         scr.upsertSlot(id, "Warm␟c", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
       }
       // Drain any trailing warm-up deliveries still in flight: the warm-up loop issues a new
@@ -862,7 +863,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // accounted for"), so the budget is back down to 20s — real headroom over that, not 150s
       // of slack for a genuine regression to hide behind.
       val TotalEvents = 1 + Dropped
-      settleUntil(TotalEvents, budgetMs = 20000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
+      settleUntil(TotalEvents)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
       info(s"1 movies write + $Dropped screenings deletes (one logical slot-drop pass): " +
            s"${dispatched.get()} re-projection(s), ${movieSink.coalescedCount} movies-cursor + " +
@@ -916,7 +917,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       // Establish by DELIVERY, not by napping: write a fresh hour each pass until one comes
       // back. Every pass is a genuine change, so each has an event owed.
-      awaitStreamLive("a warm-up event", warmed.await(1, TimeUnit.SECONDS)) { hour =>
+      awaitStreamLive("a warm-up event", warmed.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { hour =>
         repo.upsertSlot(film, slot, ListedShowtimes(at(hour % 23 + 1), None))
       }
 
@@ -924,7 +925,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // still in flight: counting from here would charge it to the no-op writes. One cursor
       // delivers in order, so once a later write's event is back every warm-up event is too.
       repo.upsertSlot(drain, slot, ListedShowtimes(at(6), None))
-      withClue("the drain write never arrived: ")(drained.await(30, TimeUnit.SECONDS) shouldBe true)
+      withClue("the drain write never arrived: ")(drained.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true)
 
       val settled = repo.findForFilm(film)(slot)
       rings.set(0); sink.reset()
@@ -937,7 +938,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repo.upsertSlot(after, slot, ListedShowtimes(at(7), None))
 
       withClue("the tripwire write never arrived, so the stream stopped rather than stayed quiet: ") {
-        tripwire.await(30, TimeUnit.SECONDS) shouldBe true
+        tripwire.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       }
       withClue("two byte-identical writes rang the screenings stream, and every ring costs " +
                "the read-model projector a stitch read plus a full projection of the film: ") {
@@ -1138,7 +1139,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
             val other = new MongoMovieRepository(Some(specDb), new tools.MutableClock(readStamp.minusMillis(1)), normalizer = titleNormalizer)
             try {
               other.updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(8.8))) shouldBe true
-              val written = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds)).getOrElse(fail("row gone")).updatedAt
+              val written = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), SpecTimeouts.Io)).getOrElse(fail("row gone")).updatedAt
               collided = Some(readStamp -> written)
             } finally other.close()
           }
@@ -1211,7 +1212,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         r => if (r.id.value == id) bell.get().countDown(), _ => ())
       try {
         awaitStreamLive("a warm-up fanout for the split-reads film",
-                        bell.get().await(1, TimeUnit.SECONDS)) { pass =>
+                        bell.get().await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           scr.upsertSlot(id, "Warm␟c",
             ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
         }
@@ -1220,12 +1221,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         // `screenings` row with no `filmId`. Decoded inside the driver, it ENDED the cursor
         // ("Missing field: filmId") and the fanout below never came; it is one skipped event now.
         Await.result(db.getCollection[Document]("screenings")
-          .insertOne(Document("_id" -> "__integration-test-sibling-poison__")).toFuture(), 10.seconds)
+          .insertOne(Document("_id" -> "__integration-test-sibling-poison__")).toFuture(), SpecTimeouts.Io)
         val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
           after.data(Multikino).copy(showtimes = after.data(Multikino).showtimes :+
             Showtime(java.time.LocalDateTime.of(2026, 6, 1, 22, 0), Some("https://book/sr-3")))))
         repo.updateIfPresent(title, year, after, after2) // showtimes-only → screenings write → fanout
-        bell.get().await(15, TimeUnit.SECONDS) shouldBe true
+        bell.get().await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       } finally handle.foreach(_.close())
 
       repo.delete(title, year)
@@ -1476,13 +1477,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       try {
         // Warm on a SEPARATE film, because `fanouts` must count only this film's own
         // change -- counting exactly one is the whole assertion below.
-        awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt904$pass%05d")))
         }
         // metadata only: no showtime change, and `movies` no longer stores the slot
         val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/f2.png"))))
         split.updateIfPresent(title, year, base, after) shouldBe true
-        got.await(15, TimeUnit.SECONDS) shouldBe true
+        got.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
         // …and EXACTLY once. One logical change must not re-project twice: the slots cursor
         // is its only channel now, and `movies` is left untouched by a slots-only patch.
         Thread.sleep(3000)   // leave room for a second event to arrive if one were coming
@@ -1552,7 +1553,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val slotUpdatedAt = Option(Await.result(
         db.withCodecRegistry(services.movies.MovieCodecs.registry)
           .getCollection[services.movies.StoredSlotDto]("movie_slots")
-          .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), 10.seconds)).map(_.updatedAt)
+          .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), SpecTimeouts.Io)).map(_.updatedAt)
 
       val fanouts = new AtomicInteger(0)
       val got     = new CountDownLatch(1)
@@ -1564,14 +1565,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       }, _ => ())
       try {
         // Warm on a SEPARATE film: `fanouts` counting exactly one is the assertion.
-        awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt905$pass%05d")))
         }
         // the 14:00 screening has passed — the scrape returns only the 20:00 one
         val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(showtimes = Seq(late))))
         split.updateIfPresent(title, year, base, after) shouldBe true
 
-        got.await(15, TimeUnit.SECONDS) shouldBe true   // the read model DOES need the change
+        got.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true   // the read model DOES need the change
         Thread.sleep(3000)
         fanouts.get() shouldBe 1                        // …but exactly once, not twice
 
@@ -1581,7 +1582,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         val slotUpdatedAfter = Option(Await.result(
           db.withCodecRegistry(services.movies.MovieCodecs.registry)
             .getCollection[services.movies.StoredSlotDto]("movie_slots")
-            .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), 10.seconds)).map(_.updatedAt)
+            .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), SpecTimeouts.Io)).map(_.updatedAt)
         slotUpdatedAfter shouldBe slotUpdatedAt
       } finally handle.foreach(_.close())
     } finally {
@@ -1608,7 +1609,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     def rowStamps() = Await.result(
       db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto]("movie_slots")
-        .find(org.mongodb.scala.model.Filters.eq("filmId", id)).toFuture(), 10.seconds)
+        .find(org.mongodb.scala.model.Filters.eq("filmId", id)).toFuture(), SpecTimeouts.Io)
       .map(d => d.slotKey -> d.updatedAt).toMap
     try {
       val early = Showtime(java.time.LocalDateTime.of(2026, 6, 8, 14, 0), Some("https://book/c-1"))
@@ -2306,7 +2307,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // Runs ON the apply thread: the first event parks there and never yields, so every
     // later event can only sit in the queue behind it.
     val handle = bounded.watchChanges(
-      onUpsert = _ => { applying.countDown(); release.await(30, TimeUnit.SECONDS); () },
+      onUpsert = _ => { applying.countDown(); release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); () },
       onDelete = _ => ()
     )
     handle should not be empty // requires a replica set
@@ -2319,7 +2320,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // on the FIRST event it gets, so `applying` firing proves both that the cursor is
       // open and that everything written after it can only queue.
       awaitStreamLive("the first event reaching the apply thread",
-                      applying.await(1, TimeUnit.SECONDS)) { pass =>
+                      applying.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
         bounded.upsert("__integration-test-backpressure-warm__", Some(1903),
                        MovieRecord(imdbId = Some(f"tt906$pass%05d")))
       }

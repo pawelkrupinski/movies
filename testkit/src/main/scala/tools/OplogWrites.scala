@@ -6,7 +6,6 @@ import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * How many writes Mongo actually performed against one database since a starting point —
@@ -27,7 +26,6 @@ import scala.concurrent.duration._
 final class OplogWrites(uri: String, database: String, collections: Seq[String] = Nil) extends AutoCloseable {
   private val client = MongoClient(uri)
   private val oplog  = client.getDatabase("local").getCollection[Document]("oplog.rs")
-  private val Timeout = 30.seconds
 
   // Every collection of the database, or only the named ones — a pass that is allowed its
   // bookkeeping (a task claimed, a freshness stamp) can still be held to zero corpus writes.
@@ -36,14 +34,14 @@ final class OplogWrites(uri: String, database: String, collections: Seq[String] 
 
   /** The newest entry at construction; every count is of entries after it. */
   private val since: BsonTimestamp =
-    Await.result(oplog.find().sort(Sorts.descending("$natural")).limit(1).toFuture(), Timeout)
+    Await.result(oplog.find().sort(Sorts.descending("$natural")).limit(1).toFuture(), SpecTimeouts.Io)
       .headOption.flatMap(_.get("ts")).map(_.asTimestamp()).getOrElse(new BsonTimestamp(0, 0))
 
   private def sinceFilter =
     Filters.and(Filters.gt("ts", since), Filters.or(Filters.regex("ns", ns), Filters.regex("o.applyOps.ns", ns)))
 
   /** Writes to the database since this counter was created. */
-  def count(): Long = Await.result(oplog.countDocuments(sinceFilter).toFuture(), Timeout)
+  def count(): Long = Await.result(oplog.countDocuments(sinceFilter).toFuture(), SpecTimeouts.Io)
 
   /** WHICH writes: one line per operation since this counter was created — its collection,
    *  the document it hit and, for an update, the fields it set or unset. A count names no
@@ -51,7 +49,7 @@ final class OplogWrites(uri: String, database: String, collections: Seq[String] 
    *  this is the only record of what a pass that should have written nothing wrote. */
   def describe(limit: Int = 20): String = {
     import scala.jdk.CollectionConverters._
-    val entries = Await.result(oplog.find(sinceFilter).sort(Sorts.ascending("$natural")).toFuture(), Timeout)
+    val entries = Await.result(oplog.find(sinceFilter).sort(Sorts.ascending("$natural")).toFuture(), SpecTimeouts.Io)
       .map(_.toBsonDocument)
     val ops = entries.flatMap { e =>
       val applyOps = Option(e.get("o")).filter(_.isDocument).flatMap(o => Option(o.asDocument().get("applyOps")))

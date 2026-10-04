@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
@@ -8,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.ListingKey
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** The identity trace over Mongo: a listing's rules and a rule's listings are each one indexed read, a
  *  family's replace drops its old traces, and the whole of it is one bulk write. */
@@ -33,9 +34,9 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
         trace(6, "f4", Nil).copy(film = None, blocker = Some("veto:x"), candidates = Seq("9 2.4% rank 1 DENIED (x) 'Nine'")))))
       store.flush()
       val c = db.getCollection[Document](MongoIdentityTraceStore.Collection)
-      def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), 30.seconds).map(_.toBsonDocument.getString("_id").getValue).toSet
+      def ids(filter: org.bson.conversions.Bson) = Await.result(c.find(filter).toFuture(), SpecTimeouts.Io).map(_.toBsonDocument.getString("_id").getValue).toSet
       // why, with its weights, stored beside the rules
-      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(1)))).head(), 30.seconds).toBsonDocument
+      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(1)))).head(), SpecTimeouts.Io).toBsonDocument
         .getArray("evidence").getValues.toString should include ("director=same_person +4.22")
       // a rule's listings
       ids(Filters.equal("rules", "accept:imdb-suggested")) shouldBe Set(key(1), key(3)).map(ListingKey.serialised)
@@ -43,7 +44,7 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       ids(Filters.equal("film", 101)) shouldBe Set(key(1), key(3)).map(ListingKey.serialised)
       // each read uses an index, not a scan
       Seq("rules" -> "accept:imdb-suggested", "film" -> 101, "family" -> "f1").foreach { case (field, value) =>
-        val plan = Await.result(c.find(Filters.equal(field, value)).explain[Document]().toFuture(), 30.seconds).toJson()
+        val plan = Await.result(c.find(Filters.equal(field, value)).explain[Document]().toFuture(), SpecTimeouts.Io).toJson()
         withClue(s"$field: ")(plan should include ("IXSCAN"))
       }
       // the admin page's reads: a rule's, a film's, a title's listings, and every rule's count
@@ -62,16 +63,16 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       reads.unresolved(10, _ => true).map(_.listing).toSet shouldBe Set(key(4), key(5), key(6))
       reads.unresolved(1, _.listing != key(4)).size shouldBe 1
       reads.unresolved(10, _.listing == key(6)).map(_.listing) shouldBe Seq(key(6))
-      withClue("blocker: ")(Await.result(c.find(Filters.equal("blocker", "veto:x")).explain[Document]().toFuture(), 30.seconds).toJson() should include ("IXSCAN"))
+      withClue("blocker: ")(Await.result(c.find(Filters.equal("blocker", "veto:x")).explain[Document]().toFuture(), SpecTimeouts.Io).toJson() should include ("IXSCAN"))
       // a resolved listing carries no blocker field at all, so the sparse index holds only the unresolved
-      Await.result(c.countDocuments(Filters.exists("blocker")).toFuture(), 30.seconds) shouldBe 3L
+      Await.result(c.countDocuments(Filters.exists("blocker")).toFuture(), SpecTimeouts.Io) shouldBe 3L
       reads.ruleCounts().toMap shouldBe Map("accept:imdb-suggested" -> 2, "title:xtra-pokaz-filmu" -> 1, "join:same-film" -> 1, Refused.ruleId -> 1)
       // re-resolving family f1 replaces its traces: listing 2 left it
       store.replace(Set("f1"), FamilyTraces.of(Seq(trace(1, "f1", Seq("accept:sole-result")))))
       store.flush()
       ids(Filters.equal("family", "f1")) shouldBe Set(ListingKey.serialised(key(1)))
       ids(Filters.equal("rules", "accept:imdb-suggested")) shouldBe Set(ListingKey.serialised(key(3)))
-    } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
   it should "write a restore's traces a batch at a time, never holding them all" in {
@@ -83,14 +84,14 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       // how many traces were already stored when the 1001st was built — built lazily, as a restore's hand-over is
       @volatile var storedWhenBuilt = -1L
       val traces = (0 until 2500).map(n => FamilyTraces(s"f$n", () => {
-        if (n == MongoIdentityTraceStore.WriteBatch) storedWhenBuilt = Await.result(c.countDocuments().toFuture(), 30.seconds)
+        if (n == MongoIdentityTraceStore.WriteBatch) storedWhenBuilt = Await.result(c.countDocuments().toFuture(), SpecTimeouts.Io)
         Seq(trace(n, s"f$n", Seq("accept:sole-result")))
       }))
       store.replace(Set.empty, traces)
       store.flush()
-      Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2500L
+      Await.result(c.countDocuments().toFuture(), SpecTimeouts.Io) shouldBe 2500L
       storedWhenBuilt shouldBe MongoIdentityTraceStore.WriteBatch.toLong
-    } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
   // Every rules change re-resolves every family at the next boot — and the rules are a digest of all of common —
@@ -115,9 +116,9 @@ class MongoIdentityTraceStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       store.replace(families, FamilyTraces.of(moved))
       store.flush()
       store.written shouldBe 2502L
-      Await.result(c.countDocuments().toFuture(), 30.seconds) shouldBe 2499L
-      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(7)))).toFuture(), 30.seconds).head
+      Await.result(c.countDocuments().toFuture(), SpecTimeouts.Io) shouldBe 2499L
+      Await.result(c.find(Filters.equal("_id", ListingKey.serialised(key(7)))).toFuture(), SpecTimeouts.Io).head
         .get("rules").get.asArray.getValues.toString should include ("accept:exact-top-hit")
-    } finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 }

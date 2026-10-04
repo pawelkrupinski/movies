@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.{CinemaShowing, KinoMuranow, Kinoteka, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,7 +12,6 @@ import tools._
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Phase 4 of the identity migration (docs/design/identity-resolver.md): `movie_slots` and
@@ -29,7 +30,7 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
   private def show(hour: Int) = Showtime(at.withHour(hour), None)
 
   private def raw(db: MongoDatabase, collection: String): Seq[org.bson.BsonDocument] =
-    Await.result(db.getCollection[Document](collection).find().toFuture(), 30.seconds).map(_.toBsonDocument)
+    Await.result(db.getCollection[Document](collection).find().toFuture(), SpecTimeouts.Io).map(_.toBsonDocument)
 
   private def text(d: org.bson.BsonDocument, field: String): String = d.getString(field).getValue
 
@@ -98,7 +99,7 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
       Seq(SlotsRepository.Collection, ScreeningsRepository.Collection).foreach { collection =>
         val explained = Await.result(db.runCommand(Document(
           "explain"   -> Document("find" -> collection, "filter" -> Document("listingKey" -> ListingKey.serialised(pagedKey))),
-          "verbosity" -> "queryPlanner")).toFuture(), 30.seconds)
+          "verbosity" -> "queryPlanner")).toFuture(), SpecTimeouts.Io)
         val winning = explained.toBsonDocument.getDocument("queryPlanner").getDocument("winningPlan").toJson
         withClue(s"$collection: a read by listingKey must use the listingKey index (winning plan $winning): ") {
           winning should include("listingKey_1")

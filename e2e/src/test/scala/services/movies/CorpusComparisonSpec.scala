@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import controllers.FilmSchedule
 import models.{Movie, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +10,6 @@ import services.readmodel.TestReadModel
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
@@ -53,7 +54,7 @@ class CorpusComparisonSpec extends AnyFlatSpec with Matchers {
         live.decrementAndGet()
         corpus("Ghost in the Shell")
       }
-    })), 60.seconds)
+    })), SpecTimeouts.Io)
     finally pool.shutdown()
 
     peak.get() shouldBe 1

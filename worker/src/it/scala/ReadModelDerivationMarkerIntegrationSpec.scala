@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.{DerivationProgress, DerivationVersion, MongoReadModelDerivationMarker}
@@ -9,7 +11,6 @@ import org.mongodb.scala.SingleObservableFuture
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.Await
-import scala.concurrent.duration.*
 
 /** The derivation marker's round trip through a real Mongo: a fresh database has none recorded
  *  (which owes a pass), and a recorded version reads back — replaced, not added to, on the next. */
@@ -25,7 +26,7 @@ class ReadModelDerivationMarkerIntegrationSpec extends AnyFlatSpec with Matchers
       marker.recorded().get shouldBe Some(DerivationVersion("second"))
       new MongoReadModelDerivationMarker(Some(db), clock).recorded().get shouldBe Some(DerivationVersion("second"))
       withClue("one marker document, replaced in place: ") {
-        Await.result(db.getCollection(MongoReadModelDerivationMarker.Collection).countDocuments().toFuture(), 10.seconds) shouldBe 1L
+        Await.result(db.getCollection(MongoReadModelDerivationMarker.Collection).countDocuments().toFuture(), SpecTimeouts.Io) shouldBe 1L
       }
     }
   }

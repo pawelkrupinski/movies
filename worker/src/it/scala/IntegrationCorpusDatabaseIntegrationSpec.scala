@@ -1,10 +1,10 @@
+import tools.SpecTimeouts
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.IntegrationCorpusDatabase
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * A whole-corpus suite's database must be GONE by the time its scope returns.
@@ -24,11 +24,11 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
 
 
   private def databaseNames(client: MongoClient): Seq[String] =
-    Await.result(client.listDatabaseNames().toFuture(), 30.seconds)
+    Await.result(client.listDatabaseNames().toFuture(), SpecTimeouts.Io)
 
   /** Materialise the database — Mongo does not create one until something is written. */
   private def seed(client: MongoClient, name: String): Unit =
-    Await.result(client.getDatabase(name).getCollection("probe").insertOne(Document("_id" -> "sentinel")).toFuture(), 30.seconds)
+    Await.result(client.getDatabase(name).getCollection("probe").insertOne(Document("_id" -> "sentinel")).toFuture(), SpecTimeouts.Io)
 
   "a corpus database" should "be dropped by the time its scope returns" in {
     val client = MongoClient(mongoTarget.uri.value)

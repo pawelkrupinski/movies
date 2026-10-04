@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import models.{CinemaShowing, Country, KinoEtiuda, KinoMiescisko, KinoOOK, KinoStarowka, KinoWawrzyn, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -7,7 +9,6 @@ import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.model.{Filters, Updates}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 import java.time.LocalDateTime
 
@@ -42,7 +43,7 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
         // retired venue NOW — what a newer pod that still lists the venue would have just done.
         Seq(ScreeningsRepository.Collection, SlotsRepository.Collection).foreach { name =>
           Await.result(db.getCollection(name).updateMany(Filters.empty(),
-            Updates.set("updatedAt", java.util.Date.from(java.time.Instant.now().minusSeconds(2 * 86400)))).toFuture(), 10.seconds)
+            Updates.set("updatedAt", java.util.Date.from(java.time.Instant.now().minusSeconds(2 * 86400)))).toFuture(), SpecTimeouts.Io)
         }
         seed("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh")
         val freshIds = Set(SlotKeyed.idOf("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh"))

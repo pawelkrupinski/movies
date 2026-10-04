@@ -28,7 +28,7 @@ class SharedLiveAnswersSpec extends AnyFlatSpec with Matchers {
     val pool   = Executors.newFixedThreadPool(3)
     val asked  = passes.map(p => pool.submit(() => { start.await(); p.get("https://www.rottentomatoes.com/m/tosca") }))
     start.countDown()
-    val answers = asked.map(_.get(5, TimeUnit.SECONDS))
+    val answers = asked.map(_.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
     pool.shutdown()
 
     answers.distinct shouldBe Seq("answer 1")

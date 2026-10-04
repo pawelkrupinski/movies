@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 
 import controllers.MovieControllerService
 import models.{Cinema, CinemaMovie, City, Country, MovieRecord}
@@ -799,7 +801,7 @@ abstract class CountryConvergenceBehaviour(
         listingComplete = row.lastSuccess.exists(_.listingComplete),
         films           = row.films
         )))
-      }, 10.minutes)
+      }, SpecTimeouts.Run)
     } finally pool.shutdown()
     }
     info(s"${country.displayName}: seeded from REAL cinema_scrapes — ${rows.size} venues, " +

@@ -1,5 +1,7 @@
 package services
 
+import tools.SpecTimeouts
+
 import models.Country
 import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
@@ -21,7 +23,7 @@ import scala.concurrent.duration._
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually with tools.IntegrationMongoSuite {
 
   private val target   = URI.create(mongoTarget.uri.value.replace("mongodb://", "http://"))
-  private val patience = PatienceConfig(timeout = Span(30, Seconds), interval = Span(1, Seconds))
+  private val patience = PatienceConfig(timeout = SpecTimeouts.Settle, interval = Span(1, Seconds))
 
   "a reconnect after an unreachable boot" should "claim the database before publishing it, and refuse another country's" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-claim") { db =>
@@ -65,7 +67,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
         })
       try {
         connection.database shouldBe None
-        eventually(connection.database should not be empty)(using PatienceConfig(Span(40, Seconds), Span(1, Seconds)), implicitly)
+        eventually(connection.database should not be empty)(using PatienceConfig(SpecTimeouts.Settle, Span(1, Seconds)), implicitly)
       } finally connection.close()
     }
 
@@ -88,12 +90,12 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
             if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot")
             else { connection.close(); probed.countDown() })   // the owner closes it mid-probe
         connection.database shouldBe None
-        probed.await(30, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+        probed.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
         // Waited for, never guessed at: before the step ends the shared client is open whatever the step does.
-        withClue("the reconnect never finished its step: ")(finished.await(30, java.util.concurrent.TimeUnit.SECONDS) shouldBe true)
+        withClue("the reconnect never finished its step: ")(finished.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true)
         connection.database shouldBe None
         noException should be thrownBy
-          scala.concurrent.Await.result(shared.getDatabase(db.name).getCollection("movies").countDocuments().toFuture(), 5.seconds)
+          scala.concurrent.Await.result(shared.getDatabase(db.name).getCollection("movies").countDocuments().toFuture(), SpecTimeouts.Io)
       } finally shared.close()
     }
 }

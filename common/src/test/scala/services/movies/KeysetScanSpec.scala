@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -147,7 +149,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
       initialBackoff = 1.milli,
       keyOf          = identity,
       fetchPage      = (afterId, limit) => { if (afterId.contains("b")) secondStarted.countDown(); base(afterId, limit) }
-    )(batch => if (batch.head == "a") overlapped = secondStarted.await(5, java.util.concurrent.TimeUnit.SECONDS))
+    )(batch => if (batch.head == "a") overlapped = secondStarted.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
     complete   shouldBe tools.ScanOutcome.Complete
     overlapped shouldBe true
   }
@@ -164,7 +166,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     // the first never returns.
     val together = new java.util.concurrent.CyclicBarrier(2)
     val (complete, pages) = byKeys(Seq("a", "b", "c", "d", "e"), inFlight = 2, page => {
-      if (page.head < "e") together.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      if (page.head < "e") together.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       page.filterNot(_ == "c")   // a row gone by its page's read is simply absent
     })
     complete shouldBe true

@@ -1,5 +1,7 @@
 package services.cinemas
 
+import tools.SpecTimeouts
+
 import tools.{DaemonExecutors, HostScrapeStats}
 import models.{CinemaMovie, Multikino}
 import org.scalatest.matchers.should.Matchers
@@ -8,7 +10,6 @@ import services.cinemas.ScriptedCinemaScraper.OneMovie
 import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaScraper}
 
 import java.util.concurrent.{CountDownLatch, TimeoutException}
-import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 
 class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
@@ -41,7 +42,7 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
     val executor = DaemonExecutors.virtualThreadEC("test-adaptive-timeout")
     val release  = new CountDownLatch(1)
     try {
-      val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { release.await(3, SECONDS); OneMovie }, stats, executor)
+      val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { release.await(SpecTimeouts.Io.toMillis, MILLISECONDS); OneMovie }, stats, executor)
       val t0 = System.nanoTime() / 1000000
       val thrown = intercept[TimeoutException](s.fetch())
       val elapsed = System.nanoTime() / 1000000 - t0

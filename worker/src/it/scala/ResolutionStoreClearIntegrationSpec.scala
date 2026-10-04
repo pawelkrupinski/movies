@@ -19,7 +19,7 @@ class ResolutionStoreClearIntegrationSpec extends AnyFlatSpec with Matchers with
   "MongoResolutionStore.removeAll" should "forget every stored resolution" in {
     val store = new MongoResolutionStore(Some(isolated.database), "resolve_test", normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, ttlMismatches = new services.TtlIndexMismatches, clock = _root_.tools.MongoTtlSpecClock.Pinned)
     store.put("anora|2024", "1064213")   // fire-and-forget: wait for it to land
-    _root_.tools.Eventually.poll(timeoutMs = 10000, pollMs = 20)(store.get("anora|2024").isDefined) shouldBe true
+    _root_.tools.Eventually.poll(pollMs = 20)(store.get("anora|2024").isDefined) shouldBe true
     store.removeAll() shouldBe 1
     store.get("anora|2024") shouldBe None
   }

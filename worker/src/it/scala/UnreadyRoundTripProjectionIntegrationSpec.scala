@@ -49,19 +49,19 @@ class UnreadyRoundTripProjectionIntegrationSpec extends AnyFlatSpec with Matcher
         val miss = concluded(Instant.parse("2026-09-22T10:00:00Z"))
         repository.upsert(title, year, miss)
         withClue("the no-match row never reached the read model, so nothing below tests what it claims: ") {
-          Eventually.poll(30000)(served) shouldBe true
+          Eventually.poll()(served) shouldBe true
         }
 
         // An un-conclusion (what the re-try used to write): the row is unready.
         repository.upsert(title, year, miss.copy(tmdbAttempt = None))
         if (settleBetween) withClue("the unready row's card was never retired: ") {
-          Eventually.poll(30000)(!served) shouldBe true
+          Eventually.poll()(!served) shouldBe true
         }
 
         // TMDB: no match again — the row is ready in Mongo once more.
         repository.upsert(title, year, concluded(Instant.parse("2026-09-23T10:00:00Z")))
         withClue("the row is ready again in Mongo but its card was not re-projected by the change stream: ") {
-          Eventually.poll(30000)(served) shouldBe true
+          Eventually.poll()(served) shouldBe true
         }
       } finally projecting.foreach(_.close())
     }

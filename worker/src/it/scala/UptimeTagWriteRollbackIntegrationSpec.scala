@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.model.{CreateCollectionOptions, Filters, ValidationOptions}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
@@ -10,7 +12,6 @@ import services.{ServiceTags, UptimeMonitor}
 import tools.Eventually
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * A tag write that Mongo REFUSES must not be recorded in memory as if it had landed.
@@ -41,8 +42,7 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
       "uptimeServiceTags",
       CreateCollectionOptions().validationOptions(ValidationOptions().validator(Filters.exists("__no_tag_write_may_satisfy_this__")))
     ).toFuture(),
-    30.seconds
-  )
+    SpecTimeouts.Io)
 
   private val tagCollection: MongoCollection[Document] = db.getCollection("uptimeServiceTags")
   private val monitor  = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
@@ -65,9 +65,9 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
     // reports as a suite-level abort, which reads exactly like a real failure and hides one. The
     // per-call timeouts are well inside the loop's budget so a single hung drop cannot overrun it.
     try Eventually.eventually({
-      Await.result(db.drop().toFuture(), 5.seconds)
-      Await.result(db.listCollectionNames().toFuture(), 5.seconds) shouldBe empty
-    }, timeoutMs = 20000, pollMs = 250)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
+      Await.result(db.listCollectionNames().toFuture(), SpecTimeouts.Io) shouldBe empty
+    }, pollMs = 250)
     catch {
       case _: Throwable =>
         // Say so rather than leaving a stray database for someone to find by counting.
@@ -77,19 +77,15 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
     super.afterAll()
   }
 
-  /** How long the rejection may take to arrive. It is asynchronous and unbounded — the write
-   *  has no deadline of its own — and a loaded shared mongod (the 2026-10-03 itAll, where single
-   *  commands took 11-15 s) answered it well past the 2 s `eventually` gives by default. */
-  private val RejectionBudgetMs = 60000L
-
   "tagService" should "forget a tag whose write Mongo rejected, so the next call retries it" in {
     monitor.tagService(service, Set("custom:RejectedClient")) shouldBe true
 
-    // The rejection arrives asynchronously; once it does, the in-memory claim is gone.
-    Eventually.eventually(monitor.serviceTagsSnapshot().keySet should not contain service, timeoutMs = RejectionBudgetMs)
+    // The rejection arrives asynchronously (the write has no deadline of its own); once it does,
+    // the in-memory claim is gone.
+    Eventually.eventually(monitor.serviceTagsSnapshot().keySet should not contain service)
 
     // The write really was refused — nothing to reconcile against.
-    Await.result(tagCollection.countDocuments(Filters.eq("service", service)).toFuture(), 30.seconds) shouldBe 0L
+    Await.result(tagCollection.countDocuments(Filters.eq("service", service)).toFuture(), SpecTimeouts.Io) shouldBe 0L
 
     // Which is the point: the same tags are attempted again instead of being skipped.
     monitor.tagService(service, Set("custom:RejectedClient")) shouldBe true
@@ -104,20 +100,20 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
     try {
       val slowDb = slow.getDatabase(db.name)
       // A document for the sleeping query to visit (the tag collection accepts none).
-      Await.result(db.getCollection[Document]("held").insertOne(Document("_id" -> 1)).toFuture(), 30.seconds)
+      Await.result(db.getCollection[Document]("held").insertOne(Document("_id" -> 1)).toFuture(), SpecTimeouts.Io)
       val holding = slowDb.getCollection[Document]("held").find(Filters.where("sleep(5000) || true")).toFuture()
       // Wait until it is running server-side, i.e. holds the client's one connection.
       Eventually.eventually({
         val active = Await.result(isolatedDb.client.getDatabase("admin").aggregate[Document](Seq(
-          Document("$currentOp" -> Document()), Document("$match" -> Document("ns" -> s"${db.name}.held")))).toFuture(), 10.seconds)
+          Document("$currentOp" -> Document()), Document("$match" -> Document("ns" -> s"${db.name}.held")))).toFuture(), SpecTimeouts.Io)
         active should not be empty
-      }, timeoutMs = 5000)
+      })
       val tags = new ServiceTags(Some(slowDb.getCollection[Document]("uptimeServiceTags")))
       tags.tagService(service, Set("custom:RejectedClient")) shouldBe true
 
-      Eventually.eventually(tags.snapshot().keySet should not contain service, timeoutMs = RejectionBudgetMs)
+      Eventually.eventually(tags.snapshot().keySet should not contain service)
       tags.tagService(service, Set("custom:RejectedClient")) shouldBe true
-      Await.result(holding, 60.seconds)
+      Await.result(holding, SpecTimeouts.Io)
     } finally slow.close()
   }
 }

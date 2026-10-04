@@ -35,7 +35,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     val running = new java.util.concurrent.CountDownLatch(1)
     val never   = new java.util.concurrent.CountDownLatch(1)  // released only by closeAll's interrupt
     pool.execute(() => { running.countDown(); try never.await() catch { case _: InterruptedException => () } })
-    running.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+    running.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
     val queued = pool.submit(() => 1)
     managed.closeAll()
     queued.isCancelled shouldBe true

@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
@@ -8,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.MongoIdentityModelStore
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -32,7 +33,7 @@ class BoundedMongoRepliesSpec extends AnyFlatSpec with Matchers with tools.Integ
       .build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, label))
     try body(db, () => finds.asScala.toSeq)
-    finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
   private def batchOf(cmd: org.bson.BsonDocument): Int =

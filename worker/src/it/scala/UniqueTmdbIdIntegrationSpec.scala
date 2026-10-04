@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import models.{Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.mongodb.scala.{Document, ObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -7,7 +9,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** One document per film, enforced by the store. The write-time fold merges a
  *  same-tmdbId duplicate before it is written; the unique sparse `tmdbId` index is what
@@ -25,7 +26,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers with tools.I
       val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true
-        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), 10.seconds)
+        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)
         withClue(s"indexes: ${indexes.map(_.toJson())}\n") {
           indexes.exists(i => i.get("key").exists(_.asDocument().containsKey("tmdbId")) &&
                               i.get("unique").exists(_.asBoolean().getValue) &&
@@ -52,7 +53,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers with tools.I
       val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true
-        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), 10.seconds)
+        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)
         withClue(s"indexes: ${indexes.map(_.toJson())}\n") {
           indexes.exists(i => i.get("key").exists(_.asDocument().containsKey("key")) &&
                               i.get("unique").exists(_.asBoolean().getValue)) shouldBe true

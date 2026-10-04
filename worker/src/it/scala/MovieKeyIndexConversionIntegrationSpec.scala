@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import ch.qos.logback.classic.Level
 import org.mongodb.scala.bson.collection.immutable.{Document => ImmutableDocument}
 import org.mongodb.scala.model.{IndexOptions, Indexes}
@@ -12,7 +14,6 @@ import tools.{ConcurrentInstances, LogCapture}
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** The `movies.key` index was made unique (096df7444) over databases that already held a
@@ -25,7 +26,7 @@ import scala.jdk.CollectionConverters._
 class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private def keyIndex(db: MongoDatabase): Option[Document] =
-    Await.result(db.getCollection[Document](MovieRepository.Collection).listIndexes().toFuture(), 10.seconds)
+    Await.result(db.getCollection[Document](MovieRepository.Collection).listIndexes().toFuture(), SpecTimeouts.Io)
       .find(_.get("name").exists(_.asString().getValue == "key_1"))
 
   private def flag(index: Option[Document], name: String): Boolean =
@@ -34,8 +35,8 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
   /** A collection as production holds it: rows with a `key` and a PLAIN `key_1`. */
   private def seedPlain(db: MongoDatabase, keys: String*): Unit = {
     val movies = db.getCollection[Document](MovieRepository.Collection)
-    Await.result(movies.insertMany(keys.zipWithIndex.map { case (key, i) => ImmutableDocument("_id" -> s"film-$i", "key" -> key) }).toFuture(), 10.seconds)
-    Await.result(movies.createIndex(Indexes.ascending("key"), IndexOptions()).toFuture(), 10.seconds)
+    Await.result(movies.insertMany(keys.zipWithIndex.map { case (key, i) => ImmutableDocument("_id" -> s"film-$i", "key" -> key) }).toFuture(), SpecTimeouts.Io)
+    Await.result(movies.createIndex(Indexes.ascending("key"), IndexOptions()).toFuture(), SpecTimeouts.Io)
     ()
   }
 
@@ -49,7 +50,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
     val gaps    = new ConcurrentLinkedQueue[String]()
     val running = new AtomicBoolean(true)
     val poller  = new Thread(() => while (running.get) {
-      val names = Await.result(observer.getCollection[Document](MovieRepository.Collection).listIndexes().toFuture(), 10.seconds)
+      val names = Await.result(observer.getCollection[Document](MovieRepository.Collection).listIndexes().toFuture(), SpecTimeouts.Io)
         .flatMap(_.get("name").map(_.asString().getValue))
       if (!names.contains("key_1")) gaps.add(names.mkString(","))
     }, "key-index-poller")
@@ -58,7 +59,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
       alongside()
       val repository = new MongoMovieRepository(Some(instance.database), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
       try repository.enabled shouldBe true finally repository.close()
-    } finally { running.set(false); poller.join(10000) }
+    } finally { running.set(false); poller.join(SpecTimeouts.Io.toMillis) }
     (gaps.asScala.toSeq, events.filter(_.getFormattedMessage.contains(s" on ${instance.database.name}.")))
   }
 
@@ -104,8 +105,8 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
     ConcurrentInstances.withInstances(mongoTarget, "key-index-unique", count = 2) { instances =>
       val (pod, observer) = (instances(0), instances(1))
       val movies = observer.database.getCollection[Document](MovieRepository.Collection)
-      Await.result(movies.insertOne(ImmutableDocument("_id" -> "film-0", "key" -> "a")).toFuture(), 10.seconds)
-      Await.result(movies.createIndex(Indexes.ascending("key"), IndexOptions().unique(true)).toFuture(), 10.seconds)
+      Await.result(movies.insertOne(ImmutableDocument("_id" -> "film-0", "key" -> "a")).toFuture(), SpecTimeouts.Io)
+      Await.result(movies.createIndex(Indexes.ascending("key"), IndexOptions().unique(true)).toFuture(), SpecTimeouts.Io)
 
       // A parallel suite's index warning, logged while this boot is being captured.
       val (gaps, events) = boot(pod, observer.database, alongside = () =>

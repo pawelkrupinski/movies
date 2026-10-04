@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import models.Country
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
@@ -7,7 +9,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.titlerules.TitleRuleSet
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Every component a wiring builds keys through THAT wiring's country.
@@ -58,7 +59,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
     built.foreach(w => scala.util.Try(w.stop()))
     val client = MongoClient(mongoTarget.uri.value)
     try ownDatabases.distinct.foreach(name =>
-      scala.util.Try(Await.result(client.getDatabase(name).drop().toFuture(), 60.seconds)))
+      scala.util.Try(Await.result(client.getDatabase(name).drop().toFuture(), SpecTimeouts.Io)))
     finally client.close()
     super.afterAll()
   }

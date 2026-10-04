@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import services.movies.ListedShowtimes
 
 import models.{CityScreening, MovieRecord, ResolvedMovie, ResolvedRatings, Showtime, SourceData}
@@ -12,7 +14,6 @@ import services.readmodel.{DecodeFailureMetrics, MongoReadModelRepository}
 import tools.{IsolatedMongoDatabase, MalformedChangeEventProbe}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** ONE document a watched collection's codec cannot decode must not end that collection's
  *  change stream. Every watcher used to decode inside the driver's cursor, so a `screenings`
@@ -24,7 +25,7 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
 
 
   private def insertRaw(db: MongoDatabase, collection: String, doc: Document): Unit =
-    Await.result(db.getCollection[Document](collection).insertOne(doc).toFuture(), 10.seconds)
+    Await.result(db.getCollection[Document](collection).insertOne(doc).toFuture(), SpecTimeouts.Io)
 
   /** `watch(db, failures)` opens the watcher with `failures` as its decode-failure counter;
    *  the malformed document must be counted there, under its collection. */

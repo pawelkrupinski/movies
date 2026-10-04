@@ -1,5 +1,7 @@
 package services.sharecards
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.InMemoryReadModelRepository
@@ -31,7 +33,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
       pool.submit[Unit](() => { start.await(); (1 to 30).foreach(_ => { janitor.prune(); janitor.enforceBudget() }) })
     }
     start.countDown()
-    (renders ++ prunes).foreach(_.get(2, TimeUnit.MINUTES))
+    (renders ++ prunes).foreach(_.get(SpecTimeouts.Run.toMillis, TimeUnit.MILLISECONDS))
     pool.shutdown()
 
     // Every card either replica wrote is there — young and unrecorded, so neither janitor may touch
@@ -57,7 +59,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     val release = new CountDownLatch(1)
     val first = new ShareCardStore(Files.createTempDirectory("share-cards-a-")) {
       override def asked(path: java.nio.file.Path): Option[java.time.Instant] = {   // read under the film's lock
-        entered.countDown(); release.await(10, TimeUnit.SECONDS); None
+        entered.countDown(); release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); None
       }
     }
     def stripeOf(store: ShareCardStore) =
@@ -70,11 +72,11 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     val pool = Executors.newFixedThreadPool(2)
     try {
       val holding = pool.submit[Unit](() => first.writeAtomically(first.cardPath("film"), posterJpeg, "v1", asked = Some(T0)))
-      entered.await(5, TimeUnit.SECONDS) shouldBe true
+      entered.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       val other = pool.submit[Unit](() => second.writeAtomically(second.cardPath("film"), posterJpeg, "v1", asked = Some(T0)))
-      noException should be thrownBy other.get(5, TimeUnit.SECONDS)
+      noException should be thrownBy other.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
       release.countDown()
-      holding.get(10, TimeUnit.SECONDS)
+      holding.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
     } finally { release.countDown(); pool.shutdownNow() }
   }
 }

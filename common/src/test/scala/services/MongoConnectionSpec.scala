@@ -1,5 +1,7 @@
 package services
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -107,7 +109,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
         t.setUncaughtExceptionHandler((_, e) => died.set(e))
         thread.set(t)
         t.start()
-        t.join(1000)
+        t.join(SpecTimeouts.quiet(1.second).toMillis) // a window: the thread must still be running after it
       })
     try {
       withClue("the reconnect thread must not die before its first attempt: ") { Option(died.get) shouldBe None }

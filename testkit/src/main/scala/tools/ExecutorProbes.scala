@@ -24,7 +24,7 @@ object ExecutorProbes {
         try Thread.sleep(60) finally { active.decrementAndGet(); done.countDown() }
       }
     }
-    if (!done.await(30, TimeUnit.SECONDS))
+    if (!done.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
       throw new AssertionError(s"tasks did not finish within 30s (peak so far ${maxActive.get()})")
     maxActive.get()
   }

@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -75,7 +77,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       "taskType" -> TaskType.ScrapeCinema.name,
       "state" -> "not_a_real_state",
       "active" -> false)
-    Await.result(db.getCollection(collName).insertOne(doc).toFuture(), 10.seconds)
+    Await.result(db.getCollection(collName).insertOne(doc).toFuture(), SpecTimeouts.Io)
 
     queue.countByState().keySet should contain theSameElementsAs
       queue.countByState().keySet.intersect(services.tasks.TaskState.all.toSet)

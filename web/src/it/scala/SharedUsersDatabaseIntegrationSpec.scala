@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.{Country, User, UserState}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
@@ -10,7 +12,6 @@ import services.users.{MongoUserRepository, MongoUserStateRepository, UserStateR
 
 import java.time.Instant
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * ONE account across four country deployments.
@@ -56,7 +57,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   override protected def afterAll(): Unit = try {
     (Country.all.map(corpusDb) :+ SharedDb).distinct.foreach { db =>
-      Await.ready(client.getDatabase(db).drop().toFuture(), 10.seconds)
+      Await.ready(client.getDatabase(db).drop().toFuture(), SpecTimeouts.Io)
     }
     client.close()
   } finally super.afterAll()

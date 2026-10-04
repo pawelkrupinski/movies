@@ -21,7 +21,7 @@ final class ChildJvm(javaHome: JavaHome, classPath: JavaClassPath) {
     val process = new ProcessBuilder((Seq(java, "-cp", classpath) ++ jvmArgs ++ (main +: args))*)
       .redirectErrorStream(true).start()
     val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-    if (!process.waitFor(120, TimeUnit.SECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
+    if (!process.waitFor(SpecTimeouts.Run.toMillis, TimeUnit.MILLISECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
     else (process.exitValue(), output)
   }
 

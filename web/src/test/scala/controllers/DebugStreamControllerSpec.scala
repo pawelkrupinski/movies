@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecTimeouts
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
@@ -17,7 +19,6 @@ import play.api.test.Helpers._
 import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The dev-only /debug live SSE feed. It must (a) 404 in prod so the worker's
@@ -32,7 +33,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private implicit val sys: ActorSystem  = ActorSystem("debug-stream-spec")
   private implicit val mat: Materializer = Materializer(sys)
 
-  override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
+  override def afterAll(): Unit = Await.result(sys.terminate(), SpecTimeouts.Io)
 
   private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev) =
     new DebugStreamController(Helpers.stubControllerComponents(),
@@ -57,7 +58,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val collecting = feed.takeWhile(frame => !frame.contains(s"\"$SentinelId\"")).runWith(Sink.seq)
     act
     movies.upsert(Sentinel, None, record(Sentinel))
-    Await.result(collecting, 10.seconds)
+    Await.result(collecting, SpecTimeouts.Io)
   }
 
   "GET /debug/stream" should "404 in production (the collection is never watched from the web there)" in {

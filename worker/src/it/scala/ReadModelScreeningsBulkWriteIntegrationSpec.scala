@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import models.CityScreening
@@ -9,7 +11,6 @@ import org.scalatest.matchers.should.Matchers
 import services.readmodel.MongoReadModelRepository
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** A card's screenings go to Mongo as one write: a wide US release has one document per venue, and
@@ -33,6 +34,6 @@ class ReadModelScreeningsBulkWriteIntegrationSpec extends AnyFlatSpec with Match
       rm.upsertScreenings((1 to 40).map(screening(_, "After")))
       commands.asScala.count(_ == "update") shouldBe 1
       rm.findAllScreenings().map(s => s._id -> s.cinema).toMap shouldBe (1 to 40).map(i => s"film|venue-$i" -> "After").toMap
-    } finally { rm.close(); Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    } finally { rm.close(); Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 }

@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +13,6 @@ import tools._
 
 import java.util.concurrent.Executors
 import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Random, Try}
 
@@ -165,7 +166,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
         (0 until Permutations).map(i => c -> (() => boot(c, s"p$i", OrderSeed + i, split = false))) :+
           (c -> (() => boot(c, "split", OrderSeed, split = true)))
       }
-      val done = Await.result(Future.traverse(jobs) { case (c, job) => Future(c -> job()) }, 10.minutes)
+      val done = Await.result(Future.traverse(jobs) { case (c, job) => Future(c -> job()) }, SpecTimeouts.Run)
       done.groupMap(_._1)(_._2)
     } finally pool.shutdown()
   }
@@ -208,7 +209,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
             } finally storage.close()
           }
       }
-      Await.result(Future.traverse(jobs)(job => Future(Try(job()))), 20.minutes)
+      Await.result(Future.traverse(jobs)(job => Future(Try(job()))), SpecTimeouts.Run)
       println(s"[hard-clusters] recorded ${jobs.size} spellings on their own")
     } finally pool.shutdown()
   }

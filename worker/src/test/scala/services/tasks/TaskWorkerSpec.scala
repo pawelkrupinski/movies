@@ -1,9 +1,11 @@
 package services.tasks
 
+import tools.SpecTimeouts
+
 import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{Millis, Span}
 
 import services.metrics.{TaskObserver, WorkerTaskMetrics}
 
@@ -320,12 +322,12 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     @volatile var wokeAt = 0L
     val parked = new Thread(() => { d.awaitSince(since, 60000L); wokeAt = System.nanoTime() })
     parked.start()
-    eventually(timeout(Span(2, Seconds)), interval(Span(5, Millis))) {
+    eventually(timeout(SpecTimeouts.Settle), interval(Span(5, Millis))) {
       parked.getState shouldBe Thread.State.TIMED_WAITING // parked on the doorbell
     }
     val rungAt = System.nanoTime()
     d.ring()
-    parked.join(2000)
+    parked.join(SpecTimeouts.Io.toMillis)
     parked.isAlive shouldBe false
     ((wokeAt - rungAt) / 1000000L) should be < 1000L
   }
@@ -357,9 +359,9 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     try {
       // The lone worker found nothing and is parking: it read the doorbell's generation BEFORE that
       // claim, so the enqueue's ring wakes it however the park and the ring interleave.
-      eventually(timeout(Span(10, Seconds)), interval(Span(5, Millis)))(emptyClaims.get should be >= 1)
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(5, Millis)))(emptyClaims.get should be >= 1)
       q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
-      eventually(timeout(Span(3, Seconds)), interval(Span(20, Millis))) {
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(20, Millis))) {
         q.countByState() shouldBe empty // picked up + completed (removed) via the doorbell
       }
       h.seen.map(_.dedupKey) shouldBe List("scrape|x")

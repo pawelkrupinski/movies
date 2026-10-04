@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{Document, ObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +10,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.Instant
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** The bounded catch-up read for a silent change stream: every `movies` row whose
  *  `updatedAt` is after an instant, through the same stitched path every other scan
@@ -38,7 +39,7 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
         normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true
-        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), 10.seconds)
+        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)
         withClue(s"indexes: ${indexes.map(_.toJson())}\n") {
           indexes.exists(i => i.get("key").exists(_.asDocument().containsKey("updatedAt")) &&
                               !i.get("unique").exists(_.asBoolean().getValue)) shouldBe true

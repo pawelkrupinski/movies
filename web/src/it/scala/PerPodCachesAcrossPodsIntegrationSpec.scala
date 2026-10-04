@@ -1,5 +1,6 @@
 package integration
 
+import tools.SpecTimeouts
 import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -28,7 +29,7 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
   // Well inside anything a stream needs, far below the 10-minute TTL that bounds a stall.
-  private val StreamBoundMs = 10000L
+  private val StreamBoundMs = SpecTimeouts.Settle.toMillis
 
   private def hiddenAfter(pod: UserStatePod, userId: String, ifModifiedSince: String): (Int, String) = {
     val result = pod.hiddenFilms(userId, Some(ifModifiedSince))

@@ -111,7 +111,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers with SuiteConfiguration
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try noException should be thrownBy chrome.openPage(server.baseUrl + "/") { page =>
-            page.waitFor(s"document.images.length >= $resourceCount", timeoutMs = 5000)
+            page.waitFor(s"document.images.length >= $resourceCount")
           } finally chrome.close()
       }
     finally {

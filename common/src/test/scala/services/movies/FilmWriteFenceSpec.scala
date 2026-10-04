@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -118,10 +120,10 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     val order    = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val mark     = fence.mark(film.value)
     val apply = new Thread(() => { fence.ifUndisturbed(film.value, mark) {
-      applying.countDown(); release.await(5, TimeUnit.SECONDS); order.add("applied")
+      applying.countDown(); release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); order.add("applied")
     }; () })
     apply.start()
-    applying.await(5, TimeUnit.SECONDS) shouldBe true
+    applying.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     val write = new Thread(() => fence.writing(film) { order.add("wrote"); () })
     write.start()
     // The write is parked on the fence's monitor, not running.
@@ -130,7 +132,7 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     write.getState shouldBe Thread.State.BLOCKED
     order.isEmpty shouldBe true
     release.countDown()
-    apply.join(5000); write.join(5000)
+    apply.join(SpecTimeouts.Io.toMillis); write.join(SpecTimeouts.Io.toMillis)
     order.toArray.toSeq shouldBe Seq("applied", "wrote")
   }
 }

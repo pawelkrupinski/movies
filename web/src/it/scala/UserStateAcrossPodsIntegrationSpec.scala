@@ -1,5 +1,8 @@
 package integration
 
+import tools.SpecTimeouts
+
+
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes}
 import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture, ToSingleObservableUnit}
 import org.scalatest.OptionValues._
@@ -48,8 +51,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
    *  spent 19.3 s on the boot case's setup `createIndex` (7.2 s creating the collection, 11.9 s
    *  waiting for majority write concern), and the 10 s each of these used to allow failed the case
    *  before a pod had booted. The code under test keeps its own budget (`MongoIndex`'s). */
-  private def await[A](operation: scala.concurrent.Future[A]): A = Await.result(operation, SpecBudget)
-  private val SpecBudget = 2.minutes
+  private def await[A](operation: scala.concurrent.Future[A]): A = Await.result(operation, SpecTimeouts.Io)
 
   private def rowsFor(db: MongoDatabase, userId: String): Long =
     await(db.getCollection(UserStateRepository.Collection).countDocuments(Filters.eq("userId", userId)).toFuture())
@@ -98,7 +100,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
     try {
       // Joined past `MongoIndex`'s own 30 s, so a slow boot reports what IT decided rather than
       // the race giving up on it at the same instant.
-      successes(race(pods.map(pod => () => pod.states.enabled), Some(round), joinTimeout = SpecBudget)).distinct shouldBe Seq(true)
+      successes(race(pods.map(pod => () => pod.states.enabled), Some(round), joinTimeout = SpecTimeouts.Run)).distinct shouldBe Seq(true)
       (reported.map(_.asScala.toList), instances.map(drops).zip(before).map { case (after, was) => after - was })
     } finally pods.foreach(_.close())
   }

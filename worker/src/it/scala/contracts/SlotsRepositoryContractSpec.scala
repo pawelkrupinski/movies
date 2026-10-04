@@ -1,5 +1,7 @@
 package services.contracts
 
+import tools.SpecTimeouts
+
 import models.{Showtime, SourceData}
 import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
@@ -12,7 +14,6 @@ import tools.IsolatedMongoDatabase
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
-import scala.concurrent.duration.*
 
 /**
  * ONE behaviour suite for [[SlotsRepository]], run against every implementation found on the
@@ -28,7 +29,7 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private def fresh(cls: Class[? <: SlotsRepository]): SlotsRepository = {
-    Await.result(database.getCollection(SlotsRepository.Collection).drop().toFuture(), 30.seconds)
+    Await.result(database.getCollection(SlotsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
       // A decorator (the fixpoint harness's write counter) is held to the contract over the in-memory store.

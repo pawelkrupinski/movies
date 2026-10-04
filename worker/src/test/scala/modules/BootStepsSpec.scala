@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.Stopwatch
@@ -31,13 +33,13 @@ class BootStepsSpec extends AnyFlatSpec with Matchers {
     finished.getCount shouldBe 1L
     thread.isDaemon shouldBe true
     release.countDown()
-    finished.await(5, TimeUnit.SECONDS) shouldBe true
+    finished.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
   }
 
   it should "keep a failing background step from taking the boot down" in {
     val boot   = new BootSteps("us")
     val thread = boot.inBackground("read-model projector")(throw new IllegalStateException("seed failed"))
-    thread.join(5000)
+    thread.join(SpecTimeouts.Io.toMillis)
     thread.isAlive shouldBe false
     boot.step("task worker")(42) shouldBe 42
   }

@@ -13,15 +13,15 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *  returns the id the watcher will report for it. Returns why the watcher failed, or None. */
 object MalformedChangeEventProbe {
   def failure(watch: (String => Unit) => AutoCloseable, writeValid: Int => String, writeMalformed: () => Unit,
-              budgetMs: Long = 20000): Option[String] = {
+              budgetMs: Long = SpecTimeouts.Settle.toMillis): Option[String] = {
     val seen   = new ConcurrentLinkedQueue[String]()
     val handle = watch(id => { seen.add(id); () })
     try {
       var pass = 0
-      val live = Eventually.poll(60000, pollMs = 1) {
+      val live = Eventually.poll(SpecTimeouts.Settle.toMillis, pollMs = 1) {
         pass += 1
         val id = writeValid(pass)
-        Eventually.poll(1000, pollMs = 20)(seen.contains(id))
+        Eventually.poll(SpecTimeouts.Pace.toMillis, pollMs = 20)(seen.contains(id))
       }
       if (!live) Some("the watcher never delivered a warm-up write, so the probe proves nothing")
       else {

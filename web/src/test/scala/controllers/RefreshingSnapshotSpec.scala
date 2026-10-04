@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -24,13 +26,13 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     @volatile var gate: CountDownLatch = new CountDownLatch(0)
     @volatile var failNext = false
     def apply(): Int = {
-      gate.await(10, TimeUnit.SECONDS)
+      gate.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
       if (failNext) { failNext = false; throw new IllegalStateException("mirror went away") }
       reads.incrementAndGet()
     }
   }
 
-  private def eventually(cond: => Boolean): Unit = { Eventually.eventually(cond shouldBe true, timeoutMs = 10000, pollMs = 5); () }
+  private def eventually(cond: => Boolean): Unit = { Eventually.eventually(cond shouldBe true, pollMs = 5); () }
 
   private val Start = Instant.parse("2026-10-03T12:00:00Z")
 
@@ -195,11 +197,11 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     val read     = new GatedRead
     val clock    = new MutableClock(Start)
     val snapshot = snapshotOf(read, clock)
-    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), 5.seconds)   // nothing read yet: warms it, and says when
+    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), SpecTimeouts.Io)   // nothing read yet: warms it, and says when
     read.reads.get() shouldBe 1
     clock.advanceSeconds(30)
     // Young: completes at once without a read — awaited, so "no read" is an answer, not a race lost.
-    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), 5.seconds)
+    scala.concurrent.Await.ready(snapshot.refreshIfOlderThan(60.seconds), SpecTimeouts.Io)
     read.reads.get() shouldBe 1
     clock.advanceSeconds(31)
     snapshot.refreshIfOlderThan(60.seconds)

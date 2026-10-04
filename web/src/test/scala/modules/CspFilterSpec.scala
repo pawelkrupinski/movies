@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.flatspec.AnyFlatSpec
@@ -7,7 +9,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.mvc.{RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 class CspFilterSpec extends AnyFlatSpec with Matchers {
@@ -22,7 +23,7 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
   private val filter = new CspFilter()
 
   private def run(request: RequestHeader = FakeRequest(), upstream: Result = Results.Ok("ok")): Result =
-    Await.result(filter.apply(_ => Future.successful(upstream))(request), 2.seconds)
+    Await.result(filter.apply(_ => Future.successful(upstream))(request), SpecTimeouts.Io)
 
   "CspFilter" should "attach a Content-Security-Policy header to every response" in {
     val result = run()

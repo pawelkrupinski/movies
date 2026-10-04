@@ -3,7 +3,6 @@ package tools
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * A database name no other `it/` suite shares, for a spec that operates on the WHOLE
@@ -61,7 +60,7 @@ object IntegrationCorpusDatabase {
     try {
       val database = client.getDatabase(named(target, suite))
       try body(database)
-      finally Await.result(database.drop().toFuture(), 60.seconds)
+      finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)
     } finally client.close()
   }
 }

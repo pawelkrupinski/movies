@@ -1,12 +1,13 @@
 package integration
 
+import tools.SpecTimeouts
+
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import services.identity.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
 import tools.{IntegrationCorpusDatabase, IntegrationMongoSuite}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** The normalized TMDB store's storage contract over Mongo: the cases `TmdbDocumentsSpec` runs in memory. */
 class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRetentionBehaviour with IntegrationMongoSuite {
@@ -16,7 +17,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
   private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "tmdb"))
 
   protected def newDocuments(): TmdbDocuments & services.identity.TmdbDocumentRetention = {
-    TmdbKind.values.foreach(k => Await.result(database.getCollection(k.collection).drop().toFuture(), 30.seconds))
+    TmdbKind.values.foreach(k => Await.result(database.getCollection(k.collection).drop().toFuture(), SpecTimeouts.Io))
     new MongoTmdbDocuments(database)
   }
 
@@ -59,7 +60,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
         documents.put(TmdbKind.Film, Seq(i.toString -> new org.bson.BsonDocument("n", new org.bson.BsonInt32(i))))
       }): java.util.concurrent.Callable[Unit]))
       start.countDown()
-      try filed.foreach(_.get(30, java.util.concurrent.TimeUnit.SECONDS)) finally pool.shutdown()
+      try filed.foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)) finally pool.shutdown()
       import scala.jdk.CollectionConverters._
       val sent = commands.asScala.toSeq
       sent.count(_ == "find") should be < 32

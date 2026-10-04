@@ -1,5 +1,7 @@
 package services.sharecards
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ShareCardTestKit.*
@@ -42,9 +44,9 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin)), gate = gate).coverSlot(poster); () })
     holder.start()
     try {
-      tools.Eventually.poll(timeoutMs = 5000, pollMs = 10)(Files.exists(started)) shouldBe true
+      tools.Eventually.poll(pollMs = 10)(Files.exists(started)) shouldBe true
       body
-    } finally { Files.createFile(release); holder.join(15000) }
+    } finally { Files.createFile(release); holder.join(SpecTimeouts.Io.toMillis) }
   }
 
   private def shrinkWithin(shrinker: VipsPosterShrinker, millis: Long): Option[Either[String, (Int, Int)]] = {

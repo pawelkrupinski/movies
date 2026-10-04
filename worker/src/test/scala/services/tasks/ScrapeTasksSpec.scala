@@ -716,13 +716,13 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       readyTimeout = services.tasks.ScrapeReaper.ReadyTimeout(20.millis), runStore = ticks, clock = specClock)
     reaper.start()
     // Several readiness waits have run out with the gate closed → the reaper is holding, not ticking.
-    eventually(fresh.asked.get should be >= 3, timeoutMs = 10000)
+    eventually(fresh.asked.get should be >= 3)
     ticks.claims.get shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
     // Boot hydrate lands: stamps populate the mirror (fresh), then readiness fires.
     scrapers.foreach(s => fresh.markFresh(ScrapeCinemaHandler.dedupKey(s.cinema), FreshnessKind.CinemaScrape, specClock.instant()))
     gate.success(())
-    eventually(ticks.claims.get should be >= 1, timeoutMs = 10000)
+    eventually(ticks.claims.get should be >= 1)
     // First tick ran post-hydrate and found every cinema fresh → no storm.
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
     reaper.stop()
@@ -748,7 +748,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.start()
     // Several ready timeouts pass with the mirror still cold: the reaper asks again each time.
     // Before the fix it asked once, failed open, and enqueued both stale cinemas.
-    eventually(fresh.asked.get should be >= 5, timeoutMs = 10000)
+    eventually(fresh.asked.get should be >= 5)
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
     gate.success(()) // mirror reports ready → the legitimate cold-start scrape may now proceed
     eventually(queue.countByState().getOrElse(TaskState.Waiting, 0L) should be > 0L)

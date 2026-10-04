@@ -1,12 +1,13 @@
 package services.users
 
+import tools.SpecTimeouts
+
 import com.mongodb.client.model.ReplaceOptions
 import models.UserState
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * A whole-row write to `userStates` — for seeding a Mongo store in a spec, and for the
@@ -29,7 +30,7 @@ object UserStateRows {
     Await.result(
       db.withCodecRegistry(UserCodecs.registry).getCollection[UserState](UserStateRepository.Collection)
         .replaceOne(Filters.eq("userId", state.userId), state, new ReplaceOptions().upsert(true)).toFuture(),
-      10.seconds)
+      SpecTimeouts.Io)
     ()
   }
 }

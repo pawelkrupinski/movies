@@ -1,5 +1,7 @@
 package tools.persistence
 
+import tools.SpecTimeouts
+
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
@@ -10,7 +12,6 @@ import tools.{IntegrationMongoTarget, IsolatedMongoDatabase}
 
 import scala.compiletime.{erasedValue, summonInline}
 import scala.concurrent.Await
-import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
@@ -68,8 +69,8 @@ object PersistedRoundTrip {
    *  type carries none, and the decoder skips it as it skips any unknown field. */
   private def store(database: MongoDatabase, name: String, document: BsonDocument): BsonDocument = {
     val collection = database.getCollection[BsonDocument](s"roundtrip_$name")
-    Await.result(collection.insertOne(document).toFuture(), 30.seconds)
-    Await.result(collection.find(Filters.eq("_id", document.get("_id"))).head(), 30.seconds)
+    Await.result(collection.insertOne(document).toFuture(), SpecTimeouts.Io)
+    Await.result(collection.find(Filters.eq("_id", document.get("_id"))).head(), SpecTimeouts.Io)
   }
 
   /** Where `actual` departs from `expected`, as `path: expected → actual` lines. Walks

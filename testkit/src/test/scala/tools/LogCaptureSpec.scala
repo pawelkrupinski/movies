@@ -70,7 +70,7 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
       }
     finally {
       running.set(false)
-      noisy.join(5000)
+      noisy.join(SpecTimeouts.Io.toMillis)
       collector.stop()
     }
 

@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import scala.concurrent.Promise
+import scala.concurrent.duration.DurationInt
 
 class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
 
@@ -33,11 +34,11 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
       val third = new Thread(() => pool.execute(() => { order.add(2); () }))
       third.start()
       // The third submit waits for room rather than running on its thread.
-      third.join(200)
+      third.join(SpecTimeouts.quiet(200.millis).toMillis)
       third.isAlive shouldBe true
       release.countDown()
-      third.join(5000)
-      pool.shutdown(); pool.awaitTermination(5, TimeUnit.SECONDS) shouldBe true
+      third.join(SpecTimeouts.Io.toMillis)
+      pool.shutdown(); pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       order.toArray.toSeq shouldBe Seq(0, 1, 2)
     } finally { release.countDown(); pool.shutdownNow() }
   }
@@ -49,21 +50,21 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     val pool = DaemonExecutors.boundedPool("shut-caller-runs", threads = 1, queueCapacity = 1, WhenFull.RunOnCaller)
     pool.shutdown()
     val task = pool.submit(() => 1)
-    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
   it should "come back cancelled from a wait-for-room pool" in {
     val pool = DaemonExecutors.singleThreadExecutor("shut-wait-for-room", queueCapacity = 1)
     pool.shutdown()
     val task = pool.submit(() => 1)
-    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
   it should "come back cancelled from a virtual-thread EC" in {
     val pool = DaemonExecutors.virtualThreadEC("shut-virtual")
     pool.shutdown()
     val task = pool.submit(() => 1)
-    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
   it should "release an invokeAll caller rather than leave it waiting forever" in {
@@ -74,7 +75,7 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     val caller = new Thread(() => { pool.invokeAll(tasks); done.countDown() })
     caller.setDaemon(true)
     caller.start()
-    try done.await(2, TimeUnit.SECONDS) shouldBe true finally caller.interrupt()
+    try done.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true finally caller.interrupt()
   }
 
   // A producer waiting for room got it from `shutdownNow` draining the queue — after the pool had
@@ -89,10 +90,10 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     val producer  = new Thread(() => submitted.set(pool.submit(() => 1)))
     producer.setDaemon(true)
     producer.start()
-    Eventually.eventually(producer.getState shouldBe Thread.State.WAITING, timeoutMs = 5000, pollMs = 5)
+    Eventually.eventually(producer.getState shouldBe Thread.State.WAITING, pollMs = 5)
     pool.shutdownNow()
-    producer.join(5000)
-    an[java.util.concurrent.CancellationException] should be thrownBy submitted.get.get(2, TimeUnit.SECONDS)
+    producer.join(SpecTimeouts.Io.toMillis)
+    an[java.util.concurrent.CancellationException] should be thrownBy submitted.get.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
   // A task parked on a permit gate when its executor is shut down NOW is interrupted before it ever
@@ -106,12 +107,12 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
       val innerGated = DaemonExecutors.semaphoreGated(pool, inner)
       val gated      = if (gates == 1) innerGated else DaemonExecutors.semaphoreGated(innerGated, new java.util.concurrent.Semaphore(1))
       val parked     = DaemonExecutors.dropRejectedAfterShutdown(gated).submit(() => 1)
-      Eventually.eventually(inner.hasQueuedThreads shouldBe true, timeoutMs = 5000, pollMs = 5)
+      Eventually.eventually(inner.hasQueuedThreads shouldBe true, pollMs = 5)
       pool.shutdownNow()
       parked
     }
-    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 1).get(2, TimeUnit.SECONDS)
-    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 2).get(2, TimeUnit.SECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 1).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 2).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
   "boundedEC" should "cap concurrency for a single EC" in {
@@ -139,7 +140,7 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
       stage1.onComplete(_ => ())(using executionContext) // terminal: submit fires from stage1's run(), no
                                            // downstream to capture the failure → it's reported
       p.success(1)                         // schedules stage1 onto executionContext
-      running.await(5, TimeUnit.SECONDS) shouldBe true
+      running.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       executionContext.shutdown()                        // pool drained while stage1 is still running
       release.countDown()                  // stage1 finishes → notifies the callback → submit rejected
       // The rejected submit happens on stage1's own thread, and an uncaught rejection is

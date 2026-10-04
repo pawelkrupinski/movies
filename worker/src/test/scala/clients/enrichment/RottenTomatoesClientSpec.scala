@@ -1,5 +1,7 @@
 package clients.enrichment
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
@@ -485,7 +487,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.endsWith("/m/the_north_2026")) {
           // The dated page answers only once the undated one already has (bounded, in case it is never asked).
-          undatedAnswered.await(5, java.util.concurrent.TimeUnit.SECONDS)
+          undatedAnswered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
           rtMoviePage(2026)
         }
         else if (url.endsWith("/m/the_north"))

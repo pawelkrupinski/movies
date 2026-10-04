@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import controllers._
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
@@ -20,7 +22,6 @@ import play.filters.gzip.GzipFilterComponents
 import services.auth.{AuthExchangeCodes, InMemoryAuthExchangeCodeStore}
 
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.util.Try
 
@@ -122,7 +123,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     csp            = new CspFilter()(using Components.materializer, Components.executionContext),
     gzip           = Components.gzipFilter)
 
-  override def afterAll(): Unit = Await.result(Components.actorSystem.terminate(), 10.seconds): Unit
+  override def afterAll(): Unit = Await.result(Components.actorSystem.terminate(), SpecTimeouts.Io): Unit
 
   private val users = TestAdminAction.adminRepository
   private val admin = users.findById(TestAdminAction.AdminUserId).get
@@ -204,7 +205,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     }
     val observed = EssentialAction { rh => reached.set(true); action(rh) }
     val result = Try(Await.result(
-      Filters(observed, chain*)(tagged).run(ByteString("{}")), 10.seconds))
+      Filters(observed, chain*)(tagged).run(ByteString("{}")), SpecTimeouts.Io))
     // A controller whose collaborators this spec leaves unwired throws once it is
     // past its own identity check; that it got that far is all a probe needs.
     val response = result.getOrElse(Results.InternalServerError)
@@ -363,9 +364,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
   "every route" should "never grant a foreign origin credentials, on a preflight or on the request itself" in {
     served.foreach { case (verb, path) =>
       val preflight = Await.result(Filters(Terminal, chain*)(FakeRequest("OPTIONS", concrete(path)).withHeaders(
-        "Origin" -> "https://evil.example", "Access-Control-Request-Method" -> verb)).run(), 10.seconds)
+        "Origin" -> "https://evil.example", "Access-Control-Request-Method" -> verb)).run(), SpecTimeouts.Io)
       val direct = Await.result(Filters(Terminal, chain*)(FakeRequest(verb, concrete(path)).withHeaders(
-        "Origin" -> "https://evil.example", "Cookie" -> "PLAY_SESSION=x")).run(), 10.seconds)
+        "Origin" -> "https://evil.example", "Cookie" -> "PLAY_SESSION=x")).run(), SpecTimeouts.Io)
       withClue(s"$verb $path: ") {
         preflight.header.headers.get("Access-Control-Allow-Credentials") shouldBe None
         direct.header.headers.get("Access-Control-Allow-Credentials") shouldBe None

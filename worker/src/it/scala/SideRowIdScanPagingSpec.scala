@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecTimeouts
+
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import models.{Showtime, SourceData}
@@ -9,7 +11,6 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -61,7 +62,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
         }
       }
     } finally {
-      Await.result(db.drop().toFuture(), 60.seconds)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       client.close()
     }
   }
@@ -91,7 +92,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       sent should have size 1
       sent.head.getDocument("filter").getDocument("_id").getArray("$in").size shouldBe 3
     } finally {
-      Await.result(db.drop().toFuture(), 60.seconds)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       client.close()
     }
   }
@@ -131,7 +132,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
         withClue(s"an unbounded batch: $cmd ")(cmd.getNumber("batchSize").intValue() should (be > 0 and be <= tools.MongoReplies.Default))
       }
     } finally {
-      Await.result(db.drop().toFuture(), 60.seconds)
+      Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       client.close()
     }
   }

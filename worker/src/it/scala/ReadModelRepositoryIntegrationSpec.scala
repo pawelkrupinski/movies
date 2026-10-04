@@ -168,7 +168,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       isolated.upsertScreening(CityScreening(_id = id, filmId = "__it-rm-checkpoint-film__",
         city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
       val watch = isolated.watchScreenings(s => { seen.add(s._id); () }, _ => (), from = checkpoint)
-      try eventually(seen.contains(id) shouldBe true, timeoutMs = 10000, pollMs = 100)
+      try eventually(seen.contains(id) shouldBe true, pollMs = 100)
       finally watch.foreach(_.close())
     }
 

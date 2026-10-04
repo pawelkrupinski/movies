@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -8,7 +10,6 @@ import tools.IsolatedMongoDatabase
 
 import java.util.Date
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The boot hydrate's enrichment phase (~13k stamps in prod, one per film per source) is now
@@ -28,10 +29,10 @@ class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools
       val at   = Date.from(tools.SpecClock.Pinned.instant()) // the hydrate loads every stamp, whatever its age
       ids.foreach(id => Await.result(
         coll.insertOne(Document("_id" -> id, "kind" -> FreshnessKind.DetailEnrich.label, "lastFetchedAt" -> at)).toFuture(),
-        10.seconds))
+        SpecTimeouts.Io))
       // Construction kicks off the two-phase hydrate on a daemon thread; batchSize 2 → 3 pages.
       val store = new MongoFreshnessStore(Some(db), hydrateBatchSize = 2)
-      Await.result(store.whenReady(FreshnessKind.DetailEnrich), 30.seconds) // restReady = enrichment phase done
+      Await.result(store.whenReady(FreshnessKind.DetailEnrich), SpecTimeouts.Io) // restReady = enrichment phase done
       ids.foreach(id => withClue(s"$id should have hydrated across page boundaries: ")(
         store.lastFetchedAt(id) shouldBe defined))
     }

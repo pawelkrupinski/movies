@@ -1,5 +1,7 @@
 package modules
 
+import tools.SpecTimeouts
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
@@ -11,7 +13,6 @@ import play.api.routing.{HandlerDef, Router}
 import play.api.test.FakeRequest
 import services.metrics.{PrometheusExposition, WebHttpMetrics}
 
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
@@ -61,14 +62,14 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
     def run(request: RequestHeader, upstream: Result = Results.Ok("ok")): Result = {
       val action = EssentialAction(_ => Accumulator.done(upstream))
-      Await.result(filter(action)(request).run(), 5.seconds)
+      Await.result(filter(action)(request).run(), SpecTimeouts.Io)
     }
 
     /** Runs a handler whose future FAILS, the way an unhandled controller
      *  exception reaches the filter chain (Play's error handler is outside it). */
     def runFailing(request: RequestHeader, error: Throwable): Unit = {
       val action = EssentialAction(_ => Accumulator.done(Future.failed[Result](error)))
-      Await.ready(filter(action)(request).run(), 5.seconds)
+      Await.ready(filter(action)(request).run(), SpecTimeouts.Io)
     }
 
     def exposition: String = PrometheusExposition.render(registry)
@@ -111,7 +112,7 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     val harness = new Harness()
     val result  = harness.run(routed("GET", "/poznan/", CityIndexPath), Results.Created("made"))
     result.header.status shouldBe 201
-    Await.result(result.body.consumeData, 5.seconds).utf8String shouldBe "made"
+    Await.result(result.body.consumeData, SpecTimeouts.Io).utf8String shouldBe "made"
   }
 
   // ── 2. Cardinality: the route PATTERN, never the raw URI ──────────────────

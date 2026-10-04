@@ -4,7 +4,6 @@ import org.mongodb.scala.{MongoDatabase, ObservableFuture, SingleObservableFutur
 import org.mongodb.scala.model.{Aggregates, Filters}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Reads a production database's enrichment coverage, restricted to the films that
@@ -46,7 +45,7 @@ object ProdCoverage {
           Aggregates.filter(Filters.gte("showtimes.dateTime", now)),
           Aggregates.group("$filmId")))
         .allowDiskUse(true)
-        .toFuture(), 10.minutes)
+        .toFuture(), SpecTimeouts.Run)
       .flatMap(_.get("_id").map(_.asString().getValue))
 
     // Exact-match the sampled slot keys — an `$in` on the keys prod already stores, so
@@ -67,7 +66,7 @@ object ProdCoverage {
         database.getCollection("movie_slots")
           .find(Filters.in("slotKey", keys.toSeq*))
           .projection(org.mongodb.scala.model.Projections.include("filmId"))
-          .toFuture(), 10.minutes)
+          .toFuture(), SpecTimeouts.Run)
         .flatMap(_.get("filmId").map(_.asString().getValue))
 
       // `sourceData` is a MAP keyed by the slot key, so it takes `$objectToArray` to
@@ -85,7 +84,7 @@ object ProdCoverage {
             Aggregates.filter(Filters.in("slots.k", keys.toSeq*)),
             Aggregates.group("$_id")))
           .allowDiskUse(true)
-          .toFuture(), 10.minutes)
+          .toFuture(), SpecTimeouts.Run)
         .flatMap(_.get("_id").map(_.asString().getValue))
 
       (migrated ++ embedded).toSet
@@ -97,7 +96,7 @@ object ProdCoverage {
       Filters.in("_id", screening*), Filters.ne(field, null), Filters.exists(field))
 
     def count(filter: org.mongodb.scala.bson.conversions.Bson): Int =
-      Await.result(movies.countDocuments(filter).toFuture(), 10.minutes).toInt
+      Await.result(movies.countDocuments(filter).toFuture(), SpecTimeouts.Run).toInt
 
     ProdCoverageBaseline(
       recordedAt     = now,

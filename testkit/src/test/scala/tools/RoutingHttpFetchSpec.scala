@@ -42,7 +42,7 @@ class RoutingHttpFetchSpec extends AnyFlatSpec with Matchers {
       }
     }
     start.countDown()
-    done.await(60, TimeUnit.SECONDS) shouldBe true
+    done.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     pool.shutdown()
 
     failures.asScala.toSeq shouldBe empty
@@ -62,7 +62,7 @@ class RoutingHttpFetchSpec extends AnyFlatSpec with Matchers {
         finally done.countDown()
       }
     }
-    done.await(60, TimeUnit.SECONDS) shouldBe true
+    done.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     pool.shutdown()
 
     fetch.postBodies should have size (Threads * CallsPerThread).toLong

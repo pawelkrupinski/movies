@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
@@ -8,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.ListingKey
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** The incremental model's families over Mongo: what a `replace` keeps comes back, and a take-up's
@@ -38,7 +39,7 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       }).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, label))
     try body(new MongoIdentityModelStore(db), () => commands.asScala.toSeq)
-    finally { Await.result(db.drop().toFuture(), 60.seconds); client.close() }
+    finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
   "the identity model's store" should "keep what a replace adds and drop what it removes" in withStore("model-store-round-trip") { (store, _) =>

@@ -1,5 +1,7 @@
 package clients.enrichment
 
+import tools.SpecTimeouts
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
@@ -699,7 +701,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.endsWith("/movie/the-odyssey-2026/")) {
           // The right film answers only once the wrong one already has (bounded, in case it is never asked).
-          wrongFilmAnswered.await(5, java.util.concurrent.TimeUnit.SECONDS)
+          wrongFilmAnswered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
           moviePage("The Odyssey", 2026, 89)
         }
         else if (url.endsWith("/movie/the-odyssey/")) try undatedMoviePage("The Odyssey") finally wrongFilmAnswered.countDown()

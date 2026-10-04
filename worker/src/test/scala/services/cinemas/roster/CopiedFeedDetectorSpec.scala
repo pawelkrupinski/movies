@@ -1,5 +1,7 @@
 package services.cinemas.roster
 
+import tools.SpecTimeouts
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaMovie, Country, KinoMikro, MikroBronowice, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -120,9 +122,9 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     val landing = new Thread(() => w.detector.venueScraped(pickwick, watched))
     w.detector.synchronized {                           // another venue's landing holds the detector
       landing.start()
-      read.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      read.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
     }
-    landing.join(10000)
+    landing.join(SpecTimeouts.Io.toMillis)
     w.detector.copiedPairs shouldBe empty
   }
 

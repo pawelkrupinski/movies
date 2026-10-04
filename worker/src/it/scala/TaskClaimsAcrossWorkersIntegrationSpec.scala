@@ -47,7 +47,7 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
         // Leases run to Now + 5min; a sweep at Now + 1min must re-queue nothing that is being worked.
         val reaper = () => { (1 to 20).foreach(_ => queues(0).reapExpiredLeases(Now.plusSeconds(60))); () }
         val claimers = for { (queue, w) <- queues.zipWithIndex; thread <- 1 to 3 } yield () => drain(queue, s"worker-$w-$thread")
-        successes(race(claimers :+ reaper, Some(round), joinTimeout = 60.seconds))
+        successes(race(claimers :+ reaper, Some(round)))
 
         withClue("a task two claimers held at once: ") { overlaps.asScala shouldBe empty }
         val ranTwice = runs.asScala.collect { case (key, n) if n.get != 1 => key -> n.get }

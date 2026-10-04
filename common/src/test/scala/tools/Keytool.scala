@@ -12,6 +12,6 @@ final class Keytool(javaHome: JavaHome) {
   def run(args: String*): Unit = {
     val process = new ProcessBuilder((javaHome.binary("keytool").toString +: args)*).redirectErrorStream(true).start()
     val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-    require(process.waitFor(60, TimeUnit.SECONDS) && process.exitValue() == 0, s"keytool ${args.head} failed: $output")
+    require(process.waitFor(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) && process.exitValue() == 0, s"keytool ${args.head} failed: $output")
   }
 }

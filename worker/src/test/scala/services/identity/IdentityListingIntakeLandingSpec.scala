@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecTimeouts
+
 import models.{Cinema, CinemaMovie, Helios, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -39,12 +41,12 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
     val bothReading = new CyclicBarrier(2)
     val landing     = new java.util.concurrent.atomic.AtomicBoolean(true)
     // Each venue's landing waits, mid-read, for the other's: landed one at a time, the second never arrives.
-    val accepted = new WatchedArchive(_ => if (landing.get) { bothReading.await(5, TimeUnit.SECONDS); () })
+    val accepted = new WatchedArchive(_ => if (landing.get) { bothReading.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); () })
     val target   = intake(accepted)
     val pool     = Executors.newFixedThreadPool(2)
     try Seq(Multikino -> listing(Multikino, "Lalka"), Helios -> listing(Helios, "Diuna"))
       .map { case (cinema, films) => pool.submit[Unit](() => land(target, cinema, films)) }
-      .foreach(_.get(10, TimeUnit.SECONDS))
+      .foreach(_.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
     finally { pool.shutdownNow(); () }
     landing.set(false)
     target.listingOf(Multikino).map(_.movie.title) shouldBe Seq("Lalka")

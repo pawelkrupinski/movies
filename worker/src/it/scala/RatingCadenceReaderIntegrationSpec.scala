@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecTimeouts
+
 import org.mongodb.scala.{Document, ObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +10,6 @@ import services.cadence.{MongoRatingCadenceReader, MongoRatingCadenceStore, Rati
 
 import java.time.Instant
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The cadence page's whole-collection read against real MongoDB: an incomplete keyset scan must
@@ -27,12 +28,12 @@ class RatingCadenceReaderIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
+  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, SpecTimeouts.Io)
 
   "MongoRatingCadenceReader.all" should "read every stored row" in {
     val store = new MongoRatingCadenceStore(Some(isolated.database))
     store.record("imdb|tmdb:1", Some("7.1"), Instant.parse("2026-10-01T00:00:00Z"))
-    _root_.tools.Eventually.eventually(reader.all().map(_._1) shouldBe Seq("imdb|tmdb:1"), timeoutMs = 10000)
+    _root_.tools.Eventually.eventually(reader.all().map(_._1) shouldBe Seq("imdb|tmdb:1"))
     store.close()
   }
 
