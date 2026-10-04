@@ -7,7 +7,9 @@ import services.movies.MovieCache
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.{AnswerLadder, DaemonExecutors}
 
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.ExecutionContextExecutorService
+import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 import scala.util.control.NonFatal
 
 /**
@@ -57,7 +59,12 @@ class ImdbIdResolver(
   // Cinemeta (Stremio catalogue) — the final rung. IMDb-keyed, indexes a broad
   // foreign/regional long tail; corroborated by title+year. Free, no key. None
   // disables it (default for specs that don't wire it).
-  cinemeta: Option[CinemetaClient] = None
+  cinemeta: Option[CinemetaClient] = None,
+  // Where a lookup that FAILED (IMDb or a backstop down, rate-limited, timing out) waits for its
+  // next attempt ([[ImdbIdResolver.retryDelay]]). Nothing else re-asks a missing id outside Poland
+  // (Filmweb's refresh does there), so without it one blip cost the film its IMDb rating for good.
+  retries: ScheduledExecutorService = DaemonExecutors.scheduler("imdb-id-retry"),
+  random: () => Double = () => scala.util.Random.nextDouble()
 ) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -103,17 +110,32 @@ class ImdbIdResolver(
    *  give), or when the search returns nothing — we'd rather leave the row imdbId-less than
    *  guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdMissing(title, year, searchTitle) => pool.submit(resolveOrWarn(title, year, searchTitle))
+    case ImdbIdMissing(title, year, searchTitle) => pool.submit(resolveOrRetry(title, year, searchTitle, attempt = 0))
   }
 
-  /** The event path has no caller to hand a failure to, so it says so here — a failed
-   *  lookup is not a "no match", and the row is searched again on its next trigger. */
-  private def resolveOrWarn(title: String, year: Option[Int], searchTitle: String): Unit =
+  /** The films whose failed lookup waits on [[retries]] — one wait per film, however many events
+   *  name it meanwhile, so an outage cannot multiply them. */
+  private val waiting = ConcurrentHashMap.newKeySet[(String, Option[Int])]()
+
+  /** The event path has no caller to hand a failure to, so it retries here: a failed lookup is not
+   *  a "no match", and the film is asked again on a growing backoff until a source answers or the
+   *  failure is itself the answer (`MovieService.failedDefinitively`: a 404, a deterministic error). */
+  private def resolveOrRetry(title: String, year: Option[Int], searchTitle: String, attempt: Int): Unit =
     try resolve(title, year, searchTitle)
     catch {
+      case NonFatal(failure) if ImdbIdResolver.definitive(failure) =>
+        logger.info(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed for good: ${failure.getMessage}")
       case NonFatal(failure) =>
-        logger.warn(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed, " +
-          s"not concluded: ${failure.getMessage}")
+        val delay = ImdbIdResolver.retryDelay(attempt, failure, random())
+        val scheduled = waiting.add(title -> year) && {
+          try {
+            retries.schedule((() => { waiting.remove(title -> year); pool.submit(resolveOrRetry(title, year, searchTitle, attempt + 1)) }): Runnable,
+              delay.toMillis, TimeUnit.MILLISECONDS)
+            true
+          } catch { case NonFatal(_) => waiting.remove(title -> year); false } // stopping: the next trigger asks again
+        }
+        logger.warn(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed, not concluded" +
+          (if (scheduled) s"; retrying in ${delay.toSeconds}s (attempt ${attempt + 1})" else "") + s": ${failure.getMessage}")
     }
 
   /** Synchronous resolution — public for tests/scripts (e.g. `Wiring.fullySyncOne`),
@@ -247,13 +269,35 @@ class ImdbIdResolver(
    *  and the replay boot drains BEFORE the staging fold publishes the
    *  `ImdbIdMissing` events that need this resolver.
    *
-   *  Lookups still queued at the budget are dropped: the row keeps no imdbId, so it is asked
-   *  again — on its next Filmweb rating refresh, the daily OMDb backfill sweep, or its next
-   *  TMDB (re-)identification — exactly as a failed lookup is. */
+   *  Lookups still queued at the budget, and failed ones waiting to be retried, are dropped: the row
+   *  keeps no imdbId, so it is asked again — on its next Filmweb rating refresh, the daily OMDb
+   *  backfill sweep, or its next TMDB (re-)identification. */
   override def stopWithin(budget: scala.concurrent.duration.FiniteDuration): Unit = {
+    retries.shutdownNow()
     val dropped = pool.stop(budget)
     if (dropped > 0) logger.info(s"ImdbIdResolver: stopped with $dropped id lookup(s) unfinished — dropped; each row is asked again on its next trigger.")
   }
 
   def stop(): Unit = stopWithin(tools.ManagedResources.Grace)
+}
+
+object ImdbIdResolver {
+  /** The first retry's wait; each failed retry doubles it, up to [[MaxRetryDelay]]. */
+  val FirstRetryDelay: FiniteDuration = 1.minute
+  /** The longest a failed lookup waits: an outage of a day is asked about a few times an hour, not a few hundred. */
+  val MaxRetryDelay: FiniteDuration = 6.hours
+
+  /** The wait before retry `attempt + 1`: the doubling backoff, with "equal jitter" (half fixed, half `random`) so
+   *  films an outage failed together do not come back together, and never shorter than the source's own
+   *  `Retry-After` (capped at [[MaxRetryDelay]]). */
+  def retryDelay(attempt: Int, failure: Throwable, random: Double): FiniteDuration = {
+    val backoff  = (FirstRetryDelay.toMillis << math.min(attempt, 20)).min(MaxRetryDelay.toMillis)
+    val jittered = backoff / 2 + (backoff / 2 * random).toLong
+    val asked    = (failure +: failure.getSuppressed.toSeq).collect { case e: tools.HttpStatusException => e.retryAfter }.flatten
+    (jittered +: asked.map(_.toMillis)).max.min(MaxRetryDelay.toMillis).millis
+  }
+
+  /** Whether a failed ladder is an ANSWER: every failure in it (the first and those suppressed beside it) one. */
+  def definitive(failure: Throwable): Boolean =
+    (failure +: failure.getSuppressed.toSeq).forall(services.movies.MovieService.failedDefinitively)
 }

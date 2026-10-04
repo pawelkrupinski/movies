@@ -34,6 +34,14 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
         throw new RuntimeException("ImdbIdResolver should not POST")
     })
 
+  /** An IMDb whose suggestion endpoint answers as `answer` does. */
+  private def imdbAnswering(answer: String => String): ImdbClient =
+    new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = answer(url)
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("ImdbIdResolver should not POST")
+    })
+
   private def loadFixture(path: String): String = {
     val stream = getClass.getResourceAsStream(path)
     require(stream != null, s"fixture not found: $path")
@@ -159,6 +167,69 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       cache.get(cache.keyOf("Ghost in the Shell | Kino Azji", Some(1995))).flatMap(_.imdbId) shouldBe
         Some("tt0113568")
     }
+  }
+
+  /** IMDb down when the film's `ImdbIdMissing` fired: the lookup failed, was logged and never asked again (nothing
+   *  else re-asks a missing id outside Poland), so the film never got its IMDb rating. A failed lookup waits on a
+   *  doubling backoff — one wait per film, however long the outage — and is asked again until IMDb answers. */
+  it should "retry a lookup IMDb failed, on a growing backoff, until IMDb answers" in {
+    val clock     = new tools.MutableClock(java.time.Instant.parse("2026-10-04T10:00:00Z"))
+    val scheduler = new tools.ManualScheduler(clock)
+    val asked     = new java.util.concurrent.atomic.AtomicInteger()
+    @volatile var down = true
+    val row   = MovieRecord(tmdbId = Some(1024), data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val resolver = new ImdbIdResolver(cache, imdbAnswering { url =>
+      asked.incrementAndGet()
+      if (down) throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
+      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+    }, retries = scheduler, random = () => 0.0)
+    val bus = new InProcessEventBus()
+    bus.subscribe(resolver.onImdbIdMissing)
+    bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
+    bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II")) // a second trigger waits on the same retry
+    resolver.drain()
+    val key = cache.keyOf("Mortal Kombat 2", Some(2026))
+    cache.get(key).flatMap(_.imdbId) shouldBe None
+
+    // An hour of outage: the waits double (30 s, 1, 2, 4, 8, 16 min with no jitter), so a handful of asks, not a loop.
+    val beforeOutage = asked.get
+    (1 to 60).foreach { _ => scheduler.advance(java.time.Duration.ofMinutes(1)); resolver.drain() }
+    val retried = asked.get - beforeOutage
+    retried should (be > 0 and be <= 6 * 2) // each attempt asks the suggestion endpoint for the title's forms
+    cache.get(key).flatMap(_.imdbId) shouldBe None
+
+    down = false
+    scheduler.advance(java.time.Duration.ofHours(1)); resolver.drain()
+    cache.get(key).flatMap(_.imdbId) shouldBe Some("tt17490712")
+  }
+
+  // A deterministic failure (TaskWorker.isDeterministic) replays on every retry: it is the answer, not an outage.
+  it should "not retry a lookup whose failure would only replay" in {
+    val clock     = new tools.MutableClock(java.time.Instant.parse("2026-10-04T10:00:00Z"))
+    val scheduler = new tools.ManualScheduler(clock)
+    val asked     = new java.util.concurrent.atomic.AtomicInteger()
+    val row   = MovieRecord(tmdbId = Some(1024))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Nothing Known", Some(2026), row)), normalizer = titleNormalizer),
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val resolver = new ImdbIdResolver(cache, imdbAnswering { url => asked.incrementAndGet(); throw new IllegalArgumentException(s"malformed query $url") },
+      retries = scheduler, random = () => 0.0)
+    resolver.onImdbIdMissing(ImdbIdMissing("Nothing Known", Some(2026), "Nothing Known"))
+    resolver.drain()
+    val first = asked.get
+    scheduler.advance(java.time.Duration.ofDays(1)); resolver.drain()
+    asked.get shouldBe first
+  }
+
+  "ImdbIdResolver.retryDelay" should "double from a minute to six hours, jittered, and wait at least what the source asked" in {
+    val failure = new RuntimeException("down")
+    ImdbIdResolver.retryDelay(0, failure, random = 1.0) shouldBe ImdbIdResolver.FirstRetryDelay
+    ImdbIdResolver.retryDelay(0, failure, random = 0.0) shouldBe ImdbIdResolver.FirstRetryDelay / 2
+    ImdbIdResolver.retryDelay(3, failure, random = 1.0) shouldBe ImdbIdResolver.FirstRetryDelay * 8
+    ImdbIdResolver.retryDelay(40, failure, random = 1.0) shouldBe ImdbIdResolver.MaxRetryDelay
+    val throttled = new tools.HttpStatusException(429, "GET", "u", retryAfter = Some(scala.concurrent.duration.Duration(20, "minutes")))
+    ImdbIdResolver.retryDelay(0, throttled, random = 0.0) shouldBe scala.concurrent.duration.Duration(20, "minutes")
   }
 
   it should "no-op when the suggestion endpoint returns nothing usable" in {
