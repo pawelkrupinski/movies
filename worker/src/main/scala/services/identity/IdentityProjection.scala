@@ -104,13 +104,35 @@ final class IdentityProjection(
   slots:       CinemaSlotBuilder,
   tokens:      ScreeningTokens,
   metrics:     IdentityProjectionMetrics,
-  clock:       Clock
+  clock:       Clock,
+  fingerprints: VenueSlotFingerprints
 ) extends Logging {
 
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
-  private val slotMemo = new VenueSlotMemo
+  private val slotMemo = new VenueSlotMemo(VenueSlotMemo.environment(normalizer))
+  /** The fingerprints the store holds, as far as this worker knows: none read yet until the first projection. */
+  private var recordedFingerprints: Option[Set[Long]] = None
+
+  /** Seed the memo, before the first projection after a boot, with the slots the last run kept. */
+  private def seedSlotMemo(): Unit = if (recordedFingerprints.isEmpty) {
+    val recorded = Try(fingerprints.all()).fold(e => { logger.warn("identity projection: reading the venue slot fingerprints failed; " +
+      "the first projection builds every slot", e); Set.empty[Long] }, identity)
+    slotMemo.seed(recorded)
+    recordedFingerprints = Some(recorded)
+  }
+
+  /** Record the fingerprints of the slots the memo now keeps, writing only those that moved. One that fails is
+   *  tried again by the next projection; one left behind is a true fact, costing only its space. */
+  private def recordSlotFingerprints(): Unit = {
+    val known = recordedFingerprints.getOrElse(Set.empty)
+    val now   = slotMemo.fingerprints
+    if (now != known) Try(fingerprints.update(now -- known, known -- now)) match {
+      case Success(_) => recordedFingerprints = Some(now)
+      case Failure(e) => logger.warn("identity projection: recording the venue slot fingerprints failed; the next projection retries", e)
+    }
+  }
 
   /** One projection. Throws only what reading its inputs throws. */
   def tick(): ProjectionTick = synchronized {
@@ -136,9 +158,11 @@ final class IdentityProjection(
             val at    = clock.instant()
             // Exactly the listings the resolution decided: one that reached the intake after the
             // model's snapshot is projected by the next tick, never left out of its film by this one.
+            phases("seed")(seedSlotMemo())
             val draft = phases("draft")(IdentityProjectionPlan.draft(corpus.filter(row => held(row.listing.key)), resolution, stored,
               counters, normalizer, slots, tokens, at, rows, slotMemo))
             val slotCounts = slotMemo.endTick()
+            phases("fingerprints")(recordSlotFingerprints())
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
               s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")

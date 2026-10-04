@@ -54,6 +54,7 @@ object CollectionRetention {
     "identity_traces"         -> Sweep("MongoIdentityTraceStore"),
     "identity_model_families" -> Sweep("MongoIdentityModelStore"),
     "identity_model_meta"     -> KeptForever("the model store's meta documents, a fixed set"),
+    "identity_slot_fingerprints" -> Sweep("MongoVenueSlotFingerprints"),
     "identity_pins"           -> KeptForever("operator pins, removed by hand"),
     "identity_film_ids"       -> KeptForever("a film's id must never be reused, so its counter row outlives the film"),
     "identity_proposals"      -> Unswept("one per title key a language model was asked about; a title no venue lists keeps it. " +

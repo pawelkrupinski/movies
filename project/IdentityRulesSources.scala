@@ -18,6 +18,9 @@ object IdentityRulesSources {
     "scala/services/identity/IncrementalResolver.scala",
     "scala/services/identity/IdentityModelStore.scala")
 
+  /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`). */
+  val VenueSlotRoots: Set[String] = Set("scala/services/identity/IdentityProjectionPlan.scala")
+
   def closure(roots: Set[String], depends: String => Set[String]): Set[String] = {
     var seen = roots; var frontier = roots
     while (frontier.nonEmpty) { val next = frontier.flatMap(depends) -- seen; seen ++= next; frontier = next }
@@ -35,7 +38,7 @@ object IdentityRulesSources {
     val sourceOf    = relations.classes.reverseMap.map { case (cls, srcs) => cls -> srcs.map(rel) }
     val known       = relations.allSources.map(rel).toSet
     val missing     = roots -- known
-    require(missing.isEmpty, s"identity rules roots not compiled: ${missing.mkString(", ")}")
+    require(missing.isEmpty, s"versioned roots not compiled: ${missing.mkString(", ")}")
     val rootClasses = relations.classes.all.collect { case (src, cls) if roots(rel(src)) => cls }.toSet
     val classes     = closure(rootClasses, cls => relations.internalClassDep.forward(cls))
     (classes.flatMap(c => sourceOf.getOrElse(c, Set.empty[String])) ++ roots).toSeq.sorted

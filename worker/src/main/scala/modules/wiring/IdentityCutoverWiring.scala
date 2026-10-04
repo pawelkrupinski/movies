@@ -2,7 +2,7 @@ package modules.wiring
 
 import modules.WorkerWiring
 import services.identity.{CutoverTaskHandlers, FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
-  InMemoryFilmIdCounterStore, MongoFilmIdCounterStore}
+  InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.TaskHandler
@@ -52,7 +52,12 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool),
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityCutover.forCountry(country.code),
-      clock       = clock)
+      clock       = clock,
+      fingerprints = venueSlotFingerprints)
+
+  /** The venue slots the projection last kept (`identity_slot_fingerprints`), in memory without a database. */
+  lazy val venueSlotFingerprints: VenueSlotFingerprints =
+    mongoConnection.database.fold[VenueSlotFingerprints](new InMemoryVenueSlotFingerprints)(new MongoVenueSlotFingerprints(_))
 
   /** `handlers` with the old identity path's task types completed unrun. */
   def identityPathHandlers(handlers: Seq[TaskHandler]): Seq[TaskHandler] = CutoverTaskHandlers.of(handlers)

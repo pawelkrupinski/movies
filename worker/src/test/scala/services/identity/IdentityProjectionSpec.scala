@@ -33,12 +33,16 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
 
   private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
                             venues: Seq[Cinema] = programme.keys.toSeq,
-                            listingsRead: () => Unit = () => (), announceFails: Boolean = false) {
+                            listingsRead: () => Unit = () => (), announceFails: Boolean = false,
+                            val archive: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
+                            val accepted: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
+                            val filmIds: InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
+                            val fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints) {
+    /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
+     *  listings, the projection's slot memo) built afresh. */
+    def restarted: World = new World(repository, venues, listingsRead, announceFails, archive, accepted, filmIds, fingerprints)
     val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
-    val archive    = new InMemoryScrapeArchiveRepository
-    val accepted   = new InMemoryScrapeArchiveRepository
-    val filmIds    = new InMemoryFilmIdCounterStore
     val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ScrapeLandingMetrics.noop)
     val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
@@ -52,7 +56,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
         def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()
         def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
-      }, clock = clock)
+      }, clock = clock, fingerprints = fingerprints)
 
     def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
       archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))
@@ -135,7 +139,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.scrape(programme)
     val phases = w.projection.tick().phases
-    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "draft", "guard", "details", "finish", "compare", "writes")
+    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "seed", "draft", "fingerprints", "guard", "details", "finish", "compare", "writes")
     phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
     phases.map(_.allocatedBytes).sum should be > 0L
   }
@@ -167,6 +171,55 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     tick.slotMisses shouldBe ((1, 0, 0))   // the one venue's rows moved; no prior slot, no new listing
     tick.written shouldBe 1
     w.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
+  }
+
+  // A worker restarts on every deploy, and its memo with it: the first projection after a boot rebuilt every venue
+  // slot of the country (a US boot: ~24 s, ~7.3 GB, against ~6 s, ~760 MB a steady tick).
+  it should "build no venue slot again after a restart, when nothing moved while the worker was down" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick()
+    val steady = w.projection.tick()
+    w.projection.tick().slotsBuilt shouldBe 0
+    val booted = w.restarted
+    val tick   = booted.projection.tick()
+    tick.slotsBuilt shouldBe 0
+    tick.slotsReused shouldBe steady.slotsBuilt
+    tick.wroteNothing shouldBe true
+    booted.rowsRead shouldBe empty
+    booted.showtimes shouldBe allShowtimes
+    booted.projection.tick().slotsBuilt shouldBe 0
+  }
+
+  it should "rebuild after a restart only the venue whose listing changed while the worker was down" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick()
+    val steady = w.projection.tick()
+    w.projection.tick()
+    val booted = w.restarted
+    booted.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    val tick = booted.projection.tick()
+    tick.slotsBuilt shouldBe 1
+    tick.slotsReused shouldBe steady.slotsBuilt - 1
+    tick.written shouldBe 1
+    booted.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
+  }
+
+  it should "rebuild after a restart a venue whose stored slot moved while the worker was down, though its listing did not" in {
+    val w = new World
+    w.scrape(programme)
+    w.projection.tick(); w.projection.tick(); w.projection.tick()
+    // Something else wrote the stored film's slot at one venue: what it holds is no longer what the listing builds.
+    val obcy = w.repository.findAll().find(_.title == "Obcy").get
+    w.repository.upsert(obcy.id, CacheKey.stored(obcy.title, obcy.key(normalizer)), obcy.record.copy(data = obcy.record.data.map {
+      case (source @ CinemaShowing(Rialto, _), slot) => source -> slot.copy(filmUrl = Some("https://example.org/obcy"))
+      case other => other
+    }))
+    val booted = w.restarted
+    val tick   = booted.projection.tick()
+    tick.slotsBuilt shouldBe 1
+    tick.written shouldBe 1
   }
 
   it should "write in full a film whose stored showtimes went astray, though its slots came from the memo" in {

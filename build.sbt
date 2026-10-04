@@ -147,22 +147,26 @@ lazy val common = (project in file("common"))
     // from — the sources the compiler records the resolver and its store as reaching, and the resources none but other
     // code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's families; one that
     // changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
+    // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`): a deploy that
+    // changes none of what builds a slot keeps the fingerprints a restarted worker reuses its stored slots by.
     Compile / resourceGenerators += Def.task {
       val main     = baseDirectory.value / "src" / "main"
       val analysis = (Compile / compile).value
-      val sources  = IdentityRulesSources.of(analysis, IdentityRulesSources.Roots)
-      val resources = IdentityRulesSources.resources(main, sources)
-      val paths    = sources ++ resources
-      val digest   = java.security.MessageDigest.getInstance("SHA-256")
-      paths.foreach { path =>
-        digest.update(path.getBytes("UTF-8"))
-        digest.update(IO.readBytes(main / path))
+      Seq("identity-rules" -> IdentityRulesSources.Roots, "venue-slot" -> IdentityRulesSources.VenueSlotRoots).flatMap { case (name, roots) =>
+        val sources  = IdentityRulesSources.of(analysis, roots)
+        val resources = IdentityRulesSources.resources(main, sources)
+        val paths    = sources ++ resources
+        val digest   = java.security.MessageDigest.getInstance("SHA-256")
+        paths.foreach { path =>
+          digest.update(path.getBytes("UTF-8"))
+          digest.update(IO.readBytes(main / path))
+        }
+        val version = (Compile / resourceManaged).value / s"$name-version.txt"
+        val listed  = (Compile / resourceManaged).value / s"$name-sources.txt"
+        IO.write(version, digest.digest.map("%02x".format(_)).mkString)
+        IO.write(listed, paths.mkString("\n"))
+        Seq(version, listed)
       }
-      val version = (Compile / resourceManaged).value / "identity-rules-version.txt"
-      val listed  = (Compile / resourceManaged).value / "identity-rules-sources.txt"
-      IO.write(version, digest.digest.map("%02x".format(_)).mkString)
-      IO.write(listed, paths.mkString("\n"))
-      Seq(version, listed)
     }.taskValue,
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(

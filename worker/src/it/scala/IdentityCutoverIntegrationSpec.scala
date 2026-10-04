@@ -68,7 +68,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def same(a: Set[String], b: Set[String], what: String): Unit =
     withClue(s"$what — only in the first:\n  ${(a -- b).toSeq.sorted.mkString("\n  ")}\nonly in the second:\n  ${(b -- a).toSeq.sorted.mkString("\n  ")}\n")(a shouldBe b)
 
-  private final case class Pass(w: ArchiveReplayWiring, tick: ProjectionTick)
+  private final case class Pass(w: ArchiveReplayWiring, tick: ProjectionTick, store: ConvergenceStorage)
 
   /** The venues the corpus lists films at. */
   private def venuesOf(w: ArchiveReplayWiring): Set[Cinema] = w.archivedListings.collect { case (c, fs) if fs.nonEmpty => c }.toSet
@@ -84,7 +84,8 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
 
   private def cutPass(country: Country, label: String, seed: Long, halfFirst: Boolean): Pass = {
-    val w = wiring(country, storage(country, label))
+    val store = storage(country, label)
+    val w = wiring(country, store)
     val scrapers = arrivals(w, new Random(seed))
     if (halfFirst) {
       publish(w, scrapers.map(s => PreScrapedCinemaScraper.replaying(s.cinema, w.archivedListings(s.cinema).take(
@@ -92,7 +93,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       w.projectIdentity()
     }
     publish(w, scrapers)
-    Pass(w, settled(w))
+    Pass(w, settled(w), store)
   }
 
   /** Projections until one writes nothing — the rest production's projection interval reaches as the
@@ -152,6 +153,21 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         CutoverProperties.cannotLinked(p.tick, listings(p.w)) shouldBe empty
         CutoverProperties.lostShowtimes(published(p.w), p.tick, p.w.movieRepository.findAll()) shouldBe empty
       }
+    }
+
+    // A worker restarts on every deploy, and the projection's slot memo with it: the first projection after a boot
+    // rebuilt every venue slot (a US boot: ~24 s and ~7.3 GB against ~6 s and ~760 MB a steady tick). Over real
+    // Mongo, so the stored slots it reuses are what the cache reads back, not what the last run held.
+    it should "build no venue slot in its first projection after a restart, when nothing moved while it was down" in {
+      val p      = passes(country).head
+      p.w.identityProjection.tick().wroteNothing shouldBe true
+      val booted = wiring(country, p.store)
+      val tick   = booted.identityProjection.tick()
+      info(s"[$cc] after a restart: venue slots reused ${tick.slotsReused}, built ${tick.slotsBuilt}")
+      tick.refused shouldBe None
+      tick.slotsReused should be > 0
+      tick.slotsBuilt shouldBe 0
+      tick.wroteNothing shouldBe true
     }
   }
 }

@@ -212,4 +212,21 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       plan(rng.shuffle(lalka ++ obcy), shuffled) shouldBe once
     }
   }
+
+  // A slot memo's fingerprints outlive the worker (`VenueSlotFingerprints`): one that read a roster venue by its
+  // identity hash — a `UsCinema` is an instance, a new one each JVM — would never match after a restart.
+  "A venue slot's fingerprint" should "be the same for the same venue in another JVM, where its roster instance is another" in {
+    def venue = new models.UsCinema("Regal Union Square", "Union Square")
+    def cm(cinema: Cinema) = CinemaMovie(Movie("Dune", releaseYear = Some(2021)), cinema, None, Some("https://regal/dune"), None, Nil, Nil,
+      Seq(Showtime(start, None)))
+    val (one, other) = (venue, venue)
+    one should not be theSameInstanceAs(other)
+    ProjectedListing.rowDigest(cm(one)) shouldBe ProjectedListing.rowDigest(cm(other))
+    val key = VenueSlotMemo.Key(one.displayName, 1, 2, 3, 1)
+    def lean(cinema: Cinema) = Seq((CinemaShowing(cinema, "dune"): models.Source) ->
+      services.movies.ShowtimesDigest.stripSlot(SourceData(title = Some("Dune"), showtimes = cm(cinema).showtimes)))
+    VenueSlotMemo.fingerprint(7L, key, lean(one)) shouldBe VenueSlotMemo.fingerprint(7L, key, lean(other))
+    VenueSlotMemo.fingerprint(7L, key, lean(one)) should not be VenueSlotMemo.fingerprint(8L, key, lean(one))
+    VenueSlotMemo.fingerprint(7L, key.copy(rows = 9), lean(one)) should not be VenueSlotMemo.fingerprint(7L, key, lean(one))
+  }
 }

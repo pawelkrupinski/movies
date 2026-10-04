@@ -14,7 +14,13 @@ import java.time.Instant
 final case class ProjectedListing(listing: Listing, row: Int, showtimes: Int)
 
 object ProjectedListing {
-  def of(listing: Listing, row: CinemaMovie): ProjectedListing = ProjectedListing(listing, row.copy(showtimes = Nil).##, row.showtimes.##)
+  def of(listing: Listing, row: CinemaMovie): ProjectedListing = ProjectedListing(listing, rowDigest(row), row.showtimes.##)
+
+  /** A digest of everything on `row` but its showtimes, the same in every JVM — the slot memo's fingerprints outlive
+   *  the worker ([[VenueSlotFingerprints]]) — so its venue is read by name: a roster venue (`UsCinema`) is an
+   *  instance, hashed by identity. */
+  def rowDigest(row: CinemaMovie): Int =
+    row.copy(showtimes = Nil).productIterator.map { case cinema: Cinema => cinema.displayName; case field => field }.toSeq.##
 }
 
 /** How the films moved between two projections: previous films absorbed into another (`merges`),
@@ -88,10 +94,19 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
  * the cache keeps them, so the memo holds a fraction of the corpus; a film that turns out to differ
  * from what is stored is built in full before it is written ([[ProjectionDraft.complete]]).
  * Only what the last tick used is kept.
+ *
+ * Across a restart the memo is gone, but what it held is in the store: each kept slot set is also a
+ * [[VenueSlotMemo.fingerprint]] — what it was built from, under which build of the slot code
+ * (`environment`), and what it came to — which the projection persists ([[VenueSlotFingerprints]]) and
+ * [[seed]]s a fresh memo with. Until its first projection closes, a memo that misses takes the slots the
+ * listings' previous film holds at the venue when their fingerprint was recorded: they are what the
+ * listings would build. A venue whose rows, prior slots or stored slots moved while the worker was down
+ * fingerprints otherwise, and is built.
  */
-class VenueSlotMemo {
-  private var previous = Map.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
-  private val current  = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
+class VenueSlotMemo(environment: Long = 0L) {
+  private var previous = Map.empty[VenueSlotMemo.Key, VenueSlotMemo.Entry]
+  private val current  = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, VenueSlotMemo.Entry]
+  private var recorded = Set.empty[Long]
   private var hits     = 0
   private var builds   = 0
   // Why a build was needed, for the projection's log: the same venue's same listings with other rows, with other
@@ -100,37 +115,51 @@ class VenueSlotMemo {
   private val seenNow    = scala.collection.mutable.HashMap.empty[(String, Int), VenueSlotMemo.Key]
   private var missRows, missPriors, missNew = 0
 
-  /** The lean slots the last projection built for `key`, if any; kept for the next. */
-  private[identity] def lookup(key: VenueSlotMemo.Key): Option[Seq[(Source, SourceData)]] = synchronized {
-    seenNow((key.venue, key.keys)) = key
-    previous.get(key) match {
-      case found @ Some(lean) => current(key) = lean; hits += 1; found
-      case None =>
-        seenBefore.get((key.venue, key.keys)) match {
-          case Some(before) if before.rows != key.rows => missRows += 1
-          case Some(_)                                 => missPriors += 1
-          case None                                    => missNew += 1
-        }
-        None
+  /** The fingerprints a previous run of the worker kept, for this memo's first projection to reuse stored slots by. */
+  def seed(fingerprints: Set[Long]): Unit = synchronized { recorded = fingerprints }
+
+  /** The lean slots the last projection built for `key`, if any — or, before this memo's first projection
+   *  closes, the slots stored at the venue (`stored`) if a previous run recorded them as built from `key`; kept
+   *  for the next. */
+  private[identity] def lookup(key: VenueSlotMemo.Key, stored: => Option[Seq[(Source, SourceData)]] = None): Option[Seq[(Source, SourceData)]] =
+    synchronized {
+      seenNow((key.venue, key.keys)) = key
+      previous.get(key).orElse(Option.when(recorded.nonEmpty)(stored).flatten.map(_.map { case (source, slot) =>
+        source -> ShowtimesDigest.stripSlot(slot) }).map(lean => VenueSlotMemo.Entry(lean, fingerprint(key, lean)))
+        .filter(entry => recorded(entry.fingerprint))) match {
+        case Some(entry) => current(key) = entry; hits += 1; Some(entry.lean)
+        case None =>
+          seenBefore.get((key.venue, key.keys)) match {
+            case Some(before) if before.rows != key.rows => missRows += 1
+            case Some(_)                                 => missPriors += 1
+            case None                                    => missNew += 1
+          }
+          None
+      }
     }
-  }
 
   /** `lean`, built this projection for `key`: kept for the next when `keep` (it was built from the rows `key` names). */
   private[identity] def store(key: VenueSlotMemo.Key, lean: Seq[(Source, SourceData)], keep: Boolean): Unit = synchronized {
-    if (keep) current(key) = lean
+    if (keep) current(key) = VenueSlotMemo.Entry(lean, fingerprint(key, lean))
     builds += 1
   }
+
+  private def fingerprint(key: VenueSlotMemo.Key, lean: Seq[(Source, SourceData)]): Long = VenueSlotMemo.fingerprint(environment, key, lean)
 
   /** Close a projection: keep only the slots it used, and say how many it took from the memo and built. */
   def endTick(): (Int, Int) = synchronized {
     previous = current.toMap
     current.clear()
+    recorded = Set.empty
     seenBefore = seenNow.toMap
     seenNow.clear()
     val counts = (hits, builds)
     hits = 0; builds = 0
     counts
   }
+
+  /** The fingerprints of the slots the last projection kept: what a restarted worker's memo is seeded with. */
+  def fingerprints: Set[Long] = synchronized(previous.valuesIterator.map(_.fingerprint).toSet)
 
   /** Why the last projection's builds were needed: (rows moved, prior slots moved, listings new to the venue). */
   def lastMisses(): (Int, Int, Int) = synchronized {
@@ -146,10 +175,32 @@ object VenueSlotMemo {
    *  `ScrapeListing.prepare` and `CinemaSlotBuilder.build` that is not fixed for the worker. */
   final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int)
 
+  /** Slots the memo holds, and their fingerprint. */
+  private final case class Entry(lean: Seq[(Source, SourceData)], fingerprint: Long)
+
   /** A memo of nothing: every film's slots built. */
   def none: VenueSlotMemo = new VenueSlotMemo {
-    override private[identity] def lookup(key: Key): Option[Seq[(Source, SourceData)]] = None
+    override private[identity] def lookup(key: Key, stored: => Option[Seq[(Source, SourceData)]]): Option[Seq[(Source, SourceData)]] = None
   }
+
+  /** The build of the code a slot is made by, as a version: the build's digest of the sources the compiler records
+   *  this file as reaching (`venue-slot-version.txt`, generated by `build.sbt` as `IdentityRules.codeVersion` is). A
+   *  deploy that changes none of them keeps every recorded fingerprint. */
+  lazy val codeVersion: String =
+    Option(getClass.getResourceAsStream("/venue-slot-version.txt")).fold("unknown") { stream =>
+      try new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim finally stream.close()
+    }
+
+  /** What a worker's slots are made under besides their inputs: the slot code's build and the title rules. */
+  def environment(normalizer: TitleNormalizer): Long = ContentHash.of((codeVersion, normalizer.rules.toString))
+
+  /** Slots `lean` were built from `key` under `environment`, as one number the same in every JVM: every field of
+   *  every slot but the showtimes, which their digest stands for. */
+  private[identity] def fingerprint(environment: Long, key: Key, lean: Seq[(Source, SourceData)]): Long =
+    ContentHash.of((environment, key, lean.map { case (source, slot) =>
+      (source match { case showing: CinemaShowing => s"${showing.cinema.displayName}|${showing.titleKey}"; case other => other.toString },
+        slot.copy(showtimes = Nil, showtimesDigest = None, showtimeStartMinutes = None), ShowtimesDigest.slotDigest(slot))
+    }.sortBy(_._1)))
 
   /** The fields `CinemaSlotBuilder.build` carries forward from a prior slot. */
   private[identity] def carried(slot: SourceData): Int =
@@ -250,7 +301,17 @@ object IdentityProjectionPlan {
     val build: (Cinema, Seq[ListingKey], Seq[CinemaMovie]) => Seq[(Source, SourceData)] =
       (cinema, keys, fetched) => buildVenue(cinema, keys, fetched, previousOf, storedById, normalizer, slots, tokens)
     val venueSlots = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
-    val pending    = planned.flatMap(_._4).filter(group => memo.lookup(group.key).fold(true) { lean => venueSlots(group.key) = lean; false })
+    // The slots the stored film of a group's listings holds at its venue: what a restarted worker's memo reuses
+    // when they are recorded as built from the group's key.
+    def storedAt(group: VenueGroup): Option[Seq[(Source, SourceData)]] =
+      group.rows.flatMap(r => previousOf.get(r.listing.key)).map(_.id).distinct match {
+        case Seq(id) => storedById.get(id).map(_.record.data.toSeq.collect {
+          case (showing: CinemaShowing, slot) if showing.cinema == group.cinema => (showing: Source) -> slot
+        })
+        case _ => None
+      }
+    val pending    = planned.flatMap(_._4).filter(group =>
+      memo.lookup(group.key, storedAt(group)).fold(true) { lean => venueSlots(group.key) = lean; false })
     pending.groupBy(_.cinema).toSeq.sortBy(_._1.displayName).grouped(RowBatch).foreach { batch =>
       val fetched = rowsOf(batch.map(_._1).toSet)
       batch.foreach { case (cinema, groups) =>
@@ -351,7 +412,7 @@ object IdentityProjectionPlan {
     listed.forall { l =>
       byKey.get(l.listing.key).exists { rows =>
         val first = if (rows.sizeIs == 1) rows.head else rows.minBy(cm => Listing.of(cinema, cm, normalizer))
-        first.copy(showtimes = Nil).## == l.row &&
+        ProjectedListing.rowDigest(first) == l.row &&
           (if (rows.sizeIs == 1) rows.head.showtimes.## else rows.map(_.showtimes.##).sorted.##) == l.showtimes
       }
     }
