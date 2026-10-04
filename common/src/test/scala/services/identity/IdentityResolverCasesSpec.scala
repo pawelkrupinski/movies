@@ -785,6 +785,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     fallbackOf(listing(KinoMuza, "Kuźma", year = Some(1999)), Seq(kuzma, older)) shouldBe Some("tt9800002")
   }
 
+  /** A fallback film whose IMDb record is not answered yet is only its suggestion's title and year — no credit, no
+   *  running time to rule it out — so nothing falls back to it until its record is filed (the fill asks it; its filing
+   *  re-resolves the family). Prod's first ticks after the deploy held every IMDb record unasked. */
+  it should "fall back to no film whose IMDb record is not answered yet" in {
+    val kuzma = F(9900001, "Kuźma", 2025, "Anna Nowak", 88, imdbOnly = true)
+    val table = new FilmTable(Seq(kuzma), normalizer)
+    val unanswered = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean                  = table.hasDetail(l)
+      def detail(l: Listing): Answer[Option[DetailFacts]] = table.detail(l)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (FallbackIds.isFallback(id)) Answer.Unknown else table.film(id)
+    }
+    val bare = listing(KinoMuza, "Kuźma", year = Some(2025))
+    val d = IdentityResolver.resolve(Seq(bare), unanswered, normalizer, weights).decisionOf(bare.key)
+    withClue(d.render)((d.film, d.fallback) shouldBe ((None, None)))
+  }
+
   /** UK Cineworld's "Royal Ballet and Opera: Tosca" ×123 (Oliver Mears) fell back to IMDb's record of the 2025/26
    *  production — which TMDB holds too, as "Royal Ballet & Opera 2025/26: Tosca", unlinked to IMDb's id — while its own
    *  runtime left that TMDB film below the cut. A TMDB film the title names, or crediting its director, that no fact rules

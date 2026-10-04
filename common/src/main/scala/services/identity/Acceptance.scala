@@ -401,7 +401,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  TMDB rule: a fallback record has no search rank or popularity to lend, and a wrong film is worse than none (measured
    *  2026-09-30: every correct rating page for a film TMDB lacks came from a row publishing a year or a director). */
   def fallback(ranked: Seq[Scored]): Option[Scored] = {
-    val titled = eligibleOf(ranked).filter(_.category("title").exists(IdentityMeasures.Rivalling))
+    // on the source's own record only — one parsed from IMDb's answer always holds its principal credits — never the
+    // title and year a suggestion gave before the record was filed, which no credit or running time could rule out
+    val titled = eligibleOf(ranked).filter(scored => scored.category("title").exists(IdentityMeasures.Rivalling) && scored.candidate.film.directors.isDefined)
     titled.headOption.filter(best => !IdentityMeasures.billsTwoWorks(best.listing) && !contradicted(best) && corroborated(best) &&
       !best.category("director").contains("different") && titled.drop(1).forall(favours(best, _)))
   }
