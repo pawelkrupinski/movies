@@ -39,7 +39,7 @@ case class FilmDetail(
    *  several clients prefer over the detail-page poster). */
   def mergeInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = merged(slot, screeningTokens, authoritative = false)
 
-  /** As [[mergeInto]], but for a RE-fetch of a detail page we have read before —
+  /** As [[mergeInto]], but for what a RE-read of a page states differently from its last read ([[changedSince]]) —
    *  where the detail's own fields WIN over what the slot already holds.
    *
    *  `mergeInto`'s fill-only rule is right the first time (the listing is the
@@ -57,6 +57,27 @@ case class FilmDetail(
    *  clients deliberately prefer from the listing. They are re-scraped every tick
    *  anyway, so they cannot go stale the way a once-fetched detail can. */
   def refreshInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = merged(slot, screeningTokens, authoritative = true)
+
+  /** What a re-read of the page says that its previous read, `before`, did not: each field this read
+   *  states differently, every other field left empty. Re-reading a page that says what it said
+   *  learns nothing, so it must overrule nothing: the slot keeps what the listing carries, and a
+   *  re-read every refresh window that refreshed the WHOLE page over it rewrote the listing's
+   *  canonical countries and its genres with the page's raw ones — undone by the next listing
+   *  build, redone by the next re-read. */
+  def changedSince(before: FilmDetail): FilmDetail = {
+    def opt[A](now: Option[A], was: Option[A]): Option[A] = if (now == was) None else now
+    def seq[A](now: Seq[A], was: Seq[A]): Seq[A]          = if (now == was) Seq.empty else now
+    FilmDetail(
+      synopsis       = opt(synopsis, before.synopsis),
+      cast           = seq(cast, before.cast),
+      director       = seq(director, before.director),
+      runtimeMinutes = opt(runtimeMinutes, before.runtimeMinutes),
+      releaseYear    = opt(releaseYear, before.releaseYear),
+      originalTitle  = opt(originalTitle, before.originalTitle),
+      countries      = seq(countries, before.countries),
+      genres         = seq(genres, before.genres),
+      ageRating      = opt(ageRating, before.ageRating))
+  }
 
   /** `authoritative` flips each detail-owned field from "fill the gap" to "the
    *  page just told us, believe it" — never overwriting with nothing either way. */

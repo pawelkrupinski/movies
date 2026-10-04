@@ -31,9 +31,9 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
-  private def seededCache(title: String, listedYear: Option[Int] = None) = {
+  private def seededCache(title: String, listedYear: Option[Int] = None, listedCountries: Seq[String] = Nil) = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val bare = CinemaMovie(Movie(title, releaseYear = listedYear), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
+    val bare = CinemaMovie(Movie(title, releaseYear = listedYear, countries = listedCountries), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
     services.movies.ListingSeed.land(cache, KinoApollo, Seq(bare))
@@ -302,8 +302,9 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val had   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151), director = Seq("Wojciech Has"))))
     val task  = taskFor("kino-apollo", cache, "Lalka", had)
+    val pages = new InMemoryVenuePageStore
 
-    new EnrichDetailsHandler(Map("kino-apollo" -> had), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock)
+    new EnrichDetailsHandler(Map("kino-apollo" -> had), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
       .handle(task) shouldBe Done
     cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
       .flatMap(_.releaseYear) shouldBe Some(1968)
@@ -312,7 +313,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
     val has = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(releaseYear = Some(2026), runtimeMinutes = Some(162), director = Seq("Maciej Kawalski"))))
-    new EnrichDetailsHandler(Map("kino-apollo" -> has), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock)
+    new EnrichDetailsHandler(Map("kino-apollo" -> has), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
       .handle(task) shouldBe Done
 
     val slot = cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
@@ -334,8 +335,9 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val gone  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val task  = taskFor("kino-apollo", cache, "Lalka", gone, year = Some(2026))
+    val pages = new InMemoryVenuePageStore
 
-    new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock)
+    new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
       .handle(task) shouldBe Done
 
     // Days later the page comes back. Age the 404's own stamp so the due gate lets
@@ -345,11 +347,55 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // own year has to survive.
     val back = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151), director = Seq("Wojciech Has"))))
-    new EnrichDetailsHandler(Map("kino-apollo" -> back), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock)
+    new EnrichDetailsHandler(Map("kino-apollo" -> back), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
       .handle(task) shouldBe Done
 
     val slot = cache.get(cache.keyOf("Lalka", Some(2026))).flatMap(_.cinemaData.get(KinoApollo))
     withClue(s"slot=$slot: ")(slot.flatMap(_.releaseYear) shouldBe Some(2026))
+  }
+
+  // Convergence run 37165536574: the next day re-read every venue page, and each re-read
+  // rewrote the slot with the page's own words over the listing's — Kino Atlantic's
+  // canonical "Holandia" back to the page's "Niderlandy", undone by the next listing build,
+  // redone by the next re-read. A page that says what it said before has told us nothing.
+  it should "leave the listing's own fields alone when a re-read finds the page unchanged" in {
+    val cache = seededCache("Mariinka", listedCountries = Seq("Belgia", "Niderlandy", "Niemcy"))
+    val fresh = new InMemoryFreshnessStore
+    val pages = new InMemoryVenuePageStore
+    val page  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(countries = Seq("Belgia", "Niderlandy", "Niemcy"), genres = Seq("Dokument"), runtimeMinutes = Some(95))))
+    val task  = taskFor("kino-apollo", cache, "Mariinka", page)
+    def handler = new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, fresh,
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
+    def slot = cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo))
+
+    // The listing's countries as the slot builder canonicalised them — not the page's spelling.
+    val listed = slot.map(_.countries)
+    listed should not be Some(Seq("Belgia", "Niderlandy", "Niemcy"))
+    handler.handle(task) shouldBe Done
+    slot.map(_.countries)          shouldBe listed
+    slot.flatMap(_.runtimeMinutes) shouldBe Some(95)
+
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
+    handler.handle(task) shouldBe Done
+    withClue("an unchanged page must not overrule the listing: ")(slot.map(_.countries) shouldBe listed)
+  }
+
+  // A cut-over country asks per PAGE, and the page's read stamp is written by the read itself, before
+  // the merge: read back as "seen before", it made a page's FIRST read authoritative over the listing.
+  it should "fill, not overrule, on a page's first read when asked per page" in {
+    val cache = seededCache("Lalka", listedYear = Some(2026))
+    val page  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151))))
+    val key   = cache.keyOf("Lalka", Some(2026))
+    val task  = Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.pageDedupKey("kino-apollo", "http://ref"),
+      EnrichDetailsTasks.payload(page, key, "http://ref"), attempts = 1)
+    new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock).handle(task) shouldBe Done
+
+    val slot = cache.get(key).flatMap(_.cinemaData.get(KinoApollo))
+    withClue(s"slot=$slot: ")(slot.flatMap(_.releaseYear) shouldBe Some(2026))
+    slot.flatMap(_.runtimeMinutes) shouldBe Some(151)
   }
 
   // venue_pages is the ONE place a page's facts are written: the handler reads the page through it,

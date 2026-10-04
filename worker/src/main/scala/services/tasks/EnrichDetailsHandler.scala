@@ -6,7 +6,8 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
 import services.UptimeMonitor
-import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.venuepages.VenuePage
 
 import java.time.{Clock, Instant}
 
@@ -30,16 +31,9 @@ object EnrichDetailsTasks {
       YearKey  -> key.year.map(_.toString).getOrElse("")
     )
 
-  /** The freshness key marking that this detail page was READ, as opposed to merely
-   *  asked for. Distinct from the task's own dedup key because the `Gone` branch
-   *  stamps that one to stop a 404 re-enqueueing every tick — so it answers "we asked
-   *  recently", never "we have data". The handler reads this one to decide whether a
-   *  fetch is a RE-read, and therefore authoritative over the listing. */
-  def readMarker(dedupKey: String): String = s"$dedupKey|read"
-
   /** The PAGE's own stamps: `page` of `group` was read into venue_pages, or found gone. Keyed by the
    *  page, never by the film row it was on: a page's answer is the page's, wherever its listing goes. */
-  def pageRead(group: String, page: String): String = readMarker(pageDedupKey(group, page))
+  def pageRead(group: String, page: String): String = s"${pageDedupKey(group, page)}|read"
   /** The dedup (and due) key of a detail task asked per PAGE (`DetailPages.PerPage`). */
   def pageDedupKey(group: String, page: String): String = s"detail-page|$group|$page"
   def pageGone(group: String, page: String): String = s"detail-page|$group|$page|gone"
@@ -121,6 +115,7 @@ class EnrichDetailsHandler(
         val ref = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
         // The page is read into venue_pages, stamped and announced there, and recorded on /uptime;
         // this handler lands it on the row.
+        val prior   = pages.get(services.venuepages.VenuePageKey(enricher.detailGroup, ref)).map(_.outcome)
         val outcome = reader.read(enricher, ref)
         services.venuepages.DetailUptime.record(uptime, enricher, label, outcome)
         outcome match {
@@ -190,40 +185,34 @@ class EnrichDetailsHandler(
                 else if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
                 else cinemaSlots                                  // decorated edition(s) → merge into the real slot(s)
               }
-            // Have we read this detail page BEFORE? Checked before `markFresh`
-            // below stamps it. A re-read is authoritative for the fields the page
-            // owns (`FilmDetail.refreshInto`): a venue that reuses a URL for a
-            // different film — Kino Pionier's `/event/lalka`, Has's 1968 picture
-            // then the 2026 one — otherwise keeps the first film's year and
-            // runtime for ever, because the fill-only merge has nothing to fill.
-            // The FIRST read stays fill-only, so the listing keeps out-ranking the
-            // detail page exactly as before wherever both speak.
-            // Not `lastFetchedAt(key)`: the `Gone` branch above stamps that same key to
-            // stop the re-enqueue livelock, so a page that 404s once and later returns
-            // would read as "seen before" and make its FIRST real read authoritative —
-            // letting the detail page overwrite the listing's year and re-key the row.
-            // A 404 is not a read. Only a successful one stamps this marker.
-            val isRefresh = freshness.lastFetchedAt(EnrichDetailsTasks.readMarker(key)).isDefined
+            // What did this page say when it was last read (`venue_pages`, as it stood before
+            // this read)? The fields it now states DIFFERENTLY are authoritative
+            // (`FilmDetail.refreshInto`): a venue that reuses a URL for a different film —
+            // Kino Pionier's `/event/lalka`, Has's 1968 picture then the 2026 one — otherwise
+            // keeps the first film's year and runtime for ever, because the fill-only merge
+            // has nothing to fill. Everything else only fills gaps (`mergeInto`), so the
+            // listing keeps out-ranking the page wherever both speak — on a first read (a
+            // page never read, or read only as gone: a 404 is not a read), and on every
+            // re-read that says what the page said before. Not a freshness marker: the
+            // reader stamps the page read before this handler merges, so a marker read here
+            // made every read — the first included — authoritative, and a re-read every
+            // refresh window rewrote the listing's own countries and genres with the page's.
+            val changed = prior match {
+              case Some(VenuePage.Read(before)) => detail.changedSince(before)
+              case _                            => FilmDetail()
+            }
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             // Clearing `detailPending` releases the row to the read model now that its
-            // detail (director/originalTitle/year) is in.
-            // `putIfPresent` is a no-op on a row that was re-keyed between enqueue and
-            // pickup. Recording a READ for a merge that did not happen would make the
-            // NEXT fetch authoritative over the listing — the very harm the marker is
-            // here to prevent — so the marker follows the write, not the fetch.
-            val merged = cache.putIfPresent(rowKey, current =>
+            // detail (director/originalTitle/year) is in. `putIfPresent` is a no-op on a
+            // row that was re-keyed between enqueue and pickup.
+            cache.putIfPresent(rowKey, current =>
               current.copy(
                 data          = targets.foldLeft(current.data)((d, tgt) =>
-                                  d + (tgt -> {
-                                    val existing = d.getOrElse(tgt, SourceData())
-                                    if (isRefresh) detail.refreshInto(existing, screeningTokens)
-                                    else detail.mergeInto(existing, screeningTokens)
-                                  })),
+                                  d + (tgt -> detail.mergeInto(changed.refreshInto(d.getOrElse(tgt, SourceData()), screeningTokens), screeningTokens))),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
-            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
             Done
         }
     }
