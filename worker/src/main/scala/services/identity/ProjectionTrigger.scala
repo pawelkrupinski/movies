@@ -47,6 +47,12 @@ final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.De
     if (pending.forall(_.getDelay(TimeUnit.MILLISECONDS) > in)) schedule(in)
   }
 
+  /** Run `body` once, `after` from now, on this trigger's scheduler — no claim, no window: a worker's first projection,
+   *  which no other projection may wait behind ([[IdentityProjection.tickChanged]] waits for it). */
+  def once(after: FiniteDuration)(body: => Unit): Unit = {
+    scheduler.schedule((() => body): Runnable, after.toMillis, TimeUnit.MILLISECONDS); ()
+  }
+
   private def schedule(inMillis: Long): Unit = {
     pending.foreach(_.cancel(false))
     pending = Some(scheduler.schedule((() => fire()): Runnable, math.max(0L, inMillis), TimeUnit.MILLISECONDS))
