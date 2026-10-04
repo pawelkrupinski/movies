@@ -386,9 +386,9 @@ trait TestWiring extends WorkerWiring {
     drainables.foreach(_.drain())
 
   /** Drain the enrichment worker pools so every `ImdbIdMissing` published during
-   *  the scrape (and the id write-backs it drives) is processed end to end. Uses
-   *  the same `cascadeDrainOrder` production shutdown does — single source of
-   *  truth for the producer→consumer ordering.
+   *  the scrape (and the id write-backs it drives) is processed end to end, in the
+   *  wiring's `cascadeDrainOrder` (producer→consumer). Production shutdown no longer
+   *  reads it: `managedResources` stops every service newest first.
    *
    *  DRAIN, not `stop()`. This is called once per projection — and `stop()` shuts
    *  the executors down for good. So the very first call ended the id-recovery

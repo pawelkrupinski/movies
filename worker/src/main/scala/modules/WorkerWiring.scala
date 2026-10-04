@@ -507,8 +507,9 @@ class WorkerWiring(
     logger.info(boot.summary)
   }
 
-  /** Event-cascade drain order, producer→consumer (see monolith comment). Only the async stage
-   *  needs draining: the IMDb-id resolver. Rating refresh is synchronous (queue-driven), so the
+  /** Event-cascade drain order, producer→consumer, for the harnesses' `drainServices`
+   *  (`stop()` stops every service through [[managedResources]]). Only the async stage needs
+   *  draining: the IMDb-id resolver. Rating refresh is synchronous (queue-driven), so the
    *  *Ratings own no pool. */
   def cascadeDrainOrder: Seq[Drainable] = Seq(imdbIdResolver)
 
