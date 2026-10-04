@@ -24,8 +24,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
     // 2-day-old listing (the site still shows yesterday's screening, the
     // snapshot test runs 2 days after its capture date, …) is this year,
     // not next. 6 months is the sweet spot.
-    Try(ddMM.trim.split("\\.").take(2).map(_.toInt)).toOption.collect { case Array(day, month) => (day, month) }
-      .flatMap { case (day, month) => ScraperParse.monthDay(day, month) }
+    Try { val parts = ddMM.trim.split("\\."); ScraperParse.monthDay(parts(0).toInt, parts(1).toInt) }.toOption.flatten
       .flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
 
   // The listing scrape returns just the listing — title, director, runtime,
