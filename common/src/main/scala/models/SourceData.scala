@@ -119,10 +119,14 @@ case class SourceData(
   // ("Fiona Shaw, Daisy Edgar-Jones" one day, "Daisy Edgar-Jones, Fiona Shaw" the next,
   // Kinoteka) is not a change worth a write or a churn report, while a cast that gains or
   // loses a name still is. The stored list keeps the source's billing order.
+  // The same object, or the same billing, needs no sets: building two per comparison was ~10% of a US identity
+  // projection's CPU (JFR 2026-10-04), almost all of it comparing slots whose casts were the very same list.
   override def equals(that: Any): Boolean = that match {
+    case o: SourceData if o eq this => true
     case o: SourceData =>
       title == o.title && rawTitle == o.rawTitle && originalTitle == o.originalTitle &&
-      englishTitle == o.englishTitle && synopsis == o.synopsis && SourceData.castSet(cast) == SourceData.castSet(o.cast) &&
+      englishTitle == o.englishTitle && synopsis == o.synopsis &&
+      ((cast eq o.cast) || cast == o.cast || SourceData.castSet(cast) == SourceData.castSet(o.cast)) &&
       director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
       countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
       filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language && ageRating == o.ageRating &&
@@ -156,7 +160,8 @@ object SourceData {
 
   /** A cast as the names it holds, billing order aside: what "did this cast change" compares.
    *  Trimmed only — a respelled name is a change the page should show. */
-  def castSet(cast: Iterable[String]): Set[String] = cast.iterator.map(_.trim).filter(_.nonEmpty).toSet
+  def castSet(cast: Iterable[String]): Set[String] =
+    if (cast.isEmpty) Set.empty else cast.iterator.map(_.trim).filter(_.nonEmpty).toSet
 
   /** Which fields a merge actually filled in — for logging that can tell a detail page
    *  that contributed something from one that contributed nothing. The two used to look

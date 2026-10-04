@@ -44,4 +44,23 @@ class CastChangeDetectionSpec extends AnyFlatSpec with Matchers {
     SlotsRepository.slotOps(record(billed).data, record(rebilled).data) shouldBe empty
     SlotsRepository.slotOps(record(billed).data, record(grown).data).keySet shouldBe Set(slot.displayName)
   }
+
+  it should "compare two slots holding the same cast list without building a set of it" in {
+    // Comparing slot against slot is the identity projection's hottest work, and building two cast sets per comparison was
+    // ~10% of a US projection's CPU — almost every comparison of a cast against the very same list.
+    var walked = 0
+    val names  = Seq("Daisy Edgar-Jones", "Fiona Shaw")
+    val cast = new scala.collection.immutable.Seq[String] {
+      def apply(i: Int): String = names(i)
+      def length: Int = names.length
+      def iterator: Iterator[String] = { walked += 1; names.iterator }
+    }
+    val a = SourceData(title = Some("Lalka"), cast = cast)
+    val b = a.copy(title = Some("Lalka"))
+    a shouldBe b
+    a shouldBe a
+    walked shouldBe 0
+    // and a re-billing is still no change
+    a shouldBe a.copy(cast = names.reverse)
+  }
 }
