@@ -221,7 +221,10 @@ class CaffeineMovieCache(
   val stringPool: StringPool = new StringPool,
   // The backstop rehydrate (`KINOWO_CACHE_REHYDRATE_SECONDS`, resolved by the worker's root);
   // the compiled-in 6 hours for specs.
-  rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours)
+  rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours),
+  // The boot's other whole-corpus readers, handed the boot hydrate's read so the boot reads
+  // the corpus once (see [[BootCorpusReader]]). None for specs and a lone cache.
+  bootReaders: Seq[BootCorpusReader] = Nil
 ) extends MovieCache with Stoppable with Logging {
 
   // `recordStats` so the resident corpus can report its hit ratio — a read served
@@ -341,11 +344,20 @@ class CaffeineMovieCache(
   bootHydrate()
 
   private def bootHydrate(): Unit = {
+    // The first complete, non-empty read goes to the boot readers once the cache holds it. An empty
+    // answer is not offered, so it cannot pass for the corpus: at boot it is as likely a Mongo that
+    // is not ready yet as an empty store, and the readers read again for themselves.
+    var offered = false
+    def offer(rows: Seq[StoredMovieRecord]): Unit = if (!offered && rows.nonEmpty) {
+      offered = true
+      bootReaders.foreach(_.bootCorpus(Some(rows)))
+    }
     var attempt = 0
-    while (rehydrate() == 0 && attempt < bootHydrateMaxAttempts.value) {
+    while (rehydrateFrom(offer) == 0 && attempt < bootHydrateMaxAttempts.value) {
       attempt += 1
       Thread.sleep(bootHydrateRetry.value.toMillis) // an interrupt (shutdown mid-boot) ends the construction
     }
+    if (!offered) bootReaders.foreach(_.bootCorpus(None))
   }
 
   // Key by the title's OWN form — the same input the display vote
@@ -702,7 +714,10 @@ class CaffeineMovieCache(
   /** Put every stored row and evict the keys gone from the store; how many rows it put. An incomplete
    *  read (a page the scan could not read is skipped whole) changes nothing — no row put, none
    *  evicted: its missing films are not gone. The next backstop tick reads again. */
-  def rehydrate(): Int = {
+  def rehydrate(): Int = rehydrateFrom(_ => ())
+
+  /** [[rehydrate]], handing a complete read to `onRead` once the cache holds it. */
+  private def rehydrateFrom(onRead: Seq[StoredMovieRecord] => Unit): Int = {
     // Additive sync — never blank the cache mid-rehydrate. The backstop
     // tick (see `start()` below) runs while readers walk `snapshot()`;
     // an `invalidateAll()` window would briefly show them an empty corpus. Instead: put every Mongo row (cache's
@@ -785,6 +800,7 @@ class CaffeineMovieCache(
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()
+    onRead(rows)
     rows.size
   }
 

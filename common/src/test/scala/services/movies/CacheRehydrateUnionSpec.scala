@@ -97,4 +97,42 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     cache.coldRetryTick()
     repository.reads.get() shouldBe readsAtBoot
   }
+
+  /** Records what the boot hydrate hands the boot's other corpus readers. */
+  private final class RecordingBootReader extends BootCorpusReader {
+    val offers = scala.collection.mutable.ListBuffer.empty[Option[Seq[StoredMovieRecord]]]
+    def bootCorpus(read: Option[Seq[StoredMovieRecord]]): Unit = offers += read
+  }
+
+  // A boot read the whole corpus three times before (the hydrate, the projector's missing-card check,
+  // the census's first pass). The hydrate's read is handed to the other two instead — once, whole.
+  "the boot hydrate" should "hand its complete read to the boot readers, once" in {
+    val reader = new RecordingBootReader
+    val cache  = new CaffeineMovieCache(repositoryOf(base, decorated), normalizer = titleNormalizer,
+      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+    reader.offers.map(_.map(_.map(_.title).toSet)) shouldBe Seq(Some(Set(base.title, decorated.title)))
+    cache.rehydrate()                                      // a backstop read is not the boot's
+    reader.offers should have size 1
+  }
+
+  // A failed read is not an empty corpus: a reader handed `Some(Nil)` would publish zero films or heal nothing.
+  it should "hand over nothing but a None when its read failed, so each reader reads for itself" in {
+    val reader = new RecordingBootReader
+    new CaffeineMovieCache(new FailingReadRepository(base), normalizer = titleNormalizer,
+      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+    reader.offers shouldBe Seq(None)
+  }
+
+  // At boot an empty answer is as likely a Mongo not ready yet as an empty store (the retry above).
+  it should "not hand over an empty answer as the corpus, but the first whole read a retry makes" in {
+    val reader = new RecordingBootReader
+    new CaffeineMovieCache(flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5),
+      bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer,
+      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+    reader.offers.map(_.map(_.map(_.title))) shouldBe Seq(Some(Seq(base.title)))
+
+    val empty = new RecordingBootReader
+    new CaffeineMovieCache(repositoryOf(), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(empty))
+    empty.offers shouldBe Seq(None)
+  }
 }

@@ -36,7 +36,10 @@ class WorkerCorpusScan(
   // Counts the passes that could not read the whole corpus. Noop for tests that only
   // care about the gauges; the worker injects the Prometheus-backed sink.
   metrics:        CorpusScanMetrics = CorpusScanMetrics.noop,
-  stopwatch:      Stopwatch         = Stopwatch.System
+  stopwatch:      Stopwatch         = Stopwatch.System,
+  // The first pass, when the boot hydrate's read gave it (see [[BootCensus]]). The schedule then
+  // starts a whole interval later, since that pass is the reading its first tick would have taken.
+  bootCensus:     Option[BootCensus] = None
 ) extends services.Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("worker-corpus-scan")
@@ -48,10 +51,32 @@ class WorkerCorpusScan(
    *  An incomplete pass publishes NOTHING and is counted + logged instead. The gauges
    *  keep their last complete values, which is the honest reading: this pass learned
    *  nothing about the corpus. */
-  def sample(): WorkerCorpusScan.Pass = {
-    val samplers = collectors.map(c => (WorkerCorpusScan.nameOf(c), c.startSample(), stopwatch.total()))
-    val pass     = stopwatch.start()
-    val complete = repository.foreachRecord { stored =>
+  def sample(): WorkerCorpusScan.Pass = WorkerCorpusScan.pass(collectors, metrics, stopwatch)(repository.foreachRecord)
+
+  // The first scan on the scan's own thread, after the boot's heavy stretch — never on the boot
+  // thread, where it held a US boot for 43 s (see `SampledCensus`). A whole interval out when the
+  // boot hydrate's read already gave the first pass (see [[BootCensus]]).
+  def start(): Unit = {
+    scheduler.scheduleAtFixedRate(
+      () => Try(sample()).recover { case e => logger.warn(s"worker-corpus-scan sample tick failed: ${e.getMessage}") },
+      (if (bootCensus.exists(_.passTaken)) sampleInterval else SampledCensus.firstDelay(SampledCensus.Slots.CorpusScan, sampleInterval)).toSeconds,
+      sampleInterval.toSeconds, TimeUnit.SECONDS)
+    ()
+  }
+
+  def stop(): Unit = scheduler.shutdown()
+}
+
+object WorkerCorpusScan extends Logging {
+  /** One census pass over the rows `scan` delivers: every row fanned out to all `collectors`, then
+   *  each publishes. An incomplete scan publishes NOTHING and is counted and logged instead. The
+   *  gauges keep their last complete values, which is the honest reading: the pass learned nothing
+   *  about the corpus. */
+  def pass(collectors: Seq[CorpusMetricsCollector], metrics: CorpusScanMetrics, stopwatch: Stopwatch)
+          (scan: (StoredMovieRecord => Unit) => tools.ScanOutcome): Pass = {
+    val samplers = collectors.map(c => (nameOf(c), c.startSample(), stopwatch.total()))
+    val started  = stopwatch.start()
+    val complete = scan { stored =>
       val row = new CorpusRow(stored)
       samplers.foreach { case (_, sampler, time) => time(sampler.accept(row)) }
     }
@@ -61,24 +86,11 @@ class WorkerCorpusScan(
         "rather than publishing a partial count as if the corpus had shrunk.")
     }
     samplers.foreach { case (_, sampler, time) => time(sampler.publish(complete.isComplete)) }
-    val result = WorkerCorpusScan.Pass(pass.elapsed, samplers.map { case (name, _, time) => name -> time.elapsed })
+    val result = Pass(started.elapsed, samplers.map { case (name, _, time) => name -> time.elapsed })
     logger.info(result.summary)
     result
   }
 
-  // The first scan on the scan's own thread, after the boot's heavy stretch — never on the boot
-  // thread, where it held a US boot for 43 s (see `SampledCensus`).
-  def start(): Unit = {
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"worker-corpus-scan sample tick failed: ${e.getMessage}") },
-      SampledCensus.firstDelay(SampledCensus.Slots.CorpusScan, sampleInterval).toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
-}
-
-object WorkerCorpusScan {
   /** One pass's time, and each collector's share of it (its `accept`s and its `publish`).
    *  The rest is the stitched read itself — on US 12–14 s of a 25–31 s pass (2026-09-30),
    *  with most of what remained unaccounted for until this split it by collector. */
@@ -112,6 +124,35 @@ object WorkerCorpusScan {
         "is the only sign those gauges have gone stale, and stale is what they are.")
       .labelNames("country")
       .register(registry)
+}
+
+/** The corpus census's first pass, made over the cache's boot hydrate read rather than a read of its
+ *  own. On worker-us that read was 12.5 s of a boot, two minutes after the hydrate had read the same
+ *  rows (2026-10-04). The pass runs on a thread of its own, so the boot thread does not wait for the
+ *  collectors, and the rows are released when it ends. With no complete boot read, nothing runs, and
+ *  [[WorkerCorpusScan]]'s first tick reads as before.
+ *
+ *  It is separate from the scan because the hydrate runs while the worker's composition root is
+ *  still being built, before the census is built. Its collectors are the gauges only. The
+ *  projector's learning takes the same rows through `BootCorpusStudy` instead, since the projector
+ *  has not seeded yet and would refuse them here. */
+final class BootCensus(collectors: Seq[CorpusMetricsCollector], metrics: CorpusScanMetrics = CorpusScanMetrics.noop,
+                       stopwatch: Stopwatch = Stopwatch.System) extends services.movies.BootCorpusReader with Logging {
+  @volatile private var taken = false
+
+  /** Whether the boot hydrate's read was handed over, so this made the census's first pass. */
+  def passTaken: Boolean = taken
+
+  def bootCorpus(read: Option[Seq[StoredMovieRecord]]): Unit = read.foreach { rows =>
+    taken = true
+    val thread = new Thread(() => {
+      Try(WorkerCorpusScan.pass(collectors, metrics, stopwatch)(f => { rows.foreach(f); tools.ScanOutcome.complete }))
+        .recover { case e => logger.warn(s"worker-corpus-scan boot pass failed: ${e.getMessage}") }
+      ()
+    }, "worker-corpus-scan-boot")
+    thread.setDaemon(true)
+    thread.start()
+  }
 }
 
 /** Where [[WorkerCorpusScan]] reports a pass that fell short of the whole corpus.

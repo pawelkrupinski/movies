@@ -61,10 +61,14 @@ trait MetricsWiring { self: WorkerWiring =>
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan = managedResources.stopping(
     new WorkerCorpusScan(movieRepository,
-      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics,
+      censusCollectors :+
         // …and teaches the read-model projector the rows it has not projected since boot.
-        new services.metrics.ProjectorLearning(readModelProjector, titleNormalizer)),
-      metrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code)))
+        new services.metrics.ProjectorLearning(readModelProjector, titleNormalizer),
+      metrics = corpusScanMetrics, bootCensus = Some(bootCensus)))
+  private lazy val censusCollectors = Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics)
+  private lazy val corpusScanMetrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code)
+  // The census's first pass, over the cache's boot hydrate read (see BootCensus).
+  lazy val bootCensus: services.metrics.BootCensus = new services.metrics.BootCensus(censusCollectors, corpusScanMetrics)
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: RatingRunCensus = managedResources.stopping(

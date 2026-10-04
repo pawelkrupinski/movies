@@ -72,6 +72,34 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     gauge(text, WorkerShowtimesMetrics.Name, s"""city="wroclaw",country="pl"""") shouldBe Some(1.0)
   }
 
+  // The boot hydrate has just read every film whole; the census's first pass used to read them all
+  // again two minutes later (12.5 s on worker-us, 2026-10-04). It now takes the hydrate's read.
+  it should "make its boot pass over the hydrate's read, scanning nothing itself" in {
+    import org.scalatest.concurrent.Eventually.{eventually, timeout}
+    val repository = new CountingRepository(rows)
+    val registry   = new PrometheusRegistry()
+    val boot = new BootCensus(Seq(
+      new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock = _root_.tools.SpecClock.Pinned),
+      new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)))
+
+    boot.bootCorpus(Some(repository.findAll()))
+    eventually(timeout(_root_.tools.SpecTimeouts.Settle)) {
+      gauge(PrometheusExposition.render(registry), WorkerShowtimesMetrics.Name, s"""city="poznan",country="pl"""") shouldBe Some(2.0)
+    }
+    gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name, s"""country="pl",subset="${Subset.Total}"""") shouldBe Some(2.0)
+    repository.scans.get() shouldBe 0
+    boot.passTaken shouldBe true
+  }
+
+  // No complete boot read: nothing published from it, and the schedule's first tick reads as before.
+  it should "publish nothing when the boot hydrate had no complete read to hand over" in {
+    val registry = new PrometheusRegistry()
+    val boot = new BootCensus(Seq(new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock = _root_.tools.SpecClock.Pinned)))
+    boot.bootCorpus(None)
+    boot.passTaken shouldBe false
+    gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name, s"""country="pl",subset="${Subset.Total}"""") shouldBe None
+  }
+
   it should "run one scan per tick, not one per collector, on every subsequent sample" in {
     val repository = new CountingRepository(rows)
     val registry   = new PrometheusRegistry()

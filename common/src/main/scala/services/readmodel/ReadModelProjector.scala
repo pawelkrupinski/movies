@@ -79,7 +79,10 @@ class ReadModelProjector(
   derivationHistory: Seq[Derivation] = ReadModelDerivation.History,
   // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
   // — the card as projected — unless the worker's composition root switches it on.
-  ratingGate: services.identity.RatingGate = services.identity.RatingGate.off
+  ratingGate: services.identity.RatingGate = services.identity.RatingGate.off,
+  // What the boot reads take from the cache's boot hydrate in place of a corpus read of their own
+  // (see [[BootCorpusStudy]]). Without one, they read the corpus themselves.
+  bootStudy: Option[BootCorpusStudy] = None
 ) extends Stoppable with Logging {
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
@@ -1078,7 +1081,9 @@ class ReadModelProjector(
     // first sweep heals what the missing-card heal would have: costly, but the projector runs.
     try {
       seedFromReadModel()
-      healMissingCards()
+      val study = bootStudy.flatMap(_.take())
+      healMissingCards(study)
+      study.foreach(learnAtBoot)
     } catch {
       case scala.util.control.NonFatal(exception) =>
         logger.error(s"read model: the boot reads failed (${exception.getClass.getSimpleName}: ${exception.getMessage}) — " +
@@ -1176,22 +1181,32 @@ class ReadModelProjector(
    *  unvouched — a change at its card is re-read whole, and the content check rewrites it. A row the
    *  stream has projected meanwhile is left alone: it knows better. */
   def learn(partition: ReadModelProjection.Partition): Boolean = lock.synchronized {
-    val rowId = partition.stored.id.value
     // Before the seed, the memo has no row to vouch: learning now would mark the row known with every
     // venue unvouched. Refused, so the caller does not count the pass as having offered every row.
-    if (seeded && partition.stored.record.readyToProject && !lastGroups.contains(rowId)) {
-      val cards = partition.filmIds.zip(partition.venuesAll)
-      cards.foreach { case (card, venues) =>
-        val vouched = venues.flatMap { venue =>
-          lastScreenings.get(card, venue._id).filter(row => row.input.isEmpty && row.output == venue.screening.##)
-            .map(row => venue._id -> row.copy(input = Some(venue.inputHash)))
-        }
-        lastScreenings.updateRows(card, vouched)
-      }
-      lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
-        cards.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
-    }
+    if (seeded && partition.stored.record.readyToProject && !lastGroups.contains(partition.stored.id.value))
+      learnFrom(partition.stored.id.value, Lesson.of(partition))
     seeded
+  }
+
+  /** Caller holds `lock`. */
+  private def learnFrom(rowId: String, lesson: Lesson): Unit = if (!lastGroups.contains(rowId)) {
+    lesson.cards.foreach { case (card, venues) =>
+      val vouched = venues.flatMap { venue =>
+        lastScreenings.get(card, venue.id).filter(row => row.input.isEmpty && row.output == venue.output)
+          .map(row => venue.id -> row.copy(input = Some(venue.input)))
+      }
+      lastScreenings.updateRows(card, vouched)
+    }
+    lastGroups.update(rowId, RowGroups(lesson.anchorKey, lesson.cardByGroup, lesson.multiSlot))
+  }
+
+  /** Learn every row of the boot hydrate's complete read, as a census pass would. Then mark the
+   *  corpus as learned: every row has now been offered. */
+  private def learnAtBoot(rows: Seq[BootRow]): Unit = lock.synchronized {
+    if (seeded) {
+      rows.foreach(row => learnFrom(row.id.value, row.lesson))
+      learned = true
+    }
   }
 
   /** A census pass has offered [[learn]] every row: one the projector still does not know is
@@ -1215,7 +1230,7 @@ class ReadModelProjector(
    *  EVERY id it projects to — a split row whose plain card survived but whose variant
    *  card did not is still short, and the change stream only revisits it on its next
    *  scrape change. */
-  private def healMissingCards(): Unit = Try {
+  private def healMissingCards(study: Option[Seq[BootRow]]): Unit = Try {
     val cardIds = reader.findAllMovieIdsChecked().answered
     val cardsRead  = cardIds.isDefined
     val cards      = cardIds.fold(Set.empty[String])(_.toSet)
@@ -1223,17 +1238,20 @@ class ReadModelProjector(
     // The check reads slots only (ids derive from the slot titles, never from a
     // showtime); the few rows it names are then read whole, showtimes included. An
     // incomplete card read heals nothing: "no cards" and "could not read" differ.
+    // The boot hydrate's rows when it handed them over (see [[BootCorpusStudy]]); otherwise a read of its own.
     val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Int, Seq[String], Seq[String])]
-    val complete = cardsRead && movieRepository.foreachRecordWithSlots { row =>
+    def check(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String], metadataHash: => Int): Unit = {
+      lastCardsByRow.update(id.value, filmIds.toSet)
+      val absentCards  = filmIds.filterNot(cards)
+      val absentVenues = venues.fold(Seq.empty[String])(has => screeningIds.filterNot(has))
+      if (absentCards.nonEmpty || absentVenues.nonEmpty) missing += ((id, metadataHash, absentCards, absentVenues))
+    }
+    val complete = cardsRead && study.fold(movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
-        val partition    = ReadModelProjection.partition(row, normalizer)
-        lastCardsByRow.update(row.id.value, partition.filmIds.toSet)
-        val absentCards  = partition.filmIds.filterNot(cards)
-        val absentVenues = venues.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
-        if (absentCards.nonEmpty || absentVenues.nonEmpty)
-          missing += ((row.id, ReadModelProjection.metadataHash(row), absentCards, absentVenues))
+        val partition = ReadModelProjection.partition(row, normalizer)
+        check(row.id, partition.filmIds, partition.screeningIds, ReadModelProjection.metadataHash(row))
       }
-    }.isComplete
+    }.isComplete) { rows => rows.foreach(row => check(row.id, row.filmIds, row.screeningIds, row.metadataHash)); true }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
     val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues) =>
@@ -1418,6 +1436,28 @@ private[readmodel] final case class PlannedScreening(_id: String, input: Int, bu
  *  or more of the film's slots (a slot the venue read cannot see — one the `movies` document still
  *  embeds — would be among them). */
 private[readmodel] final case class RowGroups(anchor: String, cardByGroup: Map[String, String], multiSlot: Set[String])
+
+/** What [[ReadModelProjector.learn]] takes from a row, without the row: its title groups, and each
+ *  card's venue rows as their ids, the content each projects to and the slot inputs it came from.
+ *  Kept in place of the row so the boot hydrate's rows can be released before the seed is read. */
+private[readmodel] final case class Lesson(anchorKey: String, cardByGroup: Map[String, String],
+                                           cards: Seq[(String, Seq[Lesson.Venue])], multiSlot: Set[String])
+
+private[readmodel] object Lesson {
+  final case class Venue(id: String, output: Int, input: Int)
+
+  def of(partition: ReadModelProjection.Partition): Lesson = {
+    val cards = partition.filmIds.zip(partition.venuesAll)
+    Lesson(partition.anchorKey, partition.cardByGroup,
+      cards.map { case (card, venues) => card -> venues.map(venue => Venue(venue._id, venue.screening.##, venue.inputHash)) },
+      cards.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet)
+  }
+}
+
+/** One ready row of the boot hydrate's read, as the boot reads use it: what the missing-card check
+ *  asks of it, and what [[ReadModelProjector.learn]] would take from it. */
+private[readmodel] final case class BootRow(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String],
+                                            metadataHash: Int, lesson: Lesson)
 
 /** A card held back by the first-publish gate: the source row that projects it, and when its
  *  hold ends (epoch millis). */

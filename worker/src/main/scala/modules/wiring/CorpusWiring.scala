@@ -61,7 +61,9 @@ trait CorpusWiring { self: WorkerWiring =>
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
-      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours))))
+      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
+      // The boot's other whole-corpus readers take the hydrate's read rather than read it again.
+      bootReaders = Seq(readModelBootStudy, bootCensus)))
 
   /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)

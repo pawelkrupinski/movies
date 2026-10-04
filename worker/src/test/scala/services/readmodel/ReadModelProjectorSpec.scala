@@ -677,6 +677,52 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   }
 
   // Every heal is a row the change-stream path failed to write, and on 2026-09-22 they ran
+  // A boot read the corpus three times: the cache hydrate, this check (slots only, 4.0 s on worker-us)
+  // and the census's first pass, whose rows taught `learn` (12.5 s), all within two minutes (2026-10-04).
+  // The check and the learning now take the hydrate's read; the projector reads no corpus of its own.
+  "the boot reads" should "heal and learn from the boot hydrate's read, reading no corpus themselves" in {
+    val scans = new java.util.concurrent.atomic.AtomicInteger(0)
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
+      override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome = { scans.incrementAndGet(); super.foreachRecord(f) }
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = { scans.incrementAndGet(); super.foreachRecordWithSlots(f) }
+    }
+    val rm = new InMemoryReadModelRepository()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    new ReadModelProjector(repository, rm, rm, clock = specClock).reconcile()            // Foo carded by the last process
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+    val before = rm.movieUpserts.size
+    scans.set(0)
+
+    val study  = new BootCorpusStudy(titleNormalizer)
+    val booted = new ReadModelProjector(repository, rm, rm, clock = specClock, bootStudy = Some(study))
+    study.bootCorpus(Some(repository.findAll()))
+    booted.prepare()
+
+    scans.get() shouldBe 0
+    rm.movieUpserts.drop(before).map(_._id) shouldBe Seq("bar|2024")                     // the uncarded row healed
+    // Every row learned: a change at a film the projector does not know is no longer waited for.
+    booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe
+      services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
+    booted.stop()
+  }
+
+  it should "read the corpus themselves when the hydrate had no complete read to hand over" in {
+    val scans = new java.util.concurrent.atomic.AtomicInteger(0)
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = { scans.incrementAndGet(); super.foreachRecordWithSlots(f) }
+    }
+    val rm = new InMemoryReadModelRepository()
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+    val study  = new BootCorpusStudy(titleNormalizer)
+    val booted = new ReadModelProjector(repository, rm, rm, clock = specClock, bootStudy = Some(study))
+    study.bootCorpus(None)
+    booted.prepare()
+    scans.get() shouldBe 1
+    rm.movieUpserts.map(_._id) shouldBe Seq("bar|2024")
+    booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe services.movies.VenueVerdict.NotYet
+    booted.stop()
+  }
+
   // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line
   // to show for it. The count is what an alert can watch: each pass meters the rows it WROTE
   // for, by which pass it was, and a pass that found nothing missing meters nothing.

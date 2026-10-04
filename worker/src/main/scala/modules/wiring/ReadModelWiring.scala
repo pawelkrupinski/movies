@@ -4,7 +4,7 @@ import settings.ShareCardFirstHold
 
 import modules.WorkerWiring
 import services.identity.{IdentityCalibration, RatingGate}
-import services.readmodel.{MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections
@@ -20,7 +20,9 @@ trait ReadModelWiring { self: WorkerWiring =>
     pruneInterval  = configuration.readModelPruneInterval(ReadModelProjector.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelProjector.DefaultPruneBootDelay),
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock),
-    ratingGate = ratingGate))
+    ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
+  // What the projector's boot reads take from the cache's boot hydrate (see BootCorpusStudy).
+  lazy val readModelBootStudy: BootCorpusStudy = new BootCorpusStudy(titleNormalizer)
 
   // ── Identity phase 3: confidence-gated ratings (docs/design/identity-resolver.md §15) ──────
   // A staged-migration switch, off by default: on, a card whose stored evidence the calibration
