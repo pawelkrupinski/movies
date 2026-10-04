@@ -175,6 +175,17 @@ def main(src, out):
         regions.append((slug, state, lat, lon, vs, metros))
 
     total = sum(len(r[4]) for r in regions)
+    # The metro zone is a majority, so a metro straddling a real boundary leaves
+    # minority venues on a clock that is not theirs (the Navajo Nation's cinemas in
+    # Phoenix-time Flagstaff, Bismarck filed under Mountain-time Dickinson). Each
+    # such venue carries its OWN zone, which `VenueClock` reads before its city's:
+    # its scrape day and its "already started" must be its own wall clock.
+    # Keyed by (state, label): a metro label is unique only WITHIN its state —
+    # three states hold a "Philadelphia" — so a bare label collapses them.
+    zone_of = {(state, label): mzone
+               for _, state, _, _, _, metros in regions for label, _, _, mzone in metros}
+    venue_zones = sorted((v['title'], zone_for([v])) for state, vs in by_state.items() for v in vs
+                         if not same_clock(zone_for([v]), zone_of[(state, metro_of[state][v['slug']])]))
     lines = [
         "// GENERATED from data/us/venues.json by data/us/scripts/generate_roster.py",
         "// — do NOT edit by hand. Full US cinema roster: "
@@ -212,6 +223,12 @@ def main(src, out):
             lines.append(f'    ("{scala_str(label)}", {mlat}, {mlon}, "{mzone}"),')
         lines.append('  ))')
         lines.append('')
+    lines.append("  // (displayName, zoneId) — the venues whose own clock is not their metro's")
+    lines.append('  val venueZones: Seq[(String, String)] = Seq(')
+    for title, zone in venue_zones:
+        lines.append(f'    ("{scala_str(title)}", "{zone}"),')
+    lines.append('  )')
+    lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')
     for slug, *_ in regions:
         lines.append(f'    r_{slug.replace("-", "_")},')
@@ -230,17 +247,7 @@ def main(src, out):
     clustered = {(state, label) for state, m in metro_of.items() for label in m.values()}
     print(f"metros: {len(raw)} raw Flicks -> {len(clustered)} clustered "
           f"(python3 data/us/scripts/cluster_metros.py reports the distribution)")
-    # The metro zone is a majority, so a metro straddling a real boundary leaves
-    # its minority venues on a clock an hour out. Reported rather than hidden:
-    # it is the residue of the fix, and it grows if a re-harvest adds venues
-    # across a line.
-    # Keyed by (state, label): a metro label is unique only WITHIN its state —
-    # three states hold a "Philadelphia" — so a bare label collapses them.
-    zone_of = {(state, label): mzone
-               for _, state, _, _, _, metros in regions for label, _, _, mzone in metros}
-    off = sum(1 for state, vs in by_state.items() for v in vs
-              if not same_clock(zone_for([v]), zone_of[(state, metro_of[state][v['slug']])]))
-    print(f"venues whose metro's majority zone is not their own: {off} of {total}")
+    print(f"venues on their own zone, not their metro's: {len(venue_zones)} of {total}")
 
     sub_metros = {m for (_, m), vs in by_metro.items() if any(v['slug'] in sub_of for v in vs)}
     print(f"sub-divided metros: {sorted(sub_metros)} -> "

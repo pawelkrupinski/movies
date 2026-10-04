@@ -5731,6 +5731,40 @@ private[models] object UsRosterData {
     ("Yellowstone Gateway", 44.52936, -108.53862, "America/Denver"),
   ))
 
+  // (displayName, zoneId) — the venues whose own clock is not their metro's
+  val venueZones: Seq[(String, String)] = Seq(
+    ("49er Drive In Valparaiso", "America/Chicago"),
+    ("AMC CLASSIC Michigan City 14", "America/Chicago"),
+    ("Black Mesa Twin Cinemas", "America/Denver"),
+    ("Capitol 3 Oneida", "America/New_York"),
+    ("Carver Cinemas", "America/Chicago"),
+    ("Cinema Flix Hazen", "America/North_Dakota/Beulah"),
+    ("Cinemark at Valparaiso", "America/Chicago"),
+    ("Devon Theatre Attica", "America/Indiana/Indianapolis"),
+    ("Fowler Theatre", "America/Indiana/Indianapolis"),
+    ("GQT Eastside 10", "America/Indiana/Indianapolis"),
+    ("GQT Wabash Landing 9", "America/Indiana/Indianapolis"),
+    ("Grand 22 Theatres Bismarck", "America/Chicago"),
+    ("Key Twin Russell Springs", "America/Chicago"),
+    ("Lakeshore Drive-in Monticello", "America/Indiana/Indianapolis"),
+    ("Mac Theatre Mobridge", "America/Chicago"),
+    ("Marianna Cinemas", "America/Chicago"),
+    ("Mayer Theatre Hebron", "America/North_Dakota/New_Salem"),
+    ("Melody Drive-In Theater Dayton", "America/Indiana/Knox"),
+    ("Northrup Theater Syracuse", "America/Denver"),
+    ("Peacock Theatre Monticello", "America/Indiana/Indianapolis"),
+    ("Pheasant Drive-In Mobridge", "America/Chicago"),
+    ("Sherman Theatre Goodland", "America/Denver"),
+    ("Showplace Cinemas Jasper Cinema", "America/Indiana/Vincennes"),
+    ("Skyline Drive-in Greensburg", "America/Chicago"),
+    ("Star Tribune Tribune", "America/Denver"),
+    ("State Theatres Pierre", "America/Chicago"),
+    ("Strand Theatre Sharon Springs", "America/Denver"),
+    ("Tri-city Quinnesec 8", "America/Menominee"),
+    ("Tuba City Twin Cinema", "America/Denver"),
+    ("Window Rock Cinema", "America/Denver"),
+  )
+
   val regions: Seq[R] = Seq(
     r_alabama,
     r_alaska,

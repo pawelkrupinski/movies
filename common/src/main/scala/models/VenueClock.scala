@@ -30,11 +30,12 @@ final class VenueClock(clock: Clock) {
   /** The wall-clock time in `city`'s zone — what its city-local `Showtime.dateTime`s compare with. */
   def nowIn(city: City): LocalDateTime = now(city.zoneId)
 
-  /** Today where `cinema` is: its city's zone, or `fallback` for a venue no city lists. A
-   *  country-wide zone is wrong for a country that spans several — the US spans six. */
+  /** Today where `cinema` is: its own zone where it keeps one apart from its city
+   *  ([[UsRoster.venueZones]]), else its city's, else `fallback` for a venue no city lists.
+   *  A country-wide zone is wrong for a country that spans several — the US spans six. */
   def todayAt(cinema: Cinema, fallback: ZoneId): LocalDate = today(VenueClock.zoneOf(cinema, fallback))
 
-  /** The wall-clock time where `cinema` is (its city's zone, else `fallback`). */
+  /** The wall-clock time where `cinema` is (its own zone, else its city's, else `fallback`). */
   def nowAt(cinema: Cinema, fallback: ZoneId): LocalDateTime = now(VenueClock.zoneOf(cinema, fallback))
 
   /** Today in Poland — the zone every Polish venue (and Helios's REST date) keeps. */
@@ -51,5 +52,6 @@ object VenueClock {
   def fixedOn(day: LocalDate): VenueClock =
     new VenueClock(Clock.fixed(day.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
 
-  private def zoneOf(cinema: Cinema, fallback: ZoneId): ZoneId = City.forCinema(cinema).fold(fallback)(_.zoneId)
+  private def zoneOf(cinema: Cinema, fallback: ZoneId): ZoneId =
+    UsRoster.venueZones.getOrElse(cinema, City.forCinema(cinema).fold(fallback)(_.zoneId))
 }

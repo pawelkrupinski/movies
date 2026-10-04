@@ -59,6 +59,27 @@ class VenueClockSpec extends AnyFlatSpec with Matchers {
     clock.today(TimeZones.UsEastern) shouldBe LocalDate.parse("2026-11-02")
   }
 
+  it should "read a venue across a zone line from its metro in the venue's own zone" in {
+    // 04:30 UTC on 5 October: 00:30 EDT in Somerset, KY — the metro's majority clock — but 23:30 CDT
+    // on the 4th at Russell Springs and at Marianna (Tallahassee's metro, Eastern), and 22:30 MDT
+    // at Goodland (Northwest Kansas, Central). On the metro's day each venue's scrape started at
+    // the 5th and dropped its still-running evening of the 4th.
+    val clock = new VenueClock(new MutableClock(Instant.parse("2026-10-05T04:30:00Z")))
+    val rows = Table(
+      ("venue",                    "city zone",                      "local now"),
+      ("Key Twin Russell Springs", TimeZones.UsEastern,              "2026-10-04T23:30"),
+      ("Marianna Cinemas",         TimeZones.UsEastern,              "2026-10-04T23:30"),
+      ("Sherman Theatre Goodland", TimeZones.UsCentral,              "2026-10-04T22:30"),
+    )
+    forAll(rows) { (name, cityZone, local) =>
+      val venue = UsRoster.byDisplayName(name)
+      City.forCinema(venue).map(_.zoneId) shouldBe Some(cityZone)
+      clock.nowAt(venue, fallback = cityZone) shouldBe LocalDateTime.parse(local)
+      clock.todayAt(venue, fallback = cityZone) shouldBe LocalDate.parse("2026-10-04")
+    }
+    UsRoster.venueZones.size shouldBe 30
+  }
+
   it should "answer each ask from the clock, never a date fixed when it was built" in {
     val moving = new MutableClock(Instant.parse("2026-10-24T21:30:00Z"))
     val clock  = new VenueClock(moving)

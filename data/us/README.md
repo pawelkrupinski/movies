@@ -115,10 +115,13 @@ hour in Knoxville) and the UTC offset the schema.org `ScreeningEvent`s carry to
 Google. The clock text itself was always right: showtimes are stored as
 `LocalDateTime` and printed verbatim.
 
-Eighteen metros still straddle a real boundary, and their minority venues — 30 of
-5,031 — keep the majority's clock. Splitting a metro at a zone line instead would
-cut travel-sheds people drive across daily, which is the worse answer; the
-generator prints the count so it cannot drift unnoticed.
+Eighteen metros still straddle a real boundary. Splitting a metro at a zone line
+would cut travel-sheds people drive across daily, so instead each minority venue —
+30 of 5,029 — carries its OWN zone (`UsRosterData.venueZones`, written by the
+generator), which `VenueClock` reads before its city's: its scrape day, its
+"upcoming" in the worker's gauges and its scrape cadence are its own wall clock.
+The web page still cuts started showtimes on the city's clock, an hour out for
+these venues.
 
 ## Re-harvesting
 

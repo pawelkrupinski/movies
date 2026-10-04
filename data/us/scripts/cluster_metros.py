@@ -334,10 +334,10 @@ def zone_for(venues):
     which spelling happens to lead. Ties break alphabetically, so the answer is a
     pure function of the input.
 
-    Eighteen metros do straddle a real boundary and the minority venues keep a
-    clock that is not theirs; `generate_roster.py` reports how many. Splitting a
-    metro at a zone line instead would cut travel-sheds people drive across
-    daily, which is a worse answer than an hour's drift on the fold's edge.
+    Eighteen metros do straddle a real boundary; `generate_roster.py` gives each
+    minority venue its own zone (`UsRosterData.venueZones`) rather than splitting
+    the metro at the zone line, which would cut travel-sheds people drive across
+    daily.
     """
     finder = _timezone_finder()
     zones = [z for z in (finder.timezone_at(lat=v['lat'], lng=v['lon']) for v in venues) if z]

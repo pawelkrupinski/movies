@@ -2010,7 +2010,10 @@ object UsRoster {
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
   private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String,
-                                town: String)
+                                town: String, zone: Option[ZoneId])
+
+  /** The venues whose own clock is not their metro's, by roster name (see `generate_roster.py`). */
+  private val ownZones: Map[String, ZoneId] = UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
 
   /** One metro's own centre and its own clock. The zone is the metro's, resolved
    *  by `cluster_metros.zone_for` from the coordinates of the venues in it — not
@@ -2030,7 +2033,7 @@ object UsRoster {
       // the wire keys of every already-stored US slot — stay exactly as they are.
       val venues = cinemas.map { case (disp, pill, flicksSlug, metro, district, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        Venue(new UsCinema(unique, pill), flicksSlug, metro, district, town)
+        Venue(new UsCinema(unique, pill), flicksSlug, metro, district, town, ownZones.get(disp))
       }
       State(slug, name, lat, lon, venues,
             metros.map { case (label, mlat, mlon, zone) =>
@@ -2114,6 +2117,13 @@ object UsRoster {
    *  chain maps this way for exactly that reason; this is the lookup back. */
   val byDisplayName: Map[String, Cinema] =
     built.flatMap(_.venues).map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
+
+  /** The venues on a clock that is not their place's: a metro's zone is its venues' majority,
+   *  and these 30 sit across a zone line from the rest (Window Rock on Navajo time in
+   *  Phoenix-time Holbrook, Bismarck under Mountain-time Dickinson). [[VenueClock]] reads
+   *  each one's day and wall-clock time in its own zone. */
+  val venueZones: Map[Cinema, ZoneId] =
+    built.flatMap(_.venues).flatMap(v => v.zone.map((v.cinema: Cinema) -> _)).toMap
 }
 
 
