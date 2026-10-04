@@ -444,7 +444,8 @@ class WebReadModel(
   private val scheduler       = DaemonExecutors.scheduler("web-read-model")
   private val BackstopSeconds  = reloadInterval.value.toSeconds
   // Far tighter than the backstop because the state it recovers from is a blank site, not
-  // drift. Cheap enough to run at this cadence precisely because it probes with a count.
+  // drift. Once hydrated a tick is one field read; until then each is a full reload, which is
+  // the point — a pod that has not read the corpus whole is not ready (`hydrated`).
   private val ColdRetrySeconds = coldRetryInterval.value.toSeconds
   @volatile private var movieWatch:     Option[StreamSubscription] = None
   @volatile private var screeningWatch: Option[StreamSubscription] = None
