@@ -2268,7 +2268,7 @@ reconciliation — the boot's first projection one `identityProjectionInterval` 
 Everything else runs on scrapes. What the period used to come back for, the trigger does: a projection that did not
 settle (`IdentityProjection.settled`: refused, failed, a write declined, a written film's TMDB details still missing) runs
 again after a backoff of 1 min doubling to 15 (`ProjectionTrigger.retry`), and one with nothing written to build on
-projects the whole corpus. A stored film another writer changed is projected by the next run on scrapes or the hour's.
+projects the whole corpus. A stored film another writer changed is projected on that change too: the cache tells the trigger of every film a write other than the projection's own moved (`MovieCache.onChanged`), including another process's through the change stream, but never of the projection's writes or their echo.
 
 ## 19. The shadow run's paced live lookup fill
 

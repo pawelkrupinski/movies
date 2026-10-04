@@ -121,6 +121,12 @@ trait MovieCache extends MovieCacheReader {
    *  rows loaded. Used at construction and by the admin rehydrate endpoint. */
   def rehydrate(): Int
 
+  /** Call `listener` with each film another writer than the identity projection changed here — a write through this
+   *  cache that moved a film, or another process's change the change stream brought that differs from the film held —
+   *  never with the projection's own (`writeProjected`, `patchProjected`, `retireProjected`) or their echo. What the
+   *  projection reads of a film another writer moved is projected on that, not on a period. */
+  def onChanged(listener: FilmId => Unit): Unit
+
   // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
   /** The identity projection's write (docs/design/identity-resolver.md §8, phase 5): film `id` AS
@@ -380,7 +386,15 @@ class CaffeineMovieCache(
    *  the key, and refused when another film does (`persist`). Which listings are one film is the
    *  identity projection's to decide ([[writeProjected]]); this write folds nothing. */
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome =
-    idFor(key).fold(deferUnreadableWrite(key))(persist(key, e, _))
+    idFor(key).fold(deferUnreadableWrite(key)) { id =>
+      val outcome = persist(key, e, id)
+      if (outcome == WriteOutcome.Written) changed(id)
+      outcome
+    }
+
+  private val changeListeners = new java.util.concurrent.CopyOnWriteArrayList[FilmId => Unit]()
+  def onChanged(listener: FilmId => Unit): Unit = { changeListeners.add(listener); () }
+  private def changed(id: FilmId): Unit = changeListeners.forEach(_(id))
 
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
@@ -597,7 +611,9 @@ class CaffeineMovieCache(
         // skips the repository entirely: each no-op write would be an `updatedAt`-only
         // `updateOne`, an oplog entry and a change-stream `updateLookup` per row, per pass,
         // the dominant load on the shared-CPU Mongo.
-        ShowtimesDigest.leanEqual(fullAfter, prior) || writeThrough(key, id, prior, updated, prior, fullAfter)
+        ShowtimesDigest.leanEqual(fullAfter, prior) || { val written = writeThrough(key, id, prior, updated, prior, fullAfter)
+          if (written) changed(id)
+          written }
       }
     }
     } }
@@ -861,7 +877,11 @@ class CaffeineMovieCache(
     val applied = repository.writeFence.ifUndisturbed(r.id.value, mark) {
       // A retitle arriving from another writer: the id's previous key entry is stale.
       corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
-      store(key, forCache(r.record), r.id)
+      val held   = get(key)
+      val cached = forCache(r.record)
+      store(key, cached, r.id)
+      // The echo of a write this cache made holds what it holds already: not another writer's change.
+      if (!held.exists(LeanRecords.equal(_, cached))) changed(r.id)
     }
     if (applied) touch()
     else logger.debug(s"MovieCache: skipped a change-stream read of '${key.cleanTitle}' taken before this cache's own write of it.")
@@ -890,6 +910,8 @@ class CaffeineMovieCache(
           val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
             val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) => source -> forCacheSlot(slot) }.toSeq
             store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
+            if (!slots.forall { case (source, slot) => resident.data.get(source).exists(LeanRecords.slotsEqual(_, slot)) })
+              changed(venues.filmId)
           }
           if (applied) touch()
           VenueVerdict.Applied
@@ -912,6 +934,7 @@ class CaffeineMovieCache(
         // signal that a cache row vanished for a reason NOT originating on this node.
         RemovalAudit.filmRemoved("cache.applyDelete", id.value, reason = "change-stream-delete")
         touch()
+        changed(id)
       }
   }
 
