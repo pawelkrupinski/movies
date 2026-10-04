@@ -96,7 +96,7 @@ object ScreeningsSplit {
    *  its year) is not written here: this record may be stripped, so it may not hold the
    *  showtimes to write. [[writesFor]] carries that key as a restamp instead. */
   def slotOps(before: Map[Source, SourceData], after: Map[Source, SourceData]): Map[String, Option[ListedShowtimes]] =
-    (before.keySet ++ after.keySet).iterator.flatMap { s =>
+    (before.keySet ++ after.keySet).iterator.filterNot(s => before.get(s).exists(b => after.get(s).exists(_ eq b))).flatMap { s =>
       val bDigest = before.get(s).map(ShowtimesDigest.slotDigest).getOrElse(ShowtimesDigest.EmptyDigest)
       val aDigest = after.get(s).map(ShowtimesDigest.slotDigest).getOrElse(ShowtimesDigest.EmptyDigest)
       if (aDigest == bDigest) None
@@ -141,7 +141,8 @@ object ScreeningsSplit {
     val rows = slotOps(before, after)
     val restamps = (for {
       s   <- before.keySet.intersect(after.keySet).iterator
-      if !rows.contains(s.displayName) && ShowtimesDigest.slotDigest(after(s)) != ShowtimesDigest.EmptyDigest
+      // The same slot object holds the same listing: a wide film's every unchanged slot keyed twice per write, for nothing.
+      if (before(s) ne after(s)) && !rows.contains(s.displayName) && ShowtimesDigest.slotDigest(after(s)) != ShowtimesDigest.EmptyDigest
       key <- ListingKey.ofSource(s, after(s))
       if !ListingKey.ofSource(s, before(s)).contains(key)
     } yield s.displayName -> key).toMap

@@ -149,7 +149,7 @@ object MovieRecordPatch {
   ): Map[Source, FieldUpdate[SourceData]] =
     (before.keySet ++ after.keySet).flatMap { source =>
       (before.get(source), after.get(source)) match {
-        case (Some(b), Some(a)) if b == a => None
+        case (Some(b), Some(a)) if (b eq a) || b == a => None
         case (Some(_), Some(a))           => Some(source -> FieldUpdate.SetTo(a))
         case (None,    Some(a))           => Some(source -> FieldUpdate.SetTo(a))
         case (Some(_), None)              => Some(source -> FieldUpdate.Unset)

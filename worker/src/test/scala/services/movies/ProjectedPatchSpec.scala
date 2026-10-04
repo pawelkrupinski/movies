@@ -26,4 +26,16 @@ class ProjectedPatchSpec extends AnyFlatSpec with Matchers {
   it should "write no slot row for a patch that moves only a venue's showtimes" in {
     ProjectedPatchCheck.movesShowtimesWithoutSlotWrites(() => world()) shouldBe Right(())
   }
+
+  it should "hold the lean slots it writes as they were handed, and keep every slot the patch did not move" in {
+    ProjectedPatchCheck.keepsTheLeanSlotsItWrites(() => world()) shouldBe Right(())
+  }
+
+  "A cache slot" should "count as pooled only when every string of it is the pool's" in {
+    val pool  = new StringPool
+    val fresh = models.SourceData(title = Some(new String("Lalka")), cast = Seq(new String("Anna")), director = Seq(new String("Has")))
+    val once  = pool.slot(fresh)
+    CaffeineMovieCache.pooledAlike(once, fresh) shouldBe false
+    CaffeineMovieCache.pooledAlike(pool.slot(once), once) shouldBe true
+  }
 }

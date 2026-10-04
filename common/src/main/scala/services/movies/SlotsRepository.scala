@@ -276,6 +276,7 @@ object SlotsRepository {
     (b.keySet ++ a.keySet).iterator.flatMap { k =>
       (b.get(k), a.get(k)) match {
         case (x, Some(y)) if x.contains(y) && gaining(k) => Some(k -> Some(y))
+        case (Some(x), Some(y)) if x eq y => None   // the same slot object: unchanged, nothing compared
         case (x, y) if x == y => None
         case (_, Some(y))     => Some(k -> Some(y))
         case (_, None)        => Some(k -> None)

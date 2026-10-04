@@ -1,7 +1,7 @@
 package services.identity
 
 import models.Source
-import services.movies.{ListingKey, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
+import services.movies.{LeanRecords, ListingKey, StoredMovieRecord, TitleNormalizer}
 
 import scala.collection.mutable
 
@@ -224,7 +224,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   /** Content alike: the same identity fields and the same record, showtimes by digest. */
   private def sameFilm(is: StoredMovieRecord, was: StoredMovieRecord): Boolean =
     is.storedKey == was.storedKey && is.title == was.title && is.year == was.year &&
-      ((is.record eq was.record) || ShowtimesDigest.leanEqual(is.record, was.record))
+      LeanRecords.equal(is.record, was.record)
 
   private def unstore(id: String, reslot: mutable.HashSet[ListingKey]): Unit = {
     storedById.get(id).foreach(r => reslot ++= listingsOf.getOrElse(r.id.value, Set.empty))

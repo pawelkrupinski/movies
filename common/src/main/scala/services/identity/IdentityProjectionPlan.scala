@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Imdb, MovieRecord, Source, SourceData}
-import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens,
+import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
   ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.resolution.TmdbAttempt
 
@@ -67,7 +67,7 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
     val wanted = films.map { film =>
       film -> film.record.data.collect {
         case (showing: CinemaShowing, slot) if IdentityProjectionPlan.isLean(slot) && !stored(film.id).flatMap(_.data.get(showing))
-          .exists(held => IdentityProjectionPlan.isLean(held) && ShowtimesDigest.slotLeanEqual(slot, held)) => showing.cinema
+          .exists(held => IdentityProjectionPlan.isLean(held) && LeanRecords.slotsEqual(slot, held)) => showing.cinema
       }.toSet
     }
     val built = scala.collection.mutable.HashMap.empty[(Long, Cinema), Seq[(Source, SourceData)]]

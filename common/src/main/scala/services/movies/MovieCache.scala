@@ -384,13 +384,22 @@ class CaffeineMovieCache(
 
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
-  private def forCache(r: MovieRecord): MovieRecord = {
-    val stripped = if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
-    stripped.copy(data = stripped.data.view.mapValues(stringPool.slot).toMap)
+  private def forCache(r: MovieRecord): MovieRecord = r.copy(data = r.data.view.mapValues(forCacheSlot).toMap)
+  /** [[forCache]] of one slot — the slot itself when it is one already: stripped, every string the pool's. The identity
+   *  projection writes the lean slots it keeps, so a film written again at the same venues hands the cache back the very
+   *  objects it holds, and every comparison of the two stops at `eq` ([[forCacheOver]]). */
+  private def forCacheSlot(sd: SourceData): SourceData = {
+    val lean   = if (repository.hasScreenings) ShowtimesDigest.stripSlot(sd) else sd
+    val pooled = stringPool.slot(lean)
+    if (CaffeineMovieCache.pooledAlike(pooled, lean)) lean else pooled
   }
-  /** [[forCache]] of one slot. */
-  private def forCacheSlot(sd: SourceData): SourceData =
-    stringPool.slot(if (repository.hasScreenings) ShowtimesDigest.stripSlot(sd) else sd)
+
+  /** [[forCache]] of `after` written over `before`, which the cache holds: a slot `after` holds as `before` does is
+   *  kept as it is, not stripped and pooled again — on a film at thousands of venues, every write did that to all. */
+  private def forCacheOver(before: MovieRecord, after: MovieRecord): MovieRecord =
+    after.copy(data = after.data.map { case (source, sd) =>
+      source -> (if (before.data.get(source).exists(_ eq sd)) sd else forCacheSlot(sd))
+    })
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {
     case Some(holder) =>
@@ -473,7 +482,7 @@ class CaffeineMovieCache(
         // Resident as the projection read it: what the store holds, so the patch from it is the whole change.
         (positive.getIfPresent(key) eq before) && {
           val clean = withoutZeroRatings(after)
-          repository.updateIfPresent(id, key, before, clean) && { store(key, forCache(clean), id); touch(); true }
+          repository.updateIfPresent(id, key, before, clean) && { store(key, forCacheOver(before, clean), id); touch(); true }
         }
       }
     }
@@ -939,6 +948,15 @@ class CaffeineMovieCache(
 }
 
 object CaffeineMovieCache {
+  /** Whether pooling `slot` ([[StringPool.slot]] → `pooled`) changed none of its fields: every one the pool's already. */
+  private[movies] def pooledAlike(pooled: SourceData, slot: SourceData): Boolean =
+    (pooled.title eq slot.title) && (pooled.rawTitle eq slot.rawTitle) && (pooled.originalTitle eq slot.originalTitle) &&
+      (pooled.englishTitle eq slot.englishTitle) && (pooled.synopsis eq slot.synopsis) && (pooled.cast eq slot.cast) &&
+      (pooled.director eq slot.director) && (pooled.countries eq slot.countries) && (pooled.genres eq slot.genres) &&
+      (pooled.posterUrl eq slot.posterUrl) && (pooled.filmUrl eq slot.filmUrl) && (pooled.trailerUrl eq slot.trailerUrl) &&
+      (pooled.language eq slot.language) && (pooled.ageRating eq slot.ageRating) &&
+      (pooled.runtimeMinutes eq slot.runtimeMinutes) && (pooled.releaseYear eq slot.releaseYear)
+
   /** How often a cache with no completed corpus read reads again — tight, because the state it
    *  recovers from is a cache missing every quiescent row, not drift. */
   val ColdRetryInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.FiniteDuration(30, TimeUnit.SECONDS)

@@ -91,4 +91,21 @@ object ProjectedPatchCheck {
     else if (held(w)._2.get(slot(Multikino)._1.displayName).map(_.size) != Some(2)) Left(s"the showtimes were not written: ${held(w)._2}")
     else Right(())
   }
+
+  /** A lean slot a patch hands over whose strings are the pool's already is the object the cache then holds — so the next
+   *  patch of the film, handing it back at every venue that did not move, compares those venues by `eq` alone. */
+  def keepsTheLeanSlotsItWrites(world: () => World): Either[String, Unit] = {
+    val w = world()
+    w.cache.writeProjected(id, key, first)
+    val before = w.cache.snapshot().find(_.id == id).map(_.record).get
+    val (venue, held) = slot(Helios, 3)
+    val lean = w.cache.stringPool.slot(ShowtimesDigest.stripSlot(held))   // equal to the resident slot, another object
+    val outcome = w.cache.patchProjected(id, key, before, before.copy(data = before.data + (venue -> lean)))
+    val after = w.cache.snapshot().find(_.id == id).map(_.record).get
+    if (outcome != WriteOutcome.Written) Left(s"the patch reported $outcome")
+    else if (!after.data.get(venue).exists(_ eq lean)) Left("the cache holds a copy of the lean slot it was handed")
+    else if (!before.data.collect { case (s, sd) if s != venue => after.data.get(s).exists(_ eq sd) }.forall(identity))
+      Left("the cache replaced a slot the patch did not move")
+    else Right(())
+  }
 }

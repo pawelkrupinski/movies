@@ -41,4 +41,8 @@ class ProjectedPatchIntegrationSpec extends AnyFlatSpec with Matchers with tools
   it should "write no slot row for a patch that moves only a venue's showtimes" in {
     checked(ProjectedPatchCheck.movesShowtimesWithoutSlotWrites)
   }
+
+  it should "hold the lean slots it writes as they were handed, and keep every slot the patch did not move" in {
+    checked(ProjectedPatchCheck.keepsTheLeanSlotsItWrites)
+  }
 }

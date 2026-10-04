@@ -5,7 +5,7 @@ import scala.util.chaining.scalaUtilChainingOps
 
 import models.{Cinema, CinemaMovie, MovieRecord}
 import play.api.Logging
-import services.movies.{CacheKey, ListingKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens, ShowtimesDigest,
+import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens,
   StoredMovieRecord, TitleNormalizer, WriteOutcome}
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
@@ -328,7 +328,7 @@ final class IdentityProjection(
     // The map first: a film written under a fresh id must be numbered before anything can see it.
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
     val changed = phases("compare")(plan.films.filter { f =>
-      before.get(f.id).forall(s => s.key(normalizer) != f.key || !ShowtimesDigest.leanEqual(f.record, s.record))
+      before.get(f.id).forall(s => s.key(normalizer) != f.key || !LeanRecords.equal(f.record, s.record))
     }.pipe(films => detailed.complete(films, id => before.get(id).map(_.record))))
     // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
