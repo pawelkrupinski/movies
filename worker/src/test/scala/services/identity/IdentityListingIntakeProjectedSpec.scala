@@ -128,10 +128,31 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val modelled = w.whole.map(_.listing).filter(_.title == "Lalka")
     w.intake.adopt(modelled)
     w.archive.store(Multikino, clock.instant().plusSeconds(60), film(Multikino, "Lalka", 0, 1, 3), film(Multikino, "Obcy", 2))
-    val (read, _) = w.project()
+    w.project()._1 shouldBe w.whole
+    // Read again, the venue takes the model's object at the next adoption, not at the read.
+    w.intake.adopt(modelled)
+    val (read, rows) = w.project()
+    rows shouldBe 0
     read shouldBe w.whole
     read.find(_.listing.title == "Lalka").get.listing should be theSameInstanceAs modelled.head
     read.find(_.listing.title == "Obcy").get.listing should not be theSameInstanceAs (w.whole.find(_.listing.title == "Obcy").get.listing)
+  }
+
+  it should "not look the model's listings up again for a venue holding the model's objects throughout" in {
+    // Each projection hands the intake the model's 100k listings; built into a map and looked up venue by venue every
+    // time, that was ~5% of a US projection's CPU (JFR) for venues that had long taken them.
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.project()
+    val modelled = w.whole.map(_.listing)
+    w.intake.adopt(modelled)
+    var looked = 0
+    val counting = new scala.collection.immutable.IndexedSeq[Listing] {
+      def length: Int = modelled.length
+      def apply(i: Int): Listing = { looked += 1; modelled(i) }
+    }
+    w.intake.adopt(counting)
+    looked shouldBe 0
   }
 
   it should "hold the model's object for a listing read before the model was adopted, without reading it again" in {

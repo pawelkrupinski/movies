@@ -86,12 +86,10 @@ final class IdentityListingIntake(
   private def projectedBy(live: Seq[Cinema], read: IdentityListingIntake.Read): Seq[(Cinema, Seq[ProjectedListing])] = {
     val wanted  = live.distinct.map(c => c.displayName -> c).toMap
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
-    // A listing the identity model holds the same is its object, not a second copy of it ([[adopt]]).
+    // A listing the identity model holds the same takes the model's object at the next [[adopt]], not here: a read
+    // needs no lookup of the model's 100k listings, and a venue read this tick is the only kind not yet adopted.
     def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
-      films.map { case (cm, showtimes) =>
-        val listing = Listing.of(cinema, cm, normalizer)
-        ProjectedListing.of(IdentityListingIntake.modelledAs(adopted, listing), cm, showtimes)
-      }
+      films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, read, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, read, project)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.map(c -> _))
@@ -103,11 +101,15 @@ final class IdentityListingIntake(
    *  their keys and catalogue ids) — and from a worker's first read, taken before the model reached the intake, until the
    *  whole read an hour later. A venue that takes one is another object, which the projection reads as unmoved by value. */
   def adopt(held: Seq[Listing]): Unit = heldLock.synchronized {
-    adopted = held.iterator.map(l => l.key -> l).toMap
-    heldAccepted.adopt(adopted)
-    heldArchived.adopt(adopted)
+    // Only the venues not yet holding the model's objects throughout — those read since, and those with a listing the
+    // model had not taken in — look the model's listings up: on a quiet tick, a few dozen keys, not a 100k-entry map.
+    val wanted = (heldAccepted.unadopted ++ heldArchived.unadopted).toSet
+    if (wanted.nonEmpty) {
+      val modelled = held.iterator.filter(l => wanted(l.key)).map(l => l.key -> l).toMap
+      heldAccepted.adopt(modelled)
+      heldArchived.adopt(modelled)
+    }
   }
-  private var adopted = Map.empty[ListingKey, Listing]
 
   // The projection's held listings, by venue name, one set per archive; venues written since the last read.
   private val heldLock     = new Object
@@ -172,7 +174,9 @@ object IdentityListingIntake {
   /** One archive's listings as the projection last read them, by venue name: the venue as it was then, the row's
    *  stamp, and its listings (`None`: it listed nothing). */
   private[identity] final class Held {
-    private final case class Entry(cinema: Cinema, stamp: Option[java.time.Instant], listings: Option[Seq[ProjectedListing]])
+    // `adopted`: every listing is the identity model's own object ([[adopt]]) — a venue [[adopt]] need not look at again.
+    private final case class Entry(cinema: Cinema, stamp: Option[java.time.Instant], listings: Option[Seq[ProjectedListing]],
+                                   adopted: Boolean = false)
     private var entries = Map.empty[String, Entry]
 
     /** The listings of `wanted`'s venues in `repository` now, re-read for those whose stamp moved, whose venue is
@@ -212,13 +216,18 @@ object IdentityListingIntake {
 
     /** Each held venue with the model's object for a listing it holds the same; a venue with none to take is kept as is. */
     def adopt(modelled: Map[ListingKey, Listing]): Unit =
-      entries = entries.map { case (name, entry) =>
+      entries = entries ++ entries.iterator.filterNot(_._2.adopted).map { case (name, entry) =>
         val taken = entry.listings.filter(_.exists(p => modelledAs(modelled, p.listing) ne p.listing))
-        name -> taken.fold(entry)(ls => entry.copy(listings = Some(ls.map { p =>
+        val now   = taken.fold(entry)(ls => entry.copy(listings = Some(ls.map { p =>
           val listing = modelledAs(modelled, p.listing)
           if (listing eq p.listing) p else p.copy(listing = listing)
         })))
+        name -> now.copy(adopted = now.listings.forall(_.forall(p => modelled.get(p.listing.key).exists(_ eq p.listing))))
       }
+
+    /** The listing keys of the venues not yet holding the model's objects throughout. */
+    def unadopted: Iterator[ListingKey] =
+      entries.valuesIterator.filterNot(_.adopted).flatMap(_.listings.iterator.flatten.map(_.listing.key))
   }
 
   /** The model's object for `listing` when it holds one the same, else `listing`. */
