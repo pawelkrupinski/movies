@@ -37,6 +37,11 @@
 # paths selects, without running them (scripts/hooks/pre-push-test.sh). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
 set -uo pipefail
+# git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being
+# pushed — for a worktree, ITS git dir. Every check inherits them, and in the temporary checkout
+# below they would point each `git` back at the pushing worktree's HEAD and index. The hook runs at
+# the checkout's root, where git finds the repository on its own: clear them once, for every check.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
 
 root="$(git rev-parse --show-toplevel)" || exit 1
 cd "$root" || exit 1

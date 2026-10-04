@@ -110,6 +110,15 @@ if command -v shellcheck >/dev/null; then
   check "...and says which process it is stepping around" "1" \
     "$(printf '%s\n' "$out" | grep -c "sbt (pid $live_sbt)")"
 
+  # Pushed from a worktree, git hands the hook GIT_DIR for THAT worktree. Left exported into the
+  # temporary checkout, every git a check runs there read the pushing worktree's HEAD and index:
+  # the drift check's `git status` and the snapshot stamp's `git ls-files` judged the wrong tree.
+  echo c > "$repo/c.txt"; scratch_git "$repo" add c.txt; scratch_git "$repo" commit -qm "moves HEAD past the pushed commit"
+  printf '#!/usr/bin/env bash\ngit rev-parse HEAD > "%s/sbt-saw-head"\n' "$scratch" > "$scratch/bin/sbt"
+  (cd "$repo" && GIT_DIR="$(pwd)/.git" PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" >/dev/null 2>&1)
+  check "with git's GIT_DIR exported, a check in the temporary checkout sees the pushed commit" \
+    "$scala" "$(cat "$scratch/sbt-saw-head" 2>/dev/null)"
+
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
            | bash scripts/hooks/pre-push origin url 2>&1)"
