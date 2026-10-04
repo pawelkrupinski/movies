@@ -82,6 +82,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
    *  number so an entry survives unrelated edits above it, and a new swallow elsewhere in
    *  the file is not covered by an old entry that happens to share its text. */
   private val Allowlist: Map[(String, String, String), String] = Map(
+    ("worker/src/main/scala/services/enrichment/ImdbIdResolver.scala", "resolveOrRetry",
+      "} catch { case NonFatal(_) => waiting.remove(title -> year); false } // stopping: the next trigger asks again") ->
+      "not a failure read as data: scheduling the retry is refused only once the resolver is stopping; the title leaves the waiting set and false only means 'no retry scheduled' — the failed lookup itself is logged just below, and the next trigger asks again",
     ("worker/src/main/scala/services/identity/IdentityProjection.scala", "quietly",
       "catch { case NonFatal(e) =>") ->
       "not a failure read as data: a projection that throws is logged, counted as a Failed refusal and answers 'not settled', which is what makes `ProjectionTrigger` run it again after a backoff — the stored films keep serving meanwhile",
