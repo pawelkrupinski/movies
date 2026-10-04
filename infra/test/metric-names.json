@@ -1,5 +1,5 @@
 {
- "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by infra/test/test_metric_names.py. Do not edit by hand -- re-run the script.",
+ "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by infra/test/test_metric_names.py. Do not edit by hand -- re-run the script (--names-only refreshes just this file).",
  "names": [
   "alertmanager_notifications_failed_total",
   "fleet_auto_apply_state_last_run_timestamp_seconds",
@@ -81,5 +81,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
+ "taken": "2026-10-04",
  "window_days": 14
 }

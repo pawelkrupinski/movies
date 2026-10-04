@@ -17,7 +17,7 @@ curl because Python's urllib has no SOCKS support. Re-run it when a matcher is a
 the snapshot has not seen, or when the label shapes themselves change (a new country mount, a new
 enrichment row) -- the test names the missing pair.
 
-Usage: infra/bin/snapshot-label-values [--days 14] [--prometheus http://10.20.0.11:9090]
+Usage: infra/bin/snapshot-label-values [--days 14] [--prometheus http://10.20.0.11:9090] [--names-only]
 """
 
 import argparse
@@ -81,11 +81,15 @@ def referenced_names(all_metric_names):
     return sorted(n for n in wanted & known if not n.startswith("kinowo_") and ":" not in n)
 
 
-def write_metric_names(names, days):
+def write_metric_names(names, days, taken):
     document = {
         "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by "
-                   "infra/test/test_metric_names.py. Do not edit by hand -- re-run the script.",
+                   "infra/test/test_metric_names.py. Do not edit by hand -- re-run the script "
+                   "(--names-only refreshes just this file).",
         "window_days": days,
+        # When the window ended: test_metric_names.py refuses a snapshot older than MAX_AGE_DAYS,
+        # since a name the fleet STOPPED exporting stays in a stale one and passes for good.
+        "taken": time.strftime("%Y-%m-%d", time.gmtime(taken)),
         "names": referenced_names(names),
     }
     with open(NAMES_OUTPUT, "w", encoding="utf-8") as handle:
@@ -97,12 +101,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--prometheus", default="http://10.20.0.11:9090")
+    parser.add_argument("--names-only", action="store_true",
+                        help="refresh only metric-names.json (one query) -- what its age check asks for")
     args = parser.parse_args()
 
     end = int(time.time())
     window = {"start": end - args.days * 86400, "end": end}
     names = fetch(args.prometheus, "/api/v1/label/__name__/values", window)
-    write_metric_names(names, args.days)
+    write_metric_names(names, args.days, end)
+    print("%d referenced names -> %s" % (len(referenced_names(names)), os.path.relpath(NAMES_OUTPUT)))
+    if args.names_only:
+        return
     pairs = wanted_pairs(names)
     jobs = [(metric, label) for metric, labels in sorted(pairs.items()) for label in sorted(labels)]
 
