@@ -195,21 +195,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
-  // The OTHER half of the same gate. `detailOutstanding` gated on the same rule as
-  // `tick`, so it too read "ended" for the whole corpus — and `reapStuckPending`
-  // then released every detailPending row on every tick. A future ended-film gate placed only here would
-  // slip past the tick test above, so this pins it separately.
-  it should "keep a detail-pending row that still owes a fetch when showtimes live in their own collection" in {
-    val (cache, repository) = splitCacheWith(Some("http://ref"))
-    val (queue, fresh)      = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    assertScreeningButStripped(cache, repository)
-
-    val key = cache.keyOf("Dune", None)
-    cache.putIfPresent(key, _.copy(detailPending = true))
-    reaper(cache, queue, fresh).reapStuckPending() shouldBe 0
-    cache.get(key).map(_.detailPending) shouldBe Some(true)
-  }
-
   it should "skip a film with no filmUrl (no detail reference to fetch)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     reaper(cacheWith(None), queue, fresh).tick() shouldBe 0
@@ -291,45 +276,13 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 
-  // ── reapStuckPending: release detail-pending rows that can never complete ────
-
-  "DetailReaper.reapStuckPending" should
-    "leave a row whose detail is still outstanding (filmUrl present, not yet fresh)" in {
-    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    reaper(cache, queue, fresh).reapStuckPending() shouldBe 0
-    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(true) // still held back
-  }
-
-  it should "release a detail-pending row with no deferred filmUrl to fetch (orphaned flag)" in {
-    val (cache, queue, fresh) = (cacheWith(None), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    reaper(cache, queue, fresh).reapStuckPending() shouldBe 1
-    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
-  }
-
-  it should "release a detail-pending Filmweb-fallback row (filmweb.pl filmUrl, no native detail to fetch)" in {
-    val (cache, queue, fresh) = (cacheWith(Some(FilmwebShowtimesClient.filmPageUrl(1089))), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    reaper(cache, queue, fresh).reapStuckPending() shouldBe 1
-    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
-  }
-
-  it should "release a detail-pending row whose detail is already fresh (the flag outlived it)" in {
-    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich, specClock.instant())
-    reaper(cache, queue, fresh).reapStuckPending() shouldBe 1
-    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
-  }
-
   // The livelock this reaper drove in prod: a film whose detail page the cinema
   // took down after its run never got a freshness stamp, so it came due on EVERY
   // tick — the "Cinema City Enrichment" row ran at ~90% failures on two such
   // films, once a minute, indefinitely. Drives the real reaper→handler→reaper
   // cycle rather than asserting the stamp in isolation, because it is the second
   // tick going quiet that is the actual fix.
-  it should "stop re-enqueueing a film whose detail page is durably gone, instead of once per tick" in {
+  "DetailReaper" should "stop re-enqueueing a film whose detail page is durably gone, instead of once per tick" in {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     // ONE DueWindow instance across reaper and handler — they must agree on "due".
     val window = new DueWindow(6.hours)
@@ -348,28 +301,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
     r.tick() shouldBe 0
     gone.calls shouldBe 1
-  }
-
-  it should "release a detail-pending row whose only detail page is durably gone, so it is not hidden forever" in {
-    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    val window = new DueWindow(6.hours)
-    val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
-      failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
-    val r = new DetailReaper(Seq(gone), cache, queue, fresh, dueWindow = window, clock = specClock)
-    val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
-      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned, enrichmentLanguage = models.Country.Poland.language)
-
-    // Before the detail is even attempted the row is legitimately outstanding.
-    r.reapStuckPending() shouldBe 0
-    r.tick() shouldBe 1
-    val task = queue.claim("worker", 1.minute, specClock.instant()).getOrElse(fail("nothing queued"))
-    h.handle(task) shouldBe HandlerOutcome.Done
-
-    // Now the detail is settled-unfetchable, so the row must reach the read model
-    // rather than staying `detailPending` — invisible on the site — indefinitely.
-    r.reapStuckPending() shouldBe 1
-    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
   }
 
   /** THE DETAIL CACHE'S TTL LIVES BETWEEN TWO NUMBERS, and this is the lower one.

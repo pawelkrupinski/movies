@@ -88,7 +88,6 @@ object ProfileDetailReaper {
       time("records.map(_.cinemaSlots)", 5) { records.foreach(r => r.cinemaSlots); () }
       time("records.map(_.cinemaData)", 5) { records.foreach(r => r.cinemaData); () }
       time("records.map(_.cinemaShowings)", 5) { records.foreach(r => r.cinemaShowings); () }
-      time("records.map(_.detailPending)  [reapStuckPending]", 5) { records.foreach(r => r.detailPending); () }
 
       // What the reaper actually does per row for its ONE UK enricher: resolve the
       // representative slot for a single cinema and read its filmUrl.

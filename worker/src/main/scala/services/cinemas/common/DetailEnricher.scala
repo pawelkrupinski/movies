@@ -149,21 +149,12 @@ trait DetailEnricher {
    *  network-level name so it reports one global entry instead of one per
    *  venue. */
   def enrichmentServiceOverride: Option[String] = None
-  /** Whether resolution should WAIT for this cinema's deferred detail. True (the
-   *  default) when the detail supplies TMDB-identity hints (director / original
-   *  title / production year): a scraped row with a `filmUrl` is then held
-   *  `detailPending` — out of the read model and the TMDB stage — until
-   *  `fetchFilmDetail` lands, at which point `EnrichDetailsHandler` triggers
-   *  resolution. Set false for a cinema whose listing already carries those
-   *  hints and whose detail is purely display enrichment (synopsis / poster /
-   *  trailer): the row resolves immediately from the listing and the detail
-   *  merges in asynchronously when its `EnrichDetails` task runs.
-   *
-   *  Scopes to the DIRECT scrape path only. The since-deleted staging path waited for every detail
-   *  cinema regardless (`StagingSteps.fetchDetailFor`): a newcomer has no place
-   *  in the read model to lose, and resolving it on a listing while the page
-   *  carrying its year and director is already in flight is how a guess gets
-   *  stamped into a row's key and becomes permanent. */
+  /** Whether the identity model should WAIT for this cinema's detail page before resolving a listing
+   *  of it ([[services.identity.VenuePageWait]]). True (the default) when the page supplies identity
+   *  hints (director / original title / production year): resolving on the listing while the page
+   *  carrying its year and director is in flight is how a guess gets made. Set false for a cinema whose
+   *  listing already carries those hints and whose page is purely display enrichment (synopsis /
+   *  poster / trailer): its listing waits only until the page has been tried. */
   def defersTmdbResolution: Boolean = true
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays

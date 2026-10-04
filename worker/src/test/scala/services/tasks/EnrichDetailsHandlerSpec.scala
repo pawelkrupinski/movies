@@ -154,19 +154,6 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       row.data.get(tea).flatMap(_.runtimeMinutes) shouldBe Some(131))
   }
 
-  it should "clear detailPending once a held-back row's detail lands" in {
-    val cache    = seededCache("Hamnet")
-    val key      = cache.keyOf("Hamnet", None)
-    cache.putIfPresent(key, _.copy(detailPending = true)) // held back awaiting its detail
-    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
-      Some(FilmDetail(synopsis = Some("..."), director = Seq("Chloé Zhao"), originalTitle = Some("Hamnet"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new RecordingEventBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
-
-    h.handle(taskFor("kino-apollo", cache, "Hamnet", enricher)) shouldBe Done
-    // Released to the read model now that the detail is in.
-    cache.get(key).map(_.detailPending) shouldBe Some(false)
-  }
-
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
     // Two Cinema City venues scrape the same film (bare: showtimes only, no detail).
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)

@@ -22,16 +22,6 @@ import scala.concurrent.duration._
  * itself deferred (Rialto) needs. This is the detail-side analogue of [[ScrapeReaper]] /
  * [[EnrichmentReaper]].
  *
- * It is ALSO the backstop for the `detailPending` gate: a film a deferred cinema
- * scrapes is held back (`detailPending`, out of the read model + the TMDB stage)
- * until its detail lands and `EnrichDetailsHandler` clears the flag. If that detail
- * can NEVER complete — the page is gone, the row has no deferred slot/`filmUrl`
- * anymore, or the flag outlived a detail that is already fresh — the row would
- * otherwise stay invisible forever (the daily TMDB sweep deliberately skips
- * `detailPending` rows). `reapStuckPending` releases any `detailPending` row with
- * no outstanding (enqueueable, not-yet-fresh) detail: it clears the flag, so the
- * row finally reaches the read model.
- *
  * Walks the cache like `EnrichmentReaper`: for each row carrying a slot for a
  * deferred cinema with a `filmUrl`, enqueue (deduped + freshness-gated, so a
  * film already fresh — or already waiting/working — isn't re-queued).
@@ -51,8 +41,8 @@ class DetailReaper(
   // freshness stamps at once — from all coming due in the SAME tick. Before this,
   // DetailReaper gated on a raw rolling TTL with no phase offset, so such a cohort
   // dumped its whole backlog in one tick (~1k `EnrichDetails` observed in prod),
-  // and each completion cascaded into `ResolveTmdb` + rating tasks, spiking the
-  // shared-CPU credit balance to zero.
+  // and each completion cascaded into follow-up tasks, spiking the shared-CPU
+  // credit balance to zero.
   dueWindow: DueWindow = new DueWindow(6.hours),
   // How often the reaper wakes to enqueue the now-due slice — the spread
   // granularity (smaller = flatter trickle, at the cost of cheap in-memory scans).
@@ -109,7 +99,7 @@ class DetailReaper(
     ()
   }
 
-  /** Run the detail tick + stuck-pending release only if this machine wins the
+  /** Run the detail tick only if this machine wins the
    *  current window's occurrence claim — otherwise another machine is handling
    *  this window, so skip. Returns the number of detail tasks enqueued (0 when
    *  the claim was lost). Package-private so tests can drive it directly. */
@@ -117,14 +107,12 @@ class DetailReaper(
     // Hold ALL ticks until the detail freshness stamps have hydrated from Mongo.
     // They load in the rest phase (after the scrape stamps), so a tick against the
     // not-yet-hydrated mirror reads every detail as never-fresh and re-enqueues the
-    // whole deferred-detail corpus — each cascading into ResolveTmdb + ratings — on
-    // EVERY deploy (the recurring post-deploy spike). The scrape analogue is
-    // ScrapeReaper.awaitReadyThenStart; an in-memory / Mongo-less store is ready at
-    // once. Skip reapStuckPending too: against an empty mirror its detailOutstanding
-    // check would wrongly release detail-pending rows whose detail is in fact fresh.
+    // whole deferred-detail corpus on EVERY deploy (the recurring post-deploy spike).
+    // The scrape analogue is ScrapeReaper.awaitReadyThenStart; an in-memory /
+    // Mongo-less store is ready at once.
     if (!freshness.isReady(FreshnessKind.DetailEnrich)) return 0
     val key = OccurrenceKey.at("detail", clock.millis(), tickInterval.value, 0.seconds)
-    if (runStore.claim(key)) { val n = tick(); reapStuckPending(); forgetGone(); n } else 0
+    if (runStore.claim(key)) { val n = tick(); forgetGone(); n } else 0
   }
 
   /** Enqueue every now-due `(deferred-cinema, film)` detail, keyed off the row's
@@ -171,47 +159,6 @@ class DetailReaper(
     val live = cache.entries.iterator.map(_._1).toSet
     asksByRow.keySet.removeIf(key => !live.contains(key))
     ()
-  }
-
-  /** Release any `detailPending` row that has no outstanding detail to fetch —
-   *  its detail is already fresh (the flag outlived it) or it has no
-   *  deferred slot/`filmUrl` to enrich at all (orphaned flag). Clears the flag
-   *  so the row stops being held
-   *  out of the read model. Returns how many were released. Scheduled (not run by
-   *  the fixture harness's `enrichDetailsUntilQuiet`, which only calls `tick`). */
-  def reapStuckPending(): Int = {
-    var released = 0
-    cache.entries.foreach { case (key, record) =>
-      if (record.detailPending && !detailOutstanding(key, record)) {
-        cache.putIfPresent(key, _.copy(detailPending = false))
-        released += 1
-      }
-    }
-    if (released > 0) logger.info(s"DetailReaper released $released detail-pending row(s) with no outstanding detail.")
-    released
-  }
-
-  /** True when a deferred cinema still owes this row a detail fetch — it has a
-   *  native (fetchable) `filmUrl` slot whose detail isn't fresh yet. While true
-   *  the row legitimately stays `detailPending` (and `tick` keeps the fetch
-   *  enqueued). A Filmweb-fallback row's filmweb.pl URL is NOT native, so such a
-   *  row is never "outstanding" and `reapStuckPending` releases it.
-   *
-   *  Note this asks nothing about whether the film is still PLAYING: a gate on
-   *  that (worthwhile — a cinema withdraws a film's detail page once its run
-   *  ends, which is what makes ended rows 404) has to answer from data the cache
-   *  actually holds. `SourceData.showtimes` is not that, because the read-split
-   *  strips every resident slot's showtime list to `Nil`; asking it took ALL
-   *  detail enrichment down for 16h on 2026-08-03. `EnrichDetailsHandler`'s Gone
-   *  branch is what currently bounds the withdrawn-page retry. */
-  private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean = {
-    val cinemaData = record.cinemaData // once, and only the row's own venues — see `tick`
-    cinemaData.keysIterator.exists { venue =>
-      enrichersByCinema.getOrElse(venue, Nil).exists { e =>
-        e.nativeDetailRefIn(cinemaData).isDefined &&
-          !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich, clock.instant())
-      }
-    }
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }

@@ -31,16 +31,6 @@ trait DetailWiring { self: WorkerWiring =>
   lazy val detailEnrichers: Seq[DetailEnricher] =
     countryScrapers.collect { case de: DetailEnricher => de }
 
-  /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
-   *  a film one of these scrapes (with a detail filmUrl) waits for its
-   *  EnrichDetails task before TMDB resolution. This set gates the DIRECT scrape
-   *  path only; the since-deleted staging path waited for every detail cinema (`StagingSteps`). A display-only enricher
-   *  (`defersTmdbResolution = false`, e.g. KinoMuza) still rides the
-   *  EnrichDetails pipeline but isn't held back: it resolves from the listing
-   *  and merges its synopsis/poster/trailer in asynchronously. */
-  lazy val deferredDetailCinemas: Set[models.Cinema] =
-    detailEnrichers.filter(_.defersTmdbResolution).map(_.cinema).toSet
-
   // The shared detail refresh schedule is `detailDueWindow`, an eager member of the
   // root: the SAME instance backs the reaper (enqueue gate) and the handler (pickup
   // gate) so they agree on "due" — see [[services.tasks.DueWindow]].

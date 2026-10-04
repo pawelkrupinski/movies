@@ -85,9 +85,9 @@ trait TestWiring extends WorkerWiring {
   override lazy val taskQueue: TaskQueue = new services.metrics.MeteredTaskQueue(reaskCountingQueue, taskMetrics)
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
-  // The harness's detail handler publishes to THIS buffer rather than straight to the bus, and
-  // each detail pass flushes it only after EVERY detail in the pass has merged, so no listener
-  // races the pass's other merges. Production publishes inline (no buffer).
+  // The harness's detail handler announces its page reads (`VenueDetailRead`) to THIS buffer rather
+  // than straight to the bus, and each detail pass flushes it only after EVERY detail in the pass has
+  // merged, so no re-ask races the pass's other merges. Production publishes inline (no buffer).
   private val detailEventBuffer = scala.collection.mutable.ListBuffer.empty[DomainEvent]
   private val detailCaptureBus: EventBus = new EventBus {
     def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
@@ -359,8 +359,7 @@ trait TestWiring extends WorkerWiring {
           try readVenuePageHandler.handle(task) catch { case _: Exception => () }
         taskQueue.complete(task.id, workerId)
       }
-    // Every detail has merged + cleared `detailPending`; now re-trigger TMDB for
-    // the films whose detail just landed, against a fully-settled cache.
+    // Every detail has merged; now announce the pages read, against a fully-settled cache.
     val ready = detailEventBuffer.toList
     detailEventBuffer.clear()
     ready.foreach(eventBus.publish)

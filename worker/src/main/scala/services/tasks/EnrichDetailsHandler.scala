@@ -140,17 +140,12 @@ class EnrichDetailsHandler(
             //
             // So stamp it. This is NOT claiming a detail landed — nothing reads
             // DetailEnrich freshness as "we have data", only as "we asked recently"
-            // (this handler's own due gate, and DetailReaper's `detailOutstanding`).
+            // (this handler's own due gate, and DetailReaper's).
             // It costs nothing in recovery either: both detail caches already pin a
             // durable failure for 12h, so a retry inside this 6h window was being
             // answered from cache anyway. If the film comes back under a NEW url the
             // listing scrape rewrites the slot's `filmUrl`, and the next window
             // fetches it.
-            //
-            // Releasing `detailOutstanding` also unsticks the worse case this hid: a
-            // row held `detailPending` on a detail that 404s from the start never
-            // cleared, so it stayed out of the read model — invisible on the site —
-            // permanently. `reapStuckPending` can now let it through.
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
           case DetailFetchOutcome.Fetched(read) =>
@@ -215,14 +210,10 @@ class EnrichDetailsHandler(
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
-            // Clearing `detailPending` releases the row to the read model now that its
-            // detail (director/originalTitle/year) is in. `putIfPresent` is a no-op on a
-            // row that was re-keyed between enqueue and pickup.
+            // `putIfPresent` is a no-op on a row that was re-keyed between enqueue and pickup.
             cache.putIfPresent(rowKey, current =>
-              current.copy(
-                data          = targets.foldLeft(current.data)((d, tgt) =>
-                                  d + (tgt -> detail.mergeInto(changed.refreshInto(d.getOrElse(tgt, SourceData()), screeningTokens), screeningTokens))),
-                detailPending = false))
+              current.copy(data = targets.foldLeft(current.data)((d, tgt) =>
+                d + (tgt -> detail.mergeInto(changed.refreshInto(d.getOrElse(tgt, SourceData()), screeningTokens), screeningTokens)))))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
         }

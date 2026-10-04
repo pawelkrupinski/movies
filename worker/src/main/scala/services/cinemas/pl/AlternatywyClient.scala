@@ -49,9 +49,8 @@ class AlternatywyClient(
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   // The listing carries only the title + poster, so the film resolves from the
-  // title (no held detailPending); the detail page adds synopsis, director, and
-  // production countries + year, merged in asynchronously by the EnrichDetails
-  // task.
+  // title without waiting for its page; the detail page adds synopsis, director, and
+  // production countries + year, read in asynchronously.
   override val detailGroup: String = "kino-alternatywy"
   override def defersTmdbResolution: Boolean = false
 
