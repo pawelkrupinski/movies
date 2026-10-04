@@ -17,6 +17,8 @@
 
 const SYNCHRONOUS_CALLBACK_METHODS = new Set(['forEach', 'filter', 'map', 'some', 'every', 'find', 'reduce']);
 const STORAGES = new Set(['localStorage', 'sessionStorage']);
+// The global object's names, through which storage is reached as a property.
+const GLOBAL_OBJECTS = new Set(['window', 'self', 'globalThis']);
 
 function runsSynchronously(fn) {
   const call = fn.parent;
@@ -62,7 +64,7 @@ module.exports = {
       },
       MemberExpression(node) {
         if (node.computed || node.property.type !== 'Identifier' || !STORAGES.has(node.property.name)) return;
-        if (node.object.type === 'Identifier' && (node.object.name === 'window' || node.object.name === 'self'))
+        if (node.object.type === 'Identifier' && GLOBAL_OBJECTS.has(node.object.name))
           check(node, node.property.name);
       },
     };

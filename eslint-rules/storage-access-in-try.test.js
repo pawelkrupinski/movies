@@ -24,5 +24,6 @@ new RuleTester({ languageOptions: { ecmaVersion: 2022, sourceType: 'script' } })
     { code: 'try { function later() { sessionStorage.clear(); } } catch {}', errors: [{ messageId: 'unguarded' }] },
     { code: 'try {} catch { localStorage.clear(); }', errors: [{ messageId: 'unguarded' }] },
     { code: 'window.sessionStorage.getItem("k");', errors: [{ messageId: 'unguarded' }] },
+    { code: 'globalThis.localStorage.getItem("k");', errors: [{ messageId: 'unguarded' }] },
   ],
 });
