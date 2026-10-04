@@ -186,13 +186,13 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   // a retry can only replay it: fail the task once, metered apart from `exhausted`.
   private def firstAttemptThrowing(e: Throwable): (InMemoryTaskQueue, Seq[String], PollResult) = {
     val q = new InMemoryTaskQueue
-    q.enqueue(ResolveTmdb, "resolve-tmdb|La luz|2026", submittedAt = t0)
+    q.enqueue(ResolveImdbId, "resolve-imdbid|La luz|2026", submittedAt = t0)
     val outcomes = scala.collection.mutable.Buffer.empty[String]
     val observer = new TaskObserver {
       def onStarted(task: Task): Unit = ()
       def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = outcomes += outcome
     }
-    val throwing = new TaskHandler { val taskType = ResolveTmdb; def handle(task: Task) = throw e }
+    val throwing = new TaskHandler { val taskType = ResolveImdbId; def handle(task: Task) = throw e }
     val result = new TaskWorker(q, Seq(throwing), maxAttempts = services.tasks.TaskWorker.MaxAttempts(12), observer = observer, clock = specClock).claimAndRun("w0")
     (q, outcomes.toSeq, result)
   }
@@ -242,7 +242,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
 
   // A queued task nothing here handles (a type whose handler was deleted, or one wired only in
   // another country) used to go back claimable at once: as the oldest row it was the next claim
-  // again, every claim, and starved the tasks queued behind it (PL's leftover ResolveTmdb, 22,570
+  // again, every claim, and starved the tasks queued behind it (PL's leftover ResolveImdbId, 22,570
   // claims overnight). Handed back held off, the tasks behind it run.
   it should "hold a task with no handler back, so the tasks queued behind it are claimed" in {
     val q = new InMemoryTaskQueue

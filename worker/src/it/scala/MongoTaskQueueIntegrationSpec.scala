@@ -115,8 +115,8 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   }
 
   it should "amend a WAITING task's payload, but leave a worked-on one as it was claimed" in {
-    val key = s"resolve-tmdb|it-amend-${System.nanoTime()}"
-    queue.enqueue(TaskType.ResolveTmdb, key, Map("title" -> "Tosca"), submittedAt = t0)
+    val key = s"resolve-imdbid|it-amend-${System.nanoTime()}"
+    queue.enqueue(TaskType.ResolveImdbId, key, Map("title" -> "Tosca"), submittedAt = t0)
     queue.amendWaiting(key, Map("retryMiss" -> "true")) shouldBe true
     val claimed = drainUntil(_.dedupKey == key, "w1")
     claimed.payload shouldBe Map("title" -> "Tosca", "retryMiss" -> "true")

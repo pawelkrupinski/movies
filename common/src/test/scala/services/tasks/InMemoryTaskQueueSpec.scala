@@ -30,7 +30,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
   // that already carries these fields still runs with them, so the amend is reported.
   "amendWaiting" should "report an amend whenever the waiting task carries the fields afterwards" in {
     val q = new InMemoryTaskQueue
-    q.enqueue(ResolveTmdb, "resolve|x", Map("title" -> "X"), submittedAt = t0)
+    q.enqueue(ResolveImdbId, "resolve|x", Map("title" -> "X"), submittedAt = t0)
     q.amendWaiting("resolve|x", Map("retryMiss" -> "true")) shouldBe true
     q.amendWaiting("resolve|x", Map("retryMiss" -> "true")) shouldBe true
     q.amendWaiting("resolve|x", Map.empty) shouldBe false
@@ -39,7 +39,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
 
   it should "leave a worked-on task alone" in {
     val q = new InMemoryTaskQueue
-    q.enqueue(ResolveTmdb, "resolve|x", Map("title" -> "X"), submittedAt = t0)
+    q.enqueue(ResolveImdbId, "resolve|x", Map("title" -> "X"), submittedAt = t0)
     q.claim("w1", 1.minute, t0)
     q.amendWaiting("resolve|x", Map("force" -> "true")) shouldBe false
   }

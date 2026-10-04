@@ -335,10 +335,10 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     slot.synopsis      shouldBe Some("Lucius Glantz walczy o hotel.")
   }
 
-  it should "re-kick TMDB + IMDb resolution when URL discovery adds a director/originalTitle to a tmdbNoMatch row" in {
+  it should "re-kick IMDb-id resolution when URL discovery adds a director/originalTitle to a tmdbNoMatch row" in {
     // End-to-end: a film TMDB missed (tmdbNoMatch) gains a Filmweb slot with an
     // original title + director; the write must fire the enrichment retrigger with
-    // ResolveTmdb + ResolveImdbId so Filmweb's data re-attempts the resolution.
+    // ResolveImdbId so Filmweb's data re-attempts the IMDb id.
     import services.movies.RetriggerKind
     val captured = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val repository = new InMemoryMovieRepository(Seq(
@@ -360,7 +360,6 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ratings.refreshOneSync(cache.entries.head._1)
 
     val kinds = captured.flatten.toSet
-    kinds should contain (RetriggerKind.ResolveTmdb)
     kinds should contain (RetriggerKind.ResolveImdbId)
   }
 

@@ -34,7 +34,6 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     val after  = rec(tmdbId = Some(1), imdbId = Some("tt1"))
     val kinds  = decide(before, k("Fatherland"), after, k("Ojczyzna"))
     kinds should contain allOf (FilmwebRating, RtRating, McRating)
-    kinds should not contain ResolveTmdb   // already resolved — never re-resolve (re-point risk)
     kinds should not contain ImdbRating    // imdbId unchanged
   }
 
@@ -52,47 +51,15 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     kinds should contain allOf (FilmwebRating, RtRating, McRating)  // tmdbId changed
   }
 
-  it should "re-resolve TMDB only for an UNRESOLVED row whose title/year changed" in {
-    val before = rec(tmdbId = None)
-    val after  = rec(tmdbId = None)
-    val kinds  = decide(before, k("Foo", Some(2025)), after, k("Foo", Some(2026)))
-    kinds should contain (ResolveTmdb)
+  it should "not re-kick the title-driven ratings for an UNRESOLVED row whose title/year changed" in {
+    val kinds = decide(rec(tmdbId = None), k("Foo", Some(2025)), rec(tmdbId = None), k("Foo", Some(2026)))
     kinds should not contain FilmwebRating   // unresolved → no firm film to rate yet
   }
 
-  it should "NOT re-resolve TMDB for a tmdbNoMatch row even when its title changed" in {
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
-    val after  = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
-    decide(before, k("Foo"), after, k("Bar")) should not contain ResolveTmdb
-  }
-
-  it should "re-resolve TMDB for a tmdbNoMatch row when a NEW originalTitle hint arrives (Filmweb crack)" in {
-    // The whole point of Filmweb-driven re-resolution: a film TMDB missed gains a
-    // Filmweb original title, which is a new search term that might now resolve it.
+  it should "re-kick IMDb-id resolution for a tmdbNoMatch row when a NEW originalTitle hint arrives" in {
     val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(originalTitle = Some("Der letzte Concierge"))))
-    val kinds  = decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż"))
-    kinds should contain (ResolveTmdb)
-    kinds should contain (ResolveImdbId)   // no imdbId + a new hint
-  }
-
-  it should "re-resolve TMDB for a tmdbNoMatch row when a director arrives from Filmweb" in {
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
-    val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(director = Seq("Gastón Solnicki"))))
-    decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should contain (ResolveTmdb)
-  }
-
-  it should "NOT re-resolve TMDB for a tmdbNoMatch row on a Filmweb write that adds no new hint (rating/genres only)" in {
-    // A bare rating/genres refresh isn't a disambiguator — must not churn a re-resolve.
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
-    val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(genres = Seq("Dramat"))))
-    decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should not contain ResolveTmdb
-  }
-
-  it should "re-resolve TMDB when an unresolved row gains an originalTitle hint from the merge" in {
-    val before = rec(tmdbId = None, original = None)
-    val after  = rec(tmdbId = None, original = Some("The Original"))
-    decide(before, k("Foo"), after, k("Foo")) should contain (ResolveTmdb)
+    decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should contain (ResolveImdbId)
   }
 
   it should "re-kick IMDb-id resolution when director data arrives on a TMDB-resolved but imdbId-less row" in {

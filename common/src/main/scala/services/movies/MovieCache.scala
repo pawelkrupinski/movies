@@ -530,10 +530,6 @@ class CaffeineMovieCache(
     before: MovieRecord, beforeKey: CacheKey, after: MovieRecord, afterKey: CacheKey
   ): Unit = {
     val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
-    // A queued re-resolve is not short-circuited by the miss it was queued to
-    // overcome: the row's `tmdbAttempt` fingerprints the inputs the miss was reached
-    // on, and an input that earns a ResolveTmdb here — a Filmweb-discovered
-    // `originalTitle`, a director — is exactly what changes that fingerprint.
     if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
   }
 

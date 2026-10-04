@@ -270,7 +270,7 @@ route_is telegram-and-email alertname=ScrapeWritesSkipped severity=warning count
 route_is telegram-and-email alertname=CityServingShortOfCorpus severity=warning country=us
 route_is telegram-and-email alertname=CityDarkInBothTiers severity=warning country=us city=butte
 route_is telegram-and-email alertname=ScrapeGuardStuckRejecting severity=warning country=pl guard=depth
-route_is telegram-and-email alertname=WorkerQueueHeadOld severity=warning country=es task_type=ResolveTmdb
+route_is telegram-and-email alertname=WorkerQueueHeadOld severity=warning country=es task_type=ResolveImdbId
 route_is telegram-and-email alertname=ProbeFailing severity=critical country=pl kind=front-door
 route_is telegram-and-email alertname=ProbeSlow severity=warning country=uk kind=city
 route_is telegram-and-email alertname=ProbeBlockedByEdge severity=warning country=uk kind=city

@@ -39,7 +39,6 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
    *  worker calls that source's existing `refreshAll`, or runs the
    *  identity projection pass (`settle`) on demand. */
   private val BulkJobs: Map[String, TaskType] = Map(
-    "tmdb"       -> TaskType.RefreshAllTmdb,
     "imdb"       -> TaskType.RefreshAllImdb,
     "filmweb"    -> TaskType.RefreshAllFilmweb,
     "metacritic" -> TaskType.RefreshAllMetacritic,

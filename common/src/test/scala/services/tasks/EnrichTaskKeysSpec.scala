@@ -8,43 +8,25 @@ class EnrichTaskKeysSpec extends AnyFlatSpec with Matchers {
   "bulkDedup" should "be a constant per task type so repeat triggers collapse" in {
     EnrichTaskKeys.bulkDedup(TaskType.RefreshAllImdb) shouldBe EnrichTaskKeys.bulkDedup(TaskType.RefreshAllImdb)
     EnrichTaskKeys.bulkDedup(TaskType.RefreshAllImdb) should not be
-      EnrichTaskKeys.bulkDedup(TaskType.RefreshAllTmdb)
+      EnrichTaskKeys.bulkDedup(TaskType.RefreshAllRt)
   }
 
-  "resolveTmdbDedup" should "distinguish films by (title, year) but be stable per film" in {
-    EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2024)) shouldBe EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2024))
-    EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2024)) should not be EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2021))
-    EnrichTaskKeys.resolveTmdbDedup("Dune", None)       should not be EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2024))
+  "resolveImdbIdDedup" should "distinguish films by (title, year) but be stable per film" in {
+    EnrichTaskKeys.resolveImdbIdDedup("Dune", Some(2024)) shouldBe EnrichTaskKeys.resolveImdbIdDedup("Dune", Some(2024))
+    EnrichTaskKeys.resolveImdbIdDedup("Dune", Some(2024)) should not be EnrichTaskKeys.resolveImdbIdDedup("Dune", Some(2021))
+    EnrichTaskKeys.resolveImdbIdDedup("Dune", None)       should not be EnrichTaskKeys.resolveImdbIdDedup("Dune", Some(2024))
   }
 
-  "resolveTmdbPayload" should "round-trip title + year (including a yearless film)" in {
-    val withYear = EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024))
-    EnrichTaskKeys.titleOf(withYear) shouldBe "Dune"
-    EnrichTaskKeys.yearOf(withYear)  shouldBe Some(2024)
+  "resolveImdbIdPayload" should "round-trip title, year (including a yearless film) and search title" in {
+    val withYear = EnrichTaskKeys.resolveImdbIdPayload("Dune", Some(2024), "Dune: Part Two")
+    EnrichTaskKeys.titleOf(withYear)       shouldBe "Dune"
+    EnrichTaskKeys.yearOf(withYear)        shouldBe Some(2024)
+    EnrichTaskKeys.searchTitleOf(withYear) shouldBe Some("Dune: Part Two")
 
-    val noYear = EnrichTaskKeys.resolveTmdbPayload("Untitled", None)
-    EnrichTaskKeys.titleOf(noYear) shouldBe "Untitled"
-    EnrichTaskKeys.yearOf(noYear)  shouldBe None
-  }
-
-  it should "carry the director + originalTitle hints and the resolve mode when present, and omit them when absent" in {
-    val full = EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024),
-      director = Some("Denis Villeneuve"), originalTitle = Some("Dune: Part Two"), mode = ResolveMode.Force)
-    EnrichTaskKeys.directorOf(full)      shouldBe Some("Denis Villeneuve")
-    EnrichTaskKeys.originalTitleOf(full) shouldBe Some("Dune: Part Two")
-    EnrichTaskKeys.modeOf(full)          shouldBe ResolveMode.Force
-
-    val bare = EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024))
-    EnrichTaskKeys.directorOf(bare)      shouldBe None
-    EnrichTaskKeys.originalTitleOf(bare) shouldBe None
-    EnrichTaskKeys.modeOf(bare)          shouldBe ResolveMode.Normal
-    bare.keySet shouldBe Set(EnrichTaskKeys.TitleKey, EnrichTaskKeys.YearKey)
-  }
-
-  it should "round-trip every resolve mode, and read a pre-mode `force` task as Force" in {
-    ResolveMode.values.foreach(mode =>
-      EnrichTaskKeys.modeOf(EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024), mode = mode)) shouldBe mode)
-    EnrichTaskKeys.modeOf(Map(EnrichTaskKeys.TitleKey -> "Dune", EnrichTaskKeys.ForceKey -> "true")) shouldBe ResolveMode.Force
+    val noYear = EnrichTaskKeys.resolveImdbIdPayload("Untitled", None, "")
+    EnrichTaskKeys.titleOf(noYear)       shouldBe "Untitled"
+    EnrichTaskKeys.yearOf(noYear)        shouldBe None
+    EnrichTaskKeys.searchTitleOf(noYear) shouldBe None
   }
 
   "the queue" should "collapse a second bulk trigger while the first is active (constant dedup key)" in {
@@ -54,11 +36,11 @@ class EnrichTaskKeysSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.RefreshAllFilmweb, key) shouldBe EnqueueResult.Duplicate
   }
 
-  it should "queue two different films' re-resolves independently" in {
+  it should "queue two different films' IMDb-id resolves independently" in {
     val queue = new InMemoryTaskQueue
-    queue.enqueue(TaskType.ResolveTmdb, EnrichTaskKeys.resolveTmdbDedup("A", None),
-      EnrichTaskKeys.resolveTmdbPayload("A", None)) shouldBe EnqueueResult.Added
-    queue.enqueue(TaskType.ResolveTmdb, EnrichTaskKeys.resolveTmdbDedup("B", None),
-      EnrichTaskKeys.resolveTmdbPayload("B", None)) shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.ResolveImdbId, EnrichTaskKeys.resolveImdbIdDedup("A", None),
+      EnrichTaskKeys.resolveImdbIdPayload("A", None, "A")) shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.ResolveImdbId, EnrichTaskKeys.resolveImdbIdDedup("B", None),
+      EnrichTaskKeys.resolveImdbIdPayload("B", None, "B")) shouldBe EnqueueResult.Added
   }
 }

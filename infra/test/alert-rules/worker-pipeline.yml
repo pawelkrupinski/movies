@@ -256,7 +256,7 @@ tests:
   # for the hour `increase` keeps it in view.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_tasks_finished_total{country="es",job="kinowo-worker",task_type="ResolveTmdb",outcome="permanent"}'
+      - series: 'kinowo_worker_tasks_finished_total{country="es",job="kinowo-worker",task_type="ResolveImdbId",outcome="permanent"}'
         values: '0x10 1x70'
     alert_rule_test:
       # Before the drop, and inside the `for: 5m` right after it.
@@ -269,10 +269,10 @@ tests:
       - eval_time: 30m
         alertname: WorkerTasksFailingPermanently
         exp_alerts:
-          - exp_labels: { severity: warning, country: es, task_type: ResolveTmdb }
+          - exp_labels: { severity: warning, country: es, task_type: ResolveImdbId }
             exp_annotations:
-              summary: "es dropped ResolveTmdb task(s) on a deterministic failure"
-              description: "A `ResolveTmdb` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
+              summary: "es dropped ResolveImdbId task(s) on a deterministic failure"
+              description: "A `ResolveImdbId` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
       # An hour after the one drop it has aged out: a single bug report, not a standing alert.
       - eval_time: 75m
         alertname: WorkerTasksFailingPermanently
@@ -281,7 +281,7 @@ tests:
   # QUIET: the seeded zero series exists for every (country, task_type) all the time.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_tasks_finished_total{country="pl",job="kinowo-worker",task_type="ResolveTmdb",outcome="permanent"}'
+      - series: 'kinowo_worker_tasks_finished_total{country="pl",job="kinowo-worker",task_type="ResolveImdbId",outcome="permanent"}'
         values: '0x80'
     alert_rule_test:
       - eval_time: 60m
@@ -442,7 +442,7 @@ tests:
   # reads under 300, and the seeded 0 is always there. None of it may fire.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_queue_parked_max_seconds{country="es",job="kinowo-worker",task_type="ResolveTmdb"}'
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="es",job="kinowo-worker",task_type="ResolveImdbId"}'
         values: '1800-60x29 1800-60x29 1800-60x20'
       - series: 'kinowo_worker_queue_parked_max_seconds{country="pl",job="kinowo-worker",task_type="ScrapeChunk"}'
         values: '300-10x30 300-10x30'
@@ -464,7 +464,7 @@ tests:
         alertname: WorkerTaskParkedTooLong
         exp_alerts: []
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # A CLAIMABLE TASK WHOSE HEAD HAS WAITED OVER TWO HOURS. ES's ResolveTmdb head ages one minute per
+  # A CLAIMABLE TASK WHOSE HEAD HAS WAITED OVER TWO HOURS. ES's ResolveImdbId head ages one minute per
   # minute, crosses 2h at 120m, and fires half an hour later -- across a worker-restart scrape gap at
   # 131m that the `last_over_time` must bridge. UK's ScrapeChunk sits at 1.7h, the fleet's healthy
   # 30-day maximum, and must not.
@@ -472,7 +472,7 @@ tests:
   - interval: 1m
     name: a queue head older than two hours fires across a restart gap, the healthy maximum does not
     input_series:
-      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{country="es",task_type="ResolveTmdb"}'
+      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{country="es",task_type="ResolveImdbId"}'
         values: '0+60x130 stale stale stale 8040+60x60'
       - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{country="uk",task_type="ScrapeChunk"}'
         values: '6120x190'
@@ -486,10 +486,10 @@ tests:
           - exp_labels:
               country: "es"
               severity: "warning"
-              task_type: "ResolveTmdb"
+              task_type: "ResolveImdbId"
             exp_annotations:
-              summary: "es's oldest claimable ResolveTmdb task has waited 2h 45m 0s"
-              description: "A ResolveTmdb task in \"es\" has been claimable -- due, not in backoff -- for over two hours and nothing has picked it up, while the rest of the queue may well be moving. Either the pool is saturated by other types (the queue-depth panel by type, and `kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size) or claim ordering is starving this type. The country's /tasks page lists the waiting tasks with their due times; the oldest one is the one this is about."
+              summary: "es's oldest claimable ResolveImdbId task has waited 2h 45m 0s"
+              description: "A ResolveImdbId task in \"es\" has been claimable -- due, not in backoff -- for over two hours and nothing has picked it up, while the rest of the queue may well be moving. Either the pool is saturated by other types (the queue-depth panel by type, and `kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size) or claim ordering is starving this type. The country's /tasks page lists the waiting tasks with their due times; the oldest one is the one this is about."
 
   # DOCUMENTS UNDECODABLE. Seeded at 0 as both processes do; ONE worker skip at t=10 fires at
   # once (any increase is the signal), and the alert clears once the skip ages out of the hour.

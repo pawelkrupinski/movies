@@ -131,7 +131,6 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
 
   "POST /tasks/run/:job" should "enqueue the matching bulk task for each known job" in {
     val cases = Map(
-      "tmdb"       -> RefreshAllTmdb,
       "imdb"       -> RefreshAllImdb,
       "filmweb"    -> RefreshAllFilmweb,
       "metacritic" -> RefreshAllMetacritic,
@@ -165,7 +164,14 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
     q.monitor().active shouldBe empty
   }
 
+  // The TMDB re-enrich ran the old pipeline's resolve; with it gone a queued run had no handler.
+  it should "400 the retired tmdb job rather than queue a run nothing handles" in {
+    val q = new InMemoryTaskQueue
+    status(controller(q).run("tmdb").apply(adminSession)) shouldBe BAD_REQUEST
+    q.monitor().active shouldBe empty
+  }
+
   it should "401 an anonymous run request" in {
-    status(controller(new InMemoryTaskQueue).run("tmdb").apply(FakeRequest())) shouldBe UNAUTHORIZED
+    status(controller(new InMemoryTaskQueue).run("imdb").apply(FakeRequest())) shouldBe UNAUTHORIZED
   }
 }

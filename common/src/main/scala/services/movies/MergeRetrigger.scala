@@ -7,7 +7,6 @@ import models.MovieRecord
  *  worker-side [[EnrichmentRetrigger]] impl. */
 sealed trait RetriggerKind
 object RetriggerKind {
-  case object ResolveTmdb   extends RetriggerKind
   case object ResolveImdbId extends RetriggerKind
   case object ImdbRating    extends RetriggerKind
   case object FilmwebRating extends RetriggerKind
@@ -42,10 +41,8 @@ object EnrichmentRetrigger {
  * AGGRESSIVE on inputs: an input change re-kicks the enrichment even if its
  * output is already present, because the present value was computed for the
  * pre-merge inputs and may now be wrong (e.g. a Filmweb rating fetched under a
- * title the merge has since corrected). The one exception is TMDB resolution:
- * it only re-fires for an UNRESOLVED (or no-match) row, because re-resolving a
- * row that already carries a tmdbId merely because the merge re-spelled its
- * canonical title risks RE-POINTING it to a different same-title film.
+ * title the merge has since corrected). TMDB resolution is not one of them:
+ * the identity projection resolves a film from its listings, not on a merge.
  */
 object MergeRetrigger {
 
@@ -87,18 +84,6 @@ object MergeRetrigger {
     val ratingInputChanged   = titleOrYearChanged || searchTitleChanged || tmdbIdChanged
 
     val builder = Set.newBuilder[RetriggerKind]
-    // Re-resolve TMDB for an UNRESOLVED row whose title/year/originalTitle/director
-    // changed. A `tmdbNoMatch` row (TMDB already looked and found nothing) is the
-    // exception: re-resolving it on a bare title re-spelling would just churn the
-    // same no-match — so it re-fires ONLY when a NEW disambiguating hint arrives
-    // (an originalTitle or director it lacked), which is exactly what a
-    // Filmweb-supplied original title / director is. This is what lets Filmweb
-    // crack a film TMDB missed, while keeping the re-key/re-case churn guard.
-    val newDisambiguator = originalTitleChanged || directorChanged
-    if (after.tmdbId.isEmpty &&
-        ((!after.tmdbNoMatch && (titleOrYearChanged || originalTitleChanged || directorChanged)) ||
-         (after.tmdbNoMatch && newDisambiguator)))
-      builder += RetriggerKind.ResolveTmdb
     if ((tmdbIdChanged || tmdbNoMatchChanged || searchTitleChanged || titleOrYearChanged || directorChanged || originalTitleChanged)
         && (after.tmdbId.isDefined || after.tmdbNoMatch) && after.imdbId.isEmpty)
       builder += RetriggerKind.ResolveImdbId

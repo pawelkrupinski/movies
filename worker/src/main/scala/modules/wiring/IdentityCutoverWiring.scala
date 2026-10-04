@@ -1,11 +1,10 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.identity.{CutoverTaskHandlers, FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
+import services.identity.{FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
   InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.tasks.TaskHandler
 import settings.IdentityProjectionInterval
 
 import scala.concurrent.duration.DurationInt
@@ -15,8 +14,7 @@ import scala.concurrent.duration.DurationInt
  * docs/design/identity-cutover-runbook.md):
  *  - a scrape goes to [[IdentityListingIntake]] (the venue's accepted listing);
  *  - the settle tick runs [[IdentityProjection]], every `KINOWO_IDENTITY_PROJECTION_SECONDS` (5 minutes
- *    by default), which writes the identity model's films;
- *  - the old identity path's tasks still queued (the TMDB resolve, the staging chain) are completed unrun.
+ *    by default), which writes the identity model's films.
  */
 trait IdentityCutoverWiring { self: WorkerWiring =>
 
@@ -70,9 +68,6 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   /** The venue slots the projection last kept (`identity_slot_fingerprints`), in memory without a database. */
   lazy val venueSlotFingerprints: VenueSlotFingerprints =
     mongoConnection.database.fold[VenueSlotFingerprints](new InMemoryVenueSlotFingerprints)(new MongoVenueSlotFingerprints(_))
-
-  /** `handlers` with the old identity path's task types completed unrun. */
-  def identityPathHandlers(handlers: Seq[TaskHandler]): Seq[TaskHandler] = CutoverTaskHandlers.of(handlers)
 }
 
 object IdentityCutoverWiring {

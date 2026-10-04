@@ -47,13 +47,13 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   it should "tag every task-pipeline series with the emitting country" in {
     val (m, series) = newPl()
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
-    m.onStarted(task(TaskType.ResolveTmdb))
+    m.onStarted(task(TaskType.ResolveImdbId))
 
     val out = scrapePl(series)
 
     // The label is present and carries "pl" on representative counter + gauge series.
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 1""")
-    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ResolveTmdb"} 1""")
+    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ResolveImdbId"} 1""")
   }
 
   it should "keep two countries' series separate on one shared registry" in {
@@ -139,16 +139,16 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "count started and finished tasks, split by outcome" in {
     val (m, series) = newPl()
-    m.onStarted(task(TaskType.ResolveTmdb))
-    m.onFinished(task(TaskType.ResolveTmdb), WorkerTaskMetrics.Outcome.Done, handleMillis = 500)
-    m.onStarted(task(TaskType.ResolveTmdb))
-    m.onFinished(task(TaskType.ResolveTmdb), WorkerTaskMetrics.Outcome.Skipped, handleMillis = 5)
+    m.onStarted(task(TaskType.ResolveImdbId))
+    m.onFinished(task(TaskType.ResolveImdbId), WorkerTaskMetrics.Outcome.Done, handleMillis = 500)
+    m.onStarted(task(TaskType.ResolveImdbId))
+    m.onFinished(task(TaskType.ResolveImdbId), WorkerTaskMetrics.Outcome.Skipped, handleMillis = 5)
 
     val out = scrapePl(series)
 
-    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ResolveTmdb"} 2""")
-    out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="done",task_type="ResolveTmdb"} 1""")
-    out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="skipped",task_type="ResolveTmdb"} 1""")
+    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ResolveImdbId"} 2""")
+    out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="done",task_type="ResolveImdbId"} 1""")
+    out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="skipped",task_type="ResolveImdbId"} 1""")
   }
 
   it should "record handler duration ONLY for fully-worked (done) tasks" in {
@@ -201,13 +201,13 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
         // Submitted 25 min ago, its backoff ran out 40s ago: it has waited on the pool for 40s.
         summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.minusSeconds(40))),
         // Only ever parked: nothing claimable of this type at all.
-        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(6000), Some(now.plusSeconds(1800)))
+        summary(TaskType.ResolveImdbId, TaskState.Waiting, now.minusSeconds(6000), Some(now.plusSeconds(1800)))
       ))
 
     val out = scrapePl(series, snapshot)
 
     out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ScrapeChunk"} 40""")
-    out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ResolveTmdb"} 0""")
+    out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ResolveImdbId"} 0""")
   }
 
   // 2026-09-28/29: PL, UK and DE each read a RenderShareCard head of line of exactly 24h for
@@ -233,16 +233,16 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
         summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.plusSeconds(300))),
         summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.plusSeconds(1200))),
         // Its hold has already run out: claimable, not parked.
-        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(6000), Some(now.minusSeconds(40))),
+        summary(TaskType.ResolveImdbId, TaskState.Waiting, now.minusSeconds(6000), Some(now.minusSeconds(40))),
         summary(TaskType.EnrichDetails, TaskState.Waiting, now.minusSeconds(60), None)
       ))
 
     val out = scrapePl(series, snapshot)
 
     out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ScrapeChunk"} 1200""")
-    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ResolveTmdb"} 0""")
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ResolveImdbId"} 0""")
     out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="EnrichDetails"} 0""")
-    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="StagingFold"} 0""")
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ReadVenuePage"} 0""")
   }
 
   // The waiting count includes every chunk the planner staggered with `notBefore`: a
@@ -258,14 +258,14 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
         summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(10), Some(now.plusSeconds(100))),
         // Its hold has run out: claimable, not held.
         summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(10), Some(now.minusSeconds(5))),
-        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(60), None)
+        summary(TaskType.ResolveImdbId, TaskState.Waiting, now.minusSeconds(60), None)
       ))
 
     val out = scrapePl(series, snapshot)
 
     out should include ("""kinowo_worker_queue_waiting_by_type{country="pl",task_type="ScrapeChunk"} 3""")
     out should include ("""kinowo_worker_queue_held_by_type{country="pl",task_type="ScrapeChunk"} 2""")
-    out should include ("""kinowo_worker_queue_held_by_type{country="pl",task_type="ResolveTmdb"} 0""")
+    out should include ("""kinowo_worker_queue_held_by_type{country="pl",task_type="ResolveImdbId"} 0""")
   }
 
   it should "seed every task type to 0 so the series exists from boot" in {
@@ -273,7 +273,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     val out = scrapePl(series)
 
     // A type that never ran still appears at 0 (no Grafana gap).
-    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="StagingFold"} 0""")
+    out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ReadVenuePage"} 0""")
     out should include ("""kinowo_worker_tasks_finished_total{country="pl",outcome="done",task_type="RtRating"} 0""")
   }
 

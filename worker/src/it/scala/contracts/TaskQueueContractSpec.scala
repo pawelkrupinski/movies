@@ -57,26 +57,26 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
 
     it should s"[$name] add a task, then report a second enqueue of its key as a duplicate" in {
       val queue = fresh(cls)
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film"), t0) shouldBe EnqueueResult.Added
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film"), t0) shouldBe EnqueueResult.Duplicate
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map("title" -> "Film"), t0) shouldBe EnqueueResult.Added
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map("title" -> "Film"), t0) shouldBe EnqueueResult.Duplicate
     }
 
     it should s"[$name] amend a waiting task's payload, and hand the amended payload to its claimer" in {
       val queue = fresh(cls)
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film"), t0)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map("title" -> "Film"), t0)
       queue.amendWaiting("film|2026", Map("retryMiss" -> "true")) shouldBe true
       queue.claim("worker", 1.minute, t0).map(_.payload) shouldBe Some(Map("title" -> "Film", "retryMiss" -> "true"))
     }
 
     it should s"[$name] report amended when the waiting task already carries the fields" in {
       val queue = fresh(cls)
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film", "retryMiss" -> "true"), t0)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map("title" -> "Film", "retryMiss" -> "true"), t0)
       queue.amendWaiting("film|2026", Map("retryMiss" -> "true")) shouldBe true
     }
 
     it should s"[$name] leave a claimed task's payload alone" in {
       val queue = fresh(cls)
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film"), t0)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map("title" -> "Film"), t0)
       val claimed = queue.claim("worker", 1.minute, t0)
       claimed.map(_.dedupKey) shouldBe Some("film|2026")
       queue.amendWaiting("film|2026", Map("force" -> "true")) shouldBe false
@@ -90,10 +90,10 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
 
     it should s"[$name] free a key once its task completes" in {
       val queue = fresh(cls)
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map.empty, t0)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0)
       val task = queue.claim("worker", 1.minute, t0).get
       queue.complete(task.id, "worker")
-      queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map.empty, t0) shouldBe EnqueueResult.Added
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0) shouldBe EnqueueResult.Added
     }
   }
 }

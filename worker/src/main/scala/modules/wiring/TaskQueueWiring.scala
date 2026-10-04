@@ -61,8 +61,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
   lazy val taskWorker = managedResources.stopping(new TaskWorker(
-    taskQueue, identityPathHandlers(Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
-      ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers),
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
+      ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers,
     poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.

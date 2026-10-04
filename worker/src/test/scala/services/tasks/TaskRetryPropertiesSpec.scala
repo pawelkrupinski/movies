@@ -26,7 +26,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
   private val taskRows = RetryClassificationTable.load.rowsFor("task")
 
   private final class CountingHandler(outcome: Task => HandlerOutcome) extends TaskHandler {
-    val taskType: TaskType = TaskType.ResolveTmdb
+    val taskType: TaskType = TaskType.ResolveImdbId
     var runs = 0
     def handle(task: Task): HandlerOutcome = { runs += 1; outcome(task) }
   }
@@ -39,7 +39,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
                     maxClaims: Int = 100): (InMemoryTaskQueue, Int) = {
     val clock  = new MutableClock(t0)
     val queue  = new InMemoryTaskQueue
-    queue.enqueue(TaskType.ResolveTmdb, "resolve-tmdb|x|2026", submittedAt = t0)
+    queue.enqueue(TaskType.ResolveImdbId, "resolve-imdbid|x|2026", submittedAt = t0)
     val worker = new TaskWorker(queue, Seq(handler), maxAttempts = services.tasks.TaskWorker.MaxAttempts(maxAttempts), clock = clock)
     var claims = 0
     var ticks  = 0
@@ -110,7 +110,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
     for ((name, outcome) <- farOff; priorAttempts <- Seq(0, 5, 10)) {
       val clock = new MutableClock(t0)
       val queue = new InMemoryTaskQueue
-      queue.enqueue(TaskType.ResolveTmdb, "resolve-tmdb|x|2026", submittedAt = t0)
+      queue.enqueue(TaskType.ResolveImdbId, "resolve-imdbid|x|2026", submittedAt = t0)
       (1 to priorAttempts).foreach { _ => val t = queue.claim("w9", 1.minute, clock.instant()).get; queue.release(t.id, "w9") }
       new TaskWorker(queue, Seq(new CountingHandler(_ => outcome(clock.instant()))), clock = clock).claimAndRun("w0")
       val parkedUntil = queue.monitor().active.flatMap(_.nextEligibleAt)
@@ -118,14 +118,6 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
         parkedUntil should not be empty
         parkedUntil.foreach(until => Duration.between(clock.instant(), until).toMillis should be <= TaskWorker.MaxBackoff.toMillis)
       }
-    }
-  }
-
-  "a dedup'd resolve re-try" should "never lower the waiting task's mode" in {
-    for (waiting <- ResolveMode.values; incoming <- ResolveMode.values) {
-      val raised = EnrichTaskKeys.raisedMode(waiting, incoming)
-      withClue(s"waiting $waiting, then $incoming: ")(
-        raised.ordinal should be >= math.max(waiting.ordinal, incoming.ordinal))
     }
   }
 }

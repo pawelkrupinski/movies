@@ -10511,7 +10511,6 @@ services.events.EventBus
 services.events.ImdbIdMissing
 services.events.ImdbIdMissing$
 services.events.InProcessEventBus
-services.events.MovieDetailsComplete
 services.events.TaskFinished
 services.events.TaskFinished$
 services.fallback.FallbackEvent
@@ -11035,7 +11034,6 @@ services.movies.RetriggerKind$FilmwebRating$
 services.movies.RetriggerKind$ImdbRating$
 services.movies.RetriggerKind$McRating$
 services.movies.RetriggerKind$ResolveImdbId$
-services.movies.RetriggerKind$ResolveTmdb$
 services.movies.RetriggerKind$RtRating$
 services.movies.RuntimeCorroboration$
 services.movies.RuntimeCorroboration$$anon$1
@@ -11513,9 +11511,6 @@ services.tasks.RecheckedAudit$Series
 services.tasks.RecheckedAudit$Series$$anon$3
 services.tasks.RecheckedAuditHandler
 services.tasks.ResolveImdbIdHandler
-services.tasks.ResolveMode
-services.tasks.ResolveMode$
-services.tasks.ResolveMode$$anon$1
 services.tasks.ScrapeCadence$
 services.tasks.ScrapeChunkHandler
 services.tasks.ScrapeChunkHandler$
@@ -11569,21 +11564,15 @@ services.tasks.TaskType$RefreshAllImdb$
 services.tasks.TaskType$RefreshAllMetacritic$
 services.tasks.TaskType$RefreshAllOmdb$
 services.tasks.TaskType$RefreshAllRt$
-services.tasks.TaskType$RefreshAllTmdb$
 services.tasks.TaskType$ReleaseShareCardHold$
 services.tasks.TaskType$RenderShareCard$
 services.tasks.TaskType$ResolveImdbId$
-services.tasks.TaskType$ResolveTmdb$
 services.tasks.TaskType$RtRating$
 services.tasks.TaskType$ScrapeChunk$
 services.tasks.TaskType$ScrapeChunkReduce$
 services.tasks.TaskType$ScrapeCinema$
 services.tasks.TaskType$SettleNow$
 services.tasks.TaskType$ShareCardBackfill$
-services.tasks.TaskType$StagingDetail$
-services.tasks.TaskType$StagingFold$
-services.tasks.TaskType$StagingResolveImdbId$
-services.tasks.TaskType$StagingResolveTmdb$
 services.tasks.TaskWorker
 services.tasks.TaskWorker$
 services.tasks.TaskWorker$IdleBackstop$

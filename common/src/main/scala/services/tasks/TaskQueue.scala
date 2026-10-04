@@ -4,7 +4,9 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import java.time.Instant
 
 /** The kinds of deferred work the queue carries. Extensible — add a case and a
- *  handler. The `name` is the on-disk discriminator, so keep it stable. */
+ *  handler. The `name` is the on-disk discriminator, so keep it stable. A type may be
+ *  deleted while rows of it are still queued: `MongoTaskQueue.claim` drops a row whose
+ *  name no longer decodes. */
 sealed trait TaskType { def name: String }
 
 object TaskType {
@@ -12,7 +14,6 @@ object TaskType {
   case object EnrichDetails extends TaskType { val name = "EnrichDetails" }
   // A venue detail page read into venue_pages for a listing no film row holds yet (a cut-over country).
   case object ReadVenuePage extends TaskType { val name = "ReadVenuePage" }
-  case object ResolveTmdb   extends TaskType { val name = "ResolveTmdb"   }
   case object ResolveImdbId extends TaskType { val name = "ResolveImdbId" }
   case object ImdbRating    extends TaskType { val name = "ImdbRating"    }
   case object FilmwebRating extends TaskType { val name = "FilmwebRating" }
@@ -22,8 +23,7 @@ object TaskType {
   // Operator-triggered, corpus-wide refresh runs (the `/tasks` page buttons).
   // Each is a global singleton: a constant dedup key collapses repeat clicks
   // while one is active, and the worker handler runs the corresponding existing
-  // `refreshAll` / `retryUnresolvedTmdb`.
-  case object RefreshAllTmdb       extends TaskType { val name = "RefreshAllTmdb"       }
+  // `refreshAll`.
   case object RefreshAllImdb       extends TaskType { val name = "RefreshAllImdb"       }
   case object RefreshAllFilmweb    extends TaskType { val name = "RefreshAllFilmweb"    }
   case object RefreshAllMetacritic extends TaskType { val name = "RefreshAllMetacritic" }
@@ -32,14 +32,6 @@ object TaskType {
   // Operator-triggered identity projection, the same work the periodic SettleReaper
   // schedules, on demand from the `/tasks` page's "settle" button.
   case object SettleNow            extends TaskType { val name = "SettleNow"            }
-
-  // RETIRED — the staging fold's steps, deleted with the old film pipeline (43e8ed84c). Nothing
-  // enqueues them; they stay only so a row enqueued before that deploy still decodes (an unknown
-  // name throws in `MongoTaskQueue`) and the worker completes it unrun (`CutoverTaskHandlers`).
-  case object StagingDetail        extends TaskType { val name = "StagingDetail"        }
-  case object StagingResolveTmdb   extends TaskType { val name = "StagingResolveTmdb"   }
-  case object StagingResolveImdbId extends TaskType { val name = "StagingResolveImdbId" }
-  case object StagingFold          extends TaskType { val name = "StagingFold"          }
 
   // Chunked (map-reduce) scrape: a cinema whose listing fans out over many
   // independent units (per-day pages, per-event pages) is scraped as one
@@ -67,9 +59,8 @@ object TaskType {
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
 
   val all: Seq[TaskType] =
-    Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
-        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
-        StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold,
+    Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
+        RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         ScrapeChunk, ScrapeChunkReduce,
         RenderShareCard, ShareCardBackfill, PruneShareCards, ReleaseShareCardHold,
         AuditReadModelContent, AuditShareCards)

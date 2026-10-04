@@ -18,67 +18,12 @@ object EnrichTaskKeys {
   /** The constant dedup key for each corpus-wide refresh run. */
   def bulkDedup(taskType: TaskType): String = s"bulk|${taskType.name}"
 
-  // Per-movie TMDB resolve. Distinct dedup key per (title, year) so two
-  // different films resolve concurrently, but a repeat trigger for the same row
-  // while one is queued collapses to one task. Enqueued both by the normal
-  // enrichment flow (each scraped film whose tmdbId is still empty) and by the
-  // operator `/debug` "re-enrich" button — the payload's [[ResolveMode]] separates
-  // them: the button forces a re-resolve even of an already-resolved row, the normal
-  // flow does not (re-resolving a resolved row can flip it to a more-popular
-  // same-title hit), and a re-try searches past the row's remembered miss.
-  val TitleKey         = "title"
-  val YearKey          = "year"
-  val DirectorKey      = "director"
-  val OriginalTitleKey = "originalTitle"
-  val ForceKey         = "force"
-  val RetryMissKey     = "retryMiss"
-
-  def resolveTmdbDedup(title: String, year: Option[Int]): String =
-    s"resolve-tmdb|$title|${year.map(_.toString).getOrElse("")}"
-
-  /** Payload for a `ResolveTmdb` task. The director + originalTitle hints let
-   *  the worker's `directorWalk` / secondary-title search fire for films TMDB
-   *  doesn't index under their Polish title. */
-  def resolveTmdbPayload(
-    title:         String,
-    year:          Option[Int],
-    director:      Option[String] = None,
-    originalTitle: Option[String] = None,
-    mode:          ResolveMode    = ResolveMode.Normal
-  ): Map[String, String] =
-    Map(TitleKey -> title, YearKey -> year.map(_.toString).getOrElse("")) ++
-      director.filter(_.nonEmpty).map(DirectorKey -> _) ++
-      originalTitle.filter(_.nonEmpty).map(OriginalTitleKey -> _) ++
-      modeFields(mode)
-
-  /** The payload fields that carry `mode` — empty for Normal. Merging them into ANY
-   *  resolve payload can only raise its mode (Normal < RetryMiss < Force, see [[modeOf]]),
-   *  which is what lets a Duplicate dispatch amend a queued task without downgrading it. */
-  def modeFields(mode: ResolveMode): Map[String, String] = mode match {
-    case ResolveMode.Normal    => Map.empty
-    case ResolveMode.RetryMiss => Map(RetryMissKey -> "true")
-    case ResolveMode.Force     => Map(ForceKey -> "true")
-  }
-
-  /** The mode a waiting resolve runs in once a `incoming` dispatch has been merged into it —
-   *  the payload merge `TaskQueue.amendWaiting` performs, read back. Never lower than
-   *  `waiting`: Force beats RetryMiss beats Normal. */
-  def raisedMode(waiting: ResolveMode, incoming: ResolveMode): ResolveMode =
-    modeOf(modeFields(waiting) ++ modeFields(incoming))
+  val TitleKey = "title"
+  val YearKey  = "year"
 
   def titleOf(payload: Map[String, String]): String = payload.getOrElse(TitleKey, "")
   def yearOf(payload: Map[String, String]): Option[Int] =
     payload.get(YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
-  def directorOf(payload: Map[String, String]): Option[String] =
-    payload.get(DirectorKey).filter(_.nonEmpty)
-  def originalTitleOf(payload: Map[String, String]): Option[String] =
-    payload.get(OriginalTitleKey).filter(_.nonEmpty)
-  /** One flag per non-normal mode — `force` kept as the key it always was, so a task
-   *  queued by the previous build still decodes. */
-  def modeOf(payload: Map[String, String]): ResolveMode =
-    if (payload.get(ForceKey).contains("true")) ResolveMode.Force
-    else if (payload.get(RetryMissKey).contains("true")) ResolveMode.RetryMiss
-    else ResolveMode.Normal
 
   // Per-movie IMDb-id resolution (movies path). Distinct dedup key per (title,
   // year) so different films resolve concurrently while a repeat for the same row
