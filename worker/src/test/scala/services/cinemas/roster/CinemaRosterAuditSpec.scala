@@ -35,7 +35,7 @@ import scala.util.{Try, Using}
  */
 class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
 
-  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("does-not-exist"), models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)))
+  private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("does-not-exist"), models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)), tools.SpecClock.Pinned)
 
   /** Every upstream listing with the city it is wired under — every modelled
    *  city, including ones currently disabled. A venue read off several listings

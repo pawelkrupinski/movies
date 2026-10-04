@@ -3,7 +3,7 @@ package services.cinemas.common
 import tools.{CountingHttpFetch, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
 
 import java.net.http.HttpClient
-import java.time.Duration
+import java.time.{Clock, Duration}
 
 /**
  * Builds the `HttpFetch` for a cinema whose site WAF blocks our datacenter IP:
@@ -20,6 +20,8 @@ import java.time.Duration
  * hands in — the composition root's in production, one over a fixed `Env.of(…)` in a
  * spec, so both branches are testable even where CI sets the key.
  *
+ * `clock` is the composition root's: the cookie-walled session's TTL is judged on it.
+ *
  * `zyteHttp` is the JDK client the Zyte API calls go through — built by the
  * composition root ([[newHttpClient]]) and handed in, by name, so it is only built
  * when there is a key to use it with.
@@ -30,10 +32,11 @@ object ZyteFallback {
     direct:       HttpFetch,
     zyteHttp:     => HttpClient,
     configuration: settings.ProcessConfiguration,
+    clock:        Clock,
     cookieSource: Option[String] = None,
     meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    fetchFor(direct, zyteHttp, configuration.zyteApiKey, configuration, cookieSource, meter)
+    fetchFor(direct, zyteHttp, configuration.zyteApiKey, configuration, cookieSource, meter, clock)
 
   /** [[fetchFor]] with the key handed in rather than read off `configuration` — for a
    *  composition root that decides for itself whether it has a paid Zyte leg at all
@@ -44,10 +47,11 @@ object ZyteFallback {
     apiKey:        Option[settings.ZyteApiKey],
     configuration: settings.ProcessConfiguration,
     cookieSource:  Option[String],
-    meter:         HttpOutcomeRecorder
+    meter:         HttpOutcomeRecorder,
+    clock:         Clock
   ): HttpFetch =
     chain(apiKey.map(key =>
-      new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource,
+      new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource, clock,
         configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)))), direct, meter)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's

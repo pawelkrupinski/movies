@@ -10,7 +10,7 @@ import services.cinemas.es.OcineClient
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
-import java.time.{LocalDate, ZoneId}
+import java.time.{Clock, LocalDate, ZoneId}
 import scala.concurrent.duration._
 
 /**
@@ -108,15 +108,16 @@ class CinemaScraperCatalog(
    *  shards it is `http` ALONE, since Zyte is only ever the proxy's fallback
    *  ([[modules.wiring.EgressWiring.paidEgressChain]]). `WorkerWiring` uses the primary ctor
    *  to inject its own routes. `configuration` is the caller's: a tool's `main` passes the
-   *  process's, a spec none. */
-  def this(http: HttpFetch, venueClock: VenueClock,
+   *  process's, a spec none. `clock` is what a Zyte session's TTL is judged on — the run's
+   *  own, which a venue clock pinned to a day for the plan's sake is not. */
+  def this(http: HttpFetch, venueClock: VenueClock, clock: Clock,
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
            configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
-    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http),
-      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
+    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http, clock),
+      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http),
       venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None), http),
+      zyteFetch = modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http),
       // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
       flicksFetch = http, vueFetch = http, odeonFetch = http,
       // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.

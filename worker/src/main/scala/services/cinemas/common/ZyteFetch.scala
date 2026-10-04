@@ -22,8 +22,9 @@ import scala.concurrent.duration._
 class ZyteFetch(
   client:       ZyteClient,
   cookieSource: Option[String],
-  sessionTtl:   ZyteSessionTtl = ZyteSessionTtl(ZyteFetch.DefaultSessionTtl),
-  clock:        Clock = Clock.systemUTC()
+  // What the shared session's TTL is judged on: the composition root's clock.
+  clock:        Clock,
+  sessionTtl:   ZyteSessionTtl = ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)
 ) extends GetOnlyHttpFetch {
   private val session: Option[SharedZyteSession] =
     cookieSource.map(src => new SharedZyteSession(client, src, sessionTtl.value, clock))

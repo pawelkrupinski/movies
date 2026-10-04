@@ -104,7 +104,7 @@ trait EgressWiring { self: WorkerWiring =>
 
   /** Zyte (when [[zyteApiKey]] is set) → `direct`: the paid leg every Zyte route below builds. */
   private def zyteThenDirect(direct: HttpFetch, cookieSource: Option[String] = None): HttpFetch =
-    ZyteFallback.fetchFor(direct, zyteHttpClient, zyteApiKey, configuration, cookieSource, zyteMeter)
+    ZyteFallback.fetchFor(direct, zyteHttpClient, zyteApiKey, configuration, cookieSource, zyteMeter, clock)
 
   lazy val multikinoFetch: HttpFetch =
     proxyPrimary(zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl)), warmUrl = Some(MultikinoClient.HomeUrl))
@@ -182,14 +182,14 @@ object EgressWiring {
 
   /** Zyte over `configuration`'s key (cookie-walled on `cookieSource`) → `direct`: the leg
    *  [[paidEgressChain]] puts behind the proxy. */
-  def zyteOver(configuration: settings.ProcessConfiguration, cookieSource: Option[String])(direct: HttpFetch): HttpFetch =
+  def zyteOver(configuration: settings.ProcessConfiguration, cookieSource: Option[String], clock: java.time.Clock)(direct: HttpFetch): HttpFetch =
     ZyteFallback.fetchFor(direct, ZyteFallback.newHttpClient(), configuration.zyteApiKey, configuration, cookieSource,
-      HttpOutcomeRecorder.noop)
+      HttpOutcomeRecorder.noop, clock)
 
   /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → Zyte → `direct`. */
   def multikinoChain(configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]],
-                     direct: HttpFetch): HttpFetch =
-    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl)), direct, Some(MultikinoClient.HomeUrl))
+                     direct: HttpFetch, clock: java.time.Clock): HttpFetch =
+    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl), clock), direct, Some(MultikinoClient.HomeUrl))
 
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"

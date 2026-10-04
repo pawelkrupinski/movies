@@ -51,8 +51,6 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   private val ClockDefaultAllowlist: Map[String, String] = Map(
     "common/src/main/scala/services/movies/ChangeStreamLiveness.scala: ChangeStreamLiveness.clock" -> NoClockSeam,
     "common/src/main/scala/services/movies/MovieChangeStream.scala: MovieChangeStream.clock"       -> NoClockSeam,
-    "worker/src/main/scala/services/cinemas/common/ZyteFetch.scala: ZyteFetch.clock" ->
-      "TODO(clock-default-backlog): built inside ZyteFallback.fetchFor, whose callers hold no clock",
     "common/src/main/scala/services/movies/EmbeddedYear.scala: ofAll.maxYear" ->
       "a plausibility cap on a year read out of a title (next year at most); only New Year moves it, never a venue's day",
   )

@@ -21,7 +21,7 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   private val stubHttp = new GetOnlyHttpFetch {
     def get(url: String): String = throw new UnsupportedOperationException(s"no network in this spec ($url)")
   }
-  private val catalog = new CinemaScraperCatalog(stubHttp, models.VenueClock.fixedOn(LocalDate.of(2026, 6, 10)))
+  private val catalog = new CinemaScraperCatalog(stubHttp, models.VenueClock.fixedOn(LocalDate.of(2026, 6, 10)), tools.SpecClock.Pinned)
   private val markers = CinemaClientMarkers.markers(catalog.all)
   private val sourceUrls = CinemaClientMarkers.sourceUrls(catalog.all)
 

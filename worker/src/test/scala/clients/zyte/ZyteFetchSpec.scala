@@ -34,7 +34,7 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
 
   "ZyteFetch with no cookie source" should "do a single get — no warm-up — for a stateless page" in {
     val client = new RecordingZyteClient
-    val body   = new ZyteFetch(client, None).get("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe")
+    val body   = new ZyteFetch(client, None, tools.SpecClock.Pinned).get("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe")
 
     body shouldBe "BODY"
     client.gets shouldBe List("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe")
@@ -44,7 +44,7 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
 
   "ZyteFetch with a cookie source" should "warm a session then fetch under it, reusing the same id" in {
     val client = new RecordingZyteClient
-    new ZyteFetch(client, Some("https://www.multikino.pl/")).get("https://www.multikino.pl/api/x")
+    new ZyteFetch(client, Some("https://www.multikino.pl/"), tools.SpecClock.Pinned).get("https://www.multikino.pl/api/x")
 
     client.gets shouldBe empty
     client.warms.map(_._1) shouldBe List("https://www.multikino.pl/")
@@ -55,12 +55,23 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "share ONE warmed session across many fetches (the fleet-wide cost saving)" in {
     val client = new RecordingZyteClient
-    val fetch  = new ZyteFetch(client, Some("https://www.multikino.pl/"))
+    val fetch  = new ZyteFetch(client, Some("https://www.multikino.pl/"), tools.SpecClock.Pinned)
     (1 to 5).foreach(i => fetch.get(s"https://www.multikino.pl/api/cinemas/000$i/films"))
 
     client.warms should have size 1       // warmed once, not five times
     client.fetches should have size 5     // every cinema still fetched
     client.fetches.map(_._2).distinct shouldBe List(client.warms.head._2) // all under that one session
+  }
+
+  it should "judge the shared session's TTL on the clock it was handed" in {
+    val client = new RecordingZyteClient
+    val clock  = new tools.MutableClock(java.time.Instant.EPOCH)
+    val fetch  = new ZyteFetch(client, Some("https://www.multikino.pl/"), clock)
+    fetch.get("https://www.multikino.pl/api/a")
+    clock.advanceMillis(ZyteFetch.DefaultSessionTtl.toMillis + 1)
+    fetch.get("https://www.multikino.pl/api/b")
+
+    client.warms should have size 2 // the second fetch found the first session expired
   }
 
   // Odeon's ocapi authenticates with `Authorization: Bearer`, and `odeonFetch`
@@ -70,7 +81,7 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
   "ZyteFetch with no cookie source" should "carry the caller's request headers through to Zyte" in {
     val client = new RecordingZyteClient
     val url    = "https://vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/sites/1/showtimes"
-    new ZyteFetch(client, None).get(url, Map("Authorization" -> "Bearer t0k"))
+    new ZyteFetch(client, None, tools.SpecClock.Pinned).get(url, Map("Authorization" -> "Bearer t0k"))
 
     client.headed shouldBe List(url -> Map("Authorization" -> "Bearer t0k"))
     client.gets shouldBe empty
@@ -79,7 +90,7 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
   "ZyteFetch with a cookie source" should "refuse headers it cannot carry rather than silently drop them" in {
     val client = new RecordingZyteClient
     an [UnsupportedOperationException] should be thrownBy
-      new ZyteFetch(client, Some("https://www.multikino.pl/")).get("https://www.multikino.pl/api/x", Map("Authorization" -> "Bearer t0k"))
+      new ZyteFetch(client, Some("https://www.multikino.pl/"), tools.SpecClock.Pinned).get("https://www.multikino.pl/api/x", Map("Authorization" -> "Bearer t0k"))
     client.fetches shouldBe empty
   }
 
@@ -87,7 +98,7 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
   // the inherited `get(url).getBytes(UTF_8)` had already decoded them as UTF-8.
   "ZyteFetch with no cookie source" should "fetch raw bytes without a UTF-8 round-trip" in {
     val client = new RecordingZyteClient
-    new ZyteFetch(client, None).getBytes("https://kino.example.pl/repertuar") shouldBe Array[Byte](0xB1.toByte)
+    new ZyteFetch(client, None, tools.SpecClock.Pinned).getBytes("https://kino.example.pl/repertuar") shouldBe Array[Byte](0xB1.toByte)
     client.byteGets shouldBe List("https://kino.example.pl/repertuar")
   }
 }

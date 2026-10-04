@@ -104,7 +104,7 @@ object ProfileDetailReaper {
       // THE REAL LOOP. `detailEnrichers` collects INSTANCES — one CineworldClient per
       // venue — so the inner loop runs once per venue per row, and `nativeDetailRef`
       // recomputes `cinemaData` (a sort + Map build) every single time.
-      val catalog   = new services.cinemas.CinemaScraperCatalog(new tools.RealHttpFetch(), models.VenueClock.system)
+      val catalog   = new services.cinemas.CinemaScraperCatalog(new tools.RealHttpFetch(), models.VenueClock.system, java.time.Clock.systemUTC())
       val enrichers = catalog.all.collect { case de: services.cinemas.common.DetailEnricher => de }
       println(s"\n  --- the ACTUAL nested loop: ${records.size} records x ${enrichers.size} enricher INSTANCES ---")
       time(s"tick() inner loop as written (recompute per enricher)", 3) {

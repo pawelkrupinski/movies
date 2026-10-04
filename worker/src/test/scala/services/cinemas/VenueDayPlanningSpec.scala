@@ -23,7 +23,7 @@ class VenueDayPlanningSpec extends AnyFlatSpec with Matchers with OptionValues {
         .map(d => s"""<div class="timetable__day" data-date="$d"></div>""").mkString + "</div>")
 
   private def usFlicksVenue(clock: MutableClock): FlicksClient =
-    new CinemaScraperCatalog(programme, venueClock = new VenueClock(clock))
+    new CinemaScraperCatalog(programme, venueClock = new VenueClock(clock), clock = clock)
       .all.find(_.cinema.displayName == "AMC Town Center 20").value.asInstanceOf[FlicksClient]
 
   "a US venue scraped at 01:00 Warsaw" should "keep that US evening's screenings" in {
@@ -48,7 +48,7 @@ class VenueDayPlanningSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   /** The first flicks.us venue whose city keeps `zone`. */
   private def flicksVenueIn(zone: String, clock: MutableClock): FlicksClient =
-    new CinemaScraperCatalog(fallBackProgramme, venueClock = new VenueClock(clock)).all.collect {
+    new CinemaScraperCatalog(fallBackProgramme, venueClock = new VenueClock(clock), clock = clock).all.collect {
       case f: FlicksClient if f.sourceUrl.exists(_.contains("flicks.us")) &&
         models.City.forCinema(f.cinema).exists(_.zoneId == ZoneId.of(zone)) => f
     }.headOption.getOrElse(fail(s"no flicks.us venue in $zone"))
@@ -80,7 +80,7 @@ class VenueDayPlanningSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def sensacineVenueIn(zone: String, clock: MutableClock): WebediaShowtimesClient = {
     val page = new ScriptedByUrlHttpFetch(_ =>
       """<div data-showtimes-dates="[&quot;2026-10-24&quot;,&quot;2026-10-25&quot;,&quot;2026-10-26&quot;]"></div>""")
-    new CinemaScraperCatalog(page, venueClock = new VenueClock(clock)).all.collect {
+    new CinemaScraperCatalog(page, venueClock = new VenueClock(clock), clock = clock).all.collect {
       case w: WebediaShowtimesClient if w.sourceUrl.exists(_.contains("sensacine")) &&
         models.City.forCinema(w.cinema).exists(_.zoneId == ZoneId.of(zone)) => w
     }.headOption.getOrElse(fail(s"no SensaCine venue in $zone"))

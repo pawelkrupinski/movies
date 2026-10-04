@@ -116,7 +116,7 @@ object FilmwebDiff {
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy (Zyte behind it), as the worker reaches them, when the Decodo credentials are set.
     val shards   = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
-    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), titles = titles, configuration = process, proxyShards = shards)
+    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), clock = java.time.Clock.systemUTC(), titles = titles, configuration = process, proxyShards = shards)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder
