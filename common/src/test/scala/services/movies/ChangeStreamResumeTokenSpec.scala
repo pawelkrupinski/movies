@@ -90,4 +90,27 @@ class ChangeStreamResumeTokenSpec extends AnyFlatSpec with Matchers {
     token.advance(new BsonDocument("_data", new BsonString("after-clear")), token.generation)
     token.current shouldBe Some(new BsonDocument("_data", new BsonString("after-clear")))
   }
+
+  private def unreadableToken(failures: Int) = new ChangeStreamResumeToken("movies", database = None, enabled = false) {
+    private var left = failures
+    override def load(): tools.ReadOutcome[BsonDocument] =
+      if (left > 0) { left -= 1; tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new MongoSocketReadTimeoutException("slow", new ServerAddress(), new java.io.IOException("read timed out")))) }
+      else tools.ReadOutcome.Answered(new BsonDocument("_data", new BsonString("saved")))
+  }
+
+  // An unreadable position is not "none saved": opening at now skips every change since the
+  // save. The open is deferred (and retried on the reopen backoff) — a few times, then it opens
+  // at now anyway, since a cursor that never opens is worse than one that skips.
+  "openFrom" should "defer an open whose saved position could not be read, then open from it once it can" in {
+    val token = unreadableToken(failures = 1)
+    token.openFrom() shouldBe ChangeStreamResumeToken.Position.Deferred
+    token.openFrom() shouldBe ChangeStreamResumeToken.Position.At(Some(new BsonDocument("_data", new BsonString("saved"))))
+  }
+
+  it should "open at now once the position has stayed unreadable for every allowed deferral" in {
+    val token = unreadableToken(failures = 100)
+    (1 to ChangeStreamResumeToken.MaxDeferredOpens).foreach(_ => token.openFrom() shouldBe ChangeStreamResumeToken.Position.Deferred)
+    token.openFrom() shouldBe ChangeStreamResumeToken.Position.At(None)
+    token.openFrom() shouldBe ChangeStreamResumeToken.Position.Deferred   // a fresh run of deferrals for the next open
+  }
 }

@@ -750,6 +750,27 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handle.close(); under.close() }
   }
 
+  // A saved position that could not be READ (Mongo slow or briefly gone) opened the cursor at
+  // "now", past every change since the last save — recovered only by the 6-hour backstop. A
+  // failed read is retried on the reopen backoff instead, and the cursor opens from the position.
+  it should "retry an open whose saved position could not be read, rather than open past it at now" in {
+    val saved  = new BsonDocument("_data", new BsonString("saved-position"))
+    val reads  = new AtomicInteger(0)
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false) {
+      override def load(): tools.ReadOutcome[BsonDocument] =
+        if (reads.incrementAndGet() == 1) tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new com.mongodb.MongoTimeoutException("slow")))
+        else tools.ReadOutcome.Answered(saved)
+    }
+    val source = new HandFedSource
+    val under  = stream(source, resumeToken = token)
+    val handle = under.watch(_ => (), _ => ())
+    try {
+      source.opens shouldBe empty
+      withClue("the deferred open never retried: ")(_root_.tools.Eventually.poll(10000)(source.opens.nonEmpty) shouldBe true)
+      source.opens.toSeq shouldBe Seq(Some(saved))
+    } finally { handle.close(); under.close() }
+  }
+
   // An event is APPLIED once its fan-out has run, not once its re-read has: a position that
   // moves before the listeners do is persisted by a shutdown that cuts the fan-out short.
   it should "not move the resume position while the event's fan-out is still running" in {

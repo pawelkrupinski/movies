@@ -40,7 +40,10 @@ class ChangeStreamResumeTokenIntegrationSpec extends AnyFlatSpec with Matchers w
   it should "answer FAILED, not absent, when the position cannot be read" in {
     val blind = new ChangeStreamResumeToken("blind", Some(unreachable.getDatabase("resume-token")), enabled = true)
     blind.load() shouldBe a[ReadOutcome.Failed]
-    // …and still opens, at now: a cursor that never opens is worse than one that skips.
-    blind.openFrom() shouldBe None
+    // …so the open is deferred to the reopen backoff a few times — and then opens anyway, at
+    // now: a cursor that never opens is worse than one that skips.
+    (1 to services.movies.ChangeStreamResumeToken.MaxDeferredOpens).foreach(_ =>
+      blind.openFrom() shouldBe services.movies.ChangeStreamResumeToken.Position.Deferred)
+    blind.openFrom() shouldBe services.movies.ChangeStreamResumeToken.Position.At(None)
   }
 }

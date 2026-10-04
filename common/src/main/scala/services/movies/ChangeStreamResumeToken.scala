@@ -52,18 +52,35 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
           token => tools.ReadOutcome.Answered(token.asDocument())))
     }
 
-  /** Where to open the cursor: the saved position, or "now" when there is none — and "now" too
-   *  when it could not be read, since a cursor that never opens is worse than one that skips.
-   *  That case is said at WARN: the events since the last save reach the consumers only through
-   *  their backstops (cache rehydrate, projector reconcile), not through this stream. It used to
-   *  read exactly like a first-ever open. */
-  def openFrom(): Option[BsonDocument] = load() match {
-    case tools.ReadOutcome.Answered(token) => Some(token)
-    case tools.ReadOutcome.Absent(_)       => None
-    case tools.ReadOutcome.Failed(cause)   =>
-      logger.warn(s"Change stream '$streamId': the saved resume position could not be read (${cause.explain}) — " +
-        "opening at now; changes made since the last save are recovered only by the backstop")
-      None
+  // How many opens in a row found the saved position unreadable. Only the opening thread
+  // (the reopen scheduler, or a registration under the stream's lock) touches it.
+  private val unreadableOpens = new java.util.concurrent.atomic.AtomicInteger(0)
+
+  /** Where to open the cursor: the saved position, or "now" when none was saved.
+   *
+   *  A position that could not be READ is not "none saved": opened at now, the cursor skips every
+   *  change since the last save, which then reaches the consumers only through their backstops
+   *  (cache rehydrate, projector reconcile — hours). So the open is [[ChangeStreamResumeToken.Position.Deferred]]
+   *  and the caller retries it on its reopen backoff; only after
+   *  [[ChangeStreamResumeToken.MaxDeferredOpens]] deferrals in a row does it open at now — a cursor
+   *  that never opens is worse than one that skips — said at WARN, unlike a first-ever open. */
+  def openFrom(): ChangeStreamResumeToken.Position = {
+    import ChangeStreamResumeToken.Position
+    load() match {
+      case tools.ReadOutcome.Answered(token) => unreadableOpens.set(0); Position.At(Some(token))
+      case tools.ReadOutcome.Absent(_)       => unreadableOpens.set(0); Position.At(None)
+      case tools.ReadOutcome.Failed(cause)   =>
+        if (unreadableOpens.incrementAndGet() <= ChangeStreamResumeToken.MaxDeferredOpens) {
+          logger.warn(s"Change stream '$streamId': the saved resume position could not be read (${cause.explain}) — " +
+            "deferring the open to the reopen backoff")
+          Position.Deferred
+        } else {
+          unreadableOpens.set(0)
+          logger.warn(s"Change stream '$streamId': the saved resume position stayed unreadable (${cause.explain}) — " +
+            "opening at now; changes made since the last save are recovered only by the backstop")
+          Position.At(None)
+        }
+    }
   }
 
   // Bumped by every `clear()`. A position is advanced only once its event is APPLIED —
@@ -110,6 +127,19 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
 
 object ChangeStreamResumeToken {
   private val TokenSaveThrottleMs = 5000L
+
+  /** Where a cursor opens. */
+  sealed trait Position
+  object Position {
+    /** Open now: after `token`, or at "now" when it is `None`. */
+    final case class At(token: Option[BsonDocument]) extends Position
+    /** Do not open yet — the saved position could not be read; retry on the reopen backoff. */
+    case object Deferred extends Position
+  }
+
+  /** Opens deferred in a row on an unreadable position before one opens at now anyway: with the
+   *  reopen backoff (1 s, 5 s, 15 s, …) that rides out a blip of about twenty seconds. */
+  val MaxDeferredOpens = 3
 
   /** The errors where KEEPING the token loops for ever — resuming from it can only fail
    *  again, so the next open must start fresh and let the backstop resync the gap.

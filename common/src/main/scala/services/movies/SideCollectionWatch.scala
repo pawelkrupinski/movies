@@ -68,71 +68,76 @@ final class SideCollectionWatch[Dto: ClassTag](
     def open(): Unit = {
       // Resume from the last persisted token (a restart / prior terminal error) so changes
       // that landed while down are replayed; else open at "now".
-      val resumeFrom = resumeToken.openFrom()
+      val position = resumeToken.openFrom()
       // Post-images arrive UNDECODED and are decoded below: decoded by the driver, one row the
       // codec refuses ended the cursor — see [[ChangeEventDecoder]].
       val base       = collection.watch[BsonDocument]()
-      resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
-        .subscribe(new Observer[ChangeStreamDocument[BsonDocument]] {
-          override def onSubscribe(s: Subscription): Unit = { subRef.set(s); demand.opened(s) }
-          override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
-            reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
-            // Count the event BEFORE anything can drop it: an event the caller's `onChange`
-            // throws on, or one the resume-token save fails behind, still cost a projection.
-            metrics.recordChangeEvent(
-              ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse("")))
-            // The resume position moves only when the CALLER says this event is applied —
-            // the `applied` it is handed with the film id. `onChange` only queues the re-read;
-            // advancing here, at delivery, persisted a position past every queued event, so a
-            // restart resumed after changes that were never applied. The generation stops a
-            // late acknowledgement re-arming a token `clear()` has since thrown away.
-            val token      = change.getResumeToken
-            val generation = resumeToken.generation
-            val applied    = appliedPrefix.deliver(token, generation)
-            def deletedFilm = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-              .map(v => if (v.isString) v.asString.getValue else v.toString)
-              .map(SlotKeyed.filmIdOf) // a delete carries no post-image — split the _id
-            val filmId = decoder.postImage(change) match {
-              case ChangeEventDecoder.PostImage.Present(row) => Some(filmIdOf(row))
-              case ChangeEventDecoder.PostImage.Absent       => deletedFilm
-              case ChangeEventDecoder.PostImage.Undecodable  => None // counted and logged by the decoder
-            }
-            // The row's own `_id` (`filmId␟slotKey`) when the event names it, so the caller knows
-            // WHICH of the film's rows moved, not only which film; else the film id alone.
-            val rowId = filmId.map(fid => Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-              .collect { case v if v.isString && SlotKeyed.filmIdOf(v.asString.getValue) == fid => v.asString.getValue }
-              .getOrElse(fid))
-            rowId match {
-              // Caught whatever it is, fatal included: this is the driver's `onNext`, which must not
-              // throw — a throw out of it ends the cursor with this event's demand never released.
-              // An interrupt keeps its flag for whoever owns the thread.
-              case Some(id) => try onChange(id, applied)
-                catch { case e: Throwable =>
-                  if (e.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
-                  logger.warn(s"$name watch onChange($id) failed: $e", e) }
-              // Nothing to hand the caller, so nothing will release this event's demand but us —
-              // left unreleased, every skipped event narrowed the window until the cursor stalled.
-              // Acknowledged at once: there is nothing to apply, and an event never acknowledged
-              // would hold every later one's position for good.
-              case None => applied(); demand.applied()
-            }
-          }
-          override def onError(e: Throwable): Unit = {
-            if (ChangeStreamResumeToken.isInvalid(e)) {
-              logger.warn(s"$name change stream: resume token invalid (${e.getMessage}) — clearing it; " +
-                "the next open starts fresh and the backstop resyncs the gap.")
-              resumeToken.clear()
-            } else
-              logger.warn(s"$name change stream ended (${e.getMessage}) — a reopen resumes from the " +
-                "persisted token; the backstop covers the meantime.")
-            subRef.set(null)
-            demand.closed()
-            reopen.failed()
-          }
-          override def onComplete(): Unit = { subRef.set(null); demand.closed(); reopen.failed() }
-        })
-      logger.info(s"$name change stream: watching" +
-        s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
+      position match {
+        // The saved position could not be read: retried on the backoff, never opened past it at now.
+        case ChangeStreamResumeToken.Position.Deferred => reopen.failed()
+        case ChangeStreamResumeToken.Position.At(resumeFrom) =>
+          resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
+            .subscribe(new Observer[ChangeStreamDocument[BsonDocument]] {
+              override def onSubscribe(s: Subscription): Unit = { subRef.set(s); demand.opened(s) }
+              override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
+                reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
+                // Count the event BEFORE anything can drop it: an event the caller's `onChange`
+                // throws on, or one the resume-token save fails behind, still cost a projection.
+                metrics.recordChangeEvent(
+                  ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse("")))
+                // The resume position moves only when the CALLER says this event is applied —
+                // the `applied` it is handed with the film id. `onChange` only queues the re-read;
+                // advancing here, at delivery, persisted a position past every queued event, so a
+                // restart resumed after changes that were never applied. The generation stops a
+                // late acknowledgement re-arming a token `clear()` has since thrown away.
+                val token      = change.getResumeToken
+                val generation = resumeToken.generation
+                val applied    = appliedPrefix.deliver(token, generation)
+                def deletedFilm = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+                  .map(v => if (v.isString) v.asString.getValue else v.toString)
+                  .map(SlotKeyed.filmIdOf) // a delete carries no post-image — split the _id
+                val filmId = decoder.postImage(change) match {
+                  case ChangeEventDecoder.PostImage.Present(row) => Some(filmIdOf(row))
+                  case ChangeEventDecoder.PostImage.Absent       => deletedFilm
+                  case ChangeEventDecoder.PostImage.Undecodable  => None // counted and logged by the decoder
+                }
+                // The row's own `_id` (`filmId␟slotKey`) when the event names it, so the caller knows
+                // WHICH of the film's rows moved, not only which film; else the film id alone.
+                val rowId = filmId.map(fid => Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+                  .collect { case v if v.isString && SlotKeyed.filmIdOf(v.asString.getValue) == fid => v.asString.getValue }
+                  .getOrElse(fid))
+                rowId match {
+                  // Caught whatever it is, fatal included: this is the driver's `onNext`, which must not
+                  // throw — a throw out of it ends the cursor with this event's demand never released.
+                  // An interrupt keeps its flag for whoever owns the thread.
+                  case Some(id) => try onChange(id, applied)
+                    catch { case e: Throwable =>
+                      if (e.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
+                      logger.warn(s"$name watch onChange($id) failed: $e", e) }
+                  // Nothing to hand the caller, so nothing will release this event's demand but us —
+                  // left unreleased, every skipped event narrowed the window until the cursor stalled.
+                  // Acknowledged at once: there is nothing to apply, and an event never acknowledged
+                  // would hold every later one's position for good.
+                  case None => applied(); demand.applied()
+                }
+              }
+              override def onError(e: Throwable): Unit = {
+                if (ChangeStreamResumeToken.isInvalid(e)) {
+                  logger.warn(s"$name change stream: resume token invalid (${e.getMessage}) — clearing it; " +
+                    "the next open starts fresh and the backstop resyncs the gap.")
+                  resumeToken.clear()
+                } else
+                  logger.warn(s"$name change stream ended (${e.getMessage}) — a reopen resumes from the " +
+                    "persisted token; the backstop covers the meantime.")
+                subRef.set(null)
+                demand.closed()
+                reopen.failed()
+              }
+              override def onComplete(): Unit = { subRef.set(null); demand.closed(); reopen.failed() }
+            })
+          logger.info(s"$name change stream: watching" +
+            s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
+      }
     }
     lazy val reopen: ChangeStreamReopen = reopenDriver(name, () => open())
     open()
