@@ -33,7 +33,6 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   // Stored films: each one's venue slots and the listing keys its slots are, indexed both ways — by where each slot is
   // and its source only: a slot's data is read off the stored record as it is now, so a record read again is not kept.
   private var storedById    = Map.empty[String, StoredMovieRecord]
-  private val slotsOfFilm   = mutable.HashMap.empty[String, Seq[(Option[(String, String)], Option[ListingKey])]]
   private val filmsAtSlot   = mutable.HashMap.empty[(String, String), Map[String, (PipelineFilmRef, Source)]]
   private val ownersOfKey   = mutable.HashMap.empty[ListingKey, Set[PipelineFilmRef]]
 
@@ -69,7 +68,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         val now = oneByKey(listings)
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
         // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
-        now.foreach { case (k, n) => if (byKey.get(k).exists(l => (l ne n) && l == n)) byKey = byKey.updated(k, n) }
+        now.foreach { case (k, n) => byKey.get(k).foreach(l => if ((l ne n) && l == n) rekey(l, n)) }
         venueListings(venue) = listings
         byKeyAt(venue) = now
       }
@@ -186,6 +185,28 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
    *  slot's and a decision's are read anew from the store (worker-us held ~4.8 per listing). */
   private def canonical(k: ListingKey): ListingKey = byKey.get(k).fold(k)(_.listing.key)
 
+  /** Index `now` — an equal listing, another object — in place of `was`, under ITS key: every map holding the key holds the
+   *  new object (a map keeps the key object it was first given), so a listing read again, or taken as the identity
+   *  model's object, leaves no older key behind it (worker-us grew to ~2.6 key objects per listing). */
+  private def rekey(was: ProjectedListing, now: ProjectedListing): Unit = {
+    val k     = now.listing.key
+    byKey     = (byKey - k).updated(k, now)
+    if (k ne was.listing.key) {
+      previousOf.get(k).foreach { ref =>
+        previousOf = (previousOf - k).updated(k, ref)
+        listingsOf = listingsOf.updatedWith(ref.id)(_.map(_ - k + k))
+      }
+      val slot = PipelineFilms.slotOf(now.listing, normalizer)
+      keysAtSlot.get(slot).filter(_.contains(k)).foreach(keys => keysAtSlot(slot) = keys - k + k)
+      clusterOf.get(k).foreach { id =>
+        clusterOf = (clusterOf - k).updated(k, id)
+        clusters.get(id).foreach(c => clusters = clusters.updated(id, c.copy(members = c.members - k + k)))
+      }
+      decisionOf.remove(k).foreach(decisionOf(k) = _)
+      ownersOfKey.remove(k).foreach(ownersOfKey(k) = _)
+    }
+  }
+
   /** Listings the last writes moved to another film: changes for the next [[update]]. */
   private val afterWrites = mutable.HashSet.empty[ListingKey]
 
@@ -228,31 +249,34 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
 
   private def unstore(id: String, reslot: mutable.HashSet[ListingKey]): Unit = {
     storedById.get(id).foreach(r => reslot ++= listingsOf.getOrElse(r.id.value, Set.empty))
-    storedById = storedById - id
-    slotsOfFilm.remove(id).foreach(_.foreach { case (at, key) =>
+    // Each slot of the film as stored: where it is and the listing it is — worked out from the record, not kept beside it.
+    storedById.get(id).map(layoutOf).foreach(_.foreach { case (at, key) =>
       // What it moves by leaving is a listing it was on (above): another film's listing at its slot was not picked
       // over it, and stays picked without it.
       at.foreach(at => filmsAtSlot.updateWith(at)(_.map(_ - id).filter(_.nonEmpty)))
       key.foreach(k => ownersOfKey.updateWith(k)(_.map(_.filterNot(_.id == id)).filter(_.nonEmpty)))
     })
+    storedById = storedById - id
   }
+
+  private def layoutOf(r: StoredMovieRecord): Seq[(Option[(String, String)], Option[ListingKey])] =
+    r.record.data.toSeq.map { case (source, sd) => val slot = IdentityProjectionPlan.slotOf(source, sd); slot.at -> slot.key }
 
   private def restore(r: StoredMovieRecord, reslot: mutable.HashSet[ListingKey]): Unit = {
     val id     = r.id.value
     val slots  = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
-    val layout = slots.map { case (_, slot) => slot.at -> slot.key.map(canonical) }
+    val layout = slots.map { case (_, slot) => slot.at -> slot.key }
     // The same film at the same slots, each read the same by a listing's pick: no listing's previous film can move, so
     // only the record is replaced — most films written are written for their showtimes, and the wide ones (thousands of
     // slots) re-pointed every listing at every slot of theirs for nothing.
     if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r)) &&
-        slotsOfFilm.get(id).exists(_.toSet == layout.toSet)) {
+        storedById.get(id).exists(was => layoutOf(was).toSet == layout.toSet)) {
       storedById = storedById.updated(id, r)
       return
     }
     unstore(id, reslot)
     storedById = storedById.updated(id, r)
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
-    slotsOfFilm(id) = layout
     slots.foreach { case (source, slot) =>
       slot.at.foreach { at =>
         filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> source)

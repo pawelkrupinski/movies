@@ -166,4 +166,22 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     built.previousOf(read.head.listing.key).id shouldBe "f1"
     live.index(counters).previousOf shouldBe built.previousOf
   }
+
+  it should "hold a listing read again under the new read's key object, in every map, not the first read's" in {
+    // A venue read again — or a listing taken as the identity model's object — is an equal listing with another key
+    // object. Each map kept the key it was first given: worker-us grew to ~2.6 key objects per listing.
+    val live  = new LiveProjectionIndex(normalizer)
+    val rows  = Seq(row(new Random(1), Multikino), row(new Random(2), Multikino))
+    def read() = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
+    val first = read()
+    val decided = first.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    val stored  = Seq(film(new Random(3), "f1", first))
+    live.update(Seq(Multikino.displayName -> first), _ => true, decided, stored)
+    val again = read()
+    live.update(Seq(Multikino.displayName -> again), _ => true, decided, stored)
+    val index = live.index(FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L))).toOption.get)
+    val own   = again.map(l => l.listing.key -> l.listing.key).toMap
+    (index.byKey.keysIterator ++ index.clusterOf.keysIterator ++ index.clusters.valuesIterator.flatMap(_.members) ++
+      index.previousOf.keysIterator ++ index.listingsOf.valuesIterator.flatten).foreach(k => withClue(k)(k should be theSameInstanceAs own(k)))
+  }
 }
