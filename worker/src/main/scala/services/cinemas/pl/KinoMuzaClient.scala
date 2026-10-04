@@ -138,22 +138,24 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
       val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")
       val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
-      // Info block is <br>-separated: line 0 = "reż. <names>", line 1 = country/-ies,
+      // Info block is <br>-separated: "reż. <names>", then the country/-ies,
       // then year and runtime (also picked up by the regexes from the flat text).
+      // Either credit line can be missing — a short or kids' morning carries
+      // just "75’", a TV special "USA<br>63’" — so each is recognised by its
+      // shape, never by position.
       val infoLines = infoHtml.split("(?i)<br\\s*/?>").toSeq
                               .map(line => Jsoup.parse(line).text().trim)
                               .filter(_.nonEmpty)
-      val director  = infoLines.headOption
-        .map(_.replaceFirst("(?i)^\\s*reż\\.\\s*", "").trim)
-        .filter(_.nonEmpty)
+      val (directorLines, otherLines) = infoLines.partition(_.matches("(?i)^reż\\..*"))
+      val director  = directorLines.headOption
+        .map(_.replaceFirst("(?i)^reż\\.\\s*", "").trim)
         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      // Line 1, if present, is the country list. Skip it if it instead carries a
+      // The first other line is the country list unless it instead carries a
       // year/runtime token (some entries omit the country line entirely).
       // Split on "," for co-productions ("Polska, Niemcy" → two entries).
-      val countries = infoLines.lift(1)
+      val countries = otherLines.headOption
         .filterNot(_.matches(".*\\b(?:19|20)\\d{2}\\b.*"))
         .filterNot(_.matches(".*\\d+\\s*[\\u2019'].*"))
-        .filter(_.nonEmpty)
         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       val runtimeMinutes = RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption)
       val releaseYear    = YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption

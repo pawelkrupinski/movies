@@ -764,4 +764,20 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     s should not include "instagram"
     s should not include "Instagram organizatora" // link paragraph dropped whole
   }
+
+  // Regression: an info block without a "reż." line (shorts, kids' mornings,
+  // TV-series screenings) used to have its FIRST line read as the director —
+  // the corpus listing carries "75’" (Chojrak tchórzliwy pies) and
+  // "USA<br>63’" (Beavis and Butt-Head), which surfaced as director "75’" /
+  // "USA" and, for Beavis, lost the country it did carry.
+  "KinoMuzaClient on the recorded corpus listing" should "only read a director from a reż. line, and the country from the first non-credit line" in {
+    val corpus = new KinoMuzaClient(new FakeHttpFetch("08-06-2026"), titles = titleNormalizer,
+      today = _root_.tools.SpecClock.PinnedDay).fetch()
+    val noCredit = corpus.filter(cm => cm.movie.title.startsWith("Chojrak") || cm.movie.title.startsWith("Beavis"))
+    noCredit.map(_.movie.title.take(7)).toSet shouldBe Set("Chojrak", "Beavis ")
+    noCredit.foreach(cm => withClue(cm.movie.title)(cm.director shouldBe empty))
+    noCredit.find(_.movie.title.startsWith("Beavis")).map(_.movie.countries) shouldBe Some(Seq("USA"))
+    noCredit.find(_.movie.title.startsWith("Chojrak")).map(_.movie.countries) shouldBe Some(Seq.empty)
+    corpus.flatMap(_.director).filter(_.matches(".*\\d.*")) shouldBe empty
+  }
 }
