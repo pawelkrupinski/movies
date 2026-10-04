@@ -343,7 +343,7 @@ object WebediaShowtimesClient {
   )
 
   /** Format + language-version tokens for one screening: the non-baseline screen
-   *  formats above, then ONE language token from [[versionToken]].
+   *  formats above, then the language token(s) from [[versionTokens]].
    *
    *  Public, and taking the bucket key + raw tag list rather than the screening
    *  object, so a spec can pin a COMBINATION the recorded captures do not hold —
@@ -353,10 +353,11 @@ object WebediaShowtimesClient {
   def formatTokens(bucketKey: String, rawTags: Seq[String], market: WebediaMarket): List[String] = {
     val tags = rawTags.map(_.toLowerCase(Locale.ROOT))
     val screen = ScreenTokens.collect { case (needle, token) if tags.exists(_.contains(needle)) => token }
-    (screen ++ versionToken(bucketKey, tags, market)).distinct
+    (screen ++ versionTokens(bucketKey, tags, market)).distinct
   }
 
-  /** The ONE language-version token a screening earns, or none.
+  /** The language-version token a screening earns — one, or none; two only for a print
+   *  subtitled in both the market's language and English.
    *
    *  The BUCKET decides which of the three versions this is, not the tags: a
    *  `local` screening is routinely tagged `Localization.Version.Original` (it
@@ -369,7 +370,7 @@ object WebediaShowtimesClient {
    *
    *  Tags are the fallback for an unrecognised bucket only, so a future key the
    *  site adds still resolves rather than silently going unmarked. */
-  private def versionToken(bucketKey: String, tags: Seq[String], market: WebediaMarket): Option[String] = {
+  private def versionTokens(bucketKey: String, tags: Seq[String], market: WebediaMarket): List[String] = {
     val key        = bucketKey.toLowerCase(Locale.ROOT)
     val isLocal    = key.startsWith("local")
     val isDubbed   = key.startsWith("dubbed")
@@ -377,16 +378,22 @@ object WebediaShowtimesClient {
       (!isLocal && !isDubbed && tags.exists(_.contains("localization.version.original")))
     val subtitles  = tags.filter(_.contains("localization.subtitle."))
 
-    if (isLocal)         None
-    else if (isOriginal) Some(
-      if (subtitles.exists(_.endsWith("english"))) market.englishSubtitledToken
-      else if (subtitles.nonEmpty)                 market.subtitledToken
-      else                                         market.originalVersionToken)
-    else if (isDubbed)   Some(
+    if (isLocal)         Nil
+    else if (isOriginal) {
+      val english = subtitles.exists(_.endsWith("english"))
+      // A print subtitled in English AND another language is both versions, and badged as both:
+      // the market's own subtitled token is the one its "subtitles" filter reads.
+      val other   = subtitles.exists(!_.endsWith("english"))
+      if (english && other)  List(market.subtitledToken, market.englishSubtitledToken)
+      else if (english)      List(market.englishSubtitledToken)
+      else if (other)        List(market.subtitledToken)
+      else                   List(market.originalVersionToken)
+    }
+    else if (isDubbed)   List(
       market.dubbedLanguageTokens.collectFirst {
         case (language, token) if tags.exists(_.contains(s"localization.language.$language")) => token
       }.getOrElse(market.dubbedToken))
-    else                 None
+    else                 Nil
   }
 
   private def parseLocalDateTime(s: String): Option[LocalDateTime] =

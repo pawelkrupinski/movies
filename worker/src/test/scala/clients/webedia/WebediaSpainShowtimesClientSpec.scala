@@ -167,6 +167,17 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     WebediaShowtimesClient.formatTokens("original", englishSubs, WebediaMarket.Germany) shouldBe List("OmeU")
   }
 
+  // Berlin's OV houses subtitle a print in BOTH languages (Filmstarts, 2026-10-06: 5 of 25
+  // `original_st` sessions at Babylon/Rollberg/Hackesche Höfe/Abaton). Badged OmeU alone, the
+  // "Untertitel" filter — which reads the market's OmU — never offered them.
+  it should "mark a print subtitled in the market's language AND in English with both tokens" in {
+    val both = Seq("Localization.Subtitle.English", "Localization.Subtitle.German", "Localization.Version.Original",
+      "Showtime.Accessibility.Subtitled")
+    WebediaShowtimesClient.formatTokens("original_st", both, WebediaMarket.Germany) shouldBe List("OmU", "OmeU")
+    WebediaShowtimesClient.formatTokens("original_st", Seq("Localization.Subtitle.Spanish", "Localization.Subtitle.English"),
+      WebediaMarket.Spain) shouldBe List("VOSE", "VOSI")
+  }
+
   // The BUCKET decides the version, not the tags. A `local` screening — a
   // domestic film in its own language — is routinely tagged
   // `Localization.Version.Original`, and reading that tag is what used to put a
