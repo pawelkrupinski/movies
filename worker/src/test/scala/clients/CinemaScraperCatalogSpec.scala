@@ -716,10 +716,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // `.toMap`), so a cinema wired twice — under two cities, or twice in one group — keeps
   // only the last scraper and the other is never run, silently. A venue read off several
   // sources is ONE scraper (`MultiListingScraper`, Końskie above).
+  /** Each cinema `scrapers` wires more than once, with the scrapers' kinds. */
+  private def wiredTwice(scrapers: Seq[CinemaScraper]): Map[String, Seq[String]] =
+    scrapers.groupBy(_.cinema).collect { case (cinema, wired) if wired.sizeIs > 1 => cinema.displayName -> wired.map(_.getClass.getSimpleName) }
+
   it should "wire at most one scraper per cinema" in {
-    val wired = catalog(biletyna = "kino-kameralne").byCity.values.flatten.toSeq.groupBy(_.cinema)
-      .collect { case (cinema, scrapers) if scrapers.sizeIs > 1 => cinema.displayName -> scrapers.map(_.getClass.getSimpleName) }
-    withClue(s"cinemas wired more than once: $wired") { wired shouldBe empty }
+    val all = catalog(biletyna = "kino-kameralne").byCity.values.flatten.toSeq
+    withClue(s"cinemas wired more than once: ${wiredTwice(all)}") { wiredTwice(all) shouldBe empty }
+    // The check's own teeth: one cinema wired under a second city is named.
+    wiredTwice(all :+ all.head) shouldBe Map(all.head.cinema.displayName -> Seq.fill(2)(all.head.getClass.getSimpleName))
   }
 
   // Which Polish page lists which venue is data (`models.PolishPages`), not the
