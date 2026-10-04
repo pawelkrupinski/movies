@@ -189,6 +189,18 @@ object NonMovieEventClassifier {
    *  that the surrounding rule holds for them too: the broadcast veto still wins,
    *  and matching is still done on the lowercased title. See
    *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
+  def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
+    val t = title.toLowerCase(Locale.ROOT)
+    if (isScreenedBroadcast(t)) false
+    else
+      EventMarkers.exists(_.findFirstIn(t).isDefined) ||
+      venueMarkers.exists(_.findFirstIn(t).isDefined) ||
+      isStandaloneGala(t) ||
+      isStandaloneDiscussion(t) ||
+      isStandaloneWorkshop(t) ||
+      isMagicShow(title, t)
+  }
+
   /** [[isLiveEvent]] on a whole listing: a listing that states a film's record —
    *  a director credit AND a production year — is a film whatever its title
    *  says. The title alone can't tell Fosse's "Kabaret" (1972) or "Koncert"
@@ -203,16 +215,4 @@ object NonMovieEventClassifier {
 
   private def carriesFilmRecord(listing: CinemaMovie): Boolean =
     listing.director.exists(_.trim.nonEmpty) && listing.movie.releaseYear.isDefined
-
-  def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
-    val t = title.toLowerCase(Locale.ROOT)
-    if (isScreenedBroadcast(t)) false
-    else
-      EventMarkers.exists(_.findFirstIn(t).isDefined) ||
-      venueMarkers.exists(_.findFirstIn(t).isDefined) ||
-      isStandaloneGala(t) ||
-      isStandaloneDiscussion(t) ||
-      isStandaloneWorkshop(t) ||
-      isMagicShow(title, t)
-  }
 }
