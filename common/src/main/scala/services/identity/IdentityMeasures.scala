@@ -469,7 +469,6 @@ object IdentityMeasures {
 
   // ── keys ─────────────────────────────────────────────────────────────────────────────
 
-
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =

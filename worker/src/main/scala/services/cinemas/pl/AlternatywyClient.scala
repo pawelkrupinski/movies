@@ -134,7 +134,6 @@ object AlternatywyClient {
 
   private val TimePat = raw"""^${ScraperParse.ClockParts}$$""".r
 
-
   /** Titles arrive in the image alt as `Okładka „Title"`, `Okładka Title`, or
    *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). The
    *  `Okładka` / quotes / whitespace cleanup now lives in the editable
