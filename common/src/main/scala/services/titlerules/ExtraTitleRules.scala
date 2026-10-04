@@ -393,6 +393,9 @@ object ExtraTitleRules {
     searchStrip("xtra-kino-kobiet-suffix",         """(?iu)\s*[-–—]\s*Kino\s+Kobiet\s*$""",           "'<film> - Kino Kobiet' Helios ladies'-programme suffix (promoted from the helios per-cinema event tag; sibling of the 'Kino na obcasach' / 'Ladies Night' prefix banners)"),
     searchStrip("xtra-kntj-suffix",                """(?i)\s*[-–—]\s*KNTJ\s*$""",                     "'<film> - KNTJ' cross-cinema strand suffix"),
     searchStrip("xtra-pokaz-suffix",               """(?i)\s*[-–—|]\s*pokaz\b.*$""",                  "'<film> - / | pokaz <specjalny|przedpremierowy|+ dyskusja…>' event suffix"),
+    searchStrip("xtra-pokaz-colon-suffix",       """(?i)\s*:\s*pokaz(?:\s+z\s.*)?$""",              "'<film>: pokaz [z prelekcją…]' event suffix after a colon (Kino na Boku)"),
+    searchStrip("xtra-seans-suffix",               """(?i)\s*[-–—|]\s*seans(?:\s+z\s.*)?$""",          "'<film> - seans [z prelekcją…]' event suffix (NCKF)"),
+    searchStrip("xtra-pokaz-specjalny-prefix",     """(?i)^Pokaz\s+specjalny\s*[-–—:|]\s*""",            "'Pokaz specjalny – <film>' event prefix (Kinematograf)"),
     searchStrip("xtra-tadeusz-konwicki-suffix",    """(?i)\s*[-–—]\s*tadeusz\s+konwicki\b.*$""",      "'<film> – Tadeusz Konwicki / 100. rocznica urodzin' suffix"),
     searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)"),
     // Fourth-wave (2026-06-20) audit of the rating-less corpus.

@@ -197,6 +197,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "DRUGIE ŻYCIE - DKF III W"         -> "DRUGIE ŻYCIE",
     "Pociągi - dyskusyjny klub filmowy" -> "Pociągi",
     "Ojczyzna | PRZEDPREMIERA"         -> "Ojczyzna",
+    // Found by SearchQueryMarkersSpec over the 08-06 corpus (NCKF, Kino na Boku, Kinematograf).
+    "Przypadek - seans"                                               -> "Przypadek",
+    "Człowiek z marmuru: pokaz"                                       -> "Człowiek z marmuru",
+    "Pokaz specjalny – Księga lata"                                   -> "Księga lata",
     "Takie jest życie - przedpremiera" -> "Takie jest życie",
     "Drugie życie | przedpremierowo"   -> "Drugie życie",
     "Przedpremiera | Ojczyzna"         -> "Ojczyzna",
