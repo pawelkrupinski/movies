@@ -2,6 +2,10 @@
 # pre-push's path selection: which checks a push's changed paths run, and that an unrelated push
 # runs none of them. Run: bash scripts/hooks/pre-push-test.sh
 set -uo pipefail
+# Run as pre-push's own `hooktest` check, git exports GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE for the
+# repository being pushed; left set, every `git` in the scratch repositories below would act on THAT
+# repository instead (it once committed the scratch "Spec base" history onto the branch being pushed).
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 
