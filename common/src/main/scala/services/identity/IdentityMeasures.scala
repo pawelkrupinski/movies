@@ -42,8 +42,9 @@ object IdentityMeasures {
     def statedYear: Option[Int] = year.orElse(titleYear)
     /** A running time the venue put in its title as a bracketed annotation ("(97’)", "[97 min]"). */
     lazy val titleRuntime: Option[Int] = IdentityMeasures.bracketedRuntime(titles)
-    /** The venue's own runtime: its field, else the one its title brackets. */
-    def statedRuntime: Option[Int] = runtime.filter(_ > 0).orElse(titleRuntime)
+    /** The venue's own runtime: its field, else the one its title brackets — a running time no film has
+     *  ([[IdentityMeasures.plausibleRuntime]]) is none. */
+    def statedRuntime: Option[Int] = runtime.filter(IdentityMeasures.plausibleRuntime).orElse(titleRuntime)
     /** `titleShapes`, once per listing: every title relation and billing reads them. */
     private[identity] lazy val shapes: Seq[String] = IdentityMeasures.shapesOf(this)
     /** What a title relation reads of this listing, hashed once: `FamilyScope` shares relations by it. */
@@ -446,6 +447,13 @@ object IdentityMeasures {
   val ContainingRelations: Set[String] = Set("exact", "segment", "decorated", "fragment")
 
   // ── keys ─────────────────────────────────────────────────────────────────────────────
+
+  /** The longest a screened film runs: "Sátántangó" is 432 minutes. A venue's runtime beyond it is a slip
+   *  (DE Filmtheater Bleicherode bills "flüstern & SCHREIEN" at 6000 minutes, which vetoed the 1988 film by the
+   *  learned `runtime.delta >= 81`), not the film's: read as unpublished. */
+  val MaxRuntime = 600
+  /** Is `minutes` a running time a screened film can have ([[MaxRuntime]])? */
+  def plausibleRuntime(minutes: Int): Boolean = minutes > 0 && minutes <= MaxRuntime
 
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */

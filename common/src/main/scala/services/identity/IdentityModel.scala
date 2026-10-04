@@ -178,7 +178,7 @@ object Evidence {
     year          = listing.year.orElse(detail.flatMap(_.year)),
     directors     = (if (listing.directors.nonEmpty) listing.directors
                      else detail.map(_.directors.flatMap(Listing.credited).filter(_.nonEmpty).distinct).getOrElse(Nil)).sorted,
-    runtime       = listing.runtime.orElse(detail.flatMap(_.runtime).filter(_ > 0)),
+    runtime       = listing.runtime.filter(IdentityMeasures.plausibleRuntime).orElse(detail.flatMap(_.runtime).filter(IdentityMeasures.plausibleRuntime)),
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
     decorations   = decorations,

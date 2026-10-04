@@ -1290,6 +1290,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(dated), films).decisionOf(dated.key).film shouldBe Some(1321666)
   }
 
+  "A runtime no film runs" should "be read as unpublished, not as a fact against the film" in {
+    // DE Filmtheater Bleicherode: "flüstern & SCHREIEN" [1989] {Dieter Schumann}, 6000 minutes — the 1988 film by its
+    // director and year, vetoed by the learned `runtime.delta >= 81`.
+    val film = F(149841, "flüstern & SCHREIEN", 1988, "Dieter Schumann", 117, popularity = 1)
+    val l    = listing(KinoMuza, "flüstern & SCHREIEN", Some(1989), Some("Dieter Schumann"), runtime = Some(6000))
+    val r    = shipped(Seq(l), Seq(film))
+    withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(149841))
+  }
+
   "Curation pins" should "override the evidence: a pinned film, a denied one, and a pinned group" in {
     def pin(ls: Seq[Listing], claim: PinClaim) = Pin(ls.map(_.key), claim, "spec", "test", java.time.Instant.EPOCH)
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
