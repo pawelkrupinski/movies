@@ -32,6 +32,10 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    */
   private var fixtureTree: String = scala.compiletime.uninitialized
   private val trees = scala.collection.mutable.ListBuffer.empty[String]
+  /** What a test started that can still fetch — and so record into its tree — after the test ends: the IMDb-id
+   *  resolver retries a failed lookup a minute or more later, on a scheduler of its own. Stopped before the trees go,
+   *  or a long `worker/test` run found the retry's recording re-creating a deleted tree in the fixture root. */
+  private val stoppedAtEnd = scala.collection.mutable.ListBuffer.empty[services.Stoppable]
 
   /** Point the wirings built from here on at a tree of their own. Called once per test by
    *  [[beforeEach]], and again by any test that needs a SECOND wiring not to see the
@@ -52,6 +56,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   override def afterEach(): Unit = {
+    stoppedAtEnd.foreach(_.stop())
+    stoppedAtEnd.clear()
     trees.map(rootOf).filter(java.nio.file.Files.exists(_)).foreach { root =>
       java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
         .forEach(path => java.nio.file.Files.deleteIfExists(path))
@@ -271,6 +277,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   /** A row the resolver will act on: known to the cache, a TMDB film TMDB gave no imdbId. */
   private def seedUnidentifiedFilm(wiring: ArchiveReplayWiring): Unit = {
+    stoppedAtEnd += wiring.imdbIdResolver
     wiring.movieRepository.upsert(services.movies.FilmId.legacy("Stop Making Sense", None, wiring.movieRepository.normalizer), "Stop Making Sense", None,
       models.MovieRecord(tmdbId = Some(24128)))
     wiring.movieCache.rehydrate()
