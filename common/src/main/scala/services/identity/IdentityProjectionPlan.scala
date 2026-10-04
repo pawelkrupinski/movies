@@ -37,7 +37,7 @@ final case class Regroupings(merges: Int, splits: Int, moves: Int, fresh: Int, r
  *  inherits (none for a fresh one), its listings, the record the listings and the previous film
  *  make, and the title its slots mostly carry (`anchor`, the display ladder's fallback). */
 final case class FilmDraft(counter: Long, inherited: Option[FilmId], members: Seq[ListingKey], record: MovieRecord,
-                           anchor: String) {
+                           anchor: String, touched: Option[Set[Source]] = None) {
   /** The TMDB film whose details the record still lacks: a film new to it, or one whose details
    *  never arrived. The projection fetches them by id before it writes (`resolved by id`, never a
    *  search). */
@@ -45,9 +45,11 @@ final case class FilmDraft(counter: Long, inherited: Option[FilmId], members: Se
 }
 
 /** A film as the projection writes it: its id and counter, display title and year, the unique
- *  lookup key it is stored under, the record, and its listings. */
+ *  lookup key it is stored under, the record, and its listings — and, of a film drafted again from its last draft, the
+ *  sources that may differ from what that draft wrote (`touched`: its non-venue sources and the venues it rebuilt, before
+ *  and after); every other slot is the one written then. None: any may differ. */
 final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: Option[Int], key: String,
-                               record: MovieRecord, members: Seq[ListingKey])
+                               record: MovieRecord, members: Seq[ListingKey], touched: Option[Set[Source]] = None)
 
 /** Everything one projection decides before anything is fetched: the drafts, the ids retired (and
  *  among them the `vanished` ones — stored films no published listing is on any more), the FilmId
@@ -65,7 +67,9 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
    *  own — so a film at hundreds of venues that changed at one rebuilds that one. */
   def complete(films: Seq[ProjectedFilm], stored: FilmId => Option[MovieRecord]): Seq[ProjectedFilm] = {
     val wanted = films.map { film =>
-      film -> film.record.data.collect {
+      // Of a film whose untouched slots are the ones written last ([[ProjectedFilm.touched]]), only the touched can differ.
+      val slots = film.touched.fold(film.record.data.iterator)(_.iterator.flatMap(s => film.record.data.get(s).map(s -> _)))
+      film -> slots.collect {
         case (showing: CinemaShowing, slot) if IdentityProjectionPlan.isLean(slot) && !stored(film.id).flatMap(_.data.get(showing))
           .exists(held => IdentityProjectionPlan.isLean(held) && LeanRecords.slotsEqual(slot, held)) => showing.cinema
       }.toSet
@@ -336,6 +340,9 @@ object IdentityProjectionPlan {
       val imdb   = unmatchedOf.get(members).filterNot(_.unanswered).map { cluster =>
         cluster.fallback.map(_.id).orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
       val held   = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
+      val nonVenue = held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty }
+      val networks = previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) })
+      val previousNonVenue = previous.fold(Set.empty[Source])(_.record.data.keysIterator.filter(Source.cinemaOf(_).isEmpty).toSet)
       val record = held.copy(
         tmdbId        = film,
         tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
@@ -344,9 +351,15 @@ object IdentityProjectionPlan {
         // A chain's network detail slot is venue source data no listing is published at: kept from the
         // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
         // The venue slots first, and the rest over them: no venue slot is a non-venue source or a chain's network one.
-        data          = venueData ++ held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++
-                          previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) }))
-      FilmDraft(counter, previous.map(_.id), keys, record, anchor)
+        data          = venueData ++ nonVenue ++ networks)
+      // Of a film drafted again, what may differ from the last draft's write: its non-venue sources, and the venues it
+      // rebuilt — their slots as written then and as built now. Every other venue's slot is the one written.
+      val touched = plan.was.map { was =>
+        val rebuilt = plan.groups.collect { case (cinema, Right(_)) => cinema }
+        previousNonVenue ++ nonVenue.keySet ++ networks.keySet ++
+          rebuilt.flatMap(cinema => was.venues(cinema).lean.map(_._1) ++ venueShapes(cinema).lean.map(_._1))
+      }
+      FilmDraft(counter, previous.map(_.id), keys, record, anchor, touched)
     }
     val venues = planned.map(plan => plan.counter -> plan.groups.map {
       case (cinema, Left(venue))           => cinema -> venue.keys
@@ -412,7 +425,7 @@ object IdentityProjectionPlan {
         minted += fresh
         fresh
       }
-      ProjectedFilm(id, d.counter, title, year, key, d.record, d.members)
+      ProjectedFilm(id, d.counter, title, year, key, d.record, d.members, d.touched)
     }
     val freshEntries = films.filter(f => draft.counters.filmIdOf(f.counter).isEmpty).map(f => FilmIdCounter(f.id.value, f.counter))
     ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.canary)

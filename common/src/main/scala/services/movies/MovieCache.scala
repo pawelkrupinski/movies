@@ -141,7 +141,11 @@ trait MovieCache extends MovieCacheReader {
    *  venues that moved at one is not read back and rewritten whole. Anything else — the row no longer resident as
    *  `before`, another id, key or TMDB id, a patch that fails, a store without the showtimes and slots split — is
    *  written whole, by [[writeProjected]]. */
-  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): WriteOutcome
+  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord,
+                                       only: Option[Set[Source]] = None): WriteOutcome
+  /** Whether the films held here keep every slot lean — the showtimes in `screenings`, the slots in `movie_slots` — so a
+   *  slot written lean is one the store already holds the showtimes of. */
+  private[services] def holdsSlotsLean: Boolean
   /** Remove film `id` — one the projection retired — with its side rows, from the store and the cache. */
   private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
@@ -487,7 +491,10 @@ class CaffeineMovieCache(
       }
     }
 
-  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): WriteOutcome = {
+  private[services] def holdsSlotsLean: Boolean = repository.hasScreenings && repository.hasSlots
+
+  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord,
+                                       only: Option[Set[Source]]): WriteOutcome = {
     // Only over the production storage split: a store holding showtimes inline in the record compares slots
     // showtime-blind, so a patch would not see a slot whose showtimes alone moved. And never a film changing TMDB id:
     // that write's order against the other films' is the unique index's, which the whole write is ordered by.
@@ -496,7 +503,9 @@ class CaffeineMovieCache(
         // Resident as the projection read it: what the store holds, so the patch from it is the whole change.
         (positive.getIfPresent(key) eq before) && {
           val clean = withoutZeroRatings(after)
-          repository.updateIfPresent(id, key, before, clean) && { store(key, forCacheOver(before, clean), id); touch(); true }
+          // Diffed only `only` when given: the sources that may differ, every other the same slot on both sides.
+          repository.updateIfPresent(id, key, only.fold(before)(LeanRecords.only(before, _)), only.fold(clean)(LeanRecords.only(clean, _))) &&
+            { store(key, forCacheOver(before, clean), id); touch(); true }
         }
       }
     }

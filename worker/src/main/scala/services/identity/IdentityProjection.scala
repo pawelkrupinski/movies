@@ -246,7 +246,8 @@ final class IdentityProjection(
                 consecutiveShrinks = 0
                 val canary    = if (scope.whole) draft.canary else IdentityProjectionPlan.canary(index)
                 val films     = stored.size - scopeStored.size + plan.films.size
-                val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole)
+                val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
+                  movedElsewhere = changes.fold(Set.empty[String])(_.films))
                 if (reconcile) moved.foreach(drift(_, freed, index, tick))
                 if (tick.declined == 0) {
                   // The index holds what was written: a film written counts as moved next time only if another writer moves it.
@@ -324,12 +325,17 @@ final class IdentityProjection(
 
   private def write(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
                     films: Int, canary: Map[ShadowRelation, Int], started: tools.Stopwatch.Started,
-                    phases: ProjectionPhases, patch: Boolean): ProjectionTick = {
+                    phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String] = Set.empty): ProjectionTick = {
     val before    = stored.map(r => r.id -> r).toMap
+    // A film another writer moved since this projection last wrote it may differ anywhere: compared and written whole. So
+    // is every film of a store holding showtimes in the record: an untouched slot drafted lean is not the one it holds.
+    val drafted   = plan.films.map(f =>
+      if (f.touched.isDefined && (movedElsewhere(f.id.value) || !cache.holdsSlotsLean)) f.copy(touched = None) else f)
     // The map first: a film written under a fresh id must be numbered before anything can see it.
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
-    val changed = phases("compare")(plan.films.filter { f =>
-      before.get(f.id).forall(s => s.key(normalizer) != f.key || !LeanRecords.equal(f.record, s.record))
+    val changed = phases("compare")(drafted.filter { f =>
+      before.get(f.id).forall(s => s.key(normalizer) != f.key ||
+        !f.touched.fold(LeanRecords.equal(f.record, s.record))(LeanRecords.equalAt(f.record, s.record, _)))
     }.pipe(films => detailed.complete(films, id => before.get(id).map(_.record))))
     // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
@@ -368,7 +374,7 @@ final class IdentityProjection(
                        patchable: ProjectedFilm => Option[MovieRecord]): Int = {
     def write(f: ProjectedFilm): Boolean = {
       val key = CacheKey.stored(f.title, f.key)
-      patchable(f).fold(cache.writeProjected(f.id, key, f.record))(cache.patchProjected(f.id, key, _, f.record)) == WriteOutcome.Written
+      patchable(f).fold(cache.writeProjected(f.id, key, f.record))(cache.patchProjected(f.id, key, _, f.record, f.touched)) == WriteOutcome.Written
     }
     def attempt(fs: Seq[ProjectedFilm]): Seq[ProjectedFilm] = fs.filterNot(write)
     val (apart, ordered) = films.partition(f => independent(f.id))
@@ -402,8 +408,9 @@ object IdentityProjection {
    *  derived stays the projection's, and a fetch that fails leaves its draft as it was. */
   private[identity] def detailed(drafts: Seq[FilmDraft], details: (MovieRecord, Int) => Option[MovieRecord]): Seq[FilmDraft] =
     tools.BoundedParallel.map("identity-projection-details", drafts, DetailsConcurrency) { d =>
+      // Details can move any field and source of the record: the film is compared and written whole.
       d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
-        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
+        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses), touched = None)))
     }
 
   /** How many periodic projections of a scope run between two of the whole corpus — the reconciliation that would put right

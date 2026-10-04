@@ -29,5 +29,12 @@ object PatchDiffBench {
     time("ScreeningsSplit.writesFor")(ScreeningsSplit.writesFor(before.data, after.data))
     time("MovieRecordPatch.diff")(MovieRecordPatch.diff(before, after))
     time("ShowtimesDigest.leanEqual")(ShowtimesDigest.leanEqual(after, before))
+    // As a patch of the moved venue alone (`ProjectedFilm.touched`): every diff over the sources that may differ.
+    val touched = Set(moved)
+    time("touched: all three diffs") {
+      val (b, a) = (LeanRecords.only(before, touched), LeanRecords.only(after, touched))
+      SlotsRepository.slotOps(b.data, a.data); ScreeningsSplit.writesFor(b.data, a.data); MovieRecordPatch.diff(b, a)
+    }
+    time("touched: LeanRecords.equalAt")(LeanRecords.equalAt(after, before, touched))
   }
 }
