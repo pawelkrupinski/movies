@@ -11,6 +11,7 @@ import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUn
 import scala.concurrent.ExecutionContextExecutorService
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /**
  * Recovers a missing IMDb id by querying IMDb's suggestion endpoint and writes
@@ -127,15 +128,19 @@ class ImdbIdResolver(
         logger.info(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed for good: ${failure.getMessage}")
       case NonFatal(failure) =>
         val delay = ImdbIdResolver.retryDelay(attempt, failure, random())
-        val scheduled = waiting.add(title -> year) && {
-          try {
-            retries.schedule((() => { waiting.remove(title -> year); pool.submit(resolveOrRetry(title, year, searchTitle, attempt + 1)) }): Runnable,
-              delay.toMillis, TimeUnit.MILLISECONDS)
-            true
-          } catch { case NonFatal(_) => waiting.remove(title -> year); false } // stopping: the next trigger asks again
+        // None: a retry for the film already waits. A failed schedule is the scheduler stopping with the worker:
+        // the film is asked again on its next trigger.
+        val retry = Option.when(waiting.add(title -> year))(Try(retries.schedule(
+          (() => { waiting.remove(title -> year); pool.submit(resolveOrRetry(title, year, searchTitle, attempt + 1)) }): Runnable,
+          delay.toMillis, TimeUnit.MILLISECONDS)))
+        retry.foreach(_.failed.foreach(_ => waiting.remove(title -> year)))
+        val next = retry match {
+          case Some(Success(_))       => s"retrying in ${delay.toSeconds}s (attempt ${attempt + 1})"
+          case Some(Failure(stopped)) => s"not retried (${stopped.getClass.getSimpleName}: the resolver is stopping)"
+          case None                   => "a retry already waits"
         }
-        logger.warn(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed, not concluded" +
-          (if (scheduled) s"; retrying in ${delay.toSeconds}s (attempt ${attempt + 1})" else "") + s": ${failure.getMessage}")
+        logger.warn(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed, not concluded; " +
+          s"$next: ${failure.getMessage}")
     }
 
   /** Synchronous resolution — public for tests/scripts (e.g. `Wiring.fullySyncOne`),
