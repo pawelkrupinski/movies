@@ -564,10 +564,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     gate(stored, movie) shouldBe services.identity.RatingGate.withheld(movie)
   }
 
-  // A pod that boots inside an hour a previous pod already claimed (`SettleReaper`'s window) still projects one interval
-  // after boot: every projection on scrapes waits for that first one, and behind the claim a restarted worker projected
-  // nothing until the next hour (2026-10-04, US/UK/DE).
-  "A worker's boot projection" should "run one interval after boot, whatever the reconcile's window claim says" in {
+  // A pod that boots inside an hour a previous pod already claimed (`SettleReaper`'s window) still projects as soon as its
+  // model is taken up: every projection on scrapes waits for that first one, and behind the claim a restarted worker
+  // projected nothing until the next hour (2026-10-04, US/UK/DE).
+  "A worker's boot projection" should "run once the model is taken up, whatever the reconcile's window claim says" in {
     class Booting extends TestWiring {
       val manual    = new tools.ManualScheduler(new tools.MutableClock(TestWiring.FixedInstant))
       var projected = 0
@@ -577,9 +577,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     }
     val w = new Booting
     w.settleReaper
-    w.manual.advance(java.time.Duration.ofSeconds(w.identityProjectionInterval.value.toSeconds - 1))
-    w.projected shouldBe 0
-    w.manual.advance(java.time.Duration.ofSeconds(1))
+    w.manual.advance(java.time.Duration.ofHours(3))
+    w.projected shouldBe 0                                        // no timer: the model's take-up is the signal
+    w.identityModelTakenUp()
+    w.manual.advance(java.time.Duration.ZERO)
     w.projected shouldBe 1
     w.manual.advance(java.time.Duration.ofHours(3))
     w.projected shouldBe 1                                        // once: the hours are the claimed reconcile's

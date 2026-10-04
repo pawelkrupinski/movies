@@ -117,8 +117,6 @@ final case class GapFill(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
  *  calibrated identity confidence are served without ratings. Off by default. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the identity projection's period. */
-final case class IdentityProjectionInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity model's paced live lookup fill
  *  runs a round (its own claimed window, independent of the settle). */
 final case class IdentityShadowInterval(value: FiniteDuration) extends AnyVal

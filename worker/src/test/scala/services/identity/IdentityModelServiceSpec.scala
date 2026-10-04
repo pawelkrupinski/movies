@@ -192,6 +192,26 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     } finally scheduler.shutdownNow()
   }
 
+  // The boot's projection waits on this signal, not a timer: every projection on scrapes waits for that first one, so a
+  // take-up that failed must announce itself when its retry succeeds, and a failed one never.
+  it should "announce each take-up that succeeded — a retried one too — and none that failed" in {
+    val world   = new World
+    val clock   = new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z"))
+    var failing = true
+    var announced = 0
+    val service = new IdentityModelService(
+      () => { if (failing) throw new IllegalStateException("store unreachable")
+              new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store) },
+      world.reads, () => Nil, normalizer, 1.hour, Executors.newSingleThreadScheduledExecutor(), clock = clock,
+      takenUp = () => announced += 1)
+    service.tick(); service.takeUpSettled shouldBe false
+    scala.util.Try(service.takeUp())
+    announced shouldBe 0
+    failing = false
+    service.takeUp()
+    announced shouldBe 1
+  }
+
   // A shadow country's readers only peek, which never takes up: a failed take-up (a Mongo blip at boot)
   // left its model down until the next restart. The tick retries it, backing off 1, 2, 4 … 30 minutes.
   it should "retry a failed take-up on its tick, backing off to a cap, until one succeeds" in {

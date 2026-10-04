@@ -163,6 +163,7 @@ class WorkerWiring(
       // its first resolve has the page's facts.
       pageWait   = new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
                      WorkerWiring.VenuePageWaitLimit),
+      takenUp    = () => identityModelTakenUp(),
       clock      = clock)
     identityTmdbStore.onChanged(model.observed)
     model

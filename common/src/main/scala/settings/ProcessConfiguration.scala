@@ -208,9 +208,6 @@ final class ProcessConfiguration(val env: Env) {
     ReadModelColdRetryInterval(seconds("KINOWO_READMODEL_COLD_RETRY_SECONDS", default.value))
   /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings; off unless set. */
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
-  /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — how often the identity projection runs. */
-  def identityProjectionInterval(default: IdentityProjectionInterval): IdentityProjectionInterval =
-    IdentityProjectionInterval(seconds("KINOWO_IDENTITY_PROJECTION_SECONDS", default.value))
   def identityShadowInterval(default: IdentityShadowInterval): IdentityShadowInterval =
     IdentityShadowInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
   def identityShadowInitialDelay(default: IdentityShadowInitialDelay): IdentityShadowInitialDelay =

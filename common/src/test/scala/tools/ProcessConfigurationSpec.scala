@@ -31,11 +31,6 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_COUNTRIES" -> "xx").workerCountries shouldBe WorkerCountries(Seq(Country.default))
   }
 
-  it should "resolve the identity projection's period" in {
-    resolvedFrom("KINOWO_IDENTITY_PROJECTION_SECONDS" -> "90").identityProjectionInterval(IdentityProjectionInterval(5.minutes)) shouldBe
-      IdentityProjectionInterval(90.seconds)
-  }
-
   it should "resolve a convergence leg's replay: hermetic, or filling only the gaps, each off unless asked" in {
     resolvedFrom().hermeticReplay shouldBe HermeticReplay(false)
     resolvedFrom().gapFill shouldBe GapFill(false)

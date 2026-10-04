@@ -70,6 +70,9 @@ final class IdentityModelService(
   beforeDrain: () => Unit = () => (),
   /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,
+  /** Told each time the model is taken up — at boot, and a take-up retried after one failed: the first moment a
+   *  projection of it can run (the boot's, which every projection on scrapes waits for). On the model's thread. */
+  takenUp:    () => Unit = () => (),
   clock:      java.time.Clock
 ) extends Logging {
 
@@ -251,6 +254,7 @@ final class IdentityModelService(
     metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, started.seconds, sizes))
     logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
       s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()}); ${sizes.render}")
+    safely("announce the take-up")(takenUp())
   }
 
   private def safely(what: String)(body: => Unit): Unit =

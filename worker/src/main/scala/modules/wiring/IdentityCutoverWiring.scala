@@ -5,22 +5,16 @@ import services.identity.{FilmIdCounterStore, IdentityListingIntake, IdentityPro
   InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import settings.IdentityProjectionInterval
 
-import scala.concurrent.duration.DurationInt
 
 /**
  * How a country's films are made (docs/design/identity-resolver.md §8; the cut-over itself is told in
  * docs/design/identity-cutover-runbook.md):
  *  - a scrape goes to [[IdentityListingIntake]] (the venue's accepted listing);
- *  - the settle tick runs [[IdentityProjection]], every `KINOWO_IDENTITY_PROJECTION_SECONDS` (5 minutes
- *    by default), which writes the identity model's films.
+ *  - [[IdentityProjection]] writes the identity model's films: once the model is taken up, then as its batches move
+ *    (`onModelBatch`), and hourly over the whole corpus (the settle reaper's reconcile).
  */
 trait IdentityCutoverWiring { self: WorkerWiring =>
-
-  /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the projection's period. */
-  def identityProjectionInterval: IdentityProjectionInterval =
-    configuration.identityProjectionInterval(IdentityProjectionInterval(5.minutes))
 
   /** Each venue's accepted listing (`identity_listings`). */
   lazy val acceptedListings: ScrapeArchiveRepository =

@@ -73,12 +73,14 @@ trait ResolutionWiring { self: WorkerWiring =>
   // tried again by the trigger, not an hour later.
   def settleTick(): Unit = if (!identityProjection.reconcileQuietly()) identityProjectionTrigger.retry()
   def bootProjectionTick(): Unit = if (!identityProjection.projectQuietly()) identityProjectionTrigger.retry()
-  // The boot's projection runs once, on the trigger's scheduler, never behind the reconcile's claim: an hourly window a
-  // previous pod already claimed skipped it, and every projection on scrapes waits for it — a restarted worker projected
-  // nothing until the next hour (2026-10-04, US/UK/DE 20:10–21:00). It is a projection, not a reconcile: with none
-  // before it there is no drift to measure.
+  // The boot's projection runs the moment the identity model is taken up — the first moment one can succeed; a take-up
+  // retried after a failure runs it then — on the trigger's scheduler, never behind the reconcile's claim: an hourly
+  // window a previous pod already claimed skipped it, and every projection on scrapes waits for it — a restarted worker
+  // projected nothing until the next hour (2026-10-04, US/UK/DE 20:10–21:00). Five minutes after boot before that, a
+  // delay no measure chose: PL's model is up in seconds. It is a projection, not a reconcile: with none before it there
+  // is no drift to measure.
+  def identityModelTakenUp(): Unit = identityProjectionTrigger.once(scala.concurrent.duration.Duration.Zero)(bootProjectionTick())
   lazy val settleReaper = {
-    identityProjectionTrigger.once(identityProjectionInterval.value)(bootProjectionTick())
     managedResources.stopping(new SettleReaper(() => settleTick(),
     interval = SettleInterval(services.identity.IdentityProjection.ReconcileEvery),
     initialDelay = SettleReaper.InitialDelay(services.identity.IdentityProjection.ReconcileEvery),

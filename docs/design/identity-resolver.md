@@ -2263,8 +2263,9 @@ burst is 30 s quiet, never more than 2 min after its first drain (the read model
 the debounce.
 
 **No five-minute period (2026-10-04, later).** The periodic projection is gone: the clock runs only the whole corpus's
-reconciliation — the boot's first projection one `identityProjectionInterval` after boot, then every
-`IdentityProjection.ReconcileEvery` (an hour), which also reads the archives' stamps and records the slot fingerprints.
+reconciliation, every `IdentityProjection.ReconcileEvery` (an hour) from an hour after boot, which also reads the archives'
+stamps and records the slot fingerprints. The boot's first projection runs the moment the identity model is taken up
+(`IdentityModelService.takenUp`, a retried take-up's too), on the trigger's scheduler and behind no claim.
 Everything else runs on scrapes. What the period used to come back for, the trigger does: a projection that did not
 settle (`IdentityProjection.settled`: refused, failed, a write declined, a written film's TMDB details still missing) runs
 again after a backoff of 1 min doubling to 15 (`EventTrigger.retry`), and one with nothing written to build on

@@ -17,7 +17,7 @@ composition root (`modules.wiring.IdentityCutoverWiring`). For a named country:
 | | old path (switch off) | cut over (switch on) |
 |---|---|---|
 | a finished scrape | `MovieCache.recordCinemaScrape` → `ScrapeLanding` (divert, redirect, re-key, prune) | `IdentityListingIntake`: the scrape-health guards decide the venue's ACCEPTED listing (`identity_listings`) |
-| identity | staging fold, settle (`FilmCanonicalizer`, `MixedFilmSplitter`, `collapseCluster`, `settleResolved`), `UnresolvedTmdbReaper` concluding | `IdentityProjection` every `KINOWO_IDENTITY_PROJECTION_SECONDS` (300): resolve all families, ids by overlap through `identity_film_ids`, write the films that changed, retire the ids nothing overlaps |
+| identity | staging fold, settle (`FilmCanonicalizer`, `MixedFilmSplitter`, `collapseCluster`, `settleResolved`), `UnresolvedTmdbReaper` concluding | `IdentityProjection` once the model is taken up, as its batches move, and hourly over the whole corpus: resolve all families, ids by overlap through `identity_film_ids`, write the films that changed, retire the ids nothing overlaps |
 | TMDB details of a film | the resolve writes them | fetched BY ID (`MovieService.withFilmDetails`) for a film new to its record |
 | queued `ResolveTmdb` / `RefreshAllTmdb` / `Staging*` tasks | run | completed unrun (`CutoverTaskHandlers`) |
 | `EnrichDetails` (a venue's detail page) | runs, then resolves on `MovieDetailsComplete` | runs — the page is source data the model reads — without that resolve |
@@ -73,7 +73,7 @@ line (Reloader restarts the worker; the web tier is untouched):
 ```
 
 The value is the country's OWN code — each worker runs one country (`KINOWO_COUNTRIES`), and a
-worker only reads its own. Optional: `KINOWO_IDENTITY_PROJECTION_SECONDS` (default 300).
+worker only reads its own.
 
 **The first projection** (≈5 minutes after the worker starts) seeds every id from today's films
 (`IdAssigner` over the FilmId map): a film keeps its id, URL, ratings and share card wherever its
