@@ -82,6 +82,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
    *  number so an entry survives unrelated edits above it, and a new swallow elsewhere in
    *  the file is not covered by an old entry that happens to share its text. */
   private val Allowlist: Map[(String, String, String), String] = Map(
+    ("web/src/main/scala/controllers/MetricsController.scala", "metrics",
+      "val fallback = scala.util.Try(fallbackStore.findAll()).fold(_ => \"\",") ->
+      "not an empty value but an ABSENT one: an unreadable fallback store leaves its two gauge families out of the exposition (no series, never a false 0), so the rest of /metrics — the web tier's only request-rate, latency and disk signals — is still served",
     ("web/src/main/scala/controllers/DebugSnapshot.scala", "load",
       "case Failure(exception) =>") ->
       "a dev-only CACHE of a /debug read, never data: None means 'nothing usable stored' and the caller reads the source at once, exactly as with no file — a stale or corrupt file must not fail the page; logged",

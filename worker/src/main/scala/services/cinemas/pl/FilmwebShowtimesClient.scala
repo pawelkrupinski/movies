@@ -108,8 +108,8 @@ class FilmwebShowtimesClient(
     // A film whose info failed is still listed under its seance's own title; only one with no
     // such title is dropped, and only its page leaves the listing incomplete.
     val titled = seances.filter(_.fallbackTitle.nonEmpty).map(_.filmId).toSet
-    ListingPages.reportFailed(infoReads.collect { case (id, attempt) if !titled(id) => attempt })
-    val infos = infoReads.collect { case (id, scala.util.Success(info)) => id -> info }.toMap
+    ListingPages.reportFailed(infoReads.filterNot(read => titled(read._1)).map(_._2))
+    val infos = infoReads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
 
     seances.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
       val info = infos.get(filmId).flatten
