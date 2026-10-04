@@ -487,7 +487,13 @@ final class MovieChangeStream(
   // restarted (see [[ChangeStreamReopen]] for the outage that proved it). Skips the reopen once
   // the last listener has detached, so an idle repository stays idle.
   private val changeReopen = ChangeStreamReopen.onDaemonScheduler("MovieRepository",
-    () => if (!movieChanges.isEmpty) ensureWatching())
+    () => { openDeferred.set(false); if (!movieChanges.isEmpty) ensureWatching() })
+
+  // Set while an open deferred on an unreadable resume position waits on `changeReopen`. A
+  // registration meanwhile leaves the open to that reopen rather than re-reading the position:
+  // every read counts against [[ChangeStreamResumeToken.MaxDeferredOpens]], which the backoff is
+  // meant to space out — the boot's back-to-back registrations spent two of them in milliseconds.
+  private val openDeferred = new java.util.concurrent.atomic.AtomicBoolean(false)
 
   /** Attach a consumer, starting the shared cursor if it isn't running; the returned
    *  handle detaches just that consumer and stops the cursor once none remain. */
@@ -523,11 +529,11 @@ final class MovieChangeStream(
    *  fall back to their periodic backstop (cache rehydrate / projector reconcile)
    *  meanwhile. */
   private def ensureWatching(): Unit = changeLock.synchronized {
-    if (changeSub.get() == null) {
+    if (changeSub.get() == null && !openDeferred.get()) {
       // Resume from the last persisted token if we have one (a restart / prior terminal
       // error) so events missed while down are replayed; else open at "now".
       resumeToken.openFrom() match {
-        case ChangeStreamResumeToken.Position.Deferred => changeReopen.failed()
+        case ChangeStreamResumeToken.Position.Deferred => openDeferred.set(true); changeReopen.failed()
         case ChangeStreamResumeToken.Position.At(resumeFrom) => open(resumeFrom)
       }
     }

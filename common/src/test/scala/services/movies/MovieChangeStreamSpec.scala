@@ -773,6 +773,27 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handle.close(); under.close() }
   }
 
+  // The deferrals are meant to be spaced by the reopen backoff (1 s, 5 s, 15 s): the worker's boot
+  // registers its consumers back to back, and each registration re-read the unreadable position,
+  // spending a deferral in milliseconds — the cursor opened past the saved position at now after
+  // ~6 s of a blip instead of ~20 s.
+  it should "leave a deferred open to its scheduled reopen when another consumer registers meanwhile" in {
+    val reads  = new AtomicInteger(0)
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false) {
+      override def load(): tools.ReadOutcome[BsonDocument] = {
+        reads.incrementAndGet(); tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new com.mongodb.MongoTimeoutException("slow")))
+      }
+    }
+    val source = new HandFedSource
+    val under  = stream(source, resumeToken = token)
+    val first  = under.watch(_ => (), _ => ())
+    val second = under.watch(_ => (), _ => ())
+    try {
+      reads.get shouldBe 1
+      source.opens shouldBe empty
+    } finally { first.close(); second.close(); under.close() }
+  }
+
   // An event is APPLIED once its fan-out has run, not once its re-read has: a position that
   // moves before the listeners do is persisted by a shutdown that cuts the fan-out short.
   it should "not move the resume position while the event's fan-out is still running" in {
