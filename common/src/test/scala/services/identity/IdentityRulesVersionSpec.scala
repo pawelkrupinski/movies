@@ -36,6 +36,13 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
     digested should contain ("scala/services/identity/IdentityTraceSink.scala")
   }
 
+  // The title readers cap a year at next year in UTC; read through VenueClock, every venue-timezone fix moved the
+  // rules and re-resolved every worker's corpus. They read it through `LatestTitleYear`, which reaches no venue.
+  it should "leave out the venue clock, reading only the year a title may name" in {
+    digested should contain ("scala/services/movies/LatestTitleYear.scala")
+    digested should not contain "scala/models/VenueClock.scala"
+  }
+
   private def read(edit: (String, String => String)*)(path: String): Array[Byte] = {
     val bytes = Files.readAllBytes(main.resolve(path))
     edit.find(_._1 == path).fold(bytes)(e => e._2(new String(bytes, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8))

@@ -160,6 +160,13 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   def familyQuestions: Seq[(Set[CandidateQuery], Seq[ResolverDecision])] =
     families.values.toSeq.map(f => (f.resolved.queries, f.resolved.decisions))
 
+  /** Every listing key the families name — their listings, node maps and decisions' members — and each node text:
+   *  what the one-object-per-listing checks read. */
+  private[identity] def familyKeys: Iterator[ListingKey] = families.valuesIterator.flatMap(family =>
+    family.resolved.listings.iterator ++ family.resolved.nodeKeys.keysIterator ++ family.resolved.decisions.iterator.flatMap(_.members))
+  private[identity] def familyNodeTexts: Iterator[(ListingKey, String)] = families.valuesIterator.flatMap(_.resolved.nodeKeys)
+  private[identity] def nodeTextOf(key: ListingKey): Option[String] = corpus.nodeKeyOf(key)
+
   /** How many families the model holds, and how many listings. */
   def familyCount: Int = families.size
   def heldCount: Int   = heldListings
@@ -258,11 +265,21 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var rulesRecorded = false
   private def ruled(): Unit = if (!rulesRecorded) { store.recordRulesVersion(rules); rulesRecorded = true }
 
+  // A listing is filed under its OWN key object — the one its families, decisions and node maps are made to name
+  // ([[remember]]), and the corpus files it under: a listing re-published with other fields comes with a new one,
+  // and the model's maps would otherwise keep the old beside it.
   private def hold(listing: Listing): Unit = {
-    val keyed = byKey.getOrElseUpdate(listing.key, new IncrementalResolver.Keyed)
+    val keyed = byKey.get(listing.key) match {
+      case Some(was) if was.listing != null && (was.listing.key eq listing.key) => was
+      case was                                                                  =>
+        byKey.remove(listing.key)
+        val entry = was.getOrElse(new IncrementalResolver.Keyed)
+        byKey(listing.key) = entry
+        entry
+    }
     if (keyed.listing == null) heldListings += 1
     keyed.listing = listing
-    atVenue.updateWith(listing.venue)(keys => Some(keys.getOrElse(Set.empty) + listing.key))
+    atVenue.updateWith(listing.venue)(keys => Some(keys.getOrElse(Set.empty) - listing.key + listing.key))
   }
   private def release(key: ListingKey): Unit = heldListing(key).foreach { listing =>
     val keyed = byKey(key)
@@ -288,7 +305,13 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     family.resolved.films.foreach(film => filmReadersOf.updateWith(film)(_.map(_ - id).filter(_.nonEmpty)))
   }
 
-  private def remember(resolved: RegionFamily, digest: Long): Unit = {
+  /** The held listing's own key object for `key` (`key` itself for a listing no longer held). */
+  private def heldKey(key: ListingKey): ListingKey = heldListing(key).fold(key)(_.key)
+  /** The corpus's object for a node's `text` when it is the node `key` is one of now. */
+  private def heldText(key: ListingKey, text: String): String = corpus.nodeKeyOf(key).filter(_ == text).getOrElse(text)
+
+  private def remember(family: RegionFamily, digest: Long): Unit = {
+    val resolved = family.sharing(heldKey, heldText)
     val id = freedIds.headOption.fold { val fresh = nextFamily; nextFamily += 1; fresh } { free => freedIds -= free; free }
     families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => byKey.getOrElseUpdate(key, new IncrementalResolver.Keyed).family = id)

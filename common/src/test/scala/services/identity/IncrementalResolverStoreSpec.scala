@@ -203,4 +203,38 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val evidenceKey = new String("It Follows\u0000It Follows\u0000\u0000")
     (CandidateGeneration.nodeKeyText((evidenceKey, Set.empty)) eq evidenceKey) shouldBe true
   }
+
+  /** `listing` with a key object of its own, equal to its key: as a scrape or a store read hands it over. */
+  private def ownKey(listing: Listing): Listing = listing.copy(key = ListingKeyBson.decode(ListingKeyBson.encode(listing.key)))
+
+  // worker-us held ~2 more key objects per listing than the listings it holds: the families a restore takes up are
+  // decoded from the store, their listings, node maps and every decision's members keys of their own beside the held
+  // listing's — and a node's text beside the corpus's. One key object per listing is the held listing's.
+  "a restored model" should "name every listing by the held listing's own key object, and every node by the corpus's text" in {
+    val corpus  = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
+    val written = new InMemoryIdentityModelStore
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = written).seed(corpus.listings)
+    val decoded = new InMemoryIdentityModelStore
+    written.rulesVersion.foreach(decoded.recordRulesVersion)
+    decoded.replace(Set.empty, written.families().map(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family))))
+    val held     = corpus.listings.map(ownKey)
+    val restored = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = decoded)
+    restored.restore(held)
+    restored.familiesResolved shouldBe 0
+    val heldKey = held.map(listing => listing.key -> listing.key).toMap
+    restored.familyKeys.filterNot(key => heldKey(key) eq key).take(5).toSeq shouldBe empty
+    restored.familyOf.keys.filterNot(key => heldKey(key) eq key).take(5).toSeq shouldBe empty
+    restored.familyNodeTexts.filterNot { case (key, text) => restored.nodeTextOf(key).exists(_ eq text) }.take(5).toSeq shouldBe empty
+  }
+
+  "a model" should "name a listing re-published with other fields by its new key object, everywhere" in {
+    val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
+    val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
+    model.seed(corpus.listings)
+    val moved  = ownKey(corpus.listings.head).copy(runtime = Some(321))
+    model.listingsSeen(Seq(moved))
+    model.familyKeys.filter(_ == moved.key).filterNot(_ eq moved.key).toSeq shouldBe empty
+    model.familyOf.keys.filter(_ == moved.key).filterNot(_ eq moved.key).toSeq shouldBe empty
+    model.heldAt(moved.venue).filter(_ == moved.key).filterNot(_ eq moved.key) shouldBe empty
+  }
 }

@@ -65,7 +65,7 @@ object SequelMarker {
 
   /** A plausible release year is a year, never an ordinal. */
   private def isYear(t: String): Boolean =
-    t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= models.VenueClock.system.today(java.time.ZoneOffset.UTC).getYear + 1 }
+    t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= LatestTitleYear.of(java.time.Clock.systemUTC()) }
 
   private def isOrdinal(t: String): Boolean =
     (t.nonEmpty && t.forall(_.isDigit) && !isYear(t) && t.toIntOption.isDefined) || Roman.matches(t)

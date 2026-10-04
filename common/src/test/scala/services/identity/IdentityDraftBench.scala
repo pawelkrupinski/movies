@@ -46,14 +46,24 @@ object IdentityDraftBench {
     }
     val rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = vs => rows.toSeq.collect { case ((_, c), row) if vs(c) => c -> row }.groupMap(_._1)(_._2)
     val byFilm = modelled.values.toSeq.groupBy(_.rawTitle)
-    val decisions = byFilm.toSeq.sortBy(_._1).zipWithIndex.map { case ((_, ls), i) =>
-      // Decoded from the model's store: keys of their own.
-      ResolverDecision(ls.map(l => services.movies.ListingKey.Native(new String(l.key.venue), new String(l.page.get), new String(l.rawTitle)): ListingKey).sorted,
-        Some(i + 1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)() }
-      .sortBy(_.members.head)(using ListingKey.ordering)
-    val resolution = Resolution(decisions, decisions.size, decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap,
-      Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    println(s"${rows.size} listings, ${decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
+    // As the identity model holds them after a restart: each film's family decoded from its store (keys and node texts
+    // of their own), then — unless `decoded` is given, as before 2026-10-05 — named by the held listings' key objects
+    // and the corpus's node texts (`RegionFamily.sharing`, what `IncrementalResolver.remember` does).
+    val corpusText = modelled.map { case (key, listing) => key -> listing.rawTitle }
+    var families = byFilm.toSeq.sortBy(_._1).zipWithIndex.map { case ((title, ls), i) =>
+      val keys     = ls.map(_.key)
+      val decision = ResolverDecision(keys.sorted, Some(i + 1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()
+      val family   = IdentityResolver.RegionFamily(keys.toSet, Seq(decision), Set(s"t:$title"), Set.empty, Set(i + 1),
+        CorpusContext.Reads(Set(title), Set.empty, Set.empty, Set.empty, Set(i + 1), Set.empty), keys.map(k => k -> new String(title)).toMap)
+      val stored   = MongoIdentityModelStore.decode(new org.bson.RawBsonDocument(  // as read off the wire: every string anew
+        MongoIdentityModelStore.encode(StoredFamily(StoredFamily.idOf(keys), family, 0L)), new org.bson.codecs.BsonDocumentCodec)).family
+      if (args.contains("decoded")) stored
+      else stored.sharing(k => modelled.get(k).fold(k)(_.key), (k, text) => corpusText.get(k).filter(_ == text).getOrElse(text))
+    }
+    var resolution = { val decisions = families.flatMap(_.decisions).sortBy(_.members.head)(using ListingKey.ordering)
+      Resolution(decisions, decisions.size, decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap,
+        Nil, Nil, 0, 0, 0, 0, 0, Map.empty) }
+    println(s"${rows.size} listings, ${resolution.decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
 
     var memo     = new VenueSlotMemo(0L)
     var stored   = Map.empty[services.movies.FilmId, StoredMovieRecord]
@@ -120,7 +130,7 @@ object IdentityDraftBench {
     // worker keeps anyway (those stay reachable below).
     def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
     val all = used()
-    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "-").foreach { dir =>
+    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-").foreach { dir =>
       val out = new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram").redirectOutput(new java.io.File(s"$dir/$name.txt")).start()
       out.waitFor(); ()
     }
@@ -131,7 +141,10 @@ object IdentityDraftBench {
     histogram("noLive")
     memo = null; val noMemo = used()
     histogram("noMemo")
+    families = null; resolution = null; val noModel = used()
+    histogram("noModel")
     println(f"retained: FilmShapes ${(all - noShapes) / 1e6}%.0fMB, LiveProjectionIndex ${(noShapes - noLive) / 1e6}%.0fMB, " +
-      f"VenueSlotMemo ${(noLive - noMemo) / 1e6}%.0fMB; still live ${noMemo / 1e6}%.0fMB (${stored.size} stored, ${venueSeqs.size} venues, ${rows.size} rows)")
+      f"VenueSlotMemo ${(noLive - noMemo) / 1e6}%.0fMB, model families+resolution ${(noMemo - noModel) / 1e6}%.0fMB; " +
+      f"total ${all / 1e6}%.0fMB, still live ${noModel / 1e6}%.0fMB (${stored.size} stored, ${venueSeqs.size} venues, ${rows.size} rows)")
   }
 }

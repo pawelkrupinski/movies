@@ -245,7 +245,22 @@ object IdentityResolver {
    *  it could read ([[CorpusContext.Reads]]). */
   private[identity] final case class RegionFamily(listings: Set[ListingKey], decisions: Seq[ResolverDecision], blockKeys: Set[String],
                                                   queries: Set[CandidateQuery], films: Set[Int], reads: CorpusContext.Reads,
-                                                  nodeKeys: Map[ListingKey, String])
+                                                  nodeKeys: Map[ListingKey, String]) {
+    /** This family naming each listing by `keyOf`'s object for its key and each node by `textOf`'s for its text — equal
+     *  values, so it decides and stores exactly as before, and is built anew only where some object differs. A family
+     *  decoded from the store names its listings by keys of its own; kept so, worker-us held two more key objects per
+     *  listing (its family's and its decision's) and a node text per node beside the corpus's, for the model's life. */
+    def sharing(keyOf: ListingKey => ListingKey, textOf: (ListingKey, String) => String): RegionFamily = {
+      val keysShared  = listings.forall(key => keyOf(key) eq key)
+      val decided     = decisions.forall(_.members.forall(key => keyOf(key) eq key))
+      val nodesShared = nodeKeys.forall { case (key, text) => (keyOf(key) eq key) && (textOf(key, text) eq text) }
+      if (keysShared && decided && nodesShared) this
+      else copy(
+        listings  = if (keysShared) listings else listings.map(keyOf),
+        decisions = if (decided) decisions else decisions.map(decision => decision.copy(members = decision.members.map(keyOf))(decision.trace)),
+        nodeKeys  = if (nodesShared) nodeKeys else nodeKeys.map { case (key, text) => keyOf(key) -> textOf(key, text) })
+    }
+  }
 
   /** Resolve `listings` — a union of whole families — against the corpus's `corpus` context, family
    *  by family: A3 with the corpus's facts, so each decides as the whole resolve would. */

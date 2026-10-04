@@ -48,7 +48,7 @@ object EmbeddedYear {
   def slotTitles(record: models.MovieRecord): Iterable[String] =
     record.data.values.flatMap(sd => sd.rawTitle ++ sd.title)
 
-  def ofAll(titles: Iterable[String], maxYear: Int = models.VenueClock.system.today(java.time.ZoneOffset.UTC).getYear + 1): Option[Int] = {
+  def ofAll(titles: Iterable[String], maxYear: Int = LatestTitleYear.of(java.time.Clock.systemUTC())): Option[Int] = {
     val years = titles.iterator
       .flatMap(Delimited.findAllMatchIn)
       .map(m => (1 to m.groupCount).iterator.flatMap(i => Option(m.group(i))).next().toInt)
