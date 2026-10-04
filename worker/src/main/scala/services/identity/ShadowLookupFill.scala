@@ -17,7 +17,9 @@ import scala.util.control.NonFatal
 final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long => Unit) {
   private var used       = 0
   private val overloaded = scala.collection.mutable.Set.empty[String]
-  private val wanted     = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
+  // Each host's DISTINCT requests: one asked again (a title's IMDb suggestions, read both as the films IMDb suggests
+  // and as those it lists under the title) is one question, deferred or not.
+  private val wanted     = scala.collection.mutable.Map.empty[String, scala.collection.mutable.Set[String]]
   val asked    = new AtomicInteger()
   val answered = new AtomicInteger()
   /** How many more asks this round's allowance has room for. */
@@ -26,10 +28,10 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
   val failed   = new AtomicInteger()
   val deferred = new AtomicInteger()
 
-  /** A slot for one live ask to `host`, waiting its pace; false once the allowance is spent or
+  /** A slot for one live ask of `url` at `host`, waiting its pace; false once the allowance is spent or
    *  the host has overloaded this round. */
-  def acquire(host: String): Boolean = synchronized {
-    wanted(host) += 1
+  def acquire(host: String, url: String): Boolean = synchronized {
+    wanted.getOrElseUpdate(host, scala.collection.mutable.Set.empty) += url
     if (overloaded(host) || used >= allowance) { deferred.incrementAndGet(); false }
     else { if (used > 0) sleep(pace.toMillis); used += 1; asked.incrementAndGet(); true }
   }
@@ -43,7 +45,9 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
   /** Did a host that overloaded carry most of the round's questions (asked or deferred) — the
    *  service the rate paces? Then the next round runs slower; a minor host's overload is answered
    *  by skipping it, and by the pipeline chain's own per-host gate and breaker. */
-  def paceOverloaded: Boolean = synchronized { overloaded.exists(h => wanted(h) * 2 >= wanted.values.sum) }
+  def paceOverloaded: Boolean = synchronized {
+    overloaded.exists(h => wanted.get(h).fold(0)(_.size) * 2 >= wanted.values.map(_.size).sum)
+  }
 }
 
 /** The fill's LIVE side: every request through `fetch` (the pipeline's shared lookup chain — its
@@ -59,7 +63,7 @@ final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extend
 
   private def ask[A](url: String)(call: HttpFetch => A): A = {
     val host = ShadowLiveFetch.hostOf(url)
-    if (!budget.acquire(host)) throw new LookupGap(s"deferred: $url")
+    if (!budget.acquire(host, url)) throw new LookupGap(s"deferred: $url")
     else try { val a = call(fetch); budget.answered.incrementAndGet(); a }
     catch {
       // The one classifier: a 404/410 is TMDB's answer ("nothing here"); everything else taught nothing.

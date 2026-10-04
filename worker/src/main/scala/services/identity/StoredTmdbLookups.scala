@@ -38,6 +38,11 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq
         .flatMap(suggestionIds(_, title)).map(TmdbStore.findId)
     })
+    // Each IMDb-titled question's suggestions: their titles, then the finds of those IMDb lists under the title.
+    val titled = asked.collect { case CandidateQuery.ImdbTitled(title) => title }.flatMap { title =>
+      heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq.flatMap(suggestionsOf).take(ImdbClient.SuggestedMovies).map(_.id)
+    }.distinct
+    load(TmdbKind.Query, titled.map(TmdbStore.imdbTitlesId) ++ titled.map(TmdbStore.findId))
     // And every film any of them names.
     val named = held(TmdbKind.Query).values.asScala.flatMap(_.document).filter(_.containsKey("ids")).flatMap(intsOf(_)) ++
       held(TmdbKind.Person).values.asScala.flatMap(_.document).flatMap(d => intsOf(d, "directed") ++ intsOf(d, "wrote"))
@@ -74,6 +79,15 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
         val finds = suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))
         if (finds.exists(_.isEmpty)) Answer.Unknown
         else sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).mapKnown(_.flatten.distinctBy(_.tmdbId))
+      }
+    case CandidateQuery.ImdbTitled(title) =>
+      val id = TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))
+      document(TmdbKind.Query, id).flatMap { d =>
+        ImdbClient.titled(title, suggestionsOf(d), tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(stringsOf(_, "titles")))
+      }.fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
+        val finds = ids.map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))
+        if (finds.exists(_.isEmpty)) Answer.Unknown
+        else sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).mapKnown(TmdbIdentityLookups.everyTitled)
       }
   }
 
@@ -120,13 +134,18 @@ object StoredTmdbLookups {
   private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = TmdbStore.intsOf(d.get(field))
 
   /** The `tt` ids IMDb suggests for `title` — `ImdbClient.suggestedIds`' own reading. */
-  private def suggestionIds(d: BsonDocument, title: String): Seq[String] = {
-    val entries = d.getArray("suggestions").getValues.asScala.toSeq.map(_.asDocument).map { s =>
+  private def suggestionIds(d: BsonDocument, title: String): Seq[String] =
+    if (title.trim.isEmpty) Nil else ImdbClient.suggested(suggestionsOf(d))
+
+  /** A suggestions document's movies, as `ImdbClient` read them. */
+  private def suggestionsOf(d: BsonDocument): Seq[ImdbClient.Suggestion] =
+    d.getArray("suggestions").getValues.asScala.toSeq.map(_.asDocument).map { s =>
       ImdbClient.Suggestion(s.getString("id").getValue, Option(s.get("title")).map(_.asString.getValue),
         Option(s.get("year")).map(_.asInt32.getValue), s.getInt32("rank").getValue)
     }
-    if (title.trim.isEmpty) Nil else ImdbClient.suggested(entries)
-  }
+
+  private def stringsOf(d: BsonDocument, field: String): Seq[String] =
+    Option(d.get(field)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asString.getValue))
 
   extension [A](answer: Answer[A]) private def mapKnown[B](f: A => B): Answer[B] = answer match {
     case Answer.Known(value) => Answer.Known(f(value))

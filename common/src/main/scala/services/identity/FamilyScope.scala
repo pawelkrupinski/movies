@@ -9,7 +9,7 @@ import scala.collection.mutable
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
                                           counted: () => Unit, related: () => Unit = () => ()) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, ownSearch, ownWalk, sharedOf, soleResults}
+  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, imdbTitled, ownSearch, ownWalk, sharedOf, soleResults}
 
   val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
@@ -22,11 +22,25 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  its node (`deniedByNode`: a pin, a venue's own name) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty): Seq[Scored] = {
+            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
+            imdbTitles: Map[Int, Set[String]] = Map.empty): Seq[Scored] = {
     counted()
-    val relationOf = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
+    val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
+    // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
+    // title already: it carries it too, so the listing's facts are read against a film its title names. PL "Camino dla
+    // opornych" [97′] read IMDb's Polish title of "Compostelle" as no relation, and its runtime alone denied the film.
+    val titledBy   = imdbTitles.filter(_._2.exists(_.exists(_.isLetter))) match {
+      case one if one.sizeIs == 1 => one.headOption.filter { case (id, _) =>
+        this.pool.exists(_.tmdbId == id) && !this.pool.exists(other => other.tmdbId != id && IdentityMeasures.TitlesItsOwn(related(other.tmdbId).value)) &&
+          this.pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) }
+      case _ => None
+    }
+    val scoredPool = titledBy.fold(this.pool) { case (id, titles) => this.pool.map(candidate =>
+      if (candidate.tmdbId == id) candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, titles.toSeq.sorted)) else candidate) }
+    val relationOf = titledBy.fold(related) { case (id, _) =>
+      related.updated(id, IdentityMeasures.titleRelation(listing, scoredPool.find(_.tmdbId == id).get.film, houses, qualifiers)) }
     val relation   = relationOf.view.mapValues(_.value).toMap
-    val reachable = pool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
+    val reachable = scoredPool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
     // A film only IMDb suggested, under a title the listing does not carry, rivals nothing: the rules other than
     // IMDb's own never see it, as before IMDb's other-language matches were followed.
@@ -76,8 +90,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id)).map(placedByImdb(Seq(node)))
-      .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored))
+      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id), imdbTitled(node.id)).map(placedByImdb(Seq(node)))
+      .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
+      .map(scored => imdbTitled(node.id).get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))))
 
   /** What `node` is taken by ALONE, with the rule ([[Acceptance.aloneNamed]]) — once per node for this scope's life:
    *  every round of `Families.grow` keeping the scope asks again, and so do the decisions, each node's trace for
@@ -123,9 +138,14 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet,
-      cluster.flatMap(node => directed(node.id)).toSet)
+      cluster.flatMap(node => directed(node.id)).toSet,
+      cluster.flatMap(node => imdbTitled(node.id)).groupMapReduce(_._1)(_._2)(_ ++ _))
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
+      .map(scored => cluster.flatMap(node => imdbTitled(node.id).getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
+        case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)
+        case _                         => scored
+      })
   }
 }
 

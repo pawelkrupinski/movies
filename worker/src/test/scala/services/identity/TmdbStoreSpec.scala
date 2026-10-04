@@ -266,4 +266,46 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     PopularityBucket.of(8.8983) shouldBe 3
     PopularityBucket.of(16.0) shouldBe 4
   }
+
+  /** IMDb's suggestions for "Camino dla opornych", TMDB's find of their ids and IMDb's titles of each, as recorded. */
+  private final class CaminoFetch extends tools.HttpFetch {
+    private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
+    val posted = mutable.ArrayBuffer.empty[String]
+    override def get(url: String): String =
+      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) fixture("fixtures/imdb/suggestion_camino_dla_opornych.json")
+      else if (url.contains("/find/tt39814688")) fixture("fixtures/tmdb/find_compostelle_by_imdb_id.json")
+      else throw new HttpStatusException(404, "GET", url, None)
+    override def post(url: String, body: String, contentType: String): String = {
+      posted += body
+      services.enrichment.ImdbClient.titlesQueryId(body) match {
+        case Some("tt39814688") => fixture("fixtures/imdb/akas_compostelle_polish_title.json")
+        case other              => throw new HttpStatusException(404, "POST", s"$url $other", None)
+      }
+    }
+  }
+
+  "an IMDb-titled question" should "find the film IMDb lists under the title in another language, and read back from the store as asked live" in {
+    // "Camino dla opornych" is tt39814688's Polish title on IMDb, which displays it as "Santiago: The Camino Therapy";
+    // TMDB knows the film only as "Compostelle".
+    val w        = new World
+    val fetch    = new NormalizingHttpFetch(new CaminoFetch, w.normalizer)
+    val live     = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(fetch), Nil)
+    val query    = CandidateQuery.ImdbTitled("Camino dla opornych")
+    val answered = live.candidates(query)
+    answered.toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
+    w.lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
+  }
+
+  it should "be unknown to the store until IMDb's titles of a suggestion it does not display under the title are filed" in {
+    val w = new World
+    w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("Camino dla opornych"),
+      Success(scala.io.Source.fromResource("fixtures/imdb/suggestion_camino_dla_opornych.json")(using scala.io.Codec.UTF8).mkString))
+    w.lookups.candidates(CandidateQuery.ImdbTitled("Camino dla opornych")) shouldBe Answer.Unknown
+  }
+
+  "IMDb's films under a title" should "be none when one of them has no TMDB record: the one found is not the only one" in {
+    TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(134673, "Renoir", None, Some(2012), 3.0)), Nil)) shouldBe empty
+    TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(1404604, "Compostelle", None, Some(2026), 2.0)))).map(_.tmdbId) shouldBe Seq(1404604)
+  }
 }

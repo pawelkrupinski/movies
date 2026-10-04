@@ -199,18 +199,29 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  huijaus"): IMDb's FIRST suggestion with the year the listing states; the ONE suggested film the listing's
    *  credited director directed; or the ONLY film IMDb suggests, when the title names it and TMDB ranks no
    *  other film of that very title above it ("Ziemia obiecana" is Wajda's, not the 1927 film IMDb alone spells
-   *  so). Read as a title the film answers to, nothing the listing publishes may speak against it, no rival may
-   *  fit better, and a double bill is neither film. */
+   *  so); or the ONE film IMDb lists under one of the listing's search titles in some language — an AKA TMDB does
+   *  not carry ("Camino dla opornych" is IMDb's Polish title of "Compostelle"). Read as a title the film answers to,
+   *  nothing the listing publishes may speak against it, no rival may fit better, and a double bill is neither film. */
   def imdbSuggested(ranked: Seq[Scored]): Option[Accepted] = imdbSuggestedWhy(ranked).toOption
   private def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = ranked.headOption.toRight(Refused("no candidate")).flatMap { any =>
     val eligible  = ranked.filterNot(_.denied)
-    val suggested = eligible.filter(_.imdb.isDefined)
+    val suggested = eligible.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
     def sameDirector(scored: Scored) = scored.category("director").contains("same_person")
     // the film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière")
     def exact(scored: Scored)        = scored.category("title").exists(Set("exact", "original"))
     def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
       rival.rank.exists(r => scored.rank.forall(r < _)))
-    def rung(scored: Scored): Boolean = scored.imdb.exists { place =>
+    // the ONE suggestion IMDb lists under the listing's own title in some language (an AKA TMDB does not carry):
+    // "Camino dla opornych" is IMDb's Polish title of TMDB's French "Compostelle". Only while nothing else the
+    // listing names stands beside it: no other record carrying its title, though denied (Renoir 2025 beside the 2012
+    // film IMDb also lists as "Renoir"; the 1951 "Streetcar" beside the 1989 TV film), no year the title dates against
+    // it ("Miłość 2024" is not Haneke's 2012 film), no numbered set ("Bolek i Lolek – zestaw IV"), a title of words,
+    // not a number ("2026"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte").
+    def titledRung(scored: Scored): Boolean =
+      scored.imdbTitled.exists(_.exists(_.isLetter)) && suggested.count(_.imdbTitled.nonEmpty) == 1 &&
+        !ranked.exists(other => (other ne scored) && other.category("title").exists(IdentityMeasures.TitlesItsOwn)) &&
+        IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film)
+    def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists { place =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
         (sameDirector(scored) && suggested.count(sameDirector) == 1) ||
         (place.of == 1 && scored.titleNamesIt && !outranked(scored)) ||

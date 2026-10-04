@@ -34,7 +34,9 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       // The host fails its FIRST request only: an overload, then a service that has recovered.
       failHost.filter(h => url.contains(h) && requests.count(_.contains(h)) == 1)
         .foreach(h => throw new HttpStatusException(503, "GET", s"https://$h/", None))
-      """{"results":[],"crew":[],"cast":[]}"""
+      // IMDb's suggestions as IMDb answers a title it knows nothing by; TMDB's empty result set for the rest
+      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) """{"d":[],"q":"x","v":1}"""
+      else """{"results":[],"crew":[],"cast":[]}"""
     }
     override def get(url: String): String                                    = answer(url)
     override def get(url: String, headers: Map[String, String]): String      = answer(url)

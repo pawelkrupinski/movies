@@ -45,13 +45,29 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
         .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
-      answered(imdb.suggestedIds(title).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+      answered(ImdbClient.suggested(suggestedMovies(title)).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+    case CandidateQuery.ImdbTitled(title) =>
+      answered(TmdbIdentityLookups.everyTitled(ImdbClient.titled(title, suggestedMovies(title), id => Some(imdb.titlesOf(id))).getOrElse(Nil)
+        .map(tmdb.findByImdbId(_).take(1).toSeq.map(TmdbIdentityLookups.hitOf))))
   }
+
+  // A title's IMDb suggestions answer two questions — the films IMDb suggests (`Imdb`) and those it lists under the
+  // title (`ImdbTitled`) — read once for a few minutes. A failed read throws and is never kept.
+  private val recentSuggestions = tools.BoundedCache.ofSize(512).expireAfterWrite(java.time.Duration.ofMinutes(10))
+    .build[String, Seq[ImdbClient.Suggestion]]()
+  private def suggestedMovies(title: String): Seq[ImdbClient.Suggestion] =
+    Option(recentSuggestions.getIfPresent(title)).getOrElse { val read = imdb.suggestedMovies(title); recentSuggestions.put(title, read); read }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
 }
 
 object TmdbIdentityLookups {
+  /** The films IMDb lists under a title, each found in TMDB by its IMDb id — none at all when one of them is not:
+   *  the title then names a film TMDB has no record of beside the one it has (Hayakawa's 2025 "Renoir" beside
+   *  Bourdos's 2012 one), and the one found is not the ONE film IMDb lists under it. ONE reading for the live
+   *  lookups and the store's. */
+  def everyTitled(found: Seq[Seq[Hit]]): Seq[Hit] = if (found.exists(_.isEmpty)) Nil else found.flatten.distinctBy(_.tmdbId)
+
   /** A TMDB film row as the model's candidate — from a live answer here, or a normalized one. */
   def hitOf(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)
 

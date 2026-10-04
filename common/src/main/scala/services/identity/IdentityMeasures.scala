@@ -1142,6 +1142,27 @@ object IdentityMeasures {
   /** The title relations under which another film RIVALS a listing's film: the listing's title
    *  names it as closely (`rivals`). */
   val Rivalling: Set[String] = Set("exact", "original", "alternative")
+  /** The relations under which a film carries the listing's title as one of its own: whole, or as a delimited piece. */
+  val TitlesItsOwn: Set[String] = Rivalling + "segment"
+  /** May the listing take a title IMDb lists `f` under (an AKA TMDB does not carry) as `f`'s own: no year the title
+   *  writes, or the venue states, against the film's ("Miłość 2024" is not Haneke's 2012 film), no director it credits
+   *  against the film's, no numbered set ("Bolek i Lolek – zestaw
+   *  IV"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte" is not Tinto Brass's). Which
+   *  films stand beside it is the caller's to read: the ONE IMDb lists so, and none carrying the title already. */
+  def takesImdbTitle(l: Listing, f: Film): Boolean = {
+    def near(year: Int) = f.year.forall(y => math.abs(y - year) <= services.resolution.YearWindow.PublishedAdjacency)
+    // nor a year or director the venue publishes against it: "Afrykanska Przygoda 3D IMAX" [2007] {Ben Stassen} is not
+    // the 1954 film IMDb also calls "Afrykańska przygoda"
+    yearsWritten(l).forall(near) && l.statedYear.forall(near) &&
+      !f.directorCredits.exists(credits => creditRelation(l.directorCredits, credits) == Category("different")) &&
+      !numbersASet(l) && (stageWorks(l).isEmpty || filmSeason(f).isDefined)
+  }
+
+  /** The years the listing's title writes anywhere, bracketed or bare ("Miłość 2024"). */
+  def yearsWritten(l: Listing): Set[Int] = l.ownForms.flatMap(_.words).filter(_.matches("(?:19|20)\\d\\d")).map(_.toInt).toSet
+  /** Does the listing's title number a set with a Roman numeral ("Bolek i Lolek – zestaw IV")? */
+  def numbersASet(l: Listing): Boolean =
+    l.ownForms.flatMap(_.words).exists(w => w.length > 1 && RomanNumeral.pattern.matcher(w).matches())
 
   /** How many films of `pool` other than `film` the listing's title names as closely as a
    *  rival does — the `rivals` measure, over whatever pool the caller searched. */

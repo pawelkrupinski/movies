@@ -1250,6 +1250,46 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     accent.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(11220)))
   }
 
+  "A local title TMDB carries no translation of" should "take the film IMDb lists under that title" in {
+    // PL "Camino dla opornych" (×14 venues, ~20 listings) is IMDb's Polish title of tt39814688, TMDB's "Compostelle"
+    // (2026), which TMDB knows only in French and English: its search for the Polish title finds nothing, and IMDb's
+    // suggestion reached the record under a title the listing does not carry, so no rule took it.
+    val compostelle = F(1404604, "Compostelle", 2026, "Ben Eyrich", 98, popularity = 2, imdbTitles = Seq("Santiago: The Camino Therapy", "Camino dla opornych"))
+    val ls = Seq(listing(KinoMuza, "Camino dla opornych"), listing(Rialto, "Camino dla opornych | CHKF"), listing(Helios, "Camino dla opornych", runtime = Some(97)))
+    val r  = shipped(ls, Seq(compostelle, F(197704, "Santiago", 1956, "Gordon Douglas", 93, popularity = 5)))
+    ls.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1404604)))
+  }
+
+  it should "not take it beside a record carrying the title, a year the title dates, a numbered set, or a stage work" in {
+    // PL "Renoir": IMDb lists Bourdos's 2012 film as "Renoir", and TMDB carries Hayakawa's 2025 "Renoir" too — the
+    // listing's own namesake stands beside it. "Miłość 2024" dates another year than Haneke's 2012 "Miłość";
+    // "Bolek i Lolek – zestaw IV" numbers a set of cartoons; "… – Così fan tutte" names the opera the Met relays.
+    def taken(l: Listing, films: Seq[F]) = shipped(Seq(l), films).decisionOf(l.key).film
+    val bourdos  = F(76180, "Renoir", 2012, "Gilles Bourdos", 111, popularity = 3, searched = false, imdbTitles = Seq("Renoir"))
+    taken(listing(KinoMuza, "Renoir"), Seq(bourdos, F(1286773, "Renoir", 2025, "Chie Hayakawa", 122, popularity = 2))) should not be Some(76180)
+    val amour    = F(86837, "Amour", 2012, "Michael Haneke", 127, popularity = 8, searched = false, imdbTitles = Seq("Miłość"))
+    taken(listing(KinoMuza, "Miłość 2024"), Seq(amour)) shouldBe None
+    val bolek    = F(1167324, "Bolek and Lolek", 1936, "Henryk Szaro", 80, popularity = 1, searched = false, imdbTitles = Seq("Bolek i Lolek"))
+    taken(listing(KinoMuza, "Bolek i Lolek - zestaw IV"), Seq(bolek)) shouldBe None
+    // PL "Afrykanska Przygoda 3D IMAX" [2007] {Ben Stassen} stays Stassen's film, not the 1954 one IMDb also calls so.
+    val stassen  = F(435263, "African Adventure: Safari in the Okavango 3D", 2007, "Ben Stassen", 40, popularity = 1)
+    val old1954  = F(250001, "African Adventure", 1954, "Robert Ruark", 70, popularity = 1, searched = false, imdbTitles = Seq("Afrykanska Przygoda"))
+    taken(listing(KinoMuza, "Afrykanska Przygoda 3D IMAX", Some(2007), Some("Ben Stassen")), Seq(stassen, old1954)) should not be Some(250001)
+    val brass    = F(29380, "Così fan tutte", 1992, "Tinto Brass", 95, popularity = 4, searched = false, imdbTitles = Seq("Così fan tutte"))
+    taken(listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte"), Seq(brass)) shouldBe None
+  }
+
+  it should "leave a title IMDb lists two films under to what else the listing publishes" in {
+    // PL "Lalka": IMDb lists Has's 1968 film and Kawalski's 2026 one under it; a listing publishing nothing else is
+    // neither by the title alone.
+    val films = Seq(F(81315, "The Doll", 1968, "Wojciech Has", 159, popularity = 3, searched = false, imdbTitles = Seq("Lalka")),
+      F(1321666, "The Doll", 2026, "Maciej Kawalski", 162, popularity = 3, searched = false, imdbTitles = Seq("Lalka")))
+    val bare  = listing(KinoMuza, "Lalka")
+    shipped(Seq(bare), films).decisionOf(bare.key).film shouldBe None
+    val dated = listing(Rialto, "Lalka", Some(2026), Some("Maciej Kawalski"))
+    shipped(Seq(dated), films).decisionOf(dated.key).film shouldBe Some(1321666)
+  }
+
   "Curation pins" should "override the evidence: a pinned film, a denied one, and a pinned group" in {
     def pin(ls: Seq[Listing], claim: PinClaim) = Pin(ls.map(_.key), claim, "spec", "test", java.time.Instant.EPOCH)
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))

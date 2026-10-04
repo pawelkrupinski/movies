@@ -17,7 +17,8 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
       val want = words(text)
       films.filter(f => f.searched && want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
     case CandidateQuery.Director(name) => films.filter(f => f.director == name || f.directorAliases.contains(name)).map(hit)
-    case CandidateQuery.Imdb(title)    => films.filter(f => words(f.title) == words(title)).map(hit)
+    case CandidateQuery.Imdb(title)    => films.filter(f => words(f.title) == words(title) || f.imdbTitles.exists(words(_) == words(title))).map(hit)
+    case CandidateQuery.ImdbTitled(t)  => films.filter(f => (f.title +: f.imdbTitles).exists(IdentityMeasures.key(_) == IdentityMeasures.key(t))).map(hit)
   })
   // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
   override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
@@ -29,10 +30,11 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
 object FilmTable {
   /** `searched`: TMDB's search returns the film (a record its index misses is reached only by the
    *  IMDb id IMDb lists under its title). `directorAliases`: the other names TMDB's person search finds its
-   *  director by — a Latin spelling of one its credits write in another script. */
+   *  director by — a Latin spelling of one its credits write in another script. `imdbTitles`: the titles IMDb lists it
+ *  under besides its own (its AKAs), which IMDb's suggestions match a query against. */
   final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
                      alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil,
-                     directorAliases: Seq[String] = Nil)
+                     directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil)
 
   /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,

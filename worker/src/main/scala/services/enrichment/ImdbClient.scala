@@ -196,6 +196,20 @@ class ImdbClient(http: HttpFetch) {
     if (title.trim.isEmpty) Nil
     else suggestions(title).toSeq.flatMap(js => ImdbClient.suggested(movieSuggestions(js)))
 
+  /** The ids among IMDb's suggestions for `title` that IMDb lists under `title` itself in some language — its
+   *  title, its original or one of its AKAs ([[ImdbClient.titled]]): "Camino dla opornych" is tt39814688's Polish
+   *  title. A suggestion displayed under another title is asked for its titles; a failed read throws. */
+  def titledIds(title: String): Seq[String] =
+    if (title.trim.isEmpty) Nil else ImdbClient.titled(title, suggestedMovies(title), id => Some(titlesOf(id))).getOrElse(Nil)
+
+  /** IMDb's movie suggestions for `title`, as read: empty for a blank title; a failed read throws. */
+  private[services] def suggestedMovies(title: String): Seq[Suggestion] =
+    if (title.trim.isEmpty) Nil else suggestions(title).toSeq.flatMap(movieSuggestions)
+
+  /** Every title IMDb lists `imdbId` under: its title, its original and its AKAs, in IMDb's order. Empty for a
+   *  title IMDb does not have; a failed read throws. */
+  def titlesOf(imdbId: String): Seq[String] = graphQl(titlesQueryBody(imdbId)).fold(Seq.empty[String])(titlesIn)
+
   /** The suggestion endpoint's answer for `title`: an object carrying its `d` array
    *  (empty when IMDb knows nothing by that name). Anything else is a failed read. */
   private def suggestions(title: String): Option[JsObject] = {
@@ -298,7 +312,36 @@ object ImdbClient {
   private[services] def yearAgrees(found: Option[Int], wanted: Option[Int]): Boolean =
     (for (f <- found; w <- wanted) yield math.abs(f - w) <= YearTolerance).getOrElse(true)
 
-  private val Endpoint        = "https://caching.graphql.imdb.com/"
+  val Endpoint                = "https://caching.graphql.imdb.com/"
+
+  /** The GraphQL query [[ImdbClient.titlesOf]] asks: a title's own, original and alternative titles. */
+  private val TitlesQuery = "query Titles($id:ID!){title(id:$id){titleText{text} originalTitleText{text} akas(first:100){edges{node{text}}}}}"
+  def titlesQueryBody(imdbId: String): String =
+    Json.stringify(Json.obj("query" -> TitlesQuery, "variables" -> Json.obj("id" -> imdbId)))
+  /** The IMDb id a [[titlesQueryBody]] asks about; `None` for any other body. */
+  def titlesQueryId(body: String): Option[String] =
+    Option.when(body.contains(Json.stringify(JsString(TitlesQuery))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  /** The titles a [[TitlesQuery]] answer lists, each once. */
+  def titlesIn(js: JsValue): Seq[String] = {
+    val title = js \ "data" \ "title"
+    ((title \ "titleText" \ "text").asOpt[String].toSeq ++ (title \ "originalTitleText" \ "text").asOpt[String] ++
+      (title \ "akas" \ "edges").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(e => (e \ "node" \ "text").asOpt[String])).filter(_.trim.nonEmpty).distinct
+  }
+
+  /** Which of IMDb's first [[SuggestedMovies]] movie suggestions for `title` IMDb lists under `title` itself, in
+   *  any language: the one it displays (`l`), or else one of the titles `titlesOf` reads for it — compared as the
+   *  resolver keys titles (`IdentityMeasures.key`: case, accents and punctuation aside, so "Kuźma" is "Kuzma").
+   *  `None` while a suggestion's titles are unknown. ONE reading for the live lookups and the store's. */
+  def titled(title: String, movies: Seq[Suggestion], titlesOf: String => Option[Seq[String]]): Option[Seq[String]] = {
+    val wanted = services.identity.IdentityMeasures.key(title)
+    val first  = movies.distinctBy(_.id).take(SuggestedMovies)
+    val named  = first.map { s =>
+      if (wanted.isEmpty) Some(false)
+      else if (s.title.exists(services.identity.IdentityMeasures.key(_) == wanted)) Some(true)
+      else titlesOf(s.id).map(_.exists(services.identity.IdentityMeasures.key(_) == wanted))
+    }
+    Option.when(named.forall(_.isDefined))(first.zip(named.flatten).collect { case (s, true) => s.id })
+  }
   val SuggestionBase          = "https://v3.sg.media-imdb.com/suggestion"
   /** Leading English article, for treating "The Bodyguard" and "Bodyguard" as the same
    *  claim on a title. English only: IMDb's primary titles are English, and Polish has no

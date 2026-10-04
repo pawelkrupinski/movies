@@ -50,6 +50,10 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   val directed: Map[String, Set[Int]]       = nodes.map(node => node.id -> CandidateGeneration.directed(queriesOf(node.id), answers)).toMap
   val soleResults: Map[String, Set[Int]]    = nodes.map(node => node.id -> CandidateGeneration.soleResults(queriesOf(node.id), answers)).toMap
   val imdbSuggested: Map[String, Seq[Int]] = nodes.map(node => node.id -> CandidateGeneration.imdbSuggested(queriesOf(node.id), answers)).toMap
+  /** The films IMDb lists under one of a node's search titles, in some language ([[CandidateQuery.ImdbTitled]]). An
+   *  IMDb-titled film is an ordinary candidate, scored on the listing's facts and counted as a rival like any other:
+   *  what IMDb's title alone may do is `Acceptance.imdbSuggested`'s titled rung. */
+  val imdbTitled: Map[String, Map[Int, Set[String]]] = nodes.map(node => node.id -> CandidateGeneration.imdbTitled(queriesOf(node.id), answers)).toMap
   /** The films only IMDb's suggestions reached for a node — no title search of its and no director walk. */
   val imdbOnly: Map[String, Set[Int]]       = nodes.map(node => node.id -> (imdbSuggested(node.id).toSet -- ownSearch(node.id).keySet --
     queriesOf(node.id).collect { case query: CandidateQuery.Director => answers(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten)).toMap
@@ -109,6 +113,10 @@ private[identity] object CandidateGeneration {
   /** The films IMDb suggests for a node's own title, in IMDb's order. */
   def imdbSuggested(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Seq[Int] =
     queries.collect { case query: CandidateQuery.Imdb => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.distinct
+  /** The films IMDb lists under one of a node's search titles ([[CandidateQuery.ImdbTitled]]), each with those titles. */
+  def imdbTitled(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Map[Int, Set[String]] =
+    queries.collect { case query @ CandidateQuery.ImdbTitled(title) => answer(query).toOption.getOrElse(Nil).map(_.tmdbId -> title) }.flatten
+      .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
   /** The films the people a node credits — found by its OWN spelling of their names — directed or wrote. */
   def directed(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
     queries.collect { case query: CandidateQuery.Director => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.toSet

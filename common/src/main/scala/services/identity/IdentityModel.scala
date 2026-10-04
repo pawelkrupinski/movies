@@ -231,11 +231,17 @@ enum CandidateQuery {
    *  TMDB's own search does not return ("Caligula: The Ultimate Cut", whose record only an IMDb id
    *  reaches). A path, never a rank: its films are scored on the listing's facts alone. */
   case Imdb(title: String)
+  /** Every film IMDb lists under this very title in ANY language — its own title, its original or one of its
+   *  AKAs — found in TMDB by its IMDb id: the record a local title names when TMDB carries no translation of it
+   *  ("Camino dla opornych" is IMDb's Polish title of TMDB's "Compostelle", "Kuźma" IMDb's "Kuzma"). Each film
+   *  found reads the title as one of its own ([[CorpusContext.titlesByImdb]]); a path, never a rank. */
+  case ImdbTitled(title: String)
 
   def sortKey: String = this match {
-    case Title(q)    => s"t\u0000$q"
-    case Director(n) => s"d\u0000$n"
-    case Imdb(t)     => s"i\u0000$t"
+    case Title(q)      => s"t\u0000$q"
+    case Director(n)   => s"d\u0000$n"
+    case Imdb(t)       => s"i\u0000$t"
+    case ImdbTitled(t) => s"a\u0000$t"
   }
 }
 
@@ -247,6 +253,7 @@ object CandidateQuery {
     case Array("t", text) => Some(Title(text))
     case Array("d", name) => Some(Director(name))
     case Array("i", text) => Some(Imdb(text))
+    case Array("a", text) => Some(ImdbTitled(text))
     case _                => None
   }
 

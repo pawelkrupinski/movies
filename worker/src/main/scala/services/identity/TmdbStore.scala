@@ -187,6 +187,10 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
       d
     })))
 
+  /** Every title IMDb lists one of its titles under (`ImdbClient.titlesOf`). */
+  private[identity] def imdbTitles(id: String, titles: Seq[String]): Unit =
+    update(TmdbKind.Query, id)(_ => new BsonDocument("titles", BsonArray.fromIterable(titles.map(BsonString(_)))))
+
   /** A person's directing and writing credits. */
   private[identity] def person(id: Int, directed: Seq[Hit], wrote: Seq[Hit]): Unit = {
     hitsSeen(directed ++ wrote)
@@ -262,12 +266,14 @@ object TmdbStore {
     case CandidateQuery.Title(text)    => titleSearchId(language, text)
     case CandidateQuery.Director(name) => personSearchId(CandidateQuery.personName(name))
     case CandidateQuery.Imdb(title)    => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(title))
+    case CandidateQuery.ImdbTitled(t)  => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(t))
   }
 
   // Question ids, by the parameters that decide their answer.
   def titleSearchId(language: String, query: String): String = s"movie|$language|$query"
   def personSearchId(query: String): String                  = s"person|$query"
   def findId(imdbId: String): String                         = s"find|$imdbId"
+  def imdbTitlesId(imdbId: String): String                   = s"imdbtitles|$imdbId"
   def suggestionsId(url: String): String                     = s"imdb|${url.stripPrefix(services.enrichment.ImdbClient.SuggestionBase)}"
 
   private def ints(values: Seq[Int]): BsonArray = BsonArray.fromIterable(values.map(BsonInt32(_)))

@@ -29,6 +29,13 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
     try normalize(method, url, outcome)
     catch { case NonFatal(e) => logger.warn(s"identity store: $method ${tools.RedactedUrl(url)} not normalized: $e") }
 
+  /** A POST's answer: IMDb's titles of one title (`ImdbClient.titlesOf`); any other POST, and a failed one, files nothing. */
+  def filedPost(url: String, body: String, outcome: Try[String]): Unit =
+    try if (url == ImdbClient.Endpoint) ImdbClient.titlesQueryId(body).zip(outcome.toOption).foreach { case (id, answer) =>
+      store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer)))
+    }
+    catch { case NonFatal(e) => logger.warn(s"identity store: POST ${tools.RedactedUrl(url)} not normalized: $e") }
+
   private def normalize(method: String, url: String, outcome: Try[String]): Unit = if (method == "GET") {
     val uri    = new URI(url)
     val params = Option(uri.getRawQuery).toSeq.flatMap(_.split('&')).flatMap { pair =>
@@ -99,7 +106,11 @@ final class NormalizingHttpFetch(underlying: HttpFetch, normalizer: TmdbNormaliz
   override def get(url: String): String                              = filed(url)(underlying.get(url))
   override def get(url: String, headers: Map[String, String]): String = filed(url)(underlying.get(url, headers))
   override def getBytes(url: String): Array[Byte]                   = underlying.getBytes(url)
-  override def post(url: String, body: String, contentType: String): String = underlying.post(url, body, contentType)
+  override def post(url: String, body: String, contentType: String): String = {
+    val outcome = Try(underlying.post(url, body, contentType))
+    normalizer.filedPost(url, body, outcome)
+    outcome.get
+  }
 
   private def filed(url: String)(call: => String): String = {
     val outcome = Try(call)

@@ -114,6 +114,7 @@ object DecisionTrace {
     case CandidateQuery.Title(text)    => s"title \"$text\""
     case CandidateQuery.Director(name) => s"director $name"
     case CandidateQuery.Imdb(title)    => s"imdb \"$title\""
+    case CandidateQuery.ImdbTitled(t)  => s"imdb-titled \"$t\""
   }
   /** A scored candidate as a trace shows it: `471328 2.4% rank 1 DENIED (…) 'BALLET LIVE. MANON. ROYAL ÓPERA HOUSE'`. */
   private[identity] def renderCandidate(scored: Scored): String =

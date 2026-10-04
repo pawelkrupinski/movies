@@ -28,7 +28,9 @@ class IncrementalResolverFootprintSpec extends AnyFlatSpec with Matchers {
     info(s"per listing: ${nodes.toDouble / Listings} hash nodes, ${boxed.toDouble / Listings} boxed Integers")
     // 22 nodes and 7.6 boxed Integers per listing across the whole model while `held` and
     // `familyOfKey` were two maps; one entry per key takes a node and the family id's box off each.
-    withClue("hash nodes per listing: ")(nodes.toDouble / Listings should be < 21.5)
+    // Each search title is also asked of IMDb in every language (`CandidateQuery.ImdbTitled`): ~2.5 nodes more per
+    // bare-titled listing here, ~2 MB of worker-us's 75 MB model (identity measure 37187831422 vs base 37187834739).
+    withClue("hash nodes per listing: ")(nodes.toDouble / Listings should be < 24.5)
     withClue("boxed Integers per listing: ")(boxed.toDouble / Listings should be < 7.0)
   }
 }

@@ -1,0 +1,29 @@
+{
+    "movie_results": [
+        {
+            "adult": false,
+            "backdrop_path": "/lW9uSLT4t7trf1rG0nnOj14AoXT.jpg",
+            "id": 1404604,
+            "title": "Compostelle",
+            "original_title": "Compostelle",
+            "overview": "Fred i Adam nie znają się. Jednak dzięki znajomości wyruszają razem na pielgrzymkę do Santiago de Compostela. Ona szuka ukojenia w przeszłości, on próbuje ukierunkować swój gniew i poczucie opuszczenia. Z biegiem kilometrów, pośród konfrontacji i chwil wytchnienia, rodzi się krucha więź. W obliczu trudności, każde z nich odkrywa w sobie niespodziewaną siłę.",
+            "poster_path": "/4FaoBpDtzhZk9R907epSN5WCelq.jpg",
+            "media_type": "movie",
+            "original_language": "fr",
+            "genre_ids": [
+                18,
+                35
+            ],
+            "popularity": 3.3114,
+            "release_date": "2026-04-01",
+            "softcore": false,
+            "video": false,
+            "vote_average": 6.8,
+            "vote_count": 45
+        }
+    ],
+    "person_results": [],
+    "tv_results": [],
+    "tv_episode_results": [],
+    "tv_season_results": []
+}
