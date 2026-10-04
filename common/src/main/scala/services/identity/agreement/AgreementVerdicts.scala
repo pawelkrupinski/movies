@@ -53,7 +53,7 @@ object AgreementVerdicts {
     new BsonDocument(values.toSeq.sorted.map { case (k, v) => new org.bson.BsonElement(k, BsonString(v)) }.asJava)
   private def stringsOf(d: BsonDocument): Map[String, String] = d.asScala.map { case (k, v) => k -> v.asString.getValue }.toMap
 
-  /** A verdict as BSON: the agreed film as the families' labels (and those leaning to it), their ids, its cross-ids and the title and year the
+  /** A verdict as BSON: the agreed film as the families' labels (and those leaning to it, and what corroborated it), their ids, its cross-ids and the title and year the
    *  explanation names — what taking it reads, not the whole record. */
   def encode(verdict: StoredVerdict): BsonDocument = new BsonDocument()
     .append("_id", BsonString(verdict.id))
@@ -65,6 +65,7 @@ object AgreementVerdicts {
         .append("crossIds", strings(film.record.crossIds))
         .append("title", BsonString(film.record.film.title))
       if (film.leaning.nonEmpty) d.append("leaning", BsonArray.fromIterable(film.leaning.toSeq.map(_.label).sorted.map(BsonString(_))))
+      if (film.corroborated.nonEmpty) d.append("corroborated", BsonArray.fromIterable(film.corroborated.toSeq.sorted.map(BsonString(_))))
       film.record.film.year.foreach(year => d.append("year", BsonInt32(year)))
       d
     })
@@ -78,7 +79,8 @@ object AgreementVerdicts {
         AgreedFilm(a.getArray("families").getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet,
           SourceRecord(film, stringsOf(a.getDocument("crossIds"))),
           stringsOf(a.getDocument("ids")).flatMap { case (label, id) => byLabel.get(label).map(_ -> id) },
-          Option(a.get("leaning")).filter(_.isArray).fold(Set.empty[VoterFamily])(_.asArray.getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet))
+          Option(a.get("leaning")).filter(_.isArray).fold(Set.empty[VoterFamily])(_.asArray.getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet),
+          Option(a.get("corroborated")).filter(_.isArray).fold(Set.empty[String])(_.asArray.getValues.asScala.map(_.asString.getValue).toSet))
       })
   }
 }

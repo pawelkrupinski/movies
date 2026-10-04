@@ -19,9 +19,10 @@ import scala.collection.mutable
  * them, with every stale answer it read — so a question is asked whenever an answer could be used: the projection runs
  * whenever the listings' facts move, and again once an answer it asked for is filed.
  *
- * Each cluster's verdict is kept in `stored` ([[AgreementVerdicts]]) with the digest of its listings and of every
- * answer it read, as the model keeps its families: it stands, across restarts too, while none of those moved, and the
- * resolver is asked again only for a cluster whose own listings or answers did. `version` (how many answers the
+ * Each cluster's verdict is kept in `stored` ([[AgreementVerdicts]]) with the digest of its listings and the film the model
+ * leans to (which may complete an agreement), and of every answer it read, as the model keeps its families: it stands,
+ * across restarts too, while none of those moved, and the resolver is asked again only for a cluster whose own listings,
+ * lean or answers did. `version` (how many answers the
  * families filed) spares re-reading a standing verdict's answers while nothing was filed at all.
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
@@ -87,13 +88,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val decisions = resolution.decisions.map { decision =>
       if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
       else {
-        val AgreementStage.Digested(id, listings, digest) = Option(digested.get(decision)).getOrElse {
+        val AgreementStage.Digested(id, listings, digest, lean) = Option(digested.get(decision)).getOrElse {
           val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
-          val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings, digestOf(listings))
+          val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
+            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString)), decision.leaning.map(AgreementStage.leanRecord))
           digested.put(decision, fresh); fresh
         }
         seen += id
-        verdictOf(id, listings, digest, version, asked, moved).flatMap(_.agreed).fold(decision) { agreed =>
+        verdictOf(id, listings, digest, lean, version, asked, moved).flatMap(_.agreed).fold(decision) { agreed =>
           val now = taken(decision, agreed, finding)
           Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
         }
@@ -128,7 +130,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The cluster's verdict: the stored one while its listings and every answer it read stand, else the resolver's
    *  over the families' answers now — `None` while one of them is a gap. */
-  private def verdictOf(id: String, listings: Seq[Listing], digest: Long, version: Long, asked: mutable.Set[(VoterFamily, String)],
+  private def verdictOf(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord], version: Long, asked: mutable.Set[(VoterFamily, String)],
                         moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
     held.get(id).filter(_.listings == digest).filter { kept =>
       checked.get(id).contains((digest, version)) || {
@@ -140,13 +142,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
       case Some(w) => asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
-      case None               => resolved(id, digest, listings, version, asked, moved)
+      case None               => resolved(id, digest, listings, lean, version, asked, moved)
     })
   }
 
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
-  private def resolved(id: String, digest: Long, listings: Seq[Listing], version: Long, asked: mutable.Set[(VoterFamily, String)],
+  private def resolved(id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord], version: Long, asked: mutable.Set[(VoterFamily, String)],
                        moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
     resolves += 1
     val reads = mutable.Map.empty[String, Long]
@@ -159,7 +161,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     else {
       waiting -= id
       Some {
-        val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption)))
+        val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption), lean))
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
@@ -206,7 +208,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       case Some(film) => Answer.Known(Some(film))
       case None       => imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf)
     }
-    val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("")
+    val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("") +
+      Option.when(agreed.corroborated.nonEmpty)(s", corroborated by ${agreed.corroborated.toSeq.sorted.mkString(", ")}").getOrElse("")
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on '${agreed.record.film.title}'" +
       agreed.record.film.year.fold("")(year => s" ($year)") + imdb.fold("")(id => s" $id")
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
@@ -248,8 +251,12 @@ object AgreementStage {
   /** The questions an [[AgreementStage.apply]] met unanswered or stale, and the agreed IMDb ids TMDB was not asked about. */
   final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String])
 
-  /** A model decision's cluster id, its listings sorted, and their digest. */
-  private final case class Digested(id: String, listings: Seq[Listing], digest: Long)
+  /** A model decision's cluster id, its listings sorted, their digest with the film it leans to, and that film. */
+  private final case class Digested(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord])
+
+  /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
+  def leanRecord(lean: ResolverDecision.Leaning): SourceRecord =
+    SourceRecord(services.identity.IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString, "imdb" -> f"tt${lean.imdbNumber}%07d"))
 
   /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family

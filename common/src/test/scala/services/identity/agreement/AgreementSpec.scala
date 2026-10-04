@@ -115,6 +115,22 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), took(VoterFamily.RottenTomatoes), imdb)) should not be empty
   }
 
+  "The listing's own year and director, or the model leaning to the film," should "complete two takers' agreement" in {
+    // DE "Die Story von Joanna" (fixture identity-unmatched): Wikidata and Filmweb take Damiano's 1975 film, which the venue
+    // credits to him in 1975; US "AKW"-style: two takers and the TMDB film the model leans to, linked by its IMDb id
+    val joanna = SourceRecord(film("Die Story von Joanna", 1975, "Gerard Damiano", 105), Map("imdb" -> "tt0073750"))
+    val took   = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", joanna))
+    val two    = Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb))
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Gerard Damiano"))), two)
+      .map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts))
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Jess Franco"))), two) shouldBe None
+    val lean = SourceRecord(IdentityMeasures.Film("", None, Nil, None, None, None, None, None), Map("tmdb" -> "40023", "imdb" -> "tt0073750"))
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean)).map(_.corroborated) shouldBe
+      Some(Set(Agreement.ModelLean))
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
+  }
+
   "A listing naming a stage work" should "agree on none of its screen namesakes" in {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
     Agreement.stagesAWork(relay) shouldBe true

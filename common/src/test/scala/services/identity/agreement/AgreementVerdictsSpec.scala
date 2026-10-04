@@ -12,7 +12,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.RottenTomatoes, VoterFamily.Metacritic), SourceRecord(film, Map("imdb" -> "tt16315948")),
         Map(VoterFamily.Imdb -> "tt16315948", VoterFamily.RottenTomatoes -> "klondike_2022", VoterFamily.Metacritic -> "klondike"))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
-    val leaned = agreed.copy(agreed = agreed.agreed.map(_.copy(families = Set(VoterFamily.Imdb, VoterFamily.RottenTomatoes), leaning = Set(VoterFamily.Wiki))))
+    val leaned = agreed.copy(agreed = agreed.agreed.map(_.copy(families = Set(VoterFamily.Imdb, VoterFamily.RottenTomatoes), leaning = Set(VoterFamily.Wiki), corroborated = Set(Agreement.ListingFacts))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(leaned)) shouldBe leaned
     val none = StoredVerdict("k", 42L, Map("imdb|title|Klondike" -> 7L), None)
     AgreementVerdicts.decode(AgreementVerdicts.encode(none)) shouldBe none

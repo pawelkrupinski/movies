@@ -58,8 +58,10 @@ object FamilyVerdict {
   def took(pick: FamilyPick): FamilyVerdict = FamilyVerdict(pick.family, Some(pick), Seq(pick.record))
 }
 
-/** The film a cluster's families agree on, with the families that named it and those whose evidence leaned to it. */
-final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty) {
+/** The film a cluster's families agree on, with the families that named it, those whose evidence leaned to it, and what
+ *  else corroborated it ([[Agreement.ListingFacts]], [[Agreement.ModelLean]]). */
+final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty,
+                            corroborated: Set[String] = Set.empty) {
   /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
   def crossId(database: String): Option[String] = Seq(record).flatMap(_.crossIds.get(database)).headOption
 }
@@ -107,6 +109,11 @@ object Agreement {
   val Quorum = 3
   /** How many of the agreeing families must take the film: a lean completes an agreement, never stands in for one. */
   val Takers = 2
+  /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
+  val ListingFacts = "listing"
+  /** The TMDB film the model's own evidence leans to though no rule took it (`ResolverDecision.leaning`), linked by its
+   *  IMDb id to the film the takers took. */
+  val ModelLean = "tmdb"
 
   /** The film `family` identifies `listings` as — the resolver itself over the family's answers, as the experiment ran
    *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
@@ -147,7 +154,7 @@ object Agreement {
    *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
    *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
    *  IMDb's search found, weighed and turned down while Filmweb, RT and Wikidata took it. */
-  def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict]): Option[AgreedFilm] = {
+  def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelLean: Option[SourceRecord] = None): Option[AgreedFilm] = {
     val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
     filmsOf(picks) match {
       case Seq(group) if group.size >= Takers =>
@@ -157,14 +164,29 @@ object Agreement {
         def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
         val leaning    = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
         val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && !verdict.leaning.exists(isIt))
-        // a lean completes a quorum only where the listing's title is no other film's own: three takers outweigh that
-        // (PL "Ghost in the shell", the 2017 film's own title, is the 1995 one by five families)
+        val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
+        // a lean or corroboration completes a quorum only where the listing's title is no other film's own: three takers
+        // outweigh that (PL "Ghost in the shell", the 2017 film's own title, is the 1995 one by five families)
         val completed = group.size < Quorum
-        Option.when(group.size + leaning.size >= Quorum && listings.nonEmpty && !turnedDown && !(completed && anothersOwnTitle(listings, records, verdicts)) &&
+        Option.when(group.size + leaning.size + corroborated.size >= Quorum && listings.nonEmpty && !turnedDown &&
+          !(completed && anothersOwnTitle(listings, records, verdicts)) &&
           listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
-          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning))
+          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated))
       case _ => None
     }
+  }
+
+  /** Do the listings credit the film themselves: every listing publishing a year and a director credits one of the
+   *  takers' records — the same person directing, within a year — and one does? DE "Die Story von Joanna", Damiano's
+   *  in 1975 by the venue's own page, is the 1975 film Wikidata and Filmweb took. */
+  private def creditedByTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
+    val dated = listings.filter(listing => listing.year.isDefined && listing.directors.nonEmpty)
+    def credits(listing: Listing) = records.exists { record =>
+      record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } &&
+        record.film.directors.exists(directors => directors.nonEmpty &&
+          IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
+    }
+    dated.nonEmpty && dated.forall(credits)
   }
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
