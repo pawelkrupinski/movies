@@ -124,25 +124,38 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     refreshed.flatMap(_.questions).filter(_._1 == VoterFamily.RottenTomatoes) should not be empty
   }
 
-  it should "neither resolve again nor hand a question again while nothing was filed, and do both once an answer is" in {
+  it should "resolve a waiting cluster again only once one of its own questions is answered, not on another's filing" in {
     var resolves = 0
-    val counting = agreeing(rtAnswered = false).map { case (family, answers) => family -> new FamilyAnswers {
+    var rtAnswered = false
+    val rt = new FamilyAnswers {
+      val family: VoterFamily = VoterFamily.RottenTomatoes
+      private def held = new HeldFamilyAnswers(family, Map("klondike_2022" -> SourceRecord(klondike)), unanswered = !rtAnswered)
+      def titled(text: String)     = held.titled(text)
+      def directedBy(name: String) = held.directedBy(name)
+      def record(id: String)       = held.record(id)
+      override def fresh(question: String) = held.fresh(question)
+    }
+    val counting = (agreeing() + (VoterFamily.RottenTomatoes -> rt)).map { case (family, answers) => family -> new FamilyAnswers {
       val family: VoterFamily = answers.family
       def titled(text: String)     = { resolves += 1; answers.titled(text) }
       def directedBy(name: String) = answers.directedBy(name)
       def record(id: String)       = answers.record(id)
+      override def fresh(question: String) = answers.fresh(question)
     } }
     val handed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
-    val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, ask = handed += _)
-    stage.apply(resolution, listingOf, version = 1)
+    val model = resolution
+    stage.apply(model, listingOf, version = 1).decisions.head.film shouldBe None
     val (afterFirst, handedFirst) = (resolves, handed.size)
-    stage.apply(resolution, listingOf, version = 1)
+    stage.apply(model, listingOf, version = 1)
     (resolves, handed.size) shouldBe ((afterFirst, handedFirst))   // a quiet tick: no resolve, nothing handed
+    stage.apply(model, listingOf, version = 2)                      // another cluster's answer filed: still nothing to resolve
+    resolves shouldBe afterFirst
     stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
-    stage.apply(resolution, listingOf, version = 2)
+    rtAnswered = true
+    stage.apply(model, listingOf, version = 3).decisions.head.film shouldBe Some(913760)   // its own answered: resolved, taken
     resolves should be > afterFirst
-    handed.size should be > handedFirst
   }
 
   it should "stay as the model left it while a family has not answered, and name the question" in {

@@ -35,6 +35,14 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     queue.monitor().counts.values.sum shouldBe 3
   }
 
+  it should "be claimed after every other task, one enqueued after them included" in {
+    val queue = new InMemoryTaskQueue
+    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set.empty, clock)
+    queue.enqueue(TaskType.ScrapeCinema, "scrape|Kino Muza", submittedAt = clock.instant().plusSeconds(60))
+    queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.ScrapeCinema)
+    queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.AgreementQuestion)
+  }
+
   "a question's handler" should "file the family's answer and ask for a projection, then skip it while it is fresh" in {
     val store = world(); val projections = new AtomicInteger
     val imdb  = new Answering(VoterFamily.Imdb)

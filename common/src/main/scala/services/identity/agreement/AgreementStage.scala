@@ -47,7 +47,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The verdicts whose answers were last read at a `version`, with their listings' digest then. */
   private val checked = TrieMap.empty[String, (Long, Long)]
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
-   *  with the questions they wait on: not resolved again until an answer is filed or their listings move. */
+   *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
   private val waiting = TrieMap.empty[String, (Long, Long, Set[(VoterFamily, String)])]
   /** The questions handed to `ask` since the families' answers last moved: a tick that filed nothing hands nothing. */
   private val handed      = mutable.Set.empty[(VoterFamily, String)]
@@ -129,8 +129,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         stands
       }
     }
-    .orElse(waiting.get(id).filter { case (at, listed, _) => at == version && listed == digest } match {
-      case Some((_, _, gaps)) => asked ++= gaps; None   // still waiting on the same questions: nothing filed since
+    .orElse(waiting.get(id).filter { case (_, listed, gaps) => listed == digest && !gaps.exists(answered) } match {
+      case Some((_, _, gaps)) => asked ++= gaps; None   // none of its own questions answered since: nothing to resolve again
       case None               => resolved(id, digest, listings, version, asked, moved)
     })
   }
@@ -156,6 +156,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       }
     }
   }
+
+  /** Has the family answered `question` since — any answer, fresh? Read per waiting cluster, per tick: an answer filed
+   *  for another cluster's question resolves none of the rest again (prod PL 2026-10-04: re-resolving every waiting
+   *  cluster on each filing ran a 24 s, 540 MB agreement phase back to back). */
+  private def answered(gap: (VoterFamily, String)): Boolean = families.get(gap._1).exists(_.fresh(gap._2))
 
   /** A stored read whose answer is stale, as the question to ask again. */
   private def staleOf(question: String): Option[(VoterFamily, String)] = question.split("\\|", 2) match {

@@ -6,7 +6,7 @@ import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLook
  *  search — or, `unanswered`, nothing known yet. */
 final class HeldFamilyAnswers(val family: VoterFamily, records: Map[String, SourceRecord], unanswered: Boolean = false, stale: Boolean = false)
     extends FamilyAnswers {
-  override def fresh(question: String): Boolean = !stale
+  override def fresh(question: String): Boolean = !stale && !unanswered
   def titled(text: String): Answer[Seq[SourceHit]] =
     if (unanswered) Answer.Unknown
     else Answer.Known(records.toSeq.sortBy(_._1).collect { case (id, record) if record.film.titles.map(IdentityMeasures.key).contains(IdentityMeasures.key(text)) =>

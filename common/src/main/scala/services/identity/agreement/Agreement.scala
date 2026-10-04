@@ -39,8 +39,8 @@ trait FamilyAnswers {
   /** The films a person of this name directed; `Known(Nil)` for a family with no person search. */
   def directedBy(name: String): Answer[Seq[SourceHit]]
   def record(id: String): Answer[Option[SourceRecord]]
-  /** Is the answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`) still fresh? A stale one is read
-   *  all the same, and asked again. */
+  /** Is there an answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`), and is it still fresh? A stale
+   *  one is read all the same, and asked again; a missing one is a gap. */
   def fresh(question: String): Boolean = true
 }
 

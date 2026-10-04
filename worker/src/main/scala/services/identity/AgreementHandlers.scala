@@ -19,14 +19,21 @@ object AgreementQuestions {
   private val Question = "question"
   private val ImdbId   = "imdbId"
 
-  /** Every open question and find, one task each — one already queued is not queued again. */
+  /** How far behind every other task an agreement question is claimed: the pipeline's own work — scrapes, ratings, share
+   *  cards — always first, the agreement's backlog on what the pool has spare (prod PL 2026-10-04: 5,864 questions queued
+   *  at boot ahead of 36 scrape chunks, an hour's drain at the pool's pace). */
+  val Behind: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(7, java.util.concurrent.TimeUnit.DAYS)
+
+  /** Every open question and find, one task each — one already queued is not queued again — claimed after every other
+   *  task ([[Behind]]). */
   def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock): Unit = {
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
       queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
-        Map(Family -> family.label, Question -> question), submittedAt = clock.instant())
+        Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind)
     }
     finds.toSeq.sorted.foreach(imdbId =>
-      queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId), submittedAt = clock.instant()))
+      queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId), submittedAt = clock.instant(),
+        claimAhead = -Behind))
   }
 
   /** The statuses that answer a question with nothing — a query the site refuses (Filmweb's 400 for an overlong title),
