@@ -710,4 +710,25 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     c.urlFor("The Odyssey", year = Some(2026)) shouldBe
       Some("https://www.metacritic.com/movie/the-odyssey-2026")
   }
+
+  "pageFor" should "read the Movie block's record, not a trailer's: name, year, director, runtime and cast" in {
+    // Recorded 2026-10-04 (trimmed to the JSON-LD): each page also carries a trailer VideoObject with its own duration.
+    def read(fixture: String) = {
+      val page = loadFixture(fixture)
+      new MetacriticClient(new GetOnlyHttpFetch { def get(url: String): String = page }).pageFor(MetacriticClient.movieUrl("x")).get
+    }
+    val dune = read("/fixtures/metacritic/movie_dune_1984_duration_hours_as_minutes.html")
+    (dune.title, dune.year, dune.runtime, dune.directors) shouldBe ((Some("Dune"), Some(1984), Some(137), Set("David Lynch")))
+    dune.cast should contain ("Kyle MacLachlan")
+    read("/fixtures/metacritic/movie_look_back_duration_minutes_as_seconds.html").runtime shouldBe Some(58)
+    read("/fixtures/metacritic/movie_the_dark_knight.html").runtime shouldBe Some(152)
+  }
+
+  "runtimeOf" should "read Metacritic's one-unit-small durations, and a well-formed one as written" in {
+    MetacriticClient.runtimeOf("PT2M17S") shouldBe Some(137)
+    MetacriticClient.runtimeOf("PT58S") shouldBe Some(58)
+    MetacriticClient.runtimeOf("PT2H17M") shouldBe Some(137)
+    MetacriticClient.runtimeOf("PT0S") shouldBe None
+    MetacriticClient.runtimeOf("2 h") shouldBe None
+  }
 }

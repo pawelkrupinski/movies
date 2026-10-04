@@ -187,15 +187,14 @@ class MetacriticClient(http: HttpFetch) {
    *  /movie/alienoid (subtitle stripped); "Annie (2014)" disambiguates with
    *  a year suffix.
    */
-  def searchAndPickBest(title: String, year: Option[Int]): Option[String] = {
-    if (title.trim.isEmpty) return None
-    val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
-    val searchUrl = s"$Site/search/$encoded/?category=2"
-    HttpRead.pageOrNone(http, searchUrl).flatMap { html =>
-      val hits = parseSearchResults(html)
-      pickBestSearchHit(hits, title, year).map(h => s"$Site/movie/${h.slug}")
-    }
-  }
+  def searchAndPickBest(title: String, year: Option[Int]): Option[String] =
+    pickBestSearchHit(search(title), title, year).map(h => s"$Site/movie/${h.slug}")
+
+  /** Every film Metacritic's search lists for `title`, in its order — empty for a blank title or a search page that is
+   *  gone; a failed read throws. Each hit's page ([[pageFor]] on [[MetacriticClient.movieUrl]]) is its record. */
+  def search(title: String): Seq[SearchHit] =
+    if (title.trim.isEmpty) Nil
+    else HttpRead.pageOrNone(http, s"$Site/search/${URLEncoder.encode(title, StandardCharsets.UTF_8)}/?category=2").toSeq.flatMap(parseSearchResults)
 
   /** Parse MC search results out of the HTML. Each result is a
    *  `<a class="c-search-item search-item__content" href="/movie/{slug}/">`
@@ -283,14 +282,32 @@ class MetacriticClient(http: HttpFetch) {
    *  what tells a refresh that a STORED url is another film's (`RatingPageIdentity`). */
   def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
     HttpRead.pageOrNone(http, MetacriticClient.requestUrl(movieUrl)).map(JsonLdAggregateRating.of).map(page =>
-      MetacriticClient.Page(page.rating, page.directorNames, page.datePublishedYear))
+      MetacriticClient.Page(page.rating, page.directorNames, page.datePublishedYear, page.name,
+        page.duration.flatMap(MetacriticClient.runtimeOf), page.actorNames))
 }
 
 object MetacriticClient {
   private val Site = "https://www.metacritic.com"
 
-  /** A fetched movie page: its Metascore, the directors it credits and the year it dates the film. */
-  final case class Page(metascore: Option[Int], directors: Set[String], year: Option[Int] = None)
+  /** A search hit's movie page. */
+  def movieUrl(slug: String): String = s"$Site/movie/$slug/"
+
+  /** A fetched movie page: its Metascore, the directors it credits, the year it dates the film, and the rest of the
+   *  film's record — its name, running time (minutes) and cast. */
+  final case class Page(metascore: Option[Int], directors: Set[String], year: Option[Int] = None, title: Option[String] = None,
+                        runtime: Option[Int] = None, cast: Seq[String] = Nil)
+
+  private val MetacriticDuration = """PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?""".r
+
+  /** A Metacritic `Movie` block's `duration` in minutes. Metacritic writes the film's H:MM one unit too small —
+   *  "PT2M17S" for Dune's 2 h 17 min, "PT58S" for Look Back's 58 min (every one of 4,922 recorded pages, 2026-10-04) —
+   *  so with no hours field its minutes are hours and its seconds minutes. A well-formed "PT2H17M" reads as written. */
+  def runtimeOf(duration: String): Option[Int] = duration match {
+    case MetacriticDuration(h, m, sec) if h != null => Some(h.toInt * 60 + Option(m).fold(0)(_.toInt)).filter(_ > 0)
+    case MetacriticDuration(null, m, sec) if m != null || sec != null =>
+      Some(Option(m).fold(0)(_.toInt) * 60 + Option(sec).fold(0)(_.toInt)).filter(_ > 0)
+    case _ => None
+  }
 
   /** The form of an MC movie URL we actually GET.
    *

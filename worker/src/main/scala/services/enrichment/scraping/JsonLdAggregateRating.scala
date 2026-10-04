@@ -45,6 +45,23 @@ object JsonLdAggregateRating {
           .flatMap(d => (d \ "name").asOpt[String].orElse(d.asOpt[String]))
       }.map(_.trim).filter(_.nonEmpty).toSet
 
+    /** The `actor` names, in the page's order: the cast a page publishes beside its director. */
+    def actorNames: Seq[String] =
+      movie.toSeq.flatMap { js =>
+        val node = js \ "actor"
+        node.asOpt[Seq[JsValue]].getOrElse(node.asOpt[JsValue].toSeq).flatMap(a => (a \ "name").asOpt[String].orElse(a.asOpt[String]))
+      }.map(_.trim).filter(_.nonEmpty).distinct
+
+    /** The film's own name — the `Movie` block's `name`. */
+    def name: Option[String] = movie.flatMap(js => (js \ "name").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+
+    /** The `Movie` block's `duration` as written (an ISO 8601 duration, or a site's own reading of one). */
+    def duration: Option[String] = movie.flatMap(js => (js \ "duration").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+
+    /** The block describing the film itself (`"@type":"Movie"`): a page also carries trailers' `VideoObject`s, whose
+     *  `name` and `duration` are the trailer's. */
+    private def movie: Option[JsValue] = blocks.find(js => (js \ "@type").asOpt[String].contains("Movie"))
+
     /** The four-digit year from the first `datePublished` (schema.org publishes it as an ISO date
      *  like "1994-07-22"). Used to validate that a probed movie page is actually the film we're
      *  resolving — a title-slug can collide with an unrelated film of the same name (e.g. "The

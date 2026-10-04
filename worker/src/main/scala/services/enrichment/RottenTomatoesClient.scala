@@ -149,15 +149,14 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  title + year. Returns None when the request fails or no candidate scores
    *  well enough.
    */
-  def searchAndPickBest(title: String, year: Option[Int]): Option[String] = {
-    if (title.trim.isEmpty) return None
-    val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
-    val searchUrl = s"$Site/search?search=$encoded"
-    HttpRead.pageOrNone(http, searchUrl).flatMap { html =>
-      val hits = parseSearchResults(html)
-      pickBestSearchHit(hits, title, year).map(h => s"$Site/m/${h.slug}")
-    }
-  }
+  def searchAndPickBest(title: String, year: Option[Int]): Option[String] =
+    pickBestSearchHit(search(title), title, year).map(h => s"$Site/m/${h.slug}")
+
+  /** Every film RT's search lists for `title`, in RT's order — empty for a blank title or a search page that is
+   *  gone; a failed read throws. Each hit's page ([[pageFor]] on [[movieUrl]]) is its record. */
+  def search(title: String): Seq[SearchHit] =
+    if (title.trim.isEmpty) Nil
+    else HttpRead.pageOrNone(http, s"$Site/search?search=${URLEncoder.encode(title, StandardCharsets.UTF_8)}").toSeq.flatMap(parseSearchResults)
 
   /** Parse RT search results out of the HTML. Each result is a
    *  `<search-page-media-row release-year="…" tomatometer-score="…">` custom
@@ -265,7 +264,11 @@ class RottenTomatoesClient(http: HttpFetch) {
   def pageFor(url: String): Option[Page] = {
     if (!url.contains("/m/")) None
     else HttpRead.pageOrNone(http, url).map(body =>
-      Page(parseScore(body), RottenTomatoesClient.parseReleaseYear(body), JsonLdAggregateRating.directorNames(body)))
+    {
+      val ld = JsonLdAggregateRating.of(body)
+      Page(parseScore(body), RottenTomatoesClient.parseReleaseYear(body), ld.directorNames, ld.name.map(RottenTomatoesClient.ownName),
+        RottenTomatoesClient.parseRuntime(body), ld.actorNames)
+    })
   }
 
   /** Extract the Tomatometer percentage off an RT movie page.
@@ -298,8 +301,24 @@ object RottenTomatoesClient {
 
   case class SearchHit(slug: String, title: String, year: Option[Int], tomatometerScore: Option[Int])
 
-  /** A fetched movie page: its Tomatometer, and the year and directors it names. */
-  case class Page(score: Option[Int], year: Option[Int], directors: Set[String])
+  /** A fetched movie page: its Tomatometer, the year and directors it names, and the rest of the film's record — its
+   *  name, running time (minutes) and cast. */
+  case class Page(score: Option[Int], year: Option[Int], directors: Set[String], title: Option[String] = None,
+                  runtime: Option[Int] = None, cast: Seq[String] = Nil)
+
+  // The details list's "Runtime" item ("1h 27m"). NOT the page's `"runtime":"2:29"` — that is the primary VIDEO's,
+  // a trailer's length (Dune's page, 2026-10-04).
+  private val DetailsRuntime = """data-qa="item-label">Runtime</rt-text>(?s:.{0,600}?)>\s*(?=\d)(?:(\d+)h)?\s*(?:(\d+)m)?\s*<""".r
+
+  /** The film's running time in minutes off an RT movie page's details list, or None when it lists none. */
+  def parseRuntime(html: String): Option[Int] =
+    DetailsRuntime.findAllMatchIn(html).map(m => Option(m.group(1)).fold(0)(_.toInt) * 60 + Option(m.group(2)).fold(0)(_.toInt))
+      .find(_ > 0)
+
+  private val YearDisambiguator = """\s*\((?:19|20)\d{2}\)$""".r
+
+  /** A page's film name without the year RT adds to tell namesakes apart: "Dune (2021)" is "Dune". */
+  def ownName(name: String): String = YearDisambiguator.replaceFirstIn(name, "")
 
   /** The film's origin release year off an RT movie page (its `releaseYear`
    *  field), or None when the page carries none. Feeds
@@ -314,4 +333,7 @@ object RottenTomatoesClient {
    * other non-alphanumerics collapsed to a single underscore.
    */
   def slugify(title: String): String = RatingSiteSlug(title, separator = '_')
+
+  /** A search hit's movie page. */
+  def movieUrl(slug: String): String = s"$Site/m/$slug"
 }

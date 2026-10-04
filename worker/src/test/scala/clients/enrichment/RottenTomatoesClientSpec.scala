@@ -497,4 +497,28 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.canonicalUrl("The North", Some(2026)) shouldBe
       Some("https://www.rottentomatoes.com/m/the_north_2026")
   }
+
+  "pageFor" should "read the film's record off its page: name, origin year, director, details-list runtime and cast" in {
+    // Recorded 2026-10-04 (trimmed): Dune's page also carries its trailer's length ("2:29", a 149.858 s PROMO video);
+    // the film's own runtime is the details list's "2h 35m". RT names the film "Dune (2021)" to tell it from Lynch's.
+    val page = scala.io.Source.fromResource("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")(using scala.io.Codec.UTF8).mkString
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(url: String): String = page })
+    val read = c.pageFor(RottenTomatoesClient.movieUrl("dune_2021")).get
+    (read.title, read.year, read.runtime, read.directors) shouldBe ((Some("Dune"), Some(2021), Some(155), Set("Denis Villeneuve")))
+    read.cast should contain ("Timothée Chalamet")
+  }
+
+  "parseRuntime" should "read hours and minutes, minutes alone, and nothing when the details list has no runtime" in {
+    def details(value: String) = s"""<rt-text class="key" size="0.875" data-qa="item-label">Runtime</rt-text>\n</dt>\n<dd data-qa="item-value-group">\n<rt-text data-qa="item-value">$value</rt-text>"""
+    RottenTomatoesClient.parseRuntime(details("1h 27m")) shouldBe Some(87)
+    RottenTomatoesClient.parseRuntime(details("58m")) shouldBe Some(58)
+    RottenTomatoesClient.parseRuntime(details("2h")) shouldBe Some(120)
+    RottenTomatoesClient.parseRuntime("""<rt-text slot="iconic-video-runtime" size="0.75">2:29</rt-text>""") shouldBe None
+  }
+
+  "ownName" should "drop only the year RT appends to a namesake's name" in {
+    RottenTomatoesClient.ownName("Dune (2021)") shouldBe "Dune"
+    RottenTomatoesClient.ownName("Dune") shouldBe "Dune"
+    RottenTomatoesClient.ownName("1984 (1956)") shouldBe "1984"
+  }
 }
