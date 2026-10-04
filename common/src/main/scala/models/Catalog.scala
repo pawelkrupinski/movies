@@ -19,21 +19,8 @@ import java.security.MessageDigest
  */
 object Catalog {
 
-  /** The one zone a country is published under: its BIGGEST city's, ties by slug.
-   *
-   *  Four of the five keep one zone throughout, so for them any city answers. The
-   *  US spans six, and reading `cities.head` made a live value a function of
-   *  roster ORDER — a generator change that reshuffled the states once moved it
-   *  from Chicago to Pago Pago and nothing failed. Biggest does not move when the
-   *  roster is re-sorted, and it is the answer most of the country's users are on.
-   *
-   *  A client that reads a city's own `timezone` never needs this; it is the
-   *  fallback for a city that omits one (every city of a single-zone country) and
-   *  for an app too old to look. `Europe/Warsaw` for the — currently impossible —
-   *  city-less country. */
-  private def countryTimezone(c: Country): String =
-    c.cities.maxByOption(city => (city.cinemas.size, city.slug))
-      .map(_.zoneId.getId).getOrElse(TimeZones.Poland.getId)
+  /** The zone a country is published under — see [[Country.zone]]. */
+  private def countryTimezone(c: Country): String = c.zone.getId
 
   /** The slugs whose URLs the web now 301s onto each city (`City.renamedSlugs`) — a
    *  retired page's, a renamed metro's — sorted, and absent for every city that never

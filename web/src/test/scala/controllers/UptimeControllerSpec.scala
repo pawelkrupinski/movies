@@ -599,8 +599,15 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   // A default-locale "MMM" rendered "wrz" on a pl_PL JVM and "Sept" on en_GB.
   "the uptime page's timestamps" should "name months in English whatever the JVM's default locale" in {
-    Seq(UptimeController.timeFmt, UptimeController.dateFmt, UptimeController.tsFmt)
+    val formats = UptimeController.Formats(models.Country.Poland.zone)
+    Seq(formats.timeFmt, formats.dateFmt, formats.tsFmt)
       .foreach(_.getLocale shouldBe java.util.Locale.ENGLISH)
-    UptimeController.tsFmt.format(java.time.Instant.parse("2026-09-28T10:15:00Z")) shouldBe "28 Sep 12:15"
+    formats.tsFmt.format(java.time.Instant.parse("2026-09-28T10:15:00Z")) shouldBe "28 Sep 12:15"
+  }
+
+  it should "be in the deployment's own country's time, not Warsaw's" in {
+    // The UK page stamped every bar an hour ahead of the operator reading it in London.
+    UptimeController.Formats(models.Country.UnitedKingdom.zone).tsFmt
+      .format(java.time.Instant.parse("2026-09-28T10:15:00Z")) shouldBe "28 Sep 11:15"
   }
 }

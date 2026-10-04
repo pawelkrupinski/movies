@@ -132,6 +132,18 @@ sealed abstract class Country(
    *  one of the two choices those radios offer. */
   def voiceoverToken: Option[String]
 
+  /** The one zone this country is published under: its BIGGEST city's, ties by slug — what a
+   *  country-wide clock (the catalogue's fallback `timezone`, /uptime's timestamps) reads.
+   *
+   *  Four of the five keep one zone throughout, so for them any city answers. The US spans
+   *  six, and reading `cities.head` made a live value a function of roster ORDER — a
+   *  generator change that reshuffled the states once moved it from Chicago to Pago Pago
+   *  and nothing failed. Biggest does not move when the roster is re-sorted, and it is the
+   *  answer most of the country's users are on. `Europe/Warsaw` for the — currently
+   *  impossible — city-less country. */
+  lazy val zone: java.time.ZoneId =
+    cities.maxByOption(city => (city.cinemas.size, city.slug)).map(_.zoneId).getOrElse(TimeZones.Poland)
+
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
   /** [[cities]] ordered alphabetically by display name under this country's

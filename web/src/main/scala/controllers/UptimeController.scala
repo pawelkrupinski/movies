@@ -93,9 +93,11 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private case object Thin    extends Health
   private case object Healthy extends Health
 
-  import UptimeController.{dateFmt, timeFmt, tsFmt}
+  /** The page's clock is the deployment's country's: the UK page in London time, not Warsaw's. */
+  private val formats = UptimeController.Formats(country.zone)
+  import formats.{dateFmt, timeFmt, tsFmt}
 
-  /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
+  /** One rendered bar, with its bucket window stamped in the country's time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
   private def barData(service: String, b: UptimeMonitor.BucketSnapshot): BarData =
     barData(service, b, slotLabels(b.timestamp))
@@ -545,12 +547,14 @@ case class ServiceRow(
 }
 
 object UptimeController {
-  private val warsawZone = models.TimeZones.Poland
-  // Month names in English whatever the JVM's default locale: a default-locale "MMM" reads
-  // "wrz" under pl_PL and "Sept" under en_GB on the same English page.
-  private[controllers] val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).withZone(warsawZone)
-  private[controllers] val dateFmt = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH).withZone(warsawZone)
-  private[controllers] val tsFmt   = DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH).withZone(warsawZone)
+  /** The page's timestamp formats in `zone`. Month names in English whatever the JVM's default
+   *  locale: a default-locale "MMM" reads "wrz" under pl_PL and "Sept" under en_GB on the same
+   *  English page. */
+  private[controllers] final case class Formats(zone: java.time.ZoneId) {
+    val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).withZone(zone)
+    val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH).withZone(zone)
+    val tsFmt:   DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH).withZone(zone)
+  }
   /** Distinguishes a non-primary poster attempt's row from its origin's primary
    *  row (`img: m.media-amazon.com · fallback`). Mirrors the `·` separator the
    *  page already uses for a triage row's cinema/city hover title. */
