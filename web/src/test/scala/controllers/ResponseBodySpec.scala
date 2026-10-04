@@ -1,12 +1,12 @@
 package controllers
 
+import tools.costs.AllocationMeter
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.apache.pekko.util.ByteString
 import play.twirl.api.{Html, HtmlFormat}
 
 import java.io.ByteArrayInputStream
-import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
 import java.util.zip.GZIPInputStream
 
@@ -74,7 +74,7 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
     ResponseBody.html(page).plain shouldBe expected
     gunzip(ResponseBody.html(page).gzipped) shouldBe expected
     for (_ <- 1 to 3) ResponseBody.html(page).gzipped                       // warm
-    val allocated = allocatedBy(ResponseBody.html(page).gzipped)
+    val allocated = AllocationMeter.once(ResponseBody.html(page).gzipped)
     withClue(s"card ${card.length / 1024} K chars, writing it allocated ${allocated / 1024} KB: ")(
       allocated should be < card.length.toLong)
   }
@@ -87,13 +87,6 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
 
   // ── The heap ──────────────────────────────────────────────────────────────────
 
-  private val threads = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-  private def allocatedBy(f: => Any): Long = {
-    val id = Thread.currentThread.threadId
-    val before = threads.getThreadAllocatedBytes(id)
-    f
-    threads.getThreadAllocatedBytes(id) - before
-  }
 
   /** ~6 MB of listing-shaped markup in 40k leaves, non-Latin-1 like the real page. */
   private def bigPage: Html = new Html((0 until 40000).map(i =>
@@ -116,9 +109,9 @@ class ResponseBodySpec extends AnyFlatSpec with Matchers {
     val size = bigPage.body.getBytes(StandardCharsets.UTF_8).length.toLong
     for (_ <- 1 to 3) { oldRoute(bigPage); ResponseBody.html(bigPage).plain; ResponseBody.html(bigPage).gzipped }   // warm the JIT
     val (p1, p2, p3) = (bigPage, bigPage, bigPage)
-    val flattened = allocatedBy(oldRoute(p1))
-    val streamed  = allocatedBy(ResponseBody.html(p2).gzipped)
-    val plain     = allocatedBy(ResponseBody.html(p3).plain)
+    val flattened = AllocationMeter.once(oldRoute(p1))
+    val streamed  = AllocationMeter.once(ResponseBody.html(p2).gzipped)
+    val plain     = AllocationMeter.once(ResponseBody.html(p3).plain)
     withClue(s"page ${size / 1024} KB; String route ${flattened / 1024} KB, streamed gzip ${streamed / 1024} KB, plain ${plain / 1024} KB: ") {
       streamed should be < flattened / 3
       plain    should be < 3 * size

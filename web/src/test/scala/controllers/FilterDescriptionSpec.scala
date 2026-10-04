@@ -476,12 +476,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     val many = (0 until 600).map(i => film(s"Film $i", Multikino, (1 to 8).map(r => s"Sala $r"),
       List("USA", "Polska"), genres = Seq("Dramat", "Komedia"), director = Seq(s"Director $i"),
       cast = (1 to 8).map(c => s"Actor $i-$c")))
-    val threads = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-    for (_ <- 1 to 3) FilterDescription.forIndex(Poznan, Map.empty, many)     // warm
-    val id = Thread.currentThread.threadId
-    val before = threads.getThreadAllocatedBytes(id)
-    FilterDescription.forIndex(Poznan, Map.empty, many)
-    val allocated = threads.getThreadAllocatedBytes(id) - before
-    withClue(s"allocated ${allocated / 1024} KB: ")(allocated should be < 64L * 1024)
+    tools.costs.PerformanceBudgets.UnfilteredListingDescription.check(
+      tools.costs.AllocationMeter.median()(FilterDescription.forIndex(Poznan, Map.empty, many)))
   }
 }

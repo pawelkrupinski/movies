@@ -7,8 +7,8 @@ import models.{Cinema, City, Movie, MovieRecord, Showtime}
 import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import tools.costs.AllocationMeter
 
-import java.lang.management.ManagementFactory
 import java.time.LocalDate
 
 /**
@@ -72,13 +72,6 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
     cache.heldEntries should be <= 10L
   }
 
-  private val threads = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-  private def allocatedBy(f: => Any): Long = {
-    val id = Thread.currentThread.threadId
-    val before = threads.getThreadAllocatedBytes(id); f
-    threads.getThreadAllocatedBytes(id) - before
-  }
-
   /** The cards written gzipped, as a listing's body goes out — what the cache replaces
    *  is their rendering; the bytes still have to be written. */
   private def cardsBody(films: Seq[FilmSchedule], fragments: FilmCardFragments) =
@@ -88,8 +81,8 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
     val films = (0 until 150).map(film(_))
     val cache = new CaffeineFilmCardFragments(CaffeineFilmCardFragments.DefaultMaxBytes)
     for (_ <- 1 to 3) { cardsBody(films, FilmCardFragments.Uncached); cardsBody(films, cache) }   // warm, and fill
-    val rendered = allocatedBy(cardsBody(films, FilmCardFragments.Uncached))
-    val reused   = allocatedBy(cardsBody(films, cache))
+    val rendered = AllocationMeter.once(cardsBody(films, FilmCardFragments.Uncached))
+    val reused   = AllocationMeter.once(cardsBody(films, cache))
     withClue(s"rendered ${rendered / 1024} KB, from the cache ${reused / 1024} KB: ")(reused should be < rendered / 4)
   }
 

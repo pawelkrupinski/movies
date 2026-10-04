@@ -576,14 +576,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Heap allocated by `work` on this thread. HotSpot-only; the suite runs on
-   *  Adoptium everywhere (CI and dev), so an absent bean is a real failure. */
+   *  Adoptium everywhere (CI and dev), so an unmeasurable JVM is a real failure. */
   private def allocatedBytes(work: => Any): Long = {
-    val bean = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-    val id = Thread.currentThread().threadId()
-    val before = bean.getThreadAllocatedBytes(id)
-    val result = work
-    val after = bean.getThreadAllocatedBytes(id)
-    if (result == null) 0L else after - before
+    tools.ThreadAllocation.supported shouldBe true
+    tools.ThreadAllocation.of(work)._2
   }
 
   // THE OOM THIS METHOD EXISTS FOR. `MetricsController` used to build

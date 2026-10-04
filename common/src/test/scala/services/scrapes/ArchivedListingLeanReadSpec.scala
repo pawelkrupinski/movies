@@ -69,15 +69,14 @@ class ArchivedListingLeanReadSpec extends AnyFlatSpec with Matchers {
       ScrapeArchiveCodecs.registry.get(classOf[BsonDocument])))
     val projected = rows.map(r => new RawBsonDocument(withoutShowtimes(r.decode(ScrapeArchiveCodecs.registry.get(classOf[BsonDocument]))),
       ScrapeArchiveCodecs.registry.get(classOf[BsonDocument])))
-    val threads = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     def measure(registry: org.bson.codecs.configuration.CodecRegistry, docs: Seq[RawBsonDocument]): (Double, Long, Long) = {
       val codec = registry.get(classOf[StoredScrapeDto])
       def once(): Int = docs.iterator.map(d => codec.decode(new BsonBinaryReader(d.getByteBuffer.asNIO()), DecoderContext.builder().build())
         .films.fold(0)(_.size)).sum
       (0 until 3).foreach(_ => once())   // warm
-      val (cpu, alloc) = (threads.getCurrentThreadCpuTime, threads.getCurrentThreadAllocatedBytes)
-      once()
-      ((threads.getCurrentThreadCpuTime - cpu) / 1e9, threads.getCurrentThreadAllocatedBytes - alloc, docs.map(_.getByteBuffer.remaining.toLong).sum)
+      val cpu   = tools.ThreadCpuClock.threadMxBean.nanos()
+      val alloc = tools.ThreadAllocation.of(once())._2
+      ((tools.ThreadCpuClock.threadMxBean.nanos() - cpu) / 1e9, alloc, docs.map(_.getByteBuffer.remaining.toLong).sum)
     }
     val (fullCpu, fullAlloc, fullBytes) = measure(ScrapeArchiveCodecs.registry, rows)
     val (leanCpu, leanAlloc, leanBytes) = measure(ScrapeArchiveCodecs.leanRegistry, projected)

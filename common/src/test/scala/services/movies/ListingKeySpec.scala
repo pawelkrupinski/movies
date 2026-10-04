@@ -89,8 +89,7 @@ class ListingKeySpec extends AnyFlatSpec with Matchers {
     }
     // Allocation-free: a sort of many keys allocates the sort's own arrays, not an object per comparison.
     val many    = (1 to 20000).map(i => ListingKey.Published("Helios", s"Film ${i % 500}", Some(2000 + i % 30), Seq("A", s"B$i")))
-    val threads = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-    def allocated(sort: => Any): Long = { sort; val before = threads.getCurrentThreadAllocatedBytes; sort; threads.getCurrentThreadAllocatedBytes - before }
+    def allocated(sort: => Any): Long = { sort; tools.ThreadAllocation.of(sort)._2 }
     val byTuple = allocated(many.sortBy(legacy))
     val byKey   = allocated(many.sorted)
     info(s"sorting ${many.size} keys allocated ${byKey / 1000} kB, by the tuple ${byTuple / 1000} kB")

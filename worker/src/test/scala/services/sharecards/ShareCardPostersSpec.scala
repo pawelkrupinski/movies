@@ -108,13 +108,10 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     run("gaussnoise", dir.resolve("n.v").toString, "8000", "12000")
     run("cast", dir.resolve("n.v").toString, dir.resolve("u.v").toString, "uchar")
     run("jpegsave", dir.resolve("u.v").toString, big.toString, "--interlace", "--Q", "80")
-    val threads   = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-    val thread    = Thread.currentThread().threadId()
-    val before    = threads.getThreadAllocatedBytes(thread)
-    new VipsPosterShrinker(binary = vips).coverSlot(big) shouldBe Left(PosterFailure.ProgressiveEstimate)
-    val allocated = threads.getThreadAllocatedBytes(thread) - before
-    info(f"JVM allocation for refusing the 8000×12000 progressive: ${allocated / 1e6}%.2f MB")
-    allocated should be < (4L * 1024 * 1024)
+    val (refused, allocated) = tools.costs.AllocationMeter.of(new VipsPosterShrinker(binary = vips).coverSlot(big))
+    refused shouldBe Left(PosterFailure.ProgressiveEstimate)
+    info(tools.costs.PerformanceBudgets.GiantProgressivePosterRefusal.render(allocated))
+    tools.costs.PerformanceBudgets.GiantProgressivePosterRefusal.check(allocated)
     Files.list(dir).forEach(Files.delete(_)); Files.delete(dir)
   }
 }

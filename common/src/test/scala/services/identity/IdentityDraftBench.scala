@@ -3,7 +3,6 @@ package services.identity
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema}
 import services.movies.{CinemaSlotBuilder, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
 
-import java.lang.management.ManagementFactory
 import java.time.{Instant, LocalDateTime}
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
@@ -63,11 +62,9 @@ object IdentityDraftBench {
     var shapes   = FilmShapes()
     var lastOk   = false
     val scoped   = !args.contains("whole")
-    val threads  = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     def timed[A](body: => A): (A, Double, Double) = {
-      val (b, t) = (threads.getCurrentThreadAllocatedBytes, System.nanoTime())
-      val a = body
-      (a, (System.nanoTime() - t) / 1e9, (threads.getCurrentThreadAllocatedBytes - b) / 1e6)
+      val (stopwatch, allocated) = tools.ThreadAllocation.of(tools.Stopwatch.timed(body))
+      (stopwatch.value, stopwatch.seconds, allocated / 1e6)
     }
     // As the intake: a venue's listing is the same object until the venue is read again — and, as production scrapes
     // every venue on a cadence, `rereads` venues a tick are read again into new objects whether or not they moved.

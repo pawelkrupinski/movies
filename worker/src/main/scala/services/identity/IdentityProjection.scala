@@ -31,13 +31,11 @@ final case class ProjectionPhase(name: String, seconds: Double, allocatedBytes: 
 
 /** The phases of one projection, in the order they ran. */
 private[identity] final class ProjectionPhases {
-  private val threads = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
-  private val done    = Vector.newBuilder[ProjectionPhase]
+  private val done = Vector.newBuilder[ProjectionPhase]
 
   def apply[A](name: String)(body: => A): A = {
-    val before = threads.getCurrentThreadAllocatedBytes
-    val timed  = tools.Stopwatch.timed(body)
-    done += ProjectionPhase(name, timed.seconds, threads.getCurrentThreadAllocatedBytes - before)
+    val (timed, allocated) = tools.ThreadAllocation.of(tools.Stopwatch.timed(body))
+    done += ProjectionPhase(name, timed.seconds, allocated)
     timed.value
   }
 
