@@ -99,7 +99,7 @@ class TitleNormalizer(val rules: TitleRuleSet) {
    *  Ukrainian alt-title match with a transliteration upstream doesn't know.
    *  Cross-script folding of an UNresolved orphan onto its Latin sibling is done
    *  separately, on the canonicalizer's union key — see
-   *  `FilmCanonicalizer.groupByFilm`'s search-title edge. */
+   *  the since-deleted `FilmCanonicalizer.groupByFilm`'s search-title edge. */
   def apiQuery(display: String): String = rules.search(display)
 
   /** The external-search form of a title: `apiQuery` (decoration strip) over the
@@ -161,8 +161,8 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   private def canonical(t: String): String = rules.canonical(t)
 
   // Memoised because `sanitize` is the hottest normaliser — called per movie ×
-  // per corpus row inside `ScrapeLanding`'s scrape scans (`concludedKeyFor`,
-  // `redirectToExistingVariant`, the per-tick index rebuilds) and every staging /
+  // per corpus row inside the since-deleted `ScrapeLanding`'s scrape scans (`concludedKeyFor`,
+  // `redirectToExistingVariant`, the per-tick index rebuilds) and every
   // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
   // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on
   // every call. Keyed on the raw title alone, which is only safe because the cache

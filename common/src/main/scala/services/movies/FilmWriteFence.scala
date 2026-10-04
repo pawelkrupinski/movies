@@ -8,7 +8,7 @@ package services.movies
  * cache already holds that write, it hands the cache the film as it was. `MovieCache`
  * stored it blindly, so its own write was undone until the write's own event re-read the
  * film again — a window in which every reader of the cache saw the older row. The
- * 2026-09-25 `RetryResolveServingIntegrationSpec` flake was exactly that: a retry concluded
+ * 2026-09-25 flake of the since-deleted `RetryResolveServingIntegrationSpec` was exactly that: a retry concluded
  * a fresh no-match and, a few milliseconds later, the cache was back on the old miss.
  *
  * Two halves, one per side of the race:

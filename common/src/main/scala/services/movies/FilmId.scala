@@ -12,7 +12,7 @@ package services.movies
  * collections plus a read-model reprojection: 1,211 such moves in nine days of
  * production logs, 122 of them ping-ponging. Now a spelling or year change is a
  * RETITLE — the row's `key` field moves, its id does not — and only a genuine merge
- * of two films moves side rows (`SideCollectionMove`).
+ * of two films moved side rows (the since-deleted `SideCollectionMove`).
  *
  * A row created before the change keeps its old `_id` as its id (`persepolis|2007`):
  * it is just an opaque string now and nothing parses it. A new row's id is `f` + 15

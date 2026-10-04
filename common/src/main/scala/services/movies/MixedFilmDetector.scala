@@ -8,8 +8,8 @@ import services.resolution.YearWindow
  * which of its cinema slots belong to which.
  *
  * A row is keyed by its title, so two unrelated films released here under the same
- * Polish one land on it together. `FilmCanonicalizer.clusterByFilm` would keep them
- * apart, but it splits ROWS by tmdbId and a row holding both films has only one —
+ * Polish one land on it together. the since-deleted `FilmCanonicalizer.clusterByFilm` would keep them
+ * apart, but it split ROWS by tmdbId and a row holding both films has only one —
  * so whichever it resolves to, the cinemas showing the other film are mis-served.
  *
  * Two live examples:
@@ -77,9 +77,9 @@ object MixedFilmDetector {
     }
 
   /** The one film per bracketed year on a row TMDB has ANSWERED no-match for — the rule
-   *  `StagingFold.planGroup` files an unresolved group by, applied to a row that reached
-   *  `movies` without it. That happens when the group was folded UNANSWERED (TMDB failing
-   *  past the staging ceiling), which deliberately keeps it yearless; once TMDB has answered,
+   *  the since-deleted `StagingFold.planGroup` filed an unresolved group by, applied to a row that
+   *  reached `movies` without it. That happened when the group was folded UNANSWERED (TMDB failing
+   *  past the staging ceiling), which deliberately kept it yearless; once TMDB had answered,
    *  the row is what staging would have split. The largest bracket keeps the row (the
    *  lower year on a tie); every other bracket's slots are strays. Bare listings stay. Never
    *  on a resolved row (a bracket there can be the event's year) nor an unanswered one. */
@@ -106,7 +106,7 @@ object MixedFilmDetector {
    *  `originalTitle`, which then "differs" from the row's real one — but such a
    *  listing still agrees on runtime and year, so it is waved through. An earlier
    *  version of this gate WITHOUT corroboration re-diverted nine known films on
-   *  every tick (`ReScrapeIdempotencySpec`). */
+   *  every tick. */
   def wouldAddASecondFilm(
     record:        MovieRecord,
     originalTitle: Option[String],
@@ -129,8 +129,8 @@ object MixedFilmDetector {
    *  Same rule as [[conflicting]], asked ACROSS two rows rather than within one —
    *  what a canonicalisation edge needs before it adopts one row onto another. An
    *  edge that folds on the shape of the titles alone ("Ktoś całkiem obcy" ends
-   *  with the whole of "Obcy") otherwise re-creates the very row
-   *  `MixedFilmSplitter` splits, and the two chase each other forever.
+   *  with the whole of "Obcy") otherwise re-created the very row
+   *  the since-deleted `MixedFilmSplitter` split, and the two chased each other forever.
    *
    *  A row whose cinemas published nothing comparable cannot contradict anything,
    *  so the answer is `false` and the caller's own evidence stands.
@@ -140,7 +140,7 @@ object MixedFilmDetector {
    *  default (no evidence is not evidence of difference, and refusing on it would block every
    *  adoption of an enrichment-only row), but one that makes the answer depend on how the
    *  record was READ. Under the storage split a migrated film's `movies` document carries no
-   *  `sourceData` at all, so a caller planning on RAW documents — `MongoStagingFolder` does —
+   *  `sourceData` at all, so a caller planning on RAW documents — the since-deleted `MongoStagingFolder` did —
    *  gets `false` where the stitched view gives `true`. Pinned in `MixedFilmDetectorSpec`,
    *  along with why it currently costs nothing.
    *
@@ -200,11 +200,10 @@ object MixedFilmDetector {
    *
    *  UK prod, 2026-09-16: `hungergamesballadofsongbirdssnakes|2026` ended up holding
    *  Catching Fire, both Mockingjay parts, and Ballad of Songbirds and Snakes, each
-   *  independently mis-resolved (before `TmdbCandidateSearch`'s own `SequelMarker`
-   *  guard existed) to one wrong tmdbId — `MixedFilmSplitter` could not detect or
+   *  independently mis-resolved (before the since-deleted `TmdbCandidateSearch`'s own `SequelMarker`
+   *  guard existed) to one wrong tmdbId — the since-deleted `MixedFilmSplitter` could not detect or
    *  split any of it, because every existing signal here needs evidence Odeon never
-   *  publishes. This is what lets `MixedFilmSplitter` (already run every settle,
-   *  no new sweep needed) find and re-divert it once deployed. */
+   *  publishes. This is what let it find and re-divert it. */
   private def curatedSiblingGroups(a: Group, b: Group): Boolean = {
     def rawTitles(g: Group): Set[String] =
       g.slots.flatMap { case (_, sd) => sd.title.toSeq ++ sd.originalTitle.toSeq }.toSet
@@ -341,7 +340,7 @@ object MixedFilmDetector {
     names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
 
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
-   *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */
+   *  own runtime or year evidence (the since-deleted `FilmCanonicalizer` fold's rule 4). */
   def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =
     sameDirector(directorKeys(a, normalizer), directorKeys(b, normalizer))
 
@@ -406,8 +405,8 @@ object MixedFilmDetector {
    *  count the credits. Matches the director walk's tolerance. */
   private val RuntimeAgreementMinutes = 2
 
-  /** The inverse of `corroborated`'s runtime branch, for a caller (`FilmCanonicalizer`
-   *  rule 4) that needs "these published runtimes say the SAME film" rather than
+  /** The inverse of `corroborated`'s runtime branch, for a caller (the since-deleted `FilmCanonicalizer`
+   *  rule 4) that needed "these published runtimes say the SAME film" rather than
    *  "different" — waiving a slot-year-implausibility refusal when nothing else
    *  the straggler published corroborates it, exactly the runtime-over-year
    *  precedent `corroborated` itself documents ("Rozmowa", Kinoteka's screening-date

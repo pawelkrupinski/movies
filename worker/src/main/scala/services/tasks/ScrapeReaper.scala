@@ -254,7 +254,7 @@ class ScrapeReaper(
    *  cinemas by how long they've waited — oldest `lastFetchedAt` (never-fetched =
    *  oldest) first — so the longest-overdue cinema is always served next and the
    *  backlog drains fairly. Ties break on the dedup key, keeping the order
-   *  deterministic (no clock/random in the ordering — see ScrapeOrderDeterminismSpec).
+   *  deterministic (no clock/random in the ordering — the order must not depend on arrival).
    *  In steady state far fewer than the cap are due, so the sort is a cheap no-op. */
   private[tasks] def tick(now: Instant = clock.instant()): Int = {
     // Which venues are mid-scrape, read once for the tick rather than once per due venue.

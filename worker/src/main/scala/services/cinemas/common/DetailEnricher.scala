@@ -129,7 +129,7 @@ trait DetailEnricher {
    *  trailer): the row resolves immediately from the listing and the detail
    *  merges in asynchronously when its `EnrichDetails` task runs.
    *
-   *  Scopes to the DIRECT scrape path only. Staging waits for every detail
+   *  Scopes to the DIRECT scrape path only. The since-deleted staging path waited for every detail
    *  cinema regardless (`StagingSteps.fetchDetailFor`): a newcomer has no place
    *  in the read model to lose, and resolving it on a listing while the page
    *  carrying its year and director is already in flight is how a guess gets

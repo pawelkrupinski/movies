@@ -4,7 +4,7 @@ package services.movies
  * Does a longer title that CONTAINS a film's title name a different film in the
  * same series, rather than a decorated screening of that film?
  *
- * The containment edge in [[FilmCanonicalizer.groupByFilm]] folds an unresolved
+ * The containment edge in the since-deleted `FilmCanonicalizer.groupByFilm` folded an unresolved
  * edition onto a resolved base when the base's tokens run along one edge of the
  * edition's: "Toddler Club: Toy Story 5" is a screening of "Toy Story 5", and the
  * edition is what the venue calls it. A sequel has the same shape and is not: the
@@ -112,7 +112,7 @@ object SequelMarker {
       // rerelease listing (Odeon's rerelease-season pages stamp every title with
       // the season's current year, exactly the "Catching Fire" 2013 vs the
       // resolved cluster's own trap `437d1fa21` already names) let
-      // `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
+      // the since-deleted `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
       // it: nothing here previously told `isDifferentInstalment` this was a
       // DIFFERENT entry rather than the same one under an unfamiliar subtitle,
       // so `corroboratedByTitle`'s "shares Hunger/Games with the query" was
@@ -166,7 +166,7 @@ object SequelMarker {
    *  gap, which surfaced as Catching Fire's screenings folding onto whichever
    *  Mockingjay part `directorWalk` resolved first, instead of the original film.
    *
-   *  Asked ALONE, through [[curatedSiblingTitles]], by `FilmCanonicalizer`'s
+   *  Asked ALONE, through [[curatedSiblingTitles]], by the since-deleted `FilmCanonicalizer`'s
    *  tmdbId/imdbId-sharing folds and `MixedFilmDetector` — without the general
    *  ordinal/containment logic below, which is vetted against clean TMDB candidate
    *  titles (`directorWalk`) or an already-resolved base (the containment edge), and
@@ -222,7 +222,7 @@ object SequelMarker {
 
   /** [[curatedSiblings]] over two sets of raw title strings: does any title on one
    *  side name a different curated-franchise entry from any title on the other?
-   *  The shape both `FilmCanonicalizer`'s id-sharing fold guard and
+   *  The shape both the since-deleted `FilmCanonicalizer`'s id-sharing fold guard and
    *  `MixedFilmDetector.conflicting` ask of cinema-published titles. */
   private[services] def curatedSiblingTitles(a: Iterable[String], b: Iterable[String]): Boolean = {
     val bTokens = b.iterator.map(TitleContainment.tokens).toSeq
@@ -283,7 +283,7 @@ object SequelMarker {
    *  common precisely because these titles are long. The trailing ordinal is
    *  what a series numbers itself by; everything else is spelling.
    *
-   *  Guards `TmdbCandidateSearch.directorWalk`'s fuzzy title match, which would
+   *  Guards the since-deleted `TmdbCandidateSearch.directorWalk`'s fuzzy title match, which would
    *  otherwise let a same-director sequel pair tie and fall to the lowest-id
    *  tie-break — pinning "Mockingjay - Part 2" to "Part 1"'s (older, lower-id)
    *  film whenever no candidate title matched either spelling exactly. */

@@ -5,7 +5,7 @@ package services.movies
  * programme, a format tag the rules did not strip — rather than a different film?
  *
  * The ONE definition, asked from two places that used to disagree: the settle's
- * containment edge (`FilmCanonicalizer.groupByFilm`), which folds a decorated row
+ * containment edge (the since-deleted `FilmCanonicalizer.groupByFilm`), which folds a decorated row
  * onto its base, and the scrape-time divert gate (`MovieCache.recordCinemaScrape`),
  * which decides whether a listing is a known film or a newcomer. When only the
  * settle knew the answer, every venue's first scrape of "gb Fallen Angels by Noël

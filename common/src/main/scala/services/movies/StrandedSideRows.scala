@@ -21,8 +21,8 @@ final case class StrandedSideRows(screenings: Long, slots: Long, filmIds: Set[St
  * `screenings` rows under 18 film ids with no document (169 of them with FUTURE showtimes,
  * `startrekivthevoyagehome40thann|1986` last written 07-28), DE 29. The worker's
  * served-films census counted every one of them as a film it serves, the web could serve
- * none, and the invariant `FilmIdentityInvariantsSpec` proves in memory — side rows ⊆ live
- * ids — did not hold in the store.
+ * none, and the invariant that side rows ⊆ live
+ * ids did not hold in the store.
  *
  * The rule, and what each step refuses:
  *

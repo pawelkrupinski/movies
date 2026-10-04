@@ -208,7 +208,7 @@ class ImdbIdResolver(
       // mirror of the staging recovery. IMDb's release year can sit at any cinema's
       // reported (production) year, not the canonical TMDB one ("Chłopiec na krańcach
       // świata": TMDB 2026, IMDb + the cinemas 2025), so a single-key-year lookup left
-      // the id flickering present/absent with arrival order (StagingOrderDeterminismSpec).
+      // the id flickering present/absent with arrival order.
       // The sorted year set is order-independent; the per-year EXACT match still refuses
       // a same-series sibling ("Kicia Kocia w przedszkolu" 2024) at no reported year.
       lookupId(searchTitle, year, record) match {

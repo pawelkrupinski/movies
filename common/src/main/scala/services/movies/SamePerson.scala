@@ -11,7 +11,7 @@ import tools.{EditDistance, TextNormalization}
  * substring-or-token-subset test in `MovieService` when a search hit was verified
  * against a cinema's director, a folding-and-edit-distance test in
  * `CinemaCorroboration` when a resolved row was checked against its cinemas, and a
- * name-shortening in `CrewConfirmation` before asking TMDB — and every shape a feed
+ * name-shortening in the since-deleted `CrewConfirmation` before asking TMDB — and every shape a feed
  * mangles a credit into was learned by one of them and not the others. Thirteen
  * commits on 2026-09-05 taught the second one initials, surname-first credits,
  * truncations, transliterations and familiar forms; the first never heard of any of

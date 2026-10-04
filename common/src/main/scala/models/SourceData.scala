@@ -67,7 +67,7 @@ case class SourceData(
   // forever — Berlin showing "Familijny, Komedia" and a Polish title. The
   // reaper re-resolves any slot whose tag ≠ the deployment's language; `None`
   // means pl-PL, the historical hardcoded default, so Polish rows are already
-  // correct and never churn. See `UnresolvedTmdbReaper.staleLanguage`.
+  // correct and never churn.
   language:       Option[String]  = None,
   // CACHE-ONLY, NEVER PERSISTED. The worker's MovieCache strips `showtimes` (they live
   // in Mongo `screenings`) and keeps this digest so the write-guard + screenings-diff

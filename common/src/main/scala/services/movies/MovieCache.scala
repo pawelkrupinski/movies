@@ -167,7 +167,7 @@ trait MovieCache extends MovieCacheReader {
  *     change slowly; restarts re-warm via `rehydrate`).
  *   - **Negative**: known misses (events, festivals, retrospectives that
  *     don't match a real film), 24h TTL — failed TMDB lookups get retried
- *     about once a day (the phase-spread `UnresolvedTmdbReaper`, which clears
+ *     about once a day (a phase-spread reaper clearing
  *     each due row's marker via `clearNegative`). The operator bulk retry can
  *     also clear the whole negative cache explicitly via `clearNegatives` so
  *     every previously-failed key gets a fresh shot at once.
@@ -290,7 +290,7 @@ class CaffeineMovieCache(
 
   /** What the index currently believes, and what the rows actually say.
    *
-   *  The pair exists for [[CorpusIndexConsistencySpec]], which replays a realistic
+   *  The pair exists for the since-deleted `CorpusIndexConsistencySpec`, which replayed a realistic
    *  scrape/fold/prune/rekey sequence and asserts they stay equal. A funnel that
    *  stopped updating the index would otherwise fail SILENTLY and far away — as a film
    *  re-diverting into staging every tick, which is the exact flap the widened divert
@@ -654,7 +654,7 @@ class CaffeineMovieCache(
     Option(positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
       override def apply(k: CacheKey, current: MovieRecord): MovieRecord = f(current)
     })).orElse {
-      // The Caffeine-level race `ScrapeLanding`'s own comment on `landed` names: a
+      // The Caffeine-level race the since-deleted `ScrapeLanding`'s comment on `landed` named: a
       // concurrent `rekey` of some OTHER title invalidated this key between the
       // read and this compute. Recorded here, not at each caller, because this is
       // the one place that KNOWS it happened — every `putIfPresent` caller
@@ -671,8 +671,8 @@ class CaffeineMovieCache(
     // `repository.updateIfPresent`'s answer and reported success unconditionally,
     // so a genuine persistence failure (the Mongo document didn't match, or the
     // write threw and was caught into `false`) was invisible at every caller:
-    // the index update already made the CACHE look correct, `ScrapeLanding`'s
-    // `landed` gate — which exists precisely "to read the write", per its own
+    // the index update already made the CACHE look correct, the since-deleted `ScrapeLanding`'s
+    // `landed` gate — which existed precisely "to read the write", per its own
     // comment — saw `true` regardless, and the title was never spared from that
     // tick's prune nor counted anywhere. A row this happens to can look perfectly
     // healthy in-memory while Mongo silently never catches up.

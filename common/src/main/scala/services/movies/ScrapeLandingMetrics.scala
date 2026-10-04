@@ -1,7 +1,7 @@
 package services.movies
 
 /**
- * Observability for `ScrapeLanding`'s two health guards and its per-slot write
+ * Observability for the since-deleted `ScrapeLanding`'s two health guards and its per-slot write
  * outcome — what a scrape's landing DECIDED, and whether what it decided actually
  * reached the store. Neither existed before 2026-09-13: both guards logged their
  * decisions (`RemovalAudit.scrapeDepthGuarded` / `scrapePruneSkipped` and their
@@ -27,7 +27,7 @@ package services.movies
  *      - `cache-miss-race`, inside `putIfPresent` itself, when Caffeine's
  *        `computeIfPresent` returns null — a concurrent rekey of some OTHER title
  *        invalidated this key between the read and the compute
- *        (`ScrapeLanding`'s own comment on `landed` names the mechanism).
+ *        (the since-deleted `ScrapeLanding`'s comment on `landed` named the mechanism).
  *      - `repository-write-failed`, ALSO inside `putIfPresent`, when
  *        `MovieRepository.updateIfPresent` itself returns `false` — the Mongo
  *        document didn't match, or the write threw and was caught — for a row
@@ -41,7 +41,7 @@ package services.movies
  *        rating refresh, or a rekey) cannot tell these two apart from the
  *        returned `Boolean` alone, which is why both are recorded at the source
  *        rather than by whichever caller happens to see the `false`.
- *      - `unreadable-row`, in `ScrapeLanding` itself, on the SEPARATE cache-miss
+ *      - `unreadable-row`, in the since-deleted `ScrapeLanding` itself, on the SEPARATE cache-miss
  *        branch: the stored row could not be read at all, so nothing was ever
  *        resident to race over.
  *    All three were already reasoned about (in code comments, or — the first two

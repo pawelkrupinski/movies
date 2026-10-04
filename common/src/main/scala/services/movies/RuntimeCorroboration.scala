@@ -6,10 +6,10 @@ package services.movies
  * Two places have to choose between candidate films that a title cannot separate,
  * and both have the same evidence to hand — what the venues printed:
  *
- *   - `ScrapeLanding.chooseConcluded`, deciding which of two same-titled concluded
- *     rows a listing belongs on;
- *   - `FilmCanonicalizer.canonical`, deciding which tmdbId a cluster folded on a
- *     shared imdbId should keep.
+ *   - the since-deleted `ScrapeLanding.chooseConcluded`, which decided which of two
+ *     same-titled concluded rows a listing belonged on;
+ *   - the since-deleted `FilmCanonicalizer.canonical`, which decided which tmdbId a cluster
+ *     folded on a shared imdbId should keep.
  *
  * Runtime is the right evidence for both, and the same evidence
  * [[MixedFilmDetector]] already trusts to tell two films apart: it survives

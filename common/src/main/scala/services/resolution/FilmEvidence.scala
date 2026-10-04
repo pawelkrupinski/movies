@@ -18,7 +18,7 @@ import services.movies.TitleNormalizer
  *
  * Every collection is de-duplicated and sorted, so the evidence — and everything
  * concluded from it — is a pure function of the row's state rather than of the
- * order the cinemas arrived in (`StagingOrderDeterminismSpec`). `originalTitles`
+ * order the cinemas arrived in. `originalTitles`
  * is the exception: it keeps source-priority order because [[originalTitle]], the
  * search hint, prefers the higher-priority venue's spelling.
  */

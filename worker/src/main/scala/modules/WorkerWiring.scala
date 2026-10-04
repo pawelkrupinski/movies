@@ -325,7 +325,7 @@ class WorkerWiring(
   }
 
   /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the
-   *  movies path, `StagingSteps` on the staging path. The fixture harness pins it, so
+   *  movies path (and, before it was deleted, `StagingSteps` on the staging path). The fixture harness pins it, so
    *  a replayed corpus is byte-identical across arrival orders. */
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
 

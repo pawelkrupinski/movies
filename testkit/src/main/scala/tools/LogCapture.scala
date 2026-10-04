@@ -84,7 +84,7 @@ object LogCapture {
    * The subset of [[capture]] this thread emitted.
    *
    * For the specs that pin an EXACT event list: `kinowo.removal-audit` is a
-   * fixed-name, process-global logger and `StagingFoldSpec`, `MovieCacheSpec` and
+   * fixed-name, process-global logger and `MovieCacheSpec` and
    * friends all perform real deletes in parallel, so one foreign line fails an
    * exact-match assertion. Every call under test is synchronous on the test thread,
    * which makes this filter both precise and complete.

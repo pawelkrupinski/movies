@@ -44,7 +44,7 @@ enum Verdict {
   /** The cinemas positively contradict it. A `Director` rejection compares NAMES,
    *  and a name can disagree for reasons that are not a different film (a
    *  pseudonym, the film's other director); a caller about to SPEND on it should
-   *  confirm against TMDB's crew ids first (`CrewConfirmation`). */
+   *  confirm against TMDB's crew ids first (the since-deleted `CrewConfirmation`). */
   case Reject(reason: Contradiction)
   /** Nothing comparable on either side. */
   case Insufficient
@@ -81,7 +81,7 @@ enum Support { case Crew, Runtime }
  *
  * Two other places answer a same-film question and are NOT this one, on purpose:
  * `MixedFilmDetector.describeDifferentFilms` compares two rows' cinemas with each
- * other, strictly, and reads titles and years; `ScrapeLanding.chooseConcluded` picks
+ * other, strictly, and reads titles and years; the since-deleted `ScrapeLanding.chooseConcluded` picked
  * the nearest of several rival films rather than vetoing one. Neither reads a
  * candidate, and this reads no title, year or id. `SameFilmVocabulariesSpec` pins
  * all three over one table.

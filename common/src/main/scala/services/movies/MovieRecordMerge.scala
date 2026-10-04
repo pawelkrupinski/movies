@@ -54,7 +54,7 @@ object MovieRecordMerge {
       // converge — taking the victim's when the canonical's is empty can't be
       // wrong, and it stops the merge from DROPPING ratings. This matters once a
       // cluster can hold two RESOLVED rows (a cross-language duplicate folded by
-      // shared tmdbId, FilmCanonicalizer.groupByFilm): the union base is the
+      // shared tmdbId, as the since-deleted FilmCanonicalizer.groupByFilm did): the union base is the
       // lowest-`canonicalRank` row, which may be a freshly-resolved translation
       // that has a tmdbId but no ratings yet. A canonical-only copy then nulled
       // the rated sibling's scores until the next rating refresh re-fetched them —

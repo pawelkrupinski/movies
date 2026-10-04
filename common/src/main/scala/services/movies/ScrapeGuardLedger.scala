@@ -35,7 +35,7 @@ object ScrapeGuardState {
  *
  * [[InMemoryScrapeGuardLedger]] for tests and Mongo-less wiring;
  * `services.scrapes.MongoScrapeGuardLedger` in production. Neither holds rules — the
- * decisions live in [[ScrapeHealth]] and `ScrapeLanding`.
+ * decisions live in [[ScrapeHealth]] and the listing intake.
  */
 trait ScrapeGuardLedger {
   /** The venue's remembered state, [[ScrapeGuardState.Fresh]] when there is none — and None

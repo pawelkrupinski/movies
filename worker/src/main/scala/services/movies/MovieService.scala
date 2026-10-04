@@ -145,7 +145,7 @@ class MovieService(
     // The trigger is a film that demonstrably CHANGED — not merely "not the same
     // one". A row resolving for the FIRST time has no previous tmdbId, so there is
     // nothing stale to drop and a rating a refresher already wrote must survive
-    // (`TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
+    // (the since-deleted `TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
     // re-resolve from the new identity.
     val differentFilm = existing.tmdbId.exists(_ != tmdbId)
     def ifSameFilm[A](value: Option[A]): Option[A] = if (differentFilm) None else value
@@ -170,7 +170,7 @@ class MovieService(
     val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
     // Whether the slot we're merging onto was fetched in the language we're
     // fetching in NOW. When it wasn't — the stale-language re-resolve
-    // `UnresolvedTmdbReaper` exists to drive — its LOCALIZED text (title,
+    // the since-deleted `UnresolvedTmdbReaper` existed to drive — its LOCALIZED text (title,
     // synopsis, genres, poster) is exactly the wrong-language content we came
     // to replace, so it must not survive as an `.orElse` fallback. Letting it
     // through while stamping the slot with the new language would seal the row

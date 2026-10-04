@@ -24,11 +24,11 @@ import services.resolution.{Candidate, Contradiction, Verdict}
  * published nothing is not disagreeing, and read the other way this would
  * force-re-resolve the corpus.
  *
- * Detection is only the first of three steps — `CrewConfirmation` asks TMDB who
- * actually made the film before anything acts, and `UnresolvedTmdbReaper` spends the
- * re-resolution. That reaper's scaladoc carries the warning that matters most: finding
- * the RIGHT film can fail on its own, and a row left unresolved is pruned from the read
- * model rather than merely wrong. The operational log — how to re-measure the sweep, how
+ * Detection is only the first of three steps: the since-deleted `CrewConfirmation` asked
+ * TMDB who actually made the film before anything acted, and the since-deleted
+ * `UnresolvedTmdbReaper` spent the re-resolution. Its scaladoc carried the warning that
+ * mattered most: finding the RIGHT film can fail on its own, and a row left unresolved was
+ * pruned from the read model rather than merely wrong. The operational log — how to re-measure the sweep, how
  * to audit its outcomes film-by-film, and which rows are deliberately left alone — is in
  * `docs/misresolution-sweep.md`.
  */
@@ -40,7 +40,7 @@ object CinemaCorroboration {
    *  cinemas published and needs no confirming, while a director is a NAME, and a
    *  name can disagree for a dozen reasons that are not a different film. A caller
    *  about to spend a re-resolution on the director signal should confirm it first
-   *  (see `services.tasks.CrewConfirmation`). */
+   *  (the since-deleted `CrewConfirmation` asked TMDB's crew ids). */
   def contradiction(record: MovieRecord): Option[Contradiction] =
     for {
       tmdbId <- record.tmdbId

@@ -78,7 +78,7 @@ class TaskWorker(
   maxAttempts:       TaskWorker.MaxAttempts = TaskWorker.MaxAttempts(TaskWorker.DefaultMaxAttempts),
   // Invoked with the task the instant it completes successfully (Done/Skipped),
   // never on a reschedule. The composition root wires this to publish a
-  // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
+  // `TaskFinished` event so consumers (e.g. the chunk-scrape coordinator) can chain follow-up
   // work; default no-op keeps the worker decoupled from the bus.
   onCompleted:       Task => Unit   = _ => (),
   // Metrics hook: notified on every claim and every handler outcome (with the

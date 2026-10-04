@@ -80,7 +80,7 @@ import scala.util.control.NonFatal
  * listing so no state spans two calls. A fallback tick is NOT a change of source — the
  * venue's source is still its primary, merely down — so the cache lands it additively:
  * no guard judges the thin board against the primary's rows, and no prune retires the
- * primary's films it does not list (`ScrapeLanding.recordCinemaScrape`).
+ * primary's films it does not list (the listing intake's fallback rule).
  */
 class SourceFallbackScraper(
   primary:         CinemaScraper,

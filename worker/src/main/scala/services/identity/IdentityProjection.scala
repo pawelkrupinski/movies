@@ -71,8 +71,8 @@ object IdentityProjectionMetrics {
 
 /**
  * THE IDENTITY PROJECTION (docs/design/identity-resolver.md §2, §8 phase 3 = programme phase 5):
- * in a cut-over country it replaces the landing's divert / redirect / re-key, the staging fold, the
- * settle's merges and splits and `UnresolvedTmdbReaper`'s concluding. Each projection:
+ * it replaced the landing's divert / redirect / re-key, the staging fold, the
+ * settle's merges and splits and `UnresolvedTmdbReaper`'s concluding (all since deleted). Each projection:
  *
  *  1. reads every venue's accepted listing (`IdentityListingIntake`) — the observations;
  *  2. resolves them (`IdentityResolver`, over the calibrated `IdentityCalibration` and the pins);

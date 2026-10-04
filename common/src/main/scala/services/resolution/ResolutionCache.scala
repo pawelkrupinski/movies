@@ -61,8 +61,8 @@ sealed trait UnresolvedPolicy
 object UnresolvedPolicy {
   /** Run the chain again next cycle. Right where an empty answer is expected to
    *  turn into a real one without anything about the film changing: TMDB indexes
-   *  the film a few hours after we first look for it, and `UnresolvedTmdbReaper`
-   *  exists to catch exactly that. Remembering those misses would put a day
+   *  the film a few hours after we first look for it, and the since-deleted
+   *  `UnresolvedTmdbReaper` existed to catch exactly that. Remembering those misses would put a day
    *  between a film appearing upstream and us seeing it. */
   case object Retry extends UnresolvedPolicy
 

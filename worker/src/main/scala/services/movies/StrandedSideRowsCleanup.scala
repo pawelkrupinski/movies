@@ -12,9 +12,9 @@ import scala.util.Try
  * document any more — [[MovieRepository.deleteStrandedSideRows]], on a schedule.
  *
  * The rows are the leftovers of deletes and merges from before the cascade and
- * [[SideCollectionMove]] carried side rows, and nothing else ever clears them: the worker's
+ * the since-deleted `SideCollectionMove` carried side rows, and nothing else ever clears them: the worker's
  * served-films census counts them as films, the web can serve none of them, and the
- * invariant `FilmIdentityInvariantsSpec` proves in memory (side rows ⊆ live ids) did not
+ * invariant (side rows ⊆ live ids) did not
  * hold in the store. On 2026-09-07 the UK corpus held 376 such `screenings` rows under 18
  * dead ids, 169 of them with future showtimes. See [[StrandedSideRows]] for the rule and
  * for what a sweep refuses to do.

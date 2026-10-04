@@ -75,7 +75,7 @@ object SearchTitles {
   /** The subset of [[candidates]] that are the row's own titles exactly as
    *  reported — `title`, `originalTitle` and `extraTitles`, none of them split
    *  apart. Lets a caller whose acceptance check has no title-relevance
-   *  verification of its own (`TmdbCandidateSearch.searchUnique`'s director-less
+   *  verification of its own (the since-deleted `TmdbCandidateSearch.searchUnique`'s director-less
    *  branch) tell a de-decorated FRAGMENT (needs the extra check — see there)
    *  from one of the row's own complete titles (trusted outright: no text-based
    *  check could ever confirm a genuine cross-language TRANSLATION like

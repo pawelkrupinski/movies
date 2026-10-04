@@ -1027,7 +1027,7 @@ class MongoMovieRepository(
     // stranded on 2026-09-16: the slots write landed a genuine TMDB match, the `movies` write
     // then hit the OTHER document already holding that tmdbId and was swallowed below, and
     // the row was left with a resolved TMDB slot but `tmdbId` permanently null — invisible on
-    // the site, and never revisited (`UnresolvedTmdbReaper` treats `tmdbId`+`tmdbAttempt` both
+    // the site, and never revisited (the since-deleted `UnresolvedTmdbReaper` treated `tmdbId`+`tmdbAttempt` both
     // absent as "never even tried"). Checking for that sibling HERE, before either write, means
     // a real collision refuses the whole upsert — slots included — leaving the film exactly as
     // it was, instead of leaving the two collections disagreeing about it forever.

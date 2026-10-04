@@ -242,7 +242,7 @@ object SlotsRepository {
    *  had a cinema in the embedded map that `movie_slots` did not carry — so a
    *  stored-shadows-embedded read served those 14 films with FEWER cinemas than the
    *  corpus actually held. The divergence is produced by writers that touch one store
-   *  and not the other: `MongoStagingFolder` writes the embedded map in its transaction
+   *  and not the other: the since-deleted `MongoStagingFolder` wrote the embedded map in its transaction
    *  and no slot rows at all, while `updateIfPresent` writes per-slot deltas and
    *  deliberately leaves the embedded map alone.
    *

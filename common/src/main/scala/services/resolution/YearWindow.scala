@@ -26,8 +26,8 @@ object YearWindow {
    *  prints the PRODUCTION year where TMDB holds the release ("Zawieście czerwone
    *  latarnie", 1989 against 1991). Wide enough for that gap and no wider — a
    *  same-titled remake still awaiting its own tmdbId must not be swallowed. Read by
-   *  the settle's cluster attach (`FilmCanonicalizer.clusterByFilm` rule 2) AND by the
-   *  scrape landing (`ScrapeLanding.concludedKeyFor`), which have to agree: a listing
+   *  the since-deleted settle's cluster attach (`FilmCanonicalizer.clusterByFilm` rule 2) AND by the
+   *  since-deleted scrape landing (`ScrapeLanding.concludedKeyFor`), which had to agree: a listing
    *  landed outside the settle's window is a row the settle folds a tick later, and
    *  one refused inside it is a row the settle never folds. */
   val ProductionToRelease: Int = 2
@@ -41,7 +41,7 @@ object YearWindow {
   /** How far a YEARLESS-KEY row's own SLOT year may sit from a resolved cluster's
    *  tmdbYear before `clusterByFilm` rule 4 refuses to fold it in on title alone.
    *  Wider than [[ProductionToRelease]] on purpose: a slot year here is the
-   *  "deferred-detail" kind `FilmCanonicalizer.clusterYear` already refuses to
+   *  "deferred-detail" kind the since-deleted `FilmCanonicalizer.clusterYear` refused to
    *  promote onto the row's own key, because it is noisier than a cinema's
    *  considered production-year disagreement — a repertory listing's own vintage,
    *  a stage adaptation's, a festival programme's. A MODEST gap of that kind must

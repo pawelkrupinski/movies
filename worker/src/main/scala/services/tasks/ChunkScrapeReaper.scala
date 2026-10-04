@@ -10,7 +10,7 @@ import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 
 /**
- * Periodic backstop for chunked scrapes, mirroring `StagingReaper`'s tick. The
+ * Periodic backstop for chunked scrapes. The
  * coordinator (event-driven) handles the happy path; this recovers the edges:
  *
  *  - A run that is COMPLETE but whose `TaskFinished` was lost (worker restart,

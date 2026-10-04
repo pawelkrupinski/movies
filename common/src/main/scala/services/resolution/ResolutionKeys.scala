@@ -7,8 +7,7 @@ import services.movies.TitleNormalizer
  * Each builder includes exactly the hints that source's resolver consumes, so
  * the cache deduplicates per real hint-combination — no more, no less.
  *
- * "Order-independent" is load-bearing: `ScrapeOrderDeterminismSpec` proves the
- * pipeline resolves the same film regardless of scrape/merge order, and the
+ * "Order-independent" is load-bearing: the pipeline must resolve the same film regardless of scrape/merge order, and the
  * cache key must not reintroduce order dependence. Titles are `sanitize`d,
  * director lists are `distinct.sorted`, and Options collapse to a stable token,
  * so the key is a pure function of the hint SET.

@@ -89,8 +89,8 @@ object TextNormalization {
   // string, and `sanitize` keeps it in its own (Cyrillic) key — so the row never
   // gets a tmdbId and never folds onto the Latin "Vaiana" record. Romanizing the
   // SEARCH title (never the stored/display title, never the merge key's own
-  // input) lets BOTH the TMDB lookup AND `FilmCanonicalizer`'s
-  // `sanitize(apiQuery)` search-title union edge treat "Ваяна" and "Vaiana" as
+  // input) lets BOTH the TMDB lookup AND the since-deleted `FilmCanonicalizer`'s
+  // `sanitize(apiQuery)` search-title union edge treated "Ваяна" and "Vaiana" as
   // one film.
   //
   // The table leans Ukrainian-national (я→ia so "Ваяна"→"Vaiana"; і→i, и→y,

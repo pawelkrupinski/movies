@@ -9,12 +9,13 @@ import models.{MovieRecord, SourceData}
  * Before this object the same rules were asked in five shapes at five call sites, each wording
  * its own composition of `MixedFilmDetector` predicates: the TMDB candidate a venue denies
  * (`MovieService.lookupTmdb`), the decoration landing a listing's crew denies
- * (`ListingLanding.ask`), the containment fold the row's venue denies (`FilmCanonicalizer`, the
- * Faust refusal), the unresolved row the staging fold files apart (`StagingFold.planGroup`), the
- * convergence harness's wrong-merge check (`ServedCorpusInvariants.wrongMerges`) and the bare
- * listing's one home (`ScrapeLanding.concludedKeyFor`). They now all ask here, so the identity
- * resolver (docs/design/identity-resolver.md) draws its edges from the very rules the
- * incremental pipeline enforces, and a narrowed or added rule reaches every stage at once.
+ * (the since-deleted `ListingLanding.ask`), the containment fold the row's venue denies (the
+ * since-deleted `FilmCanonicalizer`, the Faust refusal), the unresolved row the staging fold files
+ * apart (the since-deleted `StagingFold.planGroup`), the convergence harness's wrong-merge check
+ * (`ServedCorpusInvariants.wrongMerges`) and the bare listing's one home (the since-deleted
+ * `ScrapeLanding.concludedKeyFor`). They now all ask here, so the identity resolver
+ * (docs/design/identity-resolver.md) draws its edges from the very rules those stages enforced,
+ * and a narrowed or added rule reaches every stage at once.
  *
  * The rule BODIES stay where they are (`MixedFilmDetector.deniesFilm`, `listingDeniesFilm`,
  * `wouldAddASecondFilm`, `describeDifferentFilms`): this object routes and names them. Keep it

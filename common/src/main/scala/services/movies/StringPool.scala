@@ -7,7 +7,7 @@ package services.movies
  *  of the same value across its per-cinema slots. Low-cardinality tokens especially win:
  *  a country or genre recurs in thousands of slots corpus-wide yet collapses to ONE
  *  instance. Interning happens wherever a slot enters memory: a scrape's
- *  (`ScrapeLanding.buildCinemaSlot`) and the cache's read from the store ([[slot]]).
+ *  (the since-deleted `ScrapeLanding.buildCinemaSlot`) and the cache's read from the store ([[slot]]).
  *
  *  Bounded (a plain `ConcurrentHashMap` would retain every string a film ever had,
  *  forever — the unbounded-growth trap that caused the original heap creep) so strings

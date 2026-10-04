@@ -62,7 +62,7 @@ object MergeRetrigger {
     // `displayTitle` by `StoredMovieRecord.fromStorage`) differed only in
     // case/punctuation from the settle's `minSpelling` canonical — e.g. "Federico
     // Fellini: Słodkie życie" vs "…SŁODKIE ŻYCIE". That was the ~83-retrigger/boot
-    // rating spike (`CanonicalizeRetriggerFlapSpec`). Only a genuine title change
+    // rating spike. Only a genuine title change
     // (different `sanitize`) or a year change re-kicks now.
     // Read each key's OWN normalised form rather than re-sanitizing its title: a
     // CacheKey now carries the identity its builder computed, so this compares

@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
  * consumers as a venue that has never produced anything. Were the archive write to
  * fail, this tick's guard state is dropped with it — the same best-effort bargain.
  *
- * A failed read returns None — "could not look", which `ScrapeLanding` judges as Fresh
+ * A failed read returns None — "could not look", which the listing intake judges as Fresh
  * (conservative: no rewire inferred) but never writes back, so the stored count survives.
  * A failed write logs and the next tick writes again.
  */

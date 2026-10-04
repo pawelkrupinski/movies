@@ -8,8 +8,7 @@ import scala.collection.mutable
  * under now?), answered without a store round-trip. A retitle moves a key between ids' entries; the
  * id itself never changes — see `FilmId`.
  *
- * Kept AS ROWS ARE WRITTEN by the cache's write funnels, the only writers; `CorpusIndexConsistencySpec`
- * holds it equal to one rebuilt from the resident rows.
+ * Kept AS ROWS ARE WRITTEN by the cache's write funnels, the only writers.
  */
 private[movies] final class CorpusIndex {
   private val idByKey = mutable.Map.empty[CacheKey, FilmId]

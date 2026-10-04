@@ -49,7 +49,7 @@ object ScrapeListing {
     // unification the cleaned title keeps apart. They all land on the SAME cinema
     // slot, `CinemaShowing(cinema, sanitize(title))` with no year. Recording them one
     // by one let the LAST win and dropped every other screening, and which row won
-    // depended on the scraper's emit order (ReScrapeIdempotencySpec). Fold each
+    // depended on the scraper's emit order. Fold each
     // cinema's same-slot rows into one at exactly the slot-key granularity: union
     // every screening's showtimes, deduped by physical identity, and keep a
     // deterministic representative for the scalar film fields.

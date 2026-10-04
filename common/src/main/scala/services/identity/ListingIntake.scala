@@ -9,10 +9,9 @@ import java.time.LocalDateTime
  * Which listing a cut-over country's venue is taken to publish after a scrape
  * (docs/design/identity-resolver.md §8, phase 5): the evidence the identity projection resolves.
  *
- * The same scrape-health rules the old landing applies (`ScrapeLanding.recordCinemaScrape`), as a
- * pure function of the venue's accepted listing, the fresh scrape and the guards' state — only the
- * outcome differs in kind: the landing wrote slots and skipped a prune, this decides the listing
- * set the projection reads.
+ * The scrape-health rules the since-deleted scrape landing applied, as a
+ * pure function of the venue's accepted listing, the fresh scrape and the guards' state — the
+ * outcome is a listing set for the projection to read, not slot writes and a skipped prune.
  *
  *  - an EMPTY scrape is a silent failure, never "nothing on": the accepted listing stays;
  *  - a FALLBACK-served scrape (the primary is down) is ADDED to the accepted listing — the fresh

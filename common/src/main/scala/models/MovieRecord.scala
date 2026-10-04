@@ -301,8 +301,7 @@ case class MovieRecord(
    *  (production-language) title, and its English release title. A film a cinema
    *  lists under its original/English title ("Tangled", "Left-Handed Girl") is
    *  the SAME film as the Polish-keyed row ("Zaplątani") — its key matches one of
-   *  these aliases — so the cross-title merge (`FilmCanonicalizer.groupByFilm`)
-   *  and alias-aware scrape-landing (`ScrapeLanding.concludedKeyFor`) fold the two
+   *  these aliases — so the identity projection folds the two
    *  onto one row. The English title matters when `originalTitle` is non-Latin
    *  (Taiwanese, Korean, …) and so doesn't itself match the cinema's English
    *  listing. A decorated edition (dub / "+ Kinoteka dla rodziców") adds words
