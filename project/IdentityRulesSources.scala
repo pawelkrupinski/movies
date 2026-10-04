@@ -18,11 +18,12 @@ object IdentityRulesSources {
     "scala/services/identity/IncrementalResolver.scala",
     "scala/services/identity/IdentityModelStore.scala")
 
-  /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`): the projection plan, which
-   *  holds the slot memo and the venue build, and what it calls to build a slot — the slot builder and the landing's
-   *  same-title fold, with all they reach. */
+  /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`): `VenueSlots.scala`, which holds
+   *  the slot memo, its key and the venue build, and what it calls to build a slot — the slot builder and the landing's
+   *  same-title fold, with all they reach. Not the projection plan: it held them until 2026-10-04, and every change to
+   *  the rest of it rebuilt every slot of every country on the next boot (a US first tick 65 s, not ~25). */
   val VenueSlotRoots: Set[String] = Set(
-    "scala/services/identity/IdentityProjectionPlan.scala",
+    "scala/services/identity/VenueSlots.scala",
     "scala/services/movies/CinemaSlotBuilder.scala",
     "scala/services/movies/ScrapeListing.scala",
     "scala/services/movies/MixedFilmDetector.scala",
@@ -35,10 +36,10 @@ object IdentityRulesSources {
    *  name read: each reaches the whole
    *  resolver (its decisions, calibration and learned decorations, the stores) beside the little a slot is built
    *  by. Followed, every deploy that touched any of the resolver moved the venue slot version, and no restarted
-   *  worker reused a stored slot (2026-10-04). The projection plan builds a slot by the roots above; the landing's
+   *  worker reused a stored slot (2026-10-04). `VenueSlots` builds a slot by the roots above; the landing's
    *  fold asks `ListingConstraints` only `venueCreditsApart`, which reads `MixedFilmDetector`, a root. */
   val VenueSlotLeaves: Set[String] = Set(
-    "scala/services/identity/IdentityProjectionPlan.scala",
+    "scala/services/identity/VenueSlots.scala",
     "scala/services/movies/ListingConstraints.scala")
 
   def closure(roots: Set[String], depends: String => Set[String]): Set[String] = {

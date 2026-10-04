@@ -15,7 +15,7 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
   private lazy val digested: Seq[String] = resource("/venue-slot-sources.txt").linesIterator.toSeq
 
   "the venue slot version" should "digest the code that builds a slot" in {
-    digested should contain allOf ("scala/services/identity/IdentityProjectionPlan.scala", "scala/services/movies/CinemaSlotBuilder.scala",
+    digested should contain allOf ("scala/services/identity/VenueSlots.scala", "scala/services/movies/CinemaSlotBuilder.scala",
       "scala/services/movies/ScrapeListing.scala", "scala/services/movies/MovieRecordMerge.scala",
       "scala/services/movies/ShowtimesDigest.scala", "scala/services/movies/TitleNormalizer.scala", "scala/models/SourceData.scala")
   }
@@ -28,6 +28,13 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
 
   it should "lex every Scala source it digests, so a comment edit to none of them moves it" in {
     unlexable(digested) shouldBe empty
+  }
+
+  it should "leave out the rest of the projection, which builds no slot" in {
+    // The projection plan held the slot memo and the venue build until 2026-10-04: every change to the rest of it moved
+    // the version, and the next boot rebuilt every slot (a US first tick 65 s and 3.1 GB, not ~25 s).
+    digested should contain noneOf ("scala/services/identity/IdentityProjectionPlan.scala", "scala/services/identity/LiveProjectionIndex.scala",
+      "scala/services/identity/ProjectionScope.scala")
   }
 
   it should "be what the memo's environment is made under" in {
