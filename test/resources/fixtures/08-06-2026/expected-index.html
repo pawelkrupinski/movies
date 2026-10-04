@@ -12242,7 +12242,11 @@ cast: new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Bool
 }
 function slotTime(badge) {
 const first = badge.firstChild;
-return first && first.nodeType === Node.TEXT_NODE ? first.nodeValue.trim() : '';
+const text = first && first.nodeType === Node.TEXT_NODE ? first.nodeValue.trim() : '';
+const twelve = /^(\d{1,2}):(\d{2}) ([AP])M$/.exec(text);
+if (!twelve) return text;
+const hour = parseInt(twelve[1], 10) % 12 + (twelve[3] === 'P' ? 12 : 0);
+return String(hour).padStart(2, '0') + ':' + twelve[2];
 }
 function badgeFacts(badge, cinema) {
 const time = slotTime(badge);

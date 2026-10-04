@@ -165,7 +165,7 @@
       <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
         <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
           <option value="" data-i18n="nav.any">@messages("nav.any")</option>
-          @for(h <- 0 to 23) { <option value="@h">@{f"$h%02d"}</option> }
+          @for(h <- 0 to 23) { <option value="@h">@{city.country.clockStyle.hourLabel(h)}</option> }
         </select>
         <span>:</span>
         <select id="from-minute" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">

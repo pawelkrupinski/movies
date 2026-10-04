@@ -113,6 +113,9 @@ sealed abstract class Country(
    *  a country whose every screening is in one language would be. */
   def versionTokens: Option[VersionTokens] = None
 
+  /** How this country's visitors read a showtime's clock — see [[ClockStyle]]. */
+  def clockStyle: ClockStyle = ClockStyle.TwentyFourHour
+
   /** The token a VOICE-OVER screening carries — one narrator read over the
    *  original soundtrack, which is neither dubbing nor subtitles and is a version
    *  of its own wherever it is offered — or `None` where the country's cinemas
@@ -273,6 +276,8 @@ object Country {
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
     val voiceoverToken: Option[String] = Some("LEC")
+    // US listings, chains and box offices alike, print "7:30 PM"; a 24-hour "19:30" reads as foreign.
+    override val clockStyle: ClockStyle = ClockStyle.TwelveHour
   }
 
   /** Spain — a Spanish-language country on its own `kinowo_es` database, sourced

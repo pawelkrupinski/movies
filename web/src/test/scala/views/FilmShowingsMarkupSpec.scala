@@ -70,6 +70,14 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     pills(render(day -> Seq(slot(lateShow)))).head should include (s"""data-expires="${expiresAt(lateShow)}"""")
   }
 
+  it should "print each pill's time on the country's clock — 12-hour in the US, 24-hour elsewhere" in {
+    val shows = day -> Seq(slot(day.atTime(0, 5)), slot(day.atTime(12, 30)), slot(day.atTime(19, 30)))
+    def times(html: String) = """>(\d{1,2}:\d{2}(?: [AP]M)?)<""".r.findAllMatchIn(html).map(_.group(1)).toSeq
+    val newYork = models.Country.UnitedStates.cities.find(_.zoneId == models.TimeZones.UsEastern).getOrElse(fail("no Eastern US city"))
+    times(views.html._filmShowings(schedule(shows))(using newYork).body) shouldBe Seq("12:05 AM", "12:30 PM", "7:30 PM")
+    times(render(shows)) shouldBe Seq("00:05", "12:30", "19:30")
+  }
+
   it should "emit no whitespace between a day's tags" in {
     val html = render(day -> Seq(slot(day.atTime(18, 0)), slot(day.atTime(20, 45))))
     val days = """<div class="date-group"[\s\S]*?(?=<a href="/)""".r.findAllIn(html).toSeq

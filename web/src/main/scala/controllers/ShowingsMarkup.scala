@@ -72,17 +72,19 @@ object ShowingsMarkup {
   def days(film: FilmSchedule, city: models.City): play.twirl.api.Html = {
     val zone   = city.zoneId
     val locale = city.country.language
+    val clock  = city.country.clockStyle
     val commonToks   = FilmFormat.tokensToStrip(film)
     val firstListing = firstListings(film.showings)
     // Wrapped in a plain `Html`: a template passes a value through untouched only when
     // its class is exactly `Html`, and anything else — a subclass included — it
     // escapes as text (`_display_`), which would print this whole tree as markup.
     new play.twirl.api.Html(List(new StreamedHtml((out, flush) =>
-      writeDays(film, commonToks, firstListing, zone, locale, out, flush))))
+      writeDays(film, commonToks, firstListing, zone, locale, clock, out, flush))))
   }
 
   private def writeDays(film: FilmSchedule, commonToks: Set[String], firstListing: Map[Cinema, LocalDate],
-                        zone: ZoneId, locale: java.util.Locale, out: java.lang.StringBuilder, flush: () => Unit): Unit = {
+                        zone: ZoneId, locale: java.util.Locale, clock: models.ClockStyle,
+                        out: java.lang.StringBuilder, flush: () => Unit): Unit = {
     val rules = zone.getRules
     // Looked up once per cinema group: the first URL listed for a cinema, as `find` took.
     val filmUrlOf = film.linkableCinemaFilmUrls.groupMapReduce(_._1)(_._2)((first, _) => first)
@@ -110,7 +112,7 @@ object ShowingsMarkup {
             escapeInto(out, cinema.displayName)
         }
         out.append("</div><div>")
-        for (slot <- slots) badgeInto(out, slot, day, zone, commonToks, prefix)
+        for (slot <- slots) badgeInto(out, slot, day, zone, clock, commonToks, prefix)
         out.append("</div></div>")
         flush()
       }
@@ -149,7 +151,7 @@ object ShowingsMarkup {
    *  tokens every slot of the film shares, which the pill drops (see `FilmFormat`);
    *  `prefix` is the URL prefix its cinema group's slots share. */
   private def badgeInto(out: java.lang.StringBuilder, slot: Showtime, day: Day, zone: ZoneId,
-                        commonToks: Set[String], prefix: String): Unit = {
+                        clock: models.ClockStyle, commonToks: Set[String], prefix: String): Unit = {
     val tag = slot.bookingUrl match {
       case Some(url) if prefix.nonEmpty && url.startsWith(prefix) =>
         out.append("<a data-s=\""); escapeInto(out, url, prefix.length); out.append('"'); "a"
@@ -165,21 +167,17 @@ object ShowingsMarkup {
     if (slot.format.nonEmpty) { out.append(" data-format=\""); escapeInto(out, slot.format.mkString(" ")); out.append('"') }
     explicitExpiry(slot, day, zone).foreach(at => out.append(" data-expires=\"").append(at).append('"'))
     out.append('>')
-    appendTime(out, slot.dateTime)
+    appendTime(out, slot.dateTime, clock)
     val tokens = slot.format.filterNot(commonToks.contains)
     if (tokens.nonEmpty) { out.append("<span class=\"badge-fmt\">"); escapeInto(out, tokens.mkString(" ")); out.append("</span>") }
     out.append("</").append(tag).append('>')
   }
 
-  /** `LocalTime.toString`'s spelling of the slot's clock time, without allocating it:
-   *  `HH:mm`, or the full form when it carries seconds. */
-  private def appendTime(out: java.lang.StringBuilder, at: java.time.LocalDateTime): Unit =
-    if (at.getSecond != 0 || at.getNano != 0) out.append(at.toLocalTime.toString)
-    else {
-      val h = at.getHour; val m = at.getMinute
-      out.append((h / 10 + '0').toChar).append((h % 10 + '0').toChar).append(':')
-        .append((m / 10 + '0').toChar).append((m % 10 + '0').toChar)
-    }
+  /** The slot's clock time in the country's [[models.ClockStyle]], without allocating it —
+   *  or, on a 24-hour clock, `LocalTime.toString`'s full form when it carries seconds. */
+  private def appendTime(out: java.lang.StringBuilder, at: java.time.LocalDateTime, clock: models.ClockStyle): Unit =
+    if ((at.getSecond != 0 || at.getNano != 0) && clock == models.ClockStyle.TwentyFourHour) out.append(at.toLocalTime.toString)
+    else clock.appendTime(out, at.getHour, at.getMinute)
 
   /** `value` from `from` on, HTML-escaped into `out` exactly as Twirl's
    *  `HtmlFormat.escape` renders it — without the `Html` and `String` it allocates. */

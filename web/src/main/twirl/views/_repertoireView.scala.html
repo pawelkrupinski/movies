@@ -100,10 +100,16 @@
   }
 
   // A pill's clock time is the text it opens with (`ShowingsMarkup` carries no
-  // `data-time`: on a 52k-pill page the duplicate was ~1 MB).
+  // `data-time`: on a 52k-pill page the duplicate was ~1 MB), as "HH:MM" — a US
+  // pill's "7:30 PM" (`ClockStyle.TwelveHour`) read back to "19:30", so the sort
+  // key, the from-hour filter and the expiry all compare one spelling.
   function slotTime(badge) {
     const first = badge.firstChild;
-    return first && first.nodeType === Node.TEXT_NODE ? first.nodeValue.trim() : '';
+    const text  = first && first.nodeType === Node.TEXT_NODE ? first.nodeValue.trim() : '';
+    const twelve = /^(\d{1,2}):(\d{2}) ([AP])M$/.exec(text);
+    if (!twelve) return text;
+    const hour = parseInt(twelve[1], 10) % 12 + (twelve[3] === 'P' ? 12 : 0);
+    return String(hour).padStart(2, '0') + ':' + twelve[2];
   }
 
   // Per-slot facts. Re-reading dataset.format / re-parsing "HH:MM" on every

@@ -5385,6 +5385,34 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A US pill prints "7:30 PM" (`ClockStyle.TwelveHour`), and the listing reads its
+  // time back off that text: read raw, "7:30 PM" sorted before "10:00 AM", passed an
+  // 18:00 from-hour filter as 7:30 and lapsed twelve hours early.
+  it should "read a 12-hour pill's time back as the 24-hour clock it spells" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.evalBool(
+        """(() => {
+          |  const b = [...document.querySelectorAll('.badge-time')].find(x => !x.dataset.expires);
+          |  const day = b.closest('.date-group');
+          |  b.firstChild.nodeValue = '7:30 PM';
+          |  const afternoon = slotTime(b) === '19:30';
+          |  b.firstChild.nodeValue = '12:05 AM';
+          |  const midnight = slotTime(b) === '00:05';
+          |  b.firstChild.nodeValue = '12:30 PM';
+          |  const noon = slotTime(b) === '12:30';
+          |  b.firstChild.nodeValue = '11:15 PM';
+          |  day.dataset.expiresFrom = String(showtimeNow() + 1 - (23 * 60 + 15) * 60000);
+          |  pruneExpiredShowtimes();
+          |  const kept = b.isConnected;
+          |  day.dataset.expiresFrom = String(showtimeNow() - 1 - (23 * 60 + 15) * 60000);
+          |  pruneExpiredShowtimes();
+          |  return afternoon && midnight && noon && kept && !b.isConnected;
+          |})()""".stripMargin) shouldBe true
+    }
+  }
+
   it should "take its cinema-group, date-group and film card with it when it was the last one" in {
     onPath("/") { page =>
       clearLocalStorage(page)
