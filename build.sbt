@@ -150,14 +150,16 @@ lazy val common = (project in file("common"))
     // from — the sources the compiler records the resolver and its store as reaching, and the resources none but other
     // code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's families; one that
     // changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
-    // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`): a deploy that
-    // changes none of what builds a slot keeps the fingerprints a restarted worker reuses its stored slots by.
+    // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`), from what builds
+    // a slot (`IdentityRulesSources.VenueSlotRoots`, not following the leaves that reach the resolver): a deploy that
+    // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
     Compile / resourceGenerators += Def.task {
       val main     = baseDirectory.value / "src" / "main"
       val analysis = (Compile / compile).value
-      Seq("identity-rules" -> IdentityRulesSources.Roots, "venue-slot" -> IdentityRulesSources.VenueSlotRoots).flatMap { case (name, roots) =>
-        val sources  = IdentityRulesSources.of(analysis, roots)
-        val resources = IdentityRulesSources.resources(main, sources)
+      Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
+          ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves)).flatMap { case (name, roots, leaves) =>
+        val sources  = IdentityRulesSources.of(analysis, roots, leaves)
+        val resources = IdentityRulesSources.resources(main, sources.filterNot(leaves))
         val paths    = sources ++ resources
         val digest   = java.security.MessageDigest.getInstance("SHA-256")
         paths.foreach { path =>

@@ -18,8 +18,28 @@ object IdentityRulesSources {
     "scala/services/identity/IncrementalResolver.scala",
     "scala/services/identity/IdentityModelStore.scala")
 
-  /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`). */
-  val VenueSlotRoots: Set[String] = Set("scala/services/identity/IdentityProjectionPlan.scala")
+  /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`): the projection plan, which
+   *  holds the slot memo and the venue build, and what it calls to build a slot — the slot builder and the landing's
+   *  same-title fold, with all they reach. */
+  val VenueSlotRoots: Set[String] = Set(
+    "scala/services/identity/IdentityProjectionPlan.scala",
+    "scala/services/movies/CinemaSlotBuilder.scala",
+    "scala/services/movies/ScrapeListing.scala",
+    "scala/services/movies/MixedFilmDetector.scala",
+    "scala/services/movies/MovieRecordMerge.scala",
+    "scala/services/movies/ShowtimesDigest.scala",
+    "scala/services/movies/ListingKey.scala",
+    "scala/services/movies/ScreeningTokens.scala")
+
+  /** Of what the venue slot code reaches, the sources digested as text but not followed, nor the resources only they
+   *  name read: each reaches the whole
+   *  resolver (its decisions, calibration and learned decorations, the stores) beside the little a slot is built
+   *  by. Followed, every deploy that touched any of the resolver moved the venue slot version, and no restarted
+   *  worker reused a stored slot (2026-10-04). The projection plan builds a slot by the roots above; the landing's
+   *  fold asks `ListingConstraints` only `venueCreditsApart`, which reads `MixedFilmDetector`, a root. */
+  val VenueSlotLeaves: Set[String] = Set(
+    "scala/services/identity/IdentityProjectionPlan.scala",
+    "scala/services/movies/ListingConstraints.scala")
 
   def closure(roots: Set[String], depends: String => Set[String]): Set[String] = {
     var seen = roots; var frontier = roots
@@ -27,8 +47,8 @@ object IdentityRulesSources {
     seen
   }
 
-  /** The sources `roots` reach in `analysis`. */
-  def of(analysis: xsbti.compile.CompileAnalysis, roots: Set[String]): Seq[String] = {
+  /** The sources `roots` reach in `analysis`, not following what a source of `leaves` reaches. */
+  def of(analysis: xsbti.compile.CompileAnalysis, roots: Set[String], leaves: Set[String] = Set.empty): Seq[String] = {
     val relations = analysis.asInstanceOf[sbt.internal.inc.Analysis].relations
     def rel(ref: VirtualFileRef): String = {
       val marker = "src/main/"
@@ -40,7 +60,8 @@ object IdentityRulesSources {
     val missing     = roots -- known
     require(missing.isEmpty, s"versioned roots not compiled: ${missing.mkString(", ")}")
     val rootClasses = relations.classes.all.collect { case (src, cls) if roots(rel(src)) => cls }.toSet
-    val classes     = closure(rootClasses, cls => relations.internalClassDep.forward(cls))
+    val classes     = closure(rootClasses, cls =>
+      if (sourceOf.getOrElse(cls, Set.empty[String]).exists(leaves)) Set.empty else relations.internalClassDep.forward(cls))
     (classes.flatMap(c => sourceOf.getOrElse(c, Set.empty[String])) ++ roots).toSeq.sorted
   }
 

@@ -229,4 +229,29 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     VenueSlotMemo.fingerprint(7L, key, lean(one)) should not be VenueSlotMemo.fingerprint(8L, key, lean(one))
     VenueSlotMemo.fingerprint(7L, key.copy(rows = 9), lean(one)) should not be VenueSlotMemo.fingerprint(7L, key, lean(one))
   }
+
+  // A deploy that changes the slot code or the title rules changes the environment every fingerprint is made under:
+  // nothing the last run recorded can match, so a restarted memo must not fingerprint each venue's stored slots to
+  // find that out — a US first tick spent ~14 GB in `draft` doing it, on top of building every slot.
+  "A memo seeded by a run under another environment" should "not read a venue's stored slots, and one seeded under its own should" in {
+    val key  = VenueSlotMemo.Key("Kino Muza", 1, 2, 3, 1)
+    val lean = Seq((CinemaShowing(KinoMuza, "lalka"): models.Source) ->
+      services.movies.ShowtimesDigest.stripSlot(SourceData(title = Some("Lalka"), showtimes = Seq(Showtime(start, None)))))
+    val before = new VenueSlotMemo(7L)
+    before.lookup(key) shouldBe None
+    before.store(key, lean, keep = true)
+    before.endTick()
+    var reads = 0
+    def stored = { reads += 1; Some(lean) }
+
+    val otherBuild = new VenueSlotMemo(8L)
+    otherBuild.seed(before.fingerprints)
+    otherBuild.lookup(key, stored) shouldBe None
+    reads shouldBe 0
+
+    val sameBuild = new VenueSlotMemo(7L)
+    sameBuild.seed(before.fingerprints)
+    sameBuild.lookup(key, stored) shouldBe Some(lean)
+    reads shouldBe 1
+  }
 }

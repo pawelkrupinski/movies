@@ -144,13 +144,15 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     phases.map(_.allocatedBytes).sum should be > 0L
   }
 
-  // The first projection builds every slot over no stored film; the second over what the first stored
-  // (the prior slots a slot carries detail forward from), and from then on only what moves is rebuilt.
+  // The first projection builds every slot over no stored film, and from then on only what moves is rebuilt. The
+  // slots it wrote are the next projection's prior slots, which a slot carries detail forward from: built over
+  // them, each comes out as it was written, so they are no reason to build it again — a US tick rebuilt 300–500
+  // slots a second time as "priors moved" for the ~200 whose rows had.
   "A projection over unchanged listings" should "build no venue slot again, reusing the last projection's" in {
     val w = new World
     w.scrape(programme)
-    w.projection.tick().slotsReused shouldBe 0
     val first = w.projection.tick()
+    first.slotsReused shouldBe 0
     first.slotsBuilt should be > 0
     val again = w.projection.tick()
     again.slotsBuilt shouldBe 0
@@ -161,9 +163,9 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   it should "rebuild only the venue whose listing changed, and write that film with every showtime" in {
     val w = new World
     w.scrape(programme)
-    w.projection.tick()
     val first = w.projection.tick()
-    val later = film(KinoMuza, "Diuna", Some(2021), 7, 8, 9)
+    // Another showtime, and a synopsis — a field the slot carries forward from its prior slot.
+    val later = film(KinoMuza, "Diuna", Some(2021), 7, 8, 9).copy(synopsis = Some("Paul Atryda przybywa na Arrakis."))
     w.scrape(Map(KinoMuza -> Seq(later)))
     val tick = w.projection.tick()
     tick.slotsBuilt shouldBe 1
@@ -171,6 +173,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     tick.slotMisses shouldBe ((1, 0, 0))   // the one venue's rows moved; no prior slot, no new listing
     tick.written shouldBe 1
     w.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
+    // What it wrote is now that venue's prior slot, synopsis and all: what the slot was built INTO, not a reason to
+    // build it again.
+    val next = w.projection.tick()
+    next.slotsBuilt shouldBe 0
+    next.wroteNothing shouldBe true
   }
 
   // A worker restarts on every deploy, and its memo with it: the first projection after a boot rebuilt every venue
@@ -178,13 +185,12 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   it should "build no venue slot again after a restart, when nothing moved while the worker was down" in {
     val w = new World
     w.scrape(programme)
-    w.projection.tick()
-    val steady = w.projection.tick()
+    val first = w.projection.tick()
     w.projection.tick().slotsBuilt shouldBe 0
     val booted = w.restarted
     val tick   = booted.projection.tick()
     tick.slotsBuilt shouldBe 0
-    tick.slotsReused shouldBe steady.slotsBuilt
+    tick.slotsReused shouldBe first.slotsBuilt
     tick.wroteNothing shouldBe true
     booted.rowsRead shouldBe empty
     booted.showtimes shouldBe allShowtimes
@@ -194,14 +200,13 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   it should "rebuild after a restart only the venue whose listing changed while the worker was down" in {
     val w = new World
     w.scrape(programme)
-    w.projection.tick()
-    val steady = w.projection.tick()
+    val first = w.projection.tick()
     w.projection.tick()
     val booted = w.restarted
     booted.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
     val tick = booted.projection.tick()
     tick.slotsBuilt shouldBe 1
-    tick.slotsReused shouldBe steady.slotsBuilt - 1
+    tick.slotsReused shouldBe first.slotsBuilt - 1
     tick.written shouldBe 1
     booted.showtimes shouldBe allShowtimes + (KinoMuza.displayName -> start.plusHours(9))
   }
