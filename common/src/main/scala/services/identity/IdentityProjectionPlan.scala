@@ -264,9 +264,11 @@ object IdentityProjectionPlan {
     val dirtyAt = if (!reuse) Map.empty[Long, Set[ListingKey]]
                   else changed.iterator.filter(byKey.contains).flatMap(k => placedAt.get(k).map(_ -> k)).toSeq.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
     val planned = assigned.ids.map { case (counter, members) =>
-      shapes.get(counter).filter(sh => reuse && (sh.members eq members)) match {
+      // The same listings: the same keys in the same order, the same titles (a key holds its listing's title). An equal set
+      // of other key objects is the same listings read again — a venue's scrape reads every listing it prints, moved or not.
+      shapes.get(counter).filter(sh => reuse && ((sh.members eq members) || sh.members == members))
+        .map(_.over(members, k => byKey.get(k).fold(k)(_.listing.key))) match {
         case Some(was) =>
-          // The same listings: the same keys in the same order, the same titles (a key holds its listing's title).
           val dirtyVenues = dirtyAt.getOrElse(counter, Set.empty).map(byKey(_).listing.cinema)
           val groups = was.venues.toSeq.sortBy(_._1.displayName).map { case (cinema, venue) =>
             // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue.
@@ -460,7 +462,14 @@ private[identity] final case class VenueShape(keys: Seq[ListingKey], memoKey: Ve
 /** A drafted film: the listings it was drafted with (and in key order), how many carry each clean title (its anchor),
  *  each venue, and its venue slots as one map. */
 private[identity] final case class FilmShape(members: Set[ListingKey], keys: Seq[ListingKey], titles: Map[String, Int],
-                                             venues: Map[Cinema, VenueShape], venueData: Map[Source, SourceData])
+                                             venues: Map[Cinema, VenueShape], venueData: Map[Source, SourceData]) {
+  /** This shape over `now`, its members as other key objects (listings read again): each key as `canonical` holds it, so
+   *  a shape kept for the next projection holds no key object the index has let go. */
+  def over(now: Set[ListingKey], canonical: ListingKey => ListingKey): FilmShape =
+    if (now eq members) this
+    else FilmShape(now, keys.map(canonical), titles, venues.map { case (cinema, venue) => cinema -> venue.copy(keys = venue.keys.map(canonical)) },
+      venueData)
+}
 
 /**
  * Each film as the last projection drafted it, so a scoped projection drafting a film again with the same listings

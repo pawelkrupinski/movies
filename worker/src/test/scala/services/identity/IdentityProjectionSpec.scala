@@ -327,6 +327,26 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.showtimes shouldBe allShowtimes + (Helios.displayName -> start.plusHours(6)) + (KinoMuza.displayName -> start.plusHours(9))
   }
 
+  it should "keep a film's unmoved venues as last drafted when another venue's scrape read its listings again unchanged" in {
+    // A scrape reads every listing at its venue again: an unchanged one comes back an equal listing, another object, and
+    // the index holds it under the new key object — in its cluster too. The film was drafted whole again for that
+    // (worker-us: ~30k venue slots looked up per tick, 25 films drafted), and its write diffed every venue.
+    // As production stores a film, so its write is a patch of the sources it may have moved (`ProjectedFilm.touched`).
+    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer))
+    w.scrape(programme)
+    w.projection.tick()
+    w.scrape(Map(Helios -> Seq(film(Helios, "Lalka", Some(2026), 2), film(Helios, "Diuna", Some(2021), 5, 6))))
+    w.projection.tick().written shouldBe 1
+    w.scrape(Map(Helios -> Seq(film(Helios, "Lalka", Some(2026), 2), film(Helios, "Diuna", Some(2021), 5, 6)),
+      KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    val tick = w.projection.tick()
+    tick.scoped shouldBe true
+    (tick.slotsBuilt, tick.slotsReused) shouldBe ((1, 0))   // Kino Muza built; Helios kept as last drafted, not even looked up
+    tick.changed.flatMap(_.touched).flatten.flatMap(models.Source.cinemaOf).toSet shouldBe Set(KinoMuza)
+    w.showtimes shouldBe allShowtimes + (Helios.displayName -> start.plusHours(6)) + (KinoMuza.displayName -> start.plusHours(9))
+  }
+
   "A projection" should "hold no listing's showtimes, nor any in the films it plans, and read rows only for the venues it builds" in {
     // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
     val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
