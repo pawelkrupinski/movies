@@ -27,22 +27,24 @@ class FallbackStoreHydrateIntegrationSpec extends AnyFlatSpec with Matchers with
     val state = FallbackState(cinema = "Kino Test", active = true, fallbackSource = "Filmweb", fallbackRef = None,
       since = Some(at), lastReason = None, consecutiveFailures = 2, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None,
       updatedAt = at, history = Nil)
-    new MongoFallbackStore(Some(isolated.database), _root_.tools.SpecClock.Pinned).put(state)
-    new MongoFallbackStore(Some(isolated.database), _root_.tools.SpecClock.Pinned).get("Kino Test").map(_.active) shouldBe Some(true)
+    new MongoFallbackStore(Some(isolated.database)).put(state)
+    new MongoFallbackStore(Some(isolated.database)).get("Kino Test").map(_.active) shouldBe Some(true)
   }
 
   it should "throw, not answer 'not on fallback', while its hydrate cannot read the collection" in {
-    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), _root_.tools.SpecClock.Pinned)
+    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")))
     an[IllegalStateException] should be thrownBy blind.get("Kino Test")
     an[IllegalStateException] should be thrownBy blind.findAll()
   }
 
-  it should "throw at once between hydrate retries, not re-read on every call" in {
-    val clock = new tools.MutableClock(Instant.parse("2026-10-01T00:00:00Z"))
-    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), clock)
+  // Paced on a monotonic ticker, not the wiring's clock: a harness's pinned clock never let a failed
+  // hydrate come due again.
+  it should "throw at once between hydrate retries, and retry once the monotonic ticker has moved on" in {
+    val ticks = new java.util.concurrent.atomic.AtomicLong(0L)
+    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), () => ticks.get())
     (1 to 5).foreach(_ => an[IllegalStateException] should be thrownBy blind.get("Kino Test"))
     blind.hydrateAttempts shouldBe 1
-    clock.advance(java.time.Duration.ofMillis(MongoFallbackStore.HydrateRetry.toMillis))
+    ticks.addAndGet(MongoFallbackStore.HydrateRetry.toNanos)
     an[IllegalStateException] should be thrownBy blind.findAll()
     blind.hydrateAttempts shouldBe 2
   }

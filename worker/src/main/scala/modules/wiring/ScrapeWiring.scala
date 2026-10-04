@@ -103,7 +103,7 @@ trait ScrapeWiring { self: WorkerWiring =>
       new FilmwebShowtimesClient(httpFetch, id, cinema, today = venueClock.todayInPoland))
 
   lazy val filmwebFallbackStore: FallbackStore =
-    new MongoFallbackStore(mongoConnection.database, clock)
+    new MongoFallbackStore(mongoConnection.database)
 
   // The per-cinema scraper-client marker ("shared:<Client>" / "custom:<Client>"),
   // derived once from this country's slice of the catalog — the whole catalog tagged

@@ -44,7 +44,7 @@ class InMemoryFallbackStore extends FallbackStore {
  */
 class MongoFallbackStore(
   db: Option[MongoDatabase],
-  clock: java.time.Clock,
+  nanoTime: () => Long = () => System.nanoTime(),
   collectionName: String = MongoFallbackStore.CollectionName
 ) extends FallbackStore with Logging {
   import MongoFallbackStore._
@@ -58,9 +58,10 @@ class MongoFallbackStore(
   // already paged, gone. Until a hydrate lands, a read throws — and hydrates again first once
   // `HydrateRetry` has passed since the last attempt: retried on EVERY read, each a 10 s blocking
   // read under one lock, a boot asking once per cinema stalled for cinemas × 10 s and every web
-  // /metrics scrape waited 10 s for its 500.
+  // /metrics scrape waited 10 s for its 500. Paced on a MONOTONIC clock, not the wiring's: the
+  // harnesses pin theirs, and a pinned clock would never let the retry come due.
   @volatile private var hydrated = coll.isEmpty
-  @volatile private var nextHydrateAt = Long.MinValue
+  @volatile private var nextHydrateAt = 0L
   @volatile private var attempts = 0
   coll.foreach(attemptHydrate)
 
@@ -70,12 +71,12 @@ class MongoFallbackStore(
   private def attemptHydrate(c: MongoCollection[Document]): Unit = {
     attempts += 1
     hydrated = hydrate(c)
-    nextHydrateAt = clock.millis() + HydrateRetry.toMillis
+    nextHydrateAt = nanoTime() + HydrateRetry.toNanos
   }
 
   private def ensureHydrated(): Unit =
     if (!hydrated) coll.foreach { c =>
-      synchronized { if (!hydrated && clock.millis() >= nextHydrateAt) attemptHydrate(c) }
+      synchronized { if (!hydrated && nanoTime() - nextHydrateAt >= 0) attemptHydrate(c) }
       if (!hydrated) throw new IllegalStateException(s"$collectionName could not be read — fallback state unknown")
     }
 
