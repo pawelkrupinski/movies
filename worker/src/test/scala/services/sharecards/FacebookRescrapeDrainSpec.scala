@@ -192,6 +192,23 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     store.waiting shouldBe empty
   }
 
+  it should "be dropped after the last attempt, not wait in the fleet's queue for good" in {
+    val clock = new MutableClock(T0)
+    val store = new InMemoryFacebookRescrapeStore
+    var reads = 0
+    val graph = new RecordingGraph(clock)
+    val drain = new FacebookRescrapeDrain(store, graph,
+      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, "us", ShareCardMetrics.noop, clock)
+    new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
+    (1 to MaxAttempts + 3).foreach { attempt =>
+      drain.tick()
+      clock.advance(java.time.Duration.ofMillis(backoff(attempt).toMillis + Lease.toMillis))
+    }
+    reads shouldBe MaxAttempts
+    store.waiting shouldBe empty
+    graph.sent shouldBe empty
+  }
+
   "The waiting gauge" should "count the country's pages still to send" in {
     val fleet = new Fleet(cities = 4)
     fleet.request("us", "film")
