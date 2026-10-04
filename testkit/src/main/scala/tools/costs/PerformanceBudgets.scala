@@ -78,10 +78,10 @@ object PerformanceBudgets {
    *  copy of a venue with an accepted listing, is never fetched. */
   val ListingReadRowsBeyondKept = operations("listing rows fetched beyond the venues kept", limit = 0)
   /** A read over archives nothing was written to since (60 archived venues, 15 accepted, 40 live): no whole
-   *  row, and the reads and documents of the two archives' stamp and id scans alone. */
+   *  row and no id scan: the two archives' stamp reads alone. */
   val QuietListingReadRows      = operations("listing rows fetched by a quiet read", limit = 0)
-  val QuietListingReadCommands  = operations("Mongo reads sent by a quiet listing read", limit = 6)
-  val QuietListingReadDocuments = operations("documents returned to a quiet listing read", limit = 150)
+  val QuietListingReadCommands  = operations("Mongo reads sent by a quiet listing read", limit = 4)
+  val QuietListingReadDocuments = operations("documents returned to a quiet listing read", limit = 75)
 
   // ── Fixed ceilings: a bound the path must stay under, not a measured cost ────────────────────
 

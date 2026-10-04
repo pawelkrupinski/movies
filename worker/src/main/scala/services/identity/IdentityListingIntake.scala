@@ -200,8 +200,12 @@ object IdentityListingIntake {
           }
       }
       val fresh    = Map.newBuilder[String, Entry]
-      val complete = repository.scanLean(reread)(_.foreach(row =>
-        fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
+      // Nothing to read again — the usual tick — is no scan at all: even one that fetches no row first reads every
+      // venue's id to pick the rows (`scanLean`), half of a quiet read's documents.
+      val complete =
+        if (!wanted.valuesIterator.exists(reread)) tools.ScanOutcome.complete
+        else repository.scanLean(reread)(_.foreach(row =>
+          fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
