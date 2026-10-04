@@ -25,10 +25,11 @@
 #                       `sbt worker/run` yourself first so the worker doesn't
 #                       re-scrape into the wipe.
 #
-# Drops: detailCache, freshness, movies, pending_movies, tasks, web_movies,
-#        web_screenings — i.e. everything the scrape→enrich→project pipeline
-#        rebuilds from scratch (`pending_movies` is the staging incubator added
-#        alongside `movies`). --local ALSO drops scheduled_runs (see below).
+# Drops: detailCache, freshness, movies, tasks, web_movies, web_screenings and
+#        the identity model's derived state (identity_model_families,
+#        identity_model_meta, identity_traces, identity_slot_fingerprints) — i.e.
+#        everything the scrape→identity projection pipeline rebuilds from scratch.
+#        --local ALSO drops scheduled_runs (see below).
 #   NOT dropped — operational state, curated config, and accounts the worker does
 #   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), users,
 #   userStates (accounts). Add filmwebFallback / filmwebFallbackMeta (per-cinema
@@ -62,7 +63,8 @@ ROOT="$(cd "$HERE/.." && pwd)"
 # database (kinowo / kinowo_uk / …); the overlays are suffixed by country code.
 KUBE_NAMESPACE="${KUBE_NAMESPACE:-kinowo}"
 COUNTRY="${KINOWO_RESET_COUNTRY:-pl}"
-COLLECTIONS=(detailCache freshness movies pending_movies tasks web_movies web_screenings)
+COLLECTIONS=(detailCache freshness movies tasks web_movies web_screenings
+             identity_model_families identity_model_meta identity_traces identity_slot_fingerprints)
 
 MODE="prod"
 ASSUME_YES=""
