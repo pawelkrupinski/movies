@@ -169,7 +169,9 @@ window.onLanguageChange = onLanguageChange;
   function applyStoredPick() {
     var stored = null;
     try { stored = localStorage.getItem('kinowo_lang'); } catch (e) {}
-    if (stored && I18N_PACKS[stored]) applyLanguage(stored);
+    // The deployment's own language is what the server rendered: nothing to
+    // re-apply (and a full `[data-i18n]` rewrite, twice per load, to skip).
+    if (stored && stored !== DEFAULT_LANG && I18N_PACKS[stored]) applyLanguage(stored);
   }
   applyStoredPick();
   document.addEventListener('DOMContentLoaded', applyStoredPick);

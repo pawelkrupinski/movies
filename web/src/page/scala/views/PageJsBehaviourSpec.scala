@@ -3378,6 +3378,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // its date-label refresh used to be a silent no-op on every load. Fixed by
   // having `bootLanguage` call `applyLanguage` a SECOND time, on
   // `DOMContentLoaded` — by then `shared.js` is guaranteed to have run.
+  // A stored pick that IS the deployment's own language (a Polish visitor who
+  // once switched back to Polish) has nothing to change: the server already
+  // rendered it. Re-applying it rewrote every `[data-i18n]` string on the
+  // page, twice per load, for nothing. Counted from the first byte of the
+  // document by an observer installed before the page's own scripts run.
+  it should "leave the page alone when the stored pick is the language it was rendered in" in {
+    onPath("/") { page =>
+      page.eval("localStorage.setItem('kinowo_lang', 'pl')")
+      page.send("Page.addScriptToEvaluateOnNewDocument", play.api.libs.json.Json.obj("source" ->
+        ("window.__i18nRewrites = 0; new MutationObserver(records => records.forEach(r => {" +
+         "  if (r.type === 'childList' && r.removedNodes.length && r.target.hasAttribute && r.target.hasAttribute('data-i18n'))" +
+         "    window.__i18nRewrites++; })).observe(document, { childList: true, subtree: true });")))
+      try {
+        page.reload()
+        page.waitFor("document.readyState === 'complete'")
+        page.evalInt("window.__i18nRewrites") shouldBe 0
+        page.evalString("document.documentElement.lang") shouldBe "pl"
+      } finally {
+        page.eval("localStorage.removeItem('kinowo_lang')")
+      }
+    }
+  }
+
   it should "apply a stored language pick to the date headers on a fresh page load, not just an interactive switch" in {
     onPath("/") { page =>
       page.eval("localStorage.setItem('kinowo_lang', 'en')")
