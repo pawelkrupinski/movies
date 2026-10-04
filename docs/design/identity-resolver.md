@@ -807,7 +807,9 @@ Cineworld from an IP it serves. No recording from a runner can close them.
 - The convergence legs (full and sample) and the hard clusters are green on the new wiring,
   including the order-independence and next-day legs.
 - The churn counters are zero: `kinowo_worker_rekeys_total` and
-  `kinowo_worker_merges_total{reason!="imdb-identity"}` both at 0 over 7 days.
+  `kinowo_worker_merges_total{reason!="imdb-identity"}` both at 0 over 7 days. (Both counters went
+  with the old pipeline's merge and re-key paths in 43e8ed84c; the projection's churn is
+  `kinowo_worker_identity_regroupings_total`.)
 - Read-model drift gauges hold at baseline. `ReadModelServingDiffers` does not fire.
 - Film count per country is within ±2% of the pre-cutover count, and served showtimes within
   ±0.5%.
@@ -1971,13 +1973,15 @@ field or the FilmId map, and no FilmId changes. Status of §16.4:
   read by one listing's key is an index scan (it reads COLLSCAN with the index removed). The read
   itself is `ListingKeyedRows.rowIdsForListingKeyChecked`, beside `rowListingKeysChecked`
   (every row id with its stamp), on both Mongo and in-memory stores (`SlotsRepositoryContractSpec`).
-- **Unstamped rows (item 1's gate).** `UnstampedListingCensus` publishes
+- **Unstamped rows (item 1's gate).** *(Removed in ea3d56300 with the census, once every row was
+  stamped by construction; the gauge below no longer exists.)* `UnstampedListingCensus` published
   `kinowo_worker_listing_key_unstamped_rows{country,collection}` hourly. It counts venue rows with
   no `listingKey`. The exemptions are `ListingKey.isVenueRow`: enrichment slots, chain network
   detail slots, retired venues. It must read 0 per country after the backfill. It is charted on
   the worker-diagnostics dashboard. No alert yet: before the backfill it is ~10k per country by
   design. Add one (above 0 for a day) once every country has been backfilled.
-- **Shadow read (item 2).** `services.identity.ListingKeyShadowRead` samples
+- **Shadow read (item 2).** *(Removed in ea3d56300, with its gauge and switches.)*
+  `services.identity.ListingKeyShadowRead` sampled
   `KINOWO_LISTING_KEY_SHADOW_SAMPLE` (default 500) venue slot rows an hour. It resolves each one
   by slot key and by `listingKey` in both collections. It publishes
   `kinowo_worker_listing_key_shadow_read_rows{country,outcome=agree|slots_disagree|screenings_disagree|unread}`
