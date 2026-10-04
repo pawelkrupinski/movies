@@ -5372,6 +5372,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // A US pill prints "7:30 PM" (`ClockStyle.TwelveHour`), and the listing reads its
   // time back off that text: read raw, "7:30 PM" sorted before "10:00 AM", passed an
   // 18:00 from-hour filter as 7:30 and lapsed twelve hours early.
+  // The page clock is live (`Date.now()`), so "not yet lapsed" sits a minute ahead:
+  // a 1 ms margin lapsed whenever a millisecond ticked before the prune ran.
   it should "read a 12-hour pill's time back as the 24-hour clock it spells" in {
     onPath("/") { page =>
       clearLocalStorage(page)
@@ -5387,7 +5389,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |  b.firstChild.nodeValue = '12:30 PM';
           |  const noon = slotTime(b) === '12:30';
           |  b.firstChild.nodeValue = '11:15 PM';
-          |  day.dataset.expiresFrom = String(showtimeNow() + 1 - (23 * 60 + 15) * 60000);
+          |  day.dataset.expiresFrom = String(showtimeNow() + 60000 - (23 * 60 + 15) * 60000);
           |  pruneExpiredShowtimes();
           |  const kept = b.isConnected;
           |  day.dataset.expiresFrom = String(showtimeNow() - 1 - (23 * 60 + 15) * 60000);
